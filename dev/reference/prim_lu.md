@@ -19,19 +19,21 @@ prim_lu(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 axes.
+  One input, with exactly 2 axes. Can be any float data type. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-`list` of three
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-values: `LU` `(m, n)` with the same dtype as the input; `pivots` `(k,)`
-of the default integer data type (see
+(named `list` of three
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Elements `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at
+the default integer data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
-with `k = min(m, n)` (1-based row swaps such that row `i` was exchanged
-with row `pivots[i]` during elimination step `i`); and `permutation`
-`(m,)` of the same data type, a 1-based permutation vector for \\P\\
-such that `(P %*% A)[i, ]` equals `A[permutation[i], ]`.
+with `k = min(m, n)` (sequential row swaps: row `i` was exchanged with
+row `pivots[i]` during elimination step `i`); and `permutation` `(m,)`
+at that same data type, a permutation vector for \\P\\ such that
+`(P %*% A)[i, ]` equals `A[permutation[i], ]`.
 
 ## Implemented Rules
 
@@ -53,6 +55,7 @@ loop that converts `pivots` to `permutation` in-graph.
 ## Examples
 
 ``` r
+# `LU` keeps the input's data type; the pivots are the default integer
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 prim_lu(x)
 #> $LU

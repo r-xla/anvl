@@ -27,12 +27,16 @@ prim_svd(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 axes.
+  One input, with exactly 2 axes. Can be any float data type. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-Named `list` with elements `d` (length `k`), `u` (shape `(m, k)`), and
-`vt` (shape `(k, n)`). All have the same dtype as the input.
+(named `list` of three
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Elements `d` (length `k`), `u` (shape `(m, k)`), and `vt` (shape
+`(k, n)`). All have the input's data type.
 
 ## Implemented Rules
 
@@ -51,6 +55,7 @@ with target `"svd"`.
 ## Examples
 
 ``` r
+# all three outputs have the input's data type
 x <- nv_array(c(1, 0, 0, 1, 0, 1), shape = c(3, 2))
 prim_svd(x)
 #> $d

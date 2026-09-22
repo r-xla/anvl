@@ -15,20 +15,27 @@ prim_ifelse(pred, true_value, false_value)
 
 - pred:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-  of boolean type)  
-  Predicate array. Must be scalar or have the same shape as
-  `true_value`.
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  Predicate array. Must be a boolean or an R logical, and scalar or the
+  same shape as `true_value`.
 
 - true_value, false_value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Values to select from. Must have the same dtype and shape.
+  Values to select from, of the same shape. Can be any data type.
+  `true_value` and `false_value` must have the same data type. An R
+  value among them assumes the data type of the others when it is in its
+  [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when none of them has one.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same dtype and shape as `true_value`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the shape of `true_value` and `false_value`, and the data type they
+agreed on.
 
 ## Implemented Rules
 
@@ -41,7 +48,8 @@ Has the same dtype and shape as `true_value`.
 ## StableHLO
 
 Lowers to
-[`hlo_select()`](https://r-xla.github.io/stablehlo/reference/hlo_select.html).
+[`hlo_select()`](https://r-xla.github.io/stablehlo/reference/hlo_select.html),
+specified under [select](https://openxla.org/stablehlo/spec#select).
 
 ## See also
 
@@ -50,6 +58,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the result takes the branches' data type; `pred` only selects
 pred <- nv_array(c(TRUE, FALSE, TRUE))
 prim_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 #> AnvlArray

@@ -13,12 +13,14 @@ prim_rsqrt(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -29,7 +31,8 @@ Has the same shape and data type as the input.
 ## StableHLO
 
 Lowers to
-[`hlo_rsqrt()`](https://r-xla.github.io/stablehlo/reference/hlo_rsqrt.html).
+[`hlo_rsqrt()`](https://r-xla.github.io/stablehlo/reference/hlo_rsqrt.html),
+specified under [rsqrt](https://openxla.org/stablehlo/spec#rsqrt).
 
 ## See also
 
@@ -38,6 +41,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(1, 4, 9))
 prim_rsqrt(x)
 #> AnvlArray
@@ -45,4 +49,10 @@ prim_rsqrt(x)
 #>  0.5000
 #>  0.3333
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_rsqrt(4)
+#> AnvlArray
+#>  0.5000
+#> [ CPUf32{} ] 
 ```

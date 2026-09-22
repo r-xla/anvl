@@ -95,8 +95,8 @@ of the two branches depending on a scalar predicate.</p>
 
 
 <dl><dt id="arg-pred">pred<a class="anchor" aria-label="anchor" href="#arg-pred"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code> of boolean type, scalar)<br>
-Predicate.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Predicate. Must be a scalar of the boolean data type, or an R logical.</p></dd>
 
 
 <dt id="arg-true">true<a class="anchor" aria-label="anchor" href="#arg-true"></a></dt>
@@ -107,12 +107,16 @@ Zero-argument function for the true branch.</p></dd>
 <dt id="arg-false">false<a class="anchor" aria-label="anchor" href="#arg-false"></a></dt>
 <dd><p>(<code>function()</code>)<br>
 Zero-argument function for the false branch.
-Must return outputs with the same shapes as the true branch.</p></dd>
+Must return the same structure, data types and shapes as the true
+branch; nothing is promoted.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Result of the executed branch.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code> | <code>list</code>)<br>
+Result of the executed branch: an array, or a tree of them in the sense
+of pjrt's <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code> – a <code>list</code>, nested arbitrarily – with
+the structure, data types and shapes both branches share.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -122,7 +126,8 @@ element-wise selection.</p></div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">nv_if</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># both branches must return the same structure, data types and shapes</span></span></span>
+<span class="r-in"><span><span class="fu">nv_if</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>

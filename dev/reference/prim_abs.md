@@ -13,12 +13,14 @@ prim_abs(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type signed integer or floating-point.
+  One input. Can be any signed numeric data type. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -31,7 +33,8 @@ Has the same shape and data type as the input.
 ## StableHLO
 
 Lowers to
-[`hlo_abs()`](https://r-xla.github.io/stablehlo/reference/hlo_abs.html).
+[`hlo_abs()`](https://r-xla.github.io/stablehlo/reference/hlo_abs.html),
+specified under [abs](https://openxla.org/stablehlo/spec#abs).
 
 ## See also
 
@@ -41,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(-1, 2, -3))
 prim_abs(x)
 #> AnvlArray
@@ -48,4 +52,10 @@ prim_abs(x)
 #>  2
 #>  3
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_abs(-1)
+#> AnvlArray
+#>  1
+#> [ CPUf32{} ] 
 ```

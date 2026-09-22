@@ -92,15 +92,15 @@ analogous to R's <code><a href="https://rdrr.io/r/base/ifelse.html" class="exter
 
 
 <dl><dt id="arg-pred">pred<a class="anchor" aria-label="anchor" href="#arg-pred"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code> of boolean type)<br>
-Predicate array. Must be scalar or have the same shape as the
-non-scalar arguments.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Predicate array. Must be a boolean or an R logical, and scalar or the same
+shape as the non-scalar arguments.</p></dd>
 
 
 <dt id="arg-true-value-false-value">true_value, false_value<a class="anchor" aria-label="anchor" href="#arg-true-value-false-value"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Values to return where <code>pred</code> is <code>TRUE</code> / <code>FALSE</code>.
-<code>true_value</code> and <code>false_value</code> are
+Values to return where <code>pred</code> is <code>TRUE</code> / <code>FALSE</code>. Can be of any data
+type; the two are
 <a href="nv_promote_to_common.html">promoted to a common data type</a>.
 Scalars (including <code>pred</code>) are
 <a href="nv_broadcast_scalars.html">broadcast</a> to the shape of the non-scalar arguments.</p></dd>
@@ -108,9 +108,9 @@ Scalars (including <code>pred</code>) are
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the common data type of <code>true_value</code> and <code>false_value</code> and the
-shape of the non-scalar arguments.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the common data type of <code>true_value</code> and <code>false_value</code>, and their
+broadcast shape.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -126,7 +126,7 @@ shape of the non-scalar arguments.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
-<span class="r-in"><span><span class="co"># scalar branches are broadcast and promoted to a common dtype</span></span></span>
+<span class="r-in"><span><span class="co"># scalar branches are broadcast and promoted to a common data type</span></span></span>
 <span class="r-in"><span><span class="fu">nv_ifelse</span><span class="op">(</span><span class="va">pred</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.0000</span>

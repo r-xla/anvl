@@ -18,7 +18,9 @@ range(..., na.rm = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
@@ -31,8 +33,8 @@ range(..., na.rm = FALSE)
 - nan_rm:
 
   (`logical(1)`)  
-  How to handle `NaN` values in floating-point inputs. If `FALSE`
-  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 - ...:
 
@@ -54,7 +56,7 @@ range(..., na.rm = FALSE)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same data type as `x` and the shape of the reduced array with a
 leading axis of size 2 added: element 1 is the minimum, element 2 the
 maximum.

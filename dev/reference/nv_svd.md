@@ -27,12 +27,23 @@ nv_svd(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 axes.
+  One input, with exactly 2 axes. Can be any numeric data type: a float
+  keeps its own, and an integer one is converted to the default float
+  data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and is converted in the same way.
 
 ## Value
 
-Named `list` with elements `d` (length `k`), `u` (shape `(m, k)`), and
-`vt` (shape `(k, n)`). All have the same dtype as the input.
+(named `list` of three
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Elements `d` (length `k`), `u` (shape `(m, k)`), and `vt` (shape
+`(k, n)`). All have the input's data type – or the default float data
+type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+where the input was an integer one.
 
 ## See also
 
@@ -42,6 +53,7 @@ Named `list` with elements `d` (length `k`), `u` (shape `(m, k)`), and
 ## Examples
 
 ``` r
+# all three outputs have the input's data type
 x <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 3, dtype = "f64")
 nv_svd(x)
 #> $d

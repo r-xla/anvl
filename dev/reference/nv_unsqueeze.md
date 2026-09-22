@@ -13,7 +13,9 @@ nv_unsqueeze(x, axis)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axis:
 
@@ -24,8 +26,8 @@ nv_unsqueeze(x, axis)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `x` with an extra axis of size 1.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s data type, with an extra axis of size 1 in its shape.
 
 ## See also
 
@@ -35,6 +37,7 @@ Has the same data type as `x` with an extra axis of size 1.
 ## Examples
 
 ``` r
+# a size-1 axis is inserted, at the front or at the back
 x <- nv_array(c(1, 2, 3))
 nv_unsqueeze(x, axis = 1L)
 #> AnvlArray

@@ -14,7 +14,9 @@ prim_broadcast_in_axes(x, shape, broadcast_axes)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - shape:
 
@@ -31,7 +33,7 @@ prim_broadcast_in_axes(x, shape, broadcast_axes)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same data type as the input and the given `shape`.
 
 ## Implemented Rules
@@ -45,7 +47,9 @@ Has the same data type as the input and the given `shape`.
 ## StableHLO
 
 Lowers to
-[`hlo_broadcast_in_dim()`](https://r-xla.github.io/stablehlo/reference/hlo_broadcast_in_dim.html).
+[`hlo_broadcast_in_dim()`](https://r-xla.github.io/stablehlo/reference/hlo_broadcast_in_dim.html),
+specified under
+[broadcast_in_dim](https://openxla.org/stablehlo/spec#broadcast_in_dim).
 
 ## See also
 
@@ -54,6 +58,7 @@ Lowers to
 ## Examples
 
 ``` r
+# axis 1 of the input becomes axis 2 of the result, which repeats it
 x <- nv_array(c(1, 2, 3))
 prim_broadcast_in_axes(x, shape = c(2, 3), broadcast_axes = 2L)
 #> AnvlArray

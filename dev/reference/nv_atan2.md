@@ -14,19 +14,24 @@ nv_atan2(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Left and right operand. An integer operand is converted to the default
-  float data type (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
-  Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs. Can be any numeric data type: the two are first brought to
+  a [common data
+  type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md) and
+  that is then converted to the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+  where it is not a float already, so the result is always a float.
+  Scalars are broadcast. An R value assumes the other operand's data
+  type within its [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  settles on the default float when neither operand has one.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the inputs' broadcast shape, and their common data type – or the
+default float data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+where that was an integer one.
 
 ## See also
 
@@ -43,5 +48,19 @@ nv_atan2(y, x)
 #>   1.5708
 #>   0.0000
 #>  -1.5708
+#> [ CPUf32{3} ] 
+
+# different data types are promoted to their common one
+nv_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64"))
+#> AnvlArray
+#>  0.7854
+#> [ CPUf64{} ] 
+
+# a scalar is broadcast and an R integer is converted to a float
+nv_atan2(y, 1L)
+#> AnvlArray
+#>   0.7854
+#>   0.0000
+#>  -0.7854
 #> [ CPUf32{3} ] 
 ```

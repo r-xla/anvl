@@ -189,7 +189,7 @@ jitted function currently holds:</p>
 <span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">linear_jit</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1</span></span>
 <span></span>
-<span><span class="co"># different shapes -&gt; a second entry is added</span></span>
+<span><span class="co"># different shapes -&gt; a second entry, so a second trace</span></span>
 <span><span class="fu">linear_jit</span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -220,8 +220,8 @@ program. Two calls with <code>flag = TRUE</code> and
 entries.</li>
 </ul>
 <p>In the snippet above all three inputs are dynamic, so the first two
-calls share a key (three <code>f32[]</code> scalars) and hit the cache,
-while the third call presents three <code>f32[2]</code> vectors and
+calls share a key (three scalars of the default float data type) and hit
+the cache, while the third call presents three vectors of length 2 and
 forces a retrace.</p>
 <p>You’ll want <code>static =</code> when the body of the function needs
 to look at a concrete R value – typically a flag, a small integer, or a
@@ -426,10 +426,13 @@ argument:</p>
 <span><span class="co">#&gt;   %2: f32[] = add(%1, 5:f32)</span></span>
 <span><span class="co">#&gt;   return %2</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
-<p>The graph contains <code>add(%1, 5:f32?)</code> – the value
-<code>5</code> is hard-wired into the program. Changing
-<code>default_b</code> afterwards has no effect on the graph (and, once
-the graph is compiled, no effect on the executable either).</p>
+<p>The graph contains an <code>add</code> whose second operand is the
+literal <code>5</code> – the value is hard-wired into the program, at
+the data type of the array it meets (<code>f32</code> here, from the
+<code>f32</code> inputs; a default only steps in for a literal that
+meets nothing typed). Changing <code>default_b</code> afterwards has no
+effect on the graph (and, once the graph is compiled, no effect on the
+executable either).</p>
 </div>
 <div class="section level3">
 <h3 id="side-effects-only-fire-during-tracing">Side effects only fire during tracing<a class="anchor" aria-label="anchor" href="#side-effects-only-fire-during-tracing"></a>

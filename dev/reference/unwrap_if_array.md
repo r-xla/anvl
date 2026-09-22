@@ -17,4 +17,4 @@ unwrap_if_array(x)
 
 ## Value
 
-The underlying PJRT buffer if x is an AnvlArray, otherwise x unchanged
+(`PJRTBuffer` \| `any`)

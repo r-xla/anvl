@@ -20,16 +20,18 @@ nv_pad(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  The array to pad. Can be any data type; `padding_value` is brought to
+  it.
 
 - padding_value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Scalar value to use for padding. It is brought to `x`'s data type: an
-  R value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as
-  well), and a value that already has one is converted, unless `x`'s
-  data type cannot hold it – an `f64` padding value for an `f32` array
-  is an error rather than a silent narrowing.
+  R value is built at it when its category can reach it (`0L` serves an
+  integer and a float `x` alike, `0` only a float one), and a value that
+  already has a data type is converted unless that would narrow it – an
+  `f64` padding value for an `f32` `x` is an error rather than a silent
+  narrowing.
 
 - edge_padding_low:
 
@@ -49,8 +51,10 @@ nv_pad(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s data type. Each axis grows by
+`edge_padding_low + edge_padding_high`, plus `interior_padding` between
+every pair of elements; negative edge padding trims.
 
 ## See also
 
@@ -60,6 +64,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# two zeros in front, one behind
 x <- nv_array(c(1, 2, 3))
 nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #> AnvlArray

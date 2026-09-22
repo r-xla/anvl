@@ -25,9 +25,8 @@ transform_gradient(graph, wrt)
 
 ## Value
 
-An
-[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md)
-whose outputs are the requested gradients.
+([`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md))  
+Its outputs are the requested gradients.
 
 ## Details
 

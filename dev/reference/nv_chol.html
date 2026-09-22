@@ -96,9 +96,10 @@ Supports batched inputs: axes before the last two are batch axes.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Symmetric positive-definite matrix with at least 2 axes.
-The last two axes form the square matrix; any leading axes
-are batch axes.</p></dd>
+One input, a symmetric positive-definite matrix with at least 2 axes, the last two forming the square matrix and any leading ones batch axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>). An R value materializes at its
+<a href="default_dtypes.html">default data type</a> and is converted in the same way.</p></dd>
 
 
 <dt id="arg-lower">lower<a class="anchor" aria-label="anchor" href="#arg-lower"></a></dt>
@@ -111,8 +112,16 @@ are batch axes.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Triangular matrix with the same shape and data type as the input.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Triangular matrix with the input's shape, and its data type – or the
+default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where the input was an
+integer one. The values in the triangle not selected by <code>lower</code> are
+implementation-defined.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Differentiation is only implemented for a single matrix: a <code><a href="gradient.html">gradient()</a></code> of a
+batched decomposition errors.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -121,8 +130,16 @@ Triangular matrix with the same shape and data type as the input.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the factor has the matrix's shape and data type</span></span></span>
+<span class="r-in"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_chol</span><span class="op">(</span><span class="va">a</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2.0000 1.0000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 1.4142</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,2} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># an integer matrix is factored at the default float data type</span></span></span>
+<span class="r-in"><span><span class="fu">nv_chol</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4L</span>, <span class="fl">2L</span>, <span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2.0000 1.0000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 1.4142</span>

@@ -96,29 +96,34 @@ axis is added; if wider, the last axis is consumed.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type except <code>bool</code>.
+An R value materializes at its <a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
-Target data type.</p></dd>
+Any target data type except <code>bool</code>.
+One of the same bit width as the input's leaves the shape unchanged; a narrower
+one adds a trailing axis holding the pieces; a wider one consumes the last
+axis, whose size must equal the ratio of the two widths.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the given <code>dtype</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the given <code>dtype</code>, and the shape described under <code>dtype</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="prim_bitcast_convert.html">prim_bitcast_convert()</a></code> for the underlying primitive, <code><a href="nv_convert.html">nv_convert()</a></code>
-for value-preserving type conversion.</p></div>
+    <div class="dont-index"><p><code><a href="prim_bitcast_convert.html">prim_bitcast_convert()</a></code>, which this is an alias of, and
+<code><a href="nv_convert.html">nv_convert()</a></code> for value-preserving type conversion.</p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="prim_bitcast_convert.html">prim_bitcast_convert</a></span><span class="op">(</span><span class="va">x</span>, dtype <span class="op">=</span> <span class="st">"i8"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the bits of one i32 reread as four i8, in a new trailing axis</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1L</span>, dtype <span class="op">=</span> <span class="st">"i32"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_bitcast_convert</span><span class="op">(</span><span class="va">x</span>, dtype <span class="op">=</span> <span class="st">"i8"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 0 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi8{1,4} ] </span>

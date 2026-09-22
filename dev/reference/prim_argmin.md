@@ -14,12 +14,14 @@ prim_argmin(x, axis, drop = TRUE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axis:
 
   (`integer(1)`)  
-  Axis along which to find the index of the maximum. Negative values
+  Axis along which to find the index of the minimum. Negative values
   count from the end, i.e. `-1` refers to the last axis.
 
 - drop:
@@ -30,10 +32,11 @@ prim_argmin(x, axis, drop = TRUE)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
-the default integer data type (see
-[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))  
-Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+regardless of the input's, and the input's shape with `axis` removed
+(`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Implemented Rules
 
@@ -43,10 +46,11 @@ Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 
 ## StableHLO
 
-Lowers to a variadic
-[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
-over `(values, indices)` with a (value \< value \| (value == value & idx
-\< idx)) selector.
+Lowers to
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html),
+specified under [reduce](https://openxla.org/stablehlo/spec#reduce). The
+reduction is variadic over `(values, indices)`, with a (value \< value
+\| (value == value & idx \< idx)) selector.
 
 ## See also
 
@@ -56,6 +60,7 @@ over `(values, indices)` with a (value \< value \| (value == value & idx
 ## Examples
 
 ``` r
+# the index comes out at the default integer data type
 prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #> AnvlArray
 #>  2

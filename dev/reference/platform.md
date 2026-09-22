@@ -25,7 +25,7 @@ platform(x, ...)
 
 ## Value
 
-`character(1)`
+(`character(1)`)
 
 ## Details
 

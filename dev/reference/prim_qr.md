@@ -16,13 +16,17 @@ prim_qr(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 axes.
+  One input, with exactly 2 axes. Can be any float data type. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-Named `list` with elements `Q` (shape `(m, k)`) and `R` (shape
-`(k, n)`), where `(m, n) = shape(x)` and `k = min(m, n)`. Both have the
-same data type as `x`.
+(named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Elements `Q` (shape `(m, k)`) and `R` (shape `(k, n)`), where
+`(m, n) = shape(x)` and `k = min(m, n)`. Both have the input's data
+type.
 
 ## Implemented Rules
 
@@ -41,6 +45,7 @@ pair (backed by LAPACK on CPU and cuSOLVER on CUDA) + postprocessing.
 ## Examples
 
 ``` r
+# `Q` is 3x2 and `R` 2x2, both at the input's data type
 x <- nv_array(1:6, shape = c(3, 2), dtype = "f32")
 prim_qr(x)
 #> $Q

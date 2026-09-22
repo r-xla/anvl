@@ -15,16 +15,19 @@ nv_floor_div(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs with a [common data
+  type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
+  be any numeric data type. Scalars are broadcast, and R values assume
+  the other operand's data type within their [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
+  otherwise falling back to their [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and being converted to the common data type.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the inputs' broadcast shape and common data type.
 
 ## See also
 

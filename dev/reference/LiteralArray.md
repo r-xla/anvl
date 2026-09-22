@@ -2,10 +2,12 @@
 
 An
 [`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md)
-where all elements have the same constant value. This either arises when
-using literals in traced code (e.g. `x + 1`) or when using
-[`nv_fill()`](https://r-xla.github.io/anvl/dev/reference/nv_fill.md) to
-create a constant.
+where all elements have the same constant value. This arises from a
+literal in traced code (`x + 1`, say). A
+[`nv_fill()`](https://r-xla.github.io/anvl/dev/reference/nv_fill.md) is
+a recorded operation rather than a constant, so its output is an
+ordinary
+[`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md).
 
 ## Usage
 
@@ -19,7 +21,10 @@ LiteralArray(data, shape, dtype = default_dtype(data))
 
   (`double(1)` \| `integer(1)` \| `logical(1)` \|
   [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))  
-  The scalar value or scalarish AnvlArray (contains 1 element).
+  The scalar value, or a one-element
+  [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  – for which `dtype` has to be named, since the default takes it from
+  an R value's storage type.
 
 - shape:
 
@@ -51,8 +56,7 @@ naxes(x)
 #> [1] 0
 dtype(x)
 #> <i32>
-# how it appears during tracing:
-# 1. via R literals
+# how it appears during tracing: an R literal that meets nothing
 graph <- trace_fn(function() 1, list())
 graph
 #> <AnvlGraph> () {
@@ -60,7 +64,7 @@ graph
 #> }
 graph$outputs[[1]]$aval
 #> LiteralArray(1, f32, ()) 
-# 2. via nv_fill()
+# a `nv_fill()`, by contrast, is a recorded operation
 graph <- trace_fn(function() nv_fill(2L, shape = c(2, 2)), list())
 graph
 #> <AnvlGraph> () {

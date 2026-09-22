@@ -12,10 +12,11 @@ promotion_common() brings every input to their common data type
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
 promotion_like() brings the inputs to the data type of a selected input.
-If the selected data type is an R value, it's default data type is used.
+If the selected input is an R value, its default data type is used.
 promotion_dtype() brings the inputs to the specified data type.
-promotion_rdata_common() brings the R values to the common data type, as long
-it is within their category (a double can e.g. not become a float).
+promotion_rdata_common() brings the R values to the common data type, as
+long as it is within their category (a double can e.g. not become an
+integer).
 AnvlArray inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
@@ -30,10 +31,11 @@ promotion_common() brings every input to their common data type
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
 promotion_like() brings the inputs to the data type of a selected input.
-If the selected data type is an R value, it's default data type is used.
+If the selected input is an R value, its default data type is used.
 promotion_dtype() brings the inputs to the specified data type.
-promotion_rdata_common() brings the R values to the common data type, as long
-it is within their category (a double can e.g. not become a float).
+promotion_rdata_common() brings the R values to the common data type, as
+long as it is within their category (a double can e.g. not become an
+integer).
 AnvlArray inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
@@ -119,10 +121,11 @@ Most commonly used via the <code>.promote</code> argument of <code><a href="as_a
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.</p>
 <p><code>promotion_like()</code> brings the inputs to the data type of a selected input.
-If the selected data type is an R value, it's default data type is used.</p>
+If the selected input is an R value, its default data type is used.</p>
 <p><code>promotion_dtype()</code> brings the inputs to the specified data type.</p>
-<p><code>promotion_rdata_common()</code> brings the <em>R values</em> to the common data type, as long
-it is within their category (a <code>double</code> can e.g. <em>not</em> become a float).
+<p><code>promotion_rdata_common()</code> brings the <em>R values</em> to the common data type, as
+long as it is within their category (a <code>double</code> can e.g. <em>not</em> become an
+integer).
 <code>AnvlArray</code> inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
@@ -203,7 +206,7 @@ name of the function that builds it.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>function(args) -&gt; list()</code>
+    <p>(<code>function(args) -&gt; list()</code>)
 A function returning data types for those inputs to be converted and <code>NULL</code> for those
 to be left unchanged.</p>
     </div>
@@ -245,7 +248,7 @@ to be left unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span><span class="co"># without `coerce`, a target the input cannot hold is refused.</span></span></span>
+<span class="r-in"><span><span class="co"># without `coerce`, a target the input cannot hold is refused</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">promotion_like</span><span class="op">(</span><span class="st">"x"</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Error : Cannot bring argument 2 to data type <span style="color: #0000BB;">"f32"</span>.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">"f64"</span> is not promotable to <span style="color: #0000BB;">"f32"</span>.</span>

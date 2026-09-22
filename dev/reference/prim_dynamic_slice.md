@@ -20,14 +20,15 @@ prim_dynamic_slice(x, ..., slice_sizes)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - ...:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-  of integer type)  
-  Scalar start indices, one per axis. Each must be a scalar array. Pass
-  one scalar per axis of `x`.
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  Scalar start indices, one per axis of `x`. Each must be a scalar of
+  the same integer data type.
 
 - slice_sizes:
 
@@ -37,8 +38,8 @@ prim_dynamic_slice(x, ..., slice_sizes)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input and shape `slice_sizes`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type and shape `slice_sizes`.
 
 ## Out of Bounds Behavior
 
@@ -58,7 +59,9 @@ effective start position may differ from the requested one.
 ## StableHLO
 
 Lowers to
-[`hlo_dynamic_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_slice.html).
+[`hlo_dynamic_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_slice.html),
+specified under
+[dynamic_slice](https://openxla.org/stablehlo/spec#dynamic_slice).
 
 ## See also
 

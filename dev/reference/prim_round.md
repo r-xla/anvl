@@ -13,7 +13,9 @@ prim_round(x, method = "nearest_even")
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - method:
 
@@ -23,8 +25,8 @@ prim_round(x, method = "nearest_even")
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same dtype and shape as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s data type and shape.
 
 ## Implemented Rules
 
@@ -35,10 +37,13 @@ Has the same dtype and shape as `x`.
 ## StableHLO
 
 Lowers to
-[`hlo_round_nearest_even()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_even.html)
-or
+[`hlo_round_nearest_even()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_even.html),
+specified under
+[round_nearest_even](https://openxla.org/stablehlo/spec#round_nearest_even).
+With `method = "afz"` it lowers to
 [`hlo_round_nearest_afz()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_afz.html)
-depending on the `method` parameter.
+instead, specified under
+[round_nearest_afz](https://openxla.org/stablehlo/spec#round_nearest_afz).
 
 ## See also
 
@@ -47,6 +52,7 @@ depending on the `method` parameter.
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(1.4, 2.5, 3.6))
 prim_round(x)
 #> AnvlArray
@@ -54,4 +60,10 @@ prim_round(x)
 #>  2
 #>  4
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_round(2.5)
+#> AnvlArray
+#>  2
+#> [ CPUf32{} ] 
 ```

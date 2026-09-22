@@ -1,7 +1,8 @@
 # Bitwise XOR
 
-Element-wise bitwise XOR of two integer arrays, which for a boolean
-array is the logical XOR. For *logical* inputs, you can also use `xor`.
+Element-wise bitwise XOR – a logical XOR on a boolean input, and a
+bit-by-bit one on an integer. For *logical* inputs, you can also use
+`xor`.
 
 ## Usage
 
@@ -14,16 +15,19 @@ nv_xor(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs with a [common data
+  type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
+  be any integerish data type. Scalars are broadcast, and R values
+  assume the other operand's data type within their [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
+  otherwise falling back to their [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and being converted to the common data type.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the inputs' broadcast shape and common data type.
 
 ## See also
 
@@ -33,19 +37,26 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+x <- nv_array(c(TRUE, FALSE, TRUE))
+y <- nv_array(c(TRUE, TRUE, FALSE))
+nv_xor(x, y)
 #> AnvlArray
 #>  0
 #>  1
 #>  1
 #> [ CPUbool{3} ] 
-nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
+
+# different data types are promoted to their common one
+nv_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
 #> AnvlArray
 #>  6
-#> [ CPUi32{1} ] 
-xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
+#> [ CPUi64{} ] 
+
+# a scalar is broadcast
+nv_xor(x, TRUE)
 #> AnvlArray
 #>  0
 #>  1
-#> [ CPUbool{2} ] 
+#>  0
+#> [ CPUbool{3} ] 
 ```

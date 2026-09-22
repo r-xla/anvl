@@ -1,12 +1,10 @@
 # Combine Arrays by Rows or Columns
 
 Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
-Arguments are first promoted to a common data type (see
-[`nv_promote_to_common()`](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md)).
 
-Each input is then handled according to its rank:
+Each input is handled according to its rank:
 
-- 0-D: broadcast to match the non-stacked axes of the other inputs.
+- a scalar: broadcast to match the non-stacked axes of the other inputs.
 
 - 1-D: treated as a single row/column.
 
@@ -31,7 +29,12 @@ cbind(..., deparse.level = 1L)
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrays to combine. Inputs are promoted to a common data type.
+  Arrays to combine. Can be of any data type; they are [promoted to a
+  common data
+  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md),
+  and a scalar is
+  [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
+  to match the non-stacked axes.
 
 - deparse.level:
 
@@ -41,7 +44,10 @@ cbind(..., deparse.level = 1L)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the inputs' common data type. The stacked axis is the sum of their
+sizes along it – rows for `nv_rbind()`, columns for `nv_cbind()` – and
+every other axis is theirs unchanged.
 
 ## Differences from base R
 

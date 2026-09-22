@@ -19,6 +19,4 @@ Get the current graph being built (via
 
 ## Value
 
-A
-[`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
-object.
+([`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md))

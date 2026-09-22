@@ -1,7 +1,8 @@
 # Bitwise Not
 
-Element-wise bitwise NOT of an integer array, which for a boolean array
-is the logical NOT.
+Element-wise bitwise NOT – a logical negation on a boolean input, and a
+bit-by-bit complement on an integer, so `nv_not(12L)` is `-13`. You can
+also use the `!` operator, which expects `bool` inputs.
 
 ## Usage
 
@@ -14,12 +15,14 @@ nv_not(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any integerish data type. An R value materializes at
+  its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## The `!` operator
 
@@ -34,19 +37,18 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-nv_not(nv_array(c(TRUE, FALSE, TRUE)))
+# on a boolean this is a logical negation
+x <- nv_array(c(TRUE, FALSE, TRUE))
+!x
 #> AnvlArray
 #>  0
 #>  1
 #>  0
 #> [ CPUbool{3} ] 
-nv_not(nv_array(12L)) # bitwise: -13
+
+# on an integer it complements every bit, so `12L` becomes `-13`
+nv_not(nv_array(12L))
 #> AnvlArray
 #>  -13
 #> [ CPUi32{1} ] 
-!nv_array(c(TRUE, FALSE)) # logical
-#> AnvlArray
-#>  0
-#>  1
-#> [ CPUbool{2} ] 
 ```

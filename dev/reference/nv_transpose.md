@@ -14,7 +14,9 @@ nv_transpose(x, permutation = NULL)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - permutation:
 
@@ -24,8 +26,9 @@ nv_transpose(x, permutation = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `x` and shape `shape(x)[permutation]`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s data type and shape `shape(x)[permutation]`, or
+`rev(shape(x))` when `permutation` is `NULL`.
 
 ## The [`t()`](https://rdrr.io/r/base/t.html) generic
 
@@ -41,6 +44,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# the 2x3 becomes a 3x2, keeping its data type
 x <- nv_matrix(1:6, nrow = 2)
 t(x)
 #> AnvlArray

@@ -53,4 +53,5 @@ new_primitive(
 
 ## Value
 
+(`JitPrimitive`)  
 A callable of class `c("JitPrimitive", "JitFunction")`.

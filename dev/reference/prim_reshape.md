@@ -15,7 +15,9 @@ prim_reshape(x, shape)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - shape:
 
@@ -26,7 +28,7 @@ prim_reshape(x, shape)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same data type as the input and the given `shape`.
 
 ## Implemented Rules
@@ -40,7 +42,8 @@ Has the same data type as the input and the given `shape`.
 ## StableHLO
 
 Lowers to
-[`hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html).
+[`hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html),
+specified under [reshape](https://openxla.org/stablehlo/spec#reshape).
 
 ## See also
 
@@ -49,6 +52,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the elements are reread in row-major order; the data type is untouched
 x <- nv_array(1:6)
 prim_reshape(x, shape = c(2, 3))
 #> AnvlArray

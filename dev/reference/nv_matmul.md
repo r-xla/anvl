@@ -15,9 +15,13 @@ nv_matmul(lhs, rhs, precision = "highest")
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Numeric arrays with at least 2 axes. Operands are [promoted to a
-  common data
+  Numeric arrays with at least 2 axes. Can be any numeric data type; the
+  two are [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
+  An R value assumes the data type of the other operand, and
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when that has none either.
 
 - precision:
 
@@ -29,7 +33,8 @@ nv_matmul(lhs, rhs, precision = "highest")
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the operands' common data type and the shape given under Shapes.
 
 ## Shapes
 
@@ -47,6 +52,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# a 2x3 times a 3x2 gives a 2x2 at the operands' common data type
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 nv_matmul(x, y)

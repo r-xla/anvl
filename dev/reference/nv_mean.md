@@ -17,25 +17,27 @@ mean(x, trim = 0, na.rm = FALSE, ..., axes = NULL, drop = TRUE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Axes to reduce. Negative values count from the end, i.e. `-1` refers
-  to the last axis. If `NULL` (default), reduces over all axes,
-  returning a scalar.
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis. If `NULL` (default), reduces over all axes.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced axes.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 - nan_rm:
 
   (`logical(1)`)  
-  How to handle `NaN` values in floating-point inputs. If `FALSE`
-  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 - trim:
 
@@ -51,9 +53,12 @@ mean(x, trim = 0, na.rm = FALSE, ..., axes = NULL, drop = TRUE)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input. When `drop = TRUE`, the reduced
-axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type where that is a float, and the default float
+data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+otherwise. The shape is the input's with the reduced axes removed
+(`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## See also
 
@@ -63,16 +68,31 @@ axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-nv_mean(x)            # all axes -> scalar
+# an integer input is averaged at the default float data type
+nv_mean(x)
 #> AnvlArray
 #>  3.5000
 #> [ CPUf32{} ] 
+
+# a float input keeps its own, whatever the default float is
+nv_mean(nv_array(c(1, 2), dtype = "f64"))
+#> AnvlArray
+#>  1.5000
+#> [ CPUf64{} ] 
+
+# reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_mean(x, axes = 1L)
 #> AnvlArray
 #>  1.5000
 #>  3.5000
 #>  5.5000
 #> [ CPUf32{3} ] 
+nv_mean(x, axes = 1L, drop = FALSE)
+#> AnvlArray
+#>  1.5000 3.5000 5.5000
+#> [ CPUf32{1,3} ] 
+
+# NaN propagates unless nan_rm = TRUE
 nv_mean(nv_array(c(1, NaN, 3)))
 #> AnvlArray
 #>  nan

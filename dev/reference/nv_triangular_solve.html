@@ -107,7 +107,14 @@ depending on <code>transpose_a</code>.</p>
 <dl><dt id="arg-a">a<a class="anchor" aria-label="anchor" href="#arg-a"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Triangular coefficient matrix with at least 2 axes. The last two
-axes must be equal; any leading axes are batch axes.</p></dd>
+axes must be equal; any leading axes are batch axes. Can be any numeric
+data type: <code>a</code> and <code>b</code> are
+<a href="nv_promote_to_common.html">promoted to a common data type</a> and that is then
+converted to the default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where
+it is not a float already, since the solve is a float one. An R value
+assumes the other operand's data type within its
+<a href="dtypes.html">data type category</a>, and settles on the default float when
+neither has one.</p></dd>
 
 
 <dt id="arg-b">b<a class="anchor" aria-label="anchor" href="#arg-b"></a></dt>
@@ -118,7 +125,8 @@ Right-hand side. For <code>a</code> of shape <code>(B..., n, n)</code>, <code>b<
 (<code>left_side = TRUE</code>) or row (<code>left_side = FALSE</code>) per batch — it
 is reshaped internally and the reshape is undone on the result so
 the output rank matches <code>b</code>.</p></li>
-</ul><p><code>b</code>'s batch axes (<code>B...</code>) must match <code>a</code>'s exactly.</p></dd>
+</ul><p><code>b</code>'s batch axes (<code>B...</code>) must match <code>a</code>'s exactly. It is promoted
+together with <code>a</code> – see <code>a</code>.</p></dd>
 
 
 <dt id="arg-left-side">left_side<a class="anchor" aria-label="anchor" href="#arg-left-side"></a></dt>
@@ -145,8 +153,10 @@ If <code>TRUE</code>, solve with <code>t(a)</code> in place of <code>a</code>. D
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-The solution <code>x</code>, with the same shape and dtype as <code>b</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+The solution <code>x</code>, with <code>b</code>'s shape and the operands' common data type –
+or the default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where that was
+an integer one.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -154,6 +164,8 @@ The solution <code>x</code>, with the same shape and dtype as <code>b</code>.</p
 right-hand side per batch, shape <code>(B..., n)</code> for <code>a</code> of shape
 <code>(B..., n, n)</code>). It is reshaped internally to a column (<code>left_side = TRUE</code>) or row (<code>left_side = FALSE</code>) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).</p>
+<p>Differentiation is only implemented for a single system: a <code><a href="gradient.html">gradient()</a></code> of a
+batched solve errors.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -13,7 +13,9 @@ prim_reverse(x, axes)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
@@ -23,8 +25,8 @@ prim_reverse(x, axes)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type and shape as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type and shape.
 
 ## Implemented Rules
 
@@ -37,7 +39,8 @@ Has the same data type and shape as `x`.
 ## StableHLO
 
 Lowers to
-[`hlo_reverse()`](https://r-xla.github.io/stablehlo/reference/hlo_reverse.html).
+[`hlo_reverse()`](https://r-xla.github.io/stablehlo/reference/hlo_reverse.html),
+specified under [reverse](https://openxla.org/stablehlo/spec#reverse).
 
 ## See also
 
@@ -46,6 +49,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the order along axis 1 is flipped
 x <- nv_array(c(1, 2, 3, 4, 5))
 prim_reverse(x, axes = 1L)
 #> AnvlArray

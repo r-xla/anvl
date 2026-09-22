@@ -16,7 +16,7 @@ is_dtype(x)
 
 ## Value
 
-`TRUE` or `FALSE`.
+(`logical(1)`)
 
 ## See also
 

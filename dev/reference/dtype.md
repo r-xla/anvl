@@ -21,7 +21,7 @@ dtype(x, ...)
 
 ## Value
 
-A [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
+([`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))
 
 ## Details
 

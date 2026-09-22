@@ -20,7 +20,10 @@ tcrossprod(x, y = NULL, ...)
 - lhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  An array with at least 2 axes.
+  An array with at least 2 axes, as for
+  [`base::tcrossprod()`](https://rdrr.io/r/base/crossprod.html). Can be
+  any numeric data type; `lhs` and `rhs` are [promoted to a common data
+  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
 
 - rhs:
 
@@ -38,7 +41,8 @@ tcrossprod(x, y = NULL, ...)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the operands' common data type, and the shape of `lhs %*% t(rhs)`.
 
 ## See also
 
@@ -48,6 +52,7 @@ tcrossprod(x, y = NULL, ...)
 ## Examples
 
 ``` r
+# `x %*% t(x)`, so a 2x3 gives a 2x2
 x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
 nv_tcrossprod(x)
 #> AnvlArray

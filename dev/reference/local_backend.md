@@ -24,4 +24,5 @@ local_backend(backend, envir = parent.frame())
 
 ## Value
 
-The previous value of the option (invisibly).
+(`character(1)`)  
+The previous value of the option, invisibly.

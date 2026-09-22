@@ -91,9 +91,7 @@ as.vector(x, mode = "any")
 
 ## Value
 
-An R vector holding the array's values, of the type the method names:
-`double`, `integer`, `logical`, or
-[`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
+(`vector`)
 
 ## Examples
 

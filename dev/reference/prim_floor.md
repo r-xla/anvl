@@ -13,12 +13,14 @@ prim_floor(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -31,7 +33,8 @@ Has the same shape and data type as the input.
 ## StableHLO
 
 Lowers to
-[`hlo_floor()`](https://r-xla.github.io/stablehlo/reference/hlo_floor.html).
+[`hlo_floor()`](https://r-xla.github.io/stablehlo/reference/hlo_floor.html),
+specified under [floor](https://openxla.org/stablehlo/spec#floor).
 
 ## See also
 
@@ -41,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 prim_floor(x)
 #> AnvlArray
@@ -48,4 +52,10 @@ prim_floor(x)
 #>   2
 #>  -2
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_floor(1.2)
+#> AnvlArray
+#>  1
+#> [ CPUf32{} ] 
 ```

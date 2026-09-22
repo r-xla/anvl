@@ -6,10 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive While Loop — prim_while"><meta name="description" content="Repeatedly executes body while cond returns TRUE, like R's
-while loop. The loop state is initialized with init and
-passed through each iteration."><meta property="og:description" content="Repeatedly executes body while cond returns TRUE, like R's
-while loop. The loop state is initialized with init and
-passed through each iteration."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+while loop. The loop state is initialized with init and passed through
+each iteration; it is the only thing carried from one iteration to the next."><meta property="og:description" content="Repeatedly executes body while cond returns TRUE, like R's
+while loop. The loop state is initialized with init and passed through
+each iteration; it is the only thing carried from one iteration to the next."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -81,8 +81,8 @@ passed through each iteration."><meta property="og:image" content="https://r-xla
 
     <div class="ref-description section level2">
     <p>Repeatedly executes <code>body</code> while <code>cond</code> returns <code>TRUE</code>, like R's
-<code>while</code> loop. The loop state is initialized with <code>init</code> and
-passed through each iteration.</p>
+<code>while</code> loop. The loop state is initialized with <code>init</code> and passed through
+each iteration; it is the only thing carried from one iteration to the next.</p>
     </div>
 
     <div class="section level2">
@@ -96,8 +96,10 @@ passed through each iteration.</p>
 
 <dl><dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
 <dd><p>(<code>named list()</code>)<br>
-Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs. R values are materialized at their default data type.</p></dd>
+Named list of initial state values, a tree in the sense of pjrt's
+<code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>. Each leaf becomes a parameter of the loop's
+sub-graphs. R values are materialized at their
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-cond">cond<a class="anchor" aria-label="anchor" href="#arg-cond"></a></dt>
@@ -109,14 +111,17 @@ and outputs whether to continue the loop.</p></dd>
 <dt id="arg-body">body<a class="anchor" aria-label="anchor" href="#arg-body"></a></dt>
 <dd><p>(<code>function</code>)<br>
 Body function that receives the current state as arguments and
-returns a named list with the same structure, dtypes, and shapes
-as <code>init</code>.</p></dd>
+returns a named list with the same structure, data types and shapes
+as <code>init</code>. Nothing is promoted: a loop-carried state is meant to be
+heterogeneous, so each member keeps its own data type across iterations.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Named list with the same structure as <code>init</code> containing the
-final state after the loop terminates.</p>
+    <p>(named <code>list</code>)<br>
+A tree of the loop-carried arrays – see <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code> – with the
+same structure, data types and shapes as <code>init</code>, in its final state after
+the loop terminates.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -129,7 +134,8 @@ final state after the loop terminates.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_while.html" class="external-link">hlo_while()</a></code>.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_while.html" class="external-link">hlo_while()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#while" class="external-link">while</a>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -138,7 +144,8 @@ final state after the loop terminates.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">prim_while</span><span class="op">(</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the loop state is a named list, and each member keeps its data type</span></span></span>
+<span class="r-in"><span><span class="fu">prim_while</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>i <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span>, total <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  cond <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span>, <span class="va">total</span><span class="op">)</span> <span class="va">i</span> <span class="op">&lt;=</span> <span class="fl">5L</span>,</span></span>
 <span class="r-in"><span>  body <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span>, <span class="va">total</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>

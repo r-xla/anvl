@@ -96,15 +96,17 @@ The result is the largest whole number that does not exceed <code>lhs / rhs</cod
 
 <dl><dt id="arg-lhs-rhs">lhs, rhs<a class="anchor" aria-label="anchor" href="#arg-lhs-rhs"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Left and right operand.
-Operands are <a href="nv_promote_to_common.html">promoted to a common data type</a>.
-Scalars are <a href="nv_broadcast_scalars.html">broadcast</a> to the shape of the other operand.</p></dd>
+Two inputs with a <a href="common_dtype.html">common data type</a>. Can be
+any numeric data type. Scalars are broadcast, and R values assume the other
+operand's data type within their <a href="dtypes.html">data type category</a>,
+otherwise falling back to their <a href="default_dtypes.html">default data type</a> and
+being converted to the common data type.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same shape and the promoted common data type of the inputs.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the inputs' broadcast shape and common data type.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

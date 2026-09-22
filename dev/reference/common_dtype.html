@@ -12,14 +12,16 @@ unsigned side (ui8 and i8 at i16, ui32 and i32 at i64). ui64
 is the exception – no signed data type holds it, and an integer does not
 become a float on its own – so ui64 and a signed integer have no common
 data type and the pair is an error. Convert one side with nv_convert()
-to decide what they meet at."><meta property="og:description" content="Compute the common data type.
+to decide what they meet at.
+See the Type Promotion article for more information."><meta property="og:description" content="Compute the common data type.
 Two integer data types meet at one that holds every value of both: a signed
 and an unsigned one at the narrowest signed data type wide enough for the
 unsigned side (ui8 and i8 at i16, ui32 and i32 at i64). ui64
 is the exception – no signed data type holds it, and an integer does not
 become a float on its own – so ui64 and a signed integer have no common
 data type and the pair is an error. Convert one side with nv_convert()
-to decide what they meet at."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+to decide what they meet at.
+See the Type Promotion article for more information."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -98,6 +100,7 @@ is the exception – no signed data type holds it, and an integer does not
 become a float on its own – so <code>ui64</code> and a signed integer have no common
 data type and the pair is an error. Convert one side with <code><a href="nv_convert.html">nv_convert()</a></code>
 to decide what they meet at.</p>
+<p>See the <em>Type Promotion</em> article for more information.</p>
     </div>
 
     <div class="section level2">
@@ -109,19 +112,15 @@ to decide what they meet at.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-lhs-dtype">lhs_dtype<a class="anchor" aria-label="anchor" href="#arg-lhs-dtype"></a></dt>
+<dl><dt id="arg-lhs-dtype-rhs-dtype">lhs_dtype, rhs_dtype<a class="anchor" aria-label="anchor" href="#arg-lhs-dtype-rhs-dtype"></a></dt>
 <dd><p>(<code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code>)<br>
-The left-hand side type.</p></dd>
-
-
-<dt id="arg-rhs-dtype">rhs_dtype<a class="anchor" aria-label="anchor" href="#arg-rhs-dtype"></a></dt>
-<dd><p>(<code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code>)<br>
-The right-hand side type.</p></dd>
+The two data types.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code>)</p>
+    <p>(<code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code>)<br>
+The narrowest common data type.</p>
     </div>
 
     <div class="section level2">

@@ -93,7 +93,8 @@ A boolean array is multiplied as zeroes and ones, like <code><a href="https://rd
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
@@ -105,7 +106,7 @@ is first flattened to a 1-D array, like <code><a href="https://rdrr.io/r/base/cu
 
 <dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+How to handle <code>NaN</code> values in float inputs. If <code>FALSE</code>
 (default), <code>NaN</code> propagates forward from its first occurrence. If
 <code>TRUE</code>, <code>NaN</code> is treated as the identity element of the cumulative
 op (<code>0</code> for sum, <code>1</code> for prod, <code>-Inf</code> / <code>+Inf</code> for max / min) and
@@ -114,10 +115,11 @@ contributes nothing to the running value.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same shape as the input, and the same data type, except for a
-boolean input, which is accumulated at the default integer data type (see
-<code><a href="default_dtypes.html">default_dtypes()</a></code>).</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's shape when <code>axis</code> is given, and is 1-D of length
+<code>prod(shape(x))</code> when <code>axis</code> is <code>NULL</code>, which flattens first. Has the
+input's data type, except for a boolean input, which is accumulated at the
+default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p>
     </div>
     <div class="section level2">
     <h2 id="relation-to-base-r">Relation to base R<a class="anchor" aria-label="anchor" href="#relation-to-base-r"></a></h2>

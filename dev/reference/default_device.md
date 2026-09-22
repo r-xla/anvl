@@ -22,7 +22,8 @@ default_device(backend = NULL)
 
 ## Value
 
-A backend-specific device object.
+(device object)  
+Backend-specific.
 
 ## See also
 

@@ -31,7 +31,7 @@ prim_fill(value, shape, dtype, device = NULL)
 
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Data type of the result.
 
 - device:
 
@@ -58,7 +58,7 @@ prim_fill(value, shape, dtype, device = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the given `shape` and `dtype`.
 
 ## Implemented Rules
@@ -70,7 +70,9 @@ Has the given `shape` and `dtype`.
 ## StableHLO
 
 Lowers to
-[`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
+[`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html),
+stablehlo's constant builder, specified under
+[constant](https://openxla.org/stablehlo/spec#constant).
 
 ## See also
 
@@ -79,6 +81,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the R double is built at the requested data type
 prim_fill(3.14, shape = c(2, 3), dtype = "f32")
 #> AnvlArray
 #>  3.1400 3.1400 3.1400

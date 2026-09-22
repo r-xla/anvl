@@ -66,14 +66,15 @@ summary(titanic)
     ##  3rd :706                                        
     ##  Crew:885
 
-The general survival rate was 32.30%.
-
-Now we convert the data to `AnvlArray`s.
+The general survival rate was 32.30%. Now we convert the data to
+`AnvlArray`s. Here, `X` naturally lands on the default floating point
+type because it is a `double`. Because `y` is an integer, we explicitly
+request it to assume the default float type.
 
 ``` r
 
-X_arr <- nv_array(X, dtype = "f32")
-y_arr <- nv_array(y, dtype = "f32", shape = c(n, 1L))
+X_arr <- nv_array(X)
+y_arr <- nv_array(y, dtype = default_float(), shape = c(n, 1L))
 ```
 
 ## Model
@@ -158,8 +159,8 @@ call.
 
 ``` r
 
-beta_init <- nv_array(rnorm(p), dtype = "f32", shape = c(p, 1L))
-alpha_init <- nv_scalar(0, dtype = "f32")
+beta_init <- nv_array(rnorm(p), shape = c(p, 1L))
+alpha_init <- nv_scalar(0)
 
 result <- fit_logreg(
   X_arr, y_arr,

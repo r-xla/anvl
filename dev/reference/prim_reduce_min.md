@@ -13,7 +13,9 @@ prim_reduce_min(x, axes, drop = TRUE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
@@ -24,15 +26,14 @@ prim_reduce_min(x, axes, drop = TRUE)
 - drop:
 
   (`logical(1)`)  
-  Whether to drop the reduced axes from the output shape. If `TRUE`, the
-  reduced axes are removed. If `FALSE`, the reduced axes are set to 1.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input. When `drop = TRUE`, the shape is
-that of `x` with `axes` removed. When `drop = FALSE`, the shape is that
-of `x` with `axes` set to 1.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type. The shape is the input's with the reduced
+axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Implemented Rules
 
@@ -45,10 +46,10 @@ of `x` with `axes` set to 1.
 ## StableHLO
 
 Lowers to
-[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
-with
-[`hlo_minimum()`](https://r-xla.github.io/stablehlo/reference/hlo_minimum.html)
-as the reducer.
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html),
+specified under [reduce](https://openxla.org/stablehlo/spec#reduce). The
+reducer is
+[`hlo_minimum()`](https://r-xla.github.io/stablehlo/reference/hlo_minimum.html).
 
 ## See also
 
@@ -58,10 +59,23 @@ as the reducer.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
+# reducing axis 1 removes it from the shape, and the data type is kept
 prim_reduce_min(x, axes = 1L)
 #> AnvlArray
 #>  1
 #>  3
 #>  5
 #> [ CPUi32{3} ] 
+
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_reduce_min(x, axes = 1L, drop = FALSE)
+#> AnvlArray
+#>  1 3 5
+#> [ CPUi32{1,3} ] 
+
+# reducing every axis gives a scalar
+prim_reduce_min(x, axes = c(1L, 2L))
+#> AnvlArray
+#>  1
+#> [ CPUi32{} ] 
 ```

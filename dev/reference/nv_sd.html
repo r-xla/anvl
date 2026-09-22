@@ -90,19 +90,20 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axes">axes<a class="anchor" aria-label="anchor" href="#arg-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> | <code>NULL</code>)<br>
-Axes to reduce. Negative values count from the end, i.e. <code>-1</code>
-refers to the last axis. If <code>NULL</code> (default), reduces over all
-axes, returning a scalar.</p></dd>
+Axes to reduce over. Negative values count from the end, i.e. <code>-1</code> refers
+to the last axis. If <code>NULL</code> (default), reduces over all axes.</p></dd>
 
 
 <dt id="arg-drop">drop<a class="anchor" aria-label="anchor" href="#arg-drop"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-Whether to drop reduced axes.</p></dd>
+Whether to drop the reduced axes: removed from the output shape if <code>TRUE</code>,
+set to 1 if <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-correction">correction<a class="anchor" aria-label="anchor" href="#arg-correction"></a></dt>
@@ -112,16 +113,16 @@ Degrees of freedom correction. Default is <code>1</code> (Bessel's correction).<
 
 <dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+How to handle <code>NaN</code> values in float inputs. If <code>FALSE</code>
 (default), <code>NaN</code> propagates. If <code>TRUE</code>, <code>NaN</code> values are skipped.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same data type as the input.
-When <code>drop = TRUE</code>, the reduced axes are removed.
-When <code>drop = FALSE</code>, the reduced axes are set to 1.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's data type where that is a float, and the default float
+data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>)
+otherwise. The shape is the input's with the reduced axes removed (<code>drop = TRUE</code>) or set to 1 (<code>drop = FALSE</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -135,14 +136,17 @@ Set <code>correction = 0</code> for population standard deviation.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_sd</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>              <span class="co"># all axes -&gt; scalar</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># the result is a float, even though the input is an integer</span></span></span>
+<span class="r-in"><span><span class="fu">nv_sd</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.5811</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
-<span class="r-in"><span><span class="fu">nv_sd</span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Bessel's correction by default, correction = 0 for the population value</span></span></span>
+<span class="r-in"><span><span class="fu">nv_sd</span><span class="op">(</span><span class="va">x</span>, correction <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.5811</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4142</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 </code></pre></div>
     </div>

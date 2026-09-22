@@ -13,11 +13,12 @@ R objects:
 numeric(1) and logical(1) which represent scalars.
 numeric and logical R arrays.
 
-GraphBox: this is how dynamic AnvlArrays are represented
-during jit().
 
 
-Use is_arrayish() to check whether a value is arrayish."><meta property="og:description" content="A arrayish value is anything that represents an AnvlArray
+Use is_arrayish() to check whether a value is arrayish.
+The group words the parameter descriptions use are listed below;
+dtypes gives the categories they are built from, and
+default_dtypes() the default an R value materializes at."><meta property="og:description" content="A arrayish value is anything that represents an AnvlArray
 or can be converted to one.
 Specifically, these values are arrayish:
 AnvlArray: a concrete array holding data on a device.
@@ -25,11 +26,12 @@ R objects:
 numeric(1) and logical(1) which represent scalars.
 numeric and logical R arrays.
 
-GraphBox: this is how dynamic AnvlArrays are represented
-during jit().
 
 
-Use is_arrayish() to check whether a value is arrayish."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+Use is_arrayish() to check whether a value is arrayish.
+The group words the parameter descriptions use are listed below;
+dtypes gives the categories they are built from, and
+default_dtypes() the default an R value materializes at."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -106,9 +108,10 @@ or can be converted to one.</p>
 <li><p>R objects:</p><ul><li><p><code>numeric(1)</code> and <code>logical(1)</code> which represent scalars.</p></li>
 <li><p><code>numeric</code> and <code>logical</code> R arrays.</p></li>
 </ul></li>
-<li><p><code><a href="GraphBox.html">GraphBox</a></code>: this is how dynamic <code><a href="AnvlArray.html">AnvlArray</a></code>s are represented
-during <code><a href="jit.html">jit()</a></code>.</p></li>
 </ul><p>Use <code>is_arrayish()</code> to check whether a value is arrayish.</p>
+<p>The group words the parameter descriptions use are listed below;
+<code><a href="dtypes.html">dtypes</a></code> gives the categories they are built from, and
+<code><a href="default_dtypes.html">default_dtypes()</a></code> the default an R value materializes at.</p>
     </div>
 
     <div class="section level2">
@@ -132,8 +135,28 @@ Whether to accept <code>numeric(1)</code> and <code>logical(1)</code> and R arra
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>logical(1)</code></p>
+    <p>(<code>logical(1)</code>)<br>
+Whether <code>x</code> is arrayish.</p>
     </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>During <code><a href="jit.html">jit()</a></code>, <code><a href="GraphBox.html">GraphBox</a></code> is also arrayish, but it is simply the
+trace-time representation of an <code>AnvlArray</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="data-type-vocabulary">Data Type Vocabulary<a class="anchor" aria-label="anchor" href="#data-type-vocabulary"></a></h2>
+
+
+<p>Where a page says which data types an argument takes, it names a group of
+them with a single word:</p><ul><li><p><em>any data type</em> – all of them: <code>bool</code>, the signed and unsigned integers,
+and the floats.</p></li>
+<li><p><em>numeric</em> – signed integer, unsigned integer and float.</p></li>
+<li><p><em>integer</em> – signed and unsigned integer.</p></li>
+<li><p><em>integerish</em> – boolean and integer, signed or unsigned.</p></li>
+<li><p><em>signed numeric</em> – signed integer and float.</p></li>
+<li><p><em>float</em> – the whole float category: <code>f32</code> and <code>f64</code>.</p></li>
+<li><p><em>boolean</em> – <code>bool</code>, the only member of its category.</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><a href="AnvlArray.html">AnvlArray</a>, <a href="GraphBox.html">GraphBox</a></p></div>
@@ -141,7 +164,7 @@ Whether to accept <code>numeric(1)</code> and <code>logical(1)</code> and R arra
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># AnvlArrays are arrayish</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># AnvlArray objects are arrayish</span></span></span>
 <span class="r-in"><span><span class="fu">is_arrayish</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span></span></span>

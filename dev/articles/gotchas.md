@@ -178,12 +178,13 @@ nv_array(c(1, NA, 3))
     ##    3
     ## [ CPUf32{3} ]
 
-Round-tripping back to R therefore does not give the `NA` back, but a
-`NaN`:
+Round-tripping back to R is not guaranteed to produce `NA`, but can also
+yield `NaN`. What comes back depends on the data type the value was
+built at, so it is pinned here:
 
 ``` r
 
-as_array(nv_array(c(1, NA, 3)))
+as_array(nv_array(c(1, NA, 3), dtype = "f32"))
 ```
 
     ## [1]   1 NaN   3
@@ -196,7 +197,7 @@ missing value. Both directions warn about it:
 
 ``` r
 
-x <- nv_scalar(NA_integer_)
+nv_scalar(NA_integer_, dtype = "i32")
 ```
 
     ## Warning: Input `data` contains at least one "NA", stored on the device as "-2147483648".
@@ -204,19 +205,19 @@ x <- nv_scalar(NA_integer_)
     ##   way back.
     ## ℹ Use `suppressWarnings()` to silence this.
 
-``` r
-
-x
-```
-
     ## AnvlArray
     ##  -2.1475e+09
     ## [ CPUi32{} ]
 
 ``` r
 
-as.integer(x)
+as.integer(nv_scalar(NA_integer_, dtype = "i32"))
 ```
+
+    ## Warning: Input `data` contains at least one "NA", stored on the device as "-2147483648".
+    ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
+    ##   way back.
+    ## ℹ Use `suppressWarnings()` to silence this.
 
     ## Warning: Materialized <i32> buffer contains a value that R cannot distinguish from "NA".
     ## ℹ "i32" reserves the bit pattern "-2147483648" (`INT_MIN`); "i64" reserves
@@ -272,7 +273,7 @@ warns about a value R’s type cannot hold, `"err"` makes it an error, and
 
 ``` r
 
-as_array(nv_scalar(NA_integer_), check = "err")
+as_array(nv_scalar(NA_integer_, dtype = "i32"), check = "err")
 ```
 
     ## Warning: Input `data` contains at least one "NA", stored on the device as "-2147483648".
@@ -437,7 +438,10 @@ to `AnvlArray`s. This can be done via `as_anvl_array` for single
 arguments and `as_anvl_arrays` for multiple arguments.
 
 E.g., the following function does not behave the same in jit-mode and in
-eager mode.
+eager mode. The untyped `1` materializes at the default float, so under
+the default `f32` the jitted result is rounded where the eager one is
+not (at an `f64` default the two would agree, which is exactly the
+point: the answer depends on a default rather than on the code):
 
 ``` r
 

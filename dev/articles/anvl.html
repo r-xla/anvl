@@ -154,7 +154,7 @@ omit specifying the device, as CPU is the default.</p>
 <span><span class="co">##  1</span></span>
 <span><span class="co">## [ CPUi16{} ]</span></span></code></pre>
 <p>We can also create higher-dimensional arrays, for example a
-<code>2x3</code> array with single-precision floating-point numbers.</p>
+<code>2x3</code> array at the default float data type.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">6</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">y</span></span></code></pre></div>
@@ -163,11 +163,12 @@ omit specifying the device, as CPU is the default.</p>
 <span><span class="co">##  2 4 6</span></span>
 <span><span class="co">## [ CPUf32{2,3} ]</span></span></code></pre>
 <p>Without specifying the data type, it will default to the data types
-of the active backend: <code>"f32"</code> for R doubles and
-<code>"i32"</code> for integers on pjrt, and <code>"bool"</code> for
-logicals everywhere. We chose this default, because on modern
-accelerators such as GPUs, single-precision floating point operations
-are considerably faster than when working in double precision. It is
+of the active backend, which <code><a href="../reference/default_dtypes.html">default_dtypes()</a></code> reports – on
+pjrt <code>"f32"</code> for R doubles and <code>"i32"</code> for
+integers, or whatever the <code>anvl.default_dtypes</code> option says
+once it is set. We chose this default, because on modern accelerators
+such as GPUs, single-precision floating point operations are
+considerably faster than when working in double precision. It is
 possible to change this default via the <code>anvl.default_dtypes</code>
 option. Below, <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code> modifies this option
 temporarily:</p>
@@ -353,10 +354,10 @@ calls and your own <code><a href="../reference/jit.html">jit()</a></code>-compil
 <span><span class="co">## [ CPUf32{2} ]</span></span></code></pre>
 <p>An R value does not carry a data type of its own – <code>1</code> is
 neither an <code>f32</code> nor an <code>f64</code> – so it takes the
-one of the array it is combined with, and falls back to a default (on
-pjrt <code>f32</code> for doubles and <code>i32</code> for integers, and
-<code>bool</code> for logicals) when it meets nothing else. See
-<code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for the full rules.</p>
+one of the array it is combined with, and falls back to the active
+backend’s default (see <code><a href="../reference/default_dtypes.html">default_dtypes()</a></code>) when it meets
+nothing else. See <code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for the full
+rules.</p>
 <p>Note that we only auto-convert
 <code>double</code>/<code>integer</code>/<code>logical</code>s that
 are</p>

@@ -17,17 +17,23 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 - a:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Triangular coefficient matrix of data type floating-point with at
-  least 2 axes. The last two axes must be equal (square matrix); any
-  leading axes are batch axes.
+  Triangular coefficient matrix with at least 2 axes. The last two axes
+  must be equal (square matrix); any leading axes are batch axes. Can be
+  any float data type. `a` and `b` must have the same data type. An R
+  value among them assumes the data type of the others when it is in its
+  [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when none of them has one.
 
 - b:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Right-hand side. Same data type and rank as `a` (rank \>= 2), with
-  matching leading batch axes. The size of `a`'s last two (square) axes
-  must equal `b`'s second-to-last axis when `left_side = TRUE`, or `b`'s
-  last axis when `left_side = FALSE`.
+  Right-hand side. Same rank as `a` (rank \>= 2), with matching leading
+  batch axes. The size of `a`'s last two (square) axes must equal `b`'s
+  second-to-last axis when `left_side = TRUE`, or `b`'s last axis when
+  `left_side = FALSE`. Shares `a`'s data type – see `a`.
 
 - left_side:
 
@@ -49,12 +55,17 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 - transpose_a:
 
   (`logical(1)`)  
-  If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
+  If `TRUE`, solve with `t(a)` in place of `a`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as `b`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `b`'s shape and the data type `a` and `b` agreed on.
+
+## Details
+
+Differentiation is only implemented for a single system: the `reverse`
+rule errors on batched operands (operands with more than 2 axes).
 
 ## Implemented Rules
 
@@ -65,7 +76,9 @@ Has the same shape and data type as `b`.
 ## StableHLO
 
 Lowers to
-[`hlo_triangular_solve()`](https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html).
+[`hlo_triangular_solve()`](https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html),
+specified under
+[triangular_solve](https://openxla.org/stablehlo/spec#triangular_solve).
 
 ## References
 

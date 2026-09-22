@@ -5,11 +5,13 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Literal Array Class — LiteralArray"><meta name="description" content="An AbstractArray where all elements have the same constant value.
-This either arises when using literals in traced code (e.g. x + 1) or when using
-nv_fill() to create a constant."><meta property="og:description" content="An AbstractArray where all elements have the same constant value.
-This either arises when using literals in traced code (e.g. x + 1) or when using
-nv_fill() to create a constant."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Literal Array Class — LiteralArray"><meta name="description" content="An AbstractArray where all elements have the same constant value. This
+arises from a literal in traced code (x + 1, say). A nv_fill() is a
+recorded operation rather than a constant, so its output is an ordinary
+AbstractArray."><meta property="og:description" content="An AbstractArray where all elements have the same constant value. This
+arises from a literal in traced code (x + 1, say). A nv_fill() is a
+recorded operation rather than a constant, so its output is an ordinary
+AbstractArray."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -80,9 +82,10 @@ nv_fill() to create a constant."><meta property="og:image" content="https://r-xl
     </div>
 
     <div class="ref-description section level2">
-    <p>An <code><a href="AbstractArray.html">AbstractArray</a></code> where all elements have the same constant value.
-This either arises when using literals in traced code (e.g. <code>x + 1</code>) or when using
-<code><a href="nv_fill.html">nv_fill()</a></code> to create a constant.</p>
+    <p>An <code><a href="AbstractArray.html">AbstractArray</a></code> where all elements have the same constant value. This
+arises from a literal in traced code (<code>x + 1</code>, say). A <code><a href="nv_fill.html">nv_fill()</a></code> is a
+recorded operation rather than a constant, so its output is an ordinary
+<code><a href="AbstractArray.html">AbstractArray</a></code>.</p>
     </div>
 
     <div class="section level2">
@@ -96,7 +99,8 @@ This either arises when using literals in traced code (e.g. <code>x + 1</code>) 
 
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
 <dd><p>(<code>double(1)</code> | <code>integer(1)</code> | <code>logical(1)</code> | <code><a href="AnvlArray.html">AnvlArray</a></code>)<br>
-The scalar value or scalarish AnvlArray (contains 1 element).</p></dd>
+The scalar value, or a one-element <code><a href="AnvlArray.html">AnvlArray</a></code> – for which <code>dtype</code> has
+to be named, since the default takes it from an R value's storage type.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
@@ -128,8 +132,7 @@ I.e., they lower to <code><a href="https://r-xla.github.io/stablehlo/reference/h
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
 <span class="r-in"><span><span class="fu"><a href="dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;i32&gt;</span>
-<span class="r-in"><span><span class="co"># how it appears during tracing:</span></span></span>
-<span class="r-in"><span><span class="co"># 1. via R literals</span></span></span>
+<span class="r-in"><span><span class="co"># how it appears during tracing: an R literal that meets nothing</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; () {</span>
@@ -137,7 +140,7 @@ I.e., they lower to <code><a href="https://r-xla.github.io/stablehlo/reference/h
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">outputs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">aval</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(1, f32, ()) </span>
-<span class="r-in"><span><span class="co"># 2. via nv_fill()</span></span></span>
+<span class="r-in"><span><span class="co"># a `nv_fill()`, by contrast, is a recorded operation</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">2L</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; () {</span>

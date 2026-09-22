@@ -5,9 +5,11 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Convolution — prim_convolution"><meta name="description" content="General N-D windowed convolution, lowering to StableHLO's
-convolution op."><meta property="og:description" content="General N-D windowed convolution, lowering to StableHLO's
-convolution op."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Convolution — prim_convolution"><meta name="description" content="General N-D windowed convolution. The axis arguments say which axis of each
+operand plays which role, so any layout can be described.
+Most users want nv_conv1d() / nv_conv2d() / nv_conv3d() instead."><meta property="og:description" content="General N-D windowed convolution. The axis arguments say which axis of each
+operand plays which role, so any layout can be described.
+Most users want nv_conv1d() / nv_conv2d() / nv_conv3d() instead."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -78,8 +80,9 @@ convolution op."><meta property="og:image" content="https://r-xla.github.io/anvl
     </div>
 
     <div class="ref-description section level2">
-    <p>General N-D windowed convolution, lowering to StableHLO's
-<code>convolution</code> op.</p>
+    <p>General N-D windowed convolution. The axis arguments say which axis of each
+operand plays which role, so any layout can be described.
+Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="nv_conv3d.html">nv_conv3d()</a></code> instead.</p>
     </div>
 
     <div class="section level2">
@@ -111,16 +114,20 @@ convolution op."><meta property="og:image" content="https://r-xla.github.io/anvl
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br> Input, e.g. <code>[batch, channels, *spatial]</code>.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br> Input, e.g. <code>[batch, channels, *spatial]</code>.
+Can be any data type. <code>x</code> and <code>kernel</code> must have the same data type. An R value among them
+assumes the data type of the others when it is in its <a href="dtypes.html">data type category</a>, and its <a href="default_dtypes.html">default data type</a> when none
+of them has one.</p></dd>
 
 
 <dt id="arg-kernel">kernel<a class="anchor" aria-label="anchor" href="#arg-kernel"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br> Kernel, e.g. <code>[out_ch, in_ch/groups, *spatial]</code>.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br> Kernel, e.g. <code>[out_ch, in_ch/groups, *spatial]</code>.
+Shares <code>x</code>'s data type – see <code>x</code>.</p></dd>
 
 
 <dt id="arg-input-batch-axis-input-feature-axis">input_batch_axis, input_feature_axis<a class="anchor" aria-label="anchor" href="#arg-input-batch-axis-input-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-batch/feature axis of <code>x</code>.</p></dd>
+Batch and feature axis of <code>x</code>.</p></dd>
 
 
 <dt id="arg-input-spatial-axes">input_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-input-spatial-axes"></a></dt>
@@ -138,7 +145,7 @@ Input and output feature axis of <code>kernel</code>.</p></dd>
 
 <dt id="arg-output-batch-axis-output-feature-axis">output_batch_axis, output_feature_axis<a class="anchor" aria-label="anchor" href="#arg-output-batch-axis-output-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-batch/feature axis of the output.</p></dd>
+Batch and feature axis of the output.</p></dd>
 
 
 <dt id="arg-output-spatial-axes">output_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-output-spatial-axes"></a></dt>
@@ -169,9 +176,52 @@ Spatial axes of the output.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code></p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the data type <code>x</code> and <code>kernel</code> agreed on. Its shape is given by the
+output axis arguments: the batch axis holds <code>x</code>'s batch size divided by
+<code>batch_group_count</code>, the feature axis <code>kernel</code>'s output feature size, and
+each spatial axis the number of window positions along it.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
+
+
+<ul><li><p><code>stablehlo</code></p></li>
+</ul></div>
+    <div class="section level2">
+    <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
+
+
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_convolution.html" class="external-link">hlo_convolution()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#convolution" class="external-link">convolution</a>.
+The axis numbers are converted on the way down.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="nv_conv1d.html">nv_conv1d()</a></code>, <code><a href="nv_conv2d.html">nv_conv2d()</a></code>, <code><a href="nv_conv3d.html">nv_conv3d()</a></code></p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># a 1-D convolution in NCW layout: one batch, one channel, width 5,</span></span></span>
+<span class="r-in"><span><span class="co"># convolved with a width-3 kernel, giving 3 window positions</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">kernel</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="op">-</span><span class="fl">1</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_convolution</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">x</span>, <span class="va">kernel</span>,</span></span>
+<span class="r-in"><span>  input_batch_axis <span class="op">=</span> <span class="fl">1L</span>, input_feature_axis <span class="op">=</span> <span class="fl">2L</span>, input_spatial_axes <span class="op">=</span> <span class="fl">3L</span>,</span></span>
+<span class="r-in"><span>  kernel_output_feature_axis <span class="op">=</span> <span class="fl">1L</span>, kernel_input_feature_axis <span class="op">=</span> <span class="fl">2L</span>,</span></span>
+<span class="r-in"><span>  kernel_spatial_axes <span class="op">=</span> <span class="fl">3L</span>,</span></span>
+<span class="r-in"><span>  output_batch_axis <span class="op">=</span> <span class="fl">1L</span>, output_feature_axis <span class="op">=</span> <span class="fl">2L</span>, output_spatial_axes <span class="op">=</span> <span class="fl">3L</span>,</span></span>
+<span class="r-in"><span>  window_strides <span class="op">=</span> <span class="fl">1L</span>, padding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0L</span>, nrow <span class="op">=</span> <span class="fl">1</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  x_dilation <span class="op">=</span> <span class="fl">1L</span>, kernel_dilation <span class="op">=</span> <span class="fl">1L</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (1,.,.) =</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -2 -2 -2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{1,1,3} ] </span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

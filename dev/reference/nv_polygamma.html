@@ -6,22 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Polygamma — nv_polygamma"><meta name="description" content="Element-wise polygamma function: the (n+1)-th derivative of the
-log-gamma function. The order n is broadcast against x (so
-nv_polygamma(1, x) works for any x). For n = 0 this is the
-digamma function; for n = 1, trigamma() dispatches here.
-Inputs are
-promoted to a common floating data type and
-scalar arguments are
-broadcast to the shape of the non-scalar
-arguments."><meta property="og:description" content="Element-wise polygamma function: the (n+1)-th derivative of the
-log-gamma function. The order n is broadcast against x (so
-nv_polygamma(1, x) works for any x). For n = 0 this is the
-digamma function; for n = 1, trigamma() dispatches here.
-Inputs are
-promoted to a common floating data type and
-scalar arguments are
-broadcast to the shape of the non-scalar
-arguments."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+log-gamma function. For n = 0 this is the digamma function; for n = 1,
+trigamma() dispatches here."><meta property="og:description" content="Element-wise polygamma function: the (n+1)-th derivative of the
+log-gamma function. For n = 0 this is the digamma function; for n = 1,
+trigamma() dispatches here."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -93,14 +81,8 @@ arguments."><meta property="og:image" content="https://r-xla.github.io/anvl/logo
 
     <div class="ref-description section level2">
     <p>Element-wise polygamma function: the <code>(n+1)</code>-th derivative of the
-log-gamma function. The order <code>n</code> is broadcast against <code>x</code> (so
-<code>nv_polygamma(1, x)</code> works for any <code>x</code>). For <code>n = 0</code> this is the
-digamma function; for <code>n = 1</code>, <code><a href="https://rdrr.io/r/base/Special.html" class="external-link">trigamma()</a></code> dispatches here.</p>
-<p>Inputs are
-<a href="nv_promote_to_common.html">promoted to a common floating data type</a> and
-scalar arguments are
-<a href="nv_broadcast_scalars.html">broadcast</a> to the shape of the non-scalar
-arguments.</p>
+log-gamma function. For <code>n = 0</code> this is the digamma function; for <code>n = 1</code>,
+<code><a href="https://rdrr.io/r/base/Special.html" class="external-link">trigamma()</a></code> dispatches here.</p>
     </div>
 
     <div class="section level2">
@@ -114,15 +96,24 @@ arguments.</p>
 
 <dl><dt id="arg-n-x">n, x<a class="anchor" aria-label="anchor" href="#arg-n-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Floating-point arrayish values; an integer <code>x</code> is computed at the default
-float data type. After promotion and broadcasting, <code>n</code> and <code>x</code> must have
-the same shape; <code>n</code> typically holds non-negative integer values.</p></dd>
+Order of the polygamma function and the value to evaluate it at. <code>n</code>
+typically holds non-negative whole numbers. Can be any numeric data type:
+the two are <a href="nv_promote_to_common.html">promoted to a common data type</a> and
+that is then converted to the default float data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>) where it is not a float already, since a float is
+all <code><a href="prim_polygamma.html">prim_polygamma()</a></code> takes. An R value assumes the other operand's data
+type within its <a href="dtypes.html">data type category</a>, and settles on the default
+float when neither has one.
+Scalars are <a href="nv_broadcast_scalars.html">broadcast</a> to the shape of the other,
+so <code>nv_polygamma(1, x)</code> works for any float <code>x</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same shape and the promoted common data type of the inputs.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the inputs' broadcast shape, and their common data type – or the
+default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where that was an
+integer one.</p>
     </div>
     <div class="section level2">
     <h2 id="the-trigamma-generic">The <code><a href="https://rdrr.io/r/base/Special.html" class="external-link">trigamma()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-trigamma-generic"></a></h2>
@@ -137,7 +128,8 @@ Has the same shape and the promoted common data type of the inputs.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the R `1` is built at `x`'s float data type and broadcast</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_polygamma</span><span class="op">(</span><span class="fl">1</span>, <span class="va">x</span><span class="op">)</span> <span class="co"># trigamma</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4.9348</span>

@@ -99,7 +99,9 @@ axes, as in <code><a href="nv_matmul.html">nv_matmul()</a></code>: only the matr
 
 <dl><dt id="arg-lhs">lhs<a class="anchor" aria-label="anchor" href="#arg-lhs"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-An array with at least 2 axes.</p></dd>
+An array with at least 2 axes, as for <code><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">base::crossprod()</a></code>. Can be any numeric
+data type; <code>lhs</code> and <code>rhs</code> are
+<a href="nv_promote_to_common.html">promoted to a common data type</a>.</p></dd>
 
 
 <dt id="arg-rhs">rhs<a class="anchor" aria-label="anchor" href="#arg-rhs"></a></dt>
@@ -117,7 +119,8 @@ Optional second array. If <code>NULL</code>, uses <code>lhs</code>.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code></p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the operands' common data type, and the shape of <code>t(lhs) %*% rhs</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -126,7 +129,8 @@ Optional second array. If <code>NULL</code>, uses <code>lhs</code>.</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">3</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># `t(x) %*% x`, so a 3x2 gives a 2x2</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">3</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_crossprod</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  14 32</span>

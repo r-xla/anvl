@@ -74,7 +74,8 @@ compile_pjrt(
 
 ## Value
 
-A `list` with elements:
+(`list`)  
+With elements:
 
 - `exec`: The compiled PJRT executable.
 

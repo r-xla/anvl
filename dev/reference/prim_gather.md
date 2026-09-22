@@ -34,15 +34,16 @@ prim_gather(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - start_indices:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-  of integer type)  
-  Array of starting indices. Contains index vectors that map to
-  positions in `x` via `start_index_map`. The axis specified by
-  `index_vector_axis` holds the index vectors.
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  Array of starting indices, of the same integer data type. Contains
+  index vectors that map to positions in `x` via `start_index_map`. The
+  axis specified by `index_vector_axis` holds the index vectors.
 
 - slice_sizes:
 
@@ -106,10 +107,10 @@ prim_gather(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `x`. The output shape is composed of the
-offset axes (from the slice) and the remaining axes from
-`start_indices`. See the underlying StableHLO function for more details.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type. The output shape is composed of the offset
+axes (from the slice) and the remaining axes from `start_indices`. See
+the underlying StableHLO function for more details.
 
 ## Out of Bounds Behavior
 
@@ -129,7 +130,10 @@ position may differ from the requested one.
 ## StableHLO
 
 Lowers to
-[`hlo_gather()`](https://r-xla.github.io/stablehlo/reference/hlo_gather.html).
+[`hlo_gather()`](https://r-xla.github.io/stablehlo/reference/hlo_gather.html),
+specified under [gather](https://openxla.org/stablehlo/spec#gather). The
+axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.
 
 ## See also
 

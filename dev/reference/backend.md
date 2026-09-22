@@ -20,4 +20,5 @@ backend(x, ...)
 
 ## Value
 
-`character(1)` - the backend name
+(`character(1)`)  
+The backend name.

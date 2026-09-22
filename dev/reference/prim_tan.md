@@ -13,12 +13,14 @@ prim_tan(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -31,7 +33,8 @@ Has the same shape and data type as the input.
 ## StableHLO
 
 Lowers to
-[`hlo_tan()`](https://r-xla.github.io/stablehlo/reference/hlo_tan.html).
+[`hlo_tan()`](https://r-xla.github.io/stablehlo/reference/hlo_tan.html),
+specified under [tan](https://openxla.org/stablehlo/spec#tan).
 
 ## See also
 
@@ -41,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(0, 0.5, 1))
 prim_tan(x)
 #> AnvlArray
@@ -48,4 +52,10 @@ prim_tan(x)
 #>  0.5463
 #>  1.5574
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_tan(0.5)
+#> AnvlArray
+#>  0.5463
+#> [ CPUf32{} ] 
 ```

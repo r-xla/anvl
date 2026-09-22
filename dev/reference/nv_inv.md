@@ -19,12 +19,21 @@ nv_inv(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Square non-singular matrix.
+  One input, a square non-singular matrix with exactly 2 axes. Can be
+  any numeric data type: a float keeps its own, and an integer one is
+  converted to the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and is converted in the same way.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-The inverse, same shape and dtype as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+The inverse, with the input's shape, and its data type – or the default
+float data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+where the input was an integer one.
 
 ## See also
 
@@ -33,6 +42,7 @@ The inverse, same shape and dtype as `x`.
 ## Examples
 
 ``` r
+# the inverse has the matrix's shape and data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_inv(a)
 #> AnvlArray

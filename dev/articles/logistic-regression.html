@@ -181,11 +181,14 @@ reference category</li>
 <span><span class="co">##  2nd :285   Female: 470   Adult:2092   Yes: 711  </span></span>
 <span><span class="co">##  3rd :706                                        </span></span>
 <span><span class="co">##  Crew:885</span></span></code></pre>
-<p>The general survival rate was 32.30%.</p>
-<p>Now we convert the data to <code>AnvlArray</code>s.</p>
+<p>The general survival rate was 32.30%. Now we convert the data to
+<code>AnvlArray</code>s. Here, <code>X</code> naturally lands on the
+default floating point type because it is a <code>double</code>. Because
+<code>y</code> is an integer, we explicitly request it to assume the
+default float type.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">X_arr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="va">X</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
-<span><span class="va">y_arr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="va">y</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">X_arr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
+<span><span class="va">y_arr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="va">y</span>, dtype <span class="op">=</span> <span class="fu"><a href="../reference/default_dtypes.html">default_float</a></span><span class="op">(</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="model">Model<a class="anchor" aria-label="anchor" href="#model"></a>
@@ -249,8 +252,8 @@ from R, especially for small models.</p>
 <p>We initialize the parameters and train the model with a single
 function call.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">beta_init</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">p</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">alpha_init</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">beta_init</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">p</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">alpha_init</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">fit_logreg</span><span class="op">(</span></span>
 <span>  <span class="va">X_arr</span>, <span class="va">y_arr</span>,</span>

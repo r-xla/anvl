@@ -16,17 +16,27 @@ prim_if(pred, true, false)
 - pred:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar boolean predicate that determines which branch to execute.
+  Predicate deciding which branch to execute. Must be a scalar of the
+  boolean data type, or an R logical.
 
 - true, false:
 
   (`function()`)  
   Zero-argument functions for the true and false branches. Both must
-  return outputs with the same structure, dtypes, and shapes.
+  return outputs of the same structure, data types and shapes. As with
+  [`prim_ifelse()`](https://r-xla.github.io/anvl/dev/reference/prim_ifelse.md),
+  whose two values must already agree, nothing is promoted: branches
+  that disagree are an error.
 
 ## Value
 
-Result of the executed branch.  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) \|
+`list`)  
+Result of the executed branch: an array, or a tree of them in the sense
+of pjrt's
+[`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html) – a
+`list`, nested arbitrarily – with the structure, data types and shapes
+both branches share.
 
 ## Implemented Rules
 
@@ -37,7 +47,8 @@ Result of the executed branch.
 ## StableHLO
 
 Lowers to
-[`hlo_if()`](https://r-xla.github.io/stablehlo/reference/hlo_if.html).
+[`hlo_if()`](https://r-xla.github.io/stablehlo/reference/hlo_if.html),
+specified under [if](https://openxla.org/stablehlo/spec#if).
 
 ## See also
 
@@ -47,6 +58,7 @@ Lowers to
 ## Examples
 
 ``` r
+# both branches must return the same structure, data types and shapes
 prim_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 #> AnvlArray
 #>  1

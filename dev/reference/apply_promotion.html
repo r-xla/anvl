@@ -171,7 +171,7 @@ materializing them again changes nothing.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># an R value takes the data type of the operand it meets.</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># an R value takes the data type of the operand it meets</span></span></span>
 <span class="r-in"><span><span class="va">operands</span> <span class="op">&lt;-</span> <span class="fu">apply_promotion</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>lhs <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span>, rhs <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="promotion_rule.html">promotion_rdata_common</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="dtype.html">dtype</a></span><span class="op">(</span><span class="va">operands</span><span class="op">$</span><span class="va">rhs</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f64&gt;</span>

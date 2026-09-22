@@ -33,6 +33,4 @@ local_descriptor(..., envir = parent.frame())
 
 ## Value
 
-A
-[`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
-object.
+([`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md))

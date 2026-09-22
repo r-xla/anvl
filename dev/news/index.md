@@ -14,6 +14,11 @@
   take `indices` instead of `with_indices`, spelling it the way
   [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md)
   does.
+- [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md)
+  takes `axes` instead of `axis`, ranking the elements of several axes
+  together, and `axes = NULL` (the default) now ranks over every axis
+  where it used to take the last one. Write `axes = -1` for the old
+  default.
 - The type system of {anvl} was changed to avoid the problems reported
   in issue [\#373](https://github.com/r-xla/anvl/issues/373).
   Specifically, the ambiguity system was replaced with the `RData`
@@ -111,6 +116,47 @@
 
 ### Features
 
+- [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
+  accepts a seed of any signed or unsigned integer data type, bringing
+  it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
+  whatever the seed and the default integer data type are.
+- [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
+  accepts a scalar, returning a length-1 array, instead of erroring.
+- [`as_anvl_array()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md)
+  gained a `.promote` argument, naming the data type the input is
+  brought to, as
+  [`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md)
+  already had.
+- [`nv_is_nan()`](https://r-xla.github.io/anvl/dev/reference/nv_is_nan.md),
+  [`nv_is_finite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_finite.md)
+  and
+  [`nv_is_infinite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_infinite.md)
+  accept any data type and answer a constant (all `FALSE` / all `TRUE` /
+  all `FALSE`) for one that holds no NaN or infinity, instead of
+  comparing – or, for
+  [`nv_is_finite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_finite.md)
+  and
+  [`nv_is_infinite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_infinite.md),
+  erroring.
+- The linear algebra functions
+  ([`nv_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_solve.md),
+  [`nv_triangular_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_triangular_solve.md),
+  [`nv_chol()`](https://r-xla.github.io/anvl/dev/reference/nv_chol.md),
+  [`nv_inv()`](https://r-xla.github.io/anvl/dev/reference/nv_inv.md),
+  [`nv_det()`](https://r-xla.github.io/anvl/dev/reference/nv_det.md),
+  [`nv_determinant()`](https://r-xla.github.io/anvl/dev/reference/nv_determinant.md),
+  [`nv_lu()`](https://r-xla.github.io/anvl/dev/reference/nv_lu.md),
+  [`nv_qr()`](https://r-xla.github.io/anvl/dev/reference/nv_qr.md),
+  [`nv_svd()`](https://r-xla.github.io/anvl/dev/reference/nv_svd.md),
+  [`nv_eigh()`](https://r-xla.github.io/anvl/dev/reference/nv_eigh.md))
+  accept integer input, computing at the default float data type where
+  the input is not a float already, instead of erroring. The `prim_*`
+  ones still take a float only.
+- [`nv_sign()`](https://r-xla.github.io/anvl/dev/reference/nv_sign.md)
+  accepts an unsigned integer array, returning `0` or `1` like base R’s
+  [`sign()`](https://rdrr.io/r/base/sign.html) on a non-negative number;
+  [`prim_sign()`](https://r-xla.github.io/anvl/dev/reference/prim_sign.md)
+  still takes a signed input only.
 - [`nv_reverse()`](https://r-xla.github.io/anvl/dev/reference/nv_reverse.md)
   gained an `axes = NULL` default that reverses every axis, matching
   [`rev()`](https://rdrr.io/r/base/rev.html) and `numpy.flip()`, and

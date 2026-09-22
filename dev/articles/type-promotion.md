@@ -121,14 +121,15 @@ It is therefore important to understand the rules that govern the
 materialization of R objects as `AnvlArray`s. Generally, there are two
 routes:
 
-1.  An R value is materialized at its default data type (`double` and
-    `integer` take the defaults of the active backend, `f32` and `i32`
-    on pjrt; `logical` takes `bool`). This is e.g. the case in unary
-    functions such as `nv_exp`.
-2.  The R values data type is inferred from other arguments, as is the
-    case of the `nv_add` call above. When no concrete data type is
-    present, `nv_add(1, 2)` falls back to the default, which is `f32`
-    for `double`s on pjrt.
+1.  The R value is materialized at its default data type, which
+    [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+    reports: a `double` and an `integer` take the defaults of the active
+    backend, configurable through the `anvl.default_dtypes` option, and
+    a `logical` takes `bool`. This is e.g. the case in unary functions
+    such as `nv_exp`.
+2.  The R value’s data type is inferred from the other arguments, as in
+    the `nv_add` call above. When no concrete data type is present,
+    `nv_add(1, 2)` falls back to that default again.
 
 Either way the value is *built at* that data type rather than converted
 into it, so one the data type cannot hold is an error:
@@ -201,8 +202,40 @@ as_anvl_arrays(1, 2, .promote = promotion_dtype("f64"))
     ##  2
     ## [ CPUf64{} ]
 
-Below, we show how to actually compute the common data type of some
-arguments using the `promotion_common` rule.
+One common rule is
+[`promotion_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
+which is used by functions such as `nv_add` above. It computes the
+common data type of the inputs. In this case, it returns the default
+data type of an R `double`, as neither input has one of its own. We can
+override that default via
+[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md),
+which we use below to ask for double precision. The two elements
+contrast what the override does and does not touch: `materialized` is an
+R literal with no data type of its own, so it follows the new default,
+while `yielded` meets a typed `f32` array and takes *its* data type – a
+default only decides what happens when nothing else does.
+
+``` r
+
+with_default_dtypes(c(float = "f64"), {
+  list(
+    materialized = jit(\() 1.0)(),
+    yielded = nv_array(1, dtype = "f32") + 1.5
+  )
+})
+```
+
+    ## $materialized
+    ## AnvlArray
+    ##  1
+    ## [ CPUf64{} ] 
+    ## 
+    ## $yielded
+    ## AnvlArray
+    ##  2.5000
+    ## [ CPUf32{1} ]
+
+Below, we compute the common data type of the arguments.
 
 ``` r
 

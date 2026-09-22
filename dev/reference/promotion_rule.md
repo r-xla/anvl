@@ -10,14 +10,14 @@ R values always yield within the type category (such as float) and
 otherwise contribute their default data type.
 
 `promotion_like()` brings the inputs to the data type of a selected
-input. If the selected data type is an R value, it's default data type
-is used.
+input. If the selected input is an R value, its default data type is
+used.
 
 `promotion_dtype()` brings the inputs to the specified data type.
 
 `promotion_rdata_common()` brings the *R values* to the common data
-type, as long it is within their category (a `double` can e.g. *not*
-become a float). `AnvlArray` inputs are left as they are and the
+type, as long as it is within their category (a `double` can e.g. *not*
+become an integer). `AnvlArray` inputs are left as they are and the
 function throws an error if not all of them have exactly the same data
 type. This rule is commonly used in primitives expecting homogenous
 inputs for one or more argument subsets.
@@ -105,7 +105,7 @@ promotion_rule(fn, kind, on = NULL, ...)
 
 ## Value
 
-`function(args) -> list()` A function returning data types for those
+(`function(args) -> list()`) A function returning data types for those
 inputs to be converted and `NULL` for those to be left unchanged.
 
 ## See also
@@ -148,7 +148,7 @@ promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f
 #> [[2]]
 #> <f32>
 #> 
-# without `coerce`, a target the input cannot hold is refused.
+# without `coerce`, a target the input cannot hold is refused
 try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 #> Error : Cannot bring argument 2 to data type "f32".
 #> ✖ "f64" is not promotable to "f32".

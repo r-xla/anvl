@@ -13,16 +13,19 @@ nv_shift_left(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs with a [common data
+  type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
+  be any integer data type. Scalars are broadcast, and R values assume
+  the other operand's data type within their [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
+  otherwise falling back to their [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and being converted to the common data type.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the inputs' broadcast shape and common data type.
 
 ## See also
 
@@ -38,6 +41,20 @@ nv_shift_left(x, y)
 #> AnvlArray
 #>  2
 #>  8
+#>  8
+#> [ CPUi32{3} ] 
+
+# different data types are promoted to their common one
+nv_shift_left(nv_scalar(8L, "i32"), nv_scalar(2L, "i64"))
+#> AnvlArray
+#>  32
+#> [ CPUi64{} ] 
+
+# a scalar is broadcast
+nv_shift_left(x, 1L)
+#> AnvlArray
+#>  2
+#>  4
 #>  8
 #> [ CPUi32{3} ] 
 ```

@@ -16,7 +16,9 @@ nv_static_slice(x, start_indices, limit_indices, strides)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - start_indices:
 
@@ -35,8 +37,9 @@ nv_static_slice(x, start_indices, limit_indices, strides)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s data type and shape
+`ceiling((limit_indices - start_indices + 1) / strides)` per axis.
 
 ## See also
 
@@ -47,6 +50,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# elements 2 through 5, the limit being inclusive
 x <- nv_array(1:10)
 nv_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 #> AnvlArray

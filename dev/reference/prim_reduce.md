@@ -1,7 +1,8 @@
 # Primitive Generic Reduce
 
 Reduces an array along the specified axes using a user-supplied
-associative reducer.
+associative reducer. `reductor` and `init` must satisfy the constraints
+in the "Associativity Requirement" section below.
 
 ## Usage
 
@@ -14,13 +15,19 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  The array to reduce. Can be any data type. `x` and `init` must have
+  the same data type. An R value among them assumes the data type of the
+  others when it is in its [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when none of them has one.
 
 - init:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar (0 axes) initial value. Must have the same data type as `x` and
-  be the neutral element w.r.t. `reductor`.
+  Scalar initial value, with no axes. Must be the neutral element w.r.t.
+  `reductor`, and shares `x`'s data type – see `x`.
 
 - axes:
 
@@ -36,24 +43,25 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 
 - reductor:
 
-  (`function(lhs, rhs)`)  
-  Binary reducer producing a scalar of the same dtype as `x`. Must be
-  associative (see "Associativity Requirement").
+  (`function`)  
+  Binary reducer producing a scalar of the same data type as `x`. Its
+  two arguments are passed by position, so they may carry any names.
+  Must be associative (see "Associativity Requirement").
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same data type as `x`. Shape is `x` with `axes` removed (or set to 1 if
-`drop = FALSE`).
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type. The shape is the input's with the reduced
+axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Associativity Requirement
 
 The order in which `reductor` is applied across the reduction window is
 implementation-defined. If the reductor is not associative, the result
 is ill-defined. Furthermore, `init` must be the neutral element for this
-reductor. Because floating point math is non-associative, the output of
-the reduction can differ between backends (GPU, CPU), even if the
-underlying mathematical function (like `+`) is associative.
+reductor. Because arithmetic in a float data type is non-associative,
+the output of the reduction can differ between backends (GPU, CPU), even
+if the underlying mathematical function (like `+`) is associative.
 
 ## Implemented Rules
 
@@ -62,8 +70,9 @@ underlying mathematical function (like `+`) is associative.
 ## StableHLO
 
 Lowers to
-[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
-with `reductor` as the body.
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html),
+specified under [reduce](https://openxla.org/stablehlo/spec#reduce). The
+body is `reductor`.
 
 ## See also
 
@@ -73,6 +82,7 @@ with `reductor` as the body.
 ## Examples
 
 ``` r
+# `init` shares `x`'s data type, and the reduced axis disappears
 x <- nv_array(c(1, 2, 3, 4))
 prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
 #> AnvlArray

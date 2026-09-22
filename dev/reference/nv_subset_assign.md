@@ -14,7 +14,9 @@ nv_subset_assign(x, ..., value)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  The array to update. Can be any data type. An R object is materialized
+  at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - ...:
 
@@ -25,13 +27,14 @@ nv_subset_assign(x, ..., value)
 - value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Replacement values. Scalars are broadcast to the subset shape.
-  Non-scalar values must match the subset shape.
+  Replacement values. Scalars are broadcast to the subset shape and
+  non-scalar values must match it. The value is converted to the data
+  type of `x`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-A new array with the same shape as `x` and the subset replaced.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s data type and shape, with the subset replaced.
 
 ## See also
 

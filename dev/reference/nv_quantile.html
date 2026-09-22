@@ -130,7 +130,8 @@ computed (and returned) at the default float data type.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-probs">probs<a class="anchor" aria-label="anchor" href="#arg-probs"></a></dt>
@@ -143,14 +144,14 @@ prepended). Plain length-K (K &gt; 1) vectors are rejected — wrap with
 
 <dt id="arg-axes">axes<a class="anchor" aria-label="anchor" href="#arg-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> | <code>NULL</code>)<br>
-Axes to reduce. Negative values count from the end, i.e. <code>-1</code>
-refers to the last axis. If <code>NULL</code> (default), reduces over all
-axes, returning a scalar.</p></dd>
+Axes to reduce over. Negative values count from the end, i.e. <code>-1</code> refers
+to the last axis. If <code>NULL</code> (default), reduces over all axes.</p></dd>
 
 
 <dt id="arg-drop">drop<a class="anchor" aria-label="anchor" href="#arg-drop"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-Whether to drop reduced axes.</p></dd>
+Whether to drop the reduced axes: removed from the output shape if <code>TRUE</code>,
+set to 1 if <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-interpolation">interpolation<a class="anchor" aria-label="anchor" href="#arg-interpolation"></a></dt>
@@ -161,13 +162,13 @@ One of <code>"linear"</code> (default), <code>"lower"</code>, <code>"higher"</co
 
 <dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+How to handle <code>NaN</code> values in float inputs. If <code>FALSE</code>
 (default), <code>NaN</code> propagates. If <code>TRUE</code>, <code>NaN</code> values are skipped.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Same shape as <code>x</code> with <code>axes</code> removed (or set to 1 if <code>drop = FALSE</code>).
 For array <code>probs</code>, a <strong>leading</strong> axis of size <code>length(probs)</code> is
 prepended. The data type is that of <code>x</code>, or the default float for a
@@ -177,9 +178,10 @@ non-float <code>x</code>.</p>
     <h2 id="interpolation-modes">Interpolation modes<a class="anchor" aria-label="anchor" href="#interpolation-modes"></a></h2>
 
 
-<p>Let <code>h = (n - 1) * q</code> be the 0-based fractional index over the <code>n</code> reduced
-elements for probability <code>q</code>, with <code>lo = floor(h)</code>, <code>hi = ceil(h)</code>,
-<code>frac = h - lo</code>. Then:</p><ul><li><p><code>"linear"</code> (default): <code>(1 - frac) * sorted[lo] + frac * sorted[hi]</code>.</p></li>
+<p>For <code>n</code> reduced elements and a probability <code>q</code>, let
+<code>h = 1 + (n - 1) * q</code> be the position <code>q</code> falls at in the sorted values,
+with <code>lo = floor(h)</code>, <code>hi = ceiling(h)</code> and <code>frac = h - lo</code>. Then, writing
+<code>sorted</code> for the reduced values in sorted order:</p><ul><li><p><code>"linear"</code> (default): <code>(1 - frac) * sorted[lo] + frac * sorted[hi]</code>.</p></li>
 <li><p><code>"lower"</code>: <code>sorted[lo]</code> — the lower bracket of <code>linear</code>.</p></li>
 <li><p><code>"higher"</code>: <code>sorted[hi]</code> — the upper bracket of <code>linear</code>.</p></li>
 <li><p><code>"nearest"</code>: <code>sorted[lo]</code> if <code>frac &lt; 0.5</code> else <code>sorted[hi]</code>.</p></li>
@@ -195,7 +197,8 @@ elements for probability <code>q</code>, with <code>lo = floor(h)</code>, <code>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span>, <span class="fl">2</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># a float result even for an integer input, since it interpolates</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span>, <span class="fl">2</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_quantile</span><span class="op">(</span><span class="va">x</span>, <span class="fl">0.5</span><span class="op">)</span> <span class="co"># = nv_median(x)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3.5000</span>

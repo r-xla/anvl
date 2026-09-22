@@ -93,7 +93,8 @@ You can also use the <code>[&lt;-</code> operator.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+The array to update. Can be any data type.
+An R object is materialized at its <a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -103,14 +104,15 @@ Input array.</p></dd>
 
 <dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Replacement values. Scalars are broadcast to the subset shape.
-Non-scalar values must match the subset shape.</p></dd>
+Replacement values. Scalars are broadcast to the subset shape and non-scalar
+values must match it.
+The value is converted to the data type of <code>x</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-A new array with the same shape as <code>x</code> and the subset replaced.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has <code>x</code>'s data type and shape, with the subset replaced.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -96,7 +96,8 @@ a new first axis. You can also use the <code><a href="https://rdrr.io/r/base/ran
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axes">axes<a class="anchor" aria-label="anchor" href="#arg-axes"></a></dt>
@@ -108,7 +109,7 @@ count from the end.</p></dd>
 
 <dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+How to handle <code>NaN</code> values in float inputs. If <code>FALSE</code>
 (default), <code>NaN</code> propagates. If <code>TRUE</code>, <code>NaN</code> values are skipped.</p></dd>
 
 
@@ -127,7 +128,7 @@ Forwarded to the <code>nan_rm</code> argument of <code><a href="nv_reduce_min.ht
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has the same data type as <code>x</code> and the shape of the reduced array with a
 leading axis of size 2 added: element 1 is the minimum, element 2 the
 maximum.</p>

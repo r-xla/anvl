@@ -14,7 +14,9 @@ nv_reshape(x, shape)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - shape:
 
@@ -25,10 +27,10 @@ nv_reshape(x, shape)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the given `shape` and the same data type as `x`.
 
-## Details
+## Differences from base R
 
 Note that row-major order is used, which differs from R's column-major
 order.
@@ -41,24 +43,36 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-x <- nv_array(1:6)
-nv_reshape(x, c(2, 3))
-#> AnvlArray
-#>  1 2 3
-#>  4 5 6
-#> [ CPUi32{2,3} ] 
-nv_reshape(x, c(2, -1)) # infer the second dimension
-#> AnvlArray
-#>  1 2 3
-#>  4 5 6
-#> [ CPUi32{2,3} ] 
-nv_reshape(x, -1) # flatten
+# the elements are reread in row-major order; the data type is untouched
+x <- array(1:6, dim = c(3, 2))
+# row-major
+nv_reshape(x, 6L)
 #> AnvlArray
 #>  1
-#>  2
-#>  3
 #>  4
+#>  2
 #>  5
+#>  3
+#>  6
+#> [ CPUi32{6} ] 
+# differs from R (col-major)
+c(x)
+#> [1] 1 2 3 4 5 6
+
+# infer the size of the second axis
+nv_reshape(x, c(2, -1))
+#> AnvlArray
+#>  1 4 2
+#>  5 3 6
+#> [ CPUi32{2,3} ] 
+# flatten
+nv_reshape(x, -1)
+#> AnvlArray
+#>  1
+#>  4
+#>  2
+#>  5
+#>  3
 #>  6
 #> [ CPUi32{6} ] 
 ```

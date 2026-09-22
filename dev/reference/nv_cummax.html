@@ -90,7 +90,8 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
@@ -112,7 +113,7 @@ When <code>axis = NULL</code>, indices refer to the flattened input.</p></dd>
 
 <dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+How to handle <code>NaN</code> values in float inputs. If <code>FALSE</code>
 (default), <code>NaN</code> propagates forward from its first occurrence. If
 <code>TRUE</code>, <code>NaN</code> is treated as the identity element of the cumulative
 op (<code>0</code> for sum, <code>1</code> for prod, <code>-Inf</code> / <code>+Inf</code> for max / min) and
@@ -121,8 +122,11 @@ contributes nothing to the running value.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code> (when <code>indices = FALSE</code>) or named list of two
-arrays (when <code>indices = TRUE</code>).</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code> | named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
+One array when <code>indices = FALSE</code>, a named <code>list</code> of <code>values</code> and
+<code>indices</code> when <code>indices = TRUE</code>. The values have the input's data
+type and the indices the default integer data type; both have the input's shape when <code>axis</code> is
+given, and are 1-D of length <code>prod(shape(x))</code> when <code>axis</code> is <code>NULL</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="relation-to-base-r">Relation to base R<a class="anchor" aria-label="anchor" href="#relation-to-base-r"></a></h2>
@@ -140,7 +144,8 @@ two give different running values. They agree on 1-D inputs.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the running maximum keeps the data type; the indices are the default integer</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_cummax</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>

@@ -19,12 +19,22 @@ nv_eigh(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Symmetric square matrix of floating-point data type.
+  One input, a symmetric square matrix with exactly 2 axes. Can be any
+  numeric data type: a float keeps its own, and an integer one is
+  converted to the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and is converted in the same way.
 
 ## Value
 
-Named `list` with elements `values` (length `n`) and `vectors` (shape
-`(n, n)`). Both have the same dtype as the input.
+(named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Elements `values` (length `n`) and `vectors` (shape `(n, n)`). Both have
+the input's data type – or the default float data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+where the input was an integer one.
 
 ## See also
 
@@ -34,6 +44,7 @@ Named `list` with elements `values` (length `n`) and `vectors` (shape
 ## Examples
 
 ``` r
+# values and vectors both have the input's data type
 x <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
 nv_eigh(x)
 #> $values
@@ -47,5 +58,20 @@ nv_eigh(x)
 #>  -0.7071  0.7071
 #>   0.7071  0.7071
 #> [ CPUf64{2,2} ] 
+#> 
+
+# an integer matrix is decomposed at the default float data type
+nv_eigh(nv_matrix(c(2L, 1L, 1L, 2L), nrow = 2))
+#> $values
+#> AnvlArray
+#>  1
+#>  3
+#> [ CPUf32{2} ] 
+#> 
+#> $vectors
+#> AnvlArray
+#>  -0.7071  0.7071
+#>   0.7071  0.7071
+#> [ CPUf32{2,2} ] 
 #> 
 ```

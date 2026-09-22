@@ -13,11 +13,13 @@ prim_is_finite(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same shape as the input and boolean data type.
 
 ## Implemented Rules
@@ -29,7 +31,9 @@ Has the same shape as the input and boolean data type.
 ## StableHLO
 
 Lowers to
-[`hlo_is_finite()`](https://r-xla.github.io/stablehlo/reference/hlo_is_finite.html).
+[`hlo_is_finite()`](https://r-xla.github.io/stablehlo/reference/hlo_is_finite.html),
+specified under
+[is_finite](https://openxla.org/stablehlo/spec#is_finite).
 
 ## See also
 
@@ -38,6 +42,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the result is boolean, whatever float data type the input has
 x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 prim_is_finite(x)
 #> AnvlArray
@@ -47,4 +52,10 @@ prim_is_finite(x)
 #>  0
 #>  1
 #> [ CPUbool{5} ] 
+
+# an R value materializes at its default data type before the test
+prim_is_finite(1)
+#> AnvlArray
+#>  1
+#> [ CPUbool{} ] 
 ```

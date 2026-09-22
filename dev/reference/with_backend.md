@@ -24,4 +24,5 @@ with_backend(backend, code)
 
 ## Value
 
+(`any`)  
 The result of evaluating `code`.

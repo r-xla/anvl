@@ -654,15 +654,16 @@ However, it is possible to apply an {anvl} function to R values
 materialization of R objects as <code>AnvlArray</code>s. Generally,
 there are two routes:</p>
 <ol style="list-style-type: decimal">
-<li>An R value is materialized at its default data type
-(<code>double</code> and <code>integer</code> take the defaults of the
-active backend, <code>f32</code> and <code>i32</code> on pjrt;
-<code>logical</code> takes <code>bool</code>). This is e.g. the case in
+<li>The R value is materialized at its default data type, which
+<code><a href="../reference/default_dtypes.html">default_dtypes()</a></code> reports: a <code>double</code> and an
+<code>integer</code> take the defaults of the active backend,
+configurable through the <code>anvl.default_dtypes</code> option, and a
+<code>logical</code> takes <code>bool</code>. This is e.g. the case in
 unary functions such as <code>nv_exp</code>.</li>
-<li>The R values data type is inferred from other arguments, as is the
-case of the <code>nv_add</code> call above. When no concrete data type
-is present, <code>nv_add(1, 2)</code> falls back to the default, which
-is <code>f32</code> for <code>double</code>s on pjrt.</li>
+<li>The R value’s data type is inferred from the other arguments, as in
+the <code>nv_add</code> call above. When no concrete data type is
+present, <code>nv_add(1, 2)</code> falls back to that default
+again.</li>
 </ol>
 <p>Either way the value is <em>built at</em> that data type rather than
 converted into it, so one the data type cannot hold is an error:</p>
@@ -713,9 +714,35 @@ the arguments and outputs a data type for each one.</p>
 <span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
 <span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
-<p>Below, we show how to actually compute the common data type of some
-arguments using the <code>promotion_common</code> rule.</p>
+<p>One common rule is <code><a href="../reference/promotion_rule.html">promotion_common()</a></code>, which is used by
+functions such as <code>nv_add</code> above. It computes the common data
+type of the inputs. In this case, it returns the default data type of an
+R <code>double</code>, as neither input has one of its own. We can
+override that default via <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code>, which we
+use below to ask for double precision. The two elements contrast what
+the override does and does not touch: <code>materialized</code> is an R
+literal with no data type of its own, so it follows the new default,
+while <code>yielded</code> meets a typed <code>f32</code> array and
+takes <em>its</em> data type – a default only decides what happens when
+nothing else does.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/local_default_dtypes.html">with_default_dtypes</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    materialized <span class="op">=</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="op">)</span> <span class="fl">1.0</span><span class="op">)</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    yielded <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1.5</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## $materialized</span></span>
+<span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  1</span></span>
+<span><span class="co">## [ CPUf64{} ] </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## $yielded</span></span>
+<span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2.5000</span></span>
+<span><span class="co">## [ CPUf32{1} ]</span></span></code></pre>
+<p>Below, we compute the common data type of the arguments.</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">promotion_fn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/promotion_rule.html">promotion_common</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i8"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">promotion_fn</span><span class="op">(</span><span class="va">args</span><span class="op">)</span></span></code></pre></div>
@@ -729,7 +756,7 @@ arguments using the <code>promotion_common</code> rule.</p>
 <span><span class="co">## &lt;f32&gt;</span></span></code></pre>
 <p>And when used in <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> it moves the inputs
 there:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">as_anvl_arrays</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">args</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>.promote <span class="op">=</span> <span class="va">promotion_fn</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [[1]]</span></span>
 <span><span class="co">## AnvlArray</span></span>

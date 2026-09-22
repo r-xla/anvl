@@ -12,9 +12,8 @@ AnvlBackendQuickr()
 
 ## Value
 
-An
-[`AnvlBackend`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md)
-object with subclass `"AnvlBackendQuickr"`.
+([`AnvlBackend`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md))  
+With subclass `"AnvlBackendQuickr"`.
 
 ## Details
 

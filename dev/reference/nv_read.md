@@ -1,4 +1,4 @@
-# Read arrays from a file
+# Read Arrays from a File
 
 Loads arrays from a file in the
 [safetensors](https://huggingface.co/docs/safetensors/index) format.
@@ -25,9 +25,8 @@ nv_read(path, device = NULL)
 
 ## Value
 
-Named `list` of
-[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-objects.
+(named `list` of
+[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))
 
 ## Details
 
@@ -44,6 +43,7 @@ that opens and closes a file connection.
 ## Examples
 
 ``` r
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 #> AnvlArray

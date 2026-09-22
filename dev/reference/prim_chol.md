@@ -14,9 +14,10 @@ prim_chol(x, lower = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point with at least 2 axes. The
-  last two axes must be equal (square matrix); any leading axes are
-  batch axes.
+  One input, with at least 2 axes, the last two of equal size (a square
+  matrix); any leading axes are batch axes. Can be any float data type.
+  An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - lower:
 
@@ -28,9 +29,14 @@ prim_chol(x, lower = FALSE)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same shape and data type as the input. The values in the
 triangle not specified by `lower` are implementation-defined.
+
+## Details
+
+Differentiation is only implemented for a single matrix: the `reverse`
+rule errors on a batched input (an input with more than 2 axes).
 
 ## Implemented Rules
 
@@ -41,7 +47,8 @@ triangle not specified by `lower` are implementation-defined.
 ## StableHLO
 
 Lowers to
-[`hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html).
+[`hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html),
+specified under [cholesky](https://openxla.org/stablehlo/spec#cholesky).
 
 ## References
 

@@ -37,8 +37,9 @@ local_platform(platform, envir = parent.frame())
 
 ## Value
 
-`current_platform()` returns `NULL` or `character(1)`.
-`local_platform()` invisibly returns the previous platform.
+(`NULL` \| `character(1)`)  
+The current platform. `local_platform()` invisibly returns the previous
+platform.
 
 ## See also
 

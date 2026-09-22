@@ -39,19 +39,21 @@ median(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Axes to reduce. Negative values count from the end, i.e. `-1` refers
-  to the last axis. If `NULL` (default), reduces over all axes,
-  returning a scalar.
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis. If `NULL` (default), reduces over all axes.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced axes.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 - interpolation:
 
@@ -78,7 +80,7 @@ median(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
 The data type is that of `x`, or the default float for a non-float `x`.
 

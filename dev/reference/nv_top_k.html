@@ -5,7 +5,9 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Top-K Elements — nv_top_k"><meta name="description" content="Returns the k largest values along an axis, sorted in decreasing order."><meta property="og:description" content="Returns the k largest values along an axis, sorted in decreasing order."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Top-K Elements — nv_top_k"><meta name="description" content="Returns the k largest values over one or more axes, sorted in decreasing
+order."><meta property="og:description" content="Returns the k largest values over one or more axes, sorted in decreasing
+order."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -76,12 +78,13 @@
     </div>
 
     <div class="ref-description section level2">
-    <p>Returns the <code>k</code> largest values along an axis, sorted in decreasing order.</p>
+    <p>Returns the <code>k</code> largest values over one or more axes, sorted in decreasing
+order.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">x</span>, <span class="va">k</span>, axis <span class="op">=</span> <span class="cn">NULL</span>, indices <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">x</span>, <span class="va">k</span>, axes <span class="op">=</span> <span class="cn">NULL</span>, indices <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -90,36 +93,48 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input, with at least 1 axis. Can be any numeric data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Number of top elements to return. Must be a whole number satisfying
-<code>1 &lt;= k &lt;= shape(x)[axis]</code>; a fractional or logical <code>k</code> is refused
-rather than truncated.</p></dd>
+Number of top elements to return. Must be a whole number between 1 and
+the number of elements <code>axes</code> holds together; a fractional or logical <code>k</code>
+is refused rather than truncated.</p></dd>
 
 
-<dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
-<dd><p>(<code>integer(1)</code> | <code>NULL</code>)<br>
-Axis along which to take the top <code>k</code>. Negative values count from the
-end, i.e. <code>-1</code> refers to the last axis. If <code>NULL</code> (default),
-uses the last axis.</p></dd>
+<dt id="arg-axes">axes<a class="anchor" aria-label="anchor" href="#arg-axes"></a></dt>
+<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> | <code>NULL</code>)<br>
+Axes to take the top <code>k</code> over. Negative values count from the end, i.e.
+<code>-1</code> refers to the last axis. If <code>NULL</code> (default), ranks over every axis.</p></dd>
 
 
 <dt id="arg-indices">indices<a class="anchor" aria-label="anchor" href="#arg-indices"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>FALSE</code> (default), returns just the top-<code>k</code> values. If <code>TRUE</code>,
-returns <code>list(values = ..., indices = ...)</code> where <code>indices</code> is the
-1-based position of each top-<code>k</code> value along <code>axis</code>, of the default
-integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p></dd>
+returns <code>list(values = ..., indices = ...)</code> where <code>indices</code> holds the
+position of each top-<code>k</code> value.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code> (when <code>indices = FALSE</code>) or named list of two
-arrays (when <code>indices = TRUE</code>). Output shape matches <code>x</code> with
-<code>axis</code> resized to <code>k</code>; values are sorted decreasing along <code>axis</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code> | named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
+One array when <code>indices = FALSE</code>, a named <code>list</code> of <code>values</code> and
+<code>indices</code> when <code>indices = TRUE</code>. The values have the input's data type and
+the indices the default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>). Both
+have the input's shape with <code>axes</code> replaced by a single axis of size <code>k</code>,
+sitting where the first of them was; values are sorted decreasing along
+that axis.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="ranking-several-axes">Ranking several axes<a class="anchor" aria-label="anchor" href="#ranking-several-axes"></a></h2>
+
+
+<p>Taking the top <code>k</code> over several axes ranks all of their elements together,
+so <code>nv_top_k(x, k)</code> equals <code>nv_top_k(nv_flatten(x), k)</code>. The indices then
+index the row-major flattening of those axes – the order <code><a href="nv_flatten.html">nv_flatten()</a></code>
+produces – rather than any single axis.</p>
     </div>
     <div class="section level2">
     <h2 id="nan-handling">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling"></a></h2>
@@ -136,7 +151,8 @@ bit is not canonicalized.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span>, <span class="fl">2</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the values keep the input's data type, the indices the default integer</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span>, <span class="fl">2</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">x</span>, k <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  9</span>
@@ -160,11 +176,16 @@ bit is not canonicalized.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">m</span>, k <span class="op">=</span> <span class="fl">2L</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">m</span>, k <span class="op">=</span> <span class="fl">2L</span>, axes <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span> <span class="co"># the top 2 of each row</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5 3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4 2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,2} ] </span>
+<span class="r-in"><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">m</span>, k <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span> <span class="co"># the top 2 of the whole matrix</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

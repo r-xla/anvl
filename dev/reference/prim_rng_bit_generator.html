@@ -98,30 +98,33 @@ the updated RNG state together with the generated values.</p>
 
 <dl><dt id="arg-initial-state">initial_state<a class="anchor" aria-label="anchor" href="#arg-initial-state"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-RNG state (<code>ui64[2]</code>).</p></dd>
+RNG state: a 1-D array of the <code>ui64</code> data type. Its length depends on
+<code>rng_algorithm</code> – exactly 2 for <code>"THREE_FRY"</code>, 2 or 3 for <code>"PHILOX"</code>,
+and whatever the implementation wants for <code>"DEFAULT"</code>.</p></dd>
 
 
 <dt id="arg-rng-algorithm">rng_algorithm<a class="anchor" aria-label="anchor" href="#arg-rng-algorithm"></a></dt>
 <dd><p>(<code>character(1)</code>)<br>
-RNG algorithm name. Default is <code>"THREE_FRY"</code>.</p></dd>
+One of <code>"THREE_FRY"</code> (default), <code>"PHILOX"</code> or <code>"DEFAULT"</code>, the last
+leaving the choice to the implementation.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
-Data type of the generated random values.</p></dd>
+Data type of the generated random values. Can be any numeric data type.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Shape.</p></dd>
+Shape of the result.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
-Element <code>state</code> is the updated RNG state with the same dtype and shape
-as <code>initial_state</code>. Element <code>values</code> is an array of random values with
-the given <code>dtype</code> and <code>shape</code>.</p>
+Elements <code>state</code>, the updated RNG state with <code>initial_state</code>'s data type
+and shape, and <code>values</code>, the random values with the given <code>dtype</code> and
+<code>shape</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -133,7 +136,8 @@ the given <code>dtype</code> and <code>shape</code>.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html" class="external-link">hlo_rng_bit_generator()</a></code>.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html" class="external-link">hlo_rng_bit_generator()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#rng_bit_generator" class="external-link">rng_bit_generator</a>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -142,7 +146,8 @@ the given <code>dtype</code> and <code>shape</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">0L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"ui64"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># THREE_FRY, the default, takes a two-element state</span></span></span>
+<span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">0L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"ui64"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_rng_bit_generator</span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $state</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
@@ -156,6 +161,44 @@ the given <code>dtype</code> and <code>shape</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.3515e+09 3.2358e+09</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.6886e+09 4.2293e+09</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3,2} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># the updated state feeds the next draw, so the two differ</span></span></span>
+<span class="r-in"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">prim_rng_bit_generator</span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_rng_bit_generator</span><span class="op">(</span><span class="va">out</span><span class="op">$</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $state</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUui64{2} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $values</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.6886e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4.2293e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0983e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># PHILOX also accepts a three-element state</span></span></span>
+<span class="r-in"><span><span class="fu">prim_rng_bit_generator</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">0L</span>, <span class="fl">0L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"ui64"</span><span class="op">)</span>, <span class="st">"PHILOX"</span>,</span></span>
+<span class="r-in"><span>  dtype <span class="op">=</span> <span class="st">"i32"</span>, shape <span class="op">=</span> <span class="fl">4L</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $state</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUui64{3} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $values</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.7139e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.7818e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.1599e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2.6005e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{4} ] </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>

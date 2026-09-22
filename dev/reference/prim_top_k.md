@@ -19,8 +19,9 @@ prim_top_k(x, k, indices = TRUE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Array of integer, unsigned integer, or floating-point dtype with rank
-  \>= 1.
+  One input, with at least 1 axis. Can be any numeric data type. An R
+  value materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - k:
 
@@ -36,13 +37,13 @@ prim_top_k(x, k, indices = TRUE)
 
 ## Value
 
-`list` of one or two
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-values:  
-The top-`k` values (same dtype as `x`) and, if `indices` is `TRUE`,
-their indices along the last axis, of the default integer data type (see
+(named `list` of one or two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Element `values`, the top-`k` values at the input's data type, and, when
+`indices` is `TRUE`, `indices`, their indices along the last axis at the
+default integer data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
-Both have the same shape as `x` with the last axis replaced by `k`. With
+Both have the input's shape with the last axis replaced by `k`. With
 indices, ties are broken by lower index first.
 
 ## Implemented Rules
@@ -72,6 +73,7 @@ top-k kernel, so it keeps
 ## Examples
 
 ``` r
+# `values` keeps the input's data type, `indices` is the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 prim_top_k(x, k = 3L)
 #> $values

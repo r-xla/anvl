@@ -61,8 +61,8 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 
 ## Value
 
-A `JitFunction` (a `function` with the same formals as `f`). The
-returned wrapper expects
+(`JitFunction`)  
+A `function` with the same formals as `f`. The returned wrapper expects
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 inputs and returns
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)

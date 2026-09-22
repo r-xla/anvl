@@ -15,13 +15,13 @@ Specifically, these values are `arrayish`:
 
   - `numeric` and `logical` R arrays.
 
-- [`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md):
-  this is how dynamic
-  [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)s
-  are represented during
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
-
 Use `is_arrayish()` to check whether a value is arrayish.
+
+The group words the parameter descriptions use are listed below;
+[`dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md) gives
+the categories they are built from, and
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+the default an R value materializes at.
 
 ## Usage
 
@@ -44,7 +44,35 @@ is_arrayish(x, convert_ok = TRUE)
 
 ## Value
 
-`logical(1)`
+(`logical(1)`)  
+Whether `x` is arrayish.
+
+## Details
+
+During [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
+[`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md) is
+also arrayish, but it is simply the trace-time representation of an
+`AnvlArray`.
+
+## Data Type Vocabulary
+
+Where a page says which data types an argument takes, it names a group
+of them with a single word:
+
+- *any data type* – all of them: `bool`, the signed and unsigned
+  integers, and the floats.
+
+- *numeric* – signed integer, unsigned integer and float.
+
+- *integer* – signed and unsigned integer.
+
+- *integerish* – boolean and integer, signed or unsigned.
+
+- *signed numeric* – signed integer and float.
+
+- *float* – the whole float category: `f32` and `f64`.
+
+- *boolean* – `bool`, the only member of its category.
 
 ## See also
 
@@ -54,7 +82,7 @@ is_arrayish(x, convert_ok = TRUE)
 ## Examples
 
 ``` r
-# AnvlArrays are arrayish
+# AnvlArray objects are arrayish
 is_arrayish(nv_array(1:4))
 #> [1] TRUE
 

@@ -13,16 +13,19 @@ nv_min(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs with a [common data
+  type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
+  be any data type. Scalars are broadcast, and R values assume the other
+  operand's data type within their [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
+  otherwise falling back to their [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and being converted to the common data type.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the inputs' broadcast shape and common data type.
 
 ## See also
 
@@ -39,5 +42,19 @@ nv_min(x, y)
 #>  1
 #>  2
 #>  3
+#> [ CPUf32{3} ] 
+
+# different data types are promoted to their common one
+nv_min(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
+#> AnvlArray
+#>  1
+#> [ CPUf64{} ] 
+
+# a scalar is broadcast and an R integer is converted to a float
+nv_min(x, 2L)
+#> AnvlArray
+#>  1
+#>  2
+#>  2
 #> [ CPUf32{3} ] 
 ```

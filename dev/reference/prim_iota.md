@@ -20,7 +20,8 @@ prim_iota(axis, dtype, shape, start = 1L, device = NULL)
 
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Data type of the result. Can be any numeric data type, boolean being
+  the one exception.
 
 - shape:
 
@@ -57,7 +58,7 @@ prim_iota(axis, dtype, shape, start = 1L, device = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the given `dtype` and `shape`.
 
 ## Implemented Rules
@@ -69,7 +70,8 @@ Has the given `dtype` and `shape`.
 ## StableHLO
 
 Lowers to
-[`hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html).
+[`hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html),
+specified under [iota](https://openxla.org/stablehlo/spec#iota).
 
 ## See also
 
@@ -78,6 +80,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the sequence is built at the requested data type
 prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 #> AnvlArray
 #>  1

@@ -22,7 +22,7 @@ shape(x, ...)
 
 ## Value
 
-[`integer()`](https://rdrr.io/r/base/integer.html)
+([`integer()`](https://rdrr.io/r/base/integer.html))
 
 ## Details
 

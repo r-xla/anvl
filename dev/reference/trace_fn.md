@@ -90,9 +90,8 @@ trace_fn(
 
 ## Value
 
-An
-[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md)
-containing the traced operations.
+([`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md))
+Contains the traced operations.
 
 ## See also
 

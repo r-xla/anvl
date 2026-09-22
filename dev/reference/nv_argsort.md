@@ -16,7 +16,9 @@ nv_argsort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axis:
 
@@ -41,13 +43,13 @@ nv_argsort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
-the default integer data type (see
-[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))  
-Same shape as `x`, or 1-D holding every element's index when `axis` is
-`NULL`. For a size-0 axis, the output is an empty array of the same
-shape (a valid empty permutation). Indexing the flattened input by the
-result reproduces
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+regardless of the input's, and the input's shape – or 1-D holding every
+element's index when `axis` is `NULL`. For a size-0 axis, the output is
+an empty array of the same shape (a valid empty permutation). Indexing
+the flattened input by the result reproduces
 [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md)'s
 output.
 
@@ -64,6 +66,7 @@ output.
 ## Examples
 
 ``` r
+# the indices come out at the default integer data type
 x <- nv_array(c(3, 1, 4, 1, 5))
 nv_argsort(x)
 #> AnvlArray

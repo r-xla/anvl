@@ -15,7 +15,9 @@ nv_reverse(x, axes = NULL)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
@@ -25,7 +27,7 @@ nv_reverse(x, axes = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same shape and data type as `x`.
 
 ## The [`rev()`](https://rdrr.io/r/base/rev.html) generic
@@ -45,6 +47,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# the order along axis 1 is flipped
 x <- nv_array(c(1, 2, 3, 4, 5))
 nv_reverse(x)
 #> AnvlArray

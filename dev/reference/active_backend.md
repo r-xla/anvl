@@ -11,7 +11,8 @@ active_backend()
 
 ## Value
 
-`character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
+(`character(1)`)  
+The backend name (e.g. `"pjrt"`, `"quickr"`).
 
 ## See also
 

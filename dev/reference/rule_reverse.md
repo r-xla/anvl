@@ -34,7 +34,7 @@ rule_reverse(backward = NULL, forward = NULL)
 
 ## Value
 
-An `anvl_rule_reverse` object.
+(`anvl_rule_reverse`)
 
 ## See also
 

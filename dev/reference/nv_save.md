@@ -1,4 +1,4 @@
-# Save arrays to a file
+# Save Arrays to a File
 
 Saves a named list of arrays to a file in the
 [safetensors](https://huggingface.co/docs/safetensors/index) format.
@@ -15,7 +15,7 @@ nv_save(arrays, path)
 
   (named `list` of
   [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))  
-  Named list of arrays to save. Names must be unique.
+  Named list of arrays. Names must be unique.
 
 - path:
 
@@ -24,7 +24,8 @@ nv_save(arrays, path)
 
 ## Value
 
-`NULL` (invisibly).
+(`NULL`)  
+Invisibly.
 
 ## Details
 
@@ -41,6 +42,7 @@ that opens and closes a file connection.
 ## Examples
 
 ``` r
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 #> AnvlArray

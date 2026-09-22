@@ -18,7 +18,7 @@ as_dtype(x)
 
 ## Value
 
-A `DataType` object.
+(`DataType`)
 
 ## Details
 

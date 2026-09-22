@@ -12,6 +12,8 @@ side with
 [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
 to decide what they meet at.
 
+See the *Type Promotion* article for more information.
+
 ## Usage
 
 ``` r
@@ -20,19 +22,15 @@ common_dtype(lhs_dtype, rhs_dtype)
 
 ## Arguments
 
-- lhs_dtype:
+- lhs_dtype, rhs_dtype:
 
   ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  The left-hand side type.
-
-- rhs_dtype:
-
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  The right-hand side type.
+  The two data types.
 
 ## Value
 
-([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))
+([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+The narrowest common data type.
 
 ## Examples
 

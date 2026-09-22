@@ -35,10 +35,11 @@ nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type. `NULL` (default) uses the backend's default integer data
-  type (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
-  For `nv_seq_like()`, `NULL` uses `dtype(like)`.
+  Data type of the result. Can be any numeric data type. `NULL`
+  (default) uses the default integer data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),
+  since the values are whole. For `nv_seq_like()`, `NULL` uses
+  `dtype(like)`.
 
 - device:
 
@@ -71,13 +72,15 @@ nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-1-D array of length `(end - start) %/% by + 1`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `dtype` and shape `(end - start) %/% by + 1`.
 
 ## See also
 
 [`nv_linspace()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
 for a given number of evenly spaced values,
+[`nv_iota()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md) for
+values increasing along an axis of any shape,
 [`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md)
 for the underlying primitive.
 
@@ -92,6 +95,8 @@ nv_seq(3, 7)
 #>  6
 #>  7
 #> [ CPUi32{5} ] 
+
+# a range that counts down needs no `by`
 nv_seq(7, 3)
 #> AnvlArray
 #>  7
@@ -100,15 +105,28 @@ nv_seq(7, 3)
 #>  4
 #>  3
 #> [ CPUi32{5} ] 
-nv_seq(0, 10, by = 2)
+
+# `end` is only reached where a whole number of steps lands on it
+nv_seq(0, 9, by = 2)
 #> AnvlArray
-#>   0
-#>   2
-#>   4
-#>   6
-#>   8
-#>  10
-#> [ CPUi32{6} ] 
+#>  0
+#>  2
+#>  4
+#>  6
+#>  8
+#> [ CPUi32{5} ] 
+
+# a float data type gives the same values as floats
+nv_seq(3, 7, dtype = "f32")
+#> AnvlArray
+#>  3
+#>  4
+#>  5
+#>  6
+#>  7
+#> [ CPUf32{5} ] 
+
+# nv_seq_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 #> AnvlArray

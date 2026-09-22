@@ -18,7 +18,9 @@ sort(x, decreasing = FALSE, ..., axis = NULL)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axis:
 
@@ -48,8 +50,8 @@ sort(x, decreasing = FALSE, ..., axis = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same shape and data type as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## NaN handling
 
@@ -79,6 +81,7 @@ for the underlying primitive,
 ## Examples
 
 ``` r
+# sorting moves elements, so the data type and shape stay
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_sort(x)
 #> AnvlArray

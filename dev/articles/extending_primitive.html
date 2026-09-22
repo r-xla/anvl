@@ -283,8 +283,8 @@ one.</p>
 <p>Where the default goes wrong is when a primitive has several operands
 that must agree. Materializing each at its own default would make
 <code>prim_add(1, nv_scalar(2, "f64"))</code> an error – the literal
-would become <code>f32</code> and meet an <code>f64</code> – where it
-should give <code>f64</code>. In such cases, you should call
+would become the default float and could meet an <code>f64</code> –
+where it should give <code>f64</code>. In such cases, you should call
 <code><a href="../reference/apply_promotion.html">apply_promotion()</a></code> in the primitive and pass the rules you
 want to apply. This needs to be done before calling
 <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>. These should <em>not</em> change the data
@@ -529,7 +529,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55a540540940&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x5609a488c918&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>
@@ -562,9 +562,9 @@ function:</p>
 still be a bare R value – one that has no data type yet (see
 <code><a href="../reference/RData.html">?RData</a></code>). <code><a href="../reference/shape.html">shape()</a></code> and <code><a href="../reference/naxes.html">naxes()</a></code>
 answer for it as they do for an array. For the data type there is
-<code><a href="../reference/peek_dtype.html">peek_dtype()</a></code>, which reports the data type the value
-<em>would</em> take; <code><a href="../reference/dtype.html">dtype()</a></code> errors on an R value, because
-there is nothing to report until it is used.</p>
+<code><a href="../reference/peek_dtype.html">peek_dtype()</a></code>, which reports the type the value
+<em>would</em> materialize at; <code><a href="../reference/dtype.html">dtype()</a></code> errors on an R
+value, because there is nothing to report until it is used.</p>
 </div>
 <div class="section level3">
 <h3 id="using-your-primitive">Using Your Primitive<a class="anchor" aria-label="anchor" href="#using-your-primitive"></a>

@@ -17,9 +17,8 @@ AnvlBackendPjrt()
 
 ## Value
 
-An
-[`AnvlBackend`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md)
-object with subclass `"AnvlBackendPjrt"`.
+([`AnvlBackend`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md))  
+With subclass `"AnvlBackendPjrt"`.
 
 ## Data representation
 

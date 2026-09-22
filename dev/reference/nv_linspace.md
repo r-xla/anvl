@@ -4,10 +4,7 @@ Creates a 1-D array with `steps` evenly spaced values from `start` to
 `end` (both inclusive), like R's `seq(start, end, length.out = steps)`.
 
 The spacing `(end - start) / (steps - 1)` is generally not a whole
-number, so the result is floating-point and `dtype` must name a float
-data type. Convert the result with
-[`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
-to obtain integers, which leaves the rounding yours to choose.
+number, so the result is a float.
 
 `nv_linspace_like()` is a variant where `dtype` and `device` default to
 those of `like`.
@@ -38,11 +35,11 @@ nv_linspace_like(like, start, end, steps, dtype = NULL, device = NULL)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Floating-point data type. `NULL` (default) uses the backend's default
-  float data type (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
-  For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must then
-  be a floating-point data type.
+  Data type of the result. Must be a float data type; `NULL` (default)
+  uses the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),
+  since the spacing is fractional. For `nv_linspace_like()`, `NULL` uses
+  `dtype(like)`, which must then be a float too.
 
 - device:
 
@@ -75,13 +72,17 @@ nv_linspace_like(like, start, end, steps, dtype = NULL, device = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-1-D array of length `steps`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `dtype` and shape `steps`.
 
 ## See also
 
 [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md) for
-consecutive integers.
+consecutive integers,
+[`nv_iota()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md) for
+values increasing along an axis of any shape,
+[`dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md) for the
+data type categories.
 
 ## Examples
 
@@ -94,6 +95,32 @@ nv_linspace(0, 1, steps = 5L)
 #>  0.7500
 #>  1.0000
 #> [ CPUf32{5} ] 
+
+# end below start counts down
+nv_linspace(1, 0, steps = 3L)
+#> AnvlArray
+#>  1.0000
+#>  0.5000
+#>  0.0000
+#> [ CPUf32{3} ] 
+
+# steps = 1 gives start alone
+nv_linspace(2.5, 10, steps = 1L)
+#> AnvlArray
+#>  2.5000
+#> [ CPUf32{1} ] 
+
+# the data type must be a float; convert afterwards for integers
+nv_convert(nv_linspace(0, 10, steps = 5L), "i32")
+#> AnvlArray
+#>   0
+#>   2
+#>   5
+#>   7
+#>  10
+#> [ CPUi32{5} ] 
+
+# nv_linspace_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_linspace_like(x, 0, 1, steps = 3L)
 #> AnvlArray

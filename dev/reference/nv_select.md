@@ -15,7 +15,9 @@ nv_select(x, axis, index)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axis:
 
@@ -26,12 +28,14 @@ nv_select(x, axis, index)
 - index:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar or 1D arrayish input (integer).
+  Scalar or 1-D array of an integer data type, which it keeps – the
+  index takes no part in `x`'s data type.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same data type as `x`. `axis` is dropped if `index` was scalar.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s data type. `axis` is dropped if `index` was scalar, and
+otherwise resized to the number of selected elements.
 
 ## See also
 
@@ -42,6 +46,7 @@ for general subsetting,
 ## Examples
 
 ``` r
+# a scalar index drops the axis, an index array keeps it
 m <- nv_matrix(1:6, nrow = 2)
 nv_select(m, axis = 2L, index = 2L)
 #> AnvlArray

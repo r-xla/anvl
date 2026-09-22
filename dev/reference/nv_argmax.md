@@ -14,32 +14,35 @@ nv_argmax(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Axes to reduce. Negative values count from the end, i.e. `-1` refers
-  to the last axis. If `NULL` (default), reduces over all axes,
-  returning a scalar.
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis. If `NULL` (default), reduces over all axes.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced axes.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 - nan_rm:
 
   (`logical(1)`)  
-  How to handle `NaN` values in floating-point inputs. If `FALSE`
-  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
-the default integer data type (see
-[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))  
-Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+regardless of the input's, and the input's shape with `axes` removed
+(`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Reducing several axes
 
@@ -67,6 +70,7 @@ the returned index points at the first such `NaN`. With `nan_rm = TRUE`,
 ## Examples
 
 ``` r
+# the index comes out at the default integer data type
 nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #> AnvlArray
 #>  6

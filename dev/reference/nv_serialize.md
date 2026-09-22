@@ -1,4 +1,4 @@
-# Serialize arrays to raw bytes
+# Serialize Arrays to Raw Bytes
 
 Serializes a named list of arrays into the
 [safetensors](https://huggingface.co/docs/safetensors/index) format.
@@ -25,8 +25,8 @@ nv_serialize(arrays, con = NULL)
 
 ## Value
 
-A [`raw`](https://rdrr.io/r/base/raw.html) vector if `con` is `NULL`,
-otherwise `NULL` (invisibly).
+([`raw`](https://rdrr.io/r/base/raw.html) \| `NULL`)  
+A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
 
 ## See also
 
@@ -37,6 +37,7 @@ otherwise `NULL` (invisibly).
 ## Examples
 
 ``` r
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 #> AnvlArray

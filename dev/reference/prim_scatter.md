@@ -35,20 +35,26 @@ prim_scatter(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type. The base array to scatter into.
+  The base array to scatter into. Can be any data type. `x` and `update`
+  must have the same data type. An R value among them assumes the data
+  type of the others when it is in its [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when none of them has one.
 
 - scatter_indices:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-  of integer type)  
-  Array of indices. Contains index vectors that map to positions in `x`
-  via `scatter_axes_to_x_axes`. The axis specified by
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  Array of indices, of an integer data type, which it keeps – the
+  indices take no part in `x`'s. Contains index vectors that map to
+  positions in `x` via `scatter_axes_to_x_axes`. The axis specified by
   `index_vector_axis` holds the index vectors.
 
 - update:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Update values array. Must have the same data type as `x`.
+  Update values array. Shares `x`'s data type – see `x`.
 
 - update_window_axes:
 
@@ -112,7 +118,7 @@ prim_scatter(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same data type and shape as `x`.
 
 ## Out of Bounds Behavior
@@ -137,7 +143,10 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 ## StableHLO
 
 Lowers to
-[`hlo_scatter()`](https://r-xla.github.io/stablehlo/reference/hlo_scatter.html).
+[`hlo_scatter()`](https://r-xla.github.io/stablehlo/reference/hlo_scatter.html),
+specified under [scatter](https://openxla.org/stablehlo/spec#scatter).
+The axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.
 
 ## See also
 

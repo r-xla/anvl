@@ -19,7 +19,9 @@ prim_cumprod(x, axis)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axis:
 
@@ -29,8 +31,8 @@ prim_cumprod(x, axis)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -39,10 +41,11 @@ Has the same shape and data type as the input.
 ## StableHLO
 
 Lowers to
-[`hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
-with
-[`hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html)
-as the reducer.
+[`hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html),
+specified under
+[reduce_window](https://openxla.org/stablehlo/spec#reduce_window). The
+reducer is
+[`hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html).
 
 ## See also
 
@@ -51,6 +54,7 @@ as the reducer.
 ## Examples
 
 ``` r
+# the accumulation keeps the input's data type
 x <- nv_matrix(1:6, nrow = 2)
 prim_cumprod(x, axis = 1L)
 #> AnvlArray

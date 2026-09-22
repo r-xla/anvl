@@ -18,7 +18,7 @@ quickr_device(x = "cpu")
 
 ## Value
 
-A `QuickrDevice` object.
+(`QuickrDevice`)
 
 ## See also
 

@@ -16,7 +16,9 @@ nv_subset(x, ...)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - ...:
 
@@ -27,7 +29,9 @@ nv_subset(x, ...)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type, and the shape the specifications select – a
+scalar index drops its axis, a range or an index array keeps it.
 
 ## See also
 

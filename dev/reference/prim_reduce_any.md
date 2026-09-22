@@ -13,7 +13,7 @@ prim_reduce_any(x, axes, drop = TRUE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of boolean data type.
+  One input. Must be a boolean or an R logical.
 
 - axes:
 
@@ -24,15 +24,14 @@ prim_reduce_any(x, axes, drop = TRUE)
 - drop:
 
   (`logical(1)`)  
-  Whether to drop the reduced axes from the output shape. If `TRUE`, the
-  reduced axes are removed. If `FALSE`, the reduced axes are set to 1.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Boolean array. When `drop = TRUE`, the shape is that of `x` with `axes`
-removed. When `drop = FALSE`, the shape is that of `x` with `axes` set
-to 1.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the boolean data type. The shape is the input's with the reduced
+axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Implemented Rules
 
@@ -45,10 +44,10 @@ to 1.
 ## StableHLO
 
 Lowers to
-[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
-with
-[`hlo_or()`](https://r-xla.github.io/stablehlo/reference/hlo_or.html) as
-the reducer.
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html),
+specified under [reduce](https://openxla.org/stablehlo/spec#reduce). The
+reducer is
+[`hlo_or()`](https://r-xla.github.io/stablehlo/reference/hlo_or.html).
 
 ## See also
 
@@ -58,9 +57,16 @@ the reducer.
 
 ``` r
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
+# TRUE where any element is TRUE along axis 1
 prim_reduce_any(x, axes = 1L)
 #> AnvlArray
 #>  1
 #>  1
 #> [ CPUbool{2} ] 
+
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_reduce_any(x, axes = 1L, drop = FALSE)
+#> AnvlArray
+#>  1 1
+#> [ CPUbool{1,2} ] 
 ```

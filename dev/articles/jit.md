@@ -80,7 +80,7 @@ linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
 jit_cache_size(linear_jit)
 #> [1] 1
 
-# different shapes -> a second entry is added
+# different shapes -> a second entry, so a second trace
 linear_jit(
   nv_array(c(1, 2)),
   nv_array(c(3, 4)),
@@ -110,8 +110,9 @@ depending on whether it is *dynamic* (an arrayish value, the default) or
   therefore land on different cache entries.
 
 In the snippet above all three inputs are dynamic, so the first two
-calls share a key (three `f32[]` scalars) and hit the cache, while the
-third call presents three `f32[2]` vectors and forces a retrace.
+calls share a key (three scalars of the default float data type) and hit
+the cache, while the third call presents three vectors of length 2 and
+forces a retrace.
 
 You’ll want `static =` when the body of the function needs to look at a
 concrete R value – typically a flag, a small integer, or a string. It’s
@@ -334,9 +335,12 @@ trace_fn(linear_default_b, args = list(x = f32_scalar, w = f32_scalar))
 #> }
 ```
 
-The graph contains `add(%1, 5:f32?)` – the value `5` is hard-wired into
-the program. Changing `default_b` afterwards has no effect on the graph
-(and, once the graph is compiled, no effect on the executable either).
+The graph contains an `add` whose second operand is the literal `5` –
+the value is hard-wired into the program, at the data type of the array
+it meets (`f32` here, from the `f32` inputs; a default only steps in for
+a literal that meets nothing typed). Changing `default_b` afterwards has
+no effect on the graph (and, once the graph is compiled, no effect on
+the executable either).
 
 ### Side effects only fire during tracing
 

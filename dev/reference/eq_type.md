@@ -32,7 +32,7 @@ neq_type(e1, e2)
 
 ## Value
 
-`logical(1)` - `TRUE` if the arrays are equal, `FALSE` otherwise.
+(`logical(1)`)
 
 ## Examples
 

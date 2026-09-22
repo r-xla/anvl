@@ -31,8 +31,8 @@ value_and_gradient(f, wrt = NULL)
 
 ## Value
 
-A function with the same formals as `f` that returns
-`list(value = ..., grad = ...)`.
+(`function`)  
+Has the same formals as `f` and returns `list(value = ..., grad = ...)`.
 
 ## See also
 

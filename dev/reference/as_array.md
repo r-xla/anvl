@@ -42,8 +42,9 @@ as_array(x, ...)
 
 ## Value
 
-An R [`array`](https://rdrr.io/r/base/array.html) or `vector` of length
-1.
+([`array`](https://rdrr.io/r/base/array.html) \| `vector(1)`)  
+An R array with the input's shape, or – for a scalar, which R cannot
+represent as an array – a vector of length 1.
 
 ## Details
 

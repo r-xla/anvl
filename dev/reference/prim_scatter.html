@@ -124,19 +124,23 @@ indices.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Arrayish value of any data type. The base array to scatter into.</p></dd>
+The base array to scatter into. Can be any data type.
+<code>x</code> and <code>update</code> must have the same data type. An R value among them
+assumes the data type of the others when it is in its <a href="dtypes.html">data type category</a>, and its <a href="default_dtypes.html">default data type</a> when none
+of them has one.</p></dd>
 
 
 <dt id="arg-scatter-indices">scatter_indices<a class="anchor" aria-label="anchor" href="#arg-scatter-indices"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code> of integer type)<br>
-Array of indices. Contains index vectors that map to positions in
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Array of indices, of an integer data type, which it keeps – the indices
+take no part in <code>x</code>'s. Contains index vectors that map to positions in
 <code>x</code> via <code>scatter_axes_to_x_axes</code>. The axis specified
 by <code>index_vector_axis</code> holds the index vectors.</p></dd>
 
 
 <dt id="arg-update">update<a class="anchor" aria-label="anchor" href="#arg-update"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Update values array. Must have the same data type as <code>x</code>.</p></dd>
+Update values array. Shares <code>x</code>'s data type – see <code>x</code>.</p></dd>
 
 
 <dt id="arg-update-window-axes">update_window_axes<a class="anchor" aria-label="anchor" href="#arg-update-window-axes"></a></dt>
@@ -202,7 +206,7 @@ Binary function <code>f(old, new)</code> that combines the existing value in
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has the same data type and shape as <code>x</code>.</p>
     </div>
     <div class="section level2">
@@ -232,7 +236,10 @@ implementation-defined and may vary between plugins ("cpu", "cuda").</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_scatter.html" class="external-link">hlo_scatter()</a></code>.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_scatter.html" class="external-link">hlo_scatter()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#scatter" class="external-link">scatter</a>.
+The axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

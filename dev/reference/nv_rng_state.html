@@ -93,7 +93,9 @@ random sampling functions and is updated after each call.</p>
 
 <dl><dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Scalar <code>i32</code> seed value.</p></dd>
+Scalar seed. Must be a signed or unsigned integer; it is brought to <code>i32</code>,
+so a wider one is narrowed to its low 32 bits. An R integer is built at
+<code>i32</code> directly, whatever the default integer data type is.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
@@ -110,7 +112,8 @@ named by the <code>PJRT_PLATFORM</code> environment variable on the <code>"pjrt"
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="AnvlArray.html">nv_array</a></code> of dtype <code>ui64</code> and shape <code>(2)</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+A <code>ui64</code> array of length 2, whatever <code>seed</code>'s data type was.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

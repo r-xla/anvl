@@ -13,19 +13,21 @@ nv_var(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Axes to reduce. Negative values count from the end, i.e. `-1` refers
-  to the last axis. If `NULL` (default), reduces over all axes,
-  returning a scalar.
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis. If `NULL` (default), reduces over all axes.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced axes.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 - correction:
 
@@ -35,14 +37,17 @@ nv_var(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 - nan_rm:
 
   (`logical(1)`)  
-  How to handle `NaN` values in floating-point inputs. If `FALSE`
-  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input. When `drop = TRUE`, the reduced
-axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type where that is a float, and the default float
+data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+otherwise. The shape is the input's with the reduced axes removed
+(`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Details
 
@@ -58,16 +63,25 @@ population variance.
 ## Examples
 
 ``` r
-x <- nv_array(c(1, 2, 3, 4, 5))
-nv_var(x)             # all axes -> scalar
+x <- nv_array(1:5)
+# the result is a float, even though the input is an integer
+nv_var(x)
 #> AnvlArray
 #>  2.5000
 #> [ CPUf32{} ] 
-nv_var(x, axes = 1L)
+
+# Bessel's correction by default, correction = 0 for the population variance
+nv_var(x, correction = 0L)
 #> AnvlArray
-#>  2.5000
+#>  2
 #> [ CPUf32{} ] 
-nv_var(nv_array(c(1, NaN, 3, 5)), axes = 1L, nan_rm = TRUE)
+
+# NaN propagates unless nan_rm = TRUE
+nv_var(nv_array(c(1, NaN, 3, 5)))
+#> AnvlArray
+#>  nan
+#> [ CPUf32{} ] 
+nv_var(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #> AnvlArray
 #>  4
 #> [ CPUf32{} ] 

@@ -17,7 +17,12 @@ nv_concatenate(..., axis = NULL)
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrays to concatenate. Must have the same shape except along `axis`.
+  Arrays to concatenate. Can be of any data type; they are [promoted to
+  a common data
+  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md)
+  and scalars are
+  [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md).
+  Must have the same shape except along `axis`.
 
 - axis:
 
@@ -30,7 +35,7 @@ nv_concatenate(..., axis = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the common data type and a shape matching the inputs in all axes
 except `axis`, which is the sum of input sizes.
 
@@ -52,6 +57,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# the operands are promoted to a common data type; axis 1 grows to 6
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
 nv_concatenate(x, y)

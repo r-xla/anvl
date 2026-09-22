@@ -32,7 +32,7 @@ gradient(f, wrt = NULL)
 
 ## Value
 
-`function`
+(`function`)
 
 ## See also
 

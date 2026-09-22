@@ -13,7 +13,9 @@ nv_cummin(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axis:
 
@@ -36,17 +38,22 @@ nv_cummin(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
 - nan_rm:
 
   (`logical(1)`)  
-  How to handle `NaN` values in floating-point inputs. If `FALSE`
-  (default), `NaN` propagates forward from its first occurrence. If
-  `TRUE`, `NaN` is treated as the identity element of the cumulative op
-  (`0` for sum, `1` for prod, `-Inf` / `+Inf` for max / min) and
-  contributes nothing to the running value.
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates forward from its first occurrence. If `TRUE`, `NaN`
+  is treated as the identity element of the cumulative op (`0` for sum,
+  `1` for prod, `-Inf` / `+Inf` for max / min) and contributes nothing
+  to the running value.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-(when `indices = FALSE`) or named list of two arrays (when
-`indices = TRUE`).
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) \|
+named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+One array when `indices = FALSE`, a named `list` of `values` and
+`indices` when `indices = TRUE`. The values have the input's data type
+and the indices the default integer data type; both have the input's
+shape when `axis` is given, and are 1-D of length `prod(shape(x))` when
+`axis` is `NULL`.
 
 ## Relation to base R
 
@@ -64,6 +71,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# the running minimum keeps the data type; the indices are the default integer
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummin(x)
 #> AnvlArray

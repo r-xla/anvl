@@ -25,7 +25,10 @@ peek_dtype(x)
 
 ## Value
 
-([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))
+([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+The data type `x` has, or the [default data
+type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md) it
+would materialize at if it is still a bare R value.
 
 ## See also
 

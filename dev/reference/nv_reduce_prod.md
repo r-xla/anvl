@@ -15,34 +15,36 @@ nv_reduce_prod(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Axes to reduce. Negative values count from the end, i.e. `-1` refers
-  to the last axis. If `NULL` (default), reduces over all axes,
-  returning a scalar.
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis. If `NULL` (default), reduces over all axes.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced axes.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 - nan_rm:
 
   (`logical(1)`)  
-  How to handle `NaN` values in floating-point inputs. If `FALSE`
-  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input, except for a boolean input, which
-is accumulated at the default integer data type (see
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type, except a boolean input, which is accumulated
+at the default integer data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
-When `drop = TRUE`, the reduced axes are removed. When `drop = FALSE`,
-the reduced axes are set to 1.
+The shape is the input's with the reduced axes removed (`drop = TRUE`)
+or set to 1 (`drop = FALSE`).
 
 ## The [`prod()`](https://rdrr.io/r/base/prod.html) generic
 
@@ -62,16 +64,32 @@ for the underlying primitive.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-nv_reduce_prod(x)            # all axes -> scalar
+# no axes given: reduce over all of them
+nv_reduce_prod(x)
 #> AnvlArray
 #>  720
 #> [ CPUi32{} ] 
+
+# reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_reduce_prod(x, axes = 1L)
 #> AnvlArray
 #>   2
 #>  12
 #>  30
 #> [ CPUi32{3} ] 
+nv_reduce_prod(x, axes = 1L, drop = FALSE)
+#> AnvlArray
+#>   2 12 30
+#> [ CPUi32{1,3} ] 
+
+# negative axes count from the end
+nv_reduce_prod(x, axes = -1L)
+#> AnvlArray
+#>  15
+#>  48
+#> [ CPUi32{2} ] 
+
+# NaN propagates unless nan_rm = TRUE
 nv_reduce_prod(nv_array(c(2, NaN, 3)))
 #> AnvlArray
 #>  nan

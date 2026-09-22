@@ -1,7 +1,6 @@
 # Primitive Clamp
 
-Clamps every element of `x` to the range `[min_val, max_val]`, i.e.
-`max(min_val, min(x, max_val))`.
+Clamps every element of `x` to the range `[min_val, max_val]`.
 
 ## Usage
 
@@ -11,25 +10,27 @@ prim_clamp(min_val, x, max_val)
 
 ## Arguments
 
-- min_val:
+- min_val, max_val:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Minimum value. Must be scalar or the same shape as `x`.
+  Lower and upper bound. Each must be scalar or the same shape as `x`,
+  and shares its data type.
 
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
-
-- max_val:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Maximum value. Must be scalar or the same shape as `x`.
+  The array to clamp. Can be any data type. `min_val`, `x` and `max_val`
+  must have the same data type. An R value among them assumes the data
+  type of the others when it is in its [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when none of them has one.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type and shape as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has `x`'s shape and the data type the operands agreed on.
 
 ## Implemented Rules
 
@@ -40,7 +41,8 @@ Has the same data type and shape as `x`.
 ## StableHLO
 
 Lowers to
-[`hlo_clamp()`](https://r-xla.github.io/stablehlo/reference/hlo_clamp.html).
+[`hlo_clamp()`](https://r-xla.github.io/stablehlo/reference/hlo_clamp.html),
+specified under [clamp](https://openxla.org/stablehlo/spec#clamp).
 
 ## See also
 
@@ -50,10 +52,27 @@ Lowers to
 
 ``` r
 x <- nv_array(c(-1, 0.5, 2))
-prim_clamp(nv_scalar(0), x, nv_scalar(1))
+# the R bounds take x's data type
+prim_clamp(0, x, 1)
 #> AnvlArray
 #>  0.0000
 #>  0.5000
 #>  1.0000
 #> [ CPUf32{3} ] 
+
+# an integer array takes integer bounds
+prim_clamp(0L, nv_array(1:5), 3L)
+#> AnvlArray
+#>  1
+#>  2
+#>  3
+#>  3
+#>  3
+#> [ CPUi32{5} ] 
+
+# the f64 bound settles it: x and max_val are built at f64 too
+prim_clamp(nv_scalar(0, "f64"), 1, 2)
+#> AnvlArray
+#>  1
+#> [ CPUf64{} ] 
 ```

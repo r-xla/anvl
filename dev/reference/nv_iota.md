@@ -26,17 +26,18 @@ nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
 
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Data type of the result, required here. Can be any numeric data type.
+  For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
 
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result.
 
 - start:
 
   (`integer(1)`)  
-  Starting value (default 1).
+  Starting value (default 1). Built at `dtype`, as the increments are.
 
 - device:
 
@@ -69,7 +70,7 @@ nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the given `dtype` and `shape`.
 
 ## See also
@@ -84,6 +85,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# the sequence is built at the requested data type
 nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 #> AnvlArray
 #>  1
@@ -92,6 +94,8 @@ nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 #>  4
 #>  5
 #> [ CPUi32{5} ] 
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_fill(0L, shape = c(2, 3))
 nv_iota_like(x, axis = 1L)
 #> AnvlArray

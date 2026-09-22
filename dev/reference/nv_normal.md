@@ -22,18 +22,23 @@ nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Quantiles at which to evaluate the density (`x`) or the distribution
-  function (`q`).
+  function (`q`). `x` can be any float data type; `q` must be `f32` or
+  `f64` (see "Details"). An R `double` is materialized at its [default
+  data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - mean:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Mean of the distribution (scalar or same shape as `x`/`q`/`p`).
+  Mean of the distribution, scalar or the same shape as `x`/`q`/`p`.
+  Converted to the argument's data type.
 
 - sd:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Standard deviation of the distribution (scalar or same shape as
-  `x`/`q`/`p`). Must be positive, otherwise results are invalid.
+  Standard deviation of the distribution, scalar or the same shape as
+  `x`/`q`/`p`. Converted to the argument's data type. Must be positive,
+  otherwise results are invalid.
 
 - log, log_p:
 
@@ -51,45 +56,52 @@ nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Probabilities at which to evaluate the quantile function. Values
-  outside \\\[0, 1\]\\ give `NaN`.
+  outside \\\[0, 1\]\\ give `NaN`. Must be `f32` or `f64` (see
+  "Details"); `mean` and `sd` are converted to it. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result.
 
 - initial_state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  RNG state (`ui64[2]`).
+  RNG state: a 1-D array of two `ui64` elements, as
+  [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
+  returns. The data type and length are fixed by the generator, not by
+  the default data types, and the returned `state` has them too.
 
 - dtype:
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sample: a 32- or 64-bit float. `NULL` (default) takes
-  it from `mean` and `sd` where either is a real array, and falls back
-  to the default float data type (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
-  where both are bare R values, which have none.
+  Floating point data type. The default (`NULL`) uses the [default float
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-`nv_dnorm()` and `nv_pnorm()` return an
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) \|
+named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+`nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-with the same shape and data type as `x`/`q`.
+with the shape and data type of `x`/`q`/`p`.
 
-`nv_rnorm()` returns a [`list()`](https://rdrr.io/r/base/list.html) of
-two [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-elements: the updated RNG state and the sampled values.
+`nv_rnorm()` returns a named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md):
+`state`, the updated RNG state with `initial_state`'s data type and
+shape, and `values`, the sample of shape `shape` and the data type
+described under `dtype`.
 
 ## Details
 
 The Normal distribution has probability density function: \$\$f(x) =
 \frac{1}{\sigma\sqrt{2\pi}}
 \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)\$\$ where \\\mu\\ is the
-mean and \\\sigma\\ is the standard deviation. The `mean` and `sd` are
-converted to the data type of `x`/`q`/`p`.
+mean and \\\sigma\\ is the standard deviation.
 
 `nv_pnorm` uses the asymptotic expansion from Abramowitz & Stegun
 (1964), equation 26.2.12, in the left tail when `log_p = TRUE` to
@@ -99,10 +111,6 @@ maintain accuracy.
 (1989) (this is `ndtri` in the Cephes library as used by JAX) for `f64`,
 and uses a new lower degree Remez minimax rational approximation on the
 same intervals for `f32`.
-
-The thresholds and coefficients of `nv_pnorm()` and `nv_qnorm()` are
-written for `f32` and `f64`, so those two are the only data types they
-accept.
 
 ## Random generation
 
@@ -208,6 +216,7 @@ nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 #>   -1.1015
 #>    1.3096
 #> [ CPUf64{3} ] 
+# `state` is the updated RNG state, `values` the sample
 state <- nv_rng_state(42L)
 result <- nv_rnorm(c(2, 3), state)
 result$values

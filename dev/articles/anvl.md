@@ -48,7 +48,7 @@ x
     ## [ CPUi16{} ]
 
 We can also create higher-dimensional arrays, for example a `2x3` array
-with single-precision floating-point numbers.
+at the default float data type.
 
 ``` r
 
@@ -62,12 +62,14 @@ y
     ## [ CPUf32{2,3} ]
 
 Without specifying the data type, it will default to the data types of
-the active backend: `"f32"` for R doubles and `"i32"` for integers on
-pjrt, and `"bool"` for logicals everywhere. We chose this default,
-because on modern accelerators such as GPUs, single-precision floating
-point operations are considerably faster than when working in double
-precision. It is possible to change this default via the
-`anvl.default_dtypes` option. Below,
+the active backend, which
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+reports – on pjrt `"f32"` for R doubles and `"i32"` for integers, or
+whatever the `anvl.default_dtypes` option says once it is set. We chose
+this default, because on modern accelerators such as GPUs,
+single-precision floating point operations are considerably faster than
+when working in double precision. It is possible to change this default
+via the `anvl.default_dtypes` option. Below,
 [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
 modifies this option temporarily:
 
@@ -332,8 +334,9 @@ nv_add(1, array(2:3))
 
 An R value does not carry a data type of its own – `1` is neither an
 `f32` nor an `f64` – so it takes the one of the array it is combined
-with, and falls back to a default (on pjrt `f32` for doubles and `i32`
-for integers, and `bool` for logicals) when it meets nothing else. See
+with, and falls back to the active backend’s default (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+when it meets nothing else. See
 [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
 for the full rules.
 

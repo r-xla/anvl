@@ -37,7 +37,9 @@ nv_quantile(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - probs:
 
@@ -50,14 +52,14 @@ nv_quantile(
 - axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Axes to reduce. Negative values count from the end, i.e. `-1` refers
-  to the last axis. If `NULL` (default), reduces over all axes,
-  returning a scalar.
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis. If `NULL` (default), reduces over all axes.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced axes.
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 - interpolation:
 
@@ -68,12 +70,12 @@ nv_quantile(
 - nan_rm:
 
   (`logical(1)`)  
-  How to handle `NaN` values in floating-point inputs. If `FALSE`
-  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
 For array `probs`, a **leading** axis of size `length(probs)` is
 prepended. The data type is that of `x`, or the default float for a
@@ -81,9 +83,10 @@ non-float `x`.
 
 ## Interpolation modes
 
-Let `h = (n - 1) * q` be the 0-based fractional index over the `n`
-reduced elements for probability `q`, with `lo = floor(h)`,
-`hi = ceil(h)`, `frac = h - lo`. Then:
+For `n` reduced elements and a probability `q`, let
+`h = 1 + (n - 1) * q` be the position `q` falls at in the sorted values,
+with `lo = floor(h)`, `hi = ceiling(h)` and `frac = h - lo`. Then,
+writing `sorted` for the reduced values in sorted order:
 
 - `"linear"` (default): `(1 - frac) * sorted[lo] + frac * sorted[hi]`.
 
@@ -107,6 +110,7 @@ Reducing several axes at once ranks all of their elements together, so
 ## Examples
 
 ``` r
+# a float result even for an integer input, since it interpolates
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_quantile(x, 0.5) # = nv_median(x)
 #> AnvlArray

@@ -13,12 +13,14 @@ prim_log1p(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -31,7 +33,9 @@ Has the same shape and data type as the input.
 ## StableHLO
 
 Lowers to
-[`hlo_log_plus_one()`](https://r-xla.github.io/stablehlo/reference/hlo_log_plus_one.html).
+[`hlo_log_plus_one()`](https://r-xla.github.io/stablehlo/reference/hlo_log_plus_one.html),
+specified under
+[log_plus_one](https://openxla.org/stablehlo/spec#log_plus_one).
 
 ## See also
 
@@ -40,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(0, 0.001, 1))
 prim_log1p(x)
 #> AnvlArray
@@ -47,4 +52,10 @@ prim_log1p(x)
 #>  0.0010
 #>  0.6931
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_log1p(0.001)
+#> AnvlArray
+#>  0.0010
+#> [ CPUf32{} ] 
 ```

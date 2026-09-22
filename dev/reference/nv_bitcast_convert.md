@@ -15,31 +15,37 @@ nv_bitcast_convert(x, dtype)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type except `bool`. An R value materializes
+  at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - dtype:
 
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Target data type.
+  Any target data type except `bool`. One of the same bit width as the
+  input's leaves the shape unchanged; a narrower one adds a trailing
+  axis holding the pieces; a wider one consumes the last axis, whose
+  size must equal the ratio of the two widths.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the given `dtype`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the given `dtype`, and the shape described under `dtype`.
 
 ## See also
 
-[`prim_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_bitcast_convert.md)
-for the underlying primitive,
+[`prim_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_bitcast_convert.md),
+which this is an alias of, and
 [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
 for value-preserving type conversion.
 
 ## Examples
 
 ``` r
-x <- nv_array(1L)
-prim_bitcast_convert(x, dtype = "i8")
+# the bits of one i32 reread as four i8, in a new trailing axis
+x <- nv_array(1L, dtype = "i32")
+nv_bitcast_convert(x, dtype = "i8")
 #> AnvlArray
 #>  1 0 0 0
 #> [ CPUi8{1,4} ] 

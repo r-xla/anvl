@@ -108,17 +108,18 @@ last axis.</p></dd>
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
-Data type.</p></dd>
+Data type of the result, required here. Can be any numeric data type.
+For <code>nv_iota_like()</code> it may be <code>NULL</code>, which uses <code>dtype(like)</code>.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Shape.</p></dd>
+Shape of the result.</p></dd>
 
 
 <dt id="arg-start">start<a class="anchor" aria-label="anchor" href="#arg-start"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Starting value (default 1).</p></dd>
+Starting value (default 1). Built at <code>dtype</code>, as the increments are.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
@@ -141,7 +142,7 @@ Existing array whose attributes are used as defaults
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has the given <code>dtype</code> and <code>shape</code>.</p>
     </div>
     <div class="section level2">
@@ -152,7 +153,8 @@ spaced values, <code><a href="prim_iota.html">prim_iota()</a></code> for the und
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">nv_iota</span><span class="op">(</span>axis <span class="op">=</span> <span class="fl">1L</span>, dtype <span class="op">=</span> <span class="st">"i32"</span>, shape <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the sequence is built at the requested data type</span></span></span>
+<span class="r-in"><span><span class="fu">nv_iota</span><span class="op">(</span>axis <span class="op">=</span> <span class="fl">1L</span>, dtype <span class="op">=</span> <span class="st">"i32"</span>, shape <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
@@ -160,6 +162,8 @@ spaced values, <code><a href="prim_iota.html">prim_iota()</a></code> for the und
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{5} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># `_like` takes shape, data type and device from an existing array</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">0L</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_iota_like</span><span class="op">(</span><span class="va">x</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>

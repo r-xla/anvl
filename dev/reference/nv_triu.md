@@ -14,17 +14,21 @@ nv_triu(x, diagonal = 0L)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input, with exactly 2 axes. Can be any data type. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - diagonal:
 
   (`integer(1)`)  
-  Diagonal offset. `0` (default) is the main diagonal, positive values
-  exclude diagonals above, negative values include diagonals below.
+  Diagonal offset: the kept region is `col - row >= diagonal`. `0`
+  (default) keeps the main diagonal and everything above it, a negative
+  value keeps that many diagonals below it as well, and a positive one
+  drops the main diagonal and `diagonal - 1` above it.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same shape and data type as `x`.
 
 ## See also
@@ -35,6 +39,7 @@ Has the same shape and data type as `x`.
 ## Examples
 
 ``` r
+# elements below the main diagonal become zero
 x <- nv_fill(1, c(3, 3))
 nv_triu(x)
 #> AnvlArray

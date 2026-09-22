@@ -18,7 +18,7 @@ naxes(x)
 
 ## Value
 
-`integer(1)`
+(`integer(1)`)
 
 ## See also
 

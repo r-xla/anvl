@@ -21,7 +21,7 @@ Shape(dims = integer())
 
 ## Value
 
-A `Shape` object.
+(`Shape`)
 
 ## See also
 

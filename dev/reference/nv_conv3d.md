@@ -25,13 +25,19 @@ nv_conv3d(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[N, C_in, H, W]`. `x` and `weight` are [promoted to a common data
+  `[N, C_in, D, H, W]`. Can be any data type; `x` and `weight` are
+  [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
+  An R value assumes the other operand's data type, and materializes at
+  its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when that has none either.
 
 - weight:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[C_out, C_in / groups, kH, kW]`. Promoted together with `x`.
+  `[C_out, C_in / groups, kD, kH, kW]`. Promoted together with `x` – see
+  `x`.
 
 - stride, padding, dilation:
 
@@ -50,7 +56,8 @@ nv_conv3d(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the operands' common data type, and shape
 `[N, C_out, out_D, out_H, out_W]`.
 
 ## See also
@@ -58,3 +65,13 @@ nv_conv3d(
 [`nv_conv1d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv1d.md),
 [`nv_conv2d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv2d.md),
 [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md).
+
+## Examples
+
+``` r
+# one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
+x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
+weight <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+shape(nv_conv3d(x, weight))
+#> [1] 1 1 2 2 2
+```

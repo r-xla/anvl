@@ -152,7 +152,7 @@ nv_rbernoulli <- function(initial_state, p) {
   x <- nv_convert(out[[2L]] <= p, "i32")
   list(out_state, x)
 }
-nv_rbernoulli(nv_rng_state(1), 0.2)[[2L]]
+nv_rbernoulli(nv_rng_state(1L), 0.2)[[2L]]
 #> AnvlArray
 #>  0
 #> [ CPUi32{1} ]

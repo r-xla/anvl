@@ -13,13 +13,15 @@ nv_extract_diag(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input, with exactly 2 axes. Can be any data type. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-A 1-D array of length `min(nrow, ncol)` containing the diagonal
-elements.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type, and one axis of length `min(nrow, ncol)`
+holding the diagonal elements.
 
 ## See also
 
@@ -30,6 +32,7 @@ creating a diagonal matrix,
 ## Examples
 
 ``` r
+# the diagonal of a 3x3 matrix, keeping its data type
 x <- nv_array(1:9, shape = c(3, 3))
 nv_extract_diag(x)
 #> AnvlArray

@@ -20,7 +20,7 @@ nv_broadcast_arrays(...)
 
 ([`list()`](https://rdrr.io/r/base/list.html) of
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-List of arrays, all with the same shape.
+The inputs, each with its own data type and the common shape.
 
 ## Broadcasting Rules
 
@@ -38,9 +38,10 @@ List of arrays, all with the same shape.
 ## Examples
 
 ``` r
-x <- nv_matrix(1:6, nrow = 2)
-y <- nv_array(c(10, 20, 30))
-nv_broadcast_arrays(x, y)
+# the length-3 vector is stretched to the matrix's shape
+x1 <- nv_matrix(1:6, nrow = 2)
+x2 <- nv_array(c(10, 20, 30))
+nv_broadcast_arrays(x1, x2)
 #> [[1]]
 #> AnvlArray
 #>  1 3 5
@@ -52,5 +53,24 @@ nv_broadcast_arrays(x, y)
 #>  10 20 30
 #>  10 20 30
 #> [ CPUf32{2,3} ] 
+#> 
+
+# axes of size 1 are expanded to the other operand's size
+y1 <- nv_array(1:3, shape = c(1, 3))
+y2 <- nv_array(1:3, shape = c(3, 1))
+nv_broadcast_arrays(y1, y2)
+#> [[1]]
+#> AnvlArray
+#>  1 2 3
+#>  1 2 3
+#>  1 2 3
+#> [ CPUi32{3,3} ] 
+#> 
+#> [[2]]
+#> AnvlArray
+#>  1 1 1
+#>  2 2 2
+#>  3 3 3
+#> [ CPUi32{3,3} ] 
 #> 
 ```

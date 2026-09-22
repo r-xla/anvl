@@ -24,9 +24,10 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type. `NULL` (default) uses the backend's default float data type
-  (see
+  Data type of the result. Can be any data type; `NULL` (default) uses
+  the default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  For `nv_eye_like()`, `NULL` uses `dtype(like)`.
 
 - device:
 
@@ -53,14 +54,15 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 
 - like:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  ([`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))  
   Existing array whose attributes are used as defaults (only for
   `nv_eye_like()`).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-An `n x n` identity matrix.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the given `dtype` and shape `(n, n)`: ones on the diagonal, zeros
+elsewhere.
 
 ## See also
 
@@ -70,12 +72,15 @@ general diagonal matrices.
 ## Examples
 
 ``` r
+# a 3x3 identity matrix
 nv_eye(3L)
 #> AnvlArray
 #>  1 0 0
 #>  0 1 0
 #>  0 0 1
 #> [ CPUf32{3,3} ] 
+
+# `_like` takes the data type and device from an existing array
 x <- nv_fill(0, shape = c(3, 3), dtype = "f64")
 nv_eye_like(x, 3L)
 #> AnvlArray

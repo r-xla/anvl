@@ -32,7 +32,8 @@ install_anvl(backend = active_backend(), ...)
 
 ## Value
 
-`NULL`, invisibly. Called for its side effect.
+(`NULL`)  
+Invisibly. Called for its side effect.
 
 ## Details
 

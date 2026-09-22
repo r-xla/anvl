@@ -19,31 +19,35 @@ prim_rng_bit_generator(
 - initial_state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  RNG state (`ui64[2]`).
+  RNG state: a 1-D array of the `ui64` data type. Its length depends on
+  `rng_algorithm` – exactly 2 for `"THREE_FRY"`, 2 or 3 for `"PHILOX"`,
+  and whatever the implementation wants for `"DEFAULT"`.
 
 - rng_algorithm:
 
   (`character(1)`)  
-  RNG algorithm name. Default is `"THREE_FRY"`.
+  One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
+  leaving the choice to the implementation.
 
 - dtype:
 
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the generated random values.
+  Data type of the generated random values. Can be any numeric data
+  type.
 
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result.
 
 ## Value
 
 (named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Element `state` is the updated RNG state with the same dtype and shape
-as `initial_state`. Element `values` is an array of random values with
-the given `dtype` and `shape`.
+Elements `state`, the updated RNG state with `initial_state`'s data type
+and shape, and `values`, the random values with the given `dtype` and
+`shape`.
 
 ## Implemented Rules
 
@@ -52,7 +56,9 @@ the given `dtype` and `shape`.
 ## StableHLO
 
 Lowers to
-[`hlo_rng_bit_generator()`](https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html).
+[`hlo_rng_bit_generator()`](https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html),
+specified under
+[rng_bit_generator](https://openxla.org/stablehlo/spec#rng_bit_generator).
 
 ## See also
 
@@ -62,6 +68,7 @@ Lowers to
 ## Examples
 
 ``` r
+# THREE_FRY, the default, takes a two-element state
 state <- nv_array(c(0L, 0L), dtype = "ui64")
 prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
 #> $state
@@ -76,5 +83,43 @@ prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
 #>  1.3515e+09 3.2358e+09
 #>  1.6886e+09 4.2293e+09
 #> [ CPUf32{3,2} ] 
+#> 
+
+# the updated state feeds the next draw, so the two differ
+out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
+prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
+#> $state
+#> AnvlArray
+#>  0
+#>  4
+#> [ CPUui64{2} ] 
+#> 
+#> $values
+#> AnvlArray
+#>  1.6886e+09
+#>  4.2293e+09
+#>  3.0983e+09
+#> [ CPUf32{3} ] 
+#> 
+
+# PHILOX also accepts a three-element state
+prim_rng_bit_generator(
+  nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
+  dtype = "i32", shape = 4L
+)
+#> $state
+#> AnvlArray
+#>  0
+#>  1
+#>  0
+#> [ CPUui64{3} ] 
+#> 
+#> $values
+#> AnvlArray
+#>  1.7139e+09
+#>  3.7818e+09
+#>  3.1599e+09
+#>  2.6005e+09
+#> [ CPUi32{4} ] 
 #> 
 ```

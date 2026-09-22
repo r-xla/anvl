@@ -1,6 +1,7 @@
 # Primitive Bitwise Xor
 
-Element-wise bitwise XOR, which for a boolean array is the logical XOR.
+Element-wise bitwise XOR – a logical XOR on a boolean input, and a
+bit-by-bit one on an integer.
 
 ## Usage
 
@@ -13,13 +14,18 @@ prim_xor(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish values of data type boolean, integer, or unsigned integer.
-  Must have the same shape.
+  Two inputs of the same data type and shape. Can be any integerish data
+  type. R values assume the other operand's data type when it is in
+  their [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  their [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when neither operand has one.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the inputs' shape and data type.
 
 ## Implemented Rules
 
@@ -32,7 +38,8 @@ Has the same shape and data type as the inputs.
 ## StableHLO
 
 Lowers to
-[`hlo_xor()`](https://r-xla.github.io/stablehlo/reference/hlo_xor.html).
+[`hlo_xor()`](https://r-xla.github.io/stablehlo/reference/hlo_xor.html),
+specified under [xor](https://openxla.org/stablehlo/spec#xor).
 
 ## See also
 
@@ -41,12 +48,15 @@ Lowers to
 ## Examples
 
 ``` r
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-prim_xor(x, y)
+# two R values: both take an R integer's default data type
+prim_xor(12L, 10L)
 #> AnvlArray
-#>  0
-#>  1
-#>  1
-#> [ CPUbool{3} ] 
+#>  6
+#> [ CPUi32{} ] 
+
+# the R value is built at the array's data type instead
+prim_xor(12L, nv_scalar(10L, "i64"))
+#> AnvlArray
+#>  6
+#> [ CPUi64{} ] 
 ```

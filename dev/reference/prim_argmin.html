@@ -93,12 +93,13 @@ are broken by returning the smallest index.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Arrayish value of any data type.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Axis along which to find the index of the maximum.
+Axis along which to find the index of the minimum.
 Negative values count from the end, i.e. <code>-1</code> refers to the last axis.</p></dd>
 
 
@@ -110,10 +111,10 @@ kept with size 1.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code> of the default integer data type (see
-<code><a href="default_dtypes.html">default_dtypes()</a></code>)<br>
-Same shape as <code>x</code> with <code>axis</code> removed (or set to 1 if
-<code>drop = FALSE</code>).</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) regardless of
+the input's, and the input's shape with <code>axis</code> removed (<code>drop = TRUE</code>) or
+set to 1 (<code>drop = FALSE</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -126,8 +127,10 @@ Same shape as <code>x</code> with <code>axis</code> removed (or set to 1 if
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to a variadic <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce.html" class="external-link">hlo_reduce()</a></code> over <code>(values, indices)</code>
-with a (value &lt; value | (value == value &amp; idx &lt; idx)) selector.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce.html" class="external-link">hlo_reduce()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#reduce" class="external-link">reduce</a>.
+The reduction is variadic over <code>(values, indices)</code>, with a
+(value &lt; value | (value == value &amp; idx &lt; idx)) selector.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -136,7 +139,8 @@ with a (value &lt; value | (value == value &amp; idx &lt; idx)) selector.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">prim_argmin</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the index comes out at the default integer data type</span></span></span>
+<span class="r-in"><span><span class="fu">prim_argmin</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{} ] </span>

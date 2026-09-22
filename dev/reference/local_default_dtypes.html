@@ -154,17 +154,21 @@ checks this for you.</p>
 <span class="r-in"><span><span class="co"># A value that meets a typed array still takes that array's data type</span></span></span>
 <span class="r-in"><span><span class="fu">with_default_dtypes</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, <span class="fu"><a href="dtype.html">dtype</a></span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1.5</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
-<span class="r-in"><span><span class="co"># untyped values in one program can materialize at different precisions</span></span></span>
+<span class="r-in"><span><span class="co"># untyped values in one program can materialize at different precisions: one at</span></span></span>
+<span class="r-in"><span><span class="co"># whatever the default is, one at the `f64` the override asks for</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>single <span class="op">=</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span>, double <span class="op">=</span> <span class="fu">with_default_dtypes</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    at_default <span class="op">=</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    forced_f64 <span class="op">=</span> <span class="fu">with_default_dtypes</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $single</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $at_default</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2} ] </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $double</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $forced_f64</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>

@@ -13,12 +13,14 @@ prim_asin(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -29,7 +31,10 @@ Has the same shape and data type as the input.
 ## StableHLO
 
 Lowers to
-[`hlo_asin()`](https://r-xla.github.io/stablehlo/reference/hlo_asin.html).
+[`hlo_asin()`](https://r-xla.github.io/stablehlo/reference/hlo_asin.html),
+an op of the CHLO dialect, a higher-level companion to StableHLO that is
+lowered to it during compilation. See
+[chlo.asin](https://openxla.org/stablehlo/generated/chlo#chloasin_chloasinop).
 
 ## See also
 
@@ -39,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 prim_asin(x)
 #> AnvlArray
@@ -46,4 +52,10 @@ prim_asin(x)
 #>   0.0000
 #>   1.5708
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_asin(0.5)
+#> AnvlArray
+#>  0.5236
+#> [ CPUf32{} ] 
 ```

@@ -14,14 +14,13 @@ nv_broadcast_scalars(...)
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrays to broadcast. Scalars will be broadcast to the common
-  non-scalar shape.
+  Arrays to broadcast.
 
 ## Value
 
 ([`list()`](https://rdrr.io/r/base/list.html) of
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-List of broadcasted arrays.
+The inputs, each with its own data type and the common shape.
 
 ## Examples
 

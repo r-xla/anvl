@@ -85,7 +85,7 @@ materializing them again changes nothing.
 ## Examples
 
 ``` r
-# an R value takes the data type of the operand it meets.
+# an R value takes the data type of the operand it meets
 operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 dtype(operands$rhs)
 #> <f64>

@@ -13,16 +13,21 @@ nv_diag(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  A 1-D array of length `n` whose elements become the diagonal entries.
+  One input, a 1-D array of length `n` whose elements become the
+  diagonal entries. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-An `n x n` matrix with `x` on the diagonal and zeros elsewhere.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type and shape `(n, n)`, with the input on the
+diagonal and zeros elsewhere.
 
 ## Examples
 
 ``` r
+# the vector becomes the diagonal of a 3x3 matrix
 nv_diag(nv_array(c(1, 2, 3)))
 #> AnvlArray
 #>  1 0 0

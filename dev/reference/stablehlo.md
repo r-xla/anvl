@@ -89,7 +89,8 @@ stablehlo(
 
 ## Value
 
-A `list` of length 3:
+(`list`)  
+Of length 3:
 
 - the
   [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)

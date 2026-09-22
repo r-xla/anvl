@@ -90,28 +90,27 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Arrayish value of any data type.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axes">axes<a class="anchor" aria-label="anchor" href="#arg-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Axes to reduce over.
-Negative values count from the end, i.e. <code>-1</code> refers to the last axis.</p></dd>
+Axes to reduce over. Negative values count from the end, i.e. <code>-1</code> refers
+to the last axis.</p></dd>
 
 
 <dt id="arg-drop">drop<a class="anchor" aria-label="anchor" href="#arg-drop"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-Whether to drop the reduced axes from the output shape.
-If <code>TRUE</code>, the reduced axes are removed.
-If <code>FALSE</code>, the reduced axes are set to 1.</p></dd>
+Whether to drop the reduced axes: removed from the output shape if <code>TRUE</code>,
+set to 1 if <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same data type as the input.
-When <code>drop = TRUE</code>, the shape is that of <code>x</code> with <code>axes</code> removed.
-When <code>drop = FALSE</code>, the shape is that of <code>x</code> with <code>axes</code> set to 1.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's data type. The shape is the input's with the reduced axes
+removed (<code>drop = TRUE</code>) or set to 1 (<code>drop = FALSE</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -125,7 +124,9 @@ When <code>drop = FALSE</code>, the shape is that of <code>x</code> with <code>a
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce.html" class="external-link">hlo_reduce()</a></code> with <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_minimum.html" class="external-link">hlo_minimum()</a></code> as the reducer.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce.html" class="external-link">hlo_reduce()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#reduce" class="external-link">reduce</a>.
+The reducer is <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_minimum.html" class="external-link">hlo_minimum()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -135,12 +136,25 @@ When <code>drop = FALSE</code>, the shape is that of <code>x</code> with <code>a
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># reducing axis 1 removes it from the shape, and the data type is kept</span></span></span>
 <span class="r-in"><span><span class="fu">prim_reduce_min</span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># drop = FALSE keeps the reduced axis at size 1 instead</span></span></span>
+<span class="r-in"><span><span class="fu">prim_reduce_min</span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fl">1L</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1 3 5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{1,3} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># reducing every axis gives a scalar</span></span></span>
+<span class="r-in"><span><span class="fu">prim_reduce_min</span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

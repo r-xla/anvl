@@ -99,7 +99,10 @@ scalar determinant, use <code><a href="nv_det.html">nv_det()</a></code>.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Square matrix of floating-point data type.</p></dd>
+One input, a square matrix with exactly 2 axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>). An R value materializes at its
+<a href="default_dtypes.html">default data type</a> and is converted in the same way.</p></dd>
 
 
 <dt id="arg-logarithm">logarithm<a class="anchor" aria-label="anchor" href="#arg-logarithm"></a></dt>
@@ -113,10 +116,12 @@ of the absolute determinant.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Named <code>list</code> with elements <code>modulus</code> and <code>sign</code>, both scalar
-<code><a href="arrayish.html">arrayish</a></code> with the same dtype as <code>x</code>. The full determinant
-is <code>sign * exp(modulus)</code> (with <code>logarithm = TRUE</code>) or
-<code>sign * modulus</code> (with <code>logarithm = FALSE</code>).</p>
+    <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
+Elements <code>modulus</code> and <code>sign</code>, both scalar <code><a href="arrayish.html">arrayish</a></code> with <code>x</code>'s data
+type – or the default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where
+<code>x</code> was an integer one. The full determinant is <code>sign * exp(modulus)</code>
+(with <code>logarithm = TRUE</code>) or <code>sign * modulus</code> (with
+<code>logarithm = FALSE</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -136,7 +141,8 @@ direct product when <code>logarithm = FALSE</code> (\(\prod_i |U_{ii}|\)).</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">3</span>, <span class="fl">6</span>, <span class="fl">3</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># `modulus` and `sign` are scalars with the matrix's data type</span></span></span>
+<span class="r-in"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">3</span>, <span class="fl">6</span>, <span class="fl">3</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_determinant</span><span class="op">(</span><span class="va">a</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $modulus</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>

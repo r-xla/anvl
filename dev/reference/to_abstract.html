@@ -95,17 +95,17 @@ Object to convert.</p></dd>
 
 <dt id="arg-pure">pure<a class="anchor" aria-label="anchor" href="#arg-pure"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>LiteralArray</code> or <code>ConcreteArray</code>.</p></dd>
+Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>RData</code> or <code>ConcreteArray</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="AbstractArray.html">AbstractArray</a></code></p>
+    <p>(<code><a href="AbstractArray.html">AbstractArray</a></code>)</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># R literals become LiteralArrays</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># an R value becomes `RData`: it has no data type of its own yet</span></span></span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fl">1.5</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> RData(double, ()) </span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
@@ -113,7 +113,7 @@ Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>Liter
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> RData(logical, ()) </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># AnvlArrays become ConcreteArrays</span></span></span>
+<span class="r-in"><span><span class="co"># an AnvlArray becomes a ConcreteArray</span></span></span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ConcreteArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>

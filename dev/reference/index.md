@@ -80,13 +80,13 @@ Functions for converting arrays
 Functions for serializing and deserializing arrays
 
 - [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md) :
-  Save arrays to a file
+  Save Arrays to a File
 - [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_read.md) :
-  Read arrays from a file
+  Read Arrays from a File
 - [`nv_serialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
-  : Serialize arrays to raw bytes
+  : Serialize Arrays to Raw Bytes
 - [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_unserialize.md)
-  : Deserialize arrays from raw bytes
+  : Deserialize Arrays from Raw Bytes
 
 ### Base R Generics
 
@@ -118,6 +118,8 @@ Functions for type conversion, promotion, and broadcasting
   : Broadcast Arrays to a Common Shape
 - [`nv_broadcast_to()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_to.md)
   : Broadcast to Shape
+- [`dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md) :
+  Data Type Categories
 - [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
   : Type Promotion Rules
 - [`promotion_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
@@ -685,7 +687,7 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_and()`](https://r-xla.github.io/anvl/dev/reference/prim_and.md)
   : Primitive Bitwise And
 - [`prim_argmax()`](https://r-xla.github.io/anvl/dev/reference/prim_argmax.md)
-  : Primitive Argmax
+  : Primitive Index of the Maximum
 - [`prim_argmin()`](https://r-xla.github.io/anvl/dev/reference/prim_argmin.md)
   : Primitive Index of the Minimum
 - [`prim_asin()`](https://r-xla.github.io/anvl/dev/reference/prim_asin.md)
@@ -713,7 +715,7 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_concatenate()`](https://r-xla.github.io/anvl/dev/reference/prim_concatenate.md)
   : Primitive Concatenate
 - [`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
-  : Primitive Convert
+  : Primitive Convert Data Type
 - [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md)
   : Primitive Convolution
 - [`prim_cos()`](https://r-xla.github.io/anvl/dev/reference/prim_cos.md)

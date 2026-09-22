@@ -1,7 +1,7 @@
 # Assert Shape Vector
 
-Check whether an input is a valid shape vector (integer vector with all
-positive values).
+Check whether an input is a valid shape vector: whole, non-negative axis
+sizes.
 
 ## Usage
 
@@ -18,7 +18,7 @@ assert_shapevec(x, min_len = 0L, var_name = rlang::caller_arg(x))
 - min_len:
 
   (`integer(1)`)  
-  Minimum length of the shape vector. Default is 1.
+  Minimum number of axes. Default is 0.
 
 - var_name:
 
@@ -27,4 +27,5 @@ assert_shapevec(x, min_len = 0L, var_name = rlang::caller_arg(x))
 
 ## Value
 
-Invisibly returns `x` if the assertion passes.
+([`integer()`](https://rdrr.io/r/base/integer.html))  
+`x` as an integer vector.

@@ -19,17 +19,17 @@ to_abstract(x, pure = FALSE)
 - pure:
 
   (`logical(1)`)  
-  Whether to convert to a pure `AbstractArray` and not e.g.
-  `LiteralArray` or `ConcreteArray`.
+  Whether to convert to a pure `AbstractArray` and not e.g. `RData` or
+  `ConcreteArray`.
 
 ## Value
 
-[`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md)
+([`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))
 
 ## Examples
 
 ``` r
-# R literals become LiteralArrays
+# an R value becomes `RData`: it has no data type of its own yet
 to_abstract(1.5)
 #> RData(double, ()) 
 to_abstract(1L)
@@ -37,7 +37,7 @@ to_abstract(1L)
 to_abstract(TRUE)
 #> RData(logical, ()) 
 
-# AnvlArrays become ConcreteArrays
+# an AnvlArray becomes a ConcreteArray
 to_abstract(nv_array(1:4))
 #> ConcreteArray
 #>  1

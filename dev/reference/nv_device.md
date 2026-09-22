@@ -28,7 +28,8 @@ nv_device(x)
 
 ## Value
 
-A backend-specific device object (e.g. `PJRTDevice` for `"pjrt"`,
+(device object)  
+Backend-specific (e.g. `PJRTDevice` for `"pjrt"`,
 [`quickr_device`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md)
 for `"quickr"`).
 

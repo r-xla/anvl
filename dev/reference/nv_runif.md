@@ -13,20 +13,22 @@ nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result.
 
 - initial_state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  RNG state (`ui64[2]`).
+  RNG state: a 1-D array of two `ui64` elements, as
+  [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
+  returns. The data type and length are fixed by the generator, not by
+  the default data types, and the returned `state` has them too.
 
 - dtype:
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sampled values: a 32- or 64-bit float. `NULL`
-  (default) uses the backend's default float data type (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  Floating point data type. The default (`NULL`) uses the [default float
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - min, max:
 
@@ -37,8 +39,8 @@ nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 
 (named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Elements `state`, the updated RNG state, and `values`, the sampled
-values.
+Elements `state`, the updated RNG state, and `values`, the sample of
+shape `shape` and data type `dtype`.
 
 ## See also
 
@@ -52,6 +54,7 @@ Other rng:
 ## Examples
 
 ``` r
+# `state` is the updated RNG state, `values` the sample
 state <- nv_rng_state(42L)
 result <- nv_runif(c(2, 3), state)
 result$values

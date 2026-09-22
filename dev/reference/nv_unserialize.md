@@ -1,4 +1,4 @@
-# Deserialize arrays from raw bytes
+# Deserialize Arrays from Raw Bytes
 
 Deserializes arrays from the
 [safetensors](https://huggingface.co/docs/safetensors/index) format.
@@ -25,9 +25,8 @@ nv_unserialize(con, device = NULL)
 
 ## Value
 
-Named `list` of
-[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-objects.
+(named `list` of
+[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))
 
 ## Details
 
@@ -43,6 +42,7 @@ data.
 ## Examples
 
 ``` r
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 #> AnvlArray

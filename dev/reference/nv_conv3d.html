@@ -109,13 +109,15 @@ padding (e.g. causal temporal padding) is available via
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[N, C_in, H, W]</code>. <code>x</code> and <code>weight</code> are
-<a href="nv_promote_to_common.html">promoted to a common data type</a>.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[N, C_in, D, H, W]</code>. Can be any data type; <code>x</code> and
+<code>weight</code> are <a href="nv_promote_to_common.html">promoted to a common data type</a>. An
+R value assumes the other operand's data type, and materializes at its
+<a href="default_dtypes.html">default data type</a> when that has none either.</p></dd>
 
 
 <dt id="arg-weight">weight<a class="anchor" aria-label="anchor" href="#arg-weight"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[C_out, C_in / groups, kH, kW]</code>.
-Promoted together with <code>x</code>.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[C_out, C_in / groups, kD, kH, kW]</code>.
+Promoted together with <code>x</code> – see <code>x</code>.</p></dd>
 
 
 <dt id="arg-stride-padding-dilation">stride, padding, dilation<a class="anchor" aria-label="anchor" href="#arg-stride-padding-dilation"></a></dt>
@@ -132,13 +134,24 @@ Promoted together with <code>x</code>.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code> <code>[N, C_out, out_D, out_H, out_W]</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the operands' common data type, and shape
+<code>[N, C_out, out_D, out_H, out_W]</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="nv_conv1d.html">nv_conv1d()</a></code>, <code><a href="nv_conv2d.html">nv_conv2d()</a></code>, <code><a href="prim_convolution.html">prim_convolution()</a></code>.</p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">18</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">weight</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="shape.html">shape</a></span><span class="op">(</span><span class="fu">nv_conv3d</span><span class="op">(</span><span class="va">x</span>, <span class="va">weight</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1 1 2 2 2</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

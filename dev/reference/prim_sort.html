@@ -11,7 +11,6 @@ and any additional arrays are reordered with the same permutation
 that sorts the first. This enables idioms like argsort (sort x
 paired with an iota and read off the second output) and key-value
 sorts (sort keys paired with values).
-All arrays must have the same shape; their dtypes may differ.
 1-D slices along axis are sorted independently; other
 axes are preserved."><meta property="og:description" content="Sorts arrays along the given axis.
 Sorting is determined by the first array only: it is the sort key,
@@ -19,7 +18,6 @@ and any additional arrays are reordered with the same permutation
 that sorts the first. This enables idioms like argsort (sort x
 paired with an iota and read off the second output) and key-value
 sorts (sort keys paired with values).
-All arrays must have the same shape; their dtypes may differ.
 1-D slices along axis are sorted independently; other
 axes are preserved."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -98,8 +96,7 @@ and any additional arrays are reordered with the same permutation
 that sorts the first. This enables idioms like <em>argsort</em> (sort <code>x</code>
 paired with an <code>iota</code> and read off the second output) and key-value
 sorts (sort <code>keys</code> paired with <code>values</code>).</p>
-<p>All arrays must have the same shape; their dtypes may differ.
-1-D slices along <code>axis</code> are sorted independently; other
+<p>1-D slices along <code>axis</code> are sorted independently; other
 axes are preserved.</p>
     </div>
 
@@ -139,10 +136,9 @@ preserved. Default <code>FALSE</code>.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>list</code> of <code><a href="arrayish.html">arrayish</a></code><br>
-One sorted output per element of <code>xs</code>, in the same order. Each
-output has the same shape and data type as the
-corresponding input.</p>
+    <p>(<code>list</code> of <code><a href="arrayish.html">arrayish</a></code>)<br>
+One sorted output per element of <code>xs</code>, in the same order, each with the
+shape and data type of its input.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -155,13 +151,13 @@ corresponding input.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_sort.html" class="external-link">hlo_sort()</a></code> with a comparator that uses
-<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_compare.html" class="external-link">hlo_compare()</a></code> (<code>LT</code> for ascending, <code>GT</code> for descending) on
-the first array. For float keys the comparator uses
-<code>compare_type = "TOTALORDER"</code> and canonicalizes <code>-0</code>/<code>+0</code> and
-<code>-NaN</code>/<code>+NaN</code> to their positive form before comparing, so all <code>NaN</code>
-values land at one end of the result regardless of sign. Integer keys
-use <code>SIGNED</code> / <code>UNSIGNED</code> as appropriate.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_sort.html" class="external-link">hlo_sort()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#sort" class="external-link">sort</a>.
+The comparator uses <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_compare.html" class="external-link">hlo_compare()</a></code> (<code>LT</code> for ascending, <code>GT</code> for
+descending) on the first array. For float keys it uses <code>compare_type = "TOTALORDER"</code> and canonicalizes <code>-0</code>/<code>+0</code> and <code>-NaN</code>/<code>+NaN</code> to their
+positive form before comparing, so all <code>NaN</code> values land at one end of the
+result regardless of sign. Integer keys use <code>SIGNED</code> / <code>UNSIGNED</code> as
+appropriate.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -181,7 +177,7 @@ use <code>SIGNED</code> / <code>UNSIGNED</code> as appropriate.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{5} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># sort indices by the values (argsort): pair x with iota and read off</span></span></span>
-<span class="r-in"><span><span class="co"># the second result.</span></span></span>
+<span class="r-in"><span><span class="co"># the second result</span></span></span>
 <span class="r-in"><span><span class="va">idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_iota.html">nv_iota</a></span><span class="op">(</span>axis <span class="op">=</span> <span class="fl">1L</span>, dtype <span class="op">=</span> <span class="st">"i64"</span>, shape <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">prim_sort</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">idx</span><span class="op">)</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">out</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span> <span class="co"># sorted x</span></span></span>

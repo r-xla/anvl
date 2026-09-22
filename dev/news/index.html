@@ -81,6 +81,8 @@
 <ul><li>The <code>@jit</code> roxygen tag was removed; wrap functions in <code><a href="../reference/jit.html">jit()</a></code> at the definition instead.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code>, <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> and <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> take <code>indices</code> instead of <code>with_indices</code>, spelling it the way <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code> does.</li>
+<li>
+<code><a href="../reference/nv_top_k.html">nv_top_k()</a></code> takes <code>axes</code> instead of <code>axis</code>, ranking the elements of several axes together, and <code>axes = NULL</code> (the default) now ranks over every axis where it used to take the last one. Write <code>axes = -1</code> for the old default.</li>
 <li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
 <li>An R value is now built directly at every data type of its own category, narrow and unsigned integers included, so one the data type cannot hold is an error instead of wrapping around: <code>x_ui8 + (-2L)</code> and <code>x_i8 + 300L</code> are refused. Write <code><a href="../reference/nv_convert.html">nv_convert()</a></code> on an array where the wraparound is what you want.</li>
 <li>
@@ -115,6 +117,17 @@
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
 <ul><li>
+<code><a href="../reference/nv_rng_state.html">nv_rng_state()</a></code> accepts a seed of any signed or unsigned integer data type, bringing it to <code>i32</code>, where it took an <code>i32</code> only. The state stays <code>ui64[2]</code> whatever the seed and the default integer data type are.</li>
+<li>
+<code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> accepts a scalar, returning a length-1 array, instead of erroring.</li>
+<li>
+<code><a href="../reference/as_anvl_array.html">as_anvl_array()</a></code> gained a <code>.promote</code> argument, naming the data type the input is brought to, as <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> already had.</li>
+<li>
+<code><a href="../reference/nv_is_nan.html">nv_is_nan()</a></code>, <code><a href="../reference/nv_is_finite.html">nv_is_finite()</a></code> and <code><a href="../reference/nv_is_infinite.html">nv_is_infinite()</a></code> accept any data type and answer a constant (all <code>FALSE</code> / all <code>TRUE</code> / all <code>FALSE</code>) for one that holds no NaN or infinity, instead of comparing – or, for <code><a href="../reference/nv_is_finite.html">nv_is_finite()</a></code> and <code><a href="../reference/nv_is_infinite.html">nv_is_infinite()</a></code>, erroring.</li>
+<li>The linear algebra functions (<code><a href="../reference/nv_solve.html">nv_solve()</a></code>, <code><a href="../reference/nv_triangular_solve.html">nv_triangular_solve()</a></code>, <code><a href="../reference/nv_chol.html">nv_chol()</a></code>, <code><a href="../reference/nv_inv.html">nv_inv()</a></code>, <code><a href="../reference/nv_det.html">nv_det()</a></code>, <code><a href="../reference/nv_determinant.html">nv_determinant()</a></code>, <code><a href="../reference/nv_lu.html">nv_lu()</a></code>, <code><a href="../reference/nv_qr.html">nv_qr()</a></code>, <code><a href="../reference/nv_svd.html">nv_svd()</a></code>, <code><a href="../reference/nv_eigh.html">nv_eigh()</a></code>) accept integer input, computing at the default float data type where the input is not a float already, instead of erroring. The <code>prim_*</code> ones still take a float only.</li>
+<li>
+<code><a href="../reference/nv_sign.html">nv_sign()</a></code> accepts an unsigned integer array, returning <code>0</code> or <code>1</code> like base R’s <code><a href="https://rdrr.io/r/base/sign.html" class="external-link">sign()</a></code> on a non-negative number; <code><a href="../reference/prim_sign.html">prim_sign()</a></code> still takes a signed input only.</li>
+<li>
 <code><a href="../reference/nv_reverse.html">nv_reverse()</a></code> gained an <code>axes = NULL</code> default that reverses every axis, matching <code><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev()</a></code> and <code>numpy.flip()</code>, and returns <code>x</code> unchanged for an empty <code>axes</code> instead of erroring.</li>
 <li>
 <code><a href="../reference/nv_seq.html">nv_seq()</a></code> / <code><a href="../reference/nv_seq.html">nv_seq_like()</a></code> gained a <code>by</code> argument and now count down when <code>start &gt; end</code>, like <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq()</a></code>.</li>

@@ -76,17 +76,21 @@ with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 # A value that meets a typed array still takes that array's data type
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
 #> <f32>
-# untyped values in one program can materialize at different precisions
+# untyped values in one program can materialize at different precisions: one at
+# whatever the default is, one at the `f64` the override asks for
 jit(function() {
-  list(single = nv_fill(0, 2), double = with_default_dtypes(c(float = "f64"), nv_fill(0, 2)))
+  list(
+    at_default = nv_fill(0, 2),
+    forced_f64 = with_default_dtypes(c(float = "f64"), nv_fill(0, 2))
+  )
 })()
-#> $single
+#> $at_default
 #> AnvlArray
 #>  0
 #>  0
 #> [ CPUf32{2} ] 
 #> 
-#> $double
+#> $forced_f64
 #> AnvlArray
 #>  0
 #>  0

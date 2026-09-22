@@ -13,16 +13,15 @@ nv_ifelse(pred, true_value, false_value)
 
 - pred:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-  of boolean type)  
-  Predicate array. Must be scalar or have the same shape as the
-  non-scalar arguments.
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  Predicate array. Must be a boolean or an R logical, and scalar or the
+  same shape as the non-scalar arguments.
 
 - true_value, false_value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Values to return where `pred` is `TRUE` / `FALSE`. `true_value` and
-  `false_value` are [promoted to a common data
+  Values to return where `pred` is `TRUE` / `FALSE`. Can be of any data
+  type; the two are [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
   Scalars (including `pred`) are
   [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
@@ -30,9 +29,9 @@ nv_ifelse(pred, true_value, false_value)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the common data type of `true_value` and `false_value` and the shape
-of the non-scalar arguments.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the common data type of `true_value` and `false_value`, and their
+broadcast shape.
 
 ## See also
 
@@ -49,7 +48,7 @@ nv_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 #>  5
 #>  3
 #> [ CPUf32{3} ] 
-# scalar branches are broadcast and promoted to a common dtype
+# scalar branches are broadcast and promoted to a common data type
 nv_ifelse(pred, nv_scalar(1L), nv_scalar(0.5))
 #> AnvlArray
 #>  1.0000

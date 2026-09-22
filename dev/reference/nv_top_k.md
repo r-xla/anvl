@@ -1,12 +1,12 @@
 # Top-K Elements
 
-Returns the `k` largest values along an axis, sorted in decreasing
-order.
+Returns the `k` largest values over one or more axes, sorted in
+decreasing order.
 
 ## Usage
 
 ``` r
-nv_top_k(x, k, axis = NULL, indices = FALSE)
+nv_top_k(x, k, axes = NULL, indices = FALSE)
 ```
 
 ## Arguments
@@ -14,37 +14,51 @@ nv_top_k(x, k, axis = NULL, indices = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  One input, with at least 1 axis. Can be any numeric data type. An R
+  value materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - k:
 
   (`integer(1)`)  
-  Number of top elements to return. Must be a whole number satisfying
-  `1 <= k <= shape(x)[axis]`; a fractional or logical `k` is refused
-  rather than truncated.
+  Number of top elements to return. Must be a whole number between 1 and
+  the number of elements `axes` holds together; a fractional or logical
+  `k` is refused rather than truncated.
 
-- axis:
+- axes:
 
-  (`integer(1)` \| `NULL`)  
-  Axis along which to take the top `k`. Negative values count from the
-  end, i.e. `-1` refers to the last axis. If `NULL` (default), uses the
-  last axis.
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
+  Axes to take the top `k` over. Negative values count from the end,
+  i.e. `-1` refers to the last axis. If `NULL` (default), ranks over
+  every axis.
 
 - indices:
 
   (`logical(1)`)  
   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
-  returns `list(values = ..., indices = ...)` where `indices` is the
-  1-based position of each top-`k` value along `axis`, of the default
-  integer data type (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  returns `list(values = ..., indices = ...)` where `indices` holds the
+  position of each top-`k` value.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-(when `indices = FALSE`) or named list of two arrays (when
-`indices = TRUE`). Output shape matches `x` with `axis` resized to `k`;
-values are sorted decreasing along `axis`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) \|
+named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+One array when `indices = FALSE`, a named `list` of `values` and
+`indices` when `indices = TRUE`. The values have the input's data type
+and the indices the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+Both have the input's shape with `axes` replaced by a single axis of
+size `k`, sitting where the first of them was; values are sorted
+decreasing along that axis.
+
+## Ranking several axes
+
+Taking the top `k` over several axes ranks all of their elements
+together, so `nv_top_k(x, k)` equals `nv_top_k(nv_flatten(x), k)`. The
+indices then index the row-major flattening of those axes – the order
+[`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
+produces – rather than any single axis.
 
 ## NaN handling
 
@@ -62,6 +76,7 @@ for the underlying primitive,
 ## Examples
 
 ``` r
+# the values keep the input's data type, the indices the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_top_k(x, k = 3L)
 #> AnvlArray
@@ -86,9 +101,14 @@ nv_top_k(x, k = 3L, indices = TRUE)
 #> 
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_top_k(m, k = 2L, axis = 2L)
+nv_top_k(m, k = 2L, axes = 2L) # the top 2 of each row
 #> AnvlArray
 #>  5 3
 #>  4 2
 #> [ CPUf32{2,2} ] 
+nv_top_k(m, k = 2L) # the top 2 of the whole matrix
+#> AnvlArray
+#>  5
+#>  4
+#> [ CPUf32{2} ] 
 ```

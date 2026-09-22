@@ -19,7 +19,9 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - start_indices:
 
@@ -41,7 +43,7 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same data type as the input and shape
 `ceiling((limit_indices - start_indices + 1) / strides)`.
 
@@ -56,7 +58,8 @@ Has the same data type as the input and shape
 ## StableHLO
 
 Lowers to
-[`hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html).
+[`hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html),
+specified under [slice](https://openxla.org/stablehlo/spec#slice).
 
 ## See also
 
@@ -69,7 +72,7 @@ Lowers to
 ## Examples
 
 ``` r
-# 1-D: extract elements 2 through 4 (limit is exclusive)
+# 1-D: extract elements 2 through 5, the limit being inclusive
 x <- nv_array(1:10)
 prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 #> AnvlArray
@@ -90,7 +93,7 @@ prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
 #>  9
 #> [ CPUi32{5} ] 
 
-# 2-D: extract a submatrix (rows 1-2, columns 2-3)
+# 2-D: extract the submatrix of rows 1-3 and columns 2-4
 x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 prim_static_slice(x,
   start_indices = c(1L, 2L),

@@ -21,7 +21,12 @@ device(x, ...)
 
 ## Value
 
-[`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
+(device object)  
+Backend-dependent device object. One of:
+
+- [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
+
+- [`quickr_device`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md)
 
 ## Details
 

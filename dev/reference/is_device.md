@@ -16,4 +16,5 @@ is_device(x)
 
 ## Value
 
-`logical(1)`
+(`logical(1)`)  
+Whether `x` is a device of one of the backends.

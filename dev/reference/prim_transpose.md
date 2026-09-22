@@ -13,7 +13,9 @@ prim_transpose(x, permutation)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 - permutation:
 
@@ -24,8 +26,8 @@ prim_transpose(x, permutation)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input and shape `shape(x)[permutation]`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Has the input's data type and shape `shape(x)[permutation]`.
 
 ## Implemented Rules
 
@@ -38,7 +40,9 @@ Has the same data type as the input and shape `shape(x)[permutation]`.
 ## StableHLO
 
 Lowers to
-[`hlo_transpose()`](https://r-xla.github.io/stablehlo/reference/hlo_transpose.html).
+[`hlo_transpose()`](https://r-xla.github.io/stablehlo/reference/hlo_transpose.html),
+specified under
+[transpose](https://openxla.org/stablehlo/spec#transpose).
 
 ## See also
 
@@ -48,6 +52,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the 2x3 becomes a 3x2, keeping its data type
 x <- nv_matrix(1:6, nrow = 2)
 prim_transpose(x, permutation = c(2L, 1L))
 #> AnvlArray

@@ -90,8 +90,10 @@
 
 <dl><dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
 <dd><p>(<code>named list()</code>)<br>
-Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs. R values are materialized at their default data type.</p></dd>
+Named list of initial state values, a tree in the sense of pjrt's
+<code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>. Each leaf becomes a parameter of the loop's
+sub-graphs. R values are materialized at their
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-cond">cond<a class="anchor" aria-label="anchor" href="#arg-cond"></a></dt>
@@ -102,13 +104,18 @@ Receives the state values as arguments.</p></dd>
 
 <dt id="arg-body">body<a class="anchor" aria-label="anchor" href="#arg-body"></a></dt>
 <dd><p>(<code>function</code>)<br>
-Body function returning the updated state as a named list
-with the same structure as <code>init</code>.</p></dd>
+Body function returning the updated state as a named list with the same
+structure, data types and shapes as <code>init</code>. Nothing is promoted: a
+loop-carried state is meant to be heterogeneous, so each member keeps its
+own data type across iterations.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Final state after the loop terminates (same structure as <code>init</code>).</p>
+    <p>(named <code>list</code>)<br>
+A tree of the loop-carried arrays – see <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code> – in its
+final state after the loop terminates, with <code>init</code>'s structure, data
+types and shapes.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -117,7 +124,8 @@ with the same structure as <code>init</code>.</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">nv_while</span><span class="op">(</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the loop state is a named list, and each member keeps its data type</span></span></span>
+<span class="r-in"><span><span class="fu">nv_while</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>i <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span>, total <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  cond <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span>, <span class="va">total</span><span class="op">)</span> <span class="va">i</span> <span class="op">&lt;</span> <span class="fl">5L</span>,</span></span>
 <span class="r-in"><span>  body <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span>, <span class="va">total</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>

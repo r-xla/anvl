@@ -46,17 +46,15 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
-  The default (`NULL`) uses the data type the R value takes (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
-  This depends on the backend. For the default `"pjrt"` backend,
-  `double`s become `f32`, `integer` `i32` and `logical`s `bool`. You can
-  change the defaults via the `anvl.default_dtypes` option, or for a
-  scope with
-  [`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
-  /
-  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md).
+  The data type at which to create the array: a
+  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+  or one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64.
+  `data` is built at it rather than converted to it, and a value it
+  cannot hold at all is an error (`nv_array(3e9, dtype = "i32")`
+  overflows); a `double` at an integer data type is truncated. The
+  default (`NULL`) uses the [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md) of
+  `data`'s category.
 
 - device:
 
@@ -220,7 +218,7 @@ wraps around.
 ## Examples
 
 ``` r
-# A 1-d array (vector) with shape (4). Default type for integers is `i32`
+# a 1-d array (vector) with shape (4), at the default data type for integers
 nv_array(1:4)
 #> AnvlArray
 #>  1
@@ -251,7 +249,7 @@ nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 #>  4 5 6
 #> [ CPUi32{2,3} ] 
 
-# A scalar array.
+# a scalar array
 nv_scalar(3.14)
 #> AnvlArray
 #>  3.1400
@@ -260,8 +258,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  9.0305e-36 3.0653e-41 9.0305e-36
-#>  3.0653e-41 8.9965e-38 3.0653e-41
+#>  0.0000 2.5312 0.0000
+#>  0.0000 0.0000 0.0000
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

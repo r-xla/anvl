@@ -96,15 +96,17 @@ the half integers, where the tangent has its poles.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array. An integer array is converted to the default floating point type
-(see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p></dd>
+One input. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>). An R value materializes at its
+<a href="default_dtypes.html">default data type</a> and is converted in the same way.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same shape as the input, and its data type – or the default float
-data type if the input was an integer array.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's shape, and its data type – or the default float data type
+(see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where the input was an integer one.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

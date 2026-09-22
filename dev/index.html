@@ -114,13 +114,13 @@
 <p>Package website: <a href="https://r-xla.github.io/anvl/">release</a> | <a href="https://r-xla.github.io/anvl/dev/">dev</a></p>
 <!-- badges: start -->
 
-<p>Accelerated array computing and code transformations for R, allowing you to run numerical programs at the speed of light. The package supports JIT compilation for very fast execution and reverse-mode automatic differentiation. Programs can run on CPU and NVIDIA GPU.</p>
+<p>Accelerated array computing and code transformations for R, allowing you to run numerical programs at the speed of light. The package supports just-in-time (JIT) compilation for very fast execution and reverse-mode automatic differentiation. Programs can run on CPU and NVIDIA GPU.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"anvl"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://r-xla.r-universe.dev"</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Afterwards, install the additional dependencies as follows:</p>
+<p>Afterwards, install the additional dependencies:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">anvl</span><span class="fu">::</span><span class="fu"><a href="reference/install_anvl.html">install_anvl</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>See the <a href="https://r-xla.github.io/anvl/articles/installation.html">installation guide</a> for more details, including prebuilt Docker images.</p>
@@ -128,11 +128,11 @@
 <div class="section level2">
 <h2 id="why-anvl">Why anvl<a class="anchor" aria-label="anchor" href="#why-anvl"></a>
 </h2>
-<p>anvl makes numerical R code run fast on CPUs and GPUs, and computes gradients of your functions automatically. It aspires to be for R what JAX is for Python.</p>
+<p>{anvl} makes numerical R code run fast on CPUs and GPUs, and computes gradients of your functions automatically. It aspires to be for R what JAX is for Python.</p>
 <p>There are three core ideas:</p>
 <ul>
 <li>
-<strong>Compilation.</strong> {anvl} converts R functions into an optimized program via XLA – the same compiler that powers JAX and TensorFlow. Due to the compilation, resulting programs can be faster compared to implementing them in <a href="https://torch.mlverse.org" class="external-link">{torch}</a>.</li>
+<strong>Compilation.</strong> {anvl} converts R functions into an optimized program via XLA – the same compiler that powers JAX and TensorFlow. Due to the compilation step, resulting programs can be faster compared to implementing them in <a href="https://torch.mlverse.org" class="external-link">{torch}</a>.</li>
 <li>
 <strong>Function transformation.</strong> Programmatically derive new functions from existing ones. Currently the only available transformation is reverse-mode automatic differentiation via <code><a href="reference/gradient.html">gradient()</a></code>, which returns the derivative of a function as another R function.</li>
 <li>
@@ -143,16 +143,16 @@
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>We define an R function operating on <code>AnvlArray</code>s – the primary data type of {anvl}. It can be executed in either <em>eager</em> mode (each operation is performed immediately) or <em>jit</em> mode (the whole function is compiled into a single executable via <code><a href="reference/jit.html">jit()</a></code>).</p>
+<p>We define an R function operating on <code>AnvlArray</code>s, which is the primary data type of {anvl}. It can be executed in either <em>eager</em> mode (each operation is performed immediately) or <em>jit</em> mode (the whole function is compiled into a single executable via <code><a href="reference/jit.html">jit()</a></code>).</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">a</span> <span class="op">*</span> <span class="va">x</span> <span class="op">+</span> <span class="va">b</span></span>
+<span>  <span class="fu"><a href="reference/nv_mul.html">nv_mul</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">x</span><span class="op">)</span> <span class="op">+</span> <span class="va">b</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span></span>
-<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">"f32"</span><span class="op">)</span></span>
-<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span>, <span class="st">"f32"</span><span class="op">)</span></span>
+<span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Eager mode</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">x</span><span class="op">)</span></span>
@@ -166,7 +166,7 @@
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  5</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
-<p>Through automatic differentiation, we can also obtain the gradient of the above function.</p>
+<p>Through function transformation, we can also obtain the gradient of the above function.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">g_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="reference/gradient.html">gradient</a></span><span class="op">(</span><span class="va">f</span>, wrt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">g_jit</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">x</span><span class="op">)</span></span>
@@ -179,6 +179,14 @@
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  1</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
+<p>By default, floats use <code>f32</code> precision in {anvl} because of its speed advantage on GPUs. Changing this default to double-precision is possible via the <code>anvl.default_dtypes</code> option:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/local_default_dtypes.html">with_default_dtypes</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, <span class="op">{</span></span>
+<span>  <span class="fu"><a href="reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">pi</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  4.1416</span></span>
+<span><span class="co">#&gt; [ CPUf64{} ]</span></span></code></pre></div>
 <p>For more complex examples, such as implementing a Gaussian Process, see the package website.</p>
 </div>
 <div class="section level2">

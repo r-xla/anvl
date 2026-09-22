@@ -8,8 +8,8 @@ the first. This enables idioms like *argsort* (sort `x` paired with an
 `iota` and read off the second output) and key-value sorts (sort `keys`
 paired with `values`).
 
-All arrays must have the same shape; their dtypes may differ. 1-D slices
-along `axis` are sorted independently; other axes are preserved.
+1-D slices along `axis` are sorted independently; other axes are
+preserved.
 
 ## Usage
 
@@ -48,10 +48,10 @@ prim_sort(xs, axis, descending = FALSE, is_stable = FALSE)
 
 ## Value
 
-`list` of
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-One sorted output per element of `xs`, in the same order. Each output
-has the same shape and data type as the corresponding input.
+(`list` of
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+One sorted output per element of `xs`, in the same order, each with the
+shape and data type of its input.
 
 ## Implemented Rules
 
@@ -62,14 +62,15 @@ has the same shape and data type as the corresponding input.
 ## StableHLO
 
 Lowers to
-[`hlo_sort()`](https://r-xla.github.io/stablehlo/reference/hlo_sort.html)
-with a comparator that uses
+[`hlo_sort()`](https://r-xla.github.io/stablehlo/reference/hlo_sort.html),
+specified under [sort](https://openxla.org/stablehlo/spec#sort). The
+comparator uses
 [`hlo_compare()`](https://r-xla.github.io/stablehlo/reference/hlo_compare.html)
 (`LT` for ascending, `GT` for descending) on the first array. For float
-keys the comparator uses `compare_type = "TOTALORDER"` and canonicalizes
-`-0`/`+0` and `-NaN`/`+NaN` to their positive form before comparing, so
-all `NaN` values land at one end of the result regardless of sign.
-Integer keys use `SIGNED` / `UNSIGNED` as appropriate.
+keys it uses `compare_type = "TOTALORDER"` and canonicalizes `-0`/`+0`
+and `-NaN`/`+NaN` to their positive form before comparing, so all `NaN`
+values land at one end of the result regardless of sign. Integer keys
+use `SIGNED` / `UNSIGNED` as appropriate.
 
 ## See also
 
@@ -92,7 +93,7 @@ prim_sort(list(x), axis = 1L)[[1L]]
 #> [ CPUf32{5} ] 
 
 # sort indices by the values (argsort): pair x with iota and read off
-# the second result.
+# the second result
 idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
 out <- prim_sort(list(x, idx), axis = 1L)
 out[[1L]] # sorted x

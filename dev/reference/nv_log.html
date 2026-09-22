@@ -90,15 +90,17 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array. An integer array is converted to the default floating point type
-(see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p></dd>
+One input. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>). An R value materializes at its
+<a href="default_dtypes.html">default data type</a> and is converted in the same way.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same shape as the input, and its data type – or the default float
-data type if the input was an integer array.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's shape, and its data type – or the default float data type
+(see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where the input was an integer one.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -107,13 +109,20 @@ data type if the input was an integer array.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2.718</span>, <span class="fl">7.389</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the input's data type carries through</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2.718</span>, <span class="fl">7.389</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.9999</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2.0000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># an R value materializes at its default data type</span></span></span>
+<span class="r-in"><span><span class="fu">nv_log</span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.6931</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

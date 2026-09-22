@@ -25,7 +25,7 @@ as_raw(x, ...)
 
 ## Value
 
-A [`raw`](https://rdrr.io/r/base/raw.html) vector.
+([`raw`](https://rdrr.io/r/base/raw.html))
 
 ## Details
 

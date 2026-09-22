@@ -9,8 +9,8 @@ sometimes only briefly.
   modes.
 - [**CUDA**](#cuda) – running on a GPU instead of CPU (Linux x86 / WSL2
   only).
-- [**Data types**](#data-types) – using `f32` (the default) instead of
-  `f64`.
+- [**Data types**](#data-types) – working in single instead of double
+  precision.
 - [**BLAS / LAPACK**](#blas-lapack) – linking R against a fast LAPACK to
   speed up linear algebra on CPU.
 - [**Compilation cost**](#compilation-cost) – padding inputs so more

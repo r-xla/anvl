@@ -24,7 +24,15 @@ nv_triangular_solve(
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Triangular coefficient matrix with at least 2 axes. The last two axes
-  must be equal; any leading axes are batch axes.
+  must be equal; any leading axes are batch axes. Can be any numeric
+  data type: `a` and `b` are [promoted to a common data
+  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md)
+  and that is then converted to the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+  where it is not a float already, since the solve is a float one. An R
+  value assumes the other operand's data type within its [data type
+  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
+  settles on the default float when neither has one.
 
 - b:
 
@@ -39,7 +47,8 @@ nv_triangular_solve(
     reshaped internally and the reshape is undone on the result so the
     output rank matches `b`.
 
-  `b`'s batch axes (`B...`) must match `a`'s exactly.
+  `b`'s batch axes (`B...`) must match `a`'s exactly. It is promoted
+  together with `a` – see `a`.
 
 - left_side:
 
@@ -65,8 +74,11 @@ nv_triangular_solve(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-The solution `x`, with the same shape and dtype as `b`.
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+The solution `x`, with `b`'s shape and the operands' common data type –
+or the default float data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+where that was an integer one.
 
 ## Details
 
@@ -76,6 +88,10 @@ right-hand side per batch, shape `(B..., n)` for `a` of shape
 (`left_side = TRUE`) or row (`left_side = FALSE`) and reshaped back on
 the way out. Because we don't broadcast, this is not ambiguous (as it
 would be for NumPy).
+
+Differentiation is only implemented for a single system: a
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+of a batched solve errors.
 
 ## See also
 

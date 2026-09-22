@@ -19,23 +19,36 @@ nv_lu(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 axes.
+  One input, with exactly 2 axes. Can be any numeric data type: a float
+  keeps its own, and an integer one is converted to the default float
+  data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  and is converted in the same way.
 
 ## Value
 
-Named `list`:
+(named `list` of
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+`L` and `U` have the input's data type – or the default float data type
+(see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+where the input was an integer one; `pivots` and `permutation` are
+indices at the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 - `L` – unit lower-triangular factor of shape `(m, k)`, where
   `(m, n) = shape(x)` and `k = min(m, n)`.
 
 - `U` – upper-triangular factor of shape `(k, n)`.
 
-- `pivots` – length `k`, of the default integer data type (see
+- `pivots` – length `k`, at the default integer data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
-  LAPACK-style sequential 1-based row swaps as returned by `getrf`.
+  LAPACK-style sequential row swaps as returned by `getrf`.
 
-- `permutation` – length `m`, of the default integer data type. A
-  1-based permutation vector representing \\P\\.
+- `permutation` – length `m`, at that same data type. A permutation
+  vector representing \\P\\.
 
 ## See also
 
@@ -44,6 +57,7 @@ Named `list`:
 ## Examples
 
 ``` r
+# `L` and `U` keep the input's data type; the pivots are the default integer
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_lu(x)
 #> $L

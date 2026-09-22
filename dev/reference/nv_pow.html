@@ -90,15 +90,17 @@
 
 <dl><dt id="arg-lhs-rhs">lhs, rhs<a class="anchor" aria-label="anchor" href="#arg-lhs-rhs"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Left and right operand.
-Operands are <a href="nv_promote_to_common.html">promoted to a common data type</a>.
-Scalars are <a href="nv_broadcast_scalars.html">broadcast</a> to the shape of the other operand.</p></dd>
+Two inputs with a <a href="common_dtype.html">common data type</a>. Can be
+any numeric data type. Scalars are broadcast, and R values assume the other
+operand's data type within their <a href="dtypes.html">data type category</a>,
+otherwise falling back to their <a href="default_dtypes.html">default data type</a> and
+being converted to the common data type.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same shape and the promoted common data type of the inputs.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the inputs' broadcast shape and common data type.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -109,17 +111,25 @@ Has the same shape and the promoted common data type of the inputs.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_pow</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">^</span> <span class="va">y</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  8</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  9</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
-<span class="r-in"><span><span class="va">x</span><span class="op">^</span><span class="va">y</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># different data types are promoted to their common one</span></span></span>
+<span class="r-in"><span><span class="fu">nv_pow</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  8</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  9</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf64{} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># a scalar is broadcast and an R integer is converted to a float</span></span></span>
+<span class="r-in"><span><span class="va">x</span><span class="op">^</span><span class="fl">2L</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   9</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  16</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
 </code></pre></div>
     </div>
