@@ -71,7 +71,12 @@ plain: written `0L` / `1L`, a call that names no dtype returns the sample at the
 
 ## Supported dtypes
 
-- there is currently no support for complex numbers.
+The data types and the words the docs use for groups of them are in `?dtypes`
+(`R/promotion.R`) and `man-roxygen/section_dtype_words.R`: *any* / *numeric* / *integer* /
+*integerish* / *signed numeric* / *float* / *boolean*. Two things to keep in mind:
+
+- There is currently no support for complex numbers.
+- We currently do not worry about any float type other than `f32` and `f64`.
 
 ## Type Promotion
 
@@ -82,7 +87,7 @@ is the reference for how this works and for the `.promote` rules (`promotion_com
 `as_anvl_arrays()`. Two rules that bite while writing code:
 
 - Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
-  `peek_dtype()` to ask which data type it would take.
+  `peek_dtype()` to ask what it *would* materialize at.
 - A primitive promotes nothing unless its body says so: one whose operands must agree calls
   `apply_promotion()` on them before anything else reads them.
 - A trace output that met nothing materializes at the default float / integer of the active backend,

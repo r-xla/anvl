@@ -56,7 +56,7 @@ What the rule is, for printing: it shows as \verb{<\{kind\}>}, so give it the
 name of the function that builds it.}
 }
 \value{
-\verb{function(args) -> list()}
+(\verb{function(args) -> list()})
 A function returning data types for those inputs to be converted and \code{NULL} for those
 to be left unchanged.
 }
@@ -70,12 +70,13 @@ R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
 
 \code{promotion_like()} brings the inputs to the data type of a selected input.
-If the selected data type is an R value, it's default data type is used.
+If the selected input is an R value, its default data type is used.
 
 \code{promotion_dtype()} brings the inputs to the specified data type.
 
-\code{promotion_rdata_common()} brings the \emph{R values} to the common data type, as long
-it is within their category (a \code{double} can e.g. \emph{not} become a float).
+\code{promotion_rdata_common()} brings the \emph{R values} to the common data type, as
+long as it is within their category (a \code{double} can e.g. \emph{not} become an
+integer).
 \code{AnvlArray} inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
@@ -95,7 +96,7 @@ promotion_common(c(1, 2))(list(-3, 4, 1))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
-# without `coerce`, a target the input cannot hold is refused.
+# without `coerce`, a target the input cannot hold is refused
 try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

@@ -8,7 +8,9 @@ nv_rng_state(seed, device = NULL)
 }
 \arguments{
 \item{seed}{(\code{\link{arrayish}})\cr
-Scalar \code{i32} seed value.}
+Scalar seed. Must be a signed or unsigned integer; it is brought to \code{i32},
+so a wider one is narrowed to its low 32 bits. An R integer is built at
+\code{i32} directly, whatever the default integer data type is.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -25,7 +27,8 @@ The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: 
 named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 }
 \value{
-\code{\link{nv_array}} of dtype \code{ui64} and shape \code{(2)}.
+(\code{\link{arrayish}})\cr
+A \code{ui64} array of length 2, whatever \code{seed}'s data type was.
 }
 \description{
 Creates an initial RNG state from a seed. This state is required by all

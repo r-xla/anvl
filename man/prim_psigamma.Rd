@@ -8,12 +8,14 @@ prim_psigamma(x, deriv)
 }
 \arguments{
 \item{x, deriv}{(\code{\link{arrayish}})\cr
-Arrayish values of data type floating-point.
-Must have the same shape.}
+Two inputs of the same shape. Can be any float data type.
+\code{x} and \code{deriv} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise psigamma function: the \code{deriv}-th derivative of the digamma
@@ -31,11 +33,14 @@ non-negative integer values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, which takes the order first.
+Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chlopolygamma_chlopolygammaop}{chlo.polygamma}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# both operands are floats, as the primitive requires
 x <- nv_array(c(0.5, 1, 2))
 deriv <- nv_array(c(1, 1, 2))
 prim_psigamma(x, deriv)

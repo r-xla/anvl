@@ -16,7 +16,14 @@ nv_triangular_solve(
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
 Triangular coefficient matrix with at least 2 axes. The last two
-axes must be equal; any leading axes are batch axes.}
+axes must be equal; any leading axes are batch axes. Can be any numeric
+data type: \code{a} and \code{b} are
+\link[=nv_promote_to_common]{promoted to a common data type} and that is then
+converted to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where
+it is not a float already, since the solve is a float one. An R value
+assumes the other operand's data type within its
+\link[=dtypes]{data type category}, and settles on the default float when
+neither has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side. For \code{a} of shape \verb{(B..., n, n)}, \code{b} may be either:
@@ -29,7 +36,8 @@ is reshaped internally and the reshape is undone on the result so
 the output rank matches \code{b}.
 }
 
-\code{b}'s batch axes (\code{B...}) must match \code{a}'s exactly.}
+\code{b}'s batch axes (\code{B...}) must match \code{a}'s exactly. It is promoted
+together with \code{a} -- see \code{a}.}
 
 \item{left_side}{(\code{logical(1)})\cr
 If \code{TRUE} (default), solve \code{op(a) \%*\% x = b}; if \code{FALSE},
@@ -46,8 +54,10 @@ values on the diagonal are ignored). Defaults to \code{FALSE}.}
 If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-The solution \code{x}, with the same shape and dtype as \code{b}.
+(\code{\link{arrayish}})\cr
+The solution \code{x}, with \code{b}'s shape and the operands' common data type --
+or the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where that was
+an integer one.
 }
 \description{
 Solves a triangular system of linear equations. When \code{left_side = TRUE},
@@ -60,6 +70,9 @@ As a convenience, \code{b} may have one fewer axis than \code{a} (a single
 right-hand side per batch, shape \verb{(B..., n)} for \code{a} of shape
 \verb{(B..., n, n)}). It is reshaped internally to a column (\code{left_side = TRUE}) or row (\code{left_side = FALSE}) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
+
+Differentiation is only implemented for a single system: a \code{\link[=gradient]{gradient()}} of a
+batched solve errors.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

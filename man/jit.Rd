@@ -39,7 +39,8 @@ another backend takes is rejected when the function is called on a backend
 that does not, since the backend is not known until then.}
 }
 \value{
-A \code{JitFunction} (a \code{function} with the same formals as \code{f}).
+(\code{JitFunction})\cr
+A \code{function} with the same formals as \code{f}.
 The returned wrapper expects \code{\link{AnvlArray}} inputs and returns
 \code{\link{AnvlArray}} values.
 }

@@ -57,16 +57,15 @@ result$values
 For normally distributed random numbers:
 
 ```{r}
-result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mean = 0, sd = 1)
+result <- nv_rnorm(state, shape = c(2, 3), mean = 0, sd = 1)
 result$values
 ```
 
-`mean` and `sd` are arrayish, so they may vary across the sample, as long as
-they have the same shape as it:
+`mean` and `sd` are arrayish, so they may vary across the sample.
 
 ```{r}
 sds <- nv_matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2)
-nv_rnorm(state, dtype = "f32", shape = c(2, 3), sd = sds)$values
+nv_rnorm(state, shape = c(2, 3), sd = sds)$values
 ```
 
 To draw integers, use `nv_sample_int()`, the counterpart to R's `sample.int()`:

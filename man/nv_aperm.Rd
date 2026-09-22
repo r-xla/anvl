@@ -15,7 +15,8 @@ nv_transpose(x, perm = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{perm}{(\code{integer()} | \code{NULL})\cr
 New ordering of axes. If \code{NULL} (default), reverses the axes.
@@ -27,8 +28,9 @@ The array whose axes to permute.}
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{x} and shape \code{shape(x)[perm]}.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type and shape \code{shape(x)[perm]}, or \code{rev(shape(x))}
+when \code{perm} is \code{NULL}.
 }
 \description{
 Permutes the axes of an array, like \code{\link[base:aperm]{base::aperm()}}. \code{nv_transpose()} is
@@ -49,6 +51,7 @@ a one-row matrix) and reverses the axes of a higher-rank array.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the 2x3 becomes a 3x2, keeping its data type
 x <- nv_matrix(1:6, nrow = 2)
 nv_aperm(x)
 t(x)

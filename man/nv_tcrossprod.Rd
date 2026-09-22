@@ -11,13 +11,16 @@ nv_tcrossprod(x, y = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-An array with at least 2 axes.}
+An array with at least 2 axes, as for \code{\link[base:tcrossprod]{base::tcrossprod()}}. Can be any numeric
+data type; \code{x} and \code{y} are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 
 \item{y}{(\code{\link{arrayish}} | \code{NULL})\cr
 Optional second array. If \code{NULL}, uses \code{x}.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the operands' common data type, and the shape of \code{x \%*\% t(y)}.
 }
 \description{
 Computes \code{x \%*\% t(y)}. If \code{y} is missing, computes \code{x \%*\% t(x)}.
@@ -26,6 +29,7 @@ axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `x \%*\% t(x)`, so a 2x3 gives a 2x2
 x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
 nv_tcrossprod(x)
 \dontshow{\}) # examplesIf}

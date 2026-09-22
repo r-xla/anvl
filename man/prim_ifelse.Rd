@@ -7,15 +7,19 @@
 prim_ifelse(test, yes, no)
 }
 \arguments{
-\item{test}{(\code{\link{arrayish}} of boolean type)\cr
-Predicate array. Must be scalar or have the same shape as \code{yes}.}
+\item{test}{(\code{\link{arrayish}})\cr
+Predicate array. Must be a boolean or an R logical, and scalar or the same
+shape as \code{yes}.}
 
 \item{yes, no}{(\code{\link{arrayish}})\cr
-Values to select from. Must have the same dtype and shape.}
+Values to select from, of the same shape. Can be any data type.
+\code{yes} and \code{no} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same dtype and shape as \code{yes}.
+(\code{\link{arrayish}})\cr
+Has the shape of \code{yes} and \code{no}, and the data type they agreed on.
 }
 \description{
 Element-wise selection based on a boolean predicate, mirroring R's
@@ -36,11 +40,13 @@ branches between two \emph{functions}, evaluating only the selected one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}.
+Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}, specified under
+\href{https://openxla.org/stablehlo/spec#select}{select}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result takes the branches' data type; `test` only selects
 test <- nv_array(c(TRUE, FALSE, TRUE))
 prim_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 \dontshow{\}) # examplesIf}

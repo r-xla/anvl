@@ -11,7 +11,8 @@ nv_drop(x, axes = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
 Axes to squeeze. Negative values count from the end, i.e. \code{-1}
@@ -19,8 +20,8 @@ refers to the last axis.
 If \code{NULL} (default), all axes of size 1 are removed.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{x} with the specified axes removed.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type, with the specified axes removed from its shape.
 }
 \description{
 Removes axes of size 1 from an array. \code{nv_drop()} is another spelling of
@@ -29,6 +30,7 @@ axis, like \code{\link[base:drop]{base::drop()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the two size-1 axes are dropped
 x <- nv_array(1:6, shape = c(1, 6, 1))
 nv_squeeze(x)
 nv_drop(x)

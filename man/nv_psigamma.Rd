@@ -9,26 +9,28 @@ nv_psigamma(x, deriv = 0L)
 }
 \arguments{
 \item{x, deriv}{(\code{\link{arrayish}})\cr
-Floating-point arrayish values; an integer \code{x} is computed at the default
-float data type. After promotion and broadcasting, \code{x} and \code{deriv} must
-have the same shape; \code{deriv} typically holds non-negative integer values.}
+The value to evaluate at and the order of the derivative. \code{deriv}
+typically holds non-negative whole numbers. Can be any numeric data type:
+the two are \link[=nv_promote_to_common]{promoted to a common data type} and
+that is then converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}) where it is not a float already, since a float is
+all \code{\link[=prim_psigamma]{prim_psigamma()}} takes. An R value assumes the other operand's data
+type within its \link[=dtypes]{data type category}, and settles on the default
+float when neither has one.
+Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other,
+so \code{nv_psigamma(x, 1)} works for any float \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape, and their common data type -- or the
+default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where that was an
+integer one.
 }
 \description{
 Element-wise psigamma function, like \code{\link[base:psigamma]{base::psigamma()}}: the \code{deriv}-th
 derivative of the digamma function, i.e. the \code{(deriv + 1)}-th derivative of
-the log-gamma function. The order \code{deriv} is broadcast against \code{x} (so
-\code{nv_psigamma(x, 1)} works for any \code{x}). For \code{deriv = 0} this is the digamma
-function; for \code{deriv = 1}, \code{trigamma()} dispatches here.
-
-Inputs are
-\link[=nv_promote_to_common]{promoted to a common floating data type} and
-scalar arguments are
-\link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar
-arguments.
+the log-gamma function. For \code{deriv = 0} this is the digamma function; for
+\code{deriv = 1}, \code{trigamma()} dispatches here.
 }
 \section{The \code{trigamma()} generic}{
 
@@ -37,6 +39,7 @@ arguments.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R `1` is built at `x`'s float data type and broadcast
 x <- nv_array(c(0.5, 1, 2, 5))
 nv_psigamma(x) # digamma
 nv_psigamma(x, 1) # trigamma

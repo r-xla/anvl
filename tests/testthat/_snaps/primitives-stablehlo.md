@@ -14,7 +14,7 @@
     Code
       invisible(g(1))
     Output
-      AnvlArray
+      RData
        1
       [ double{} printed at f32 ]
 
@@ -23,7 +23,7 @@
     Code
       invisible(h(matrix(1:4, nrow = 2)))
     Output
-      AnvlArray
+      RData
        1 3
        2 4
       [ integer{2,2} printed at i32 ]

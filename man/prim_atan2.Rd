@@ -8,12 +8,15 @@ prim_atan2(y, x)
 }
 \arguments{
 \item{y, x}{(\code{\link{arrayish}})\cr
-Ordinate and abscissa of the point, of data type floating-point.
-Must have the same shape.}
+Ordinate and abscissa of the point, of the same shape. Can be any float
+data type.
+\code{y} and \code{x} must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise atan2 operation: the angle (in radians) between the positive
@@ -33,14 +36,17 @@ other binary primitives share.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_atan2]{hlo_atan2()}}.
+Lowers to \code{\link[stablehlo:hlo_atan2]{hlo_atan2()}}, specified under
+\href{https://openxla.org/stablehlo/spec#atan2}{atan2}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-y <- nv_array(c(1, 0, -1))
-x <- nv_array(c(0, 1, 0))
-prim_atan2(y, x)
+# two R values: both take an R double's default data type
+prim_atan2(1, 1)
+
+# the R value is built at the array's data type instead
+prim_atan2(1, nv_scalar(1, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

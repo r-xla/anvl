@@ -8,8 +8,10 @@ prim_while(init, cond, body)
 }
 \arguments{
 \item{init}{(\verb{named list()})\cr
-Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs. R values are materialized at their default data type.}
+Named list of initial state values, a tree in the sense of pjrt's
+\code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
+sub-graphs. R values are materialized at their
+\link[=default_dtypes]{default data type}.}
 
 \item{cond}{(\code{function})\cr
 Condition function that receives the current state as arguments
@@ -17,17 +19,20 @@ and outputs whether to continue the loop.}
 
 \item{body}{(\code{function})\cr
 Body function that receives the current state as arguments and
-returns a named list with the same structure, dtypes, and shapes
-as \code{init}.}
+returns a named list with the same structure, data types and shapes
+as \code{init}. Nothing is promoted: a loop-carried state is meant to be
+heterogeneous, so each member keeps its own data type across iterations.}
 }
 \value{
-Named list with the same structure as \code{init} containing the
-final state after the loop terminates.
+(named \code{list})\cr
+A tree of the loop-carried arrays -- see \code{\link[pjrt:build_tree]{RTree}} -- with the
+same structure, data types and shapes as \code{init}, in its final state after
+the loop terminates.
 }
 \description{
 Repeatedly executes \code{body} while \code{cond} returns \code{TRUE}, like R's
-\code{while} loop. The loop state is initialized with \code{init} and
-passed through each iteration.
+\code{while} loop. The loop state is initialized with \code{init} and passed through
+each iteration; it is the only thing carried from one iteration to the next.
 }
 \section{Implemented Rules}{
 
@@ -39,11 +44,13 @@ passed through each iteration.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_while]{hlo_while()}}.
+Lowers to \code{\link[stablehlo:hlo_while]{hlo_while()}}, specified under
+\href{https://openxla.org/stablehlo/spec#while}{while}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the loop state is a named list, and each member keeps its data type
 prim_while(
   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
   cond = function(i, total) i <= 5L,

@@ -7,21 +7,20 @@
 nv_ifelse(test, yes, no)
 }
 \arguments{
-\item{test}{(\code{\link{arrayish}} of boolean type)\cr
-Predicate array. Must be scalar or have the same shape as the
-non-scalar arguments.}
+\item{test}{(\code{\link{arrayish}})\cr
+Predicate array. Must be a boolean or an R logical, and scalar or the same
+shape as the non-scalar arguments.}
 
 \item{yes, no}{(\code{\link{arrayish}})\cr
-Values to return where \code{test} is \code{TRUE} / \code{FALSE}.
-\code{yes} and \code{no} are
+Values to return where \code{test} is \code{TRUE} / \code{FALSE}. Can be of any data
+type; the two are
 \link[=nv_promote_to_common]{promoted to a common data type}.
 Scalars (including \code{test}) are
 \link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the common data type of \code{yes} and \code{no} and the
-shape of the non-scalar arguments.
+(\code{\link{arrayish}})\cr
+Has the common data type of \code{yes} and \code{no}, and their broadcast shape.
 }
 \description{
 Selects elements from \code{yes} or \code{no} based on \code{test}, mirroring R's
@@ -34,7 +33,7 @@ branches between two \emph{functions}, evaluating only the selected one.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 test <- nv_array(c(TRUE, FALSE, TRUE))
 nv_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
-# scalar branches are broadcast and promoted to a common dtype
+# scalar branches are broadcast and promoted to a common data type
 nv_ifelse(test, nv_scalar(1L), nv_scalar(0.5))
 \dontshow{\}) # examplesIf}
 }

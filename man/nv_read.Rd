@@ -2,7 +2,7 @@
 % Please edit documentation in R/serialize.R
 \name{nv_read}
 \alias{nv_read}
-\title{Read arrays from a file}
+\title{Read Arrays from a File}
 \usage{
 nv_read(path, device = NULL)
 }
@@ -15,7 +15,7 @@ The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...
 Default is to use the CPU.}
 }
 \value{
-Named \code{list} of \code{\link{AnvlArray}} objects.
+(named \code{list} of \code{\link{AnvlArray}})
 }
 \description{
 Loads arrays from a file in the
@@ -27,6 +27,7 @@ closes a file connection.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 path <- tempfile(fileext = ".safetensors")

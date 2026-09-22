@@ -9,17 +9,20 @@ nv_or(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any integerish data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise bitwise OR of two integer arrays, which for a boolean array
-is the logical OR.
+Element-wise bitwise OR -- a logical OR on a boolean input, and a
+bit-by-bit one on an integer. You can also use the \code{|} operator,
+which expects \code{bool} inputs, however.
 }
 \section{The \code{|} operator}{
 
@@ -29,9 +32,15 @@ Unlike base R it only accepts booleans and does not auto-convert non-booleans by
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
-nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
-nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
+x <- nv_array(c(TRUE, FALSE, TRUE))
+y <- nv_array(c(TRUE, TRUE, FALSE))
+x | y
+
+# different data types are promoted to their common one
+nv_or(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
+
+# a scalar is broadcast
+x | TRUE
 \dontshow{\}) # examplesIf}
 }
 \seealso{

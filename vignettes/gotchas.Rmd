@@ -93,10 +93,11 @@ nv_array(NA_real_)
 nv_array(c(1, NA, 3))
 ```
 
-Round-tripping back to R therefore does not give the `NA` back, but a `NaN`:
+Round-tripping back to R is not guaranteed to produce `NA`, but can also yield `NaN`.
+What comes back depends on the data type the value was built at, so it is pinned here:
 
 ```{r}
-as_array(nv_array(c(1, NA, 3)))
+as_array(nv_array(c(1, NA, 3), dtype = "f32"))
 ```
 
 The signed integer dtypes are a special case.
@@ -104,12 +105,11 @@ R spells `NA_integer_` as the bit pattern `-2147483648`, which is also what an `
 Both directions warn about it:
 
 ```{r}
-x <- nv_scalar(NA_integer_)
-x
+nv_scalar(NA_integer_, dtype = "i32")
 ```
 
 ```{r}
-as.integer(x)
+as.integer(nv_scalar(NA_integer_, dtype = "i32"))
 ```
 
 Nothing on the device reserves that bit pattern, so it also arises from ordinary
@@ -135,7 +135,7 @@ Scan the data yourself with `anyNA()` if you want to hear about a missing value 
 Converters like `as_array()` do take a `check` argument, with three levels: `"warn"` (the default) warns about a value R's type cannot hold, `"err"` makes it an error, and `FALSE` skips the scan.
 
 ```{r, error = TRUE}
-as_array(nv_scalar(NA_integer_), check = "err")
+as_array(nv_scalar(NA_integer_, dtype = "i32"), check = "err")
 ```
 
 ## Subnormal floating-point values
@@ -223,6 +223,10 @@ Here, canoicalizing refers to the conversion or dynamic R inputs to `AnvlArray`s
 This can be done via `as_anvl_array` for single arguments and `as_anvl_arrays` for multiple arguments.
 
 E.g., the following function does not behave the same in jit-mode and in eager mode.
+The untyped `1` materializes at the default float, so under the default `f32` the
+jitted result is rounded where the eager one is not (at an `f64` default the two
+would agree, which is exactly the point: the answer depends on a default rather
+than on the code):
 
 ```{r}
 add_pi <- function(x) {

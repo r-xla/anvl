@@ -17,7 +17,7 @@ First array to compare. Must not be an \code{\link{RData}}.}
 Second array to compare. Must not be an \code{\link{RData}}.}
 }
 \value{
-\code{logical(1)} - \code{TRUE} if the arrays are equal, \code{FALSE} otherwise.
+(\code{logical(1)})
 }
 \description{
 Compare two abstract arrays for type equality.
