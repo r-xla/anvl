@@ -41,9 +41,9 @@
   single `axis`, defaulting to every axis like `nv_mean()` and base R's
   `quantile()` / `median()`, and gained a `drop` argument. Write
   `nv_median(x, axes = -1L)` for the previous default.
-* `nv_cumsum()`, `nv_cumprod()`, `nv_cummax()` and `nv_cummin()` now accumulate
-  along the last axis when `axis = NULL`, instead of flattening first. Write
-  `nv_cumsum(nv_flatten(x))` for the previous default.
+* `nv_sort()` and `nv_argsort()` now flatten a multi-axis array when
+  `axis = NULL`, instead of working along the last axis, so `sort()` on an
+  anvl array agrees with base R. Write `axis = -1L` for the previous default.
 * `prim_sort()` no longer defaults `axis` to `1L`; pass it explicitly, as with
   every other primitive.
 * `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a

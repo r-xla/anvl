@@ -13,8 +13,8 @@ Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to accumulate. Negative values count from the end,
-i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses the last
-axis.}
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
+is first flattened to a 1-D array, like \code{\link[base:cumprod]{base::cumprod()}}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
@@ -30,26 +30,22 @@ boolean input, which is accumulated at the default integer data type (see
 \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 \description{
-Cumulative product along a single axis, the last one by default.
+Cumulative product, optionally along a single axis.
 A boolean array is multiplied as zeroes and ones, like \code{\link[base:cumprod]{base::cumprod()}} does.
 }
 \section{Relation to base R}{
 
-\code{\link[base:cumprod]{base::cumprod()}} flattens a multi-axis array before
-accumulating, while \code{nv_cumprod()} (and \code{cumprod()} on
-an anvl array) accumulates along a single axis, the last one by default.
-Flatten with \code{\link[=nv_flatten]{nv_flatten()}} first if you want a single running sequence.
-The two orders still differ: anvl arrays are row-major (C order), so the
-flattened sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. They agree on 1-D inputs.
+\code{nv_cumprod()} with \code{axis = NULL} and \code{\link[base:cumprod]{base::cumprod()}}
+both flatten first, but in different orders -- anvl arrays are row-major (C
+order), base R is column-major (Fortran) -- so for a multi-axis input the
+two give different running values. They agree on 1-D inputs.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_cumprod(x)               # along the last axis
-nv_cumprod(x, axis = 1L)    # accumulate along the first axis
-nv_cumprod(nv_flatten(x))   # across every element
+nv_cumprod(x)              # row-major flatten, then accumulate
+nv_cumprod(x, axis = 1L)    # accumulate along rows
 nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 \dontshow{\}) # examplesIf}

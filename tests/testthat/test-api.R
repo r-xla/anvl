@@ -949,20 +949,17 @@ describe("the cumulative ops' axis default", {
   m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
   mr <- as_array(m)
 
-  it("accumulates along the last axis", {
+  it("flattens a multi-axis input, row-major", {
     for (fn in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
-      expect_equal(as_array(fn(m)), as_array(fn(m, axis = 2L)))
+      expect_equal(as_array(fn(m)), as_array(fn(nv_flatten(m))))
     }
+    expect_equal(as.vector(nv_cumsum(m)), cumsum(as.vector(t(mr))))
+    expect_shape(nv_cumsum(m), 6L)
   })
 
-  it("flattens only when asked to", {
-    expect_equal(as.vector(nv_cumsum(nv_flatten(m))), cumsum(as.vector(t(mr))))
-  })
-
-  it("rejects a scalar, which has no axis to accumulate along", {
-    for (fn in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
-      expect_error(fn(nv_scalar(1)), "at least one axis")
-    }
+  it("accumulates along a chosen axis when one is given", {
+    expect_equal(as_array(nv_cumsum(m, axis = 1L)), apply(mr, 2L, cumsum))
+    expect_equal(as_array(nv_cumsum(m, axis = 2L)), t(apply(mr, 1L, cumsum)))
   })
 })
 
@@ -1714,10 +1711,19 @@ describe("nv_sort", {
     )
   })
 
-  it("defaults to last axis for matrices (rows)", {
+  it("flattens a matrix by default, like base R", {
+    mr <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    m <- nv_array(mr)
+    expect_equal(as.vector(nv_sort(m)), sort(mr))
+    expect_shape(nv_sort(m), 6L)
+    # `sort()` on an anvl array agrees with base R exactly
+    expect_equal(as.vector(sort(m)), sort(mr))
+  })
+
+  it("sorts each slice when an axis is given", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expected <- nv_matrix(c(1, 3, 5, 0, 2, 4), nrow = 2, byrow = TRUE)
-    expect_equal(nv_sort(m), expected)
+    expect_equal(nv_sort(m, axis = 2L), expected)
   })
 
   it("errors on a 0-dimensional input", {
@@ -1758,6 +1764,22 @@ describe("nv_argsort", {
   it("accepts a negative dim", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expect_equal(nv_argsort(m, axis = -2L), nv_argsort(m, axis = 1L))
+  })
+
+  it("flattens a matrix by default, matching nv_sort", {
+    mr <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    m <- nv_array(mr)
+    perm <- as.integer(nv_argsort(m))
+    expect_shape(nv_argsort(m), 6L)
+    # the indices refer to the row-major flattening, which is what nv_sort
+    # sorts, so indexing it by them reproduces nv_sort()'s output
+    expect_equal(as.vector(t(mr))[perm], as.vector(nv_sort(m)))
+  })
+
+  it("permutes each slice when an axis is given", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_shape(nv_argsort(m, axis = 2L), c(2L, 3L))
+    expect_equal(nv_argsort(m, axis = 2L), nv_argsort(m, axis = -1L))
   })
 })
 

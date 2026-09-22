@@ -2336,14 +2336,15 @@ nv_eye <- jit(
   )
 }
 
-# Expand `axis = NULL` to the last axis, for the cumulative ops. A scalar has
-# no axis to accumulate along; reject it here, where the message can name the
-# user's own argument.
-.resolve_cum_axis <- function(x, axis) {
-  if (naxes(x) == 0L) {
-    cli_abort("{.arg x} must have at least one axis to accumulate along, but it is a scalar.")
+# Resolve the `axis` of a cumulative op. `NULL` accumulates over every element,
+# like base R's `cum*()` functions, which means flattening the input first --
+# so this hands back the array as well as the axis.
+.resolve_cum_input <- function(x, axis) {
+  if (is.null(axis)) {
+    list(x = nv_reshape(x, prod(shape(x))), axis = 1L)
+  } else {
+    list(x = x, axis = axis)
   }
-  axis %||% naxes(x)
 }
 
 #' @title Sum Reduction
@@ -2587,7 +2588,7 @@ nv_reduce_all <- jit(
 
 #' @title Cumulative Sum
 #' @description
-#' Cumulative sum along a single axis, the last one by default.
+#' Cumulative sum, optionally along a single axis.
 #' A boolean array is counted, like [base::cumsum()] does.
 #' @template param_x
 #' @templateVar cum_base_fn cumsum
@@ -2599,17 +2600,17 @@ nv_reduce_all <- jit(
 #' @seealso [prim_cumsum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_cumsum(x)               # along the last axis
-#' nv_cumsum(x, axis = 1L)    # accumulate along the first axis
-#' nv_cumsum(nv_flatten(x))   # across every element
+#' nv_cumsum(x)              # row-major flatten, then accumulate
+#' nv_cumsum(x, axis = 1L)    # accumulate along rows
 #' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 #' @export
 nv_cumsum <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
-    x <- .count_bool(as_anvl_array(x))
-    axis <- .resolve_cum_axis(x, axis)
+    cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
+    x <- cum$x
+    axis <- cum$axis
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
       x <- nv_ifelse(nv_is_nan(x), 0, x)
     }
@@ -2620,7 +2621,7 @@ nv_cumsum <- jit(
 
 #' @title Cumulative Product
 #' @description
-#' Cumulative product along a single axis, the last one by default.
+#' Cumulative product, optionally along a single axis.
 #' A boolean array is multiplied as zeroes and ones, like [base::cumprod()] does.
 #' @template param_x
 #' @templateVar cum_base_fn cumprod
@@ -2632,17 +2633,17 @@ nv_cumsum <- jit(
 #' @seealso [prim_cumprod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_cumprod(x)               # along the last axis
-#' nv_cumprod(x, axis = 1L)    # accumulate along the first axis
-#' nv_cumprod(nv_flatten(x))   # across every element
+#' nv_cumprod(x)              # row-major flatten, then accumulate
+#' nv_cumprod(x, axis = 1L)    # accumulate along rows
 #' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 #' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 #' @export
 nv_cumprod <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
-    x <- .count_bool(as_anvl_array(x))
-    axis <- .resolve_cum_axis(x, axis)
+    cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
+    x <- cum$x
+    axis <- cum$axis
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
       x <- nv_ifelse(nv_is_nan(x), 1, x)
     }
@@ -2653,7 +2654,7 @@ nv_cumprod <- jit(
 
 #' @title Cumulative Maximum
 #' @description
-#' Running maximum along a single axis, the last one by default.
+#' Running maximum, optionally along a single axis.
 #' @template param_x
 #' @templateVar cum_base_fn cummax
 #' @template param_nv_cum_axis
@@ -2683,7 +2684,7 @@ nv_cummax <- jit(
 
 #' @title Cumulative Minimum
 #' @description
-#' Running minimum along a single axis, the last one by default.
+#' Running minimum, optionally along a single axis.
 #' @template param_x
 #' @templateVar cum_base_fn cummin
 #' @template param_nv_cum_axis
@@ -2715,8 +2716,9 @@ nv_cummin <- jit(
 # `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
 # sanitize NaN → identity for `nan_rm = TRUE`.
 .nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
-  x <- as_anvl_array(x)
-  axis <- .resolve_cum_axis(x, axis)
+  cum <- .resolve_cum_input(as_anvl_array(x), axis)
+  x <- cum$x
+  axis <- cum$axis
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
@@ -3400,8 +3402,8 @@ nv_select <- function(x, axis, index) {
 #' @template param_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to sort. Negative values count from the end,
-#'   i.e. `-1` refers to the last axis. If `NULL` (default), uses the last
-#'   axis.
+#'   i.e. `-1` refers to the last axis. If `NULL` (default), the input is
+#'   first flattened to a 1-D array, like [base::sort()].
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, sort in decreasing order. Default `FALSE`.
 #' @param stable (`logical(1)`)\cr
@@ -3416,10 +3418,12 @@ nv_select <- function(x, axis, index) {
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
 #' @section The `sort()` generic:
-#' [base::sort()] flattens a multi-axis array into a vector, while
-#' `nv_sort()` (and `sort()` on an anvl array) sorts along a single axis, the
-#' last one by default, and keeps the shape. Flatten with [nv_flatten()]
-#' first if you want a single sorted sequence.
+#' Like [base::sort()], `nv_sort()` with `axis = NULL` flattens a multi-axis
+#' array into one sorted vector, so `sort()` on an anvl array agrees with base
+#' R (the flatten order does not matter once the elements are sorted). It
+#' differs in one respect: base R drops `NA` by default, whereas `NaN` is kept
+#' and sorted to the end. Pass `axis` to sort each slice along one axis
+#' instead, which keeps the shape.
 #' @seealso [prim_sort()] for the underlying primitive,
 #'   [nv_argsort()], [nv_top_k()], [nv_median()],
 #'   [nv_argmax()], [nv_argmin()].
@@ -3430,7 +3434,8 @@ nv_select <- function(x, axis, index) {
 #' nv_sort(x, decreasing = TRUE)
 #'
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-#' nv_sort(m, axis = 2L)
+#' nv_sort(m) # one sorted vector, like base R
+#' nv_sort(m, axis = 2L) # each row sorted, shape kept
 #' @export
 nv_sort <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
@@ -3438,19 +3443,26 @@ nv_sort <- jit(
     if (naxes(x) == 0L) {
       cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
     }
-    prim_sort(list(x), axis = axis %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
+    if (is.null(axis)) {
+      x <- nv_flatten(x)
+      axis <- 1L
+    }
+    prim_sort(list(x), axis = axis, descending = decreasing, is_stable = stable)[[1L]]
   },
   static = 2:4
 )
 
 #' @title Argsort
 #' @description
-#' Returns the indices that would sort the array along an axis.
+#' Returns the indices that would sort the array: over every element by
+#' default, or along one axis. It is the index twin of [nv_sort()] and takes
+#' the same `axis`, so the two always describe the same ordering.
 #' @template param_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to compute the sort permutation. Negative values
 #'   count from the end, i.e. `-1` refers to the last axis. If `NULL`
-#'   (default), uses the last axis.
+#'   (default), the input is first flattened to a 1-D array, like
+#'   [nv_sort()], and the indices refer to that flattening.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, returns indices that produce a decreasing sort. Default
 #'   `FALSE`.
@@ -3459,15 +3471,19 @@ nv_sort <- jit(
 #'   original relative order. Default `FALSE`.
 #' @return [`arrayish`] of the default integer data type (see
 #'   [`default_dtypes()`])\cr
-#'   Same shape as `x`. For a size-0 axis, the output is an empty
-#'   array of the same shape (a valid empty permutation).
-#'   `as_array(x)[as_array(nv_argsort(x))]` reproduces the sorted
-#'   array (for 1-D inputs).
+#'   Same shape as `x`, or 1-D holding every element's index when `axis` is
+#'   `NULL`. For a size-0 axis, the output is an empty array of the same
+#'   shape (a valid empty permutation). Indexing the flattened input by the
+#'   result reproduces [nv_sort()]'s output.
 #' @inheritSection nv_sort NaN handling
 #' @seealso [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' nv_argsort(x)
+#'
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+#' nv_argsort(m) # indexes the flattened matrix
+#' nv_argsort(m, axis = 2L) # a permutation per row
 #' @export
 nv_argsort <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
@@ -3475,7 +3491,10 @@ nv_argsort <- jit(
     if (naxes(x) == 0L) {
       cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
     }
-    axis <- axis %||% naxes(x)
+    if (is.null(axis)) {
+      x <- nv_flatten(x)
+      axis <- 1L
+    }
     idx <- nv_iota_like(x, axis = axis, dtype = default_int())
     prim_sort(list(x, idx), axis = axis, descending = decreasing, is_stable = stable)[[2L]]
   },
