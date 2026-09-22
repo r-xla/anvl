@@ -239,6 +239,7 @@ nv_rnorm <- jit(
 #'   default integer data type (see [`default_dtypes()`]).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled values.
+#' @template section_rng_precision
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
@@ -265,7 +266,7 @@ nv_rbinom <- jit(
     # Generate uniform samples in [0, 1) and compare to prob
     # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
     # so we don't benefit from using runif w.r.t. unbiasedness
-    res <- nv_unif_rand(initial_state, shape = n_trials, dtype = "f64")
+    res <- nv_unif_rand(initial_state, shape = n_trials, dtype = default_float())
     U <- res$values
 
     # Success if U < prob
@@ -300,6 +301,7 @@ nv_rbinom <- jit(
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled
 #'   integers of shape `shape`.
+#' @template section_rng_precision
 #' @family rng
 #' @seealso [nv_sample()] to sample from an arbitrary population.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -340,6 +342,7 @@ nv_sample_int <- jit(
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled values
 #'   of shape `shape` and with the data type of `x`.
+#' @template section_rng_precision
 #' @family rng
 #' @seealso [nv_sample_int()] to sample the integers `1` to `n`.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -368,8 +371,7 @@ nv_sample <- jit(
 # Draw `n_sample` uniformly distributed 1-based indices into a population of
 # size `n`, with replacement. Returns the updated RNG state and the indices.
 sample_indices <- function(initial_state, n, n_sample) {
-  # use f64 for higher precision
-  res <- nv_unif_rand(initial_state, shape = n_sample, dtype = "f64")
+  res <- nv_unif_rand(initial_state, shape = n_sample, dtype = default_float())
   # u is in [0, 1), so floor(u * n) is in 0, ..., n - 1. The minimum guards
   # against the product rounding up to n for the largest representable u.
   idx <- nv_convert(nv_floor(nv_mul(res$values, n)), dtype = "i32")
