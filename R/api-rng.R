@@ -239,9 +239,9 @@ nv_rnorm <- jit(
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #'   The number of successes are converted to it.
 #' @return (named `list` of two [`arrayish`])\cr
+#' @template section_rng_precision
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
-#' @template section_rng_precision
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Bernoulli samples; `state` is the updated RNG state
@@ -268,7 +268,7 @@ nv_rbinom <- jit(
     # Generate uniform samples in [0, 1) and compare to prob
     # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
     # so we don't benefit from using runif w.r.t. unbiasedness
-    res <- nv_unif_rand(initial_state, shape = n_trials, dtype = default_float())
+    res <- nv_unif_rand(initial_state, shape = n_trials, dtype = "f64")
     U <- res$values
 
     # Success if U < prob
@@ -301,9 +301,9 @@ nv_rbinom <- jit(
 #'   The sampled values are converted to it.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
+#' @template section_rng_precision
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
 #'   of shape `shape` and data type `dtype`.
-#' @template section_rng_precision
 #' @family rng
 #' @seealso [nv_sample()] to sample from an arbitrary population.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -343,9 +343,9 @@ nv_sample_int <- jit(
 #'   The population vector to sample from.
 #'   An R value materializes at its [default data type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
+#' @template section_rng_precision
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and `x`'s data type.
-#' @template section_rng_precision
 #' @family rng
 #' @seealso [nv_sample_int()] to sample the integers `1` to `n`.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -375,7 +375,8 @@ nv_sample <- jit(
 # Draw `n_sample` uniformly distributed 1-based indices into a population of
 # size `n`, with replacement. Returns the updated RNG state and the indices.
 sample_indices <- function(initial_state, n, n_sample) {
-  res <- nv_unif_rand(initial_state, shape = n_sample, dtype = default_float())
+  # use f64 for higher precision
+  res <- nv_unif_rand(initial_state, shape = n_sample, dtype = "f64")
   # u is in [0, 1), so floor(u * n) is in 0, ..., n - 1. The minimum guards
   # against the product rounding up to n for the largest representable u.
   idx <- nv_convert(nv_floor(nv_mul(res$values, n)), dtype = "i32")
