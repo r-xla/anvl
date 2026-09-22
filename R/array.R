@@ -42,17 +42,16 @@
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #'   Alternatively a `raw()` vector holding the native little-endian byte
 #'   payload of `prod(shape)` elements of `dtype`; both `dtype` and `shape`
-#'   are then required.
+#'   are then required (only supported on the `"pjrt"` backend).
 #'   Raw payloads are read in column-major element order, or row-major
 #'   with `byrow = TRUE`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   The data type at which to create the array.
-#'   Can be a [`tengen::DataType`] or one of `r roxy_dtypes()`.
-#'
-#'   [`tengen::DataType`]. Can be any data type the backend supports; `data`
-#'   is built at it, so a value that data type cannot hold exactly is
-#'   converted. The default (`NULL`) uses the default data type,
-#'   see [`default_dtypes()`]).
+#'   The data type at which to create the array: a [`tengen::DataType`] or one
+#'   of `r roxy_dtypes()`. `data` is built at it rather than converted to it,
+#'   and a value it cannot hold at all is an error (`nv_array(3e9, dtype =
+#'   "i32")` overflows); a `double` at an integer data type is truncated.
+#'   The default (`NULL`) uses the [default data type][default_dtypes] of
+#'   `data`'s category.
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
@@ -226,8 +225,8 @@ nv_array <- function(
 #' Use this to canonicalize inputs at the start of a function so it works
 #' both with eager executing and in combination with [`jit()`].
 #' Use [`as_anvl_array()`] for a single input and [`as_anvl_arrays()`] for multiple inputs.
-#' The latter will also ensure all arrays are from the same backend and live on the same device,
-#' and can additionally apply type promotion rules via the `.promote` argument.
+#' The latter will also ensure all arrays are from the same backend and live on the same device.
+#' Both take a `.promote` rule saying which data type the input is brought to.
 #'
 #' @param x ([`arrayish`])\cr
 #'   Input to canonicalize.
@@ -237,11 +236,15 @@ nv_array <- function(
 #'   Target device. If `x` is an `AnvlArray` on a different device, an error
 #'   is raised.
 #' @param .promote (`NULL` | `function`)\cr
-#'   Which dtype every input is brought to. See [`promotion_rule`] for more information.
+#'   Which data type every input is brought to. See [`promotion_rule`] for more
+#'   information. A rule materializes an R value *at* its answer rather than
+#'   converting it afterwards, so it keeps every digit.
 #' @return (One or more [`arrayish`] values).
 #' @seealso [peek_dtype()], [nv_promote_to_common()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_array(1L)
+#' # a rule builds the R value at the data type it names
+#' as_anvl_array(1, .promote = promotion_dtype("f64"))
 #' as_anvl_arrays(nv_array(1:3), 1L)
 #' as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promotion_common())
 #' @name as_anvl_array
@@ -249,12 +252,18 @@ NULL
 
 #' @rdname as_anvl_array
 #' @export
-as_anvl_array <- function(x, device = NULL) {
+as_anvl_array <- function(x, device = NULL, .promote = NULL) {
+  if (!is_box(x) && !is_arrayish(x)) {
+    cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
+  }
+  if (!is.null(.promote)) {
+    dtype <- resolve_promote(.promote, list(x))[[1L]]
+    if (!is.null(dtype)) {
+      return(materialize_at(x, dtype = dtype, device = device))
+    }
+  }
   if (is_box(x)) {
     return(materialize_rdata_box(x))
-  }
-  if (!is_arrayish(x)) {
-    cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
   if (is_anvl_array(x)) {
     if (!is.null(device) && !eq_device(device(x), backend_device(device, backend(x)))) {

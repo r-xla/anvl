@@ -59,7 +59,7 @@ nv_unif_rand <- function(
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Floating point data type.
-#'   The default (`NULL`) uses the [default float type](default_dtypes).
+#'   The default (`NULL`) uses the [default float type][default_dtypes].
 #' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound.
 #' @return (named `list` of two [`arrayish`])\cr
@@ -131,7 +131,7 @@ nv_runif <- jit(
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Floating point data type.
-#'   The default (`NULL`) uses the [default float type](default_dtypes).
+#'   The default (`NULL`) uses the [default float type][default_dtypes].
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -236,7 +236,7 @@ nv_rnorm <- jit(
 #'   Probability of success on each trial.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Numeric type of the sample.
-#'   `NULL` (default) uses the [default integer type](default_dtypes).
+#'   `NULL` (default) uses the [default integer type][default_dtypes].
 #'   The number of successes are converted to it.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
@@ -299,7 +299,7 @@ nv_rbinom <- jit(
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Numeric type of the sampled integers.
 #'   The sampled values are converted to it.
-#'   `NULL` (default) uses the [default integer type](default_dtypes).
+#'   `NULL` (default) uses the [default integer type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
 #'   of shape `shape` and data type `dtype`.

@@ -18,7 +18,7 @@ default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Floating point data type.
-The default (\code{NULL}) uses the \href{default_dtypes}{default float type}.}
+The default (\code{NULL}) uses the \link[=default_dtypes]{default float type}.}
 
 \item{min, max}{(\code{numeric(1)})\cr
 Lower and upper bound.}

@@ -23,11 +23,9 @@ Promote arrays to a common data type, see \code{\link[=promotion_common]{promoti
 x <- nv_scalar(1, dtype = "f32")
 y <- nv_scalar(1L, dtype = "i32")
 nv_promote_to_common(x, y)
-with_default_dtypes(c(float = "f64"), {
-  # An R value yields within it's category:
-  nv_promote_to_common(1, x)
-  # and contributes it's default otherwise
-  nv_promote_to_common(1, y)
-})
+# an R value yields to the data type it meets within its category
+with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, x))
+# and settles on its default otherwise
+with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, y))
 \dontshow{\}) # examplesIf}
 }

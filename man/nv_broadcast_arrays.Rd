@@ -23,7 +23,7 @@ Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
 \item If the arrays have different numbers of axes, prepend size-1
 axes to the shorter shape.
 \item For each axis: if the sizes match, keep them; if one is 1, expand
-it to the other's size if all size
+it to the other's size; otherwise raise an error.
 }
 }
 
@@ -31,14 +31,13 @@ it to the other's size if all size
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the length-3 vector is stretched to the matrix's shape
 x1 <- nv_matrix(1:6, nrow = 2)
-shape(x)
 x2 <- nv_array(c(10, 20, 30))
-shape(y)
 nv_broadcast_arrays(x1, x2)
-# axes with size 1 are expanded to the other operand's size
+
+# axes of size 1 are expanded to the other operand's size
 y1 <- nv_array(1:3, shape = c(1, 3))
 y2 <- nv_array(1:3, shape = c(3, 1))
-nv_broadcast_arrays(x1, x2)
+nv_broadcast_arrays(y1, y2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

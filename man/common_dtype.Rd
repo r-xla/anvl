@@ -7,7 +7,7 @@
 common_dtype(lhs_dtype, rhs_dtype)
 }
 \arguments{
-\item{lhs_dtype, }{rhs_dtype (\code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{lhs_dtype, rhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
 The two data types.}
 }
 \value{

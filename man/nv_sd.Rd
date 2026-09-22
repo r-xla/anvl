@@ -45,7 +45,7 @@ x <- nv_array(1:5)
 # the result is a float, even though the input is an integer
 nv_sd(x)
 
-# bessel's correction by default, correction = 0 for the population value
+# Bessel's correction by default, correction = 0 for the population value
 nv_sd(x, correction = 0L)
 \dontshow{\}) # examplesIf}
 }

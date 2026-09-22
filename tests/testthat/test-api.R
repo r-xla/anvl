@@ -2617,8 +2617,9 @@ describe("nv_flatten", {
       x
     )
   })
-  it("fails for 0D input", {
-    expect_error(nv_flatten(1), "scalar")
+  it("makes a scalar a length-1 array", {
+    expect_equal(nv_flatten(1L), nv_array(1L))
+    expect_shape(nv_flatten(nv_scalar(1)), 1L)
   })
   it("works with empty input", {
     expect_equal(
@@ -3111,10 +3112,6 @@ test_that("the quantile page's formula is the one the code computes", {
       )
     }
   }
-})
-
-test_that("nv_flatten accepts scalar", {
-  expect_equal(nv_flatten(1L), nv_array(1L))
 })
 
 describe("nv_quantile selection fast path", {

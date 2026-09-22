@@ -68,6 +68,13 @@
 
 ## Features
 
+* `nv_rng_state()` accepts a seed of any signed or unsigned integer data type,
+  bringing it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
+  whatever the seed and the default integer data type are.
+* `nv_flatten()` accepts a scalar, returning a length-1 array, instead of
+  erroring.
+* `as_anvl_array()` gained a `.promote` argument, naming the data type the
+  input is brought to, as `as_anvl_arrays()` already had.
 * `nv_is_nan()`, `nv_is_finite()` and `nv_is_infinite()` accept any data type
   and answer a constant (all `FALSE` / all `TRUE` / all `FALSE`) for one that
   holds no NaN or infinity, instead of comparing -- or, for `nv_is_finite()`

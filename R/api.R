@@ -142,12 +142,10 @@ nv_broadcast_scalars <- jit(function(...) {
 #' x <- nv_scalar(1, dtype = "f32")
 #' y <- nv_scalar(1L, dtype = "i32")
 #' nv_promote_to_common(x, y)
-#' with_default_dtypes(c(float = "f64"), {
-#'   # An R value yields within it's category:
-#'   nv_promote_to_common(1, x)
-#'   # and contributes it's default otherwise
-#'   nv_promote_to_common(1, y)
-#' })
+#' # an R value yields to the data type it meets within its category
+#' with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, x))
+#' # and settles on its default otherwise
+#' with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, y))
 #' @export
 nv_promote_to_common <- jit(function(...) {
   assert_some_arrays(...)
@@ -162,7 +160,7 @@ nv_promote_to_common <- jit(function(...) {
 #' 1. If the arrays have different numbers of axes, prepend size-1
 #'    axes to the shorter shape.
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
-#'    it to the other's size if all size
+#'    it to the other's size; otherwise raise an error.
 #'
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to broadcast.
@@ -172,15 +170,13 @@ nv_promote_to_common <- jit(function(...) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the length-3 vector is stretched to the matrix's shape
 #' x1 <- nv_matrix(1:6, nrow = 2)
-#' shape(x)
 #' x2 <- nv_array(c(10, 20, 30))
-#' shape(y)
-#' nv_broadcast_arrays(x1, x2)
-#' # axes with size 1 are expanded to the other operand's size
-#' y1 <- nv_array(1:3, shape = c(1, 3))
-#' y2 <- nv_array(1:3, shape = c(3, 1))
 #' nv_broadcast_arrays(x1, x2)
 #'
+#' # axes of size 1 are expanded to the other operand's size
+#' y1 <- nv_array(1:3, shape = c(1, 3))
+#' y2 <- nv_array(1:3, shape = c(3, 1))
+#' nv_broadcast_arrays(y1, y2)
 #' @export
 nv_broadcast_arrays <- jit(function(...) {
   # TODO: Better handling of sizes 0, currently the error message is not great
@@ -324,10 +320,10 @@ nv_reshape <- function(x, shape) {
 #' @section Differences from base R:
 #' Note that row-major order is used, which differs from R's column-major order.
 #' @templateVar dtypes any data type
-#' @templateVar shapes with at least 1 axis
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   Has the input's data type, and one axis holding all of its elements.
+#'   Has the input's data type, and one axis holding all of its elements --
+#'   so a scalar, which has none, becomes a length-1 vector.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the 2x2 matrix becomes a length-4 vector
@@ -1164,7 +1160,7 @@ nv_atan2 <- jit(function(lhs, rhs) {
 #' @inheritParams prim_bitcast_convert
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype`, and the shape described under `dtype`.
-#' @seealso [prim_bitcast_convert()], which this is an alias, and
+#' @seealso [prim_bitcast_convert()], which this is an alias of, and
 #'   [nv_convert()] for value-preserving type conversion.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the bits of one i32 reread as four i8, in a new trailing axis
@@ -2057,6 +2053,7 @@ nv_seq <- jit(
 #'   which case the values decrease.
 #' @param steps (`integer(1)`)\cr
 #'   Number of values to generate. Must be at least 1; for `steps = 1` the
+#'   result is `start`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Must be a float data type; `NULL` (default) uses
 #'   the default float data type (see [`default_dtypes()`]), since
@@ -3578,7 +3575,7 @@ nv_is_infinite <- jit(function(x) {
 #' # the result is a float, even though the input is an integer
 #' nv_var(x)
 #'
-#' # bessel's correction by default, correction = 0 for the population variance
+#' # Bessel's correction by default, correction = 0 for the population variance
 #' nv_var(x, correction = 0L)
 #'
 #' # NaN propagates unless nan_rm = TRUE
@@ -3637,7 +3634,7 @@ nv_var <- jit(
 #' # the result is a float, even though the input is an integer
 #' nv_sd(x)
 #'
-#' # bessel's correction by default, correction = 0 for the population value
+#' # Bessel's correction by default, correction = 0 for the population value
 #' nv_sd(x, correction = 0L)
 #' @export
 nv_sd <- jit(
@@ -4176,7 +4173,6 @@ nv_sort <- jit(
 #' @inheritSection nv_sort NaN handling
 #' @seealso [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the indices come out at the default integer data type
 #' # the indices come out at the default integer data type
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' nv_argsort(x)

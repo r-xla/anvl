@@ -15,7 +15,8 @@ First and last value of the sequence. \code{end} may lie below \code{start}, in
 which case the values decrease.}
 
 \item{steps}{(\code{integer(1)})\cr
-Number of values to generate. Must be at least 1; for \code{steps = 1} the}
+Number of values to generate. Must be at least 1; for \code{steps = 1} the
+result is \code{start}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the result. Must be a float data type; \code{NULL} (default) uses

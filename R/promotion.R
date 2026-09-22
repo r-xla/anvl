@@ -11,7 +11,7 @@
 #' to decide what they meet at.
 #'
 #' See the *Type Promotion* article for more information.
-#' @param lhs_dtype, rhs_dtype ([`tengen::DataType`])\cr
+#' @param lhs_dtype,rhs_dtype ([`tengen::DataType`])\cr
 #'   The two data types.
 #' @return ([`tengen::DataType`])\cr
 #'   The narrowest common data type.
@@ -79,7 +79,7 @@ promotion_common <- function(on = NULL, fallback = NULL) {
 
 #' @description
 #' `promotion_like()` brings the inputs to the data type of a selected input.
-#' If the selected data type is an R value, it's default data type is used.
+#' If the selected input is an R value, its default data type is used.
 #' @param arg (`character(1)` | `numeric(1)`)\cr
 #'   Which input to take the data type from: its name in the
 #'   [`as_anvl_arrays()`] call, or its position. Naming it needs the call's

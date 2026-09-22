@@ -8,12 +8,13 @@ nv_flatten(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, with at least 1 axis. Can be any data type. An R value materializes at its
+One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the input's data type, and one axis holding all of its elements.
+Has the input's data type, and one axis holding all of its elements --
+so a scalar, which has none, becomes a length-1 vector.
 }
 \description{
 Flattens an array of any rank into an array with a single axis, reading the

@@ -24,7 +24,7 @@ Probability of success on each trial.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Numeric type of the sample.
-\code{NULL} (default) uses the \href{default_dtypes}{default integer type}.
+\code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.
 The number of successes are converted to it.}
 }
 \value{

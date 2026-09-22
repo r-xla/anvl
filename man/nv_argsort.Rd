@@ -47,7 +47,6 @@ the same \code{axis}, so the two always describe the same ordering.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the indices come out at the default integer data type
-# the indices come out at the default integer data type
 x <- nv_array(c(3, 1, 4, 1, 5))
 nv_argsort(x)
 

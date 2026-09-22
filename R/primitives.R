@@ -585,7 +585,7 @@ prim_static_slice <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of an
+#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
 #'   the same integer data type.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
@@ -3377,7 +3377,7 @@ prim_top_k <- new_primitive(
 #' @description
 #' Prints an array value to the console during execution and returns the
 #' input unchanged. This is useful for debugging JIT-compiled code.
-#' Bare R inputs print at the categorie's default data type.
+#' Bare R inputs print at their category's default data type.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
@@ -3391,7 +3391,7 @@ prim_top_k <- new_primitive(
 #' # the value is printed and handed back unchanged
 #' x <- nv_array(c(1, 2, 3))
 #' prim_print(x)
-#' # bare R inputs are printed at the categorie's default data type
+#' # bare R inputs are printed at their category's default data type
 #' prim_print(1L)
 #' @export
 prim_print <- new_primitive(
