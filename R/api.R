@@ -145,9 +145,11 @@ nv_promote_to_common <- jit(function(...) {
 #' 1. If the arrays have different numbers of axes, append size-1
 #'    axes to the shorter shape, so axis 1 meets axis 1. Anvl arrays are
 #'    column-major, so it is the first axis that varies fastest and an
-#'    appended axis leaves every existing one meaning what it did. (NumPy
-#'    prepends instead, which is the same choice made for a row-major
-#'    array.)
+#'    appended axis leaves every existing one meaning what it did. NumPy
+#'    prepends instead, which is the matching choice for a row-major
+#'    array; Julia appends, and the Reactant.jl compiler -- which lowers
+#'    Julia to the same StableHLO this package targets -- inherits that
+#'    rule by routing through Julia's own broadcasting.
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
 #'    it to the other's size; otherwise raise an error.
 #'
