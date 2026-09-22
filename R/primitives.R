@@ -2879,7 +2879,7 @@ prim_scan <- new_primitive(
 #' All arrays must have the same shape; their dtypes may differ.
 #' 1-D slices along `axis` are sorted independently; other
 #' axes are preserved.
-#' @param operands (`list` of [`arrayish`])\cr
+#' @param xs (`list` of [`arrayish`])\cr
 #'   One or more arrays to sort. The first is the sort key; the rest are
 #'   carried along under the same permutation. All must share the same shape.
 #' @param axis (`integer(1)`)\cr
@@ -2893,7 +2893,7 @@ prim_scan <- new_primitive(
 #'   If `TRUE`, the sort is stable: the relative order of equal *keys* is
 #'   preserved. Default `FALSE`.
 #' @return `list` of [`arrayish`]\cr
-#'   One sorted output per element of `operands`, in the same order. Each
+#'   One sorted output per element of `xs`, in the same order. Each
 #'   output has the same shape and data type as the
 #'   corresponding input.
 #' @templateVar primitive_id sort
@@ -2920,19 +2920,19 @@ prim_scan <- new_primitive(
 #' @export
 prim_sort <- new_primitive(
   "sort",
-  function(operands, axis, decreasing = FALSE, stable = FALSE) {
+  function(xs, axis, decreasing = FALSE, stable = FALSE) {
     assert_flag(decreasing)
     assert_flag(stable)
-    if (is_arrayish(operands) || !is.list(operands) || !length(operands)) {
-      cli_abort("{.arg operands} must be a non-empty list of arrayish values")
+    if (is_arrayish(xs) || !is.list(xs) || !length(xs)) {
+      cli_abort("{.arg xs} must be a non-empty list of arrayish values")
     }
-    ref_shape <- shape(operands[[1L]])
+    ref_shape <- shape(xs[[1L]])
     axis <- resolve_axis(axis, length(ref_shape))
-    for (i in seq_along(operands)[-1L]) {
-      if (!identical(shape(operands[[i]]), ref_shape)) {
+    for (i in seq_along(xs)[-1L]) {
+      if (!identical(shape(xs[[i]]), ref_shape)) {
         cli_abort(c(
-          "All elements of {.arg operands} must have the same shape.",
-          x = "Element 1 has shape {shape_repr(ref_shape)}, element {i} has shape {shape_repr(shape(operands[[i]]))}." # nolint
+          "All elements of {.arg xs} must have the same shape.",
+          x = "Element 1 has shape {shape_repr(ref_shape)}, element {i} has shape {shape_repr(shape(xs[[i]]))}."
         ))
       }
     }
@@ -2947,7 +2947,7 @@ prim_sort <- new_primitive(
 
     graph_desc_add(
       self,
-      args = operands,
+      args = xs,
       params = list(axis = axis, decreasing = decreasing, stable = stable),
       infer_fn = infer_fn
     )

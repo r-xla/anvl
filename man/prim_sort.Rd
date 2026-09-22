@@ -4,10 +4,10 @@
 \alias{prim_sort}
 \title{Primitive Sort}
 \usage{
-prim_sort(operands, axis, decreasing = FALSE, stable = FALSE)
+prim_sort(xs, axis, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
-\item{operands}{(\code{list} of \code{\link{arrayish}})\cr
+\item{xs}{(\code{list} of \code{\link{arrayish}})\cr
 One or more arrays to sort. The first is the sort key; the rest are
 carried along under the same permutation. All must share the same shape.}
 
@@ -26,7 +26,7 @@ preserved. Default \code{FALSE}.}
 }
 \value{
 \code{list} of \code{\link{arrayish}}\cr
-One sorted output per element of \code{operands}, in the same order. Each
+One sorted output per element of \code{xs}, in the same order. Each
 output has the same shape and data type as the
 corresponding input.
 }

@@ -31,9 +31,8 @@
   mirror the `if` construct, not `ifelse()`.
 * `nv_scan()` takes `(init, xs, body)`, the order `prim_scan()` uses, and both
   call the trip count `steps` instead of `length`.
-* `prim_sort()` takes `(operands, axis, decreasing, stable)`: `xs` is now
-  `operands`, and `descending` / `is_stable` are `decreasing` / `stable`, as in
-  `nv_sort()`.
+* `prim_sort()`'s `descending` / `is_stable` are now `decreasing` / `stable`,
+  as in `nv_sort()`.
 * `prim_top_k()`'s `indices` is now `with_indices` and defaults to `FALSE`,
   agreeing with `nv_top_k()`.
 * `prim_reduce()` takes `(x, init, axes, reducer, drop)`: `reductor` is now
