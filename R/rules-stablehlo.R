@@ -1261,7 +1261,7 @@ prim_svd[["stablehlo"]] <- function(x) {
   list(out[[2L]], out[[1L]], out[[3L]])
 }
 
-prim_eigen[["stablehlo"]] <- function(x) {
+prim_eigh[["stablehlo"]] <- function(x) {
   tt <- x$value_type$type
   dt <- tt$dtype
   n <- shape(tt)[1L]

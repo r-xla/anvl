@@ -2738,26 +2738,24 @@ nv_svd <- jit(function(x) {
 })
 
 #' @title Symmetric Eigendecomposition
-#' @inherit prim_eigen description details
+#' @inherit prim_eigh description details
 #' @templateVar shapes a symmetric square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `values` (length `n`) and `vectors` (shape `(n, n)`). Both have
 #'   the input's data type -- or the default float data type (see
 #'   [`default_dtypes()`]) where the input was an integer one.
-#' @seealso [prim_eigen()], [base::eigen()]
-#' @details
-#' Unlike [base::eigen()], only a symmetric matrix is accepted.
+#' @seealso [prim_eigh()], [base::eigen()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # values and vectors both have the input's data type
 #' x <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
-#' nv_eigen(x)
+#' nv_eigh(x)
 #'
 #' # an integer matrix is decomposed at the default float data type
-#' nv_eigen(nv_matrix(c(2L, 1L, 1L, 2L), nrow = 2))
+#' nv_eigh(nv_matrix(c(2L, 1L, 1L, 2L), nrow = 2))
 #' @export
-nv_eigen <- jit(function(x) {
-  prim_eigen(as_anvl_array(int_to_float(x)))
+nv_eigh <- jit(function(x) {
+  prim_eigh(as_anvl_array(int_to_float(x)))
 })
 
 #' @title Diagonal Matrix

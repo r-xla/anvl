@@ -4241,13 +4241,13 @@ prim_svd <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_custom_call()] with target `"eigh"`.
-#' @seealso [nv_eigen()]
+#' @seealso [nv_eigh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # `values` and `vectors` both have the input's data type
 #' x <- nv_array(c(2, 1, 1, 2), shape = c(2, 2), dtype = "f64")
-#' prim_eigen(x)
+#' prim_eigh(x)
 #' @export
-prim_eigen <- new_primitive(
+prim_eigh <- new_primitive(
   "eigh",
   function(x) {
     infer_fn <- function(x) {

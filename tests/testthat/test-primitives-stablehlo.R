@@ -937,10 +937,10 @@ describe("prim_svd", {
   })
 })
 
-describe("prim_eigen", {
+describe("prim_eigh", {
   it("decomposes a symmetric matrix", {
     A <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
-    out <- prim_eigen(A)
+    out <- prim_eigh(A)
     # Names and order match base::eigen(): values, vectors.
     expect_named(out, c("values", "vectors"))
     values <- as_array(out$values)
@@ -959,13 +959,13 @@ describe("prim_eigen", {
 
   it("rejects invalid inputs", {
     vec <- nv_array(c(1, 2, 3), dtype = "f32")
-    expect_error(prim_eigen(vec), "must be a 2-D matrix")
+    expect_error(prim_eigh(vec), "must be a 2-D matrix")
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f32")
-    expect_error(prim_eigen(empty), "zero-sized")
+    expect_error(prim_eigh(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_eigen(int_mat), "float data type")
+    expect_error(prim_eigh(int_mat), "float data type")
     rect <- nv_matrix(1:6, nrow = 2, dtype = "f32")
-    expect_error(prim_eigen(rect), "square")
+    expect_error(prim_eigh(rect), "square")
   })
 })
 

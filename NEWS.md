@@ -15,8 +15,8 @@
 * `nv_polygamma()` / `prim_polygamma()` are now `nv_psigamma()` /
   `prim_psigamma()` and take `(x, deriv)` like `base::psigamma()` instead of
   `(n, x)`; `deriv` defaults to `0`.
-* `nv_eigh()` / `prim_eigh()` are now `nv_eigen()` / `prim_eigen()`, and
-  `nv_logistic()` / `prim_logistic()` are `nv_plogis()` / `prim_plogis()`.
+* `nv_logistic()` / `prim_logistic()` are now `nv_plogis()` /
+  `prim_plogis()`.
 * The general transpose is now `nv_aperm(x, perm)`, matching `base::aperm()`;
   `nv_transpose()` stays as another spelling of it, but its second argument is
   called `perm` instead of `permutation`.
@@ -124,7 +124,7 @@
   and `nv_is_infinite()`, erroring.
 * The linear algebra functions (`nv_solve()`, `nv_triangular_solve()`,
   `nv_chol()`, `nv_inv()`, `nv_det()`, `nv_determinant()`, `nv_lu()`,
-  `nv_qr()`, `nv_svd()`, `nv_eigen()`) accept integer input, computing at the
+  `nv_qr()`, `nv_svd()`, `nv_eigh()`) accept integer input, computing at the
   default float data type where the input is not a float already, instead of
   erroring. The `prim_*` ones still take a float only.
 * `nv_sign()` accepts an unsigned integer array, returning `0` or `1` like

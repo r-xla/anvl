@@ -86,7 +86,7 @@ Note that a program is compiled for the defaults it was compiled under, so chang
 
 ## BLAS / LAPACK
 
-A handful of linear-algebra primitives -- `nv_svd()`, `nv_eigen()`, `nv_qr()`, `nv_lu()` -- use R's BLAS / LAPACK on the CPU backend, so the performance of these operations is determined by how R was built.
+A handful of linear-algebra primitives -- `nv_svd()`, `nv_eigh()`, `nv_qr()`, `nv_lu()` -- use R's BLAS / LAPACK on the CPU backend, so the performance of these operations is determined by how R was built.
 
 The default R install on many platforms ships with a reference BLAS / LAPACK that is single-threaded and considerably slower than tuned alternatives such as OpenBLAS, Intel MKL, or Apple's Accelerate framework.
 The CUDA backend is unaffected.

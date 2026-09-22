@@ -3051,7 +3051,7 @@ describe("the linear algebra functions", {
     expect_dtype(nv_qr(m)$Q, default_float())
     expect_dtype(nv_svd(m)$d, default_float())
     expect_equal(as.vector(as_array(nv_svd(m)$d)), svd(m_mat + 0)$d, tolerance = 1e-5)
-    expect_dtype(nv_eigen(spd)$values, default_float())
+    expect_dtype(nv_eigh(spd)$values, default_float())
     expect_dtype(nv_lu(a)$L, default_float())
     # The pivots stay indices whatever the input was.
     expect_dtype(nv_lu(a)$pivots, default_int())
@@ -3062,7 +3062,7 @@ describe("the linear algebra functions", {
     expect_dtype(nv_chol(spd), "f64")
     expect_dtype(nv_inv(spd), "f64")
     expect_dtype(nv_det(spd), "f64")
-    expect_dtype(nv_eigen(spd)$values, "f64")
+    expect_dtype(nv_eigh(spd)$values, "f64")
   })
 
   it("still refuses a boolean input", {
@@ -3072,7 +3072,7 @@ describe("the linear algebra functions", {
     expect_error(nv_det(b), "`x` must be a numeric data type")
     expect_error(nv_qr(b), "`x` must be a numeric data type")
     expect_error(nv_svd(b), "`x` must be a numeric data type")
-    expect_error(nv_eigen(b), "`x` must be a numeric data type")
+    expect_error(nv_eigh(b), "`x` must be a numeric data type")
     expect_error(nv_lu(b), "`x` must be a numeric data type")
   })
 })
