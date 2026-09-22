@@ -70,7 +70,7 @@ R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
 
 \code{promotion_like()} brings the inputs to the data type of a selected input.
-If the selected data type is an R value, it's default data type is used.
+If the selected input is an R value, its default data type is used.
 
 \code{promotion_dtype()} brings the inputs to the specified data type.
 

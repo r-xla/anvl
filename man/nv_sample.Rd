@@ -8,8 +8,7 @@ nv_sample(shape, initial_state, x)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
-A plain R vector built into the program, not an array.}
+Shape of the result.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}

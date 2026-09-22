@@ -25,8 +25,7 @@ leaving the choice to the implementation.}
 Data type of the generated random values. Can be any numeric data type.}
 
 \item{shape}{(\code{integer()})\cr
-Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
-A plain R vector built into the program, not an array.}
+Shape of the result.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
