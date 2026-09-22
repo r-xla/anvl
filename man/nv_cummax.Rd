@@ -40,10 +40,9 @@ Running maximum, optionally along a single axis.
 }
 \section{Relation to base R}{
 
-\code{nv_cummax()} with \code{axis = NULL} and \code{\link[base:cummax]{base::cummax()}}
-both flatten first, but in different orders -- anvl arrays are row-major (C
-order), base R is column-major (Fortran) -- so for a multi-axis input the
-two give different running values. They agree on 1-D inputs.
+\code{nv_cummax()} with \code{axis = NULL} flattens a multi-axis input in
+column-major order, like \code{\link[base:cummax]{base::cummax()}} does, so the two give
+the same running values for any input.
 }
 
 \examples{

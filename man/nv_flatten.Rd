@@ -15,8 +15,8 @@ Input array.}
 1-D array.
 }
 \description{
-Flattens an N-dimensional array into a 1-dimensional array.
-Fails with scalar inputs.
+Flattens an array with one or more axes into a 1-D array, in column-major
+order like \code{\link[base:as.vector]{base::as.vector()}}. Fails with scalar inputs.
 }
 \examples{
 nv_flatten(matrix(1:4, nrow = 2))

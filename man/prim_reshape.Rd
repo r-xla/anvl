@@ -21,7 +21,8 @@ Has the same data type as the input and the given \code{shape}.
 }
 \description{
 Reshapes an array to a new shape without changing the underlying data.
-Note that row-major order is used, which differs from R's column-major order.
+The elements keep their column-major order, exactly as base R's \verb{dim<-}
+does.
 }
 \section{Implemented Rules}{
 

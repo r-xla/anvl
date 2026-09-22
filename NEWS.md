@@ -2,6 +2,10 @@
   
 ## Breaking changes
 
+* `prim_reshape()` and `nv_reshape()`, and with them `nv_flatten()` and every
+  `axis = NULL` flattening default, are now column-major like base R's `dim<-`:
+  `nv_flatten(matrix(1:4, 2))` is `1:4`, as `as.vector()` gives. Transpose
+  first for the previous row-major order.
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
 * `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
@@ -49,7 +53,7 @@
 * `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a
   single `axis`, defaulting to every axis so that they pair with
   `nv_reduce_max()` / `nv_reduce_min()`. Reducing several axes indexes their
-  row-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
+  column-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
   default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.

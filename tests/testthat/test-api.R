@@ -949,11 +949,14 @@ describe("the cumulative ops' axis default", {
   m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
   mr <- as_array(m)
 
-  it("flattens a multi-axis input, row-major", {
+  it("flattens a multi-axis input column-major, like base R", {
     for (fn in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
       expect_equal(as_array(fn(m)), as_array(fn(nv_flatten(m))))
     }
-    expect_equal(as.vector(nv_cumsum(m)), cumsum(as.vector(t(mr))))
+    expect_equal(as.vector(nv_cumsum(m)), cumsum(mr))
+    expect_equal(as.vector(nv_cumprod(m)), cumprod(mr))
+    expect_equal(as.vector(nv_cummax(m)), cummax(mr))
+    expect_equal(as.vector(nv_cummin(m)), cummin(mr))
     expect_shape(nv_cumsum(m), 6L)
   })
 
@@ -1771,9 +1774,12 @@ describe("nv_argsort", {
     m <- nv_array(mr)
     perm <- as.integer(nv_argsort(m))
     expect_shape(nv_argsort(m), 6L)
-    # the indices refer to the row-major flattening, which is what nv_sort
+    # the indices refer to the column-major flattening, which is what nv_sort
     # sorts, so indexing it by them reproduces nv_sort()'s output
-    expect_equal(as.vector(t(mr))[perm], as.vector(nv_sort(m)))
+    expect_equal(as.vector(mr)[perm], as.vector(nv_sort(m)))
+    # which is base R's order(): `mr` has no ties, so the permutation is unique
+    expect_equal(perm, order(mr))
+    expect_equal(as.integer(nv_argsort(m, decreasing = TRUE)), order(mr, decreasing = TRUE))
   })
 
   it("permutes each slice when an axis is given", {
@@ -2156,9 +2162,9 @@ describe("nv_argmax / nv_argmin", {
   m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
   mr <- as_array(m)
 
-  it("reduces every axis by default, indexing the flattened array", {
-    expect_equal(as.integer(nv_argmax(m)), which.max(as.vector(t(mr))))
-    expect_equal(as.integer(nv_argmin(m)), which.min(as.vector(t(mr))))
+  it("reduces every axis by default, indexing the array like which.max()", {
+    expect_equal(as.integer(nv_argmax(m)), which.max(mr))
+    expect_equal(as.integer(nv_argmin(m)), which.min(mr))
     expect_equal(nv_argmax(m), nv_argmax(nv_flatten(m)))
     expect_shape(nv_argmax(m), integer())
   })
@@ -2179,13 +2185,15 @@ describe("nv_argmax / nv_argmin", {
     }
   })
 
-  it("indexes the row-major flattening when several axes are reduced", {
+  it("indexes the column-major flattening when several axes are reduced", {
     a <- nv_array(as.numeric(c(5, 2, 9, 1, 3, 8, 4, 7, 6, 0, 2, 5)), shape = c(2L, 2L, 3L))
     ar <- as_array(a)
     got <- as.integer(nv_argmax(a, axes = c(1L, 3L)))
-    # for each kept position along axis 2, flatten axes (1, 3) row-major
-    expected <- vapply(1:2, function(j) which.max(as.vector(t(ar[, j, ]))), integer(1L))
+    # for each kept position along axis 2, the reduced block `ar[, j, ]` is
+    # indexed the way which.max() indexes it
+    expected <- vapply(1:2, function(j) which.max(ar[, j, ]), integer(1L))
     expect_equal(got, expected)
+    expect_equal(as.integer(nv_argmin(a, axes = c(2L, 3L))), apply(ar, 1L, which.min))
     expect_equal(nv_argmax(a, axes = c(1L, 2L, 3L)), nv_argmax(nv_flatten(a)))
   })
 
@@ -2495,15 +2503,31 @@ describe("nv_reshape", {
   it("rejects negative values other than -1", {
     expect_error(nv_reshape(nv_array(1:6), c(2, -2)), "must contain only non-negative")
   })
+  it("agrees with base R's dim<- from rank 1 through 4", {
+    shapes <- list(
+      list(24L, c(2L, 3L, 4L)),
+      list(c(4L, 6L), c(3L, 8L)),
+      list(c(2L, 3L, 4L), c(4L, 6L)),
+      list(c(2L, 1L, 3L, 4L), c(6L, 1L, 4L)),
+      list(c(3L, 0L), c(0L, 2L, 3L))
+    )
+    for (s in shapes) {
+      x <- array(as.numeric(seq_len(prod(s[[1L]]))), s[[1L]])
+      expected <- x
+      dim(expected) <- s[[2L]]
+      expect_equal(as_array(nv_reshape(x, s[[2L]])), expected, info = shape_repr(s[[1L]]))
+      expect_equal(as_array(jit(nv_reshape, static = "shape")(x, s[[2L]])), expected)
+    }
+  })
 })
 
 describe("nv_flatten", {
-  it("works for 2D input", {
+  it("flattens column-major, like as.vector()", {
     x <- matrix(1:4, nrow = 2)
-    expect_equal(
-      nv_flatten(nv_array(x)),
-      nv_array(as.vector(t(x)))
-    )
+    expect_equal(nv_flatten(nv_array(x)), nv_array(as.vector(x)))
+    a <- array(as.numeric(1:24), c(2L, 3L, 4L))
+    expect_equal(as.vector(nv_flatten(a)), as.vector(a))
+    expect_equal(as.vector(jit(nv_flatten)(a)), as.vector(a))
   })
   it("works for 1D input", {
     x <- nv_array(1:3)

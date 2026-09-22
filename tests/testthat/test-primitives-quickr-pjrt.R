@@ -1028,3 +1028,44 @@ test_that("quickr pipeline matches PJRT: control flow (if/while)", {
 
   expect_quickr_matches_pjrt_fn(cf_ops, templates, list(run_true, run_false))
 })
+
+test_that("quickr pipeline matches PJRT: reshape is column-major from rank 1 through 4", {
+  skip_if_no_quickr_or_pjrt()
+
+  reshape_ops <- function(v, m, a3, a4) {
+    list(
+      v_to_2d = nv_reshape(v, shape = c(3L, 4L)),
+      m_flat = nv_flatten(m),
+      m_to_3d = nv_reshape(m, shape = c(2L, 3L, 2L)),
+      a3_to_2d = nv_reshape(a3, shape = c(6L, 4L)),
+      a3_to_4d = nv_reshape(a3, shape = c(2L, 1L, 4L, 3L)),
+      a4_to_2d = nv_reshape(a4, shape = c(4L, 6L)),
+      a4_flat = nv_flatten(a4)
+    )
+  }
+
+  templates <- list(
+    v = nv_array(rep(0L, 12L), shape = 12L, dtype = "i32"),
+    m = nv_matrix(0L, nrow = 3L, ncol = 4L, dtype = "i32"),
+    a3 = nv_array(rep(0, 24L), shape = c(2L, 3L, 4L), dtype = "f64"),
+    a4 = nv_array(rep(0, 24L), shape = c(2L, 1L, 3L, 4L), dtype = "f64")
+  )
+
+  run <- list(
+    args = list(
+      v = 1:12,
+      m = matrix(1:12, nrow = 3L),
+      a3 = array(as.numeric(1:24), c(2L, 3L, 4L)),
+      a4 = array(as.numeric(1:24), c(2L, 1L, 3L, 4L))
+    ),
+    info = "run"
+  )
+
+  expect_quickr_matches_pjrt_fn(reshape_ops, templates, list(run))
+  # and both agree with base R
+  f_quick <- graph_to_quickr_function(trace_fn(reshape_ops, templates), unwrap = TRUE)
+  got <- do.call(f_quick, unname(run$args[names(templates)]))
+  expect_equal(got$m_flat, array(1:12))
+  expect_equal(got$a3_to_2d, array(as.numeric(1:24), c(6L, 4L)))
+  expect_equal(got$a4_flat, array(as.numeric(1:24)))
+})

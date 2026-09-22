@@ -249,7 +249,8 @@ nv_transpose <- function(x, permutation = NULL) {
 #' Reshapes an array to a new shape without changing the underlying data.
 #' Returns the input unchanged if it already has the target shape.
 #' @details
-#' Note that row-major order is used, which differs from R's column-major order.
+#' The elements keep their column-major order, exactly as base R's `dim<-`
+#' does: `nv_reshape(x, shape)` holds the same elements as `array(x, shape)`.
 #' @template param_x
 #' @param shape (`integer()`)\cr
 #'   Target shape. Must have the same number of elements as `x`.
@@ -278,8 +279,8 @@ nv_reshape <- function(x, shape) {
 
 #' @title Flatten
 #' @description
-#' Flattens an N-dimensional array into a 1-dimensional array.
-#' Fails with scalar inputs.
+#' Flattens an array with one or more axes into a 1-D array, in column-major
+#' order like [base::as.vector()]. Fails with scalar inputs.
 #' @template param_x
 #' @return ([`arrayish`])\cr
 #'   1-D array.
@@ -2314,19 +2315,22 @@ nv_eye <- jit(
   if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int()) else x
 }
 
-# Gather `axes` into a single trailing axis, so an operation that only ever
+# Gather `axes` into a single leading axis, so an operation that only ever
 # handles one axis -- a sort, an arg-reduction -- can reduce several at once by
 # ranking their elements together. `axes` must already be resolved and sorted.
-# Returns the reshaped array along with the shape its kept axes take afterwards,
-# which `drop = FALSE` restores the reduced axes into at size 1.
+# The reshape is column-major, so a position along the merged axis is the
+# column-major linear index within the block of `axes`, like `which.max()`
+# reports for a whole array. Returns the reshaped array along with the shape
+# its kept axes take afterwards, which `drop = FALSE` restores the reduced axes
+# into at size 1.
 .flatten_reduce_axes <- function(x, axes, drop) {
   x_shape <- shape(x)
   keep <- setdiff(seq_along(x_shape), axes)
-  permutation <- c(keep, axes)
+  permutation <- c(axes, keep)
   if (!identical(permutation, seq_along(x_shape))) {
     x <- prim_transpose(x, permutation = permutation)
   }
-  flat_shape <- c(x_shape[keep], as.integer(prod(x_shape[axes])))
+  flat_shape <- c(as.integer(prod(x_shape[axes])), x_shape[keep])
   if (!identical(shape(x), flat_shape)) {
     x <- prim_reshape(x, flat_shape)
   }
@@ -2337,8 +2341,9 @@ nv_eye <- jit(
 }
 
 # Resolve the `axis` of a cumulative op. `NULL` accumulates over every element,
-# like base R's `cum*()` functions, which means flattening the input first --
-# so this hands back the array as well as the axis.
+# like base R's `cum*()` functions, which means flattening the input first (in
+# column-major order, as they do) -- so this hands back the array as well as
+# the axis.
 .resolve_cum_input <- function(x, axis) {
   if (is.null(axis)) {
     list(x = nv_reshape(x, prod(shape(x))), axis = 1L)
@@ -2600,7 +2605,7 @@ nv_reduce_all <- jit(
 #' @seealso [prim_cumsum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_cumsum(x)              # row-major flatten, then accumulate
+#' nv_cumsum(x)              # flatten, then accumulate
 #' nv_cumsum(x, axis = 1L)    # accumulate along rows
 #' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
@@ -2633,7 +2638,7 @@ nv_cumsum <- jit(
 #' @seealso [prim_cumprod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_cumprod(x)              # row-major flatten, then accumulate
+#' nv_cumprod(x)              # flatten, then accumulate
 #' nv_cumprod(x, axis = 1L)    # accumulate along rows
 #' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 #' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
@@ -3668,7 +3673,7 @@ nv_quantile <- jit(
     x <- flat$x
 
     rank <- naxes(x)
-    axis <- rank
+    axis <- 1L
     shp <- shape(x)
     K <- length(probs)
     probs <- as.numeric(probs)
@@ -3793,11 +3798,10 @@ nv_quantile <- jit(
     bad <- if (nan_rm) n_valid_kd == 0L else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
 
-    # Unpack the trailing axis the reduced ones were gathered into: dropped, or
-    # restored at size 1 in their original positions. For array `probs`, the K
-    # axis moves from the back, where it is now, to the front.
+    # Unpack the leading axis the reduced ones were gathered into: dropped, or
+    # restored at size 1 in their original positions. For array `probs`, it is
+    # already the leading K axis of the result.
     if (is_probs_array) {
-      out <- prim_transpose(out, permutation = c(axis, seq_len(rank - 1L)))
       prim_reshape(out, c(K, flat$keep_shape))
     } else {
       prim_reshape(out, flat$keep_shape)
@@ -3873,9 +3877,9 @@ nv_median <- jit(
 #' `nv_argmax()` is the index to [nv_reduce_max()]'s value: called with the
 #' same `axes` and `drop`, it points at the element whose value
 #' `nv_reduce_max()` returns. Reducing several axes ranks their elements
-#' together, and the result indexes the row-major flattening of those axes --
-#' the order [nv_flatten()] produces -- which is also the order ties are
-#' broken in.
+#' together, and the result indexes the column-major flattening of those axes
+#' -- the order [nv_flatten()] produces and [base::which.max()] reports -- which
+#' is also the order ties are broken in.
 #' @section NaN handling:
 #' With `nan_rm = FALSE` (default), if any entry being reduced is `NaN`, the
 #' returned index points at the first such `NaN`. With `nan_rm = TRUE`, `NaN`
@@ -3912,9 +3916,9 @@ nv_argmax <- jit(
 #' `nv_argmin()` is the index to [nv_reduce_min()]'s value: called with the
 #' same `axes` and `drop`, it points at the element whose value
 #' `nv_reduce_min()` returns. Reducing several axes ranks their elements
-#' together, and the result indexes the row-major flattening of those axes --
-#' the order [nv_flatten()] produces -- which is also the order ties are
-#' broken in.
+#' together, and the result indexes the column-major flattening of those axes
+#' -- the order [nv_flatten()] produces and [base::which.max()] reports -- which
+#' is also the order ties are broken in.
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3935,8 +3939,9 @@ nv_argmin <- jit(
 )
 
 # Shared NaN-aware argmax/argmin. The primitives read a single axis, so several
-# axes are gathered into one first, exactly as `nv_quantile()` does -- which is
-# what makes the result index the row-major flattening of `axes`.
+# axes are gathered into one leading axis first, exactly as `nv_quantile()`
+# does -- which is what makes the result index the column-major flattening of
+# `axes`, the one `which.max()` reports.
 #
 # The XLA arg-reduction kernels are comparison-based and silently skip NaN, so
 # `nan_rm = TRUE` is free -- we just call the primitive. For `nan_rm = FALSE` we
@@ -3946,7 +3951,7 @@ nv_argmin <- jit(
 .nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
   flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
   x <- flat$x
-  axis <- naxes(x)
+  axis <- 1L
   result <- prim_arg(x, axis = axis, drop = TRUE)
   if (!nan_rm && is_dtype_float(peek_dtype(x))) {
     # argmax on the bool mask returns the index of the first TRUE (tie-break:

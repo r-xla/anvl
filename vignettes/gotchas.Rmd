@@ -13,37 +13,6 @@ This vignette lists various things to be aware of, specifically in relation to b
 library(anvl)
 ```
 
-## Row-major vs column-major ordering
-
-R stores matrices and arrays in *column-major* order, while {anvl} (following XLA) uses *row-major* order.
-For most operations, this is an internal implementation detail that does not change the semantics.
-However, for reshaping operations such as `nv_flatten()` there is a difference.
-
-Consider the 2x2 matrix below:
-
-```{r}
-m <- matrix(1:4, nrow = 2)
-m
-```
-
-In base R, `as.vector()` flattens it column-by-column, so we get `1, 2, 3, 4`:
-
-```{r}
-as.vector(m)
-```
-
-In {anvl}, reshaping to a length-4 vector traverses the data row-by-row, so we get `1, 3, 2, 4`:
-
-```{r}
-nv_flatten(m)
-```
-
-If you need column-major flattening in {anvl}, transpose first:
-
-```{r}
-nv_flatten(t(m))
-```
-
 ## No recycling
 
 Base R *recycles* the shorter operand when two vectors of different lengths are combined elementwise:

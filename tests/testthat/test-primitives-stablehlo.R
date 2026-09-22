@@ -251,8 +251,8 @@ describe("cumulative ops", {
 
     expect_equal(as_array(pick(prim_fn(xm, axis = 2L))), t(apply(M, 1, base_fn)))
 
-    # row vs column major ordering
-    expect_equal(as_array(nv_fn(xm)), array(base_fn(t(M))))
+    # `axis = NULL` flattens column-major, as base R does
+    expect_equal(as_array(nv_fn(xm)), array(base_fn(M)))
   }
 
   it("prim_cumsum matches base R", verify_cum(prim_cumsum, nv_cumsum, base::cumsum))
@@ -315,23 +315,42 @@ test_that("prim_broadcast_in_axes", {
   )
 })
 
-test_that("prim_reshape", {
+describe("prim_reshape", {
   f <- jit(prim_reshape, static = "shape")
-  x <- array(1:6, c(3, 2))
-  expect_equal(
-    f(nv_array(x), shape = 6),
-    nv_array(as.integer(c(1, 4, 2, 5, 3, 6)), default_int())
-  )
-})
 
-test_that("prim_reshape infers a -1 dimension", {
-  x <- nv_array(1:6)
-  expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))
-  expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
-  expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
-  expect_error(prim_reshape(x, c(-1, -1)), "at most one")
-  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
-  expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
+  it("keeps the column-major element order, like base R's dim<-", {
+    x <- array(1:6, c(3, 2))
+    expect_equal(f(nv_array(x), shape = 6), nv_array(1:6))
+    expect_equal(as_array(f(nv_array(x), shape = c(2, 3))), array(1:6, c(2, 3)))
+  })
+
+  it("agrees with array() from rank 1 through 4, with size-1 and size-0 axes", {
+    shapes <- list(
+      list(24L, c(4L, 6L)),
+      list(c(2L, 3L, 4L), c(6L, 4L)),
+      list(c(2L, 3L, 4L), c(4L, 3L, 2L)),
+      list(c(2L, 1L, 3L, 4L), c(3L, 8L)),
+      list(c(6L, 4L), c(2L, 3L, 1L, 4L)),
+      list(c(2L, 0L, 3L), c(3L, 0L)),
+      list(c(0L, 4L), c(2L, 0L, 2L))
+    )
+    for (s in shapes) {
+      x <- array(seq_len(prod(s[[1L]])), s[[1L]])
+      out <- f(nv_array(x, dtype = "i32"), shape = s[[2L]])
+      expect_shape(out, s[[2L]])
+      expect_equal(as_array(out), array(x, s[[2L]]), info = shape_repr(s[[1L]]))
+    }
+  })
+
+  it("infers a -1 axis", {
+    x <- nv_array(1:6)
+    expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))
+    expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
+    expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(1:6))
+    expect_error(prim_reshape(x, c(-1, -1)), "at most one")
+    expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
+    expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
+  })
 })
 
 test_that("prim_transpose", {

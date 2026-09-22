@@ -35,16 +35,15 @@ A boolean array is counted, like \code{\link[base:cumsum]{base::cumsum()}} does.
 }
 \section{Relation to base R}{
 
-\code{nv_cumsum()} with \code{axis = NULL} and \code{\link[base:cumsum]{base::cumsum()}}
-both flatten first, but in different orders -- anvl arrays are row-major (C
-order), base R is column-major (Fortran) -- so for a multi-axis input the
-two give different running values. They agree on 1-D inputs.
+\code{nv_cumsum()} with \code{axis = NULL} flattens a multi-axis input in
+column-major order, like \code{\link[base:cumsum]{base::cumsum()}} does, so the two give
+the same running values for any input.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_cumsum(x)              # row-major flatten, then accumulate
+nv_cumsum(x)              # flatten, then accumulate
 nv_cumsum(x, axis = 1L)    # accumulate along rows
 nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0

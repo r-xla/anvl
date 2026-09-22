@@ -35,16 +35,15 @@ A boolean array is multiplied as zeroes and ones, like \code{\link[base:cumprod]
 }
 \section{Relation to base R}{
 
-\code{nv_cumprod()} with \code{axis = NULL} and \code{\link[base:cumprod]{base::cumprod()}}
-both flatten first, but in different orders -- anvl arrays are row-major (C
-order), base R is column-major (Fortran) -- so for a multi-axis input the
-two give different running values. They agree on 1-D inputs.
+\code{nv_cumprod()} with \code{axis = NULL} flattens a multi-axis input in
+column-major order, like \code{\link[base:cumprod]{base::cumprod()}} does, so the two give
+the same running values for any input.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_cumprod(x)              # row-major flatten, then accumulate
+nv_cumprod(x)              # flatten, then accumulate
 nv_cumprod(x, axis = 1L)    # accumulate along rows
 nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
