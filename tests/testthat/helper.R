@@ -14,6 +14,14 @@ is_cpu <- function() {
   Sys.getenv("PJRT_PLATFORM", "cpu") == "cpu"
 }
 
+# Clear the `anvl.default_device` override for the calling scope, so that the
+# default device is the platform's own first one. For the few tests that assert
+# that and would otherwise see the suite-wide override `ANVL_DEFAULT_DEVICE`
+# sets (see `setup.R`).
+local_platform_default_device <- function(envir = parent.frame()) {
+  withr::local_options(list(anvl.default_device = NULL), .local_envir = envir)
+}
+
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "torch-helpers.R", package = "anvl"), local = TRUE)
 }

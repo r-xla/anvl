@@ -19,7 +19,10 @@ Returns the default device of the active backend.
 For the \code{"pjrt"} backend, the default device is configured by the \code{PJRT_PLATFORM}
 environment variable (defaulting to \code{"cpu"}). Other backends (e.g. \code{"quickr"})
 only support CPU.
+
+The \code{anvl.default_device} option overrides both, naming the device itself
+rather than only its platform -- see \code{\link[=local_default_device]{local_default_device()}}.
 }
 \seealso{
-\code{\link[=nv_device]{nv_device()}}, \code{\link[=active_backend]{active_backend()}}
+\code{\link[=nv_device]{nv_device()}}, \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_default_device]{local_default_device()}}
 }

@@ -38,3 +38,25 @@ if (nzchar(default_dtypes_env)) {
 
 # so we can test multiple devices.
 Sys.setenv(PJRT_CPU_DEVICE_COUNT = 2L)
+
+# The whole suite can be run with a default device other than the platform's
+# first, so that CI catches anything allocating on the first device where it
+# should have followed the trace or its operands:
+#
+#   ANVL_DEFAULT_DEVICE=cpu:1 devtools::test()
+#
+# Everything a call places itself then sits on `cpu:1`, so a buffer that
+# reached for the default instead lands on `cpu:0` and jit's device autodetect
+# reports the pair -- where at the same default the two would silently agree.
+# The value is a device identifier, which the test setup turns into the
+# `anvl.default_device` option for the whole run. A test that asserts the
+# platform's own default calls `local_platform_default_device()` (see
+# `helper.R`) to clear the override.
+default_device_env <- Sys.getenv("ANVL_DEFAULT_DEVICE")
+if (nzchar(default_device_env)) {
+  # quickr has a single device, so `"cpu:1"` is an error there rather than
+  # something it can honour -- and what this configuration exists to catch is
+  # anvl placing a pjrt buffer on the wrong device. Skip those tests instead.
+  Sys.setenv(ANVL_SKIP_QUICKR = "1")
+  old_opts <- c(old_opts, options(anvl.default_device = default_device_env))
+}

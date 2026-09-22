@@ -10,6 +10,10 @@ NULL
 #'   types an R double and integer materialize at when it cannot be inferred from
 #'   another operand.
 #'   See [`default_dtypes()`] for more details.
+#' * `anvl.default_device` (`character(1)` | device object): the device a call
+#'   that names none allocates on, in place of the platform's own first device.
+#'   Also see [`default_device()`], [`local_default_device()`] and
+#'   [`with_default_device()`].
 #'
 #' @section Environment variables:
 #' * `PJRT_PLATFORM`: the platform the `"pjrt"` backend allocates on and
@@ -28,6 +32,11 @@ NULL
 #'   `"float=f64,int=i64"`, which the test setup turns into the
 #'   `anvl.default_dtypes` option for the whole run, so that anything
 #'   hardcoding `f32` / `i32` where it should read [`default_dtypes()`] fails.
+#' * `ANVL_DEFAULT_DEVICE`: a device identifier such as `"cpu:1"`, which the
+#'   test setup turns into the `anvl.default_device` option for the whole run,
+#'   so that anything allocating on the platform's first device where it should
+#'   have followed the trace or its operands ends up on a device of its own and
+#'   is reported, rather than agreeing with everything else by accident.
 #'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically

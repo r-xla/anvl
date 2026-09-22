@@ -13,10 +13,13 @@ like_defaults <- function(like, ...) {
   getters <- list(
     dtype = dtype,
     shape = shape,
-    # `device` only comes from a concrete AnvlArray. For a GraphBox (during
-    # tracing) it stays NULL so downstream constructors pick it up from the
-    # tracing context.
-    device = function(x) if (is_anvl_array(x)) device(x)
+    # `device` only comes from an array that is placed on one. A traced value
+    # is not, and neither is a constant of the trace -- reading the
+    # `PlainDeviceCpu()` of one back would allocate the result on the first CPU
+    # device, which under `jit()` is a device the graph never asked for. It
+    # stays `NULL` instead, so the constructor below builds a constant of the
+    # trace as well.
+    device = placement_device
   )
   for (name in names(args)) {
     if (is.null(args[[name]])) {

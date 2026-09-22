@@ -64,6 +64,9 @@
 
 ## Features
 
+* New `local_default_device()` and `with_default_device()` set the
+  `anvl.default_device` option, which names the device a call that names none
+  allocates on in place of the platform's first.
 * `nv_rng_state()` accepts a seed of any signed or unsigned integer data type,
   bringing it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
   whatever the seed and the default integer data type are.
@@ -153,6 +156,13 @@
 
 ## Bug fixes
 
+* The `_like` constructors (`nv_scalar_like()`, `nv_array_like()`,
+  `nv_fill_like()`, `nv_iota_like()`, `nv_empty_like()`) no longer allocate on
+  the first CPU device when `like` is an array built inside a trace. The stray
+  device made `jit()` abort with "found more than one device" wherever the
+  operands were elsewhere, which took out every `nv_qnorm()` call on CUDA.
+* `nv_unserialize()` / `nv_read()` place the loaded arrays on
+  [`default_device()`], where they always used pjrt's first device.
 * `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
   inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second
@@ -240,6 +250,11 @@
 
 ## Tests
 
+* The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes anything
+  allocating on the platform's first device rather than following the trace
+  land on a device of its own instead of agreeing with everything else by
+  accident. The `default-device` workflow runs it that way on the `full-test`
+  label.
 * Moved some of pjrt's dispatcher tests into anvl.
 
 # anvl 0.4.0

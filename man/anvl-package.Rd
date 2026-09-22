@@ -21,6 +21,10 @@ Also see  \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_ba
 types an R double and integer materialize at when it cannot be inferred from
 another operand.
 See \code{\link[=default_dtypes]{default_dtypes()}} for more details.
+\item \code{anvl.default_device} (\code{character(1)} | device object): the device a call
+that names none allocates on, in place of the platform's own first device.
+Also see \code{\link[=default_device]{default_device()}}, \code{\link[=local_default_device]{local_default_device()}} and
+\code{\link[=with_default_device]{with_default_device()}}.
 }
 }
 
@@ -44,6 +48,11 @@ the quickr backend are skipped -- they are comparatively slow.
 \code{"float=f64,int=i64"}, which the test setup turns into the
 \code{anvl.default_dtypes} option for the whole run, so that anything
 hardcoding \code{f32} / \code{i32} where it should read \code{\link[=default_dtypes]{default_dtypes()}} fails.
+\item \code{ANVL_DEFAULT_DEVICE}: a device identifier such as \code{"cpu:1"}, which the
+test setup turns into the \code{anvl.default_device} option for the whole run,
+so that anything allocating on the platform's first device where it should
+have followed the trace or its operands ends up on a device of its own and
+is reported, rather than agreeing with everything else by accident.
 }
 }
 

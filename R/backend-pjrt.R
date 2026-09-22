@@ -311,6 +311,11 @@ AnvlBackendPjrt <- function() {
     # device() reads on the hot dispatch path into plain field accesses instead
     # of repeated S3-dispatch -> C++/pjrt calls.
     new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      # A buffer arrives on a device of its own; everything else is placed on
+      # the default when the call names none.
+      if (is.null(device) && !inherits(data, "PJRTBuffer")) {
+        device <- default_device("pjrt")
+      }
       buf <- if (is.raw(data)) {
         pjrt_buffer(data, dtype = dtype, device = device, shape = shape, row_major = row_major)
       } else {
@@ -328,7 +333,7 @@ AnvlBackendPjrt <- function() {
       )
     },
     new_empty = function(dtype, shape, device) {
-      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device)
+      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device %||% default_device("pjrt"))
       structure(
         list(
           data = buf,

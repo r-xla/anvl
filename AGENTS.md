@@ -23,6 +23,12 @@ config above. anvl-specific:
   runs the suite this way so that anything hardcoding `f32` / `i32` where it should read
   `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
   `local_registered_default_dtypes()` (`helper.R`) to clear the override.
+- `ANVL_DEFAULT_DEVICE=cpu:1` runs the whole suite with the default device set to the second CPU
+  device; `setup.R` turns it into the `anvl.default_device` option (and skips quickr, which has a
+  single device). Anything allocating on the platform's first device where it should have followed
+  the trace or its operands then lands on a device of its own, which jit's autodetect reports. The
+  `default-device` workflow runs it on the `full-test` PR label. A test that asserts the platform's
+  own default calls `local_platform_default_device()` (`helper.R`).
 - anvl tracks the **dev** versions of its r-xla dependencies:
   `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
 

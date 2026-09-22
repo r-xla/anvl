@@ -43,16 +43,19 @@ describe("inline_scalarish_constants", {
       out <- stablehlo(graph)
       func <- out[[1L]]
       consts <- out[[2L]]
+      # `args` are built wherever the default device is, so the constants and
+      # the executable have to follow them there.
+      dev <- default_device()
       const_arrays <- lapply(consts, \(c) {
         arr <- c$aval$data
         if (backend(arr) == "plain") {
-          pjrt::pjrt_buffer(as_array(arr), as.character(dtype(arr)), shape = shape(arr))
+          pjrt::pjrt_buffer(as_array(arr), as.character(dtype(arr)), shape = shape(arr), device = dev)
         } else {
           arr$data
         }
       })
       program <- pjrt::pjrt_program(src = stablehlo::repr(func), format = "mlir")
-      exec <- pjrt::pjrt_compile(program)
+      exec <- pjrt::pjrt_compile(program, device = dev)
       inputs_flat <- lapply(flatten(args), \(a) a$data)
       do.call(pjrt::pjrt_execute, c(list(exec), const_arrays, inputs_flat, list(simplify = FALSE)))
     }

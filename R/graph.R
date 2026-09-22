@@ -413,9 +413,7 @@ maybe_box_input <- function(x, desc, mode) {
     }
     # e.g.: prim_while(list(i = nv_scalar(1)), ...)
     if (is_anvl_array(x)) {
-      if (backend(x) != "plain") {
-        desc$devices <- c(desc$devices, device(x))
-      }
+      desc$devices <- c(desc$devices, placement_device(x))
       gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
       return(register_input(desc, gval))
     }
@@ -438,9 +436,7 @@ maybe_box_input <- function(x, desc, mode) {
   if (mode == "inline") {
     # gradient(f)(nv_scalar(1))
     if (is_anvl_array(x)) {
-      if (backend(x) != "plain") {
-        desc$devices <- c(desc$devices, device(x))
-      }
+      desc$devices <- c(desc$devices, placement_device(x))
       parent_desc <- maybe_previous_descriptor()
       parent_box <- get_box_or_register_const(parent_desc, x)
       return(register_input(desc, parent_box$gnode))
@@ -463,9 +459,7 @@ maybe_box_input <- function(x, desc, mode) {
 
   # mode == "toplevel"
   if (is_anvl_array(x)) {
-    if (backend(x) != "plain") {
-      desc$devices <- c(desc$devices, device(x))
-    }
+    desc$devices <- c(desc$devices, placement_device(x))
     gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
     return(register_input(desc, gval))
   }
@@ -528,9 +522,7 @@ register_gval <- function(desc, x) {
 # Returns a Box
 get_box_or_register_const <- function(desc, x) {
   if (is_anvl_array(x)) {
-    if (backend(x) != "plain") {
-      desc$devices <- c(desc$devices, device(x))
-    }
+    desc$devices <- c(desc$devices, placement_device(x))
     gval <- desc$array_to_gval[[x]]
     if (!is.null(gval)) {
       return(desc$gval_to_box[[gval]])
