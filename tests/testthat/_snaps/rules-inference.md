@@ -23,7 +23,7 @@
     Condition
       Error in `assert_array_dtype()`:
       ! `initial_state` must have 1 axis.
-      x Got 2.
+      x Got (2x3).
 
 # the element-wise rules / refuse operands whose types disagree
 
@@ -77,7 +77,7 @@
     Condition
       Error in `infer_concatenate()`:
       ! Every input must have the same shape except along `axis` (1).
-      x Got (2x3) and (2x4).
+      x `..1` has shape (2x3), `..2` has shape (2x4).
 
 # infer_concatenate() / refuses inputs with a different number of axes
 
@@ -87,7 +87,7 @@
     Condition
       Error in `infer_concatenate()`:
       ! Every input must have the same number of axes.
-      x Input 1 has 3 axes (2x3x4), input 2 has 2 (2x3).
+      x `..1` has 3 axes (2x3x4), `..2` has 2 (2x3).
 
 # infer_dot_general() / refuses contracted axes whose sizes differ
 
@@ -107,7 +107,7 @@
     Condition
       Error in `infer_pad()`:
       ! Negative padding must not remove more than an axis holds.
-      x `x` is (3); axis 1 would end up at -3.
+      x `x` has shape (3); axis 1 would end up at -3.
 
 # infer_top_k() / refuses a k larger than the last axis
 
