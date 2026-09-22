@@ -146,6 +146,18 @@
       ! `precision` must be one of "default", "high", or "highest".
       x Got "nope".
 
+# infer_convolution() / refuses a kernel with a size-0 spatial axis
+
+    Code
+      jit(prim_convolution, static = 3:18)(nv_array(as.double(1:50), shape = c(1, 2,
+        5, 5)), nv_array(numeric(), shape = c(3, 2, 0, 3)), 1L, 2L, c(3L, 4L), 2L, 1L,
+      c(3L, 4L), 1L, 2L, c(3L, 4L), c(1L, 1L), matrix(0L, 2L, 2L), c(1L, 1L), c(1L,
+        1L), 1L, 1L, "highest")
+    Condition
+      Error in `prim_convolution()`:
+      ! `kernel` must not have a size-0 spatial axis.
+      x Axis 3 of `kernel` has size 0.
+
 # infer_convolution() / blames the layout, not `padding`, when the rank disagrees
 
     Code
@@ -221,6 +233,34 @@
       Error in `prim_gather()`:
       ! `collapsed_slice_axes` must contain axes between 1 and 2.
       x Got 0.
+
+# assert_subgraph_closed() / refuses a reductor that reads a value from around it
+
+    Code
+      jit(function(a, y) {
+        prim_reduce(a, init = 0, axes = 1L, reductor = function(p, q) p + q + y)
+      })(x, nv_scalar(1))
+    Condition
+      Error in `prim_reduce()`:
+      ! `reductor` must use only the values it is given.
+      x It reads f32[] from the function around it.
+      i The region it becomes takes a fixed set of operands, so there is nowhere to pass that value in.
+
+# assert_subgraph_closed() / refuses an update computation that reads a value from around it
+
+    Code
+      jit(function(a, b, c, y) {
+        prim_scatter(a, b, c, update_window_axes = integer(), inserted_window_axes = 1L,
+        x_batching_axes = integer(), scatter_indices_batching_axes = integer(),
+        scatter_axes_to_x_axes = 1L, index_vector_axis = 2L, update_computation = function(
+          old, new) new + y)
+      })(nv_array(c(0, 0, 0, 0, 0)), nv_matrix(c(1L, 3L), ncol = 1), nv_array(c(10,
+        30)), nv_scalar(5))
+    Condition
+      Error in `prim_scatter()`:
+      ! `update_computation` must use only the values it is given.
+      x It reads f32[] from the function around it.
+      i The region it becomes takes a fixed set of operands, so there is nowhere to pass that value in.
 
 # the reduce rules / refuse a reductor that does not return a scalar
 

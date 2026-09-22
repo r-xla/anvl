@@ -566,6 +566,33 @@ describe("infer_convolution()", {
     expect_snapshot(error = TRUE, nv_conv2d(x, k, precision = "nope"))
   })
 
+  it("refuses a kernel with a size-0 spatial axis", {
+    # A zero-wide window would read as "not wider than the input", inferring a
+    # non-empty output from an empty window; StableHLO refuses it at parse time.
+    expect_snapshot(error = TRUE, {
+      jit(prim_convolution, static = 3:18)(
+        nv_array(as.double(1:50), shape = c(1, 2, 5, 5)),
+        nv_array(numeric(), shape = c(3, 2, 0, 3)),
+        1L,
+        2L,
+        c(3L, 4L),
+        2L,
+        1L,
+        c(3L, 4L),
+        1L,
+        2L,
+        c(3L, 4L),
+        c(1L, 1L),
+        matrix(0L, 2L, 2L),
+        c(1L, 1L),
+        c(1L, 1L),
+        1L,
+        1L,
+        "highest"
+      )
+    })
+  })
+
   it("blames the layout, not `padding`, when the rank disagrees", {
     # `padding`'s shape test used to run first, so a layout that does not fit
     # the rank was reported as a `padding` the caller could not have written.
@@ -667,6 +694,55 @@ describe("infer_gather()", {
         index_vector_axis = 2L
       )
     })
+  })
+})
+
+describe("assert_subgraph_closed()", {
+  it("refuses a reductor that reads a value from around it", {
+    # The region is `(T, T) -> T`, so there is no operand to pass the captured
+    # value in through: it used to reach MLIR export as "requires all operands
+    # to be defined in the parent region", with no call.
+    x <- nv_array(c(1, 2, 3, 4, 5))
+    expect_snapshot(error = TRUE, {
+      jit(function(a, y) {
+        prim_reduce(a, init = 0, axes = 1L, reductor = function(p, q) p + q + y)
+      })(x, nv_scalar(1))
+    })
+  })
+
+  it("refuses an update computation that reads a value from around it", {
+    expect_snapshot(error = TRUE, {
+      jit(function(a, b, c, y) {
+        prim_scatter(
+          a,
+          b,
+          c,
+          update_window_axes = integer(),
+          inserted_window_axes = 1L,
+          x_batching_axes = integer(),
+          scatter_indices_batching_axes = integer(),
+          scatter_axes_to_x_axes = 1L,
+          index_vector_axis = 2L,
+          update_computation = function(old, new) new + y
+        )
+      })(
+        nv_array(c(0, 0, 0, 0, 0)),
+        nv_matrix(c(1L, 3L), ncol = 1),
+        nv_array(c(10, 30)),
+        nv_scalar(5)
+      )
+    })
+  })
+
+  it("leaves a self-contained sub-graph alone", {
+    x <- nv_array(c(1, 2, 3, 4, 5))
+    sums <- jit(function(a) prim_reduce(a, init = 0, axes = 1L, reductor = function(p, q) p + q))
+    expect_equal(as.numeric(pjrt::as_array(sums(x))), 15)
+    # A literal inside the reductor is inlined, not captured.
+    doubled <- jit(function(a) {
+      prim_reduce(a, init = 0, axes = 1L, reductor = function(p, q) p + q * 2)
+    })
+    expect_equal(as.numeric(pjrt::as_array(doubled(x))), 30)
   })
 })
 

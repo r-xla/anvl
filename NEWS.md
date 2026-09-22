@@ -67,6 +67,12 @@
 * `prim_convolution()` rejects a `padding` that takes away more than a spatial
   axis holds. Such a shape made XLA's own inference abort the R process.
   Negative padding that only empties an axis stays legal.
+  It also rejects a `kernel` with a size-0 spatial axis, which would otherwise
+  infer a non-empty output from an empty window.
+* `prim_reduce()`'s `reductor` and `prim_scatter()`'s `update_computation` are
+  refused when they read a value from the function around them. The region they
+  become takes a fixed set of operands, so such a value has nowhere to enter and
+  used to surface as a raw MLIR export error with no call.
 * `prim_convolution()` and `prim_dot_general()` check `precision` in one
   wording, and a rank mismatch between `x` and the layout now names
   `input_spatial_axes` rather than `padding`.

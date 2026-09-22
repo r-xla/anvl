@@ -364,6 +364,44 @@ assert_axis_layout <- function(parts, rank, what) {
 # caller has to change one of them, and the concatenation the check runs on
 # (`c(1, 1)`) does not say which. A single `{.arg}` holding a whole phrase would
 # back-tick something that is not an argument at all.
+# A sub-graph that becomes a StableHLO region with a fixed signature --
+# `prim_reduce()`'s reductor, `prim_scatter()`'s update computation, both
+# `(T, T) -> T` -- can only read the arguments it is handed. A value the R
+# function closed over from the enclosing trace has no way into the region and
+# reaches the user at MLIR export as "requires all operands to be defined in
+# the parent region", with no call and in StableHLO's own terms.
+# `prim_while()` and `prim_if()` carry their state explicitly and do support
+# capture, so this is not a general rule about sub-graphs.
+assert_subgraph_closed <- function(graph, arg) {
+  # Only the region's own arguments and the values it computes count as
+  # defined. What `trace_fn()` collected as a constant is precisely what the
+  # function reached for outside itself -- a closed-over array as much as a
+  # value from the enclosing trace -- and neither can be hoisted into a region
+  # whose operands are fixed.
+  defined <- utils::hashtab()
+  for (gval in graph$inputs) {
+    utils::sethash(defined, gval, TRUE)
+  }
+  for (call in graph$calls) {
+    for (out in call$outputs) {
+      utils::sethash(defined, out, TRUE)
+    }
+  }
+  for (call in graph$calls) {
+    for (inp in call$inputs) {
+      if (is_graph_literal(inp) || !is.null(utils::gethash(defined, inp))) {
+        next
+      }
+      cli_abort(c(
+        "{.arg {arg}} must use only the values it is given.",
+        x = "It reads {repr(inp$aval)} from the function around it.",
+        i = "The region it becomes takes a fixed set of operands, so there is nowhere to pass that value in." # nolint
+      ))
+    }
+  }
+  invisible(NULL)
+}
+
 assert_axes_disjoint <- function(parts) {
   axes <- unlist(parts, use.names = FALSE)
   dup <- axes[duplicated(axes)]
@@ -1204,6 +1242,7 @@ infer_reduce <- function(x, init, axes, drop, reductor_graph) {
   # (C6) The reductor is traced against two scalars of `x`'s data type, so what
   # it returns has to be one too: the reduced element is what it returns, and a
   # different data type there would make the inferred output type a lie.
+  assert_subgraph_closed(reductor_graph, "reductor")
   outputs <- lapply(reductor_graph$outputs, function(out) out$aval)
   if (length(outputs) != 1L) {
     cli_abort(c(
@@ -1753,6 +1792,7 @@ infer_scatter <- function(
 
   # (C23) As `prim_reduce()`'s reductor: `update_computation` is traced against
   # two scalars of `x`'s data type, so what it returns has to be one too.
+  assert_subgraph_closed(update_computation_graph, "update_computation")
   outputs <- lapply(update_computation_graph$outputs, function(out) out$aval)
   if (length(outputs) != 1L) {
     cli_abort(c(
@@ -1999,7 +2039,17 @@ infer_convolution <- function(
              padding {pad[sd, 1L]} and {pad[sd, 2L]} leaves {padded_input}."
       ))
     }
-    dilated_window <- if (k_size == 0L) 0L else (k_size - 1L) * kernel_dil[[sd]] + 1L
+    # A window has to have something in it. A size-0 kernel axis would give a
+    # zero-wide window, which the arithmetic below would then read as "wider
+    # than the input is not true", inferring a *non-empty* output from an empty
+    # window; StableHLO refuses it outright at parse time.
+    if (k_size == 0L) {
+      cli_abort(c(
+        "{.arg kernel} must not have a size-0 spatial axis.",
+        x = "Axis {kernel_spatial_axes[[sd]]} of {.arg kernel} has size 0."
+      ))
+    }
+    dilated_window <- (k_size - 1L) * kernel_dil[[sd]] + 1L
     num_windows <- if (padded_input == 0L || dilated_window > padded_input) {
       0L
     } else {
