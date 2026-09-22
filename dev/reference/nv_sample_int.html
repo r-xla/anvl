@@ -123,15 +123,6 @@ Elements <code>state</code>, the updated RNG state, and <code>values</code>, the
 integers of shape <code>shape</code>.</p>
     </div>
     <div class="section level2">
-    <h2 id="sampling-precision">Sampling Precision<a class="anchor" aria-label="anchor" href="#sampling-precision"></a></h2>
-
-
-<p>The sample is derived from a uniform draw at the backend's default float data
-type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) and inherits its resolution: an <code>f32</code> uniform
-takes one of <code>2^23</code> equally spaced values, an <code>f64</code> one of <code>2^52</code>. Where the
-finer grid matters, raise the default float with <code><a href="local_default_dtypes.html">with_default_dtypes()</a></code>.</p>
-    </div>
-    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="nv_sample.html">nv_sample()</a></code> to sample from an arbitrary population.</p>
 <p>Other rng:
@@ -149,12 +140,12 @@ finer grid matters, raise the default float with <code><a href="local_default_dt
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_sample_int</span><span class="op">(</span><span class="fl">6</span>, <span class="va">state</span>, <span class="fl">6L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{6} ] </span>
 </code></pre></div>
     </div>

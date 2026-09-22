@@ -108,15 +108,6 @@
 - The `tensor_to_gval` argument of
   [`GraphDescriptor()`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
   is now called `array_to_gval`.
-- [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
-  [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
-  and
-  [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md)
-  draw at the default float data type instead of always at `f64`, so
-  they also run on hardware without `f64`. Their samples change where
-  the default float is not `f64`; set it with
-  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
-  to draw on the finer grid.
 
 ### Features
 

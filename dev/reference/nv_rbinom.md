@@ -47,16 +47,6 @@ nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 Elements `state`, the updated RNG state, and `values`, the sampled
 values.
 
-## Sampling Precision
-
-The sample is derived from a uniform draw at the backend's default float
-data type (see
-[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
-and inherits its resolution: an `f32` uniform takes one of `2^23`
-equally spaced values, an `f64` one of `2^52`. Where the finer grid
-matters, raise the default float with
-[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md).
-
 ## See also
 
 Other rng:
@@ -74,7 +64,7 @@ state <- nv_rng_state(42L)
 result <- nv_rbinom(c(2, 3), state)
 result$values
 #> AnvlArray
-#>  0 1 1
 #>  0 0 1
+#>  0 1 1
 #> [ CPUi32{2,3} ] 
 ```

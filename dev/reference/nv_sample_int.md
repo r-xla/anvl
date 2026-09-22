@@ -45,16 +45,6 @@ nv_sample_int(shape, initial_state, n, dtype = NULL)
 Elements `state`, the updated RNG state, and `values`, the sampled
 integers of shape `shape`.
 
-## Sampling Precision
-
-The sample is derived from a uniform draw at the backend's default float
-data type (see
-[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
-and inherits its resolution: an `f32` uniform takes one of `2^23`
-equally spaced values, an `f64` one of `2^52`. Where the finer grid
-matters, raise the default float with
-[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md).
-
 ## See also
 
 [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md)
@@ -75,11 +65,11 @@ state <- nv_rng_state(42L)
 result <- nv_sample_int(6, state, 6L)
 result$values
 #> AnvlArray
+#>  4
 #>  6
 #>  2
+#>  5
 #>  1
-#>  6
-#>  4
-#>  1
+#>  2
 #> [ CPUi32{6} ] 
 ```

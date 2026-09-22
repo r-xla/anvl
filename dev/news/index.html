@@ -111,8 +111,6 @@
 <li>
 <code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> and <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> now reduce over <code>axes</code> (plural) instead of a single <code>axis</code>, defaulting to every axis so that they pair with <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code> / <code><a href="../reference/nv_reduce_min.html">nv_reduce_min()</a></code>. Reducing several axes indexes their row-major flattening. Write <code>nv_argmax(x, axes = -1L)</code> for the previous default.</li>
 <li>The <code>tensor_to_gval</code> argument of <code><a href="../reference/GraphDescriptor.html">GraphDescriptor()</a></code> is now called <code>array_to_gval</code>.</li>
-<li>
-<code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> and <code><a href="../reference/nv_sample.html">nv_sample()</a></code> draw at the default float data type instead of always at <code>f64</code>, so they also run on hardware without <code>f64</code>. Their samples change where the default float is not <code>f64</code>; set it with <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code> to draw on the finer grid.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>

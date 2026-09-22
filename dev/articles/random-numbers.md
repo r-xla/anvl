@@ -109,12 +109,12 @@ the counterpart to R’s
 # roll six dice
 nv_sample_int(6L, state, 6L)$values
 #> AnvlArray
+#>  4
 #>  6
 #>  2
+#>  5
 #>  1
-#>  6
-#>  4
-#>  1
+#>  2
 #> [ CPUi32{6} ]
 ```
 
@@ -130,14 +130,14 @@ rather than from `1:6`:
 population <- nv_array(c(10, 20, 30))
 nv_sample(8L, state, population)$values
 #> AnvlArray
-#>  30
-#>  10
-#>  10
-#>  30
 #>  20
-#>  10
+#>  30
 #>  10
 #>  30
+#>  10
+#>  10
+#>  10
+#>  20
 #> [ CPUf32{8} ]
 ```
 
