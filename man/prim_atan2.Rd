@@ -4,11 +4,11 @@
 \alias{prim_atan2}
 \title{Primitive Arctangent 2}
 \usage{
-prim_atan2(lhs, rhs)
+prim_atan2(y, x)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type floating-point.
+\item{y, x}{(\code{\link{arrayish}})\cr
+Ordinate and abscissa of the point, of data type floating-point.
 Must have the same shape.}
 }
 \value{
@@ -16,7 +16,12 @@ Must have the same shape.}
 Has the same shape and data type as the inputs.
 }
 \description{
-Element-wise atan2 operation.
+Element-wise atan2 operation: the angle (in radians) between the positive
+x-axis and the point \verb{(x, y)}.
+
+The operands are named \code{y} and \code{x}, in that order, after
+\code{\link[base:atan2]{base::atan2()}} -- the one exception to the \code{lhs} / \code{rhs} naming the
+other binary primitives share.
 }
 \section{Implemented Rules}{
 

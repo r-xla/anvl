@@ -126,7 +126,7 @@ test_that("nv_sample_int", {
   # statistical validity checks are in inst/random
   state <- nv_array(c(1, 2), dtype = "ui64")
 
-  out1 <- nv_sample_int(n = 6L, shape = 10L, initial_state = state)
+  out1 <- nv_sample_int(n = 6L, shape = 10L, state = state)
 
   expect_shape(out1[[1]], 2L)
   expect_shape(out1[[2]], 10L)
@@ -137,45 +137,45 @@ test_that("nv_sample_int", {
   expect_true(all(values1 >= 1L & values1 <= 6L))
 
   # Test 2D output shape
-  out3 <- nv_sample_int(n = 4L, shape = c(2L, 3L), initial_state = state)
+  out3 <- nv_sample_int(n = 4L, shape = c(2L, 3L), state = state)
   expect_shape(out3[[2]], c(2L, 3L))
 
   # The last integer is reachable and the first is not over-represented
-  values4 <- as.vector(nv_sample_int(n = 6L, shape = 5000L, initial_state = state)[[2]])
+  values4 <- as.vector(nv_sample_int(n = 6L, shape = 5000L, state = state)[[2]])
   expect_setequal(unique(values4), 1:6)
   expect_true(all(abs(as.numeric(table(values4)) / 5000 - 1 / 6) < 0.02))
 
   # The dtype of the drawn integers is configurable
-  out5 <- nv_sample_int(n = 6L, shape = 4L, initial_state = state, dtype = "i64")
+  out5 <- nv_sample_int(n = 6L, shape = 4L, state = state, dtype = "i64")
   expect_dtype(out5[[2]], "i64")
 
   # A population of size one is always drawn
-  expect_true(all(as.vector(nv_sample_int(n = 1L, shape = 20L, initial_state = state)[[2]]) == 1L))
+  expect_true(all(as.vector(nv_sample_int(n = 1L, shape = 20L, state = state)[[2]]) == 1L))
 })
 
 test_that("nv_sample from a population array", {
   state <- nv_array(c(1, 2), dtype = "ui64")
   pop <- nv_array(c(10, 20, 30))
 
-  out <- nv_sample(x = pop, shape = 8L, initial_state = state)
+  out <- nv_sample(x = pop, shape = 8L, state = state)
   expect_shape(out[[2]], 8L)
   # The result has the data type of the population
   expect_dtype(out[[2]], dtype(pop))
   expect_true(all(as.vector(out[[2]]) %in% c(10, 20, 30)))
 
   # 2D output shape
-  expect_shape(nv_sample(x = pop, shape = c(2L, 3L), initial_state = state)[[2]], c(2L, 3L))
+  expect_shape(nv_sample(x = pop, shape = c(2L, 3L), state = state)[[2]], c(2L, 3L))
 
   # Every element of the population is reachable
-  many <- as.vector(nv_sample(x = pop, shape = 500L, initial_state = state)[[2]])
+  many <- as.vector(nv_sample(x = pop, shape = 500L, state = state)[[2]])
   expect_setequal(unique(many), c(10, 20, 30))
 
   # Unlike R's `sample()`, a length-one population is not a count
-  expect_true(all(as.vector(nv_sample(x = nv_array(6), shape = 5L, initial_state = state)[[2]]) == 6))
+  expect_true(all(as.vector(nv_sample(x = nv_array(6), shape = 5L, state = state)[[2]]) == 6))
 
   # Population must be 1-D
   expect_error(
-    nv_sample(x = nv_array(matrix(1:6, nrow = 2)), shape = 3L, initial_state = state),
+    nv_sample(x = nv_array(matrix(1:6, nrow = 2)), shape = 3L, state = state),
     "must be a 1-D array"
   )
 })

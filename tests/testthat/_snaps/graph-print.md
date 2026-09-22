@@ -247,7 +247,7 @@
       <AnvlGraph> (%x1: f32[6]) {
         %1: f32[] = reduce [
           axes = 1, drop = TRUE,
-          reductor_graph = (%x2: f32[], %x3: f32[]) {
+          reducer_graph = (%x2: f32[], %x3: f32[]) {
             %2: f32[] = add(%x2, %x3)
             return %2
           }
@@ -308,7 +308,7 @@
         %4: f32[2,4] = gather [
           slice_sizes = c(1, 4), offset_axes = 2, collapsed_slice_axes = 1,
           x_batching_axes = integer(0), start_indices_batching_axes = integer(0),
-          start_index_map = c(1, 2), index_vector_axis = 2,
+          start_indices_to_x_axes = c(1, 2), index_vector_axis = 2,
           indices_are_sorted = FALSE, unique_indices = FALSE
         ] (%x1, %3)
         return %4
@@ -333,7 +333,7 @@
         (%1, %2, %3, %4, %5, %6, %7, %8, %9, %10, %11, %12): (
           f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3],
           f32[3], f32[3], f32[3]
-        ) = sort [axis = 1, descending = FALSE, is_stable = FALSE] (
+        ) = sort [axis = 1, decreasing = FALSE, stable = FALSE] (
           %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12
         )
 

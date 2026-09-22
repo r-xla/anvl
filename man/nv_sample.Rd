@@ -4,13 +4,13 @@
 \alias{nv_sample}
 \title{Sample from a Population}
 \usage{
-nv_sample(shape, initial_state, x)
+nv_sample(shape, state, x)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
 \item{x}{(\code{\link{arrayish}})\cr

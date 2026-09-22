@@ -146,16 +146,16 @@ gather_clamp_indices <- function(
   start_indices,
   x_shape,
   slice_sizes,
-  start_index_map,
+  start_indices_to_x_axes,
   index_vector_axis
 ) {
-  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_index_map
+  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_indices_to_x_axes
   if (length(x_shape) != length(slice_sizes)) {
     cli_abort("{.arg x_shape} and {.arg slice_sizes} must have the same length")
   }
 
   indices_shape <- shape(start_indices)
-  n_index_coords <- length(start_index_map)
+  n_index_coords <- length(start_indices_to_x_axes)
 
   if (n_index_coords == 0L) {
     return(start_indices)
@@ -164,7 +164,7 @@ gather_clamp_indices <- function(
   # Build max bounds for each coordinate
   max_bounds <- integer(n_index_coords)
   for (coord_idx in seq_len(n_index_coords)) {
-    x_axis <- start_index_map[coord_idx]
+    x_axis <- start_indices_to_x_axes[coord_idx]
     x_size <- x_shape[x_axis]
     slice_size_for_axis <- slice_sizes[x_axis]
     max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_axis + 1L)
@@ -191,12 +191,12 @@ gather_clamp_indices <- function(
     )
     max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-    prim_clamp(min_bound, start_indices, max_bound)
+    prim_clamp(start_indices, min_bound, max_bound)
   } else {
     # Implicit index vector (single coordinate)
     min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
     max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_bound, start_indices, max_bound)
+    prim_clamp(start_indices, min_bound, max_bound)
   }
 }
 
@@ -235,7 +235,7 @@ col_major_layouts <- function(...) {
 
 # Transpose the matrix an array's last two axes form, leaving any leading batch
 # axes in place -- what `t()` means for the batched operands `nv_matmul()`
-# takes. `nv_transpose()` reverses *every* axis, which would put a batch axis
+# takes. `nv_aperm()` reverses *every* axis, which would put a batch axis
 # into the contraction slot. An array with fewer than two axes is handed on
 # unchanged, for `nv_matmul()` to report.
 transpose_matrix_axes <- function(x) {
@@ -243,5 +243,5 @@ transpose_matrix_axes <- function(x) {
   if (n < 2L) {
     return(x)
   }
-  nv_transpose(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
+  nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
 }

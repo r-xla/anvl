@@ -4,11 +4,11 @@
 \alias{nv_atan2}
 \title{Arctangent 2}
 \usage{
-nv_atan2(lhs, rhs)
+nv_atan2(y, x)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
+\item{y, x}{(\code{\link{arrayish}})\cr
+Ordinate and abscissa of the point.
 An integer operand is converted to the default float data type (see
 \code{\link[=default_dtypes]{default_dtypes()}}).
 Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
@@ -19,8 +19,13 @@ Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other op
 Has the same shape and the promoted common data type of the inputs.
 }
 \description{
-Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive
-x-axis and the point \verb{(rhs, lhs)}.
+Element-wise two-argument arctangent, i.e. the angle (in radians) between the
+positive x-axis and the point \verb{(x, y)}.
+}
+\details{
+The operands are named \code{y} and \code{x}, in that order, after
+\code{\link[base:atan2]{base::atan2()}} -- the one exception to the \code{lhs} / \code{rhs} naming the
+other binary operations share.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

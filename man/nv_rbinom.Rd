@@ -4,13 +4,13 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
+nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
 \item{size}{(\code{integer(1)})\cr

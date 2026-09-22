@@ -14,7 +14,7 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
+nv_rnorm(shape, state, dtype = NULL, mean = 0, sd = 1)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -43,7 +43,7 @@ Probabilities at which to evaluate the quantile function. Values outside
 \item{shape}{(\code{integer()})\cr
 Shape.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr

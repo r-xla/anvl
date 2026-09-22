@@ -4,18 +4,18 @@
 \alias{prim_iota}
 \title{Primitive Iota}
 \usage{
-prim_iota(axis, dtype, shape, start = 1L, device = NULL)
+prim_iota(axis, shape, dtype, start = 1L, device = NULL)
 }
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
 Axis along which values increase. Negative values count from the end
 of \code{shape}, i.e. \code{-1} refers to the last axis.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
-
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
+
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type.}
 
 \item{start}{(\code{integer(1)})\cr
 Starting value.}
@@ -56,7 +56,7 @@ Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-prim_iota(axis = 1L, dtype = "i32", shape = 5L)
+prim_iota(axis = 1L, shape = 5L, dtype = "i32")
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -12,7 +12,7 @@ prim_gather(
   collapsed_slice_axes,
   x_batching_axes,
   start_indices_batching_axes,
-  start_index_map,
+  start_indices_to_x_axes,
   index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE
@@ -24,7 +24,7 @@ Arrayish value of any data type.}
 
 \item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of starting indices. Contains index vectors that map to
-positions in \code{x} via \code{start_index_map}. The axis
+positions in \code{x} via \code{start_indices_to_x_axes}. The axis
 specified by \code{index_vector_axis} holds the index vectors.}
 
 \item{slice_sizes}{(\code{integer()})\cr
@@ -49,10 +49,11 @@ Use \code{integer(0)} when there are no batch axes.}
 Axes of \code{start_indices} that correspond to batch
 axes. Must have the same length as \code{x_batching_axes}.}
 
-\item{start_index_map}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{x}
-axis. For example, \code{start_index_map = c(1L)} means each
-index vector indexes into the first axis of \code{x}.}
+\item{start_indices_to_x_axes}{(\code{integer()})\cr
+Maps each component of an index vector in \code{start_indices} to an axis
+of \code{x}. For example, \code{start_indices_to_x_axes = 1L} means each index
+vector indexes into the first axis of \code{x}. This is \code{\link[=prim_scatter]{prim_scatter()}}'s
+\code{scatter_axes_to_x_axes}.}
 
 \item{index_vector_axis}{(\code{integer(1)})\cr
 Axis of \code{start_indices} that contains the index vectors.
@@ -121,7 +122,7 @@ prim_gather(
   collapsed_slice_axes = 1L,
   x_batching_axes = integer(0),
   start_indices_batching_axes = integer(0),
-  start_index_map = 1L,
+  start_indices_to_x_axes = 1L,
   index_vector_axis = 2L
 )
 \dontshow{\}) # examplesIf}

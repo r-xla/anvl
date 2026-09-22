@@ -412,10 +412,10 @@ REGIMES <- c("central", "tail", "deep tail", "mixed")
 ## in jit() again would measure something the user never runs.
 anvl_value <- function(arr, log_p) as.vector(nv_qnorm(arr, log_p = log_p))
 anvl_grad_fn <- function(log_p) {
-  jit(gradient(function(p) nv_reduce_sum(nv_qnorm(p, log_p = log_p)), wrt = "p"))
+  jit(gradient(function(p) nv_sum(nv_qnorm(p, log_p = log_p)), wrt = "p"))
 }
 anvl_value_grad_fn <- function(log_p) {
-  jit(value_and_gradient(function(p) nv_reduce_sum(nv_qnorm(p, log_p = log_p)),
+  jit(value_and_gradient(function(p) nv_sum(nv_qnorm(p, log_p = log_p)),
                          wrt = "p"))
 }
 
@@ -847,7 +847,7 @@ anvl_mlir <- function(log_p, op, dt) tryCatch({
   fn <- if (op == "value") {
     function(z) nv_qnorm(z, log_p = log_p)
   } else {
-    value_and_gradient(function(z) nv_reduce_sum(nv_qnorm(z, log_p = log_p)),
+    value_and_gradient(function(z) nv_sum(nv_qnorm(z, log_p = log_p)),
                        wrt = "z")
   }
   g <- trace_fn(fn, list(z = nv_aval(shape = OPCOUNT_N, dtype = dt)),
@@ -1032,7 +1032,7 @@ anvl_hlo <- function(log_p, op, dt) tryCatch({
       sprintf("invisible(as.vector(nv_qnorm(a, log_p = %s)))", log_p)
     } else {
       c(sprintf(paste0("vg <- jit(value_and_gradient(function(z) ",
-                       "nv_reduce_sum(nv_qnorm(z, log_p = %s)), wrt = 'z'))"),
+                       "nv_sum(nv_qnorm(z, log_p = %s)), wrt = 'z'))"),
                 log_p),
         "r <- vg(a)",
         "invisible(as.vector(r$value)); invisible(as.vector(r$grad[[1L]]))")

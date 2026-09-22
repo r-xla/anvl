@@ -367,14 +367,14 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #' @details
 #' Pass only the operands that must agree, and name them as the
 #' [`graph_desc_add()`] call names them. [`prim_ifelse()`] promotes its two
-#' branches and leaves `pred` a `bool`; [`prim_scatter()`] promotes `x` and
+#' branches and leaves `test` a `bool`; [`prim_scatter()`] promotes `x` and
 #' `update` and leaves the indices alone. A primitive with one arrayish operand,
 #' or with deliberately heterogeneous ones ([`prim_sort()`]'s payload,
 #' [`prim_while()`]'s loop state), calls this not at all.
 #'
 #' Call it before the body uses the operands for anything else, so it sees
 #' settled data types throughout: [`prim_reduce()`] reads `dtype(init)` to trace
-#' its reductor and [`prim_scatter()`] builds its update computation's parameter
+#' its reducer and [`prim_scatter()`] builds its update computation's parameter
 #' slots from [`peek_dtype()`], both before recording a call.
 #'
 #' It is idempotent: once every operand is at the data type the rule names,

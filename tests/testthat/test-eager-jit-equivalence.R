@@ -6,8 +6,8 @@ describe("eager/jit equivalence", {
       mul = nv_mul,
       div = nv_div,
       pow = nv_pow,
-      max = nv_max,
-      min = nv_min,
+      max = nv_pmax,
+      min = nv_pmin,
       mod = nv_mod,
       eq = nv_eq,
       lt = nv_lt,
@@ -30,7 +30,7 @@ describe("eager/jit equivalence", {
   it("agrees for the multi-argument API functions", {
     expect_eager_jit_equal_grid(list(
       ifelse = function(x, v) nv_ifelse(nv_array(c(TRUE, FALSE)), x, v),
-      clamp = function(x, v) nv_clamp(v, x, 5),
+      clamp = function(x, v) nv_clamp(x, v, 5),
       pad = function(x, v) nv_pad(x, v, 1L, 1L),
       convert = function(x, v) nv_convert(v, "f64") * nv_convert(x, "f64"),
       promote = function(x, v) {

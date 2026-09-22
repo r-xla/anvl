@@ -4,7 +4,7 @@
 \alias{nv_static_slice}
 \title{Static Slice}
 \usage{
-nv_static_slice(x, start_indices, limit_indices, strides)
+nv_static_slice(x, start_indices, end_indices, strides)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -13,8 +13,9 @@ Input array.}
 \item{start_indices}{(\code{integer()})\cr
 Start indices (inclusive), one per axis.}
 
-\item{limit_indices}{(\code{integer()})\cr
-End indices (inclusive), one per axis.}
+\item{end_indices}{(\code{integer()})\cr
+End indices (inclusive), one per axis: the element at \code{end_indices}
+is part of the slice.}
 
 \item{strides}{(\code{integer()})\cr
 Step sizes, one per axis. A stride of 1 selects every element.}
@@ -30,7 +31,7 @@ For dynamic indexing, use \code{\link[=nv_subset]{nv_subset()}} instead.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:10)
-nv_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
+nv_static_slice(x, start_indices = 2L, end_indices = 5L, strides = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

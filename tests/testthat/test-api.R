@@ -56,7 +56,7 @@ test_that("Summary group generics", {
 })
 
 test_that("mean", {
-  expect_equal(as_array(mean(nv_array(1:10, "f32"))), 5.5)
+  expect_equal(as_array(mean(nv_array(1:10, dtype = "f32"))), 5.5)
 })
 
 test_that("constants can be lifted to the appropriate level", {
@@ -88,7 +88,7 @@ test_that("promote to common", {
 
 test_that("nv_clamp converts min and max to the input dtype", {
   expect_equal(
-    nv_clamp(nv_scalar(0L), nv_array(c(-1, 0.5, 2), dtype = "f32"), nv_scalar(1L)),
+    nv_clamp(nv_array(c(-1, 0.5, 2), dtype = "f32"), nv_scalar(0L), nv_scalar(1L)),
     nv_array(c(0, 0.5, 1), dtype = "f32")
   )
 })
@@ -434,7 +434,7 @@ describe("nv_gamma", {
     # The reflection branch is 0 * Inf at a positive whole number, which used
     # to reach the gradient through the cotangent of the discarded branch.
     vals <- c(-2.25, -1.5, -0.5, 0.5, 1, 2, 4, 7.25, 20)
-    f <- function(x) nv_reduce_sum(nv_gamma(x))
+    f <- function(x) nv_sum(nv_gamma(x))
     expect_equal(
       as.vector(jit(gradient(f, wrt = "x"))(nv_array(vals, dtype = "f64"))[[1L]]),
       gamma(vals) * digamma(vals),
@@ -621,25 +621,32 @@ describe("nv_floor_div", {
   })
 })
 
-describe("nv_polygamma", {
-  it("broadcasts a scalar n", {
+describe("nv_psigamma", {
+  it("broadcasts a scalar deriv", {
     vals <- c(0.5, 1, 2, 5)
     expect_equal(
-      nv_polygamma(2, nv_array(vals)),
+      nv_psigamma(nv_array(vals), 2),
       nv_array(psigamma(vals, 2)),
       tolerance = 1e-5
     )
-    # `n` was static, so an array was refused here while `prim_polygamma()`
-    # took one.
     expect_equal(
-      nv_polygamma(nv_scalar(2), nv_array(vals)),
+      nv_psigamma(nv_array(vals), nv_scalar(2)),
       nv_array(psigamma(vals, 2)),
       tolerance = 1e-5
     )
   })
 
+  it("defaults to the digamma function", {
+    vals <- c(0.5, 1, 2, 5)
+    expect_equal(
+      nv_psigamma(nv_array(vals)),
+      nv_array(digamma(vals)),
+      tolerance = 1e-5
+    )
+  })
+
   it("computes an integer array at the default float", {
-    out <- nv_polygamma(1, nv_array(1:3))
+    out <- nv_psigamma(nv_array(1:3), 1)
     expect_dtype(out, default_float())
     expect_equal(as.vector(out), trigamma(1:3), tolerance = 1e-5)
   })
@@ -694,33 +701,33 @@ describe("reductions with negative dims", {
   it("count from the end", {
     x <- nv_array(array(as.numeric(1:24), c(2, 3, 4)))
     b <- x > 10
-    expect_equal(nv_reduce_sum(x, axes = -1L), nv_reduce_sum(x, axes = 3L))
-    expect_equal(nv_reduce_prod(x, axes = -2L), nv_reduce_prod(x, axes = 2L))
-    expect_equal(nv_reduce_max(x, axes = -3L), nv_reduce_max(x, axes = 1L))
-    expect_equal(nv_reduce_min(x, axes = -1L), nv_reduce_min(x, axes = 3L))
-    expect_equal(nv_reduce_any(b, axes = -1L), nv_reduce_any(b, axes = 3L))
-    expect_equal(nv_reduce_all(b, axes = -1L), nv_reduce_all(b, axes = 3L))
+    expect_equal(nv_sum(x, axes = -1L), nv_sum(x, axes = 3L))
+    expect_equal(nv_prod(x, axes = -2L), nv_prod(x, axes = 2L))
+    expect_equal(nv_max(x, axes = -3L), nv_max(x, axes = 1L))
+    expect_equal(nv_min(x, axes = -1L), nv_min(x, axes = 3L))
+    expect_equal(nv_any(b, axes = -1L), nv_any(b, axes = 3L))
+    expect_equal(nv_all(b, axes = -1L), nv_all(b, axes = 3L))
   })
   it("reject out-of-range and duplicated dims", {
     m <- nv_matrix(as.numeric(1:6), nrow = 2)
-    expect_error(nv_reduce_sum(m, axes = -3L), "between 1 and 2, or between -2 and -1")
-    expect_error(nv_reduce_sum(m, axes = 0L), "between 1 and 2, or between -2 and -1")
-    expect_error(nv_reduce_sum(m, axes = c(2L, -1L)), "duplicate axes")
+    expect_error(nv_sum(m, axes = -3L), "between 1 and 2, or between -2 and -1")
+    expect_error(nv_sum(m, axes = 0L), "between 1 and 2, or between -2 and -1")
+    expect_error(nv_sum(m, axes = c(2L, -1L)), "duplicate axes")
   })
 })
 
-describe("nv_reduce_sum / nv_reduce_prod / nv_mean nan_rm", {
+describe("nv_sum / nv_prod / nv_mean nan_rm", {
   it("propagate NaN by default", {
     x <- nv_array(c(1, NaN, 3, 5))
-    expect_true(is.nan(as_array(nv_reduce_sum(x))))
-    expect_true(is.nan(as_array(nv_reduce_prod(x))))
+    expect_true(is.nan(as_array(nv_sum(x))))
+    expect_true(is.nan(as_array(nv_prod(x))))
     expect_true(is.nan(as_array(nv_mean(x))))
   })
   it("skip NaN when nan_rm = TRUE", {
     v <- c(1, NaN, 3, 5)
     x <- nv_array(v)
-    expect_equal(as.numeric(nv_reduce_sum(x, nan_rm = TRUE)), sum(v, na.rm = TRUE))
-    expect_equal(as.numeric(nv_reduce_prod(x, nan_rm = TRUE)), prod(v, na.rm = TRUE))
+    expect_equal(as.numeric(nv_sum(x, nan_rm = TRUE)), sum(v, na.rm = TRUE))
+    expect_equal(as.numeric(nv_prod(x, nan_rm = TRUE)), prod(v, na.rm = TRUE))
     expect_equal(as.numeric(nv_mean(x, nan_rm = TRUE)), mean(v, na.rm = TRUE))
   })
   it("mean of all-NaN slice returns NaN", {
@@ -745,32 +752,32 @@ describe("nv_reduce_sum / nv_reduce_prod / nv_mean nan_rm", {
   })
 })
 
-describe("boolean accumulation in nv_reduce_sum / nv_reduce_prod / nv_cumsum / nv_cumprod", {
+describe("boolean accumulation in nv_sum / nv_prod / nv_cumsum / nv_cumprod", {
   v <- c(TRUE, FALSE, TRUE)
   x <- nv_array(v)
 
   it("counts a boolean array instead of folding it, like base R", {
-    expect_equal(as_array(nv_reduce_sum(x)), sum(v))
-    expect_equal(as_array(nv_reduce_prod(x)), prod(v))
+    expect_equal(as_array(nv_sum(x)), sum(v))
+    expect_equal(as_array(nv_prod(x)), prod(v))
     expect_equal(as.numeric(nv_cumsum(x)), as.numeric(cumsum(v)))
     expect_equal(as.numeric(nv_cumprod(x)), as.numeric(cumprod(v)))
   })
 
   it("accumulates a boolean array at the default integer", {
-    expect_dtype(nv_reduce_sum(x), default_int())
-    expect_dtype(nv_reduce_prod(x), default_int())
+    expect_dtype(nv_sum(x), default_int())
+    expect_dtype(nv_prod(x), default_int())
     expect_dtype(nv_cumsum(x), default_int())
     expect_dtype(nv_cumprod(x), default_int())
     with_default_dtypes(c(int = "i64"), {
-      expect_dtype(nv_reduce_sum(x), "i64")
+      expect_dtype(nv_sum(x), "i64")
       expect_dtype(nv_cumsum(x), "i64")
     })
   })
 
   it("counts along a single axis", {
     m <- matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-    expect_equal(as.numeric(nv_reduce_sum(nv_array(m), axes = 1L)), as.numeric(colSums(m)))
-    expect_equal(as.numeric(nv_reduce_sum(nv_array(m), axes = 2L)), as.numeric(rowSums(m)))
+    expect_equal(as.numeric(nv_sum(nv_array(m), axes = 1L)), as.numeric(colSums(m)))
+    expect_equal(as.numeric(nv_sum(nv_array(m), axes = 2L)), as.numeric(rowSums(m)))
   })
 
   it("counts through the base R generics", {
@@ -788,20 +795,20 @@ describe("boolean accumulation in nv_reduce_sum / nv_reduce_prod / nv_cumsum / n
   it("leaves the data type of a non-boolean input alone", {
     for (dt in c("i32", "i64", "f32", "f64")) {
       y <- nv_array(c(1, 2, 3), dtype = dt)
-      expect_dtype(nv_reduce_sum(y), as_dtype(dt))
+      expect_dtype(nv_sum(y), as_dtype(dt))
       expect_dtype(nv_cumsum(y), as_dtype(dt))
     }
   })
 
   it("leaves the folding reductions boolean", {
-    expect_dtype(nv_reduce_any(x), "bool")
-    expect_dtype(nv_reduce_all(x), "bool")
-    expect_dtype(nv_reduce_max(x), "bool")
+    expect_dtype(nv_any(x), "bool")
+    expect_dtype(nv_all(x), "bool")
+    expect_dtype(nv_max(x), "bool")
     expect_dtype(nv_cummax(x), "bool")
   })
 
   it("is the nv_* layer's doing -- the primitives keep the StableHLO semantics", {
-    expect_dtype(prim_reduce_sum(x, axes = 1L), "bool")
+    expect_dtype(prim_sum(x, axes = 1L), "bool")
     expect_dtype(prim_cumsum(x, axis = 1L), "bool")
   })
 })
@@ -843,7 +850,7 @@ describe("nv_var / nv_sd nan_rm", {
   })
   it("does not let nan_rm change the data type", {
     # The valid-value count is built at the operand's data type, not at an
-    # integer one: counting into an integer makes the R double `0` in `nv_max(0,
+    # integer one: counting into an integer makes the R double `0` in `nv_pmax(0,
     # count - correction)` cross categories and materialize the divisor at the
     # default float, so `nan_rm` alone would widen the result.
     x <- nv_array(c(1, 2, NaN, 4), dtype = "f32")
@@ -900,37 +907,37 @@ describe("nv_range", {
   })
 })
 
-describe("nv_reduce_max / nv_reduce_min nan_rm", {
+describe("nv_max / nv_min nan_rm", {
   it("propagates NaN by default (nan_rm = FALSE)", {
     x <- nv_array(c(1, NaN, 3))
-    expect_true(is.nan(as_array(nv_reduce_max(x))))
-    expect_true(is.nan(as_array(nv_reduce_min(x))))
+    expect_true(is.nan(as_array(nv_max(x))))
+    expect_true(is.nan(as_array(nv_min(x))))
   })
   it("skips NaN when nan_rm = TRUE", {
     x <- nv_array(c(1, NaN, 3))
-    expect_equal(as.numeric(nv_reduce_max(x, nan_rm = TRUE)), 3)
-    expect_equal(as.numeric(nv_reduce_min(x, nan_rm = TRUE)), 1)
+    expect_equal(as.numeric(nv_max(x, nan_rm = TRUE)), 3)
+    expect_equal(as.numeric(nv_min(x, nan_rm = TRUE)), 1)
   })
   it("all-NaN slice returns the identity element when nan_rm = TRUE", {
     x <- nv_array(c(NaN, NaN))
-    expect_equal(as.numeric(nv_reduce_max(x, nan_rm = TRUE)), -Inf)
-    expect_equal(as.numeric(nv_reduce_min(x, nan_rm = TRUE)), Inf)
+    expect_equal(as.numeric(nv_max(x, nan_rm = TRUE)), -Inf)
+    expect_equal(as.numeric(nv_min(x, nan_rm = TRUE)), Inf)
   })
   it("propagates per-slice along reduction axes", {
     # column 1 has NaN, columns 2 and 3 do not
     m <- nv_matrix(c(1, NaN, 3, 4, 5, 6), nrow = 2)
-    out_default <- as.numeric(nv_reduce_max(m, axes = 1L))
+    out_default <- as.numeric(nv_max(m, axes = 1L))
     expect_true(is.nan(out_default[1]))
     expect_equal(out_default[2:3], c(4, 6))
     expect_equal(
-      as.numeric(nv_reduce_max(m, axes = 1L, nan_rm = TRUE)),
+      as.numeric(nv_max(m, axes = 1L, nan_rm = TRUE)),
       c(1, 4, 6)
     )
   })
   it("is a no-op for integer inputs", {
     x <- nv_array(c(1L, 5L, 3L))
-    expect_equal(as_array(nv_reduce_max(x)), as_array(nv_reduce_max(x, nan_rm = TRUE)))
-    expect_equal(as_array(nv_reduce_min(x)), as_array(nv_reduce_min(x, nan_rm = TRUE)))
+    expect_equal(as_array(nv_max(x)), as_array(nv_max(x, nan_rm = TRUE)))
+    expect_equal(as_array(nv_min(x)), as_array(nv_min(x, nan_rm = TRUE)))
   })
 })
 
@@ -1015,7 +1022,7 @@ describe("nv_cummax / nv_cummin nan_rm", {
     expect_equal(as_array(nv_cummin(x)), as_array(nv_cummin(x, nan_rm = TRUE)))
   })
   it("indices returns NaN-propagated values and indices", {
-    out <- nv_cummax(nv_array(c(1, NaN, 3)), indices = TRUE)
+    out <- nv_cummax(nv_array(c(1, NaN, 3)), with_indices = TRUE)
     vals <- as.numeric(out$values)
     expect_equal(vals[1], 1)
     expect_true(all(is.nan(vals[2:3])))
@@ -1025,28 +1032,28 @@ describe("nv_cummax / nv_cummin nan_rm", {
   })
 })
 
-describe("nv_argmax / nv_argmin nan_rm", {
+describe("nv_which_max / nv_which_min nan_rm", {
   it("propagates NaN by default (nan_rm = FALSE): returns the NaN's index", {
     x <- nv_array(c(1, NaN, 3))
-    expect_equal(as.integer(nv_argmax(x)), 2L)
-    expect_equal(as.integer(nv_argmin(x)), 2L)
+    expect_equal(as.integer(nv_which_max(x)), 2L)
+    expect_equal(as.integer(nv_which_min(x)), 2L)
   })
   it("skips NaN when nan_rm = TRUE", {
     x <- nv_array(c(1, NaN, 3))
-    expect_equal(as.integer(nv_argmax(x, nan_rm = TRUE)), 3L)
-    expect_equal(as.integer(nv_argmin(x, nan_rm = TRUE)), 1L)
+    expect_equal(as.integer(nv_which_max(x, nan_rm = TRUE)), 3L)
+    expect_equal(as.integer(nv_which_min(x, nan_rm = TRUE)), 1L)
   })
   it("returns first NaN when several NaNs exist", {
     x <- nv_array(c(1, NaN, 3, NaN, 5))
-    expect_equal(as.integer(nv_argmax(x)), 2L)
-    expect_equal(as.integer(nv_argmin(x)), 2L)
+    expect_equal(as.integer(nv_which_max(x)), 2L)
+    expect_equal(as.integer(nv_which_min(x)), 2L)
   })
   it("propagates per-slice along the reduced axis", {
     # row 1 has NaN at col 2, row 2 has no NaN
     m <- nv_matrix(c(1, NaN, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.integer(nv_argmax(m, axes = 2L)), c(2L, 2L))
+    expect_equal(as.integer(nv_which_max(m, axes = 2L)), c(2L, 2L))
     expect_equal(
-      as.integer(nv_argmax(m, axes = 2L, nan_rm = TRUE)),
+      as.integer(nv_which_max(m, axes = 2L, nan_rm = TRUE)),
       c(3L, 2L)
     )
   })
@@ -1128,6 +1135,19 @@ describe("nv_sd", {
   it("accepts negative dims", {
     m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
     expect_equal(nv_sd(m, axes = -1L), nv_sd(m, axes = 2L))
+  })
+})
+
+describe("nv_drop", {
+  it("is another spelling of nv_squeeze()", {
+    expect_identical(nv_drop, nv_squeeze)
+  })
+
+  it("drops every size-1 axis by default, like base R's drop()", {
+    x <- array(1:6, dim = c(1, 6, 1))
+    out <- nv_drop(nv_array(x))
+    expect_shape(out, 6L)
+    expect_equal(as.vector(out), drop(x))
   })
 })
 
@@ -1744,33 +1764,33 @@ describe("nv_sort", {
   })
 })
 
-describe("nv_argsort", {
+describe("nv_order", {
   it("returns indices that sort the array", {
     x <- nv_array(c(3, 1, 4, 1, 5))
-    perm <- as.integer(nv_argsort(x))
+    perm <- as.integer(nv_order(x))
     expect_equal(as.vector(x)[perm], c(1, 1, 3, 4, 5))
   })
 
   it("supports decreasing", {
     x <- nv_array(c(3, 1, 4, 1, 5))
-    perm <- as.integer(nv_argsort(x, decreasing = TRUE))
+    perm <- as.integer(nv_order(x, decreasing = TRUE))
     expect_equal(as.vector(x)[perm], c(5, 4, 3, 1, 1))
   })
 
   it("returns i32 dtype", {
-    expect_dtype(nv_argsort(nv_array(c(1, 2))), default_int())
+    expect_dtype(nv_order(nv_array(c(1, 2))), default_int())
   })
 
   it("accepts a negative dim", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(nv_argsort(m, axis = -2L), nv_argsort(m, axis = 1L))
+    expect_equal(nv_order(m, axis = -2L), nv_order(m, axis = 1L))
   })
 
   it("flattens a matrix by default, matching nv_sort", {
     mr <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     m <- nv_array(mr)
-    perm <- as.integer(nv_argsort(m))
-    expect_shape(nv_argsort(m), 6L)
+    perm <- as.integer(nv_order(m))
+    expect_shape(nv_order(m), 6L)
     # the indices refer to the row-major flattening, which is what nv_sort
     # sorts, so indexing it by them reproduces nv_sort()'s output
     expect_equal(as.vector(t(mr))[perm], as.vector(nv_sort(m)))
@@ -1778,8 +1798,8 @@ describe("nv_argsort", {
 
   it("permutes each slice when an axis is given", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_shape(nv_argsort(m, axis = 2L), c(2L, 3L))
-    expect_equal(nv_argsort(m, axis = 2L), nv_argsort(m, axis = -1L))
+    expect_shape(nv_order(m, axis = 2L), c(2L, 3L))
+    expect_equal(nv_order(m, axis = 2L), nv_order(m, axis = -1L))
   })
 })
 
@@ -2120,92 +2140,92 @@ describe("mean()", {
   })
 })
 
-describe("nv_reverse", {
+describe("nv_rev", {
   m <- nv_matrix(1:6, nrow = 2)
   mr <- as_array(m)
 
   it("reverses every axis by default", {
-    expect_equal(as_array(nv_reverse(m)), mr[2:1, 3:1])
-    expect_equal(nv_reverse(m), nv_reverse(m, axes = c(1L, 2L)))
+    expect_equal(as_array(nv_rev(m)), mr[2:1, 3:1])
+    expect_equal(nv_rev(m), nv_rev(m, axes = c(1L, 2L)))
   })
 
   it("reverses the named axes only", {
-    expect_equal(as_array(nv_reverse(m, axes = 1L)), mr[2:1, ])
-    expect_equal(as_array(nv_reverse(m, axes = 2L)), mr[, 3:1])
+    expect_equal(as_array(nv_rev(m, axes = 1L)), mr[2:1, ])
+    expect_equal(as_array(nv_rev(m, axes = 2L)), mr[, 3:1])
   })
 
   it("accepts negative axes", {
-    expect_equal(nv_reverse(m, axes = -1L), nv_reverse(m, axes = 2L))
+    expect_equal(nv_rev(m, axes = -1L), nv_rev(m, axes = 2L))
   })
 
   it("returns the input unchanged when there is no axis to reverse", {
-    expect_equal(as.vector(nv_reverse(nv_scalar(7))), 7)
-    expect_equal(nv_reverse(m, axes = integer()), m)
+    expect_equal(as.vector(nv_rev(nv_scalar(7))), 7)
+    expect_equal(nv_rev(m, axes = integer()), m)
   })
 
   it("agrees with rev()", {
-    expect_equal(nv_reverse(m), rev(m))
+    expect_equal(nv_rev(m), rev(m))
   })
 
   it("works under jit()", {
-    expect_equal(as.vector(jit(nv_reverse)(nv_array(1:3))), 3:1)
+    expect_equal(as.vector(jit(nv_rev)(nv_array(1:3))), 3:1)
   })
 })
 
-describe("nv_argmax / nv_argmin", {
+describe("nv_which_max / nv_which_min", {
   m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
   mr <- as_array(m)
 
   it("reduces every axis by default, indexing the flattened array", {
-    expect_equal(as.integer(nv_argmax(m)), which.max(as.vector(t(mr))))
-    expect_equal(as.integer(nv_argmin(m)), which.min(as.vector(t(mr))))
-    expect_equal(nv_argmax(m), nv_argmax(nv_flatten(m)))
-    expect_shape(nv_argmax(m), integer())
+    expect_equal(as.integer(nv_which_max(m)), which.max(as.vector(t(mr))))
+    expect_equal(as.integer(nv_which_min(m)), which.min(as.vector(t(mr))))
+    expect_equal(nv_which_max(m), nv_which_max(nv_flatten(m)))
+    expect_shape(nv_which_max(m), integer())
   })
 
   it("reduces the named axes only", {
-    expect_equal(nv_argmax(m, axes = 2L), prim_argmax(m, axis = 2L))
-    expect_equal(nv_argmin(m, axes = 2L), prim_argmin(m, axis = 2L))
-    expect_equal(as.integer(nv_argmax(m, axes = 1L)), apply(mr, 2L, which.max))
+    expect_equal(nv_which_max(m, axes = 2L), prim_which_max(m, axis = 2L))
+    expect_equal(nv_which_min(m, axes = 2L), prim_which_min(m, axis = 2L))
+    expect_equal(as.integer(nv_which_max(m, axes = 1L)), apply(mr, 2L, which.max))
   })
 
-  it("points at the element nv_reduce_max / nv_reduce_min returns", {
+  it("points at the element nv_max / nv_min returns", {
     a <- nv_array(as.numeric(c(5, 2, 9, 1, 3, 8, 4, 7, 6, 0, 2, 5)), shape = c(2L, 2L, 3L))
     ar <- as_array(a)
     for (ax in 1:3) {
       keep <- setdiff(1:3, ax)
-      expect_equal(as.vector(nv_argmax(a, axes = ax)), as.vector(apply(ar, keep, which.max)))
-      expect_equal(as.vector(nv_argmin(a, axes = ax)), as.vector(apply(ar, keep, which.min)))
+      expect_equal(as.vector(nv_which_max(a, axes = ax)), as.vector(apply(ar, keep, which.max)))
+      expect_equal(as.vector(nv_which_min(a, axes = ax)), as.vector(apply(ar, keep, which.min)))
     }
   })
 
   it("indexes the row-major flattening when several axes are reduced", {
     a <- nv_array(as.numeric(c(5, 2, 9, 1, 3, 8, 4, 7, 6, 0, 2, 5)), shape = c(2L, 2L, 3L))
     ar <- as_array(a)
-    got <- as.integer(nv_argmax(a, axes = c(1L, 3L)))
+    got <- as.integer(nv_which_max(a, axes = c(1L, 3L)))
     # for each kept position along axis 2, flatten axes (1, 3) row-major
     expected <- vapply(1:2, function(j) which.max(as.vector(t(ar[, j, ]))), integer(1L))
     expect_equal(got, expected)
-    expect_equal(nv_argmax(a, axes = c(1L, 2L, 3L)), nv_argmax(nv_flatten(a)))
+    expect_equal(nv_which_max(a, axes = c(1L, 2L, 3L)), nv_which_max(nv_flatten(a)))
   })
 
   it("keeps the reduced axes at size 1 when drop = FALSE", {
-    expect_shape(nv_argmax(m, axes = 2L, drop = FALSE), c(2L, 1L))
-    expect_shape(nv_argmax(m, drop = FALSE), c(1L, 1L))
+    expect_shape(nv_which_max(m, axes = 2L, drop = FALSE), c(2L, 1L))
+    expect_shape(nv_which_max(m, drop = FALSE), c(1L, 1L))
     expect_equal(
-      as.vector(nv_argmax(m, axes = 2L, drop = FALSE)),
-      as.vector(nv_argmax(m, axes = 2L))
+      as.vector(nv_which_max(m, axes = 2L, drop = FALSE)),
+      as.vector(nv_which_max(m, axes = 2L))
     )
   })
 
   it("returns 1 for a scalar, like which.max() does", {
-    expect_equal(as.integer(nv_argmax(nv_scalar(3))), 1L)
-    expect_equal(as.integer(nv_argmin(nv_scalar(3))), 1L)
+    expect_equal(as.integer(nv_which_max(nv_scalar(3))), 1L)
+    expect_equal(as.integer(nv_which_min(nv_scalar(3))), 1L)
   })
 
   it("accepts negative axes", {
-    expect_equal(nv_argmax(m, axes = -1L), nv_argmax(m, axes = 2L))
-    expect_equal(nv_argmin(m, axes = -1L), nv_argmin(m, axes = 2L))
+    expect_equal(nv_which_max(m, axes = -1L), nv_which_max(m, axes = 2L))
+    expect_equal(nv_which_min(m, axes = -1L), nv_which_min(m, axes = 2L))
   })
 })
 
@@ -2462,15 +2482,18 @@ describe("nv_inv", {
   })
 })
 
-describe("nv_transpose", {
-  it("reverses the dimensions by default", {
+describe("nv_aperm", {
+  it("reverses the axes by default", {
     x <- nv_array(array(1:24, c(2, 3, 4)))
-    expect_equal(nv_transpose(x), prim_transpose(x, c(3L, 2L, 1L)))
+    expect_equal(nv_aperm(x), prim_transpose(x, c(3L, 2L, 1L)))
   })
   it("accepts a negative permutation", {
     x <- nv_array(array(1:24, c(2, 3, 4)))
-    expect_equal(nv_transpose(x, c(-1L, -2L, -3L)), nv_transpose(x, c(3L, 2L, 1L)))
-    expect_error(nv_transpose(x, c(1L, 2L, -4L)), "between 1 and 3, or between -3 and -1")
+    expect_equal(nv_aperm(x, c(-1L, -2L, -3L)), nv_aperm(x, c(3L, 2L, 1L)))
+    expect_error(nv_aperm(x, c(1L, 2L, -4L)), "between 1 and 3, or between -3 and -1")
+  })
+  it("is also spelled nv_transpose()", {
+    expect_identical(nv_transpose, nv_aperm)
   })
 })
 
@@ -2517,8 +2540,8 @@ describe("nv_flatten", {
   })
   it("works with empty input", {
     expect_equal(
-      nv_flatten(nv_empty("f32", c(2, 0))),
-      nv_empty("f32", 0L)
+      nv_flatten(nv_empty(c(2, 0), "f32")),
+      nv_empty(0L, "f32")
     )
   })
 })
@@ -2585,19 +2608,19 @@ describe("nv_scan", {
   # lists, `xs = NULL` and a trip count read off `xs`.
   it("takes bare arrays and matches nv_cumsum", {
     x <- c(1, 2, 3, 4)
-    res <- nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(x))
+    res <- nv_scan(nv_scalar(0), nv_array(x), cumsum_body)
     expect_equal(as.numeric(res$out), as.numeric(nv_cumsum(nv_array(x))))
     expect_equal(as.numeric(res$carry), sum(x))
   })
 
-  it("runs fori-style with xs = NULL and an explicit length", {
+  it("runs fori-style with xs = NULL and an explicit trip count", {
     res <- nv_scan(
       init = nv_scalar(1L),
       body = function(carry, x) {
         expect_null(x)
         list(carry = carry + 1L, out = carry * 2L)
       },
-      length = 3L
+      steps = 3L
     )
     expect_equal(as.numeric(res$out), c(2, 4, 6))
     expect_equal(as.numeric(res$carry), 4)
@@ -2611,30 +2634,30 @@ describe("nv_scan", {
         list(carry = carry + 1L, out = carry * 2L)
       },
       xs = list(),
-      length = 3L
+      steps = 3L
     )
     expect_equal(as.numeric(res$out), c(2, 4, 6))
     expect_equal(as.numeric(res$carry), 4)
   })
 
   it("reads the trip count off xs, and demands it when there is none", {
-    expect_error(nv_scan(nv_scalar(0), cumsum_body), "`length` is required")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = list()), "`length` is required")
+    expect_error(nv_scan(nv_scalar(0), body = cumsum_body), "`steps` is required")
+    expect_error(nv_scan(nv_scalar(0), xs = list(), body = cumsum_body), "`steps` is required")
     expect_error(
-      nv_scan(nv_scalar(0), cumsum_body, xs = nv_scalar(1)),
+      nv_scan(nv_scalar(0), nv_scalar(1), cumsum_body),
       "at least one axis"
     )
   })
 
-  # `body`, `reverse`, `length` and every leaf of `xs` are `prim_scan()`'s
+  # `body`, `reverse`, `steps` and every leaf of `xs` are `prim_scan()`'s
   # contract; this only pins that its errors reach the caller through here.
   it("leaves the rest of the contract to prim_scan", {
     x <- nv_array(c(1, 2, 3, 4))
-    expect_error(nv_scan(nv_scalar(0), "not a function", xs = x), "must be a function")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, reverse = NA), "May not be NA")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = -1L), "not >= 0")
+    expect_error(nv_scan(nv_scalar(0), x, "not a function"), "must be a function")
+    expect_error(nv_scan(nv_scalar(0), x, cumsum_body, reverse = NA), "May not be NA")
+    expect_error(nv_scan(nv_scalar(0), body = cumsum_body, steps = -1L), "not >= 0")
     expect_error(
-      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = 9L),
+      nv_scan(nv_scalar(0), x, cumsum_body, steps = 9L),
       "size 9 along axis 1, not 4"
     )
   })
@@ -2644,33 +2667,33 @@ describe("the default integer", {
     x <- nv_array(c(3, 1, 4, 1, 5))
     local_default_dtypes(c(int = "i64"))
     i64 <- as_dtype("i64")
-    expect_dtype(nv_argmax(x), i64)
-    expect_dtype(nv_argmin(x), i64)
-    expect_dtype(nv_argsort(x), i64)
-    expect_dtype(nv_cummax(x, indices = TRUE)$indices, i64)
-    expect_dtype(nv_cummin(x, indices = TRUE)$indices, i64)
+    expect_dtype(nv_which_max(x), i64)
+    expect_dtype(nv_which_min(x), i64)
+    expect_dtype(nv_order(x), i64)
+    expect_dtype(nv_cummax(x, with_indices = TRUE)$indices, i64)
+    expect_dtype(nv_cummin(x, with_indices = TRUE)$indices, i64)
     # `hlo_top_k` fixes its indices at i32, so these are converted.
-    expect_dtype(nv_top_k(x, k = 2L, indices = TRUE)$indices, i64)
+    expect_dtype(nv_top_k(x, k = 2L, with_indices = TRUE)$indices, i64)
     # And in a trace, where the program is keyed on the defaults.
-    expect_dtype(jit(function(x) nv_argmax(x))(x), i64)
-    expect_dtype(jit(function(x) nv_argsort(x))(x), i64)
-    expect_dtype(jit(function(x) nv_cummin(x, indices = TRUE)$indices)(x), i64)
-    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_which_max(x))(x), i64)
+    expect_dtype(jit(function(x) nv_order(x))(x), i64)
+    expect_dtype(jit(function(x) nv_cummin(x, with_indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, with_indices = TRUE)$indices)(x), i64)
   })
 
   it("does not change the indices themselves", {
     x <- nv_array(c(3, 1, 4, 1, 5))
     at_i32 <- list(
-      argmax = as_array(nv_argmax(x)),
-      argsort = as_array(nv_argsort(x)),
-      cummax = as_array(nv_cummax(x, indices = TRUE)$indices),
-      top_k = as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices)
+      argmax = as_array(nv_which_max(x)),
+      argsort = as_array(nv_order(x)),
+      cummax = as_array(nv_cummax(x, with_indices = TRUE)$indices),
+      top_k = as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices)
     )
     local_default_dtypes(c(int = "i64"))
-    expect_equal(as_array(nv_argmax(x)), at_i32$argmax)
-    expect_equal(as_array(nv_argsort(x)), at_i32$argsort)
-    expect_equal(as_array(nv_cummax(x, indices = TRUE)$indices), at_i32$cummax)
-    expect_equal(as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices), at_i32$top_k)
+    expect_equal(as_array(nv_which_max(x)), at_i32$argmax)
+    expect_equal(as_array(nv_order(x)), at_i32$argsort)
+    expect_equal(as_array(nv_cummax(x, with_indices = TRUE)$indices), at_i32$cummax)
+    expect_equal(as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), at_i32$top_k)
   })
 
   it("decides the data type of an LU decomposition's pivots", {
@@ -2715,8 +2738,8 @@ test_that("the floating-point nv_* functions refuse a boolean", {
   expect_error(nv_sinpi(nv_array(TRUE)), "`x` must be a numeric data type")
   expect_error(nv_tanpi(nv_array(TRUE)), "`x` must be a numeric data type")
   expect_error(nv_sin(nv_array(TRUE)), "`x` must be a numeric data type")
-  expect_error(nv_atan2(nv_array(TRUE), nv_array(1)), "`lhs` must be a numeric data type")
-  expect_error(nv_polygamma(nv_array(TRUE), nv_array(1)), "`n` must be a numeric data type")
+  expect_error(nv_atan2(nv_array(TRUE), nv_array(1)), "`y` must be a numeric data type")
+  expect_error(nv_psigamma(nv_array(TRUE), nv_array(1)), "`x` must be a numeric data type")
   # A boolean meets a float at the float, so a check on the promoted operands
   # alone would let one into the linear algebra functions.
   bool_mat <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
@@ -2774,14 +2797,14 @@ test_that("nv_top_k checks `k` before coercing it", {
 
 test_that("the flag and enum arguments are checked in the nv_* layer", {
   x <- nv_array(c(1, 2, 3, 4))
-  for (f in list(nv_reduce_sum, nv_reduce_prod, nv_reduce_max, nv_reduce_min, nv_mean)) {
+  for (f in list(nv_sum, nv_prod, nv_max, nv_min, nv_mean)) {
     expect_error(f(x, nan_rm = "yes"), "logical flag")
   }
   expect_error(nv_cumsum(x, nan_rm = "yes"), "logical flag")
-  expect_error(nv_cummax(x, indices = "yes"), "logical flag")
-  expect_error(nv_argmax(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_cummax(x, with_indices = "yes"), "logical flag")
+  expect_error(nv_which_max(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
-  expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "logical flag")
+  expect_error(nv_sum(x, axes = 1L, drop = "yes"), "logical flag")
   m <- nv_array(matrix(c(4, 2, 2, 3), 2), dtype = "f32")
   expect_error(nv_chol(m, lower = "yes"), "logical flag")
   expect_error(nv_triangular_solve(m, m, lower = "yes"), "logical flag")
@@ -2801,7 +2824,7 @@ test_that("nv_inv reports its own argument, and gradient accepts any float", {
   expect_error(nv_inv(nv_array(matrix(1:4, 2))), "`x` must be a float data type")
   # The check and the message agree on what "float" means.
   expect_error(
-    jit(gradient(function(x) nv_reduce_sum(nv_convert(x, "i32"))))(nv_array(c(1, 2))),
+    jit(gradient(function(x) nv_sum(nv_convert(x, "i32"))))(nv_array(c(1, 2))),
     "float scalar"
   )
 })
@@ -2812,12 +2835,12 @@ test_that("the API layer checks what its pages promise", {
 
   # `nv_top_k()` coerced `k` before checking it, so a fractional or logical `k`
   # was silently truncated where `prim_top_k()` refuses both -- and
-  # `indices` reached a bare `if()`.
+  # `with_indices` reached a bare `if()`.
   expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
-  expect_error(nv_top_k(x3, 1L, indices = 1), "logical flag")
+  expect_error(nv_top_k(x3, 1L, with_indices = 1), "logical flag")
   expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
 
   # `nv_quantile()`'s bad-`probs` message was raw `checkmate` output.
