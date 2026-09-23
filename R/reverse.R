@@ -254,6 +254,9 @@ graph_vjp <- function(graph, targets, out_grads) {
   desc <- .current_descriptor()
   rebuilt <- rebuild_forward_into(graph, desc)
   required_env <- requirements_from(graph, targets)
+  # A higher-order call inside the sub-graph can hide a capture just as one in
+  # the top-level graph can.
+  assert_no_captured_grads(graph, required_env)
 
   grad_env <- hashtab()
   for (i in seq_along(graph$outputs)) {

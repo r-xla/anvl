@@ -592,6 +592,13 @@ describe("gradients through prim_if", {
     expect_equal(as.numeric(grads[[2L]]), c(1, 1, 1))
   })
 
+  it("differentiates only the captured values it is asked for", {
+    g <- function(p, x, y) nv_if(p, function() nv_sum(x * y), function() nv_sum(x))
+    grads <- jit(gradient(g, wrt = "x"))(true_, x, y)
+    expect_equal(names(grads), "x")
+    expect_equal(as.numeric(grads$x), c(4, 5, 6))
+  })
+
   it("gives a zero to a value the taken branch does not use", {
     g <- function(p, x, y) nv_if(p, function() nv_sum(x * x), function() nv_sum(y * y))
     grads <- jit(gradient(g, wrt = c("x", "y")))(true_, x, y)
@@ -674,5 +681,27 @@ describe("gradients through a sub-graph that still captures implicitly", {
       r$acc
     }
     expect_error(jit(gradient(f))(x), "Cannot compute a gradient through `prim_while\\(\\)`")
+  })
+
+  it("refuses such a capture inside a branch of prim_if() too", {
+    x <- nv_array(c(1, 2, 3), dtype = "f64")
+    f <- function(p, x) {
+      nv_if(
+        p,
+        function() {
+          r <- prim_while(
+            init = list(i = nv_scalar(0L), acc = nv_scalar(0, "f64")),
+            cond = function(i, acc) i < nv_scalar(2L),
+            body = function(i, acc) list(i = i + 1L, acc = acc + prim_sum(x, axes = 1L))
+          )
+          r$acc
+        },
+        function() nv_scalar(0, "f64")
+      )
+    }
+    expect_error(
+      jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x),
+      "Cannot compute a gradient through `prim_while\\(\\)`"
+    )
   })
 })

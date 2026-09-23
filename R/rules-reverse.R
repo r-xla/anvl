@@ -560,21 +560,21 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
 #
 # `pred` is a bool and carries no gradient.
 prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  captures <- inputs[-1L]
-  if (!length(captures)) {
-    return(vector("list", length(inputs)))
+  grads_in <- vector("list", length(inputs))
+  needed <- which(unlist(required[-1L]))
+  if (!length(needed)) {
+    return(grads_in)
   }
-  pred <- inputs[[1L]]
-  targets <- lapply(captures, function(box) box$gnode)
+  targets <- lapply(inputs[needed + 1L], function(box) box$gnode)
   branch_vjp <- function(graph) {
     function() graph_vjp(graph, targets, grads)
   }
-  cotangents <- prim_if(
-    pred,
+  grads_in[needed + 1L] <- prim_if(
+    inputs[[1L]],
     branch_vjp(params$true),
     branch_vjp(params$false)
   )
-  c(list(NULL), cotangents)
+  grads_in
 })
 
 # convert reverse -----------------
