@@ -38,6 +38,11 @@ It is also possible to specify the defaults per-backend:
 
 An entry that names a backend wins over the categories beside it.
 
+When the option is not set, the `ANVL_DEFAULT_DTYPES` environment
+variable (read once, when anvl is loaded) is used instead, written as
+`category=dtype` pairs that apply to every backend, e.g.
+`ANVL_DEFAULT_DTYPES="float=f64,int=i64"`.
+
 The defaults decide only what a value becomes when *nothing else does*:
 an R value that meets a typed array of its own category still takes that
 array's data type, whatever the default

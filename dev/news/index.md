@@ -4,6 +4,9 @@
 
 ### Breaking changes
 
+- [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)
+  no longer follows `PJRT_PLATFORM`; set `ANVL_DEFAULT_DEVICE` or the
+  `anvl.default_device` option instead.
 - [`prim_reshape()`](https://r-xla.github.io/anvl/dev/reference/prim_reshape.md)
   and
   [`nv_reshape()`](https://r-xla.github.io/anvl/dev/reference/nv_reshape.md),
@@ -139,6 +142,15 @@
 
 ### Features
 
+- New
+  [`local_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
+  and
+  [`with_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
+  set the `anvl.default_device` option, which names the device a call
+  that names none allocates on in place of the first CPU device.
+- The environment variables `ANVL_DEFAULT_DEVICE` and
+  `ANVL_DEFAULT_DTYPES`, read when anvl is loaded, are used when the
+  `anvl.default_device` and `anvl.default_dtypes` options are not set.
 - [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
   accepts a seed of any signed or unsigned integer data type, bringing
   it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
@@ -305,6 +317,24 @@
 
 ### Bug fixes
 
+- The `_like` constructors
+  ([`nv_scalar_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`nv_array_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`nv_fill_like()`](https://r-xla.github.io/anvl/dev/reference/nv_fill.md),
+  [`nv_iota_like()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md),
+  [`nv_empty_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))
+  no longer allocate on the first CPU device when `like` is an array
+  built inside a trace. The stray device made
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) abort
+  with “found more than one device” wherever the operands were
+  elsewhere, which took out every
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  call on CUDA.
+- [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_unserialize.md)
+  / [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_read.md)
+  place the loaded arrays on
+  \[[`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)\],
+  where they always used pjrt’s first device.
 - [`nv_chol()`](https://r-xla.github.io/anvl/dev/reference/nv_chol.md) /
   [`prim_chol()`](https://r-xla.github.io/anvl/dev/reference/prim_chol.md)
   and
@@ -476,6 +506,14 @@
 
 ### Tests
 
+- The environment variables that configure only the test suite are now
+  spelled with an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`.
+  `ANVL_TEST` itself is unchanged.
+- The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes
+  anything allocating on the first CPU device rather than following the
+  trace land on a device of its own instead of agreeing with everything
+  else by accident. The `default-device` workflow runs it that way on
+  the `full-test` label.
 - Moved some of pjrt’s dispatcher tests into anvl.
 
 ## anvl 0.4.0

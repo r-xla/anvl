@@ -75,9 +75,7 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
     backend-specific, it also determines the backend.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
 
 - shape:
 
@@ -258,9 +256,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#> 1e+44 *
-#>  2.6625 2.5223 2.3822
-#>  2.2421 2.1019 1.9618
+#>  3.5677e-04 3.0743e-41 3.5677e-04
+#>  3.0743e-41 3.5677e-04 3.0743e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

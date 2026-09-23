@@ -30,6 +30,9 @@ options(anvl.default_dtypes = list(
 ))
 
 An entry that names a backend wins over the categories beside it.
+When the option is not set, the ANVL_DEFAULT_DTYPES environment variable
+(read once, when anvl is loaded) is used instead, written as category=dtype pairs that apply to every
+backend, e.g. ANVL_DEFAULT_DTYPES=&quot;float=f64,int=i64&quot;.
 The defaults decide only what a value becomes when nothing else does: an R
 value that meets a typed array of its own category still takes that array's
 data type, whatever the default (vignette(&quot;type-promotion&quot;)). The data
@@ -64,6 +67,9 @@ options(anvl.default_dtypes = list(
 ))
 
 An entry that names a backend wins over the categories beside it.
+When the option is not set, the ANVL_DEFAULT_DTYPES environment variable
+(read once, when anvl is loaded) is used instead, written as category=dtype pairs that apply to every
+backend, e.g. ANVL_DEFAULT_DTYPES=&quot;float=f64,int=i64&quot;.
 The defaults decide only what a value becomes when nothing else does: an R
 value that meets a typed array of its own category still takes that array's
 data type, whatever the default (vignette(&quot;type-promotion&quot;)). The data
@@ -166,6 +172,9 @@ the backend's default integer dtype unchanged:</p>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="at">quickr =</span> <span class="fu">list</span>(<span class="at">int =</span> <span class="st">"i32"</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>))</span></code></pre><p></p></div>
 <p>An entry that names a backend wins over the categories beside it.</p>
+<p>When the option is not set, the <code>ANVL_DEFAULT_DTYPES</code> environment variable
+(read once, when anvl is loaded) is used instead, written as <code>category=dtype</code> pairs that apply to every
+backend, e.g. <code>ANVL_DEFAULT_DTYPES="float=f64,int=i64"</code>.</p>
 <p>The defaults decide only what a value becomes when <em>nothing else does</em>: an R
 value that meets a typed array of its own category still takes that array's
 data type, whatever the default (<code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code>). The data

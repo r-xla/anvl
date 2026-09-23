@@ -42,9 +42,10 @@ object (e.g. the platform `"cpu"` or `"cuda"`, optionally with an index
 such as `"cuda:1"`). When `device` is `NULL` in
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 or the [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)
-wrapper, the device defaults to the `PJRT_PLATFORM` environment variable
-(falling back to `"cpu"`), or is inferred from the existing inputs of a
-jitted call. Operations require all inputs to live on the same device.
+wrapper, the device defaults to
+[`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md),
+or is inferred from the existing inputs of a jitted call. Operations
+require all inputs to live on the same device.
 
 ## Supported data types
 

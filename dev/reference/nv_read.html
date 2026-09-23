@@ -99,7 +99,8 @@ Path to the safetensors file.</p></dd>
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code>)<br>
 The device on which to place the loaded arrays (<code>"cpu"</code>, <code>"cuda"</code>, ...).
-Default is to use the CPU.</p></dd>
+Defaults to <code><a href="default_device.html">default_device()</a></code> of the <code>"pjrt"</code> backend, which the loader
+goes through whatever the active backend is.</p></dd>
 
 </dl></div>
     <div class="section level2">

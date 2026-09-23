@@ -112,8 +112,8 @@ device.</p>
 <code><a href="device.html">device()</a></code>. A device is a <code><a href="https://r-xla.github.io/pjrt/reference/as_pjrt_device.html" class="external-link">pjrt::as_pjrt_device()</a></code> object (e.g. the
 platform <code>"cpu"</code> or <code>"cuda"</code>, optionally with an index such as <code>"cuda:1"</code>).
 When <code>device</code> is <code>NULL</code> in <code><a href="AnvlArray.html">nv_array()</a></code> or the <code><a href="jit.html">jit()</a></code> wrapper, the
-device defaults to the <code>PJRT_PLATFORM</code> environment variable (falling back
-to <code>"cpu"</code>), or is inferred from the existing inputs of a jitted call.
+device defaults to <code><a href="default_device.html">default_device()</a></code>, or is inferred from the existing
+inputs of a jitted call.
 Operations require all inputs to live on the same device.</p>
     </div>
     <div class="section level2">

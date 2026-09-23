@@ -690,6 +690,9 @@ Backend-related functionality and implementations
   : Create a Device
 - [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)
   : Get the default device
+- [`local_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
+  [`with_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
+  : Temporarily Set the Default Device
 - [`is_device()`](https://r-xla.github.io/anvl/dev/reference/is_device.md)
   : Test whether an object is a device
 - [`quickr_device()`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md)

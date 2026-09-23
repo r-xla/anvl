@@ -21,7 +21,10 @@ nv_read(path, device = NULL)
   (`NULL` \| `character(1)` \|
   [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html))  
   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`,
-  ...). Default is to use the CPU.
+  ...). Defaults to
+  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)
+  of the `"pjrt"` backend, which the loader goes through whatever the
+  active backend is.
 
 ## Value
 

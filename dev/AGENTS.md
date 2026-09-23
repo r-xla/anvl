@@ -25,20 +25,30 @@ anvl-specific:
 - Single file:
   `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
   `devtools::test(filter = "reverse")`.
-- `ANVL_SKIP_QUICKR=1` skips the (slow) quickr tests;
-  `PJRT_PLATFORM=cuda` runs the suite on the CUDA plugin (`is_cpu()` /
-  `is_cuda()` in `helper.R` branch on it). `setup.R` sets
-  `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to
+- `ANVL_TEST_SKIP_QUICKR=1` skips the (slow) quickr tests. `setup.R`
+  sets `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to
   spread over.
-- `ANVL_DEFAULT_DTYPES="float=f64,int=i64"` runs the whole suite at
-  another pair of default data types; `setup.R` turns it into the
-  `anvl.default_dtypes` option. The `default-dtypes` workflow runs the
-  suite this way so that anything hardcoding `f32` / `i32` where it
-  should read
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  fails in CI. A test that asserts the *registered* pair calls
-  `local_registered_default_dtypes()` (`helper.R`) to clear the
-  override.
+- `ANVL_DEFAULT_DEVICE` / `ANVL_DEFAULT_DTYPES` are package-level: anvl
+  reads them once when it is loaded and falls back to them when the
+  `anvl.default_device` / `anvl.default_dtypes` options are not set. The
+  suite uses them to run on another configuration, and `setup.R` skips
+  quickr for such a run:
+  - `ANVL_DEFAULT_DEVICE=cuda` runs the suite on the CUDA plugin
+    (`is_cpu()` / `is_cuda()` in `helper.R` branch on it).
+    `ANVL_DEFAULT_DEVICE=cpu:1` runs it on the second CPU device, so
+    anything allocating on the first CPU device where it should have
+    followed the trace or its operands lands on a device of its own,
+    which jit’s autodetect reports; the `default-device` workflow runs
+    it on the `full-test` PR label. A test that asserts the unset
+    default calls `local_unset_default_device()` (`helper.R`) to clear
+    both.
+  - `ANVL_DEFAULT_DTYPES="float=f64,int=i64"` runs the suite at another
+    pair of default data types; the `default-dtypes` workflow runs it so
+    that anything hardcoding `f32` / `i32` where it should read
+    [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+    fails in CI. A test that asserts the *registered* pair calls
+    `local_registered_default_dtypes()` (`helper.R`) to clear the
+    override.
 - anvl tracks the **dev** versions of its r-xla dependencies:
   `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
 
@@ -318,9 +328,9 @@ manually instead. Write one or the other, not both.
 
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the
 top of the test body. This helper skips when quickr is not installed,
-and also when the `ANVL_SKIP_QUICKR` environment variable is set (quickr
-tests can be slow and are often skipped locally). To test a different
-backend, use
+and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set
+(quickr tests can be slow and are often skipped locally). To test a
+different backend, use
 [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
 (not
 [`withr::local_options()`](https://withr.r-lib.org/reference/with_options.html)

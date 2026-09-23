@@ -81,6 +81,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit_cache_size.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/length.AnvlArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_backend.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/local_default_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_descriptor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/naxes.html</loc></url>

@@ -79,6 +79,8 @@
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
 <ul><li>
+<code><a href="../reference/default_device.html">default_device()</a></code> no longer follows <code>PJRT_PLATFORM</code>; set <code>ANVL_DEFAULT_DEVICE</code> or the <code>anvl.default_device</code> option instead.</li>
+<li>
 <code><a href="../reference/prim_reshape.html">prim_reshape()</a></code> and <code><a href="../reference/nv_reshape.html">nv_reshape()</a></code>, and with them <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> and every <code>axis = NULL</code> flattening default, are now column-major like base R.</li>
 <li>
 <code><a href="../reference/prim_bitcast_convert.html">prim_bitcast_convert()</a></code> puts the axis holding an element’s pieces first rather than last when the two data types differ in width, so the pieces of one element are adjacent in the order <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> reads and a narrowing conversion lays the bytes out the way <code><a href="../reference/as_raw.html">as_raw()</a></code> writes them.</li>
@@ -122,7 +124,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
-<ul><li>
+<ul><li>New <code><a href="../reference/local_default_device.html">local_default_device()</a></code> and <code><a href="../reference/local_default_device.html">with_default_device()</a></code> set the <code>anvl.default_device</code> option, which names the device a call that names none allocates on in place of the first CPU device.</li>
+<li>The environment variables <code>ANVL_DEFAULT_DEVICE</code> and <code>ANVL_DEFAULT_DTYPES</code>, read when anvl is loaded, are used when the <code>anvl.default_device</code> and <code>anvl.default_dtypes</code> options are not set.</li>
+<li>
 <code><a href="../reference/nv_rng_state.html">nv_rng_state()</a></code> accepts a seed of any signed or unsigned integer data type, bringing it to <code>i32</code>, where it took an <code>i32</code> only. The state stays <code>ui64[2]</code> whatever the seed and the default integer data type are.</li>
 <li>
 <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> accepts a scalar, returning a length-1 array, instead of erroring.</li>
@@ -174,7 +178,10 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
+<ul><li>The <code>_like</code> constructors (<code><a href="../reference/AnvlArray.html">nv_scalar_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_array_like()</a></code>, <code><a href="../reference/nv_fill.html">nv_fill_like()</a></code>, <code><a href="../reference/nv_iota.html">nv_iota_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_empty_like()</a></code>) no longer allocate on the first CPU device when <code>like</code> is an array built inside a trace. The stray device made <code><a href="../reference/jit.html">jit()</a></code> abort with “found more than one device” wherever the operands were elsewhere, which took out every <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> call on CUDA.</li>
+<li>
+<code><a href="../reference/nv_unserialize.html">nv_unserialize()</a></code> / <code><a href="../reference/nv_read.html">nv_read()</a></code> place the loaded arrays on [<code><a href="../reference/default_device.html">default_device()</a></code>], where they always used pjrt’s first device.</li>
+<li>
 <code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> and <code><a href="../reference/prim_triangular_solve.html">prim_triangular_solve()</a></code> accept batched inputs again: axes before the last two are batch axes.</li>
 <li>A function returned by <code><a href="../reference/jit.html">jit()</a></code> no longer evaluates its arguments a second time. It used to rebuild the call with <code><a href="https://rdrr.io/r/base/match.call.html" class="external-link">match.call()</a></code> and evaluate the argument expressions again in the caller’s frame, which computed them twice whenever something had evaluated them already – most visibly under S3 dispatch, which evaluates the first argument to choose a method.</li>
 <li>
@@ -227,7 +234,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="tests-development-version">Tests<a class="anchor" aria-label="anchor" href="#tests-development-version"></a></h3>
-<ul><li>Moved some of pjrt’s dispatcher tests into anvl.</li>
+<ul><li>The environment variables that configure only the test suite are now spelled with an <code>ANVL_TEST</code> prefix: <code>ANVL_TEST_SKIP_QUICKR</code>. <code>ANVL_TEST</code> itself is unchanged.</li>
+<li>The suite can be run with <code>ANVL_DEFAULT_DEVICE=cpu:1</code>, which makes anything allocating on the first CPU device rather than following the trace land on a device of its own instead of agreeing with everything else by accident. The <code>default-device</code> workflow runs it that way on the <code>full-test</code> label.</li>
+<li>Moved some of pjrt’s dispatcher tests into anvl.</li>
 </ul></div>
 </div>
     <div class="section level2">

@@ -480,6 +480,9 @@ otherwise an error is thrown:
 w_old <- nv_array(c(1, 2, 3), dtype = "f32")
 w_new <- step(w_old, g)
 w_old     # the old buffer has been donated
+#> AnvlArray
+#> Error:
+#> ! called on deleted or donated buffer
 ```
 
 ### Device placement

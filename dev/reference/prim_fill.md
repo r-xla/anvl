@@ -52,9 +52,7 @@ prim_fill(value, shape, dtype, device = NULL)
     backend-specific, it also determines the backend.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
 
 ## Value
 
