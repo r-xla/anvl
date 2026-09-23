@@ -35,13 +35,6 @@ default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 Cumulative sum, optionally along a single axis.
 A boolean array is counted, like \code{\link[base:cumsum]{base::cumsum()}} does.
 }
-\section{Relation to base R}{
-
-\code{nv_cumsum()} with \code{axis = NULL} flattens a multi-axis input in
-column-major order, like \code{\link[base:cumsum]{base::cumsum()}} does, so the two give
-the same running values for any input.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)

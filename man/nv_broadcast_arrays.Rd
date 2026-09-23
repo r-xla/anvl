@@ -24,9 +24,7 @@ one, so that a vector meets a matrix as a column.
 \item If the arrays have different numbers of axes, append size-1
 axes to the shorter shape, so axis 1 meets axis 1. A length-\code{n}
 vector therefore lines up with the rows of an \code{n} by \code{m} matrix and
-is replicated across its columns. NumPy prepends instead, so an
-array expression carried over from Python may need its axes
-reordered.
+is replicated across its columns. NumPy prepends instead.
 \item For each axis: if the sizes match, keep them; if one is 1, expand
 it to the other's size; otherwise raise an error.
 }
@@ -40,17 +38,24 @@ axis that lands on exactly this broadcast, which is why a vector meets a
 matrix as a column in both. The two part ways once the lengths stop
 lining up: \code{matrix(1, 2, 3) + c(1, 2, 3)} recycles on regardless, where
 the matching broadcast is an error.
+
+The deviation from NumPy's broadcasting rules is still motivated by
+keeping {anvl}'s behaviour similar to base R in spirit, see the examples
+for more.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# a vector meets a matrix as a column: one value per row, across columns
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(matrix(1, nrow = 3, ncol = 3))
-xs <- nv_broadcast_arrays(x, y)
-xs[[1L]] + xs[[2L]]
-# base R's recycling agrees, for a vector as long as the first axis
-matrix(1, nrow = 3, ncol = 3) + c(1, 2, 3)
+# interpreting vectors as columns
+# base R:
+x1 <- c(1, 2)
+m1 <- array(1, dim = c(2, 2))
+x1 + m1
+# anvl:
+args <- nv_broadcast_arrays(nv_array(x1), nv_array(m1))
+print(args)
+args[[1]] + args[[2]]
+
 
 # axes of size 1 are expanded to the other operand's size
 y1 <- nv_array(1:3, shape = c(1, 3))

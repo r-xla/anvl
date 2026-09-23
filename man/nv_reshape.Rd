@@ -21,12 +21,7 @@ the remaining entries and the number of elements of \code{x}.}
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
-Reshapes an array to a new shape without changing the underlying data.
-Returns the input unchanged if it already has the target shape.
-}
-\details{
-The elements keep their column-major order, exactly as base R's \verb{dim<-}
-does: \code{nv_reshape(x, shape)} holds the same elements as \code{array(x, shape)}.
+Reshapes an array to a new shape using col-major semantics.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

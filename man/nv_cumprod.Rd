@@ -35,13 +35,6 @@ default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 Cumulative product, optionally along a single axis.
 A boolean array is multiplied as zeroes and ones, like \code{\link[base:cumprod]{base::cumprod()}} does.
 }
-\section{Relation to base R}{
-
-\code{nv_cumprod()} with \code{axis = NULL} flattens a multi-axis input in
-column-major order, like \code{\link[base:cumprod]{base::cumprod()}} does, so the two give
-the same running values for any input.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)

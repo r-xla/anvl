@@ -149,9 +149,7 @@ nv_promote_to_common <- jit(function(...) {
 #' 1. If the arrays have different numbers of axes, append size-1
 #'    axes to the shorter shape, so axis 1 meets axis 1. A length-`n`
 #'    vector therefore lines up with the rows of an `n` by `m` matrix and
-#'    is replicated across its columns. NumPy prepends instead, so an
-#'    array expression carried over from Python may need its axes
-#'    reordered.
+#'    is replicated across its columns. NumPy prepends instead.
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
 #'    it to the other's size; otherwise raise an error.
 #'
@@ -164,19 +162,26 @@ nv_promote_to_common <- jit(function(...) {
 #' lining up: `matrix(1, 2, 3) + c(1, 2, 3)` recycles on regardless, where
 #' the matching broadcast is an error.
 #'
+#' The deviation from NumPy's broadcasting rules is still motivated by
+#' keeping {anvl}'s behaviour similar to base R in spirit, see the examples
+#' for more.
+#'
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to broadcast.
 #' @return (`list()` of [`arrayish`])\cr
 #'   The inputs, each with its own data type and the common shape.
 #' @seealso [nv_broadcast_scalars()], [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # a vector meets a matrix as a column: one value per row, across columns
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(matrix(1, nrow = 3, ncol = 3))
-#' xs <- nv_broadcast_arrays(x, y)
-#' xs[[1L]] + xs[[2L]]
-#' # base R's recycling agrees, for a vector as long as the first axis
-#' matrix(1, nrow = 3, ncol = 3) + c(1, 2, 3)
+#' # interpreting vectors as columns
+#' # base R:
+#' x1 <- c(1, 2)
+#' m1 <- array(1, dim = c(2, 2))
+#' x1 + m1
+#' # anvl:
+#' args <- nv_broadcast_arrays(nv_array(x1), nv_array(m1))
+#' print(args)
+#' args[[1]] + args[[2]]
+#'
 #'
 #' # axes of size 1 are expanded to the other operand's size
 #' y1 <- nv_array(1:3, shape = c(1, 3))
@@ -195,6 +200,7 @@ nv_broadcast_arrays <- jit(function(...) {
 #' @description
 #' Broadcasts an array to a target shape, aligning the array's axes with the
 #' leading axes of `shape`, so that a vector fills a column.
+#' See [`nv_broadcast_arrays`] for more information.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param shape (`integer()`)\cr
@@ -283,11 +289,8 @@ nv_transpose <- function(x, permutation = NULL) {
 
 #' @title Reshape
 #' @description
-#' Reshapes an array to a new shape without changing the underlying data.
-#' Returns the input unchanged if it already has the target shape.
-#' @details
-#' The elements keep their column-major order, exactly as base R's `dim<-`
-#' does: `nv_reshape(x, shape)` holds the same elements as `array(x, shape)`.
+#' Reshapes an array to a new shape using col-major semantics.
+#'
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param shape (`integer()`)\cr
@@ -323,8 +326,7 @@ nv_reshape <- function(x, shape) {
 
 #' @title Flatten
 #' @description
-#' Flattens an array with one or more axes into a 1-D array, in column-major
-#' order like [base::as.vector()]. Fails with scalar inputs.
+#' Flattens an array with one or more axes into a 1-D array, using col-major semantics.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
@@ -3191,8 +3193,6 @@ nv_reduce_all <- jit(
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
 #' @template return_cum_accumulate
-#' @templateVar cum_nv_name nv_cumsum
-#' @template section_nv_cum_relation
 #' @seealso [prim_cumsum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -3225,8 +3225,6 @@ nv_cumsum <- jit(
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
 #' @template return_cum_accumulate
-#' @templateVar cum_nv_name nv_cumprod
-#' @template section_nv_cum_relation
 #' @seealso [prim_cumprod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -3259,8 +3257,6 @@ nv_cumprod <- jit(
 #' @templateVar cum_extreme_name maximum
 #' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
-#' @templateVar cum_nv_name nv_cummax
-#' @template section_nv_cum_relation
 #' @template param_nan_rm_cum
 #' @seealso [prim_cummax()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3291,8 +3287,6 @@ nv_cummax <- jit(
 #' @templateVar cum_extreme_name minimum
 #' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
-#' @templateVar cum_nv_name nv_cummin
-#' @template section_nv_cum_relation
 #' @template param_nan_rm_cum
 #' @seealso [prim_cummin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()

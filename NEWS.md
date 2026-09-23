@@ -3,11 +3,7 @@
 ## Breaking changes
 
 * `prim_reshape()` and `nv_reshape()`, and with them `nv_flatten()` and every
-  `axis = NULL` flattening default, are now column-major like base R's `dim<-`:
-  `nv_flatten(matrix(1:4, 2))` is `1:4`, as `as.vector()` gives. Transpose
-  first for the previous row-major order. A multi-axis RNG sample draws the
-  same values but lays them out column-major, so a given seed now gives a
-  permuted result.
+  `axis = NULL` flattening default, are now column-major like base R.
 * `prim_bitcast_convert()` puts the axis holding an element's pieces first
   rather than last when the two data types differ in width, so the pieces of
   one element are adjacent in the order `nv_flatten()` reads and a narrowing

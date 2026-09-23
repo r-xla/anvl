@@ -22,6 +22,7 @@ Has the given \code{shape} and the same data type as \code{x}.
 \description{
 Broadcasts an array to a target shape, aligning the array's axes with the
 leading axes of \code{shape}, so that a vector fills a column.
+See \code{\link{nv_broadcast_arrays}} for more information.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

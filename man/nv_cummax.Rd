@@ -42,13 +42,6 @@ given, and are 1-D of length \code{prod(shape(x))} when \code{axis} is \code{NUL
 \description{
 Running maximum, optionally along a single axis.
 }
-\section{Relation to base R}{
-
-\code{nv_cummax()} with \code{axis = NULL} flattens a multi-axis input in
-column-major order, like \code{\link[base:cummax]{base::cummax()}} does, so the two give
-the same running values for any input.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the running maximum keeps the data type; the indices are the default integer

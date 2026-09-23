@@ -17,8 +17,7 @@ Has the input's data type, and one axis holding all of its elements --
 so a scalar, which has none, becomes a length-1 vector.
 }
 \description{
-Flattens an array with one or more axes into a 1-D array, in column-major
-order like \code{\link[base:as.vector]{base::as.vector()}}. Fails with scalar inputs.
+Flattens an array with one or more axes into a 1-D array, using col-major semantics.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
