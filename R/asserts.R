@@ -1,14 +1,3 @@
-#' @title Assert Shape Vector
-#' @description
-#' Check whether an input is a valid shape vector: whole, non-negative axis
-#' sizes.
-#' @param x Object to check.
-#' @param min_len (`integer(1)`)\cr
-#'   Minimum number of axes. Default is 0.
-#' @param var_name (`character(1)`)\cr
-#'   Name of the variable to use in error messages.
-#' @return (`integer()`)\cr
-#'   `x` as an integer vector.
 # `assert_int_param()` reads `NULL` as the empty set of axes, which is how a
 # caller spells `c()`. A shape is not that, so the helpers that resolve one say
 # so first.
@@ -22,6 +11,17 @@ assert_shape_not_null <- function(x, arg) {
   invisible(NULL)
 }
 
+#' @title Assert Shape Vector
+#' @description
+#' Check whether an input is a valid shape vector: whole, non-negative axis
+#' sizes.
+#' @param x Object to check.
+#' @param min_len (`integer(1)`)\cr
+#'   Minimum number of axes. Default is 0.
+#' @param var_name (`character(1)`)\cr
+#'   Name of the variable to use in error messages.
+#' @return (`integer()`)\cr
+#'   `x` as an integer vector.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   # Before `x` is rebound below: `caller_arg()` deparses whatever `x` holds

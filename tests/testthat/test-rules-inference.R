@@ -125,7 +125,7 @@ describe("infer_broadcast_in_axes()", {
 })
 
 describe("infer_static_slice()", {
-  it("treats start and limit as 1-based and inclusive", {
+  it("treats start and end as 1-based and inclusive", {
     expect_equal(
       infer_static_slice(nv_aval("i32", 10L), 2L, 5L, 1L),
       list(nv_aval("i32", 4L))
@@ -145,7 +145,7 @@ describe("infer_static_slice()", {
     )
   })
 
-  it("refuses a limit past the end of the array", {
+  it("refuses an end index past the end of the array", {
     expect_snapshot(
       error = TRUE,
       infer_static_slice(nv_aval("i32", 10L), 1L, 11L, 1L)
@@ -185,19 +185,19 @@ describe("infer_sort()", {
     key <- nv_aval("f32", c(2L, 3L))
     payload <- nv_aval("i32", c(2L, 3L))
     expect_equal(
-      infer_sort(key, payload, axis = 1L, descending = FALSE, is_stable = FALSE),
+      infer_sort(key, payload, axis = 1L, decreasing = FALSE, stable = FALSE),
       list(key, payload)
     )
   })
 
   it("names `xs`, the argument the primitive collects the arrays in", {
     expect_error(
-      infer_sort(nv_aval("f32", 3L), 1L, axis = 1L, descending = FALSE, is_stable = FALSE),
+      infer_sort(nv_aval("f32", 3L), 1L, axis = 1L, decreasing = FALSE, stable = FALSE),
       "`xs[[2]]` must be an array",
       fixed = TRUE
     )
     expect_error(
-      infer_sort(axis = 1L, descending = FALSE, is_stable = FALSE),
+      infer_sort(axis = 1L, decreasing = FALSE, stable = FALSE),
       "`xs` must be a non-empty list",
       fixed = TRUE
     )
@@ -269,14 +269,14 @@ describe("reduced_shape()", {
 
   it("reduces nothing, through the primitives, when axes is empty", {
     x <- nv_array(matrix(1:6, 2, 3), dtype = "f32")
-    expect_equal(shape(prim_reduce_sum(x, axes = integer(0), drop = TRUE)), c(2L, 3L))
+    expect_equal(shape(prim_sum(x, axes = integer(0), drop = TRUE)), c(2L, 3L))
     expect_equal(
       as_array(prim_reduce(
         x,
         nv_scalar(0, "f32"),
         axes = integer(0),
         drop = TRUE,
-        reductor = prim_add
+        reducer = prim_add
       )),
       as_array(x)
     )
@@ -340,21 +340,21 @@ describe("the inference rules as the primitives reach them", {
     # valid, non-duplicated axis -- and is only rejected by inference.
     expect_snapshot(
       error = TRUE,
-      jit(prim_transpose, static = "permutation")(
+      jit(prim_transpose, static = "perm")(
         nv_array(1:4, shape = c(2, 2)),
-        permutation = 1L
+        perm = 1L
       )
     )
   })
 
-  it("accepts an empty static slice, where start is one past limit", {
-    # 1-based and inclusive, so `start == limit + 1` is StableHLO's
+  it("accepts an empty static slice, where start is one past end", {
+    # 1-based and inclusive, so `start == end + 1` is StableHLO's
     # `start == limit`: an empty slice, which the spec allows.
     expect_equal(
       shape(jit(prim_static_slice, static = 2:4)(
         nv_array(1:10),
         start_indices = 6L,
-        limit_indices = 5L,
+        end_indices = 5L,
         strides = 1L
       )),
       0L
@@ -362,7 +362,7 @@ describe("the inference rules as the primitives reach them", {
   })
 
   it("names anvl's argument, not StableHLO's operand", {
-    err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
+    err <- tryCatch(jit(prim_ceiling)(nv_array(1:4)), error = identity)
     expect_match(conditionMessage(err), "`x`", fixed = TRUE)
     expect_false(grepl("operand", conditionMessage(err), fixed = TRUE))
   })
@@ -556,18 +556,18 @@ test_that("prim_reshape", {
   expect_snapshot(error = TRUE, prim_reshape(nv_array(1:4), shape = c(3L, 3L)))
 })
 
-test_that("prim_reverse", {
-  expect_snapshot(error = TRUE, prim_reverse(nv_array(1:4), axes = list(1L)))
+test_that("prim_rev", {
+  expect_snapshot(error = TRUE, prim_rev(nv_array(1:4), axes = list(1L)))
 })
 
 test_that("prim_cumsum", {
   expect_snapshot(error = TRUE, prim_cumsum(nv_array(1:4), axis = c(1L, 1L)))
 })
 
-test_that("prim_reduce_sum", {
-  expect_snapshot(error = TRUE, prim_reduce_sum(nv_array(1:4), axes = 1L, drop = "yes"))
-  expect_snapshot(error = TRUE, prim_reduce_sum(nv_array(1:4), axes = 1L, drop = NA))
-  expect_snapshot(error = TRUE, prim_reduce_sum(nv_array(1:4), axes = "a"))
+test_that("prim_sum", {
+  expect_snapshot(error = TRUE, prim_sum(nv_array(1:4), axes = 1L, drop = "yes"))
+  expect_snapshot(error = TRUE, prim_sum(nv_array(1:4), axes = 1L, drop = NA))
+  expect_snapshot(error = TRUE, prim_sum(nv_array(1:4), axes = "a"))
 })
 
 test_that("prim_convert", {
@@ -639,7 +639,7 @@ test_that("prim_sort", {
   # The rule cannot answer for `xs`: the wrapper's next line resolves `axis`
   # against `xs[[1L]]`. It answers in the rule's terms instead.
   expect_snapshot(error = TRUE, prim_sort(list(), axis = 1L))
-  expect_snapshot(error = TRUE, prim_sort(list(nv_array(1:4)), axis = 1L, descending = "yes"))
+  expect_snapshot(error = TRUE, prim_sort(list(nv_array(1:4)), axis = 1L, decreasing = "yes"))
 })
 
 test_that("prim_dot_general", {
@@ -723,7 +723,7 @@ test_that("prim_scatter", {
       index_vector_axis = 2L,
       indices_are_sorted = FALSE,
       unique_indices = FALSE,
-      update_computation = function(a, b) b
+      update_fn = function(a, b) b
     )
   }
   expect_equal(shape(scatter()), c(4L, 3L))
@@ -735,13 +735,13 @@ test_that("prim_scatter", {
 })
 
 test_that("prim_convolution", {
-  conv <- function(window_strides = 1L, input_spatial_axes = 3L, input_batch_axis = 1L, precision = "highest") {
+  conv <- function(window_strides = 1L, x_spatial_axes = 3L, x_batch_axis = 1L, precision = "highest") {
     prim_convolution(
       nv_array(as.double(1:5), shape = c(1, 1, 5)),
       nv_array(as.double(1:3), shape = c(1, 1, 3)),
-      input_batch_axis = input_batch_axis,
-      input_feature_axis = 2L,
-      input_spatial_axes = input_spatial_axes,
+      x_batch_axis = x_batch_axis,
+      x_feature_axis = 2L,
+      x_spatial_axes = x_spatial_axes,
       kernel_input_feature_axis = 2L,
       kernel_output_feature_axis = 1L,
       kernel_spatial_axes = 3L,
@@ -759,9 +759,9 @@ test_that("prim_convolution", {
   }
   expect_equal(shape(conv()), c(1L, 1L, 3L))
   expect_snapshot(error = TRUE, conv(window_strides = c(1L, 1L)))
-  expect_snapshot(error = TRUE, conv(input_spatial_axes = c(3L, 4L)))
-  expect_snapshot(error = TRUE, conv(input_batch_axis = 2L))
-  expect_snapshot(error = TRUE, conv(input_batch_axis = integer()))
+  expect_snapshot(error = TRUE, conv(x_spatial_axes = c(3L, 4L)))
+  expect_snapshot(error = TRUE, conv(x_batch_axis = 2L))
+  expect_snapshot(error = TRUE, conv(x_batch_axis = integer()))
   expect_snapshot(error = TRUE, conv(precision = "bogus"))
 })
 
@@ -794,9 +794,9 @@ describe("value_repr()", {
   it("reports an array by its array type, not the class it arrives in", {
     # Under `jit()` an operand is a `GraphBox`, which is the tracer's business
     # and not something the caller wrote.
-    expect_equal(value_repr(nv_array(1:4)), "i32[4]")
+    expect_equal(value_repr(nv_array(1:4, dtype = "i32")), "i32[4]")
     expect_error(
-      prim_sort(nv_array(1:4), axis = 1L),
+      prim_sort(nv_array(1:4, dtype = "i32"), axis = 1L),
       "Got i32[4]",
       fixed = TRUE
     )
@@ -869,9 +869,9 @@ describe("a result shape a rule computes from the caller's parameters", {
     args <- list(
       x = nv_array(array(as.double(1:16), c(1L, 1L, 4L, 4L)), dtype = "f32"),
       kernel = nv_array(array(as.double(1:4), c(1L, 1L, 2L, 2L)), dtype = "f32"),
-      input_batch_axis = 1L,
-      input_feature_axis = 2L,
-      input_spatial_axes = c(3L, 4L),
+      x_batch_axis = 1L,
+      x_feature_axis = 2L,
+      x_spatial_axes = c(3L, 4L),
       kernel_input_feature_axis = 2L,
       kernel_output_feature_axis = 1L,
       kernel_spatial_axes = c(3L, 4L),
@@ -925,9 +925,9 @@ describe("a result shape a rule computes from the caller's parameters", {
     expect_equal(shape(conv(x_dilation = c(3L, 1L))), c(1L, 1L, 9L, 3L))
   })
 
-  it("reports an out-of-range `limit_indices` rather than overflowing on it", {
-    # `limit + 1L` at `.Machine$integer.max` overflows to `NA`, which used to
-    # reach the `start > limit + 1L` comparison, so the shape check runs first.
+  it("reports an out-of-range `end_indices` rather than overflowing on it", {
+    # `end + 1L` at `.Machine$integer.max` overflows to `NA`, which used to
+    # reach the `start > end + 1L` comparison, so the shape check runs first.
     expect_snapshot(
       error = TRUE,
       prim_static_slice(nv_array(1:4), 1L, .Machine$integer.max, 1L)
@@ -937,7 +937,7 @@ describe("a result shape a rule computes from the caller's parameters", {
   it("still names `start_indices` when that is the mistake", {
     expect_error(
       prim_static_slice(nv_array(1:4), 3L, 1L, 1L),
-      "`start_indices` must not exceed `limit_indices`",
+      "`start_indices` must not exceed `end_indices`",
       fixed = TRUE
     )
   })

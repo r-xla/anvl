@@ -161,7 +161,7 @@
     Code
       cat(format(graph$calls[[1L]]))
     Output
-      reduce_max(i32[10]) [axes = 1, drop = TRUE] -> i32[]
+      max(i32[10]) [axes = 1, drop = TRUE] -> i32[]
 
 # format.PrimitiveCall() / leaves out the bracket list of a call that carries no params
 
@@ -186,21 +186,12 @@
         %1: f32[] = convert [dtype = f32] (2:i32)
         %2: f32[] = mul(%x1, %1)
         %3: f32[] = while [
-<<<<<<< HEAD
-          cond_graph = [%x1] (%x2: f32[]) {
+          cond = [%x1] (%x2: f32[]) {
             %5: bool[] = lt(%x2, %x1)
             return %5
           },
-          body_graph = [%x1, %2, %c1] (%x3: f32[]) {
-            %6: bool[] = lt(%x3, %2)
-=======
-          cond = [%x1] (%x2: f32[]) {
-            %5: bool[] = less(%x2, %x1)
-            return %5
-          },
           body = [%x1, %2, %c1] (%x3: f32[]) {
-            %6: bool[] = less(%x3, %2)
->>>>>>> origin/main
+            %6: bool[] = lt(%x3, %2)
             %7: f32[] = if [
               true = [%x3, %2] () {
                 %8: f32[] = add(%x3, %2)
@@ -227,13 +218,8 @@
     Output
       <AnvlGraph> (%x1: f32[]) {
         %1: f32[] = while [
-<<<<<<< HEAD
-          cond_graph = (%x2: f32[]) {
-            %2: bool[] = lt(%x2, 9:f32)
-=======
           cond = (%x2: f32[]) {
-            %2: bool[] = less(%x2, 9:f32)
->>>>>>> origin/main
+            %2: bool[] = lt(%x2, 9:f32)
             return %2
           },
           body = (%x3: f32[]) {

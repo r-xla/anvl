@@ -155,29 +155,17 @@ See `graph_desc_add()` for the detailed semantics.
 
 `prim_repeat_along` has its own parameters and needs a custom body. Many primitives are simpler -- elementwise unary or binary ops, reductions, and comparisons all share a standard shape. `R/primitives.R` exposes factories that generate the body for you:
 
-<<<<<<< HEAD
 - `make_unary_op(infer_fn)` -- elementwise unary (e.g. `prim_abs`, `prim_negate`).
 - `make_binary_op(infer_fn)` -- elementwise binary (e.g. `prim_add`, `prim_mul`).
-- `make_reduce_op(infer_fn)` -- reductions with `axes` / `drop` parameters (e.g. `prim_reduce_sum`).
-=======
-- `make_unary_op(stablehlo_infer)` -- elementwise unary (e.g. `prim_abs`, `prim_negate`).
-- `make_binary_op(stablehlo_infer)` -- elementwise binary (e.g. `prim_add`, `prim_mul`).
 - `make_reduce_op(infer_fn)` -- reductions with `axes` / `drop` parameters (e.g. `prim_sum`).
->>>>>>> origin/main
 - `make_compare_op(direction)` -- comparison ops with a fixed `direction` string (e.g. `prim_eq`, `prim_lt`).
 
 Used together with the matching inference rule, the primitive definition collapses to a one-liner:
 
 ```r
-<<<<<<< HEAD
 prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
 prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
-prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
-=======
-prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
-prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
-prim_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
->>>>>>> origin/main
+prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3)
 ```
 
 Reach for the manual `graph_desc_add()` form when the primitive has extra static parameters, a custom inference function, or multiple outputs.

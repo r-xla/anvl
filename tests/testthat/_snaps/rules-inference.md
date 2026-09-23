@@ -40,7 +40,7 @@
       infer_transpose(nv_aval("f32", c(2L, 2L)), 1L)
     Condition
       Error in `infer_transpose()`:
-      ! `permutation` must be a permutation of c(1, 2).
+      ! `perm` must be a permutation of c(1, 2).
       x Got 1.
 
 # infer_broadcast_in_axes() / refuses an axis that is neither 1 nor the target size
@@ -61,13 +61,13 @@
       ! `strides` must be positive.
       x Got 0.
 
-# infer_static_slice() / refuses a limit past the end of the array
+# infer_static_slice() / refuses an end index past the end of the array
 
     Code
       infer_static_slice(nv_aval("i32", 10L), 1L, 11L, 1L)
     Condition
       Error in `infer_static_slice()`:
-      ! `limit_indices` must not exceed the shape of `x` (10).
+      ! `end_indices` must not exceed the shape of `x` (10).
       x Got 11 at axis 1.
 
 # infer_concatenate() / refuses inputs that disagree on any other axis
@@ -122,11 +122,10 @@
 # the inference rules as the primitives reach them / reports an axis the primitive itself does not catch in 1-based terms
 
     Code
-      jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)),
-      permutation = 1L)
+      jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = 1L)
     Condition
       Error in `prim_transpose()`:
-      ! `permutation` must be a permutation of c(1, 2).
+      ! `perm` must be a permutation of c(1, 2).
       x Got 1.
 
 # prim_reshape
@@ -147,12 +146,12 @@
       ! `shape` must have as many elements as `x`.
       x Got (4) and (3x3).
 
-# prim_reverse
+# prim_rev
 
     Code
-      prim_reverse(nv_array(1:4), axes = list(1L))
+      prim_rev(nv_array(1:4), axes = list(1L))
     Condition
-      Error in `prim_reverse()`:
+      Error in `prim_rev()`:
       ! `axes` must be a whole number vector.
       x Got <list> of length 1.
 
@@ -165,30 +164,30 @@
       ! `axis` must have length 1.
       x Got c(1, 1).
 
-# prim_reduce_sum
+# prim_sum
 
     Code
-      prim_reduce_sum(nv_array(1:4), axes = 1L, drop = "yes")
+      prim_sum(nv_array(1:4), axes = 1L, drop = "yes")
     Condition
-      Error in `prim_reduce_sum()`:
+      Error in `prim_sum()`:
       ! `drop` must be TRUE or FALSE.
       x Got "yes".
 
 ---
 
     Code
-      prim_reduce_sum(nv_array(1:4), axes = 1L, drop = NA)
+      prim_sum(nv_array(1:4), axes = 1L, drop = NA)
     Condition
-      Error in `prim_reduce_sum()`:
+      Error in `prim_sum()`:
       ! `drop` must be TRUE or FALSE.
       x Got NA.
 
 ---
 
     Code
-      prim_reduce_sum(nv_array(1:4), axes = "a")
+      prim_sum(nv_array(1:4), axes = "a")
     Condition
-      Error in `prim_reduce_sum()`:
+      Error in `prim_sum()`:
       ! `axes` must be a whole number vector.
       x Got "a".
 
@@ -282,8 +281,8 @@
       prim_static_slice(x, 1L, c(2L, 2L), 1L)
     Condition
       Error in `prim_static_slice()`:
-      ! `start_indices`, `limit_indices` and `strides` must have one entry per axis of `x` (2).
-      x Got `start_indices` = 1, `limit_indices` = c(2, 2), `strides` = 1.
+      ! `start_indices`, `end_indices` and `strides` must have one entry per axis of `x` (2).
+      x Got `start_indices` = 1, `end_indices` = c(2, 2), `strides` = 1.
 
 ---
 
@@ -361,10 +360,10 @@
 ---
 
     Code
-      prim_sort(list(nv_array(1:4)), axis = 1L, descending = "yes")
+      prim_sort(list(nv_array(1:4)), axis = 1L, decreasing = "yes")
     Condition
       Error in `prim_sort()`:
-      ! `descending` must be TRUE or FALSE.
+      ! `decreasing` must be TRUE or FALSE.
       x Got "yes".
 
 # prim_dot_general
@@ -464,31 +463,31 @@
 ---
 
     Code
-      conv(input_spatial_axes = c(3L, 4L))
+      conv(x_spatial_axes = c(3L, 4L))
     Condition
       Error in `prim_convolution()`:
-      ! `input_spatial_axes` must have one entry per spatial axis (1).
+      ! `x_spatial_axes` must have one entry per spatial axis (1).
       x Got c(3, 4).
 
 ---
 
     Code
-      conv(input_batch_axis = 2L)
+      conv(x_batch_axis = 2L)
     Condition
       Error in `prim_convolution()`:
       ! The axes of x must each be named exactly once.
-      x Axis 2 is named 2 times, by `input_batch_axis` and `input_feature_axis`.
-      i Got `input_batch_axis` = 2, `input_spatial_axes` = 3, `input_feature_axis` = 2.
+      x Axis 2 is named 2 times, by `x_batch_axis` and `x_feature_axis`.
+      i Got `x_batch_axis` = 2, `x_spatial_axes` = 3, `x_feature_axis` = 2.
 
 ---
 
     Code
-      conv(input_batch_axis = integer())
+      conv(x_batch_axis = integer())
     Condition
       Error in `prim_convolution()`:
       ! The axes of x must each be named exactly once.
-      x `input_batch_axis`, `input_spatial_axes`, and `input_feature_axis` name 2 axes between them, but x has 3.
-      i Got `input_batch_axis` = integer(0), `input_spatial_axes` = 3, `input_feature_axis` = 2.
+      x `x_batch_axis`, `x_spatial_axes`, and `x_feature_axis` name 2 axes between them, but x has 3.
+      i Got `x_batch_axis` = integer(0), `x_spatial_axes` = 3, `x_feature_axis` = 2.
 
 ---
 
@@ -654,8 +653,8 @@
       prim_static_slice(nv_array(1:4), 1:1000, 1:1000, 1:1000)
     Condition
       Error in `prim_static_slice()`:
-      ! `start_indices`, `limit_indices` and `strides` must have one entry per axis of `x` (1).
-      x Got `start_indices` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000, `limit_indices` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000, `strides` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000.
+      ! `start_indices`, `end_indices` and `strides` must have one entry per axis of `x` (1).
+      x Got `start_indices` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000, `end_indices` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000, `strides` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000.
 
 ---
 
@@ -732,13 +731,13 @@
       x Axes c(3, 4) would end up at c(4e+09, 4e+09).
       i Got `padding` = matrix(c(2000000000, 2000000000, 2000000000, 2000000000), nrow = 2, ncol = 2), `window_strides` = c(1, 1), `x_dilation` = c(1, 1), `kernel_dilation` = c(1, 1).
 
-# a result shape a rule computes from the caller's parameters / reports an out-of-range `limit_indices` rather than overflowing on it
+# a result shape a rule computes from the caller's parameters / reports an out-of-range `end_indices` rather than overflowing on it
 
     Code
       prim_static_slice(nv_array(1:4), 1L, .Machine$integer.max, 1L)
     Condition
       Error in `prim_static_slice()`:
-      ! `limit_indices` must not exceed the shape of `x` (4).
+      ! `end_indices` must not exceed the shape of `x` (4).
       x Got 2147483647 at axis 1.
 
 # a whole-number parameter the primitive fixes at one entry / is spoken of in the singular by every branch that refuses it

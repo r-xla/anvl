@@ -10,7 +10,7 @@
     Code
       jit(prim_ceiling)(nv_array(1:4))
     Condition
-      Error in `prim_ceil()`:
+      Error in `prim_ceiling()`:
       ! `x` must have a float data type.
       x Got "i32".
 
@@ -20,15 +20,9 @@
       jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = c(2,
         2))
     Condition
-<<<<<<< HEAD
       Error in `prim_transpose()`:
-      ! `permutation` must not contain duplicate axes.
-      x Got c(2, 2).
-=======
-      Error in `resolve_axes()`:
       ! `perm` must not contain duplicate axes.
-      x Got 2 and 2.
->>>>>>> origin/main
+      x Got c(2, 2).
 
 # error handling: type inference reports in anvl's terminology
 

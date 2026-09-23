@@ -175,19 +175,15 @@
 * `nv_sign()` accepts an unsigned integer array, returning `0` or `1` like
   base R's `sign()` on a non-negative number; `prim_sign()` still takes a
   signed input only.
-<<<<<<< HEAD
 * Error messages of primitives should now be greatly improved and mention the right argument names.
   This was achieved by porting the stablehlo inference functions to anvl's
   terminology. A message about a parameter also reports the value it was
   given, e.g. ``x` Got c(1, 2)`.
-* `nv_reverse()` gained an `axes = NULL` default that reverses every axis,
-=======
 * `aperm()` and `quantile()` now work on an `AnvlArray` / `AnvlBox`,
   forwarding to `nv_aperm()` and `nv_quantile()`.
 * New `nv_drop()`, another spelling of `nv_squeeze()`; with the default
   `axes = NULL` it drops every size-1 axis like `base::drop()`.
 * `nv_rev()` gained an `axes = NULL` default that reverses every axis,
->>>>>>> origin/main
   matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
   `axes` instead of erroring.
 * `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
@@ -257,7 +253,6 @@
 
 ## Bug fixes
 
-<<<<<<< HEAD
 * Whatever a `prim_*()` refuses now reports that primitive as the call, rather
   than the helper that checked the argument or the anonymous function `jit()`
   wraps.
@@ -274,7 +269,6 @@
   `assert_shapevec()`, `resolve_axes()` and `resolve_reshape_shape()` check it
   the way an inference rule does. `prim_chol()` no longer checks its operand
   twice, and refuses a zero-sized axis like the other decompositions.
-=======
 * The `_like` constructors (`nv_scalar_like()`, `nv_array_like()`,
   `nv_fill_like()`, `nv_iota_like()`, `nv_empty_like()`) no longer allocate on
   the first CPU device when `like` is an array built inside a trace. The stray
@@ -282,7 +276,6 @@
   operands were elsewhere, which took out every `nv_qnorm()` call on CUDA.
 * `nv_unserialize()` / `nv_read()` place the loaded arrays on
   [`default_device()`], where they always used pjrt's first device.
->>>>>>> origin/main
 * `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
   inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second

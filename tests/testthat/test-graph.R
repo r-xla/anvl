@@ -222,24 +222,13 @@ test_that("error handling: type inference reports in anvl's terminology", {
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
-<<<<<<< HEAD
   # The primary operand is `x`, never `operand`.
-  err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
+  err <- tryCatch(jit(prim_ceiling)(nv_array(1:4)), error = identity)
   expect_match(conditionMessage(err), "`x` must have a float data type", fixed = TRUE)
 
   # Axis numbers are 1-based, with no conversion step on the way out. A
-  # too-short `permutation` passes anvl's own checks (every entry is a valid,
+  # too-short `perm` passes anvl's own checks (every entry is a valid,
   # non-duplicated axis) and is only rejected by inference.
-=======
-  # stablehlo's `operand` is anvl's `x`
-  err <- tryCatch(jit(prim_ceiling)(nv_array(1:4)), error = identity)
-  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
-
-  # `ErrorStablehlo` conditions build their message lazily in a
-  # `conditionMessage()` method; they keep their class and their 1-based indices.
-  # A too-short `perm` passes anvl's own checks (every entry is a valid,
-  # non-duplicated dimension) and is only rejected by stablehlo.
->>>>>>> origin/main
   err <- tryCatch(
     jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = 1L),
     error = identity

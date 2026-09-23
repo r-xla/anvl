@@ -101,7 +101,7 @@ describe("the call a primitive's error reports", {
     # `jit()` wraps. An inference rule's error is already rewritten this way in
     # `trace_fn()`; this covers everything raised in the wrapper.
     expect_equal(call_of(prim_top_k(nv_array(1:4), 2.5)), "prim_top_k()")
-    expect_equal(call_of(prim_reverse(nv_array(1:4), 5L)), "prim_reverse()")
+    expect_equal(call_of(prim_rev(nv_array(1:4), 5L)), "prim_rev()")
     expect_equal(call_of(prim_reshape(nv_array(1:4), mean)), "prim_reshape()")
     expect_equal(call_of(prim_chol(nv_array(c(1, 2), dtype = "f32"))), "prim_chol()")
     expect_equal(call_of(prim_fill(NaN, 2L, "i32")), "prim_fill()")
@@ -112,7 +112,7 @@ describe("the call a primitive's error reports", {
         nv_scalar(0L),
         list(nv_array(1:3)),
         function(c, x) list(carry = c + x, out = c),
-        length = NA
+        steps = NA
       )),
       "prim_scan()"
     )
@@ -144,10 +144,24 @@ describe("the call a primitive's error reports", {
         nv_array(1:4),
         nv_scalar(0L),
         1L,
-        reductor = function(a, b) nv_convert(a + b, "f32")
+        reducer = function(a, b) nv_convert(a + b, "f32")
       )),
       "prim_reduce()"
     )
+  })
+
+  it("is the primitive inside a sub-graph that raised it, not the one tracing it", {
+    body_fails <- function(body) {
+      call_of(prim_while(list(i = nv_scalar(1L)), cond = function(i) i < 3L, body = body))
+    }
+    expect_equal(body_fails(function(i) list(prim_reshape(i, c(2L, 2L)))), "prim_reshape()")
+    # Raised after the body's primitives have passed, the error keeps the call
+    # it was raised in rather than going to the `prim_while()` tracing it.
+    call <- body_fails(function(i) {
+      i + 1L
+      stop("user error")
+    })
+    expect_false(any(c("prim_while()", "prim_add()") %in% call))
   })
 
   it("is cleared again, so a later error is not blamed on the last primitive", {

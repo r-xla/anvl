@@ -587,6 +587,22 @@ match_args_to_formals <- function(f, args) {
   do.call(g, args)
 }
 
+# Points `e`'s call at the primitive the marker names while the error is on its
+# way out, once: a sub-graph trace names it before restoring the marker to the
+# higher-order primitive that traced it, which would otherwise take the blame
+# at the top level. With no primitive marked, the call is left as raised.
+name_failing_primitive <- function(e) {
+  if (isTRUE(e$anvl_primitive_named)) {
+    return(e)
+  }
+  prim <- globals[["INFER_PRIMITIVE"]]
+  if (!is.null(prim)) {
+    e$call <- print_call_repr(prim)
+  }
+  e$anvl_primitive_named <- TRUE
+  e
+}
+
 #' @title Trace an R function into a Graph
 #' @description
 #' Executes `f` with abstract array arguments and records every primitive operation into
@@ -673,11 +689,8 @@ trace_fn <- function(
     output <- tryCatch(
       do.call(f_flat, inputs_flat),
       error = function(e) {
-        prim <- globals[["INFER_PRIMITIVE"]]
+        e <- name_failing_primitive(e)
         globals[["INFER_PRIMITIVE"]] <- NULL
-        if (!is.null(prim)) {
-          e$call <- print_call_repr(prim)
-        }
         rlang::cnd_signal(e)
       }
     )
@@ -685,9 +698,17 @@ trace_fn <- function(
     # A higher-order primitive traces its sub-graphs here and then goes on to
     # check them, so the primitive it named on the way in has to survive the
     # sub-trace: every primitive *inside* the sub-graph names itself and clears
-    # the marker again on its way out.
+    # the marker again on its way out. An error out of the sub-graph restores it
+    # too, but is named first, so it keeps the primitive that raised it.
     prim <- globals[["INFER_PRIMITIVE"]]
-    output <- do.call(f_flat, inputs_flat)
+    output <- tryCatch(
+      do.call(f_flat, inputs_flat),
+      error = function(e) {
+        e <- name_failing_primitive(e)
+        globals[["INFER_PRIMITIVE"]] <- prim
+        rlang::cnd_signal(e)
+      }
+    )
     globals[["INFER_PRIMITIVE"]] <- prim
   }
 

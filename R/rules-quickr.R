@@ -2075,12 +2075,7 @@ local({
   quickr_register_elementwise_lowerer(
     list(prim_abs, prim_sqrt, prim_log, prim_floor, prim_ceiling, prim_exp, prim_sin, prim_cos, prim_tan),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
-      fun <- switch(
-        prim_name,
-        ceil = "ceiling",
-        prim_name
-      )
-      quickr_emit_assign(out_syms[[1L]], rlang::call2(fun, inputs[[1L]]))
+      quickr_emit_assign(out_syms[[1L]], rlang::call2(prim_name, inputs[[1L]]))
     }
   )
 
@@ -2117,7 +2112,7 @@ local({
   quickr_register_elementwise_lowerer(
     list(prim_pmax, prim_pmin),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
-      cmp <- if (prim_name == "max") ">=" else "<="
+      cmp <- if (prim_name == "pmax") ">=" else "<="
       quickr_emit_assign(
         out_syms[[1L]],
         rlang::call2("ifelse", rlang::call2(cmp, inputs[[1L]], inputs[[2L]]), inputs[[1L]], inputs[[2L]])

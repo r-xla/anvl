@@ -9,13 +9,13 @@ NULL
 # `graph_desc_add()` calls these as `do.call(infer_fn, c(avals_in, params))`, so
 # each function's formals are the primitive's own -- every operand and *every*
 # param, including the ones inference has no use for (`prim_dot_general()`'s
-# `precision`, `prim_sort()`'s `descending`). Each returns a plain `list()` of
+# `precision`, `prim_sort()`'s `decreasing`). Each returns a plain `list()` of
 # `AbstractArray`, named when the primitive has named outputs.
 #
 # Those formals are what the caller reads: a rule that refuses reaches them with
 # its call rewritten to `prim_*()`, so the name a message reports has to be the
 # one that primitive takes. Where an operand or param has no argument of its own
-# -- the sub-graph behind `prim_reduce()`'s `reductor` or `prim_while()`'s
+# -- the sub-graph behind `prim_reduce()`'s `reducer` or `prim_while()`'s
 # `body`, the operands `prim_sort()` collects in `xs`, the ones
 # `prim_dynamic_slice()` takes through `...` -- the message names the argument
 # itself rather than letting `caller_arg()` report the formal.
@@ -33,7 +33,7 @@ NULL
 # param stored in the call may need coercing first (`prim_top_k()`'s `k`), which
 # goes through the same `assert_*_param()` helper the rule uses so that there is
 # still one wording. Sub-graphs are traced before `graph_desc_add()` is reached,
-# so their functions are checked there (`prim_reduce()`'s `reductor`,
+# so their functions are checked there (`prim_reduce()`'s `reducer`,
 # `prim_while()`'s `cond` and `body`). And a guard the wrapper's own next line
 # depends on stays put -- `prim_sort()` reads `xs[[1L]]` to resolve `axis`.
 #
@@ -482,38 +482,39 @@ test_permutation <- function(x, expected) {
 # / `make_unary_op()` in primitives.R.
 # ---------------------------------------------------------------------------
 
-infer_generic_biv <- function(lhs, rhs) {
-  assert_arrays(lhs = lhs, rhs = rhs)
-  assert_same_type(lhs, rhs)
+# `arg_lhs` / `arg_rhs` are the names the primitive gives its two operands,
+# which `make_binary_op()` passes along so a message names the argument the
+# caller wrote: `x` / `y` for `prim_pow()`, `x` / `shift` for the shifts.
+infer_generic_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
+  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
   list(lhs)
 }
 
-infer_numeric_biv <- function(lhs, rhs) {
-  assert_array_dtype(lhs, "float", "int", "uint")
-  assert_same_type(lhs, rhs)
+infer_numeric_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
+  assert_array_dtype(lhs, "float", "int", "uint", arg = arg_lhs)
+  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
   list(lhs)
 }
 
-infer_float_biv <- function(lhs, rhs) {
-  assert_arrays(lhs = lhs, rhs = rhs)
-  assert_same_type(lhs, rhs)
-  assert_array_dtype(lhs, "float")
+infer_float_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
+  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
+  assert_array_dtype(lhs, "float", arg = arg_lhs)
   list(lhs)
 }
 
-infer_integerish_biv <- function(lhs, rhs) {
-  assert_array_dtype(lhs, "bool", "int", "uint")
-  assert_array_dtype(rhs, "bool", "int", "uint")
-  assert_same_type(lhs, rhs)
+infer_integerish_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
+  assert_array_dtype(lhs, "bool", "int", "uint", arg = arg_lhs)
+  assert_array_dtype(rhs, "bool", "int", "uint", arg = arg_rhs)
+  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
   list(lhs)
 }
 
 # The bit shifts take a `tensor of integer type`, which in the StableHLO spec
 # does not include `i1` -- unlike the bitwise `and` / `or` / `xor` above.
-infer_integer_biv <- function(lhs, rhs) {
-  assert_array_dtype(lhs, "int", "uint")
-  assert_array_dtype(rhs, "int", "uint")
-  assert_same_type(lhs, rhs)
+infer_integer_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
+  assert_array_dtype(lhs, "int", "uint", arg = arg_lhs)
+  assert_array_dtype(rhs, "int", "uint", arg = arg_rhs)
+  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
   list(lhs)
 }
 
@@ -558,10 +559,10 @@ infer_is_finite <- function(x) {
   list(AbstractArray(dtype = "bool", shape = x$shape))
 }
 
-infer_polygamma <- function(n, x) {
-  assert_array_dtype(n, "float")
+infer_polygamma <- function(x, deriv) {
   assert_array_dtype(x, "float")
-  assert_same_type(n, x)
+  assert_array_dtype(deriv, "float")
+  assert_same_type(x, deriv)
   list(AbstractArray(dtype = dtype(x), shape = x$shape))
 }
 
@@ -610,22 +611,24 @@ infer_bitcast_convert <- function(x, dtype) {
 
   # (C1), (C2) The element widths decide whether an axis is added, dropped or
   # left alone: a wider target packs several input elements into one, so the
-  # trailing axis it packs along disappears; a narrower one unpacks into a new
-  # trailing axis of `in_width / out_width`.
+  # leading axis it packs along disappears; a narrower one unpacks into a new
+  # leading axis of `in_width / out_width`. StableHLO puts that axis last; anvl
+  # puts it first, so the pieces of one element are adjacent in column-major
+  # order.
   if (in_width == out_width) {
     result_shape <- in_shape
   } else if (in_width < out_width) {
     ratio <- out_width %/% in_width
-    if (length(in_shape) == 0L || in_shape[[length(in_shape)]] != ratio) {
+    if (length(in_shape) == 0L || in_shape[[1L]] != ratio) {
       cli_abort(c(
-        "Converting {.val {as.character(in_dtype)}} to the wider {.val {as.character(out_dtype)}} needs a trailing axis of {.val {ratio}} to pack.", # nolint
+        "Converting {.val {as.character(in_dtype)}} to the wider {.val {as.character(out_dtype)}} needs a leading axis of {.val {ratio}} to pack.", # nolint
         x = "{.arg x} has shape {shape_repr(in_shape)}."
       ))
     }
-    result_shape <- in_shape[-length(in_shape)]
+    result_shape <- in_shape[-1L]
   } else {
     ratio <- in_width %/% out_width
-    result_shape <- c(in_shape, ratio)
+    result_shape <- c(ratio, in_shape)
   }
 
   list(AbstractArray(dtype = out_dtype, shape = Shape(result_shape)))
@@ -666,10 +669,10 @@ infer_broadcast_in_axes <- function(x, shape, broadcast_axes) {
   list(AbstractArray(dtype = dtype(x), shape = Shape(shape)))
 }
 
-infer_transpose <- function(x, permutation) {
+infer_transpose <- function(x, perm) {
   assert_array(x)
   in_shape <- shape(x)
-  perm <- assert_int_param(permutation, "permutation")
+  perm <- assert_int_param(perm, "perm")
 
   # (C2) A permutation, which `setequal()` does not check: sets ignore
   # multiplicity and length, so `c(1, 2, 2)` on a rank-2 `x` would pass and
@@ -677,12 +680,12 @@ infer_transpose <- function(x, permutation) {
   if (!test_permutation(perm, seq_along(in_shape))) {
     if (!length(in_shape)) {
       cli_abort(c(
-        "{.arg permutation} must be empty, because {.arg x} is a scalar.",
+        "{.arg perm} must be empty, because {.arg x} is a scalar.",
         x = "Got {value_repr(perm)}."
       ))
     }
     cli_abort(c(
-      "{.arg permutation} must be a permutation of {value_repr(seq_along(in_shape))}.",
+      "{.arg perm} must be a permutation of {value_repr(seq_along(in_shape))}.",
       x = "Got {value_repr(perm)}."
     ))
   }
@@ -780,21 +783,21 @@ infer_reverse <- function(x, axes) {
   list(AbstractArray(dtype = dtype(x), shape = x$shape))
 }
 
-# `start_indices` and `limit_indices` are 1-based and inclusive of the start,
-# exclusive of nothing: `limit_indices` is the last index kept.
-infer_static_slice <- function(x, start_indices, limit_indices, strides) {
+# `start_indices` and `end_indices` are 1-based and inclusive of the start,
+# exclusive of nothing: `end_indices` is the last index kept.
+infer_static_slice <- function(x, start_indices, end_indices, strides) {
   assert_array(x)
   start <- assert_int_param(start_indices, "start_indices")
-  limit <- assert_int_param(limit_indices, "limit_indices")
+  end <- assert_int_param(end_indices, "end_indices")
   stride <- assert_int_param(strides, "strides")
   in_shape <- shape(x)
   rank <- length(in_shape)
 
   # (C2)
-  given <- list(start_indices = start, limit_indices = limit, strides = stride)
+  given <- list(start_indices = start, end_indices = end, strides = stride)
   if (any(lengths(given) != rank)) {
     cli_abort(c(
-      "{.arg start_indices}, {.arg limit_indices} and {.arg strides} must have one entry per axis of {.arg x} ({rank}).", # nolint
+      "{.arg start_indices}, {.arg end_indices} and {.arg strides} must have one entry per axis of {.arg x} ({rank}).", # nolint
       x = "Got {params_repr(given)}."
     ))
   }
@@ -807,22 +810,22 @@ infer_static_slice <- function(x, start_indices, limit_indices, strides) {
       x = "Got {value_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
-  # Before the comparison against `limit` below, which would otherwise compute
-  # `limit + 1L` on a `limit` of `.Machine$integer.max` and hand `if ()` the
-  # `NA` that overflows to. Once `limit` is at most an axis size, it cannot.
-  # It is also the better complaint: an out-of-range `limit` is the mistake.
-  if (any(limit > in_shape)) {
-    bad <- which(limit > in_shape)
+  # Before the comparison against `end` below, which would otherwise compute
+  # `end + 1L` on an `end` of `.Machine$integer.max` and hand `if ()` the
+  # `NA` that overflows to. Once `end` is at most an axis size, it cannot.
+  # It is also the better complaint: an out-of-range `end` is the mistake.
+  if (any(end > in_shape)) {
+    bad <- which(end > in_shape)
     cli_abort(c(
-      "{.arg limit_indices} must not exceed the shape of {.arg x} {shape_repr(in_shape)}.",
-      x = "Got {value_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
+      "{.arg end_indices} must not exceed the shape of {.arg x} {shape_repr(in_shape)}.",
+      x = "Got {value_repr(end[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
-  if (any(start > limit + 1L)) {
-    bad <- which(start > limit + 1L)
+  if (any(start > end + 1L)) {
+    bad <- which(start > end + 1L)
     cli_abort(c(
-      "{.arg start_indices} must not exceed {.arg limit_indices}.",
-      x = "Got {value_repr(start[bad])} and {value_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
+      "{.arg start_indices} must not exceed {.arg end_indices}.",
+      x = "Got {value_repr(start[bad])} and {value_repr(end[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
 
@@ -837,7 +840,7 @@ infer_static_slice <- function(x, start_indices, limit_indices, strides) {
   }
 
   # (C5)
-  result_shape <- ceiling((limit - start + 1L) / stride)
+  result_shape <- ceiling((end - start + 1L) / stride)
 
   list(AbstractArray(dtype = dtype(x), shape = Shape(result_shape)))
 }
@@ -903,38 +906,38 @@ infer_pad <- function(
   list(AbstractArray(dtype = dtype(x), shape = Shape(result_shape)))
 }
 
-infer_select <- function(pred, true_value, false_value) {
+infer_select <- function(test, yes, no) {
   # (C2)
-  assert_same_type(true_value, false_value)
-  assert_array_dtype(pred, "bool")
+  assert_same_type(yes, no)
+  assert_array_dtype(test, "bool")
 
-  # (C1) `pred` selects either element-wise or as a single scalar switch.
-  if (length(shape(pred)) != 0L && !identical(shape(pred), shape(true_value))) {
-    if (length(shape(true_value)) == 0L) {
+  # (C1) `test` selects either element-wise or as a single scalar switch.
+  if (length(shape(test)) != 0L && !identical(shape(test), shape(yes))) {
+    if (length(shape(yes)) == 0L) {
       cli_abort(c(
-        "{.arg true_value} and {.arg false_value} must have {.arg pred}'s shape when {.arg pred} is not a scalar.",
-        x = "{.arg pred} is {shape_repr(shape(pred))} but the branches are scalars."
+        "{.arg yes} and {.arg no} must have {.arg test}'s shape when {.arg test} is not a scalar.",
+        x = "{.arg test} is {shape_repr(shape(test))} but the branches are scalars."
       ))
     }
     cli_abort(c(
-      "{.arg pred} must be a scalar or have the same shape as {.arg true_value}.",
-      x = "Got {shape_repr(shape(pred))} and {shape_repr(shape(true_value))}."
+      "{.arg test} must be a scalar or have the same shape as {.arg yes}.",
+      x = "Got {shape_repr(shape(test))} and {shape_repr(shape(yes))}."
     ))
   }
 
-  list(AbstractArray(dtype = dtype(true_value), shape = true_value$shape))
+  list(AbstractArray(dtype = dtype(yes), shape = yes$shape))
 }
 
-infer_clamp <- function(min_val, x, max_val) {
-  assert_arrays(min_val = min_val, x = x, max_val = max_val)
+infer_clamp <- function(x, min, max) {
+  assert_arrays(x = x, min = min, max = max)
 
   # (C3)
-  assert_same_dtype(x, max_val, arg_x = "x", arg_y = "max_val")
-  assert_same_dtype(min_val, x, arg_x = "min_val", arg_y = "x")
+  assert_same_dtype(x, max, arg_x = "x", arg_y = "max")
+  assert_same_dtype(min, x, arg_x = "min", arg_y = "x")
 
   # (C1) Each bound is either a scalar or the same shape as `x`.
-  for (nm in c("min_val", "max_val")) {
-    bound <- if (nm == "min_val") min_val else max_val
+  for (nm in c("min", "max")) {
+    bound <- if (nm == "min") min else max
     bound_shape <- shape(bound)
     if (length(bound_shape) != 0L && !identical(bound_shape, shape(x))) {
       cli_abort(c(
@@ -1239,7 +1242,7 @@ reduced_shape <- function(x, axes, drop) {
   new_shape
 }
 
-infer_reduce <- function(x, init, axes, drop, reductor_graph) {
+infer_reduce <- function(x, init, axes, drop, reducer) {
   assert_arrays(x = x, init = init)
 
   if (length(shape(init)) != 0L) {
@@ -1259,26 +1262,26 @@ infer_reduce <- function(x, init, axes, drop, reductor_graph) {
   assert_axes_in_range(axes, length(shape(x)), "axes")
   assert_axes_unique(axes, "axes")
 
-  # (C6) The reductor is traced against two scalars of `x`'s data type, so what
+  # (C6) The reducer is traced against two scalars of `x`'s data type, so what
   # it returns has to be one too: the reduced element is what it returns, and a
   # different data type there would make the inferred output type a lie.
-  outputs <- lapply(reductor_graph$outputs, function(out) out$aval)
+  outputs <- lapply(reducer$outputs, function(out) out$aval)
   if (length(outputs) != 1L) {
     cli_abort(c(
-      "{.arg reductor} must return exactly one value.",
+      "{.arg reducer} must return exactly one value.",
       x = "Got {length(outputs)} outputs."
     ))
   }
   out_aval <- outputs[[1L]]
   if (dtype(out_aval) != dtype(x)) {
     cli_abort(c(
-      "{.arg reductor} must return a value with the same data type as {.arg x}.",
-      x = "{.arg x} is {.val {as.character(dtype(x))}}, but {.arg reductor} returns {.val {as.character(dtype(out_aval))}}." # nolint
+      "{.arg reducer} must return a value with the same data type as {.arg x}.",
+      x = "{.arg x} is {.val {as.character(dtype(x))}}, but {.arg reducer} returns {.val {as.character(dtype(out_aval))}}." # nolint
     ))
   }
   if (length(shape(out_aval))) {
     cli_abort(c(
-      "{.arg reductor} must return a scalar.",
+      "{.arg reducer} must return a scalar.",
       x = "Got shape {shape_repr(shape(out_aval))}."
     ))
   }
@@ -1287,7 +1290,7 @@ infer_reduce <- function(x, init, axes, drop, reductor_graph) {
   list(AbstractArray(dtype = dtype(x), shape = Shape(reduced_shape(x, axes, drop))))
 }
 
-# `prim_reduce_sum()` / `prim_reduce_max()` and friends: the reductor is fixed
+# `prim_sum()` / `prim_max()` and friends: the reducer is fixed
 # by the primitive, so the output just keeps the input's data type.
 infer_reduce_simple <- function(x, axes, drop) {
   assert_array(x)
@@ -1369,7 +1372,7 @@ infer_cum_extreme <- function(x, axis) {
   )
 }
 
-# `prim_argmax()` / `prim_argmin()`: `axis` dropped (or kept at size 1), at the
+# `prim_which_max()` / `prim_which_min()`: `axis` dropped (or kept at size 1), at the
 # default integer data type.
 infer_arg_extreme <- function(x, axis, drop) {
   assert_array(x)
@@ -1396,7 +1399,7 @@ infer_arg_extreme <- function(x, axis, drop) {
 # `prim_sort()` only permutes along `axis`, so each output mirrors its input.
 # The arrays arrive as separate operands, but the primitive takes them in a
 # single `xs`, which is the argument a message has to name.
-infer_sort <- function(..., axis, descending, is_stable) {
+infer_sort <- function(..., axis, decreasing, stable) {
   xs <- list(...)
   if (!length(xs)) {
     cli_abort(c(
@@ -1404,8 +1407,8 @@ infer_sort <- function(..., axis, descending, is_stable) {
       x = "Got nothing to sort."
     ))
   }
-  assert_flag_param(descending, "descending")
-  assert_flag_param(is_stable, "is_stable")
+  assert_flag_param(decreasing, "decreasing")
+  assert_flag_param(stable, "stable")
   assert_arrays(..., .arg = "xs")
 
   # (C1), (C2) The payloads are permuted alongside the key, so they have to
@@ -1628,7 +1631,7 @@ infer_scatter <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
-  update_computation_graph
+  update_fn
 ) {
   assert_arrays(x = x, update = update)
   # (I2)
@@ -1788,20 +1791,20 @@ infer_scatter <- function(
     }
   }
 
-  # (C23) As `prim_reduce()`'s reductor: `update_computation` is traced against
+  # (C23) As `prim_reduce()`'s reducer: `update_fn` is traced against
   # two scalars of `x`'s data type, so what it returns has to be one too.
-  outputs <- lapply(update_computation_graph$outputs, function(out) out$aval)
+  outputs <- lapply(update_fn$outputs, function(out) out$aval)
   if (length(outputs) != 1L) {
     cli_abort(c(
-      "{.arg update_computation} must return exactly one value.",
+      "{.arg update_fn} must return exactly one value.",
       x = "Got {length(outputs)} outputs."
     ))
   }
   out_aval <- outputs[[1L]]
   if (dtype(out_aval) != dtype(x)) {
     cli_abort(c(
-      "{.arg update_computation} must return a value with the same data type as {.arg x}.",
-      x = "{.arg x} is {.val {as.character(dtype(x))}} and {.arg update_computation} returns {.val {as.character(dtype(out_aval))}}." # nolint
+      "{.arg update_fn} must return a value with the same data type as {.arg x}.",
+      x = "{.arg x} is {.val {as.character(dtype(x))}} and {.arg update_fn} returns {.val {as.character(dtype(out_aval))}}." # nolint
     ))
   }
 
@@ -1816,9 +1819,9 @@ infer_scatter <- function(
 infer_convolution <- function(
   x,
   kernel,
-  input_batch_axis,
-  input_feature_axis,
-  input_spatial_axes,
+  x_batch_axis,
+  x_feature_axis,
+  x_spatial_axes,
   kernel_input_feature_axis,
   kernel_output_feature_axis,
   kernel_spatial_axes,
@@ -1914,14 +1917,14 @@ infer_convolution <- function(
   }
 
   # (C12), (C17), (C19)
-  for (nm in c("input_spatial_axes", "kernel_spatial_axes", "output_spatial_axes")) {
+  for (nm in c("x_spatial_axes", "kernel_spatial_axes", "output_spatial_axes")) {
     # Asserted here rather than left to `assert_axis_layout()` below, so that a
     # param that is not a whole-number vector is reported as that, and one that
     # is can be reported by its entries.
     val <- assert_int_param(
       switch(
         nm,
-        input_spatial_axes = input_spatial_axes,
+        x_spatial_axes = x_spatial_axes,
         kernel_spatial_axes = kernel_spatial_axes,
         output_spatial_axes
       ),
@@ -1938,9 +1941,9 @@ infer_convolution <- function(
   # (C13), (C18), (C20) Each of the three layouts names every axis exactly once.
   assert_axis_layout(
     list(
-      input_batch_axis = input_batch_axis,
-      input_spatial_axes = input_spatial_axes,
-      input_feature_axis = input_feature_axis
+      x_batch_axis = x_batch_axis,
+      x_spatial_axes = x_spatial_axes,
+      x_feature_axis = x_feature_axis
     ),
     rank,
     "x"
@@ -1964,30 +1967,30 @@ infer_convolution <- function(
     "the result"
   )
 
-  input_batch_size <- x_shape[[input_batch_axis]]
-  input_feature_size <- x_shape[[input_feature_axis]]
+  x_batch_size <- x_shape[[x_batch_axis]]
+  x_feature_size <- x_shape[[x_feature_axis]]
   kernel_in_size <- kernel_shape[[kernel_input_feature_axis]]
   kernel_out_size <- kernel_shape[[kernel_output_feature_axis]]
 
   # (C10), (C11)
-  if (input_batch_size %% bg_count != 0L) {
+  if (x_batch_size %% bg_count != 0L) {
     cli_abort(c(
       "The batch axis of {.arg x} must be divisible by {.arg batch_group_count}.",
-      x = "Got {input_batch_size} and {bg_count}."
+      x = "Got {x_batch_size} and {bg_count}."
     ))
   }
-  if (input_feature_size %% fg_count != 0L) {
+  if (x_feature_size %% fg_count != 0L) {
     cli_abort(c(
       "The feature axis of {.arg x} must be divisible by {.arg feature_group_count}.",
-      x = "Got {input_feature_size} and {fg_count}."
+      x = "Got {x_feature_size} and {fg_count}."
     ))
   }
 
   # (C14) - (C16)
-  if (kernel_in_size != input_feature_size %/% fg_count) {
+  if (kernel_in_size != x_feature_size %/% fg_count) {
     cli_abort(c(
       "The input feature axis of {.arg kernel} must be the feature axis of {.arg x} divided by {.arg feature_group_count}.", # nolint
-      x = "Got {kernel_in_size}, expected {input_feature_size %/% fg_count}."
+      x = "Got {kernel_in_size}, expected {x_feature_size %/% fg_count}."
     ))
   }
   if (kernel_out_size %% bg_count != 0L) {
@@ -2008,14 +2011,14 @@ infer_convolution <- function(
 
   # (C25), (C26)
   result_shape <- integer(rank)
-  result_shape[output_batch_axis] <- input_batch_size %/% bg_count
+  result_shape[output_batch_axis] <- x_batch_size %/% bg_count
   result_shape[output_feature_axis] <- kernel_out_size
   # The window arithmetic runs in double: a dilation or a padding in the
   # billions overflows an integer, and the `NA` it produces reaches the tests
   # below as the raw `missing value where TRUE/FALSE needed`.
   result_shape <- as.double(result_shape)
   for (sd in seq_len(n_spatial)) {
-    x_size <- as.double(x_shape[[input_spatial_axes[[sd]]]])
+    x_size <- as.double(x_shape[[x_spatial_axes[[sd]]]])
     k_size <- as.double(kernel_shape[[kernel_spatial_axes[[sd]]]])
     dilated_input <- if (x_size == 0) 0 else (x_size - 1) * x_dil[[sd]] + 1
     padded_input <- pad[sd, 1L] + dilated_input + pad[sd, 2L]
@@ -2027,7 +2030,7 @@ infer_convolution <- function(
     if (padded_input < 0) {
       cli_abort(c(
         "Negative {.arg padding} must not remove more than spatial axis {sd} of {.arg x} holds.",
-        x = "Axis {input_spatial_axes[[sd]]} of {.arg x} dilates to {dilated_input}, and padding {pad[sd, 1L]} and {pad[sd, 2L]} leaves {padded_input}.", # nolint
+        x = "Axis {x_spatial_axes[[sd]]} of {.arg x} dilates to {dilated_input}, and padding {pad[sd, 1L]} and {pad[sd, 2L]} leaves {padded_input}.", # nolint
         i = "Got {params_repr(list(padding = padding, x_dilation = x_dil))}."
       ))
     }
@@ -2128,27 +2131,27 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
-infer_rng_bit_generator <- function(initial_state, rng_algorithm, dtype, shape) {
-  assert_array_dtype(initial_state, "uint", naxes = 1L)
-  if (dtype(initial_state) != as_dtype("ui64")) {
+infer_rng_bit_generator <- function(state, rng_algorithm, dtype, shape) {
+  assert_array_dtype(state, "uint", naxes = 1L)
+  if (dtype(state) != as_dtype("ui64")) {
     cli_abort(c(
-      "{.arg initial_state} must be {.val ui64}.",
-      x = "Got {.val {as.character(dtype(initial_state))}}."
+      "{.arg state} must be {.val ui64}.",
+      x = "Got {.val {as.character(dtype(state))}}."
     ))
   }
 
   assert_choice_param(rng_algorithm, "rng_algorithm", c("DEFAULT", "THREE_FRY", "PHILOX"))
 
-  state_size <- shape(initial_state)[[1L]]
+  state_size <- shape(state)[[1L]]
   if (rng_algorithm == "THREE_FRY" && state_size != 2L) {
     cli_abort(c(
-      "{.val THREE_FRY} requires an {.arg initial_state} of length {.val {2L}}.",
+      "{.val THREE_FRY} requires an {.arg state} of length {.val {2L}}.",
       x = "Got {.val {state_size}}."
     ))
   }
   if (rng_algorithm == "PHILOX" && !(state_size %in% c(2L, 3L))) {
     cli_abort(c(
-      "{.val PHILOX} requires an {.arg initial_state} of length {.val {2L}} or {.val {3L}}.",
+      "{.val PHILOX} requires an {.arg state} of length {.val {2L}} or {.val {3L}}.",
       x = "Got {.val {state_size}}."
     ))
   }
@@ -2163,7 +2166,7 @@ infer_rng_bit_generator <- function(initial_state, rng_algorithm, dtype, shape) 
 
   # (C1)
   list(
-    state = AbstractArray(dtype = "ui64", shape = initial_state$shape),
+    state = AbstractArray(dtype = "ui64", shape = state$shape),
     values = AbstractArray(dtype = out_dtype, shape = Shape(assert_shapevec(shape)))
   )
 }
@@ -2241,10 +2244,10 @@ infer_eigh <- function(x) {
 # subgraphs, so their types are read straight off their input and output nodes.
 # ---------------------------------------------------------------------------
 
-infer_cond <- function(pred, true_graph, false_graph) {
+infer_cond <- function(pred, true, false) {
   assert_array_dtype(pred, "bool", shape = integer())
-  outs_true <- lapply(true_graph$outputs, function(out) out$aval)
-  outs_false <- lapply(false_graph$outputs, function(out) out$aval)
+  outs_true <- lapply(true$outputs, function(out) out$aval)
+  outs_false <- lapply(false$outputs, function(out) out$aval)
 
   # Without this the mismatch is left to MLIR, which reports it as
   # `output_types(true_branch)[0]` over `tensor<f32>` -- StableHLO's vocabulary
@@ -2286,14 +2289,14 @@ infer_cond <- function(pred, true_graph, false_graph) {
   outs_true
 }
 
-infer_while <- function(..., cond_graph, body_graph) {
+infer_while <- function(..., cond, body) {
   outs <- list(...)
-  outs_body <- lapply(body_graph$outputs, function(out) out$aval)
-  inputs_body <- lapply(body_graph$inputs, function(inp) inp$aval)
+  outs_body <- lapply(body$outputs, function(out) out$aval)
+  inputs_body <- lapply(body$inputs, function(inp) inp$aval)
   # `init` is a named list, so the loop state's names are the body's input
   # tree's child names. Read back rather than passed as a param: a param would
   # reach the lowering rules, which take the state positionally.
-  state_names <- pjrt::tree_child_names(body_graph$in_tree)
+  state_names <- pjrt::tree_child_names(body$in_tree)
 
   # Names the state member that disagrees, since the usual cause is an R value
   # in `init` that materialized at its default: the loop is built before its
