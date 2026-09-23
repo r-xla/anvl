@@ -122,15 +122,6 @@ input's data type, except for a boolean input, which is accumulated at the
 default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p>
     </div>
     <div class="section level2">
-    <h2 id="relation-to-base-r">Relation to base R<a class="anchor" aria-label="anchor" href="#relation-to-base-r"></a></h2>
-
-
-<p><code>nv_cumsum()</code> with <code>axis = NULL</code> and <code><a href="https://rdrr.io/r/base/cumsum.html" class="external-link">base::cumsum()</a></code>
-both flatten first, but in different orders – anvl arrays are row-major (C
-order), base R is column-major (Fortran) – so for a multi-axis input the
-two give different running values. They agree on 1-D inputs.</p>
-    </div>
-    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="prim_cumsum.html">prim_cumsum()</a></code> for the underlying primitive.</p></div>
     </div>
@@ -138,12 +129,12 @@ two give different running values. They agree on 1-D inputs.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_cumsum</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>              <span class="co"># row-major flatten, then accumulate</span></span></span>
+<span class="r-in"><span><span class="fu">nv_cumsum</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>              <span class="co"># flatten, then accumulate</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   9</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  15</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  21</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{6} ] </span>

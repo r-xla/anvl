@@ -55,14 +55,6 @@ and the indices the default integer data type; both have the input's
 shape when `axis` is given, and are 1-D of length `prod(shape(x))` when
 `axis` is `NULL`.
 
-## Relation to base R
-
-`nv_cummax()` with `axis = NULL` and
-[`base::cummax()`](https://rdrr.io/r/base/cumsum.html) both flatten
-first, but in different orders – anvl arrays are row-major (C order),
-base R is column-major (Fortran) – so for a multi-axis input the two
-give different running values. They agree on 1-D inputs.
-
 ## See also
 
 [`prim_cummax()`](https://r-xla.github.io/anvl/dev/reference/prim_cummax.md)
@@ -76,9 +68,9 @@ x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummax(x)
 #> AnvlArray
 #>  3
+#>  3
 #>  4
-#>  5
-#>  5
+#>  4
 #>  5
 #>  9
 #> [ CPUf32{6} ] 

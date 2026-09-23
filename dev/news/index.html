@@ -78,7 +78,13 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
-<ul><li>The <code>@jit</code> roxygen tag was removed; wrap functions in <code><a href="../reference/jit.html">jit()</a></code> at the definition instead.</li>
+<ul><li>
+<code><a href="../reference/prim_reshape.html">prim_reshape()</a></code> and <code><a href="../reference/nv_reshape.html">nv_reshape()</a></code>, and with them <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> and every <code>axis = NULL</code> flattening default, are now column-major like base R.</li>
+<li>
+<code><a href="../reference/prim_bitcast_convert.html">prim_bitcast_convert()</a></code> puts the axis holding an element’s pieces first rather than last when the two data types differ in width, so the pieces of one element are adjacent in the order <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> reads and a narrowing conversion lays the bytes out the way <code><a href="../reference/as_raw.html">as_raw()</a></code> writes them.</li>
+<li>
+<code><a href="../reference/nv_broadcast_to.html">nv_broadcast_to()</a></code> and <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> align axes from the first instead of the last: a shorter shape gets size-1 axes appended, so a length-<code>nrow</code> vector broadcasts against a matrix where a length-<code>ncol</code> one no longer does. Write <code><a href="../reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> with an explicit axis mapping for the previous right-aligned behavior.</li>
+<li>The <code>@jit</code> roxygen tag was removed; wrap functions in <code><a href="../reference/jit.html">jit()</a></code> at the definition instead.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code>, <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> and <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> take <code>indices</code> instead of <code>with_indices</code>, spelling it the way <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code> does.</li>
 <li>
@@ -111,7 +117,7 @@
 <li>
 <code><a href="../reference/prim_sort.html">prim_sort()</a></code> no longer defaults <code>axis</code> to <code>1L</code>; pass it explicitly, as with every other primitive.</li>
 <li>
-<code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> and <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> now reduce over <code>axes</code> (plural) instead of a single <code>axis</code>, defaulting to every axis so that they pair with <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code> / <code><a href="../reference/nv_reduce_min.html">nv_reduce_min()</a></code>. Reducing several axes indexes their row-major flattening. Write <code>nv_argmax(x, axes = -1L)</code> for the previous default.</li>
+<code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> and <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> now reduce over <code>axes</code> (plural) instead of a single <code>axis</code>, defaulting to every axis so that they pair with <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code> / <code><a href="../reference/nv_reduce_min.html">nv_reduce_min()</a></code>. Reducing several axes indexes their column-major flattening. Write <code>nv_argmax(x, axes = -1L)</code> for the previous default.</li>
 <li>The <code>tensor_to_gval</code> argument of <code><a href="../reference/GraphDescriptor.html">GraphDescriptor()</a></code> is now called <code>array_to_gval</code>.</li>
 </ul></div>
 <div class="section level3">

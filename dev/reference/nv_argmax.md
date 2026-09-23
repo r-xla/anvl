@@ -52,9 +52,11 @@ value: called with the same `axes` and `drop`, it points at the element
 whose value
 [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md)
 returns. Reducing several axes ranks their elements together, and the
-result indexes the row-major flattening of those axes – the order
+result indexes the column-major flattening of those axes – the order
 [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
-produces – which is also the order ties are broken in.
+produces and
+[`base::which.max()`](https://rdrr.io/r/base/which.min.html) reports –
+which is also the order ties are broken in.
 
 ## NaN handling
 
@@ -78,7 +80,7 @@ nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 nv_argmax(m) # indexes the flattened matrix
 #> AnvlArray
-#>  3
+#>  5
 #> [ CPUi32{} ] 
 nv_argmax(m, axes = 2L) # one index per row
 #> AnvlArray

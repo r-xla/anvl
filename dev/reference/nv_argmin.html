@@ -129,9 +129,9 @@ set to 1 (<code>drop = FALSE</code>).</p>
 <p><code>nv_argmin()</code> is the index to <code><a href="nv_reduce_min.html">nv_reduce_min()</a></code>'s value: called with the
 same <code>axes</code> and <code>drop</code>, it points at the element whose value
 <code><a href="nv_reduce_min.html">nv_reduce_min()</a></code> returns. Reducing several axes ranks their elements
-together, and the result indexes the row-major flattening of those axes –
-the order <code><a href="nv_flatten.html">nv_flatten()</a></code> produces – which is also the order ties are
-broken in.</p>
+together, and the result indexes the column-major flattening of those axes
+– the order <code><a href="nv_flatten.html">nv_flatten()</a></code> produces and <code><a href="https://rdrr.io/r/base/which.min.html" class="external-link">base::which.min()</a></code> reports – which
+is also the order ties are broken in.</p>
     </div>
     <div class="section level2">
     <h2 id="nan-handling">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling"></a></h2>

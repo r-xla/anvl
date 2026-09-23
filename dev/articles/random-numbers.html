@@ -180,8 +180,8 @@ for subsequent random number generation.</li>
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="va">state</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  -0.0675  0.9489  1.9457</span></span>
-<span><span class="co">#&gt;  -0.5255  1.2002  0.0008</span></span>
+<span><span class="co">#&gt;  -0.0675  1.9457  1.2002</span></span>
+<span><span class="co">#&gt;   0.9489 -0.5255  0.0008</span></span>
 <span><span class="co">#&gt; [ CPUf32{2,3} ]</span></span></code></pre></div>
 <p><code>mean</code> and <code>sd</code> are arrayish, so they may vary
 across the sample.</p>
@@ -189,8 +189,8 @@ across the sample.</p>
 <code class="sourceCode R"><span><span class="va">sds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.1</span>, <span class="fl">1</span>, <span class="fl">10</span>, <span class="fl">100</span>, <span class="fl">1000</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="va">state</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, sd <span class="op">=</span> <span class="va">sds</span><span class="op">)</span><span class="op">$</span><span class="va">values</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;   -0.0007   0.9489 194.5720</span></span>
-<span><span class="co">#&gt;   -0.0526  12.0017   0.7665</span></span>
+<span><span class="co">#&gt;   -0.0007   1.9457 120.0167</span></span>
+<span><span class="co">#&gt;    0.0949  -5.2551   0.7665</span></span>
 <span><span class="co">#&gt; [ CPUf32{2,3} ]</span></span></code></pre></div>
 <p>To draw integers, use <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, the counterpart
 to R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int()</a></code>:</p>

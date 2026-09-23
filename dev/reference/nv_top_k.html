@@ -133,8 +133,8 @@ that axis.</p>
 
 <p>Taking the top <code>k</code> over several axes ranks all of their elements together,
 so <code>nv_top_k(x, k)</code> equals <code>nv_top_k(nv_flatten(x), k)</code>. The indices then
-index the row-major flattening of those axes – the order <code><a href="nv_flatten.html">nv_flatten()</a></code>
-produces – rather than any single axis.</p>
+index the column-major flattening of those axes – the order
+<code><a href="nv_flatten.html">nv_flatten()</a></code> produces – rather than any single axis.</p>
     </div>
     <div class="section level2">
     <h2 id="nan-handling">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling"></a></h2>

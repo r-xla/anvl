@@ -24,9 +24,14 @@ nv_bitcast_convert(x, dtype)
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Any target data type except `bool`. One of the same bit width as the
-  input's leaves the shape unchanged; a narrower one adds a trailing
-  axis holding the pieces; a wider one consumes the last axis, whose
-  size must equal the ratio of the two widths.
+  input's leaves the shape unchanged; a narrower one adds a *leading*
+  axis holding the pieces; a wider one consumes the first axis, whose
+  size must equal the ratio of the two widths. The pieces of one element
+  are therefore adjacent in the column-major element order
+  [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
+  reads, and a narrowing conversion lays the bytes out the way
+  [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md)
+  writes them.
 
 ## Value
 
@@ -47,6 +52,9 @@ for value-preserving type conversion.
 x <- nv_array(1L, dtype = "i32")
 nv_bitcast_convert(x, dtype = "i8")
 #> AnvlArray
-#>  1 0 0 0
-#> [ CPUi8{1,4} ] 
+#>  1
+#>  0
+#>  0
+#>  0
+#> [ CPUi8{4,1} ] 
 ```

@@ -45,14 +45,6 @@ input's data type, except for a boolean input, which is accumulated at
 the default integer data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
-## Relation to base R
-
-`nv_cumprod()` with `axis = NULL` and
-[`base::cumprod()`](https://rdrr.io/r/base/cumsum.html) both flatten
-first, but in different orders – anvl arrays are row-major (C order),
-base R is column-major (Fortran) – so for a multi-axis input the two
-give different running values. They agree on 1-D inputs.
-
 ## See also
 
 [`prim_cumprod()`](https://r-xla.github.io/anvl/dev/reference/prim_cumprod.md)
@@ -62,12 +54,12 @@ for the underlying primitive.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-nv_cumprod(x)              # row-major flatten, then accumulate
+nv_cumprod(x)              # flatten, then accumulate
 #> AnvlArray
 #>    1
-#>    3
-#>   15
-#>   30
+#>    2
+#>    6
+#>   24
 #>  120
 #>  720
 #> [ CPUi32{6} ] 

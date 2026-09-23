@@ -120,57 +120,17 @@
 <p>This vignette lists various things to be aware of, specifically in
 relation to base R.</p>
 <div class="section level2">
-<h2 id="row-major-vs-column-major-ordering">Row-major vs column-major ordering<a class="anchor" aria-label="anchor" href="#row-major-vs-column-major-ordering"></a>
-</h2>
-<p>R stores matrices and arrays in <em>column-major</em> order, while
-{anvl} (following XLA) uses <em>row-major</em> order. For most
-operations, this is an internal implementation detail that does not
-change the semantics. However, for reshaping operations such as
-<code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> there is a difference.</p>
-<p>Consider the 2x2 matrix below:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="va">m</span></span></code></pre></div>
-<pre><code><span><span class="co">##      [,1] [,2]</span></span>
-<span><span class="co">## [1,]    1    3</span></span>
-<span><span class="co">## [2,]    2    4</span></span></code></pre>
-<p>In base R, <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> flattens it column-by-column, so
-we get <code>1, 2, 3, 4</code>:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] 1 2 3 4</span></span></code></pre>
-<p>In {anvl}, reshaping to a length-4 vector traverses the data
-row-by-row, so we get <code>1, 3, 2, 4</code>:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_flatten.html">nv_flatten</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  1</span></span>
-<span><span class="co">##  3</span></span>
-<span><span class="co">##  2</span></span>
-<span><span class="co">##  4</span></span>
-<span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
-<p>If you need column-major flattening in {anvl}, transpose first:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_flatten.html">nv_flatten</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  1</span></span>
-<span><span class="co">##  2</span></span>
-<span><span class="co">##  3</span></span>
-<span><span class="co">##  4</span></span>
-<span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
-</div>
-<div class="section level2">
 <h2 id="no-recycling">No recycling<a class="anchor" aria-label="anchor" href="#no-recycling"></a>
 </h2>
 <p>Base R <em>recycles</em> the shorter operand when two vectors of
 different lengths are combined elementwise:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 2 4 4 6</span></span></code></pre>
 <p>{anvl} only auto-broadcasts <em>scalars</em> (operands with shape
 <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>). Adding a scalar to an array works as you would
 expect:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="fl">10L</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  11</span></span>
@@ -180,24 +140,23 @@ expect:</p>
 <span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
 <p>But combining two non-scalar arrays of different shapes errors, even
 when one shape is a “tile” of the other:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> All non-scalar arrays must have the same shape, but got (4), (2). Use</span></span>
 <span><span class="co">##   `nv_broadcast_arrays()` for general broadcasting.</span></span></code></pre>
-<p>When two non-scalar arrays differ only by size-1 axes (numpy-style
-broadcasting, e.g. shape <code>(2, 3)</code> and <code>(1, 3)</code>),
-use <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> to align them explicitly
-first:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<p>When two non-scalar arrays differ only by size-1 axes (e.g. shape
+<code>(2, 3)</code> and <code>(1, 3)</code>), use
+<code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> to align them explicitly first:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">a</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 2 3</span></span></code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 1 3</span></span></code></pre>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">xs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">xs</span>, <span class="va">shape</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [[1]]</span></span>
@@ -205,15 +164,56 @@ first:</p>
 <span><span class="co">## </span></span>
 <span><span class="co">## [[2]]</span></span>
 <span><span class="co">## [1] 2 3</span></span></code></pre>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">xs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="va">xs</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  11 23 35</span></span>
 <span><span class="co">##  12 24 36</span></span>
 <span><span class="co">## [ CPUf32{2,3} ]</span></span></code></pre>
-<p>Note that even <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> cannot replicate
-R’s recycling for shapes like <code>(4)</code> and <code>(2)</code> –
-the shapes must be broadcast-compatible in the numpy sense.</p>
+<p>Axes are aligned <strong>from the first</strong>: an array with fewer
+axes gets size-1 axes appended, so its axis 1 meets axis 1 of the other.
+Anvl arrays are column-major, so the first axis is the one that varies
+fastest, and appending leaves every axis the array already had meaning
+what it did. (NumPy prepends instead, which is the matching choice for a
+row-major array.) A vector therefore meets a matrix as a
+<strong>column</strong>: a length-<code>nrow</code> vector broadcasts
+against it, one value per row, and a length-<code>ncol</code> one does
+not.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, nrow <span class="op">=</span> <span class="fl">3</span>, ncol <span class="op">=</span> <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">xs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span></span>
+<span><span class="va">xs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="va">xs</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2 2 2</span></span>
+<span><span class="co">##  3 3 3</span></span>
+<span><span class="co">##  4 4 4</span></span>
+<span><span class="co">## [ CPUf32{3,3} ]</span></span></code></pre>
+<p>which is what base R already gives you for the same two operands:</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, nrow <span class="op">=</span> <span class="fl">3</span>, ncol <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##      [,1] [,2] [,3]</span></span>
+<span><span class="co">## [1,]    2    2    2</span></span>
+<span><span class="co">## [2,]    3    3    3</span></span>
+<span><span class="co">## [3,]    4    4    4</span></span></code></pre>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_broadcast_to.html">nv_broadcast_to</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `prim_broadcast_in_axes()`:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> `x` dimension 1 and `result` dimension 1 must match unless</span></span>
+<span><span class="co">## `x` dim is 1.</span></span>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> Got shapes (3) and (2x3).</span></span></code></pre>
+<p>This is <em>not</em> base R’s recycling, which is a different
+mechanism: base R has no broadcasting between arrays at all
+(<code>matrix(1:6, 2) + matrix(c(10, 20, 30), 1)</code> is a
+“non-conformable arrays” error), and recycles a shorter <em>vector</em>
+over the column-major flattening instead, warning only when the lengths
+do not divide. That agrees with broadcasting whenever the vector’s
+length is the size of the first axis – the case above, and the usual way
+a vector meets a matrix – and to disagree quietly otherwise –
+<code>matrix(1:6, 2) + c(10, 20, 30)</code> recycles rather than adding
+one value per column. So <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> cannot
+replicate recycling for shapes like <code>(4)</code> and
+<code>(2)</code>: every axis must either match or be 1.</p>
 </div>
 <div class="section level2">
 <h2 id="no-nas">No <code>NA</code>s<a class="anchor" aria-label="anchor" href="#no-nas"></a>
@@ -223,12 +223,12 @@ atomic type. {anvl} arrays do not – there is no representation of
 “missing” at the XLA level, only <code>NaN</code> for floating point
 numbers. At a floating-point dtype, an <code>NA</code> silently turns
 into a <code>NaN</code>:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="cn">NA_real_</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  nan</span></span>
 <span><span class="co">## [ CPUf32{1} ]</span></span></code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NA</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##    1</span></span>
@@ -239,7 +239,7 @@ into a <code>NaN</code>:</p>
 <code>NA</code>, but can also yield <code>NaN</code>. What comes back
 depends on the data type the value was built at, so it is pinned
 here:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NA</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]   1 NaN   3</span></span></code></pre>
 <p>The signed integer dtypes are a special case. R spells
@@ -248,7 +248,7 @@ which is also what an <code>i32</code> array stores, so the value
 survives the round trip – but on the device it is an ordinary, very
 negative integer that nothing distinguishes from a missing value. Both
 directions warn about it:</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span>, dtype <span class="op">=</span> <span class="st">"i32"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Input `data` contains at least one <span style="color: #0000BB;">"NA"</span>, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The value materializes as <span style="color: #0000BB;">"NA"</span> again in R, which `as_array()` reports on the</span></span>
@@ -257,7 +257,7 @@ directions warn about it:</p>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  -2.1475e+09</span></span>
 <span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span>, dtype <span class="op">=</span> <span class="st">"i32"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Input `data` contains at least one <span style="color: #0000BB;">"NA"</span>, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The value materializes as <span style="color: #0000BB;">"NA"</span> again in R, which `as_array()` reports on the</span></span>
@@ -271,7 +271,7 @@ directions warn about it:</p>
 <p>Nothing on the device reserves that bit pattern, so it also arises
 from ordinary arithmetic – and such a value comes back to R as an
 <code>NA</code> too:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2147483647L</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Materialized <span style="color: #0000BB;">&lt;i32&gt;</span> buffer contains a value that R cannot distinguish from <span style="color: #0000BB;">"NA"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">"i32"</span> reserves the bit pattern <span style="color: #0000BB;">"-2147483648"</span> (`INT_MIN`); <span style="color: #0000BB;">"i64"</span> reserves</span></span>
@@ -281,11 +281,11 @@ from ordinary arithmetic – and such a value comes back to R as an
 <p>At every other dtype there is no bit pattern for an <code>NA</code>
 to land on, so a missing value is an error, including for
 <code>bool</code>:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Missing value (NA/NaN) cannot be converted to "pred".</span></span></code></pre>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="cn">NA</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"i16"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Missing value (NA/NaN) cannot be converted to "i16" (element 2).</span></span></code></pre>
@@ -297,7 +297,7 @@ value the dtype accepts.</p>
 argument, with three levels: <code>"warn"</code> (the default) warns
 about a value R’s type cannot hold, <code>"err"</code> makes it an
 error, and <code>FALSE</code> skips the scan.</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span>, dtype <span class="op">=</span> <span class="st">"i32"</span><span class="op">)</span>, check <span class="op">=</span> <span class="st">"err"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Input `data` contains at least one <span style="color: #0000BB;">"NA"</span>, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The value materializes as <span style="color: #0000BB;">"NA"</span> again in R, which `as_array()` reports on the</span></span>
@@ -333,7 +333,7 @@ negative subnormal can test as greater than or equal to zero.</p>
 <p>Running the following example demonstrates this effect, with
 “Observed” comments corresponding to results from the PJRT CPU
 backend.</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/with_backend.html">with_backend</a></span><span class="op">(</span><span class="st">"pjrt"</span>, <span class="op">{</span></span>
@@ -376,12 +376,12 @@ exposes unsigned integer dtypes (<code>ui8</code>, <code>ui16</code>,
 <code>ui32</code>, <code>ui64</code>) backed by XLA, but R has no native
 counterpart. For values that fit into R’s signed integer range, the
 round-trip works as expected:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">200L</span>, <span class="fl">255L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"ui8"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]   0 200 255</span></span></code></pre>
 <p>Because <code>ui32</code> does not fit into R’s native integer type,
 it will be converted to <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> data type:</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">big</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2147483647L</span>, dtype <span class="op">=</span> <span class="st">"ui32"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1L</span></span>
 <span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## integer64</span></span>
@@ -390,13 +390,13 @@ it will be converted to <code><a href="https://bit64.r-lib.org/reference/bit64-p
 <code>integer64</code>, which does not cover the whole range, so
 wrapping is possible. <code><a href="../reference/as_array.html">as_array()</a></code> warns about it, and
 <code>check = "err"</code> makes it an error:</p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">big</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">0L</span>, dtype <span class="op">=</span> <span class="st">"ui64"</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1L</span></span>
 <span><span class="va">big</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1.8447e+19</span></span>
 <span><span class="co">## [ CPUui64{1} ]</span></span></code></pre>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Materialized <span style="color: #0000BB;">&lt;ui64&gt;</span> buffer contains a value `&gt;= 2^63` that wrapped through R's</span></span>
 <span><span class="co">## signed <span style="color: #0000BB;">&lt;integer64&gt;</span>.</span></span>
@@ -405,7 +405,7 @@ wrapping is possible. <code><a href="../reference/as_array.html">as_array()</a><
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = "err"` to make this an error, or `check = FALSE` to silence it.</span></span></code></pre>
 <pre><code><span><span class="co">## integer64</span></span>
 <span><span class="co">## [1] -1</span></span></code></pre>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span>, check <span class="op">=</span> <span class="st">"err"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `tengen::as_array()`:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Materialized <span style="color: #0000BB;">&lt;ui64&gt;</span> buffer contains a value `&gt;= 2^63` that wrapped</span></span>
@@ -435,14 +435,14 @@ float, so under the default <code>f32</code> the jitted result is
 rounded where the eager one is not (at an <code>f64</code> default the
 two would agree, which is exactly the point: the answer depends on a
 default rather than on the code):</p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add_pi</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">add_pi</span><span class="op">)</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">add_pi</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] FALSE</span></span></code></pre>
 <p>We can fix this, by canonicalizing the inputs:</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add_pi2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
@@ -458,7 +458,7 @@ If we were to call the function below as
 <code>2</code> to the default device (which is CPU by default) and the
 second addition would then fail because it would attempt to call
 <code>nv_add</code> with mixed-device inputs.</p>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">threeway_add</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="va">z</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span>, <span class="va">z</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>

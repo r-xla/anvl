@@ -1,7 +1,9 @@
 # Broadcast to Shape
 
-Broadcasts an array to a target shape using NumPy-style broadcasting
-rules.
+Broadcasts an array to a target shape, aligning the array's axes with
+the leading axes of `shape`, so that a vector fills a column. See
+[`nv_broadcast_arrays`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
+for more information.
 
 ## Usage
 
@@ -21,8 +23,8 @@ nv_broadcast_to(x, shape)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Target shape. The input's axes are matched against its trailing axes,
-  and each must either match or be 1; leading axes are added.
+  Target shape. The input's axes are matched against its leading axes,
+  and each must either match or be 1; trailing axes are added.
 
 ## Value
 
@@ -39,11 +41,12 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-# the length-3 vector is repeated along a new leading axis
+# the vector fills a column and is repeated along the new trailing axis
 x <- nv_array(c(1, 2, 3))
-nv_broadcast_to(x, shape = c(2, 3))
+nv_broadcast_to(x, shape = c(3, 2))
 #> AnvlArray
-#>  1 2 3
-#>  1 2 3
-#> [ CPUf32{2,3} ] 
+#>  1 1
+#>  2 2
+#>  3 3
+#> [ CPUf32{3,2} ] 
 ```

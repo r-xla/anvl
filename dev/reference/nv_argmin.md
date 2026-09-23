@@ -52,9 +52,11 @@ value: called with the same `axes` and `drop`, it points at the element
 whose value
 [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md)
 returns. Reducing several axes ranks their elements together, and the
-result indexes the row-major flattening of those axes – the order
+result indexes the column-major flattening of those axes – the order
 [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
-produces – which is also the order ties are broken in.
+produces and
+[`base::which.min()`](https://rdrr.io/r/base/which.min.html) reports –
+which is also the order ties are broken in.
 
 ## NaN handling
 

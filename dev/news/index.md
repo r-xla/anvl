@@ -4,6 +4,29 @@
 
 ### Breaking changes
 
+- [`prim_reshape()`](https://r-xla.github.io/anvl/dev/reference/prim_reshape.md)
+  and
+  [`nv_reshape()`](https://r-xla.github.io/anvl/dev/reference/nv_reshape.md),
+  and with them
+  [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
+  and every `axis = NULL` flattening default, are now column-major like
+  base R.
+- [`prim_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_bitcast_convert.md)
+  puts the axis holding an element’s pieces first rather than last when
+  the two data types differ in width, so the pieces of one element are
+  adjacent in the order
+  [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
+  reads and a narrowing conversion lays the bytes out the way
+  [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md)
+  writes them.
+- [`nv_broadcast_to()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_to.md)
+  and
+  [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
+  align axes from the first instead of the last: a shorter shape gets
+  size-1 axes appended, so a length-`nrow` vector broadcasts against a
+  matrix where a length-`ncol` one no longer does. Write
+  [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_axes.md)
+  with an explicit axis mapping for the previous right-aligned behavior.
 - The `@jit` roxygen tag was removed; wrap functions in
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) at the
   definition instead.
@@ -108,7 +131,7 @@
   [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md)
   /
   [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md).
-  Reducing several axes indexes their row-major flattening. Write
+  Reducing several axes indexes their column-major flattening. Write
   `nv_argmax(x, axes = -1L)` for the previous default.
 - The `tensor_to_gval` argument of
   [`GraphDescriptor()`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)

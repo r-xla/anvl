@@ -3,66 +3,6 @@
 This vignette lists various things to be aware of, specifically in
 relation to base R.
 
-## Row-major vs column-major ordering
-
-R stores matrices and arrays in *column-major* order, while {anvl}
-(following XLA) uses *row-major* order. For most operations, this is an
-internal implementation detail that does not change the semantics.
-However, for reshaping operations such as
-[`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
-there is a difference.
-
-Consider the 2x2 matrix below:
-
-``` r
-
-m <- matrix(1:4, nrow = 2)
-m
-```
-
-    ##      [,1] [,2]
-    ## [1,]    1    3
-    ## [2,]    2    4
-
-In base R, [`as.vector()`](https://rdrr.io/r/base/vector.html) flattens
-it column-by-column, so we get `1, 2, 3, 4`:
-
-``` r
-
-as.vector(m)
-```
-
-    ## [1] 1 2 3 4
-
-In {anvl}, reshaping to a length-4 vector traverses the data row-by-row,
-so we get `1, 3, 2, 4`:
-
-``` r
-
-nv_flatten(m)
-```
-
-    ## AnvlArray
-    ##  1
-    ##  3
-    ##  2
-    ##  4
-    ## [ CPUi32{4} ]
-
-If you need column-major flattening in {anvl}, transpose first:
-
-``` r
-
-nv_flatten(t(m))
-```
-
-    ## AnvlArray
-    ##  1
-    ##  2
-    ##  3
-    ##  4
-    ## [ CPUi32{4} ]
-
 ## No recycling
 
 Base R *recycles* the shorter operand when two vectors of different
@@ -103,8 +43,8 @@ nv_array(1:4) + nv_array(1:2)
     ## ! All non-scalar arrays must have the same shape, but got (4), (2). Use
     ##   `nv_broadcast_arrays()` for general broadcasting.
 
-When two non-scalar arrays differ only by size-1 axes (numpy-style
-broadcasting, e.g. shape `(2, 3)` and `(1, 3)`), use
+When two non-scalar arrays differ only by size-1 axes (e.g. shape
+`(2, 3)` and `(1, 3)`), use
 [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
 to align them explicitly first:
 
@@ -146,10 +86,63 @@ xs[[1]] + xs[[2]]
     ##  12 24 36
     ## [ CPUf32{2,3} ]
 
-Note that even
+Axes are aligned **from the first**: an array with fewer axes gets
+size-1 axes appended, so its axis 1 meets axis 1 of the other. Anvl
+arrays are column-major, so the first axis is the one that varies
+fastest, and appending leaves every axis the array already had meaning
+what it did. (NumPy prepends instead, which is the matching choice for a
+row-major array.) A vector therefore meets a matrix as a **column**: a
+length-`nrow` vector broadcasts against it, one value per row, and a
+length-`ncol` one does not.
+
+``` r
+
+x <- nv_array(c(1, 2, 3))
+y <- nv_array(matrix(1, nrow = 3, ncol = 3))
+xs <- nv_broadcast_arrays(x, y)
+xs[[1]] + xs[[2]]
+```
+
+    ## AnvlArray
+    ##  2 2 2
+    ##  3 3 3
+    ##  4 4 4
+    ## [ CPUf32{3,3} ]
+
+which is what base R already gives you for the same two operands:
+
+``` r
+
+matrix(1, nrow = 3, ncol = 3) + c(1, 2, 3)
+```
+
+    ##      [,1] [,2] [,3]
+    ## [1,]    2    2    2
+    ## [2,]    3    3    3
+    ## [3,]    4    4    4
+
+``` r
+
+nv_broadcast_to(nv_array(c(10, 20, 30)), shape = c(2, 3))
+```
+
+    ## Error in `prim_broadcast_in_axes()`:
+    ## ! `x` dimension 1 and `result` dimension 1 must match unless
+    ## `x` dim is 1.
+    ## ✖ Got shapes (3) and (2x3).
+
+This is *not* base R’s recycling, which is a different mechanism: base R
+has no broadcasting between arrays at all
+(`matrix(1:6, 2) + matrix(c(10, 20, 30), 1)` is a “non-conformable
+arrays” error), and recycles a shorter *vector* over the column-major
+flattening instead, warning only when the lengths do not divide. That
+agrees with broadcasting whenever the vector’s length is the size of the
+first axis – the case above, and the usual way a vector meets a matrix –
+and to disagree quietly otherwise – `matrix(1:6, 2) + c(10, 20, 30)`
+recycles rather than adding one value per column. So
 [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
-cannot replicate R’s recycling for shapes like `(4)` and `(2)` – the
-shapes must be broadcast-compatible in the numpy sense.
+cannot replicate recycling for shapes like `(4)` and `(2)`: every axis
+must either match or be 1.
 
 ## No `NA`s
 

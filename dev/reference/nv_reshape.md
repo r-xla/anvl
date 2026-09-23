@@ -1,7 +1,6 @@
 # Reshape
 
-Reshapes an array to a new shape without changing the underlying data.
-Returns the input unchanged if it already has the target shape.
+Reshapes an array to a new shape using col-major semantics.
 
 ## Usage
 
@@ -30,11 +29,6 @@ nv_reshape(x, shape)
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the given `shape` and the same data type as `x`.
 
-## Differences from base R
-
-Note that row-major order is used, which differs from R's column-major
-order.
-
 ## See also
 
 [`prim_reshape()`](https://r-xla.github.io/anvl/dev/reference/prim_reshape.md)
@@ -43,36 +37,35 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-# the elements are reread in row-major order; the data type is untouched
+# the elements keep their column-major order; the data type is untouched
 x <- array(1:6, dim = c(3, 2))
-# row-major
 nv_reshape(x, 6L)
 #> AnvlArray
 #>  1
-#>  4
 #>  2
-#>  5
 #>  3
+#>  4
+#>  5
 #>  6
 #> [ CPUi32{6} ] 
-# differs from R (col-major)
+# the order base R reads them in, too
 c(x)
 #> [1] 1 2 3 4 5 6
 
 # infer the size of the second axis
 nv_reshape(x, c(2, -1))
 #> AnvlArray
-#>  1 4 2
-#>  5 3 6
+#>  1 3 5
+#>  2 4 6
 #> [ CPUi32{2,3} ] 
 # flatten
 nv_reshape(x, -1)
 #> AnvlArray
 #>  1
-#>  4
 #>  2
-#>  5
 #>  3
+#>  4
+#>  5
 #>  6
 #> [ CPUi32{6} ] 
 ```

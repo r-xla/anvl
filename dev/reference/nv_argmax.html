@@ -129,9 +129,9 @@ set to 1 (<code>drop = FALSE</code>).</p>
 <p><code>nv_argmax()</code> is the index to <code><a href="nv_reduce_max.html">nv_reduce_max()</a></code>'s value: called with the
 same <code>axes</code> and <code>drop</code>, it points at the element whose value
 <code><a href="nv_reduce_max.html">nv_reduce_max()</a></code> returns. Reducing several axes ranks their elements
-together, and the result indexes the row-major flattening of those axes –
-the order <code><a href="nv_flatten.html">nv_flatten()</a></code> produces – which is also the order ties are
-broken in.</p>
+together, and the result indexes the column-major flattening of those axes
+– the order <code><a href="nv_flatten.html">nv_flatten()</a></code> produces and <code><a href="https://rdrr.io/r/base/which.min.html" class="external-link">base::which.max()</a></code> reports – which
+is also the order ties are broken in.</p>
     </div>
     <div class="section level2">
     <h2 id="nan-handling">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling"></a></h2>
@@ -156,7 +156,7 @@ entries are skipped.</p>
 <span class="r-in"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_argmax</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="co"># indexes the flattened matrix</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{} ] </span>
 <span class="r-in"><span><span class="fu">nv_argmax</span><span class="op">(</span><span class="va">m</span>, axes <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span> <span class="co"># one index per row</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>

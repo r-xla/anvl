@@ -100,9 +100,12 @@ An R value materializes at its <a href="default_dtypes.html">default data type</
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
 Any target data type except <code>bool</code>.
-One of the same bit width as the input's leaves the shape unchanged; a narrower
-one adds a trailing axis holding the pieces; a wider one consumes the last
-axis, whose size must equal the ratio of the two widths.</p></dd>
+One of the same bit width as the input's leaves the shape unchanged; a
+narrower one adds a <em>leading</em> axis holding the pieces; a wider one consumes
+the first axis, whose size must equal the ratio of the two widths. The
+pieces of one element are therefore adjacent in the column-major element
+order <code><a href="nv_flatten.html">nv_flatten()</a></code> reads, and a narrowing conversion lays the bytes out
+the way <code><a href="as_raw.html">as_raw()</a></code> writes them.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -122,7 +125,10 @@ Has the given <code>dtype</code>, and the shape described under <code>dtype</cod
 
 
 <p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_bitcast_convert.html" class="external-link">hlo_bitcast_convert()</a></code>, specified under
-<a href="https://openxla.org/stablehlo/spec#bitcast_convert" class="external-link">bitcast_convert</a>.</p>
+<a href="https://openxla.org/stablehlo/spec#bitcast_convert" class="external-link">bitcast_convert</a>.
+StableHLO puts the lane axis last, so a width-changing conversion is
+lowered with one <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_transpose.html" class="external-link">hlo_transpose()</a></code> that rotates it to the front, or off the
+front, depending on the direction.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -137,13 +143,16 @@ Has the given <code>dtype</code>, and the shape described under <code>dtype</cod
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013e-45</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{1} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># narrower: a trailing axis holds the four bytes of each i32</span></span></span>
+<span class="r-in"><span><span class="co"># narrower: a leading axis holds the four bytes of each i32</span></span></span>
 <span class="r-in"><span><span class="fu">prim_bitcast_convert</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1L</span>, dtype <span class="op">=</span> <span class="st">"i32"</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"i8"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1 0 0 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi8{1,4} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi8{4,1} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># wider: the last axis is consumed, and its size must be the width ratio</span></span></span>
+<span class="r-in"><span><span class="co"># wider: the first axis is consumed, and its size must be the width ratio</span></span></span>
 <span class="r-in"><span><span class="fu">prim_bitcast_convert</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">4</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"i8"</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"i32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.6843e+07</span>

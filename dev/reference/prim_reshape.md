@@ -1,8 +1,8 @@
 # Primitive Reshape
 
 Reshapes an array to a new shape without changing the underlying data.
-Note that row-major order is used, which differs from R's column-major
-order.
+The elements keep their column-major order, exactly as base R's `dim<-`
+does.
 
 ## Usage
 
@@ -44,6 +44,11 @@ Has the same data type as the input and the given `shape`.
 Lowers to
 [`hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html),
 specified under [reshape](https://openxla.org/stablehlo/spec#reshape).
+The lowering wraps it in two
+[`hlo_transpose()`](https://r-xla.github.io/stablehlo/reference/hlo_transpose.html)
+calls that reverse every axis, which is what turns stablehlo's row-major
+reshape into a column-major one; each is skipped where that side has at
+most one axis.
 
 ## See also
 
@@ -52,11 +57,11 @@ specified under [reshape](https://openxla.org/stablehlo/spec#reshape).
 ## Examples
 
 ``` r
-# the elements are reread in row-major order; the data type is untouched
+# the elements keep their column-major order; the data type is untouched
 x <- nv_array(1:6)
 prim_reshape(x, shape = c(2, 3))
 #> AnvlArray
-#>  1 2 3
-#>  4 5 6
+#>  1 3 5
+#>  2 4 6
 #> [ CPUi32{2,3} ] 
 ```

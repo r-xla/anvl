@@ -67,7 +67,7 @@ state <- nv_rng_state(42L)
 result <- nv_rbinom(c(2, 3), state)
 result$values
 #> AnvlArray
-#>  0 0 1
 #>  0 1 1
+#>  0 0 1
 #> [ CPUi32{2,3} ] 
 ```

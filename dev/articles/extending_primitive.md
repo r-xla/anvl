@@ -317,10 +317,10 @@ prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
 
   new_shape <- grad_shape
   new_shape[axis] <- old_shape[axis]
-  new_shape <- append(new_shape, times, after = axis - 1L)
+  new_shape <- append(new_shape, times, after = axis)
 
   grad_reshaped <- prim_reshape(grad, new_shape)
-  grad_summed <- prim_reduce_sum(grad_reshaped, axes = axis, drop = TRUE)
+  grad_summed <- prim_reduce_sum(grad_reshaped, axes = axis + 1L, drop = TRUE)
   list(grad_summed)
 })
 ```
@@ -425,7 +425,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x5609a488c918>
+#> <environment: 0x55a6c89ab270>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")

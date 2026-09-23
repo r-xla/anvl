@@ -300,8 +300,9 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 2.5312 0.0000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 0.0000 0.0000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1e+44 *</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2.6625 2.5223 2.3822</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2.2421 2.1019 1.9618</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

@@ -56,7 +56,7 @@ decreasing along that axis.
 
 Taking the top `k` over several axes ranks all of their elements
 together, so `nv_top_k(x, k)` equals `nv_top_k(nv_flatten(x), k)`. The
-indices then index the row-major flattening of those axes – the order
+indices then index the column-major flattening of those axes – the order
 [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
 produces – rather than any single axis.
 

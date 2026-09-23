@@ -3,8 +3,8 @@
 Concatenates arrays along an axis. Operands are promoted to a common
 data type and scalars are broadcast before concatenation.
 
-You can also use [`c()`](https://rdrr.io/r/base/c.html), which flattens
-its arguments first, like base R.
+You can also use [`c()`](https://rdrr.io/r/base/c.html) on scalars and
+1-D arrays, like base R.
 
 ## Usage
 
@@ -44,10 +44,10 @@ except `axis`, which is the sum of input sizes.
 [`c()`](https://rdrr.io/r/base/c.html) concatenates scalars and 1-D
 arrays into a 1-D array, like
 [`base::c()`](https://rdrr.io/r/base/c.html) does for vectors. An array
-with more than one axis is an error: base R would flatten it in
-column-major order, whereas an anvl array flattens in row-major order
-(see the "Gotchas" vignette), so concatenate those along an explicit
-`axis` instead.
+with more than one axis is an error rather than being flattened the way
+base R does; concatenate those along an explicit `axis`, or
+[`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
+them first.
 
 ## See also
 
