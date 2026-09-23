@@ -7,10 +7,10 @@
 nv_triangular_solve(
   a,
   b,
-  left_side = TRUE,
+  left = TRUE,
   lower = TRUE,
-  unit_diagonal = FALSE,
-  transpose_a = FALSE
+  unit_diag = FALSE,
+  transpose = FALSE
 )
 }
 \arguments{
@@ -28,10 +28,10 @@ neither has one.}
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side. For \code{a} of shape \verb{(B..., n, n)}, \code{b} may be either:
 \itemize{
-\item full rank — shape \verb{(B..., n, k)} when \code{left_side = TRUE}, or
-\verb{(B..., k, n)} when \code{left_side = FALSE};
+\item full rank — shape \verb{(B..., n, k)} when \code{left = TRUE}, or
+\verb{(B..., k, n)} when \code{left = FALSE};
 \item one rank less, shape \verb{(B..., n)}, meaning a single column
-(\code{left_side = TRUE}) or row (\code{left_side = FALSE}) per batch — it
+(\code{left = TRUE}) or row (\code{left = FALSE}) per batch — it
 is reshaped internally and the reshape is undone on the result so
 the output rank matches \code{b}.
 }
@@ -39,18 +39,18 @@ the output rank matches \code{b}.
 \code{b}'s batch axes (\code{B...}) must match \code{a}'s exactly. It is promoted
 together with \code{a} -- see \code{a}.}
 
-\item{left_side}{(\code{logical(1)})\cr
+\item{left}{(\code{logical(1)})\cr
 If \code{TRUE} (default), solve \code{op(a) \%*\% x = b}; if \code{FALSE},
 solve \code{x \%*\% op(a) = b}.}
 
 \item{lower}{(\code{logical(1)})\cr
 Whether \code{a} is lower or upper triangular. Defaults to \code{TRUE}.}
 
-\item{unit_diagonal}{(\code{logical(1)})\cr
+\item{unit_diag}{(\code{logical(1)})\cr
 If \code{TRUE}, the diagonal of \code{a} is treated as all ones (and the actual
 values on the diagonal are ignored). Defaults to \code{FALSE}.}
 
-\item{transpose_a}{(\code{logical(1)})\cr
+\item{transpose}{(\code{logical(1)})\cr
 If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{FALSE}.}
 }
 \value{
@@ -60,15 +60,15 @@ or the default float data type (see \code{\link[=default_dtypes]{default_dtypes(
 an integer one.
 }
 \description{
-Solves a triangular system of linear equations. When \code{left_side = TRUE},
-returns \code{x} such that \code{op(a) \%*\% x = b}. When \code{left_side = FALSE},
+Solves a triangular system of linear equations. When \code{left = TRUE},
+returns \code{x} such that \code{op(a) \%*\% x = b}. When \code{left = FALSE},
 returns \code{x} such that \code{x \%*\% op(a) = b}. Here \code{op} is \code{a} or \code{t(a)}
-depending on \code{transpose_a}.
+depending on \code{transpose}.
 }
 \details{
 As a convenience, \code{b} may have one fewer axis than \code{a} (a single
 right-hand side per batch, shape \verb{(B..., n)} for \code{a} of shape
-\verb{(B..., n, n)}). It is reshaped internally to a column (\code{left_side = TRUE}) or row (\code{left_side = FALSE}) and reshaped back on the way out.
+\verb{(B..., n, n)}). It is reshaped internally to a column (\code{left = TRUE}) or row (\code{left = FALSE}) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
 
 Differentiation is only implemented for a single system: a \code{\link[=gradient]{gradient()}} of a

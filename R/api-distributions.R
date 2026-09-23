@@ -70,7 +70,7 @@ promote_distribution_args <- function(...) {
 #' shape and data type of `x`/`q`/`p`.
 #'
 #' `nv_rnorm()` returns a named `list` of two [`arrayish`]: `state`, the updated
-#' RNG state with `initial_state`'s data type and shape, and `values`, the
+#' RNG state with the input `state`'s data type and shape, and `values`, the
 #' sample of shape `shape` and the data type described under `dtype`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
@@ -160,7 +160,7 @@ nv_pnorm <- jit(
 
     # Compute Q(-d) for the asymptotic region, first clamping the value to protect
     # gradient from poisoning later
-    d_asymp <- nv_max(-d, 1)
+    d_asymp <- nv_pmax(-d, 1)
     d2_asymp <- d_asymp * d_asymp
     w <- 1 / d2_asymp
     # Compute just what is required for precision (confirmed if statement compiles
@@ -453,8 +453,8 @@ nv_qnorm <- jit(
 #' value per element of `x`/`q`/`p`. Non-scalar `min`/`max` therefore give a
 #' separate univariate Uniform per element, *not* a multivariate Uniform over
 #' the hyper-rectangle \eqn{\prod_i [a_i, b_i]}. For that, reduce over the
-#' result: `nv_reduce_prod(nv_dunif(x, min, max))`, or
-#' `nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
+#' result: `nv_prod(nv_dunif(x, min, max))`, or
+#' `nv_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
 #'
 #' @seealso [nv_runif()] for sampling from a uniform distribution.
 #' @return

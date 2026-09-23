@@ -4,15 +4,10 @@
 \alias{prim_rng_bit_generator}
 \title{Primitive RNG Bit Generator}
 \usage{
-prim_rng_bit_generator(
-  initial_state,
-  rng_algorithm = "THREE_FRY",
-  dtype,
-  shape
-)
+prim_rng_bit_generator(state, rng_algorithm = "THREE_FRY", dtype, shape)
 }
 \arguments{
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of the \code{ui64} data type. Its length depends on
 \code{rng_algorithm} -- exactly 2 for \code{"THREE_FRY"}, 2 or 3 for \code{"PHILOX"},
 and whatever the implementation wants for \code{"DEFAULT"}.}
@@ -29,7 +24,7 @@ Shape of the result.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
-Elements \code{state}, the updated RNG state with \code{initial_state}'s data type
+Elements \code{state}, the updated RNG state with the input \code{state}'s data type
 and shape, and \code{values}, the random values with the given \code{dtype} and
 \code{shape}.
 }

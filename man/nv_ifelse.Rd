@@ -4,37 +4,39 @@
 \alias{nv_ifelse}
 \title{Conditional Element Selection}
 \usage{
-nv_ifelse(pred, true_value, false_value)
+nv_ifelse(test, yes, no)
 }
 \arguments{
-\item{pred}{(\code{\link{arrayish}})\cr
+\item{test}{(\code{\link{arrayish}})\cr
 Predicate array. Must be a boolean or an R logical, and scalar or the same
 shape as the non-scalar arguments.}
 
-\item{true_value, false_value}{(\code{\link{arrayish}})\cr
-Values to return where \code{pred} is \code{TRUE} / \code{FALSE}. Can be of any data
+\item{yes, no}{(\code{\link{arrayish}})\cr
+Values to return where \code{test} is \code{TRUE} / \code{FALSE}. Can be of any data
 type; the two are
 \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars (including \code{pred}) are
+Scalars (including \code{test}) are
 \link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar arguments.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the common data type of \code{true_value} and \code{false_value}, and their
-broadcast shape.
+Has the common data type of \code{yes} and \code{no}, and their broadcast shape.
 }
 \description{
-Selects elements from \code{true_value} or \code{false_value} based on \code{pred},
-analogous to R's \code{\link[=ifelse]{ifelse()}}.
+Selects elements from \code{yes} or \code{no} based on \code{test}, mirroring R's
+\code{\link[=ifelse]{ifelse()}}.
+
+\code{\link[=nv_if]{nv_if()}} is the other conditional: it mirrors R's \code{if} construct and
+branches between two \emph{functions}, evaluating only the selected one.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-pred <- nv_array(c(TRUE, FALSE, TRUE))
-nv_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+test <- nv_array(c(TRUE, FALSE, TRUE))
+nv_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 # scalar branches are broadcast and promoted to a common data type
-nv_ifelse(pred, nv_scalar(1L), nv_scalar(0.5))
+nv_ifelse(test, nv_scalar(1L), nv_scalar(0.5))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_ifelse]{prim_ifelse()}} for the underlying primitive.
+\code{\link[=prim_ifelse]{prim_ifelse()}} for the underlying primitive, \code{\link[=nv_if]{nv_if()}}.
 }

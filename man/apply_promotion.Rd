@@ -42,14 +42,14 @@ across categories is the \verb{nv_*} layer's job.
 \details{
 Pass only the operands that must agree, and name them as the
 \code{\link[=graph_desc_add]{graph_desc_add()}} call names them. \code{\link[=prim_ifelse]{prim_ifelse()}} promotes its two
-branches and leaves \code{pred} a \code{bool}; \code{\link[=prim_scatter]{prim_scatter()}} promotes \code{x} and
+branches and leaves \code{test} a \code{bool}; \code{\link[=prim_scatter]{prim_scatter()}} promotes \code{x} and
 \code{update} and leaves the indices alone. A primitive with one arrayish operand,
 or with deliberately heterogeneous ones (\code{\link[=prim_sort]{prim_sort()}}'s payload,
 \code{\link[=prim_while]{prim_while()}}'s loop state), calls this not at all.
 
 Call it before the body uses the operands for anything else, so it sees
 settled data types throughout: \code{\link[=prim_reduce]{prim_reduce()}} reads \code{dtype(init)} to trace
-its reductor and \code{\link[=prim_scatter]{prim_scatter()}} builds its update computation's parameter
+its reducer and \code{\link[=prim_scatter]{prim_scatter()}} builds its update computation's parameter
 slots from \code{\link[=peek_dtype]{peek_dtype()}}, both before recording a call.
 
 It is idempotent: once every operand is at the data type the rule names,

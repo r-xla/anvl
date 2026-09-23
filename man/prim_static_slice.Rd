@@ -4,7 +4,7 @@
 \alias{prim_static_slice}
 \title{Primitive Static Slice}
 \usage{
-prim_static_slice(x, start_indices, limit_indices, strides)
+prim_static_slice(x, start_indices, end_indices, strides)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -13,11 +13,12 @@ One input. Can be any data type. An R value materializes at its
 
 \item{start_indices}{(\code{integer()})\cr
 Start indices (inclusive), one per axis. Must satisfy
-\verb{1 <= start_indices <= limit_indices} per axis.}
+\verb{1 <= start_indices <= end_indices} per axis.}
 
-\item{limit_indices}{(\code{integer()})\cr
+\item{end_indices}{(\code{integer()})\cr
 End indices (inclusive), one per axis. Must satisfy
-\code{limit_indices <= shape(x)} per axis.}
+\code{end_indices <= shape(x)} per axis. Unlike StableHLO's exclusive
+\code{limit_indices}, the element at \code{end_indices} is part of the slice.}
 
 \item{strides}{(\code{integer()})\cr
 Step sizes, one per axis. Must be \verb{>= 1}. A stride of \code{1}
@@ -26,11 +27,11 @@ selects every element; a stride of \code{2} selects every other element, etc.}
 \value{
 (\code{\link{arrayish}})\cr
 Has the same data type as the input and shape
-\code{ceiling((limit_indices - start_indices + 1) / strides)}.
+\code{ceiling((end_indices - start_indices + 1) / strides)}.
 }
 \description{
 Extracts a slice from an array using static (compile-time) indices.
-All indices, limits, and strides are fixed R integers.
+All indices and strides are fixed R integers, and both ends are inclusive.
 
 Use \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}} instead when the start position must be
 computed at runtime (e.g. depends on array values).
@@ -52,20 +53,20 @@ Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}, specified under
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# 1-D: extract elements 2 through 5, the limit being inclusive
+# 1-D: extract elements 2 through 5, the end being inclusive
 x <- nv_array(1:10)
-prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
+prim_static_slice(x, start_indices = 2L, end_indices = 5L, strides = 1L)
 
 # 1-D: every other element using strides
 x <- nv_array(1:10)
-prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
+prim_static_slice(x, start_indices = 1L, end_indices = 10L, strides = 2L)
 
 # 2-D: extract the submatrix of rows 1-3 and columns 2-4
 x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 prim_static_slice(x,
   start_indices = c(1L, 2L),
-  limit_indices = c(3L, 4L),
-  strides       = c(1L, 1L)
+  end_indices = c(3L, 4L),
+  strides = c(1L, 1L)
 )
 \dontshow{\}) # examplesIf}
 }

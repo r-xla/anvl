@@ -23,10 +23,10 @@ API functions shipped with {anvl} must work with **both** the pjrt and quickr ba
 
 ### Follow R semantics
 
-- **Naming:** Use R naming conventions. If base R or a common R package already has a function for this operation, match its name. For example: `nv_abs` (not `nv_absolute`), `nv_transpose` (matching `t()`), `nv_seq` (matching `seq()`). Only deviate from R names when there is a good reason (e.g. no R equivalent, or the R name would be ambiguous in the array context).
-- **Semantics:** Match R behavior where it makes sense. For example, `nv_seq(start, end)` mirrors R's `seq()`, reductions like `nv_reduce_sum()` map to `sum()`. When R semantics conflict with array programming conventions (e.g. recycling rules vs. explicit broadcasting), prefer the array convention but document the difference.
+- **Naming:** Use R naming conventions. If base R or a common R package already has a function for this operation, match its name. For example: `nv_abs` (not `nv_absolute`), `nv_aperm` (matching `aperm()`), `nv_seq` (matching `seq()`). Only deviate from R names when there is a good reason (e.g. no R equivalent, or the R name would be ambiguous in the array context).
+- **Semantics:** Match R behavior where it makes sense. For example, `nv_seq(from, to)` mirrors R's `seq()`, reductions like `nv_sum()` map to `sum()`. When R semantics conflict with array programming conventions (e.g. recycling rules vs. explicit broadcasting), prefer the array convention but document the difference.
 - **R generics:** If a base R generic exists for this operation, implement an S3 method. For example:
-  - `t()` → `t.AnvlBox` / `t.AnvlArray` dispatching to `nv_transpose()`
+  - `t()` → `t.AnvlBox` / `t.AnvlArray` dispatching to `nv_aperm()`
   - `abs()` → handled via `Math.AnvlBox` group generic
   - `+`, `-`, `*`, `/` → handled via `Ops.AnvlBox` group generic
   - `sum()`, `prod()`, `min()`, `max()` → handled via `Summary.AnvlBox` group generic
@@ -99,7 +99,7 @@ even when `x` is a float.
 
 Keep the plain spelling only where the value is genuinely a real number that happens to be whole:
 a distribution parameter, a probability bound, a threshold, a coefficient -- `sd = 1`,
-`lower = 0, upper = 1`, `nv_max(-d, 1)`. This matters most for an argument default, which may meet
+`lower = 0, upper = 1`, `nv_pmax(-d, 1)`. This matters most for an argument default, which may meet
 nothing at all and then settles on the default of its own category: `nv_rnorm(mean = 0, sd = 1)`
 written with `0L` / `1L` returns the sample at the default *integer*.
 
@@ -118,10 +118,10 @@ For full NumPy-style broadcasting (not just scalar-against-array), use `nv_broad
 If the underlying primitive requires all its inputs to share a dtype (e.g. `prim_clamp`, `prim_pad`), say so with a rule at the top rather than converting afterwards:
 
 ```r
-args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
+args <- as_anvl_arrays(x = x, min = min, max = max, .promote = promotion_like("x"))
 ```
 
-`promotion_like("x")` _builds_ an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit.
+`promotion_like("x")` _builds_ an R bound at `x`'s dtype -- so `nv_clamp(x_f64, 0, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have materialized the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
 
 ### Static arguments
 

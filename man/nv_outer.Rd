@@ -4,17 +4,17 @@
 \alias{nv_outer}
 \title{Outer Product}
 \usage{
-nv_outer(lhs, rhs)
+nv_outer(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Two 1-D arrays. Can be of any data type; the two are
 \link[=nv_promote_to_common]{promoted to a common data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has the operands' common data type and shape
-\verb{(length(lhs), length(rhs))}.
+\verb{(length(x), length(y))}.
 }
 \description{
 Computes the outer product of two 1-D arrays.

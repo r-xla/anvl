@@ -4,7 +4,7 @@ test_that("nv_mean", {
   }
 
   alpha <- nv_scalar(0.5)
-  y <- nv_array(1:10, "f32")
+  y <- nv_array(1:10, dtype = "f32")
   out <- jit(gradient(f, wrt = "alpha"))(y, alpha)
   expect_shape(out[[1L]], integer())
 })
@@ -15,8 +15,8 @@ describe("the default integer", {
     # `prim_scatter` with the forward indices, so a wider index data type has
     # to survive the scatter.
     x <- nv_array(c(3, 1, 4, 1, 5, 9))
-    f <- function(x) nv_reduce_sum(nv_top_k(x, k = 3L))
-    g <- function(x) nv_reduce_sum(nv_cummax(x))
+    f <- function(x) nv_sum(nv_top_k(x, k = 3L))
+    g <- function(x) nv_sum(nv_cummax(x))
     at_i32 <- list(
       top_k = as_array(jit(gradient(f))(x)[[1L]]),
       cummax = as_array(jit(gradient(g))(x)[[1L]])

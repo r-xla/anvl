@@ -2,9 +2,7 @@
 
 # A node's name, or -- for a literal that no call defines -- its value, which
 # is what puts `2:i32` straight into the operand list instead of a name the
-# reader would have to look up. An optimization pass can make a literal the
-# output of a `fill`, and that one is named like any other value: two constants
-# of equal value are two nodes, and one name each is what tells them apart.
+# reader would have to look up.
 format_node_id <- function(node, node_ids, digits = getOption("digits")) {
   id <- node_ids[[node]]
   if (!is.null(id)) {
@@ -68,8 +66,8 @@ build_node_ids <- function(inputs, constants, calls) {
 # graph around it, so letting them keep the name they already have is what shows
 # the capture. Every node is named by the outermost graph that reaches it.
 name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
-  name_node <- function(node, counter, prefix, name_literals = FALSE) {
-    if (!is.null(node_ids[[node]]) || (is_graph_literal(node) && !name_literals)) {
+  name_node <- function(node, counter, prefix) {
+    if (!is.null(node_ids[[node]]) || is_graph_literal(node)) {
       return(invisible(NULL))
     }
     counters[[counter]] <- counters[[counter]] + 1L
@@ -84,8 +82,7 @@ name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
   }
   for (call in calls) {
     for (node in call$outputs) {
-      # A call defines its outputs, literal or not, so each gets a name here.
-      name_node(node, "v", "", name_literals = TRUE)
+      name_node(node, "v", "")
     }
   }
   # Sub-graphs come after the whole graph holding them, so that a graph's own
@@ -410,7 +407,7 @@ format_graph_lines <- function(
 
   c(
     # Only the signature shares its line with whatever the graph is printed
-    # behind -- a `cond_graph = `, say -- so only its budget pays for it.
+    # behind -- a `cond = `, say -- so only its budget pays for it.
     layout_row(header, "", width - prefix_width),
     vapply(
       calls,

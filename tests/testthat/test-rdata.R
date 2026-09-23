@@ -448,8 +448,8 @@ describe("a primitive's operands", {
   it("the operand slots that take a scalar accept a literal", {
     x <- nv_array(c(1, 2), dtype = "f64")
     expect_dtype(prim_pad(x, 0, 1L, 0L, 0L), "f64")
-    expect_dtype(prim_clamp(0, x, 1), "f64")
-    expect_dtype(prim_reduce(x, init = 0, axes = 1L, reductor = prim_add), "f64")
+    expect_dtype(prim_clamp(x, 0, 1), "f64")
+    expect_dtype(prim_reduce(x, init = 0, axes = 1L, reducer = prim_add), "f64")
     expect_dtype(prim_ifelse(nv_scalar(TRUE), nv_scalar(1, dtype = "f64"), 0), "f64")
   })
 
@@ -517,7 +517,7 @@ describe("a primitive's operands", {
     # `promote = NULL`: a sort payload and a loop-carried state are deliberately
     # heterogeneous, so there is nothing for an R value to yield to and each
     # materializes at its own default, as before.
-    expect_dtype(nv_argsort(nv_array(c(3, 1, 2))), default_int())
+    expect_dtype(nv_order(nv_array(c(3, 1, 2))), default_int())
     expect_equal(as.vector(nv_sort(nv_array(c(3, 1, 2)))), c(1, 2, 3))
     out <- nv_while(
       list(i = nv_scalar(0L), w = 0.5),
@@ -596,7 +596,7 @@ describe("an R value in an nv_* function", {
       if (is_dtype_float(as_dtype(dt))) {
         expect_equal(dtype(nv_pad(x, 0, 1L, 1L)), as_dtype(dt), info = dt)
       } else {
-        expect_error(nv_pad(x, 0, 1L, 1L), "Cannot bring `padding_value`", info = dt)
+        expect_error(nv_pad(x, 0, 1L, 1L), "Cannot bring `value`", info = dt)
       }
     }
     x <- nv_array(c(1, 2), dtype = "f64")

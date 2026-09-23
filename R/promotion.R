@@ -369,14 +369,14 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #' @details
 #' Pass only the operands that must agree, and name them as the
 #' [`graph_desc_add()`] call names them. [`prim_ifelse()`] promotes its two
-#' branches and leaves `pred` a `bool`; [`prim_scatter()`] promotes `x` and
+#' branches and leaves `test` a `bool`; [`prim_scatter()`] promotes `x` and
 #' `update` and leaves the indices alone. A primitive with one arrayish operand,
 #' or with deliberately heterogeneous ones ([`prim_sort()`]'s payload,
 #' [`prim_while()`]'s loop state), calls this not at all.
 #'
 #' Call it before the body uses the operands for anything else, so it sees
 #' settled data types throughout: [`prim_reduce()`] reads `dtype(init)` to trace
-#' its reductor and [`prim_scatter()`] builds its update computation's parameter
+#' its reducer and [`prim_scatter()`] builds its update computation's parameter
 #' slots from [`peek_dtype()`], both before recording a call.
 #'
 #' It is idempotent: once every operand is at the data type the rule names,
@@ -457,9 +457,12 @@ dtypes_merged <- function(answers, args) {
   out
 }
 
+# An unnamed operand is spelled the way a primitive that takes its operands
+# through `...` names it -- `..2` -- so that the promotion layer and the
+# inference rules call the same operand the same thing.
 arg_label <- function(args, i) {
   nm <- rlang::names2(args)[[i]]
-  if (nzchar(nm)) sprintf("`%s`", nm) else sprintf("argument %d", i)
+  if (nzchar(nm)) sprintf("`%s`", nm) else sprintf("`..%d`", i)
 }
 
 # Whether `x` reaches `dtype` without losing what it holds: a value that has a
@@ -646,10 +649,10 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' materialize at.
 #'
 #' The same defaults settle the data type of a result anvl chooses on its own,
-#' where no R value is involved at all: an index (`nv_argmax()`,
-#' `nv_argsort()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
-#' the accumulator a boolean input is counted at (`nv_reduce_sum()`,
-#' `nv_reduce_prod()`, `nv_cumsum()`, `nv_cumprod()`, `nv_trace()`), and the
+#' where no R value is involved at all: an index (`nv_which_max()`,
+#' `nv_order()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
+#' the accumulator a boolean input is counted at (`nv_sum()`,
+#' `nv_prod()`, `nv_cumsum()`, `nv_cumprod()`, `nv_trace()`), and the
 #' float a non-float input is averaged or interpolated at (`nv_mean()`,
 #' `nv_var()`, `nv_sd()`, `nv_median()`, `nv_quantile()`).
 #'

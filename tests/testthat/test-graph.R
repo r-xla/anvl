@@ -207,44 +207,33 @@ test_that("can pass abstract arrays to trace_fn", {
 
 test_that("error handling", {
   local_registered_default_dtypes()
-  expect_snapshot(error = TRUE, jit(prim_ceil)(nv_array(1:4)))
+  expect_snapshot(error = TRUE, jit(prim_ceiling)(nv_array(1:4)))
   expect_snapshot(
     error = TRUE,
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = c(2, 2))
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = c(2, 2))
   )
 })
 
-test_that("error handling: stablehlo errors use anvl's terminology", {
+test_that("error handling: type inference reports in anvl's terminology", {
   local_registered_default_dtypes()
-  # `cli_abort()` errors from stablehlo store an already formatted message in
-  # the condition's fields. Shapes rather than data types, since operands whose
-  # data types disagree are refused by `promotion_rdata_common()` before inference
-  # ever sees them.
+  # Shapes rather than data types, since operands whose data types disagree are
+  # refused by `promotion_rdata_common()` before inference ever sees them.
   expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
-  # stablehlo's `operand` is anvl's `x`
-  err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
-  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
+  # The primary operand is `x`, never `operand`.
+  err <- tryCatch(jit(prim_ceiling)(nv_array(1:4)), error = identity)
+  expect_match(conditionMessage(err), "`x` must have a float data type", fixed = TRUE)
 
-  # `ErrorStablehlo` conditions build their message lazily in a
-  # `conditionMessage()` method; they keep their class and their 1-based indices.
-  # A too-short `permutation` passes anvl's own checks (every entry is a valid,
-  # non-duplicated dimension) and is only rejected by stablehlo.
+  # Axis numbers are 1-based, with no conversion step on the way out. A
+  # too-short `perm` passes anvl's own checks (every entry is a valid,
+  # non-duplicated axis) and is only rejected by inference.
   err <- tryCatch(
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = 1L),
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = 1L),
     error = identity
   )
-  expect_s3_class(err, "ErrorPermuteIndex")
   expect_match(conditionMessage(err), "must be a permutation of c(1, 2)", fixed = TRUE)
-})
-
-test_that("user_terminology() rewrites words but not identifiers", {
-  expect_equal(
-    user_terminology("hlo_tensor() returns a TensorType; rank(operand) and operand_batching_dims are tensors"),
-    "hlo_tensor() returns a TensorType; rank(x) and operand_batching_dims are arrays"
-  )
 })
 
 test_that("can print GraphLiteral if it holds scalar array", {

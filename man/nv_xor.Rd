@@ -4,10 +4,10 @@
 \alias{nv_xor}
 \title{Bitwise XOR}
 \usage{
-nv_xor(lhs, rhs)
+nv_xor(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Two inputs with a \link[=common_dtype]{common data type}. Can be
 any integerish data type. Scalars are broadcast, and R values assume the other
 operand's data type within their \link[=dtypes]{data type category},

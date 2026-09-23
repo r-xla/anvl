@@ -4,10 +4,10 @@
 \alias{prim_xor}
 \title{Primitive Bitwise Xor}
 \usage{
-prim_xor(lhs, rhs)
+prim_xor(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Two inputs of the same data type and shape. Can be any integerish data type. R
 values assume the other operand's data type when it is in their
 \link[=dtypes]{data type category}, and their

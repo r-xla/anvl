@@ -68,6 +68,7 @@ Collate:
     'api-distributions.R'
     'primitive.R'
     'promotion.R'
+    'rules-inference.R'
     'type-converters.R'
     'primitives.R'
     'api.R'

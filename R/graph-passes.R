@@ -46,7 +46,7 @@ remove_unused_constants <- function(graph) {
   new_graph
 }
 
-inline_scalarish_constants <- function(graph, state = NULL) {
+inline_scalarish_constants <- function(graph, map = NULL) {
   is_scalarish <- function(gval) {
     is_graph_value(gval) && is_concrete_array(gval$aval) && (nelts(gval$aval) == 1L)
   }
@@ -74,26 +74,14 @@ inline_scalarish_constants <- function(graph, state = NULL) {
     rdata_types = graph$rdata_types
   )
 
-  is_top_level <- is.null(state)
-  # `map` answers "what did this node become"; `lits` remembers the order the
-  # answers were made in. The graphs are walked in a fixed order, so emitting
-  # the fills from `lits` rather than from the hash table is what makes the
-  # pass -- and so the printed program -- the same on every run.
-  state <- state %||% list2env(list(map = hashtab(), lits = list()), parent = emptyenv())
-  map <- state$map
-  state$lits <- c(
-    state$lits,
-    Filter(
-      Negate(is.null),
-      lapply(new_graph$constants, function(const) {
-        if (!is_scalarish(const) || !is.null(map[[const]])) {
-          return(NULL)
-        }
-        map[[const]] <- scalarish_to_lit(const)
-        map[[const]]
-      })
-    )
-  )
+  # `map` answers "what did this node become", shared with the sub-graphs so a
+  # constant captured by several of them becomes the same literal.
+  map <- map %||% hashtab()
+  for (const in new_graph$constants) {
+    if (is_scalarish(const) && is.null(map[[const]])) {
+      map[[const]] <- scalarish_to_lit(const)
+    }
+  }
   for (i in seq_along(new_graph$inputs)) {
     replacement <- map[[new_graph$inputs[[i]]]]
     if (!is.null(replacement)) {
@@ -113,7 +101,7 @@ inline_scalarish_constants <- function(graph, state = NULL) {
       subgraph_names <- pcall$primitive$subgraphs
       for (name in subgraph_names) {
         if (name %in% names(pcall$params)) {
-          new_subgraph <- inline_scalarish_constants(pcall$params[[name]], state)
+          new_subgraph <- inline_scalarish_constants(pcall$params[[name]], map)
           new_graph$calls[[i]]$params[[name]] <- new_subgraph
         }
       }
@@ -124,21 +112,6 @@ inline_scalarish_constants <- function(graph, state = NULL) {
     if (!is.null(replacement)) {
       new_graph$outputs[[i]] <- replacement
     }
-  }
-  # TODO: We could ensure that each constant is only added once to the graph (currently, two
-  # nv_scalar(1) will create to fill calls)
-  if (is_top_level) {
-    new_graph$calls <- c(
-      new_graph$calls,
-      lapply(state$lits, function(const) {
-        PrimitiveCall(
-          primitive = prim_fill,
-          inputs = list(),
-          params = list(value = const$aval$data, dtype = dtype(const$aval), shape = shape(const$aval)),
-          outputs = list(const)
-        )
-      })
-    )
   }
   new_graph$constants <- new_graph$constants[vapply(
     new_graph$constants,

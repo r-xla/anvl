@@ -2,23 +2,30 @@
 % Please edit documentation in R/primitives.R
 \name{prim_max}
 \alias{prim_max}
-\title{Primitive Maximum}
+\title{Primitive Max Reduction}
 \usage{
-prim_max(lhs, rhs)
+prim_max(x, axes, drop = TRUE)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Two inputs of the same data type and shape. Can be any data type. R
-values assume the other operand's data type when it is in their
-\link[=dtypes]{data type category}, and their
-\link[=default_dtypes]{default data type} when neither operand has one.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
+
+\item{axes}{(\code{integer()})\cr
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis.}
+
+\item{drop}{(\code{logical(1)})\cr
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the inputs' shape and data type.
+Has the input's data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
-Element-wise maximum of two arrays.
+Finds the maximum of array elements along the specified axes.
 }
 \section{Implemented Rules}{
 
@@ -31,17 +38,22 @@ Element-wise maximum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}}, specified under
-\href{https://openxla.org/stablehlo/spec#maximum}{maximum}.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+The reducer is \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# two R values: both take an R double's default data type
-prim_max(1, 5)
+x <- nv_matrix(1:6, nrow = 2)
+# reducing axis 1 removes it from the shape, and the data type is kept
+prim_max(x, axes = 1L)
 
-# the R value is built at the array's data type instead
-prim_max(1, nv_scalar(5, "f64"))
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_max(x, axes = 1L, drop = FALSE)
+
+# reducing every axis gives a scalar
+prim_max(x, axes = c(1L, 2L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

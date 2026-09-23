@@ -52,9 +52,10 @@ Axes of \code{start_indices} that correspond to batch
 axes. Must have the same length as \code{x_batching_axes}.}
 
 \item{start_index_map}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{x}
-axis. For example, \code{start_index_map = c(1L)} means each
-index vector indexes into the first axis of \code{x}.}
+Maps each component of an index vector in \code{start_indices} to an axis
+of \code{x}. For example, \code{start_index_map = 1L} means each index
+vector indexes into the first axis of \code{x}. This is \code{\link[=prim_scatter]{prim_scatter()}}'s
+\code{scatter_axes_to_x_axes}.}
 
 \item{index_vector_axis}{(\code{integer(1)})\cr
 Axis of \code{start_indices} that contains the index vectors.

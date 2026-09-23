@@ -151,14 +151,14 @@ reference:
     contents:
       - nv_reshape
       - nv_flatten
-      - nv_transpose
+      - nv_aperm
       - nv_concatenate
       - nv_rbind
       - nv_cbind
       - nv_static_slice
       - nv_select
       - nv_pad
-      - nv_reverse
+      - nv_rev
       - nv_squeeze
       - nv_unsqueeze
       - nv_subset
@@ -221,14 +221,14 @@ reference:
       - nv_ceiling
       - nv_trunc
       - nv_round
-      - nv_logistic
+      - nv_plogis
       - nv_erf
       - nv_erfc
       - nv_erf_inv
       - nv_gamma
       - nv_digamma
       - nv_lgamma
-      - nv_polygamma
+      - nv_psigamma
       - nv_is_finite
       - nv_is_nan
       - nv_is_infinite
@@ -236,13 +236,13 @@ reference:
   - subtitle: Reduction Operations
     desc: Operations that reduce array axes
     contents:
-      - nv_reduce_sum
-      - nv_reduce_prod
-      - nv_reduce_max
-      - nv_reduce_min
+      - nv_sum
+      - nv_prod
+      - nv_max
+      - nv_min
       - nv_range
-      - nv_reduce_any
-      - nv_reduce_all
+      - nv_any
+      - nv_all
 
   - subtitle: Statistical Summaries
     desc: Summary statistics over array axes
@@ -307,18 +307,18 @@ reference:
   - subtitle: Element-wise Operations
     desc: Other element-wise array operations
     contents:
-      - nv_min
-      - nv_max
+      - nv_pmin
+      - nv_pmax
       - nv_clamp
 
   - subtitle: Sorting and Searching
     desc: Sorting arrays and finding extrema
     contents:
       - nv_sort
-      - nv_argsort
+      - nv_order
       - nv_top_k
-      - nv_argmax
-      - nv_argmin
+      - nv_which_max
+      - nv_which_min
 
   - subtitle: Control Flow
     desc: Control flow operations
@@ -445,7 +445,6 @@ reference:
   - subtitle: Miscellaneous
     contents:
       - at2vt
-      - vt2at
       - vt
       - is_arrayish
       - Shape

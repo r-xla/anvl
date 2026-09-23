@@ -445,13 +445,13 @@ digamma.AnvlArray <- nv_digamma
 #' @export
 digamma.AnvlBox <- digamma.AnvlArray
 
-#' @rdname nv_polygamma
+#' @rdname nv_psigamma
 #' @usage NULL
 #' @section The `trigamma()` generic:
-#' `trigamma(x)` is `nv_polygamma(1L, x)`.
+#' `trigamma(x)` is `nv_psigamma(x, 1L)`.
 #' @export
 trigamma.AnvlArray <- function(x) {
-  nv_polygamma(1L, x)
+  nv_psigamma(x, 1L)
 }
 
 #' @export
@@ -540,8 +540,8 @@ cummin.AnvlBox <- cummin.AnvlArray
 # The shared part of base R's Summary generics: every unnamed argument is data,
 # so `sum(x, y)` sums both, and each one is reduced over all its axes before the
 # results are combined element-wise. Named arguments are options of the
-# underlying `nv_reduce_*()` (e.g. `axes = 1L`); an unsupported one errors there
-# as an unused argument.
+# underlying reduction, e.g. `axes = 1L` for `nv_sum()`; an unsupported one
+# errors there as an unused argument.
 #
 # `reduce` reduces one array with those options, `r_reduce` reduces a plain R
 # value in R -- so that it enters as a literal and does not materialize at a
@@ -562,7 +562,7 @@ summary_generic <- function(op, args, reduce, r_reduce, combine) {
   Reduce(combine, parts)
 }
 
-#' @rdname nv_reduce_sum
+#' @rdname nv_sum
 #' @usage NULL
 #' @section The `sum()` generic:
 #' `sum()` reduces over all axes and, like [base::sum()], takes several data
@@ -574,7 +574,7 @@ sum.AnvlArray <- function(..., na.rm = FALSE) {
   summary_generic(
     "sum",
     list(...),
-    function(z, opts) do.call(nv_reduce_sum, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z, opts) do.call(nv_sum, c(list(z), opts, list(nan_rm = na.rm))),
     function(z) sum(z, na.rm = na.rm),
     nv_add
   )
@@ -583,7 +583,7 @@ sum.AnvlArray <- function(..., na.rm = FALSE) {
 #' @export
 sum.AnvlBox <- sum.AnvlArray
 
-#' @rdname nv_reduce_prod
+#' @rdname nv_prod
 #' @usage NULL
 #' @section The `prod()` generic:
 #' `prod()` reduces over all axes and, like [base::prod()], takes several data
@@ -596,7 +596,7 @@ prod.AnvlArray <- function(..., na.rm = FALSE) {
   summary_generic(
     "prod",
     list(...),
-    function(z, opts) do.call(nv_reduce_prod, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z, opts) do.call(nv_prod, c(list(z), opts, list(nan_rm = na.rm))),
     function(z) prod(z, na.rm = na.rm),
     nv_mul
   )
@@ -605,7 +605,7 @@ prod.AnvlArray <- function(..., na.rm = FALSE) {
 #' @export
 prod.AnvlBox <- prod.AnvlArray
 
-#' @rdname nv_reduce_max
+#' @rdname nv_max
 #' @usage NULL
 #' @section The `max()` generic:
 #' `max()` reduces over all axes and, like [base::max()], takes several data
@@ -618,16 +618,16 @@ max.AnvlArray <- function(..., na.rm = FALSE) {
   summary_generic(
     "max",
     list(...),
-    function(z, opts) do.call(nv_reduce_max, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z, opts) do.call(nv_max, c(list(z), opts, list(nan_rm = na.rm))),
     function(z) max(z, na.rm = na.rm),
-    nv_max
+    nv_pmax
   )
 }
 
 #' @export
 max.AnvlBox <- max.AnvlArray
 
-#' @rdname nv_reduce_min
+#' @rdname nv_min
 #' @usage NULL
 #' @section The `min()` generic:
 #' `min()` reduces over all axes and, like [base::min()], takes several data
@@ -640,9 +640,9 @@ min.AnvlArray <- function(..., na.rm = FALSE) {
   summary_generic(
     "min",
     list(...),
-    function(z, opts) do.call(nv_reduce_min, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z, opts) do.call(nv_min, c(list(z), opts, list(nan_rm = na.rm))),
     function(z) min(z, na.rm = na.rm),
-    nv_min
+    nv_pmin
   )
 }
 
@@ -651,12 +651,12 @@ min.AnvlBox <- min.AnvlArray
 
 #' @rdname nv_range
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to reduce, plus named arguments for [nv_reduce_min()] and
-#'   [nv_reduce_max()] (e.g. `axes`), which are only accepted when there is a
+#'   Arrays to reduce, plus named arguments for [nv_min()] and
+#'   [nv_max()] (e.g. `axes`), which are only accepted when there is a
 #'   single array to reduce.
 #' @param na.rm (`logical(1)`)\cr
-#'   Forwarded to the `nan_rm` argument of [nv_reduce_min()] and
-#'   [nv_reduce_max()].
+#'   Forwarded to the `nan_rm` argument of [nv_min()] and
+#'   [nv_max()].
 #' @section The `range()` generic:
 #' `range()` reduces over all axes and, like [base::range()], takes several
 #' data arguments: `range(x, y)` is the range of both arrays. Beyond base R,
@@ -680,7 +680,7 @@ range.AnvlArray <- function(..., na.rm = FALSE) {
 #' @export
 range.AnvlBox <- range.AnvlArray
 
-#' @rdname nv_reduce_any
+#' @rdname nv_any
 #' @usage NULL
 #' @section The `any()` generic:
 #' `any()` reduces over all axes and, like [base::any()], takes several data
@@ -694,7 +694,7 @@ any.AnvlArray <- function(..., na.rm = FALSE) {
   summary_generic(
     "any",
     list(...),
-    function(z, opts) do.call(nv_reduce_any, c(list(assert_boolean_array(z, arg = "...")), opts)),
+    function(z, opts) do.call(nv_any, c(list(assert_boolean_array(z, arg = "...")), opts)),
     function(z) any(assert_boolean_array(z, arg = "..."), na.rm = na.rm),
     nv_or
   )
@@ -703,7 +703,7 @@ any.AnvlArray <- function(..., na.rm = FALSE) {
 #' @export
 any.AnvlBox <- any.AnvlArray
 
-#' @rdname nv_reduce_all
+#' @rdname nv_all
 #' @usage NULL
 #' @section The `all()` generic:
 #' `all()` reduces over all axes and, like [base::all()], takes several data
@@ -717,7 +717,7 @@ all.AnvlArray <- function(..., na.rm = FALSE) {
   summary_generic(
     "all",
     list(...),
-    function(z, opts) do.call(nv_reduce_all, c(list(assert_boolean_array(z, arg = "...")), opts)),
+    function(z, opts) do.call(nv_all, c(list(assert_boolean_array(z, arg = "...")), opts)),
     function(z) all(assert_boolean_array(z, arg = "..."), na.rm = na.rm),
     nv_and
   )
@@ -775,7 +775,7 @@ is.finite.AnvlArray <- nv_is_finite
 #' @export
 is.finite.AnvlBox <- is.finite.AnvlArray
 
-#' @rdname nv_transpose
+#' @rdname nv_aperm
 #' @usage NULL
 #' @section The `t()` generic:
 #' `t()` requires a matrix, whereas [base::t()] also transposes a vector (into
@@ -787,14 +787,32 @@ t.AnvlArray <- function(x) {
   if (nd != 2L) {
     cli_abort("{.fn t} requires a 2-D array, but got a {nd}-D array.")
   }
-  nv_transpose(x)
+  nv_aperm(x)
 }
 
 #' @method t AnvlBox
 #' @export
 t.AnvlBox <- t.AnvlArray
 
-#' @rdname nv_reverse
+#' @rdname nv_aperm
+#' @param a ([`arrayish`])\cr
+#'   The array whose axes to permute.
+#' @param ... No additional arguments.
+#' @section The `aperm()` generic:
+#' `aperm()` permutes the axes exactly as `nv_aperm()` does; like
+#' [base::aperm()], `perm = NULL` reverses them.
+#' @method aperm AnvlArray
+#' @export
+aperm.AnvlArray <- function(a, perm = NULL, ...) {
+  rlang::check_dots_empty()
+  nv_aperm(a, perm)
+}
+
+#' @method aperm AnvlBox
+#' @export
+aperm.AnvlBox <- aperm.AnvlArray
+
+#' @rdname nv_rev
 #' @usage NULL
 #' @section The `rev()` generic:
 #' `rev()` reverses along every axis, which puts the elements in the same
@@ -803,7 +821,7 @@ t.AnvlBox <- t.AnvlArray
 #' @method rev AnvlArray
 #' @export
 rev.AnvlArray <- function(x) {
-  nv_reverse(x)
+  nv_rev(x)
 }
 
 #' @method rev AnvlBox
@@ -846,14 +864,49 @@ c.AnvlBox <- c.AnvlArray
 #' @param ... No additional arguments.
 #' @method median AnvlArray
 #' @export
-median.AnvlArray <- function(x, na.rm = FALSE, ..., axes = NULL, drop = TRUE, interpolation = "linear") {
+median.AnvlArray <- function(x, na.rm = FALSE, ..., axes = NULL, drop = TRUE, method = "linear") {
   rlang::check_dots_empty()
-  nv_median(x, axes = axes, drop = drop, interpolation = interpolation, nan_rm = na.rm)
+  nv_median(x, axes = axes, drop = drop, method = method, nan_rm = na.rm)
 }
 
 #' @method median AnvlBox
 #' @export
 median.AnvlBox <- median.AnvlArray
+
+#' @rdname nv_quantile
+#' @param na.rm Forwarded to [nv_quantile()]'s `nan_rm` argument.
+#' @param ... No additional arguments.
+#' @section The `quantile()` generic:
+#' [stats::quantile()] reduces every axis of a multi-axis array, and so does
+#' `nv_quantile()` by default, so the two agree. Pass `axes` to reduce a
+#' subset instead. The result is unnamed, and `probs` follows
+#' `nv_quantile()`'s rules: several probabilities have to be wrapped in
+#' `array()`, which the default already is.
+#' @method quantile AnvlArray
+#' @export
+quantile.AnvlArray <- function(
+  x,
+  probs = array(seq(0, 1, 0.25)),
+  na.rm = FALSE,
+  ...,
+  axes = NULL,
+  drop = TRUE,
+  method = "linear"
+) {
+  rlang::check_dots_empty()
+  nv_quantile(
+    x,
+    probs = probs,
+    axes = axes,
+    drop = drop,
+    method = method,
+    nan_rm = na.rm
+  )
+}
+
+#' @method quantile AnvlBox
+#' @export
+quantile.AnvlBox <- quantile.AnvlArray
 
 #' @rdname nv_sort
 #' @param decreasing (`logical(1)`)\cr If `TRUE`, sort in decreasing order.
@@ -918,12 +971,12 @@ sort.AnvlBox <- sort.AnvlArray
 # version: on 4.3 they register but never dispatch, and `crossprod(x)` on an
 # `AnvlArray` errors from base instead.
 #' @rdname nv_crossprod
-#' @param x,y Same as `lhs` and `rhs`; the names used by the base R S3 generic.
 #' @param ... No additional arguments.
 #' @method crossprod AnvlArray
 #' @export
 crossprod.AnvlArray <- function(x, y = NULL, ...) {
-  nv_crossprod(x, y, ...)
+  rlang::check_dots_empty()
+  nv_crossprod(x, y)
 }
 
 #' @method crossprod AnvlBox
@@ -931,12 +984,12 @@ crossprod.AnvlArray <- function(x, y = NULL, ...) {
 crossprod.AnvlBox <- crossprod.AnvlArray
 
 #' @rdname nv_tcrossprod
-#' @param x,y Same as `lhs` and `rhs`; the names used by the base R S3 generic.
 #' @param ... No additional arguments.
 #' @method tcrossprod AnvlArray
 #' @export
 tcrossprod.AnvlArray <- function(x, y = NULL, ...) {
-  nv_tcrossprod(x, y, ...)
+  rlang::check_dots_empty()
+  nv_tcrossprod(x, y)
 }
 
 #' @method tcrossprod AnvlBox

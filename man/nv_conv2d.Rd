@@ -6,7 +6,7 @@
 \usage{
 nv_conv2d(
   x,
-  weight,
+  kernel,
   stride = 1L,
   padding = 0L,
   dilation = 1L,
@@ -16,11 +16,11 @@ nv_conv2d(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}. Can be any data type; \code{x} and
-\code{weight} are \link[=nv_promote_to_common]{promoted to a common data type}. An
+\code{kernel} are \link[=nv_promote_to_common]{promoted to a common data type}. An
 R value assumes the other operand's data type, and materializes at its
 \link[=default_dtypes]{default data type} when that has none either.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.
+\item{kernel}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.
 Promoted together with \code{x} -- see \code{x}.}
 
 \item{stride}{(\code{integer()})\cr Length 1 or 2.}
@@ -40,7 +40,7 @@ Has the operands' common data type, and shape
 }
 \description{
 Torch-style 2D convolution in NCHW layout: \code{x} is
-\verb{[batch, in_channels, height, width]}, \code{weight} is
+\verb{[batch, in_channels, height, width]}, \code{kernel} is
 \verb{[out_channels, in_channels / groups, kh, kw]}, output is
 \verb{[batch, out_channels, out_h, out_w]}. Symmetric zero padding.
 }
@@ -48,12 +48,12 @@ Torch-style 2D convolution in NCHW layout: \code{x} is
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # one batch, one channel, 4x4, convolved with a 3x3 kernel
 x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
-weight <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
-nv_conv2d(x, weight)
+kernel <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+nv_conv2d(x, kernel)
 
 # two output channels give a result with two channels
-weight2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
-shape(nv_conv2d(x, weight2))
+kernel2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
+shape(nv_conv2d(x, kernel2))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

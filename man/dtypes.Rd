@@ -42,10 +42,10 @@ configures. \code{\link[=peek_dtype]{peek_dtype()}} reports the default a given 
 materialize at.
 
 The same defaults settle the data type of a result anvl chooses on its own,
-where no R value is involved at all: an index (\code{nv_argmax()},
-\code{nv_argsort()}, \code{nv_top_k()}, the cumulative extrema, \code{nv_lu()}'s pivots),
-the accumulator a boolean input is counted at (\code{nv_reduce_sum()},
-\code{nv_reduce_prod()}, \code{nv_cumsum()}, \code{nv_cumprod()}, \code{nv_trace()}), and the
+where no R value is involved at all: an index (\code{nv_which_max()},
+\code{nv_order()}, \code{nv_top_k()}, the cumulative extrema, \code{nv_lu()}'s pivots),
+the accumulator a boolean input is counted at (\code{nv_sum()},
+\code{nv_prod()}, \code{nv_cumsum()}, \code{nv_cumprod()}, \code{nv_trace()}), and the
 float a non-float input is averaged or interpolated at (\code{nv_mean()},
 \code{nv_var()}, \code{nv_sd()}, \code{nv_median()}, \code{nv_quantile()}).
 

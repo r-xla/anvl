@@ -13,7 +13,7 @@ One input, with exactly 2 axes. Can be any data type. An R value materializes at
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the input's data type, and one axis of length \code{min(nrow, ncol)}
+Has the input's data type, and one axis of size \code{min(nrow, ncol)}
 holding the diagonal elements.
 }
 \description{

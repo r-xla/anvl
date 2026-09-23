@@ -1,15 +1,4 @@
 describe("inline_scalarish_constants", {
-  it("appends the fills in the order the constants were inlined", {
-    # The order used to come out of a hash table, so it differed between
-    # sessions and no snapshot of an optimized graph could be trusted.
-    two <- nv_scalar(2, dtype = "f32")
-    three <- nv_scalar(3, dtype = "f32")
-    graph <- trace_fn(function(x) x * two + three, list(x = nv_scalar(1, dtype = "f32")))
-    fills <- Filter(\(call) call$primitive$name == "fill", inline_scalarish_constants(graph)$calls)
-    values <- vapply(fills, \(call) as_array(call$params$value), numeric(1))
-    expect_equal(values, vapply(graph$constants, \(const) as_array(const$aval$data), numeric(1)))
-  })
-
   check_inlining <- function(
     graph_fun,
     args,
@@ -29,7 +18,7 @@ describe("inline_scalarish_constants", {
       expect_length(new_graph$constants, expected_constants_after)
     }
 
-    expect_gte(length(new_graph$calls), length(graph$calls))
+    expect_length(new_graph$calls, length(graph$calls))
     expect_equal(length(new_graph$inputs), length(graph$inputs))
     expect_equal(length(new_graph$outputs), length(graph$outputs))
     expect_identical(new_graph$in_tree, graph$in_tree)
@@ -147,8 +136,9 @@ describe("inline_scalarish_constants", {
       graph_fun = f,
       args = list(list(x = nv_scalar(1))),
       check_literals = function(new_graph, original_graph) {
-        # one fill call is added
-        expect_true(length(new_graph$calls) == length(original_graph$calls) + 1L)
+        lit <- new_graph$calls[[1L]]$inputs[[2L]]
+        expect_true(is_graph_literal(lit))
+        expect_identical(new_graph$calls[[2L]]$inputs[[2L]], lit)
       }
     )
   })
@@ -210,14 +200,16 @@ describe("inline_scalarish_constants", {
       )
     }
 
-    g1 <- trace_fn(f, list(x = nv_scalar(TRUE), y = nv_scalar(TRUE)))
-    g2 <- inline_scalarish_constants(g1)
-
     check_inlining(
       graph_fun = f,
       args = list(list(x = nv_scalar(TRUE), y = nv_scalar(TRUE))),
       check_literals = function(new_graph, original_graph) {
-        expect_equal(length(new_graph$calls), length(original_graph$calls) + 4L)
+        outer <- new_graph$calls[[1L]]$params
+        branch_outputs <- lapply(
+          c(outer$true$calls[[1L]]$params, outer$false$calls[[1L]]$params),
+          \(g) g$outputs[[1L]]
+        )
+        expect_true(all(vapply(branch_outputs, is_graph_literal, logical(1L))))
       }
     )
   })
@@ -233,7 +225,7 @@ describe("inline_scalarish_constants", {
       expected_constants_before = 1L,
       expected_constants_after = 0L,
       check_literals = function(new_graph, original_graph) {
-        expect_equal(length(new_graph$calls), length(original_graph$calls) + 1L)
+        expect_true(is_graph_literal(new_graph$outputs[[1L]]))
         expect_identical(new_graph$outputs[[1L]], new_graph$outputs[[2L]])
       }
     )

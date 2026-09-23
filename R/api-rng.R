@@ -3,7 +3,7 @@ NULL
 
 nv_unif_rand <- function(
   shape,
-  initial_state,
+  state,
   dtype
 ) {
   dtype <- assert_rng_float_dtype(dtype)
@@ -18,7 +18,7 @@ nv_unif_rand <- function(
   # generate random bits
   # use THREE_FRY as rng algorithm: JAX default
   rbits <- prim_rng_bit_generator(
-    initial_state = initial_state,
+    state = state,
     "THREE_FRY",
     ui_dtype,
     shape = shape
@@ -31,7 +31,7 @@ nv_unif_rand <- function(
   mantissa <- nv_shift_right_logical(rbits$values, shift)
 
   one_bits <- nv_bitcast_convert(
-    nv_fill_like(initial_state, 1.0, shape = integer(), dtype = dtype),
+    nv_fill_like(state, 1.0, shape = integer(), dtype = dtype),
     dtype = ui_dtype
   )
 
@@ -56,7 +56,7 @@ nv_unif_rand <- function(
 #' @description
 #' Samples from a uniform distribution in the open interval `(min, max)`.
 #' @template param_shape
-#' @template param_initial_state
+#' @template param_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Floating point data type.
 #'   The default (`NULL`) uses the [default float type][default_dtypes].
@@ -75,10 +75,10 @@ nv_unif_rand <- function(
 nv_runif <- jit(
   function(
     shape,
-    initial_state,
-    dtype = NULL,
+    state,
     min = 0,
-    max = 1
+    max = 1,
+    dtype = NULL
   ) {
     dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
     checkmate::assertNumeric(min, len = 1L, any.missing = FALSE, upper = max)
@@ -88,15 +88,15 @@ nv_runif <- jit(
 
     if (max == min) {
       return(list(
-        state = initial_state,
-        values = nv_fill_like(initial_state, max, shape = shape, dtype = dtype)
+        state = state,
+        values = nv_fill_like(state, max, shape = shape, dtype = dtype)
       ))
     }
 
     .range <- max - min
 
     # generate samples in [0, 1)
-    Unif <- nv_unif_rand(initial_state = initial_state, shape = shape, dtype = dtype)
+    Unif <- nv_unif_rand(state = state, shape = shape, dtype = dtype)
     U <- Unif$values
 
     # check if some values are <= 0
@@ -107,7 +107,7 @@ nv_runif <- jit(
     # the next smallest generated value.
     # Same applies for f64 and 2^-53 and 52 mantissa bits.
     smallest_step <- nv_fill_like(
-      initial_state,
+      state,
       ifelse(dtype == "f32", 2^-24, 2^-53),
       shape = shape,
       dtype = dtype
@@ -128,7 +128,7 @@ nv_runif <- jit(
 
 #' @rdname nv_normal
 #' @template param_shape
-#' @template param_initial_state
+#' @template param_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Floating point data type.
 #'   The default (`NULL`) uses the [default float type][default_dtypes].
@@ -151,7 +151,7 @@ nv_runif <- jit(
 #' nv_rnorm(c(2, 3), state, sd = sds)$values
 #' @export
 nv_rnorm <- jit(
-  function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
+  function(shape, state, mean = 0, sd = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
 
     rule <- if (is.null(dtype)) {
@@ -179,7 +179,7 @@ nv_rnorm <- jit(
 
     # generate the first ceil(n/2) random uniform variables
     U <- nv_unif_rand(
-      initial_state = initial_state,
+      state = state,
       dtype = dtype,
       shape = as.integer(ceiling(n / 2L))
     )
@@ -189,7 +189,7 @@ nv_rnorm <- jit(
     sqrt_R <- nv_sqrt(R)
 
     # generate second batch of ceil(n/2) random uniform variables
-    Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2L)))
+    Theta <- nv_unif_rand(state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2L)))
 
     # compute cos(2 * pi * u2) / sin(2 * pi * u2)
     Theta$values <- nv_mul(Theta$values, 2 * pi)
@@ -205,7 +205,7 @@ nv_rnorm <- jit(
 
     # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
     if (n %% 2L == 1L) {
-      Z <- nv_static_slice(Z, start_indices = 1L, limit_indices = n, strides = 1L)
+      Z <- nv_static_slice(Z, start_indices = 1L, end_indices = n, strides = 1L)
     }
 
     # reshape Z to match requested shape
@@ -221,7 +221,7 @@ nv_rnorm <- jit(
     # return state and Normals N
     list(state = Theta$state, values = N)
   },
-  static = c(1L, 3L)
+  static = c(1L, 5L)
 )
 
 #' @title Sample from a Binomial Distribution
@@ -229,7 +229,7 @@ nv_rnorm <- jit(
 #' Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
 #' When `size = 1` (the default), this is a Bernoulli distribution.
 #' @template param_shape
-#' @template param_initial_state
+#' @template param_state
 #' @param size (`integer(1)`)\cr
 #'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
@@ -249,7 +249,7 @@ nv_rnorm <- jit(
 #' result$values
 #' @export
 nv_rbinom <- jit(
-  function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
+  function(shape, state, size = 1L, prob = 0.5, dtype = NULL) {
     # The sample counts successes, which `bool` cannot hold: it used to come back
     # as `bool` for `size = 1` and silently as an integer for anything above.
     dtype <- assert_numeric_dtype(
@@ -267,7 +267,7 @@ nv_rbinom <- jit(
     # Generate uniform samples in [0, 1) and compare to prob
     # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
     # so we don't benefit from using runif w.r.t. unbiasedness
-    res <- nv_unif_rand(initial_state, shape = n_trials, dtype = "f64")
+    res <- nv_unif_rand(state, shape = n_trials, dtype = "f64")
     U <- res$values
 
     # Success if U < prob
@@ -277,7 +277,7 @@ nv_rbinom <- jit(
       nv_reshape(successes, shape = shape)
     } else {
       successes <- nv_reshape(nv_convert(successes, dtype), shape = c(size, shape))
-      nv_reduce_sum(successes, axes = 1L, drop = TRUE)
+      nv_sum(successes, axes = 1L, drop = TRUE)
     }
 
     list(state = res$state, values = result)
@@ -292,7 +292,7 @@ nv_rbinom <- jit(
 #'
 #' To sample from a population other than `1:n`, use [nv_sample()].
 #' @template param_shape
-#' @template param_initial_state
+#' @template param_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
@@ -311,7 +311,7 @@ nv_rbinom <- jit(
 #' result$values
 #' @export
 nv_sample_int <- jit(
-  function(shape, initial_state, n, dtype = NULL) {
+  function(shape, state, n, dtype = NULL) {
     # An index is a count too: at `bool` every draw collapsed to `TRUE`.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
@@ -321,7 +321,7 @@ nv_sample_int <- jit(
     assert_int(n, lower = 1L)
     shape <- assert_shapevec(shape)
 
-    out <- sample_indices(initial_state, as.integer(n), prod(shape))
+    out <- sample_indices(state, as.integer(n), prod(shape))
 
     list(state = out$state, values = nv_reshape(nv_convert(out$values, dtype), shape))
   },
@@ -336,7 +336,7 @@ nv_sample_int <- jit(
 #' Unlike R's `sample()`, `x` is always the population itself: sampling the
 #' integers `1` to `n` is [nv_sample_int()] and never an overload of `x`.
 #' @template param_shape
-#' @template param_initial_state
+#' @template param_state
 #' @param x ([`arrayish`])\cr
 #'   The population vector to sample from.
 #'   An R value materializes at its [default data type][default_dtypes].
@@ -353,7 +353,7 @@ nv_sample_int <- jit(
 #' result$values
 #' @export
 nv_sample <- jit(
-  function(shape, initial_state, x) {
+  function(shape, state, x) {
     shape <- assert_shapevec(shape)
     x <- as_anvl_array(x)
     x_shape <- shape(x)
@@ -362,7 +362,7 @@ nv_sample <- jit(
     }
     n <- x_shape[1L]
 
-    out <- sample_indices(initial_state, n, prod(shape))
+    out <- sample_indices(state, n, prod(shape))
 
     list(state = out$state, values = nv_reshape(nv_subset(x, out$values), shape))
   },
@@ -371,11 +371,11 @@ nv_sample <- jit(
 
 # Draw `n_sample` uniformly distributed 1-based indices into a population of
 # size `n`, with replacement. Returns the updated RNG state and the indices.
-sample_indices <- function(initial_state, n, n_sample) {
+sample_indices <- function(state, n, n_sample) {
   # use f64 for higher precision
-  res <- nv_unif_rand(initial_state, shape = n_sample, dtype = "f64")
+  res <- nv_unif_rand(state, shape = n_sample, dtype = "f64")
   # u is in [0, 1), so floor(u * n) is in 0, ..., n - 1. The minimum guards
   # against the product rounding up to n for the largest representable u.
   idx <- nv_convert(nv_floor(nv_mul(res$values, n)), dtype = "i32")
-  list(state = res$state, values = nv_min(nv_add(idx, 1L), as.integer(n)))
+  list(state = res$state, values = nv_pmin(nv_add(idx, 1L), as.integer(n)))
 }

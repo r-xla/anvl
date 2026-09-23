@@ -215,7 +215,7 @@ anvl_perf_cell <- function(arr, logp, op) {
   if (op == "value") {
     call_fn <- function() as.vector(nv_pnorm(arr, log.p = logp))
   } else {
-    gfn <- jit(gradient(function(q) nv_reduce_sum(nv_pnorm(q, log.p = logp)),
+    gfn <- jit(gradient(function(q) nv_sum(nv_pnorm(q, log.p = logp)),
                         wrt = "q"))
     call_fn <- function() as.vector(gfn(arr)[[1L]])
   }
@@ -392,8 +392,8 @@ gold <- gold_all(zgrid)
 ## --- anvl on the grid -----------------------------------------------------
 anvl_acc <- function(z, dt) {
   arr <- nv_array(z, dtype = dt)
-  gF <- jit(gradient(function(q) nv_reduce_sum(nv_pnorm(q, log.p = FALSE)), wrt = "q"))
-  gT <- jit(gradient(function(q) nv_reduce_sum(nv_pnorm(q, log.p = TRUE)),  wrt = "q"))
+  gF <- jit(gradient(function(q) nv_sum(nv_pnorm(q, log.p = FALSE)), wrt = "q"))
+  gT <- jit(gradient(function(q) nv_sum(nv_pnorm(q, log.p = TRUE)),  wrt = "q"))
   list(value_F = as.vector(nv_pnorm(arr, log.p = FALSE)),
        value_T = as.vector(nv_pnorm(arr, log.p = TRUE)),
        grad_F  = as.vector(gF(arr)[[1L]]),

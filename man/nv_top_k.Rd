@@ -28,11 +28,11 @@ position of each top-\code{k} value.}
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
 One array when \code{indices = FALSE}, a named \code{list} of \code{values} and
-\code{indices} when \code{indices = TRUE}. The values have the input's data type and
-the indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both
-have the input's shape with \code{axes} replaced by a single axis of size \code{k},
-sitting where the first of them was; values are sorted decreasing along
-that axis.
+\code{indices} when \code{indices = TRUE}. The values have the input's data type
+and the indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
+Both have the input's shape with \code{axes} replaced by a single axis of size
+\code{k}, sitting where the first of them was; values are sorted decreasing
+along that axis.
 }
 \description{
 Returns the \code{k} largest values over one or more axes, sorted in decreasing

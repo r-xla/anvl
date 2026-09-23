@@ -136,7 +136,7 @@ describe("sum", {
     expect_equal(as.vector(sum(x, x)), sum(m, m))
   })
 
-  it("passes named arguments to nv_reduce_sum()", {
+  it("passes named arguments to nv_sum()", {
     x <- nv_array(matrix(as.double(1:6), 2))
     expect_equal(as.vector(sum(x, axes = 1L)), c(3, 7, 11))
     expect_error(sum(nv_array(1:3), foo = "bar"), "unused argument")
@@ -165,7 +165,7 @@ describe("prod", {
     expect_equal(as.vector(prod(nv_array(c(2, 3)), 2)), prod(c(2, 3), 2))
   })
 
-  it("passes named arguments to nv_reduce_prod()", {
+  it("passes named arguments to nv_prod()", {
     x <- nv_array(matrix(as.double(1:6), 2))
     expect_equal(as.vector(prod(x, axes = 1L)), c(2, 12, 30))
   })
@@ -306,13 +306,54 @@ describe("rev", {
 describe("t", {
   it("transposes a matrix", {
     x <- nv_matrix(1:6, nrow = 2)
-    expect_equal(t(x), nv_transpose(x))
+    expect_equal(t(x), nv_aperm(x))
   })
 
   it("errors on anything but a matrix, unlike base R", {
     expect_error(t(nv_scalar(1)), "requires a 2-D array")
     expect_error(t(nv_array(1:3)), "requires a 2-D array")
     expect_error(t(nv_array(array(1:24, dim = c(2, 3, 4)))), "requires a 2-D array")
+  })
+})
+
+describe("aperm", {
+  it("reverses the axes by default, like base R", {
+    x <- array(1:24, dim = c(2, 3, 4))
+    expect_equal(as_array(aperm(nv_array(x))), aperm(x))
+  })
+
+  it("permutes the axes", {
+    x <- array(1:24, dim = c(2, 3, 4))
+    expect_equal(as_array(aperm(nv_array(x), c(3L, 1L, 2L))), aperm(x, c(3L, 1L, 2L)))
+  })
+
+  it("works under jit()", {
+    x <- nv_array(array(1:24, dim = c(2, 3, 4)))
+    expect_equal(jit(function(z) aperm(z))(x), nv_aperm(x))
+  })
+})
+
+describe("quantile", {
+  it("computes base R's default probabilities", {
+    vals <- c(3, 1, 4, 1, 5, 9, 2, 6)
+    expect_equal(
+      as.vector(quantile(nv_array(vals, dtype = "f64"))),
+      unname(quantile(vals)),
+      tolerance = 1e-6
+    )
+  })
+
+  it("forwards probs, axes and na.rm", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(quantile(m, 0.5, axes = 2L), nv_quantile(m, 0.5, axes = 2L))
+    expect_equal(
+      quantile(nv_array(c(1, NaN, 3, 5)), 0.5, na.rm = TRUE),
+      nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
+    )
+  })
+
+  it("rejects unused arguments", {
+    expect_error(quantile(nv_array(c(1, 2, 3)), 0.5, names = FALSE), "must be empty")
   })
 })
 

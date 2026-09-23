@@ -425,7 +425,7 @@ maybe_box_input <- function(x, desc, mode) {
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
-    # is used internally by prim_scatter() to trace `update_computation()` with avals
+    # is used internally by prim_scatter() to trace `update_fn()` with avals
     if (is_abstract_array(x)) {
       gval <- GraphValue(aval = x)
       return(register_input(desc, gval))
@@ -587,6 +587,22 @@ match_args_to_formals <- function(f, args) {
   do.call(g, args)
 }
 
+# Points `e`'s call at the primitive the marker names while the error is on its
+# way out, once: a sub-graph trace names it before restoring the marker to the
+# higher-order primitive that traced it, which would otherwise take the blame
+# at the top level. With no primitive marked, the call is left as raised.
+name_failing_primitive <- function(e) {
+  if (isTRUE(e$anvl_primitive_named)) {
+    return(e)
+  }
+  prim <- globals[["INFER_PRIMITIVE"]]
+  if (!is.null(prim)) {
+    e$call <- print_call_repr(prim)
+  }
+  e$anvl_primitive_named <- TRUE
+  e
+}
+
 #' @title Trace an R function into a Graph
 #' @description
 #' Executes `f` with abstract array arguments and records every primitive operation into
@@ -673,21 +689,27 @@ trace_fn <- function(
     output <- tryCatch(
       do.call(f_flat, inputs_flat),
       error = function(e) {
-        prim <- globals[["INFER_PRIMITIVE"]]
+        e <- name_failing_primitive(e)
         globals[["INFER_PRIMITIVE"]] <- NULL
-        if (!is.null(prim)) {
-          e$call <- print_call_repr(prim)
-          # only stablehlo errors carry 0-based indices to convert
-          if (inherits(e, "ErrorStablehlo")) {
-            e <- stablehlo::to_one_based(e)
-          }
-          e <- to_user_terminology(e)
-        }
         rlang::cnd_signal(e)
       }
     )
   } else {
-    output <- do.call(f_flat, inputs_flat)
+    # A higher-order primitive traces its sub-graphs here and then goes on to
+    # check them, so the primitive it named on the way in has to survive the
+    # sub-trace: every primitive *inside* the sub-graph names itself and clears
+    # the marker again on its way out. An error out of the sub-graph restores it
+    # too, but is named first, so it keeps the primitive that raised it.
+    prim <- globals[["INFER_PRIMITIVE"]]
+    output <- tryCatch(
+      do.call(f_flat, inputs_flat),
+      error = function(e) {
+        e <- name_failing_primitive(e)
+        globals[["INFER_PRIMITIVE"]] <- prim
+        rlang::cnd_signal(e)
+      }
+    )
+    globals[["INFER_PRIMITIVE"]] <- prim
   }
 
   out_tree <- output[[1L]]
@@ -876,7 +898,9 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
     avals_in[[i]] <- gnode$aval
   }
   names(avals_in) <- names(args)
-  globals[["INFER_PRIMITIVE"]] <- primitive
+  # The primitive under way is named by its wrapper, on the way in; this clears
+  # it again once inference has passed, so that a later error somewhere else in
+  # the traced function is not attributed to the last primitive that ran.
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["INFER_PRIMITIVE"]] <- NULL
   gvals_out <- lapply(ats_out, GraphValue)
@@ -885,45 +909,11 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   lapply(gvals_out, register_gval, desc = desc)
 }
 
+# A primitive is named for the `prim_*()` that exports it, so the call an error
+# reports is that name with the prefix put back on.
 print_call_repr <- function(prim) {
   rlang::exec(call, paste0("prim_", prim$name))
 }
-
-# Restate a type-inference error in anvl's own vocabulary: stablehlo speaks of
-# "tensors" and names its primary argument `operand`, anvl speaks of arrays and
-# names it `x`. Both message paths have to be covered: `ErrorStablehlo`
-# subclasses build their message lazily in `conditionMessage()` methods, while
-# `cli_abort()` conditions store an already formatted message in the `message`
-# and `body` fields, which `rlang::cnd_message()` reads without dispatching on
-# `conditionMessage()`.
-to_user_terminology <- function(x) {
-  if (!inherits(x, "condition")) {
-    return(x)
-  }
-  if (is.character(x$message)) {
-    x$message <- user_terminology(x$message)
-  }
-  if (is.character(x$body)) {
-    x$body <- user_terminology(x$body)
-  }
-  class(x) <- c("AnvlErrorTerminology", class(x))
-  x
-}
-
-#' @export
-conditionMessage.AnvlErrorTerminology <- function(c, ...) {
-  user_terminology(NextMethod())
-}
-
-# The substitutions are anchored on word boundaries. `_` is a word character,
-# so identifiers such as `TensorType`, `hlo_tensor()` or `operand_batching_dims`
-# contain no boundary around the word and are left alone.
-user_terminology <- function(x) {
-  x <- gsub("\\btensor(s?)\\b", "array\\1", x)
-  x <- gsub("\\bTensor(s?)\\b", "Array\\1", x)
-  gsub("\\boperand\\b", "x", x)
-}
-
 
 inline_graph_into_desc <- function(desc, graph) {
   # By contract, `graph` was produced by `trace_fn(..., mode = "inline")` so

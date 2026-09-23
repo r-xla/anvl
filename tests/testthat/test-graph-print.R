@@ -24,7 +24,7 @@ nested_param_graph <- function() {
     nv_while(
       list(i = nv_scalar(0, dtype = "f32")),
       \(i) i < x,
-      \(i) list(i = nv_reduce_max(nv_broadcast_to(i, c(2, 1)), axes = 1, drop = TRUE)[1])
+      \(i) list(i = nv_max(nv_broadcast_to(i, c(2, 1)), axes = 1, drop = TRUE)[1])
     )
   }
   trace_fn(f, list(x = nv_scalar(3, dtype = "f32")))
@@ -46,7 +46,7 @@ wide_graph <- function(f, n = 30L) {
 }
 
 # A `while` whose body captures six values, so that the sub-graph's signature
-# line is long enough to feel the `body_graph = ` it is printed behind.
+# line is long enough to feel the `body = ` it is printed behind.
 capture_heavy_graph <- function() {
   consts <- lapply(1:6, function(i) nv_scalar(i, dtype = "f32"))
   trace_fn(
@@ -145,7 +145,7 @@ describe("format_param_parts()", {
 describe("format.PrimitiveCall()", {
   it("renders its params the way a graph body does", {
     local_registered_default_dtypes()
-    graph <- trace_fn(function(x) nv_reduce_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
+    graph <- trace_fn(function(x) nv_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
     expect_snapshot(cat(format(graph$calls[[1L]])))
   })
 
@@ -193,7 +193,7 @@ describe("format.AnvlGraph()", {
 
   it("names a capture without its data type, the enclosing graph having it", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
-    expect_true(any(grepl("cond_graph = [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
+    expect_true(any(grepl("cond = [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
     # The graph around it is the one place `%x1` is declared with a type.
     expect_match(lines[[1L]], "(%x1: f32[])", fixed = TRUE)
   })
@@ -212,7 +212,7 @@ describe("format.AnvlGraph()", {
 
   it("gives a sub-graph param its own rows and fills the short ones around it", {
     graph <- trace_fn(
-      function(x) prim_reduce(x, init = 0, axes = 1L, reductor = \(a, b) a + b),
+      function(x) prim_reduce(x, init = 0, axes = 1L, reducer = \(a, b) a + b),
       list(x = nv_array(as.numeric(1:6), dtype = "f32"))
     )
     expect_snapshot(cat(format(graph, width = 80L)))
@@ -229,11 +229,11 @@ describe("format.AnvlGraph()", {
 
   it("does not spill the internals of an array an optimization pass inlined", {
     out <- format(inline_scalarish_constants(nested_graph()))
-    expect_match(out, "value = 0.5:f32", fixed = TRUE)
+    expect_match(out, "add(%x3, 0.5:f32)", fixed = TRUE)
     expect_no_match(out, "pointer", fixed = TRUE)
   })
 
-  it("names the fill an optimization pass makes of a constant", {
+  it("prints a constant an optimization pass inlined as its value", {
     seven <- nv_scalar(7, dtype = "f32")
     graph <- trace_fn(
       function(x) x + seven,
@@ -241,21 +241,6 @@ describe("format.AnvlGraph()", {
       optimize = TRUE
     )
     expect_snapshot(graph)
-  })
-
-  it("tells apart two constants of equal value that the pass inlined", {
-    # Two nodes, so two `fill` calls; without a name each they print alike.
-    # Which of them the pass emits first is not fixed, so only compare the two.
-    one <- nv_scalar(1, dtype = "f32")
-    other <- nv_scalar(1, dtype = "f32")
-    graph <- trace_fn(
-      function(x) (x + one) * other,
-      list(x = nv_scalar(2, dtype = "f32")),
-      optimize = TRUE
-    )
-    fills <- grep("= fill ", strsplit(format(graph), "\n")[[1L]], value = TRUE)
-    expect_length(fills, 2L)
-    expect_equal(anyDuplicated(fills), 0L)
   })
 
   it("names the R type of an input the caller supplies as bare R data", {

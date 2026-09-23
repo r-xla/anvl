@@ -4,10 +4,10 @@
 \alias{prim_remainder}
 \title{Primitive Remainder}
 \usage{
-prim_remainder(lhs, rhs)
+prim_remainder(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Two inputs of the same data type and shape. Can be any numeric data type. R
 values assume the other operand's data type when it is in their
 \link[=dtypes]{data type category}, and their

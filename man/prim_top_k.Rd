@@ -4,7 +4,7 @@
 \alias{prim_top_k}
 \title{Primitive Top-K}
 \usage{
-prim_top_k(x, k, indices = TRUE)
+prim_top_k(x, k, indices)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -23,14 +23,15 @@ pick the cheapest selection for the platform.}
 \value{
 (named \code{list} of one or two \code{\link{arrayish}})\cr
 Element \code{values}, the top-\code{k} values at the input's data type, and, when
-\code{indices} is \code{TRUE}, \code{indices}, their indices along the last axis at the
-default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the
+\code{indices} is \code{TRUE}, \code{indices}, their indices along the last axis at
+the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the
 input's shape with the last axis replaced by \code{k}. With indices, ties are
 broken by lower index first.
 }
 \description{
 Returns the \code{k} largest values along the last axis, sorted in
-descending order, together with their indices into that axis.
+decreasing order, and with \code{indices = TRUE} their indices into that
+axis as well.
 
 For other axes, transpose so the target axis is last, call
 \code{prim_top_k()}, then transpose back. \code{\link[=nv_top_k]{nv_top_k()}} does this.
@@ -56,7 +57,8 @@ backend has a dedicated top-k kernel, so it keeps \code{\link[stablehlo:hlo_top_
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # `values` keeps the input's data type, `indices` is the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
-prim_top_k(x, k = 3L)
+prim_top_k(x, k = 3L, indices = FALSE)
+prim_top_k(x, k = 3L, indices = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

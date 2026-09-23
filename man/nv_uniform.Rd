@@ -55,8 +55,8 @@ All three are univariate functions evaluated elementwise, returning one
 value per element of \code{x}/\code{q}/\code{p}. Non-scalar \code{min}/\code{max} therefore give a
 separate univariate Uniform per element, \emph{not} a multivariate Uniform over
 the hyper-rectangle \eqn{\prod_i [a_i, b_i]}. For that, reduce over the
-result: \code{nv_reduce_prod(nv_dunif(x, min, max))}, or
-\code{nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))} on the log scale.
+result: \code{nv_prod(nv_dunif(x, min, max))}, or
+\code{nv_sum(nv_dunif(x, min, max, log = TRUE))} on the log scale.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
