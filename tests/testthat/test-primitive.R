@@ -88,6 +88,20 @@ describe("subgraphs", {
   })
 })
 
+describe("new_primitive", {
+  it("works for a body defined outside the anvl namespace", {
+    fn <- function(x) {
+      graph_desc_add(self, list(x), infer_fn = function(x) list(x))[[1L]]
+    }
+    # Not the global env: `load_all()` attaches anvl's internals to the search
+    # path, which would hide the internals the body cannot see from a user's
+    # package.
+    environment(fn) <- list2env(list(graph_desc_add = graph_desc_add), parent = baseenv())
+    prim_identity <- new_primitive("identity_ext", fn, register = FALSE)
+    expect_s3_class(trace_fn(prim_identity, list(nv_aval("f32", 2L))), "AnvlGraph")
+  })
+})
+
 describe("the call a primitive's error reports", {
   call_of <- function(expr) {
     err <- tryCatch(expr, error = identity)
