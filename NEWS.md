@@ -157,7 +157,11 @@
   sub-graphs in full, and wrap long lines to the console width; `format()`
   takes `width` and `digits` arguments.
 * New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
-  and `nv_qunif()`.
+  and `nv_qunif()`, documented together with `nv_runif()` on `?nv_uniform`.
+* `nv_runif()`'s `min` and `max` now accept arrayish inputs, scalar or of the
+  sample's shape. Like base R's `runif()`, an invalid interval (`max < min`,
+  or a bound that is not finite) now gives `NaN` instead of an error. Note that
+  the RNG state now advances even on samples where `min == max`.
 
 ## Performance
 
