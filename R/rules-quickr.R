@@ -801,7 +801,7 @@ quickr_emit_gather <- function(
   collapsed_slice_axes,
   x_batching_axes,
   start_indices_batching_axes,
-  start_indices_to_x_axes,
+  start_index_map,
   index_vector_axis,
   out_aval
 ) {
@@ -812,7 +812,7 @@ quickr_emit_gather <- function(
   collapsed_slice_axes <- sort(unique(as.integer(collapsed_slice_axes)))
   x_batching_axes <- as.integer(x_batching_axes)
   start_indices_batching_axes <- as.integer(start_indices_batching_axes)
-  start_indices_to_x_axes <- as.integer(start_indices_to_x_axes)
+  start_index_map <- as.integer(start_index_map)
   index_vector_axis <- as.integer(index_vector_axis)
 
   op_rank <- length(shape_operand)
@@ -841,16 +841,14 @@ quickr_emit_gather <- function(
     )
   }
   index_vector_size <- as.integer(shape_start_indices[[si_rank]])
-  if (!identical(as.integer(length(start_indices_to_x_axes)), as.integer(index_vector_size))) {
-    cli_abort("gather: start_indices_to_x_axes length must match start_indices index vector size")
+  if (!identical(as.integer(length(start_index_map)), as.integer(index_vector_size))) {
+    cli_abort("gather: start_index_map length must match start_indices index vector size")
   }
-  if (
-    length(start_indices_to_x_axes) && (min(start_indices_to_x_axes) < 1L || max(start_indices_to_x_axes) > op_rank)
-  ) {
-    cli_abort("gather: invalid start_indices_to_x_axes: {start_indices_to_x_axes}")
+  if (length(start_index_map) && (min(start_index_map) < 1L || max(start_index_map) > op_rank)) {
+    cli_abort("gather: invalid start_index_map: {start_index_map}")
   }
-  if (length(unique(start_indices_to_x_axes)) != length(start_indices_to_x_axes)) {
-    cli_abort("gather: start_indices_to_x_axes must not contain duplicates")
+  if (length(unique(start_index_map)) != length(start_index_map)) {
+    cli_abort("gather: start_index_map must not contain duplicates")
   }
   if (length(collapsed_slice_axes) && (min(collapsed_slice_axes) < 1L || max(collapsed_slice_axes) > op_rank)) {
     cli_abort("gather: invalid collapsed_slice_axes: {collapsed_slice_axes}")
@@ -887,8 +885,8 @@ quickr_emit_gather <- function(
 
   start_sym <- vector("list", op_rank)
   start_stmts <- list()
-  for (k in seq_along(start_indices_to_x_axes)) {
-    d <- start_indices_to_x_axes[[k]]
+  for (k in seq_along(start_index_map)) {
+    d <- start_index_map[[k]]
     sym <- as.name(paste0("s_", as.character(out_sym), "_", d))
     start_sym[[d]] <- sym
     upper <- as.integer(shape_operand[[d]] - slice_sizes[[d]] + 1L)
@@ -1053,14 +1051,14 @@ quickr_emit_dot_general <- function(
   list(rlang::call2("<-", out_sym, alloc), quickr_row_major_loop(out_idxs, out_shape, elem_body))
 }
 
-quickr_emit_transpose <- function(out_sym, operand_expr, permutation, out_shape, out_aval) {
-  if (length(out_shape) != 2L || length(permutation) != 2L) {
+quickr_emit_transpose <- function(out_sym, operand_expr, perm, out_shape, out_aval) {
+  if (length(out_shape) != 2L || length(perm) != 2L) {
     cli_abort("transpose: only rank-2 arrays are supported")
   }
-  if (identical(permutation, c(1L, 2L))) {
+  if (identical(perm, c(1L, 2L))) {
     return(quickr_emit_assign(out_sym, operand_expr))
   }
-  stopifnot(identical(permutation, c(2L, 1L)))
+  stopifnot(identical(perm, c(2L, 1L)))
   quickr_emit_assign(out_sym, rlang::call2("t", operand_expr))
 }
 
@@ -1443,45 +1441,8 @@ quickr_emit_reshape <- function(out_sym, operand_expr, shape_in, shape_out, out_
     return(quickr_emit_full_like(out_sym, scalar_expr, shape_out, out_aval))
   }
 
-  ctor <- quickr_dtype_to_r_ctor(as.character(dtype(out_aval)))
-  flat_sym <- as.name(paste0("flat_", as.character(out_sym)))
-  idx_sym <- as.name(paste0("idx_", as.character(out_sym)))
-  rank_in <- length(shape_in)
-  rank_out <- length(shape_out)
-
-  stmts <- list(
-    rlang::call2("<-", flat_sym, rlang::call2(ctor, as.integer(nflat))),
-    rlang::call2("<-", idx_sym, 0L)
-  )
-
-  in_idxs <- lapply(seq_len(rank_in), function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
-  elem_in <- quickr_subscript(operand_expr, in_idxs)
-  inner_in <- as.call(c(
-    list(as.name("{")),
-    list(rlang::call2("<-", idx_sym, rlang::call2("+", idx_sym, 1L))),
-    list(rlang::call2("<-", rlang::call2("[", flat_sym, idx_sym), elem_in))
-  ))
-  stmts <- c(stmts, list(quickr_row_major_loop(in_idxs, shape_in, inner_in)))
-
-  stmts <- c(stmts, list(rlang::call2("<-", idx_sym, 0L)))
-
-  alloc_out <- quickr_alloc_zero(shape_out, out_aval)
-
-  stmts <- c(stmts, quickr_emit_assign(out_sym, alloc_out))
-
-  out_idxs <- lapply(seq_len(rank_out), function(d) as.name(paste0("o_", as.character(out_sym), "_", d)))
-  assign_out <- if (rank_out == 1L) {
-    rlang::call2("<-", rlang::call2("[", out_sym, out_idxs[[1L]]), rlang::call2("[", flat_sym, idx_sym))
-  } else {
-    rlang::call2("<-", quickr_subscript(out_sym, out_idxs), rlang::call2("[", flat_sym, idx_sym))
-  }
-  inner_out <- as.call(c(
-    list(as.name("{")),
-    list(rlang::call2("<-", idx_sym, rlang::call2("+", idx_sym, 1L))),
-    list(assign_out)
-  ))
-  stmts <- c(stmts, list(quickr_row_major_loop(out_idxs, shape_out, inner_out)))
-  stmts
+  # A reshape is column-major, which is R's own element order.
+  quickr_emit_assign(out_sym, rlang::call2("array", operand_expr, dim = shape_out))
 }
 
 
@@ -1788,7 +1749,7 @@ local({
         params$collapsed_slice_axes,
         params$x_batching_axes,
         params$start_indices_batching_axes,
-        params$start_indices_to_x_axes,
+        params$start_index_map,
         params$index_vector_axis,
         out_aval
       )
@@ -1801,8 +1762,8 @@ local({
       if (is.null(ctx)) {
         cli_abort("Internal error: missing quickr lowering context for primitive {.val if}")
       }
-      true_graph <- params$true_graph
-      false_graph <- params$false_graph
+      true_graph <- params$true
+      false_graph <- params$false
 
       lowered_true <- quickr_lower_inline_graph(true_graph, list(), ctx)
       lowered_false <- quickr_lower_inline_graph(false_graph, list(), ctx)
@@ -1828,8 +1789,8 @@ local({
       if (is.null(ctx)) {
         cli_abort("Internal error: missing quickr lowering context for primitive {.val while}")
       }
-      cond_graph <- params$cond_graph
-      body_graph <- params$body_graph
+      cond_graph <- params$cond
+      body_graph <- params$body
 
       if (length(out_syms) != length(inputs)) {
         cli_abort("while: state arity mismatch between inputs and outputs")
@@ -1923,7 +1884,7 @@ local({
         cli_abort("scatter: update must be a length-n vector matching scatter_indices")
       }
 
-      update_comp <- params$update_computation_graph
+      update_comp <- params$update_fn
       if (!is_graph(update_comp)) {
         cli_abort("scatter: missing update computation graph")
       }
@@ -2223,7 +2184,7 @@ local({
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
-      quickr_emit_transpose(out_sym, inputs[[1L]], params$permutation, shape(out_aval), out_aval)
+      quickr_emit_transpose(out_sym, inputs[[1L]], params$perm, shape(out_aval), out_aval)
     }
   )
 

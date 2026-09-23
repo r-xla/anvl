@@ -13,10 +13,13 @@ like_defaults <- function(like, ...) {
   getters <- list(
     dtype = dtype,
     shape = shape,
-    # `device` only comes from a concrete AnvlArray. For a GraphBox (during
-    # tracing) it stays NULL so downstream constructors pick it up from the
-    # tracing context.
-    device = function(x) if (is_anvl_array(x)) device(x)
+    # `device` only comes from an array that is placed on one. A traced value
+    # is not, and neither is a constant of the trace -- reading the
+    # `PlainDeviceCpu()` of one back would allocate the result on the first CPU
+    # device, which under `jit()` is a device the graph never asked for. It
+    # stays `NULL` instead, so the constructor below builds a constant of the
+    # trace as well.
+    device = placement_device
   )
   for (name in names(args)) {
     if (is.null(args[[name]])) {
@@ -104,11 +107,11 @@ nv_seq_like <- jit(
 #' @rdname nv_linspace
 #' @export
 nv_linspace_like <- jit(
-  function(like, start, end, steps, dtype = NULL, device = NULL) {
+  function(like, from, to, length_out, dtype = NULL, device = NULL) {
     do.call(
       nv_linspace,
       c(
-        list(start = start, end = end, steps = steps),
+        list(from = from, to = to, length_out = length_out),
         like_defaults(like, dtype = dtype, device = device)
       )
     )
@@ -128,7 +131,7 @@ nv_eye_like <- jit(
 #' @rdname nv_lower_tri
 #' @export
 nv_lower_tri_like <- jit(
-  function(like, diagonal = -1L, shape = NULL, device = NULL) {
+  function(like, shape = NULL, diagonal = -1L, device = NULL) {
     do.call(
       nv_lower_tri,
       c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
@@ -140,7 +143,7 @@ nv_lower_tri_like <- jit(
 #' @rdname nv_upper_tri
 #' @export
 nv_upper_tri_like <- jit(
-  function(like, diagonal = 1L, shape = NULL, device = NULL) {
+  function(like, shape = NULL, diagonal = 1L, device = NULL) {
     do.call(
       nv_upper_tri,
       c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))

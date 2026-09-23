@@ -4,7 +4,7 @@
 \alias{nv_top_k}
 \title{Top-K Elements}
 \usage{
-nv_top_k(x, k, axes = NULL, with_indices = FALSE)
+nv_top_k(x, k, axes = NULL, indices = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -20,15 +20,15 @@ is refused rather than truncated.}
 Axes to take the top \code{k} over. Negative values count from the end, i.e.
 \code{-1} refers to the last axis. If \code{NULL} (default), ranks over every axis.}
 
-\item{with_indices}{(\code{logical(1)})\cr
+\item{indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns just the top-\code{k} values. If \code{TRUE},
 returns \code{list(values = ..., indices = ...)} where \code{indices} holds the
 position of each top-\code{k} value.}
 }
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
-One array when \code{with_indices = FALSE}, a named \code{list} of \code{values} and
-\code{indices} when \code{with_indices = TRUE}. The values have the input's data type
+One array when \code{indices = FALSE}, a named \code{list} of \code{values} and
+\code{indices} when \code{indices = TRUE}. The values have the input's data type
 and the indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 Both have the input's shape with \code{axes} replaced by a single axis of size
 \code{k}, sitting where the first of them was; values are sorted decreasing
@@ -42,8 +42,8 @@ order.
 
 Taking the top \code{k} over several axes ranks all of their elements together,
 so \code{nv_top_k(x, k)} equals \code{nv_top_k(nv_flatten(x), k)}. The indices then
-index the row-major flattening of those axes -- the order \code{\link[=nv_flatten]{nv_flatten()}}
-produces -- rather than any single axis.
+index the column-major flattening of those axes -- the order
+\code{\link[=nv_flatten]{nv_flatten()}} produces -- rather than any single axis.
 }
 
 \section{NaN handling}{
@@ -58,7 +58,7 @@ bit is not canonicalized.
 # the values keep the input's data type, the indices the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_top_k(x, k = 3L)
-nv_top_k(x, k = 3L, with_indices = TRUE)
+nv_top_k(x, k = 3L, indices = TRUE)
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 nv_top_k(m, k = 2L, axes = 2L) # the top 2 of each row

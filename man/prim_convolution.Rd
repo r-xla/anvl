@@ -7,9 +7,9 @@
 prim_convolution(
   x,
   kernel,
-  input_batch_axis,
-  input_feature_axis,
-  input_spatial_axes,
+  x_batch_axis,
+  x_feature_axis,
+  x_spatial_axes,
   kernel_input_feature_axis,
   kernel_output_feature_axis,
   kernel_spatial_axes,
@@ -34,10 +34,10 @@ of them has one.}
 \item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.
 Shares \code{x}'s data type -- see \code{x}.}
 
-\item{input_batch_axis, input_feature_axis}{(\code{integer(1)})\cr
+\item{x_batch_axis, x_feature_axis}{(\code{integer(1)})\cr
 Batch and feature axis of \code{x}.}
 
-\item{input_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{x}.}
+\item{x_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{x}.}
 
 \item{kernel_input_feature_axis, kernel_output_feature_axis}{(\code{integer(1)})\cr
 Input and output feature axis of \code{kernel}.}
@@ -95,7 +95,7 @@ x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
 kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
 prim_convolution(
   x, kernel,
-  input_batch_axis = 1L, input_feature_axis = 2L, input_spatial_axes = 3L,
+  x_batch_axis = 1L, x_feature_axis = 2L, x_spatial_axes = 3L,
   kernel_output_feature_axis = 1L, kernel_input_feature_axis = 2L,
   kernel_spatial_axes = 3L,
   output_batch_axis = 1L, output_feature_axis = 2L, output_spatial_axes = 3L,

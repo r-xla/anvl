@@ -440,7 +440,7 @@ test_that("prim_pad rejects non-scalar padding_value", {
     list(anvl = prim_which_max, torch = torch::torch_argmax),
     list(anvl = prim_which_min, torch = torch::torch_argmin)
   )) {
-    out_nv <- op$anvl(arr_nv, axis = axis_anvl)
+    out_nv <- op$anvl(arr_nv, axes = axis_anvl)
     out_th <- op$torch(arr_th, dim = axis_anvl)
     expect_equal(as_array(out_nv), as_array_torch(out_th))
   }
@@ -536,9 +536,9 @@ describe("prim_convolution", {
       prim_convolution(
         a,
         b,
-        input_batch_axis = 1L,
-        input_feature_axis = 2L,
-        input_spatial_axes = 3L,
+        x_batch_axis = 1L,
+        x_feature_axis = 2L,
+        x_spatial_axes = 3L,
         kernel_input_feature_axis = 2L,
         kernel_output_feature_axis = 1L,
         kernel_spatial_axes = 3L,

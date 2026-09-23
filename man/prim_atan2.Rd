@@ -23,8 +23,7 @@ Element-wise atan2 operation: the angle (in radians) between the positive
 x-axis and the point \verb{(x, y)}.
 
 The operands are named \code{y} and \code{x}, in that order, after
-\code{\link[base:atan2]{base::atan2()}} -- the one exception to the \code{lhs} / \code{rhs} naming the
-other binary primitives share.
+\code{\link[base:atan2]{base::atan2()}}, rather than \code{lhs} / \code{rhs}.
 }
 \section{Implemented Rules}{
 

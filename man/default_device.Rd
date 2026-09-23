@@ -15,11 +15,12 @@ Backend. Defaults to \code{\link[=active_backend]{active_backend()}} when \code{
 Backend-specific.
 }
 \description{
-Returns the default device of the active backend.
-For the \code{"pjrt"} backend, the default device is configured by the \code{PJRT_PLATFORM}
-environment variable (defaulting to \code{"cpu"}). Other backends (e.g. \code{"quickr"})
-only support CPU.
+Returns the default device of the active backend: the device the
+\code{anvl.default_device} option names (see \code{\link[=local_default_device]{local_default_device()}}), else
+the one the \code{ANVL_DEFAULT_DEVICE} environment variable names (e.g.
+\code{ANVL_DEFAULT_DEVICE=cuda}, read once when anvl is loaded), else the first
+CPU device.
 }
 \seealso{
-\code{\link[=nv_device]{nv_device()}}, \code{\link[=active_backend]{active_backend()}}
+\code{\link[=nv_device]{nv_device()}}, \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_default_device]{local_default_device()}}
 }

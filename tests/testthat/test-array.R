@@ -1102,7 +1102,7 @@ describe("the default float", {
     expect_dtype(nv_scalar(1.5), "f64")
     expect_dtype(nv_array(matrix(c(1.5, 2.5, 3.5, 4.5), 2)), "f64")
     expect_dtype(nv_fill(0, 3), "f64")
-    expect_dtype(nv_linspace(0, 1, steps = 3L), "f64")
+    expect_dtype(nv_linspace(0, 1, length_out = 3L), "f64")
     expect_dtype(nv_eye(2), "f64")
     state <- nv_rng_state(1L)
     expect_dtype(nv_rnorm(3, state)[[2L]], "f64")

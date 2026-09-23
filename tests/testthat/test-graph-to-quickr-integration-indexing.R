@@ -17,7 +17,7 @@ test_that("integration: indexing-heavy graph matches PJRT", {
       collapsed_slice_axes = 1L,
       x_batching_axes = integer(),
       start_indices_batching_axes = integer(),
-      start_indices_to_x_axes = 1L,
+      start_index_map = 1L,
       index_vector_axis = 2L
     )
 
@@ -46,7 +46,7 @@ test_that("integration: indexing-heavy graph matches PJRT", {
       scatter_indices_batching_axes = integer(),
       scatter_axes_to_x_axes = 1L,
       index_vector_axis = 2L,
-      update_computation = function(old, new) old + new
+      update_fn = function(old, new) old + new
     )
 
     out_f64 <- prim_convert(scattered, dtype = "f64")

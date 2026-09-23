@@ -4,13 +4,15 @@
 \alias{prim_shift_right_logical}
 \title{Primitive Logical Shift Right}
 \usage{
-prim_shift_right_logical(lhs, rhs)
+prim_shift_right_logical(x, shift)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Two inputs of the same data type and shape. Can be any integer data type. R
-values assume the other operand's data type when it is in their
-\link[=dtypes]{data type category}, and their
+\item{x}{(\code{\link{arrayish}})\cr
+The array whose bits are shifted. Can be any integer data type.}
+
+\item{shift}{(\code{\link{arrayish}})\cr
+By how many bits to shift each element of \code{x}. Has the same data type and
+shape as \code{x}. An R value takes the other operand's data type, and its
 \link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{

@@ -7,7 +7,7 @@
 \usage{
 nv_upper_tri(shape, diagonal = 1L, device = NULL)
 
-nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
+nv_upper_tri_like(like, shape = NULL, diagonal = 1L, device = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -29,8 +29,7 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults

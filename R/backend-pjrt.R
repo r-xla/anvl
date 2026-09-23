@@ -274,8 +274,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' [`device()`]. A device is a [`pjrt::as_pjrt_device()`] object (e.g. the
 #' platform `"cpu"` or `"cuda"`, optionally with an index such as `"cuda:1"`).
 #' When `device` is `NULL` in [`nv_array()`] or the [`jit()`] wrapper, the
-#' device defaults to the `PJRT_PLATFORM` environment variable (falling back
-#' to `"cpu"`), or is inferred from the existing inputs of a jitted call.
+#' device defaults to [`default_device()`], or is inferred from the existing
+#' inputs of a jitted call.
 #' Operations require all inputs to live on the same device.
 #'
 #' @section Supported data types:
@@ -311,6 +311,11 @@ AnvlBackendPjrt <- function() {
     # device() reads on the hot dispatch path into plain field accesses instead
     # of repeated S3-dispatch -> C++/pjrt calls.
     new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      # A buffer arrives on a device of its own; everything else is placed on
+      # the default when the call names none.
+      if (is.null(device) && !inherits(data, "PJRTBuffer")) {
+        device <- default_device("pjrt")
+      }
       buf <- if (is.raw(data)) {
         pjrt_buffer(data, dtype = dtype, device = device, shape = shape, row_major = row_major)
       } else {
@@ -328,7 +333,7 @@ AnvlBackendPjrt <- function() {
       )
     },
     new_empty = function(dtype, shape, device) {
-      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device)
+      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device %||% default_device("pjrt"))
       structure(
         list(
           data = buf,

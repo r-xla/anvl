@@ -13,9 +13,12 @@ An R value materializes at its \link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Any target data type except \code{bool}.
-One of the same bit width as the input's leaves the shape unchanged; a narrower
-one adds a trailing axis holding the pieces; a wider one consumes the last
-axis, whose size must equal the ratio of the two widths.}
+One of the same bit width as the input's leaves the shape unchanged; a
+narrower one adds a \emph{leading} axis holding the pieces; a wider one consumes
+the first axis, whose size must equal the ratio of the two widths. The
+pieces of one element are therefore adjacent in the column-major element
+order \code{\link[=nv_flatten]{nv_flatten()}} reads, and a narrowing conversion lays the bytes out
+the way \code{\link[=as_raw]{as_raw()}} writes them.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -37,6 +40,9 @@ modifying the underlying data.
 
 Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}, specified under
 \href{https://openxla.org/stablehlo/spec#bitcast_convert}{bitcast_convert}.
+StableHLO puts the lane axis last, so a width-changing conversion is
+lowered with one \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}} that rotates it to the front, or off the
+front, depending on the direction.
 }
 
 \examples{
@@ -44,10 +50,10 @@ Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}, sp
 # same width: the bits are reread, the shape stays
 prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "f32")
 
-# narrower: a trailing axis holds the four bytes of each i32
+# narrower: a leading axis holds the four bytes of each i32
 prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "i8")
 
-# wider: the last axis is consumed, and its size must be the width ratio
+# wider: the first axis is consumed, and its size must be the width ratio
 prim_bitcast_convert(nv_array(rep(1L, 4), dtype = "i8"), dtype = "i32")
 \dontshow{\}) # examplesIf}
 }

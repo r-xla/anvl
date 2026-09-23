@@ -79,3 +79,9 @@ test_that("serialization round-trips scalars and typed arrays", {
   expect_equal(lst$scalar, reloaded2$scalar)
   expect_equal(lst$typed, reloaded2$typed)
 })
+
+test_that("nv_unserialize places the arrays on the default device", {
+  local_default_device("cpu:1")
+  lst <- list(x = nv_array(1:3))
+  expect_equal(device(nv_unserialize(nv_serialize(lst))$x), nv_device("cpu:1"))
+})

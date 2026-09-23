@@ -54,9 +54,9 @@ PERF    <- env_or("QNORM_PERF", "1") != "0"
 USEJAX  <- env_or("QNORM_JAX",  "1") != "0"
 DENSE_N <- as.integer(env_or("QNORM_DENSE", if (FULL) "2000" else "60"))
 DEVICE  <- env_or("DEVICE", "cpu")
-## anvl reads PJRT_PLATFORM in default_device(); nv_array()/jit() then place and
+## anvl reads ANVL_DEFAULT_DEVICE when loaded; nv_array()/jit() then place and
 ## compile on it. JAX is steered per-subprocess via JAX_PLATFORMS (run_py_chunk).
-Sys.setenv(PJRT_PLATFORM = DEVICE)
+Sys.setenv(ANVL_DEFAULT_DEVICE = DEVICE)
 
 suppressPackageStartupMessages({
   library(anvl)
@@ -1040,7 +1040,7 @@ anvl_hlo <- function(log_p, op, dt) tryCatch({
   system2(file.path(R.home("bin"), "Rscript"), shQuote(script),
           env = quote_env(c(
             sprintf("XLA_FLAGS=--xla_dump_to=%s --xla_dump_hlo_as_text", dd),
-            paste0("PJRT_PLATFORM=", DEVICE))),
+            paste0("ANVL_DEFAULT_DEVICE=", DEVICE))),
           stdout = FALSE, stderr = FALSE)
   ## cpu_ or gpu_ depending on the device. If more than one module was dumped,
   ## keep the largest -- an incidental transfer/convert module is tiny next to

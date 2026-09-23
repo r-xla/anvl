@@ -144,12 +144,12 @@ rather than explicitly inverting the kernel matrix.
 chol_solve <- function(L, b) {
   # solves K_y x = b where K_y = L L^T (L lower triangular)
   y <- nv_triangular_solve(L, b,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = FALSE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = FALSE
   )
   nv_triangular_solve(L, y,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = TRUE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = TRUE
   )
 }
 
@@ -258,12 +258,12 @@ neg_log_marginal_likelihood <- function(kernel, X, y, lengthscale, signal_var, n
 
   # alpha = K_y^{-1} y, computed via L L^T x = y
   z <- nv_triangular_solve(L, y,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = FALSE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = FALSE
   )
   alpha <- nv_triangular_solve(L, z,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = TRUE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = TRUE
   )
 
   # Data fit term: 0.5 * y^T %*% alpha

@@ -76,9 +76,9 @@ nv_runif <- jit(
   function(
     shape,
     state,
-    dtype = NULL,
     min = 0,
-    max = 1
+    max = 1,
+    dtype = NULL
   ) {
     dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
     checkmate::assertNumeric(min, len = 1L, any.missing = FALSE, upper = max)
@@ -151,7 +151,7 @@ nv_runif <- jit(
 #' nv_rnorm(c(2, 3), state, sd = sds)$values
 #' @export
 nv_rnorm <- jit(
-  function(shape, state, dtype = NULL, mean = 0, sd = 1) {
+  function(shape, state, mean = 0, sd = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
 
     rule <- if (is.null(dtype)) {
@@ -221,7 +221,7 @@ nv_rnorm <- jit(
     # return state and Normals N
     list(state = Theta$state, values = N)
   },
-  static = c(1L, 3L)
+  static = c(1L, 5L)
 )
 
 #' @title Sample from a Binomial Distribution

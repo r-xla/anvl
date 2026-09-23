@@ -15,24 +15,47 @@ Arrays to broadcast.}
 The inputs, each with its own data type and the common shape.
 }
 \description{
-Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
+Broadcasts arrays to a common shape, aligning their axes from the first
+one, so that a vector meets a matrix as a column.
 }
 \section{Broadcasting Rules}{
 
 \enumerate{
-\item If the arrays have different numbers of axes, prepend size-1
-axes to the shorter shape.
+\item If the arrays have different numbers of axes, append size-1
+axes to the shorter shape, so axis 1 meets axis 1. A length-\code{n}
+vector therefore lines up with the rows of an \code{n} by \code{m} matrix and
+is replicated across its columns. NumPy prepends instead.
 \item For each axis: if the sizes match, keep them; if one is 1, expand
 it to the other's size; otherwise raise an error.
 }
 }
 
+\section{Relation to base R}{
+
+Base R has no broadcasting between arrays -- \code{matrix(1, 3, 3) + matrix(1, 1, 3)} is a "non-conformable arrays" error. It does recycle a
+\emph{vector} over a matrix, though, and for a vector as long as the first
+axis that lands on exactly this broadcast, which is why a vector meets a
+matrix as a column in both. The two part ways once the lengths stop
+lining up: \code{matrix(1, 2, 3) + c(1, 2, 3)} recycles on regardless, where
+the matching broadcast is an error.
+
+The deviation from NumPy's broadcasting rules is still motivated by
+keeping anvl's behaviour similar to base R in spirit, see the examples
+for more.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the length-3 vector is stretched to the matrix's shape
-x1 <- nv_matrix(1:6, nrow = 2)
-x2 <- nv_array(c(10, 20, 30))
-nv_broadcast_arrays(x1, x2)
+# interpreting vectors as columns
+# base R:
+x1 <- c(1, 2)
+m1 <- array(1, dim = c(2, 2))
+x1 + m1
+# anvl:
+args <- nv_broadcast_arrays(nv_array(x1), nv_array(m1))
+print(args)
+args[[1]] + args[[2]]
+
 
 # axes of size 1 are expanded to the other operand's size
 y1 <- nv_array(1:3, shape = c(1, 3))

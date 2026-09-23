@@ -46,7 +46,7 @@ wide_graph <- function(f, n = 30L) {
 }
 
 # A `while` whose body captures six values, so that the sub-graph's signature
-# line is long enough to feel the `body_graph = ` it is printed behind.
+# line is long enough to feel the `body = ` it is printed behind.
 capture_heavy_graph <- function() {
   consts <- lapply(1:6, function(i) nv_scalar(i, dtype = "f32"))
   trace_fn(
@@ -193,7 +193,7 @@ describe("format.AnvlGraph()", {
 
   it("names a capture without its data type, the enclosing graph having it", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
-    expect_true(any(grepl("cond_graph = [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
+    expect_true(any(grepl("cond = [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
     # The graph around it is the one place `%x1` is declared with a type.
     expect_match(lines[[1L]], "(%x1: f32[])", fixed = TRUE)
   })
@@ -229,11 +229,11 @@ describe("format.AnvlGraph()", {
 
   it("does not spill the internals of an array an optimization pass inlined", {
     out <- format(inline_scalarish_constants(nested_graph()))
-    expect_match(out, "value = 0.5:f32", fixed = TRUE)
+    expect_match(out, "add(%x3, 0.5:f32)", fixed = TRUE)
     expect_no_match(out, "pointer", fixed = TRUE)
   })
 
-  it("names the fill an optimization pass makes of a constant", {
+  it("prints a constant an optimization pass inlined as its value", {
     seven <- nv_scalar(7, dtype = "f32")
     graph <- trace_fn(
       function(x) x + seven,
@@ -241,21 +241,6 @@ describe("format.AnvlGraph()", {
       optimize = TRUE
     )
     expect_snapshot(graph)
-  })
-
-  it("tells apart two constants of equal value that the pass inlined", {
-    # Two nodes, so two `fill` calls; without a name each they print alike.
-    # Which of them the pass emits first is not fixed, so only compare the two.
-    one <- nv_scalar(1, dtype = "f32")
-    other <- nv_scalar(1, dtype = "f32")
-    graph <- trace_fn(
-      function(x) (x + one) * other,
-      list(x = nv_scalar(2, dtype = "f32")),
-      optimize = TRUE
-    )
-    fills <- grep("= fill ", strsplit(format(graph), "\n")[[1L]], value = TRUE)
-    expect_length(fills, 2L)
-    expect_equal(anyDuplicated(fills), 0L)
   })
 
   it("names the R type of an input the caller supplies as bare R data", {

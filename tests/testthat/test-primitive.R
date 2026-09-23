@@ -67,15 +67,15 @@ describe("subgraphs", {
     call <- PrimitiveCall(
       primitive = prim_if,
       inputs = list(GraphValue(aval = nv_aval("bool", integer()))),
-      params = list(true_graph = true_graph, false_graph = false_graph),
+      params = list(true = true_graph, false = false_graph),
       outputs = list(GraphValue(aval = nv_aval("f32", integer())))
     )
 
     subgraphs_list <- subgraphs(call)
     expect_length(subgraphs_list, 2L)
-    expect_named(subgraphs_list, c("true_graph", "false_graph"))
-    expect_identical(subgraphs_list[["true_graph"]], true_graph)
-    expect_identical(subgraphs_list[["false_graph"]], false_graph)
+    expect_named(subgraphs_list, c("true", "false"))
+    expect_identical(subgraphs_list[["true"]], true_graph)
+    expect_identical(subgraphs_list[["false"]], false_graph)
   })
   it("returns empty list for non-higher-order primitives", {
     call <- PrimitiveCall(

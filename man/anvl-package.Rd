@@ -21,29 +21,32 @@ Also see  \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_ba
 types an R double and integer materialize at when it cannot be inferred from
 another operand.
 See \code{\link[=default_dtypes]{default_dtypes()}} for more details.
+\item \code{anvl.default_device} (\code{character(1)} | device object): the device a call
+that names none allocates on.
+Also see \code{\link[=default_device]{default_device()}}, \code{\link[=local_default_device]{local_default_device()}} and
+\code{\link[=with_default_device]{with_default_device()}}.
 }
 }
 
 \section{Environment variables}{
 
 \itemize{
-\item \code{PJRT_PLATFORM}: the platform the \code{"pjrt"} backend allocates on and
-compiles for when a call names no device -- \code{"cpu"} (the default),
-\code{"cuda"}, \code{"metal"}, ... It is read afresh whenever a default device is
-needed; see \code{\link[=default_device]{default_device()}} and \code{\link[=nv_device]{nv_device()}}. The variable is
-pjrt's, anvl only follows it.
+\item \code{ANVL_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
+\code{"float=f64,int=i64"}, used for every backend when the
+\code{anvl.default_dtypes} option is not set.
+\item \code{ANVL_DEFAULT_DEVICE}: a device identifier such as \code{"cuda"} or \code{"cpu:1"},
+used when the \code{anvl.default_device} option is not set.
 }
 
-The remaining ones affect only anvl's own test suite, not the package:
+Both are read once, when anvl is loaded.
+
+The remaining ones, all prefixed \code{ANVL_TEST}, affect only anvl's own test
+suite, not the package:
 \itemize{
 \item \code{ANVL_TEST}: \code{tests/testthat.R} runs the tests only when this is \code{"1"},
 so \verb{R CMD check} in a shell without it runs none of them.
-\item \code{ANVL_SKIP_QUICKR}: when set to anything non-empty, the tests that need
+\item \code{ANVL_TEST_SKIP_QUICKR}: when set to anything non-empty, the tests that need
 the quickr backend are skipped -- they are comparatively slow.
-\item \code{ANVL_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
-\code{"float=f64,int=i64"}, which the test setup turns into the
-\code{anvl.default_dtypes} option for the whole run, so that anything
-hardcoding \code{f32} / \code{i32} where it should read \code{\link[=default_dtypes]{default_dtypes()}} fails.
 }
 }
 

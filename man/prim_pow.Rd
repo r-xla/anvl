@@ -2,12 +2,13 @@
 % Please edit documentation in R/primitives.R
 \name{prim_pow}
 \alias{prim_pow}
-\title{Primitive Power}
+\title{Primitive Power
+Raises \code{x} to the power of \code{y} element-wise.}
 \usage{
-prim_pow(lhs, rhs)
+prim_pow(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Two inputs of the same data type and shape. Can be any numeric data type. R
 values assume the other operand's data type when it is in their
 \link[=dtypes]{data type category}, and their
@@ -18,7 +19,8 @@ values assume the other operand's data type when it is in their
 Has the inputs' shape and data type.
 }
 \description{
-Raises lhs to the power of rhs element-wise.
+Primitive Power
+Raises \code{x} to the power of \code{y} element-wise.
 }
 \section{Implemented Rules}{
 

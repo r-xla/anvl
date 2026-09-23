@@ -146,16 +146,16 @@ gather_clamp_indices <- function(
   start_indices,
   x_shape,
   slice_sizes,
-  start_indices_to_x_axes,
+  start_index_map,
   index_vector_axis
 ) {
-  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_indices_to_x_axes
+  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_index_map
   if (length(x_shape) != length(slice_sizes)) {
     cli_abort("{.arg x_shape} and {.arg slice_sizes} must have the same length")
   }
 
   indices_shape <- shape(start_indices)
-  n_index_coords <- length(start_indices_to_x_axes)
+  n_index_coords <- length(start_index_map)
 
   if (n_index_coords == 0L) {
     return(start_indices)
@@ -164,7 +164,7 @@ gather_clamp_indices <- function(
   # Build max bounds for each coordinate
   max_bounds <- integer(n_index_coords)
   for (coord_idx in seq_len(n_index_coords)) {
-    x_axis <- start_indices_to_x_axes[coord_idx]
+    x_axis <- start_index_map[coord_idx]
     x_size <- x_shape[x_axis]
     slice_size_for_axis <- slice_sizes[x_axis]
     max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_axis + 1L)
@@ -244,4 +244,19 @@ transpose_matrix_axes <- function(x) {
     return(x)
   }
   nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
+}
+
+# Where `prim_bitcast_convert()` puts the axis holding an element's pieces when
+# the two data types differ in width. StableHLO puts it last, where the pieces
+# of one element sit next to each other under its row-major reading; anvl is
+# column-major, so the axis belongs first instead. Returns the number of pieces
+# and which way the conversion goes, so the shape rule and the lowering agree.
+bitcast_lane <- function(dtype_in, dtype_out) {
+  width_in <- dtype_width(as_dtype(dtype_in))
+  width_out <- dtype_width(as_dtype(dtype_out))
+  list(
+    pieces = as.integer(max(width_in, width_out) / min(width_in, width_out)),
+    splits = width_in > width_out,
+    joins = width_in < width_out
+  )
 }

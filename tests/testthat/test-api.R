@@ -23,6 +23,48 @@ test_that("nv_fill rejects non-scalar-R value with a helpful message", {
   )
 })
 
+describe("nv_broadcast_to()", {
+  it("aligns the array's axes with the leading axes of the target", {
+    x <- nv_array(c(1, 2))
+    got <- nv_broadcast_to(x, shape = c(2L, 3L))
+    expect_shape(got, c(2L, 3L))
+    # every column is `x`
+    expect_equal(as_array(got), matrix(c(1, 2), nrow = 2L, ncol = 3L))
+  })
+
+  it("refuses a vector that would only fit the trailing axis", {
+    expect_error(nv_broadcast_to(nv_array(c(1, 2, 3)), shape = c(2L, 3L)), "3")
+  })
+
+  it("expands a size-1 axis wherever it sits", {
+    x <- nv_array(c(1, 2, 3), shape = c(1L, 3L))
+    expect_equal(
+      as_array(nv_broadcast_to(x, shape = c(2L, 3L))),
+      matrix(c(1, 2, 3), nrow = 2L, ncol = 3L, byrow = TRUE)
+    )
+  })
+})
+
+describe("nv_broadcast_arrays()", {
+  it("appends size-1 axes to the shorter shape", {
+    m <- nv_matrix(1:6, nrow = 2L)
+    v <- nv_array(c(10L, 20L))
+    xs <- nv_broadcast_arrays(m, v)
+    expect_shape(xs[[1L]], c(2L, 3L))
+    expect_shape(xs[[2L]], c(2L, 3L))
+    # base R's flat recycling happens to agree when the vector is as long
+    # as the first axis, which is the case here
+    expect_equal(as_array(xs[[1L]] + xs[[2L]]), matrix(1:6, nrow = 2L) + c(10L, 20L))
+  })
+
+  it("refuses shapes that meet at an axis where neither size is 1", {
+    expect_error(
+      nv_broadcast_arrays(nv_matrix(1:6, nrow = 2L), nv_array(c(10, 20, 30))),
+      "not broadcastable"
+    )
+  })
+})
+
 test_that("broadcasting scalars", {
   # An empty `...` used to fail inside `hlo_return()` instead of saying what
   # was missing.
@@ -1001,11 +1043,14 @@ describe("the cumulative ops' axis default", {
   m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
   mr <- as_array(m)
 
-  it("flattens a multi-axis input, row-major", {
+  it("flattens a multi-axis input column-major, like base R", {
     for (fn in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
       expect_equal(as_array(fn(m)), as_array(fn(nv_flatten(m))))
     }
-    expect_equal(as.vector(nv_cumsum(m)), cumsum(as.vector(t(mr))))
+    expect_equal(as.vector(nv_cumsum(m)), cumsum(mr))
+    expect_equal(as.vector(nv_cumprod(m)), cumprod(mr))
+    expect_equal(as.vector(nv_cummax(m)), cummax(mr))
+    expect_equal(as.vector(nv_cummin(m)), cummin(mr))
     expect_shape(nv_cumsum(m), 6L)
   })
 
@@ -1067,7 +1112,7 @@ describe("nv_cummax / nv_cummin nan_rm", {
     expect_equal(as_array(nv_cummin(x)), as_array(nv_cummin(x, nan_rm = TRUE)))
   })
   it("indices returns NaN-propagated values and indices", {
-    out <- nv_cummax(nv_array(c(1, NaN, 3)), with_indices = TRUE)
+    out <- nv_cummax(nv_array(c(1, NaN, 3)), indices = TRUE)
     vals <- as.numeric(out$values)
     expect_equal(vals[1], 1)
     expect_true(all(is.nan(vals[2:3])))
@@ -1238,7 +1283,7 @@ describe("nv_unsqueeze", {
     expect_equal(
       {
         x <- nv_array(c(1, 2, 3))
-        nv_unsqueeze(x, axis = 1L)
+        nv_unsqueeze(x, axes = 1L)
       },
       nv_array(c(1, 2, 3), shape = c(1, 3))
     )
@@ -1247,79 +1292,85 @@ describe("nv_unsqueeze", {
     expect_equal(
       {
         x <- nv_array(c(1, 2, 3))
-        nv_unsqueeze(x, axis = 2L)
+        nv_unsqueeze(x, axes = 2L)
       },
       nv_array(c(1, 2, 3), shape = c(3, 1))
     )
   })
   it("adds axis in the middle", {
     x <- nv_array(1:6, shape = c(2, 3))
-    result <- nv_unsqueeze(x, axis = 2L)
+    result <- nv_unsqueeze(x, axes = 2L)
     expect_shape(result, c(2L, 1L, 3L))
-    roundtrip <- nv_squeeze(nv_unsqueeze(x, axis = 2L), axes = 2L)
+    roundtrip <- nv_squeeze(nv_unsqueeze(x, axes = 2L), axes = 2L)
     expect_equal(roundtrip, x)
   })
-  it("counts negative dims from the end of the result", {
+  it("counts negative axes from the end of the result", {
     x <- nv_array(c(1, 2, 3))
-    expect_shape(nv_unsqueeze(x, axis = -1L), c(3L, 1L))
-    expect_shape(nv_unsqueeze(x, axis = -2L), c(1L, 3L))
+    expect_shape(nv_unsqueeze(x, axes = -1L), c(3L, 1L))
+    expect_shape(nv_unsqueeze(x, axes = -2L), c(1L, 3L))
   })
   it("allows inserting one past the end but no further", {
     m <- nv_array(1:6, shape = c(2, 3))
-    expect_shape(nv_unsqueeze(m, axis = 3L), c(2L, 3L, 1L))
-    expect_error(nv_unsqueeze(m, axis = 4L), "between 1 and 3")
-    expect_error(nv_unsqueeze(m, axis = c(1L, 2L)), "must have length 1")
+    expect_shape(nv_unsqueeze(m, axes = 3L), c(2L, 3L, 1L))
+    expect_error(nv_unsqueeze(m, axes = 4L), "between 1 and 3")
+  })
+  it("inserts several axes, at their positions in the result", {
+    m <- nv_array(1:6, shape = c(2, 3))
+    expect_shape(nv_unsqueeze(m, axes = c(1L, 3L)), c(1L, 2L, 1L, 3L))
+    expect_shape(nv_unsqueeze(m, axes = c(-1L, 1L)), c(1L, 2L, 3L, 1L))
+    expect_shape(nv_unsqueeze(m, axes = c(3L, 4L)), c(2L, 3L, 1L, 1L))
+    expect_error(nv_unsqueeze(m, axes = c(1L, 1L)), "duplicate")
   })
 })
 
 describe("nv_linspace", {
   it("creates evenly spaced values", {
     expect_equal(
-      nv_linspace(0, 1, steps = 5L),
+      nv_linspace(0, 1, length_out = 5L),
       nv_array(c(0, 0.25, 0.5, 0.75, 1)),
       tolerance = 1e-6
     )
   })
   it("handles single step", {
     expect_equal(
-      nv_linspace(3, 7, steps = 1L),
+      nv_linspace(3, 7, length_out = 1L),
       nv_array(3, shape = 1L),
       tolerance = 1e-6
     )
   })
   it("works with integer-like endpoints", {
     expect_equal(
-      nv_linspace(0, 10, steps = 6L),
+      nv_linspace(0, 10, length_out = 6L),
       nv_array(c(0, 2, 4, 6, 8, 10)),
       tolerance = 1e-6
     )
   })
   it("counts down when end is below start", {
     expect_equal(
-      nv_linspace(1, 0, steps = 5L),
+      nv_linspace(1, 0, length_out = 5L),
       nv_array(c(1, 0.75, 0.5, 0.25, 0)),
       tolerance = 1e-6
     )
   })
   it("defaults to the default float dtype", {
-    expect_dtype(nv_linspace(0, 1, steps = 3L), default_float())
-    expect_dtype(nv_linspace(0, 1, steps = 1L), default_float())
+    expect_dtype(nv_linspace(0, 1, length_out = 3L), default_float())
+    expect_dtype(nv_linspace(0, 1, length_out = 1L), default_float())
     with_default_dtypes(c(float = "f64"), {
-      expect_dtype(nv_linspace(0, 1, steps = 3L), "f64")
+      expect_dtype(nv_linspace(0, 1, length_out = 3L), "f64")
     })
   })
   it("honours a float dtype", {
-    expect_dtype(nv_linspace(0, 1, steps = 3L, dtype = "f64"), "f64")
-    expect_dtype(nv_linspace(0, 1, steps = 1L, dtype = "f64"), "f64")
+    expect_dtype(nv_linspace(0, 1, length_out = 3L, dtype = "f64"), "f64")
+    expect_dtype(nv_linspace(0, 1, length_out = 1L, dtype = "f64"), "f64")
   })
   it("rejects an integer dtype", {
-    expect_error(nv_linspace(0, 1, steps = 5L, dtype = "i32"), "must be a float data type")
-    expect_error(nv_linspace(0, 10, steps = 6L, dtype = "i32"), "must be a float data type")
-    expect_error(nv_linspace(0, 1, steps = 1L, dtype = "i32"), "must be a float data type")
+    expect_error(nv_linspace(0, 1, length_out = 5L, dtype = "i32"), "must be a float data type")
+    expect_error(nv_linspace(0, 10, length_out = 6L, dtype = "i32"), "must be a float data type")
+    expect_error(nv_linspace(0, 1, length_out = 1L, dtype = "i32"), "must be a float data type")
   })
   it("requires steps to be a positive whole number", {
-    expect_error(nv_linspace(0, 1, steps = 0L), "steps")
-    expect_error(nv_linspace(0, 1, steps = 2.5), "steps")
+    expect_error(nv_linspace(0, 1, length_out = 0L), "length_out")
+    expect_error(nv_linspace(0, 1, length_out = 2.5), "length_out")
   })
 })
 
@@ -1699,7 +1750,7 @@ describe("nv_seq_like", {
 describe("nv_linspace_like", {
   it("inherits dtype, device from like (length determined by steps)", {
     like <- nv_array(c(0, 0, 0), dtype = "f64")
-    out <- nv_linspace_like(like, 0, 1, steps = 5L)
+    out <- nv_linspace_like(like, 0, 1, length_out = 5L)
     expect_dtype(out, dtype(like))
     expect_equal(as.character(device(out)), as.character(device(like)))
     expect_shape(out, 5L)
@@ -1708,12 +1759,12 @@ describe("nv_linspace_like", {
 
   it("allows overriding the inherited attributes", {
     like <- nv_array(c(0, 0, 0), dtype = "f64")
-    expect_dtype(nv_linspace_like(like, 0, 1, steps = 3L, dtype = "f32"), "f32")
+    expect_dtype(nv_linspace_like(like, 0, 1, length_out = 3L, dtype = "f32"), "f32")
   })
 
   it("rejects an integer like", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
-    expect_error(nv_linspace_like(like, 0, 1, steps = 5L), "must be a float data type")
+    expect_error(nv_linspace_like(like, 0, 1, length_out = 5L), "must be a float data type")
   })
 })
 
@@ -1836,9 +1887,12 @@ describe("nv_order", {
     m <- nv_array(mr)
     perm <- as.integer(nv_order(m))
     expect_shape(nv_order(m), 6L)
-    # the indices refer to the row-major flattening, which is what nv_sort
+    # the indices refer to the column-major flattening, which is what nv_sort
     # sorts, so indexing it by them reproduces nv_sort()'s output
-    expect_equal(as.vector(t(mr))[perm], as.vector(nv_sort(m)))
+    expect_equal(as.vector(mr)[perm], as.vector(nv_sort(m)))
+    # which is base R's order(): `mr` has no ties, so the permutation is unique
+    expect_equal(perm, order(mr))
+    expect_equal(as.integer(nv_order(m, decreasing = TRUE)), order(mr, decreasing = TRUE))
   })
 
   it("permutes each slice when an axis is given", {
@@ -1877,19 +1931,20 @@ describe("nv_top_k", {
     expect_equal(nv_top_k(m, k = 3L, axes = c(1L, 2L)), nv_top_k(m, k = 3L))
   })
 
-  it("indexes the row-major flattening of the reduced axes", {
+  it("indexes the column-major flattening of the reduced axes", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     # Along one axis the index is a position in that axis.
     expect_equal(
-      as_array(nv_top_k(m, k = 2L, axes = 2L, with_indices = TRUE)$indices),
+      as_array(nv_top_k(m, k = 2L, axes = 2L, indices = TRUE)$indices),
       matrix(c(3L, 1L, 2L, 1L), nrow = 2, byrow = TRUE)
     )
     # Over both, it is a position in `nv_flatten(m)`.
-    out <- nv_top_k(m, k = 3L, with_indices = TRUE)
-    expect_equal(as.integer(as_array(out$indices)), c(3L, 5L, 1L))
+    # nv_flatten(m) is 3, 2, 1, 4, 5, 0, so 5, 4 and 3 sit at 5, 4 and 1
+    out <- nv_top_k(m, k = 3L, indices = TRUE)
+    expect_equal(as.integer(as_array(out$indices)), c(5L, 4L, 1L))
     expect_equal(
       as.vector(as_array(out$values)),
-      as.vector(as_array(nv_flatten(m)))[c(3L, 5L, 1L)]
+      as.vector(as_array(nv_flatten(m)))[c(5L, 4L, 1L)]
     )
   })
 
@@ -1923,7 +1978,7 @@ describe("nv_median / nv_quantile NaN handling", {
       expect_true(is.nan(as_array(nv_quantile(x, q))), info = paste("q =", q))
     }
     for (method in c("linear", "lower", "higher", "nearest", "midpoint")) {
-      expect_true(is.nan(as_array(nv_quantile(x, 0.5, interpolation = method))), info = paste("method =", method))
+      expect_true(is.nan(as_array(nv_quantile(x, 0.5, method = method))), info = paste("method =", method))
     }
   })
   it("propagates NaN for array probs", {
@@ -1962,12 +2017,12 @@ describe("nv_median / nv_quantile NaN handling", {
     v <- c(1, 2, 3, NaN, 5)
     x <- nv_array(v)
     expect_equal(
-      as.numeric(nv_quantile(x, 0.5, interpolation = "linear", nan_rm = TRUE)),
+      as.numeric(nv_quantile(x, 0.5, method = "linear", nan_rm = TRUE)),
       median(v, na.rm = TRUE)
     )
-    expect_equal(as.numeric(nv_quantile(x, 0.5, interpolation = "lower", nan_rm = TRUE)), 2)
-    expect_equal(as.numeric(nv_quantile(x, 0.5, interpolation = "higher", nan_rm = TRUE)), 3)
-    expect_equal(as.numeric(nv_quantile(x, 0.5, interpolation = "midpoint", nan_rm = TRUE)), 2.5)
+    expect_equal(as.numeric(nv_quantile(x, 0.5, method = "lower", nan_rm = TRUE)), 2)
+    expect_equal(as.numeric(nv_quantile(x, 0.5, method = "higher", nan_rm = TRUE)), 3)
+    expect_equal(as.numeric(nv_quantile(x, 0.5, method = "midpoint", nan_rm = TRUE)), 2.5)
   })
   it("nan_rm = TRUE with array probs returns one quantile per prob", {
     v <- c(1, NaN, 3, 5)
@@ -2027,13 +2082,13 @@ describe("nv_median", {
     )
   })
 
-  it("forwards interpolation through nv_median and median()", {
+  it("forwards method through nv_median and median()", {
     x <- nv_array(c(1, 2, 3, 4))
-    expect_equal(as_array(nv_median(x, interpolation = "lower")), as_array(nv_scalar(2)))
-    expect_equal(as_array(nv_median(x, interpolation = "higher")), as_array(nv_scalar(3)))
-    # S3 method forwards `interpolation` via `...`
-    expect_equal(as_array(median(x, interpolation = "lower")), as_array(nv_scalar(2)))
-    expect_equal(as_array(median(x, interpolation = "higher")), as_array(nv_scalar(3)))
+    expect_equal(as_array(nv_median(x, method = "lower")), as_array(nv_scalar(2)))
+    expect_equal(as_array(nv_median(x, method = "higher")), as_array(nv_scalar(3)))
+    # S3 method forwards `method` via `...`
+    expect_equal(as_array(median(x, method = "lower")), as_array(nv_scalar(2)))
+    expect_equal(as_array(median(x, method = "higher")), as_array(nv_scalar(3)))
   })
 
   it("accepts negative axes", {
@@ -2105,7 +2160,7 @@ describe("nv_quantile", {
     expect_equal(as_array(out), unname(expected), ignore_attr = TRUE)
   })
 
-  it("interpolation = 'lower' returns sorted[floor((n-1)*q)+1]", {
+  it("method = 'lower' returns sorted[floor((n-1)*q)+1]", {
     # Note: this matches NumPy's "lower" semantics; it does NOT match
     # base R's quantile(type = 1), which uses ceiling(n * q) instead.
     xr <- c(3, 1, 4, 1, 5, 9, 2, 6)
@@ -2115,30 +2170,30 @@ describe("nv_quantile", {
     for (q in c(0, 0.25, 0.4, 0.6, 0.75, 1)) {
       expected <- sorted_r[floor((n - 1) * q) + 1L]
       expect_equal(
-        as_array(nv_quantile(x, q, interpolation = "lower")),
+        as_array(nv_quantile(x, q, method = "lower")),
         expected,
         info = paste("q =", q)
       )
     }
   })
 
-  it("interpolation = 'higher' picks the upper neighbour", {
+  it("method = 'higher' picks the upper neighbour", {
     x <- nv_array(c(1, 2, 3, 4))
-    expect_equal(as_array(nv_quantile(x, 0.25, interpolation = "higher")), 2)
-    expect_equal(as_array(nv_quantile(x, 0.5, interpolation = "higher")), 3)
+    expect_equal(as_array(nv_quantile(x, 0.25, method = "higher")), 2)
+    expect_equal(as_array(nv_quantile(x, 0.5, method = "higher")), 3)
   })
 
-  it("interpolation = 'nearest' picks the nearer index by frac", {
+  it("method = 'nearest' picks the nearer index by frac", {
     x <- nv_array(c(1, 2, 3, 4))
     # n = 4, q = 0.4 -> h = 1.2 -> lo = 2, hi = 3, frac = 0.2 < 0.5 -> lower (2)
-    expect_equal(as_array(nv_quantile(x, 0.4, interpolation = "nearest")), 2)
+    expect_equal(as_array(nv_quantile(x, 0.4, method = "nearest")), 2)
     # q = 0.5 -> h = 1.5 -> frac = 0.5 -> NOT < 0.5 -> higher (3)
-    expect_equal(as_array(nv_quantile(x, 0.5, interpolation = "nearest")), 3)
+    expect_equal(as_array(nv_quantile(x, 0.5, method = "nearest")), 3)
   })
 
-  it("interpolation = 'midpoint' averages neighbours", {
+  it("method = 'midpoint' averages neighbours", {
     x <- nv_array(c(1, 2, 3, 4))
-    expect_equal(as_array(nv_quantile(x, 0.5, interpolation = "midpoint")), 2.5)
+    expect_equal(as_array(nv_quantile(x, 0.5, method = "midpoint")), 2.5)
   })
 
   it("operates along a chosen axis of a matrix", {
@@ -2256,16 +2311,16 @@ describe("nv_which_max / nv_which_min", {
   m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
   mr <- as_array(m)
 
-  it("reduces every axis by default, indexing the flattened array", {
-    expect_equal(as.integer(nv_which_max(m)), which.max(as.vector(t(mr))))
-    expect_equal(as.integer(nv_which_min(m)), which.min(as.vector(t(mr))))
+  it("reduces every axis by default, indexing the array like which.max()", {
+    expect_equal(as.integer(nv_which_max(m)), which.max(mr))
+    expect_equal(as.integer(nv_which_min(m)), which.min(mr))
     expect_equal(nv_which_max(m), nv_which_max(nv_flatten(m)))
     expect_shape(nv_which_max(m), integer())
   })
 
   it("reduces the named axes only", {
-    expect_equal(nv_which_max(m, axes = 2L), prim_which_max(m, axis = 2L))
-    expect_equal(nv_which_min(m, axes = 2L), prim_which_min(m, axis = 2L))
+    expect_equal(nv_which_max(m, axes = 2L), prim_which_max(m, axes = 2L))
+    expect_equal(nv_which_min(m, axes = 2L), prim_which_min(m, axes = 2L))
     expect_equal(as.integer(nv_which_max(m, axes = 1L)), apply(mr, 2L, which.max))
   })
 
@@ -2279,13 +2334,15 @@ describe("nv_which_max / nv_which_min", {
     }
   })
 
-  it("indexes the row-major flattening when several axes are reduced", {
+  it("indexes the column-major flattening when several axes are reduced", {
     a <- nv_array(as.numeric(c(5, 2, 9, 1, 3, 8, 4, 7, 6, 0, 2, 5)), shape = c(2L, 2L, 3L))
     ar <- as_array(a)
     got <- as.integer(nv_which_max(a, axes = c(1L, 3L)))
-    # for each kept position along axis 2, flatten axes (1, 3) row-major
-    expected <- vapply(1:2, function(j) which.max(as.vector(t(ar[, j, ]))), integer(1L))
+    # for each kept position along axis 2, the reduced block `ar[, j, ]` is
+    # indexed the way which.max() indexes it
+    expected <- vapply(1:2, function(j) which.max(ar[, j, ]), integer(1L))
     expect_equal(got, expected)
+    expect_equal(as.integer(nv_which_min(a, axes = c(2L, 3L))), apply(ar, 1L, which.min))
     expect_equal(nv_which_max(a, axes = c(1L, 2L, 3L)), nv_which_max(nv_flatten(a)))
   })
 
@@ -2441,14 +2498,14 @@ describe("nv_triangular_solve", {
     )
   })
 
-  it("respects transpose_a = TRUE", {
+  it("respects transpose = TRUE", {
     L_mat <- matrix(c(3, 1, 0, 2), nrow = 2)
     b <- c(6, 5)
     expect_equal(
       as_array(nv_triangular_solve(
         nv_array(L_mat, dtype = "f64"),
         nv_array(b, dtype = "f64"),
-        transpose_a = TRUE
+        transpose = TRUE
       )),
       array(solve(t(L_mat), b)),
       tolerance = 1e-5
@@ -2623,15 +2680,31 @@ describe("nv_reshape", {
   it("rejects negative values other than -1", {
     expect_error(nv_reshape(nv_array(1:6), c(2, -2)), "must contain only non-negative")
   })
+  it("agrees with base R's dim<- from rank 1 through 4", {
+    shapes <- list(
+      list(24L, c(2L, 3L, 4L)),
+      list(c(4L, 6L), c(3L, 8L)),
+      list(c(2L, 3L, 4L), c(4L, 6L)),
+      list(c(2L, 1L, 3L, 4L), c(6L, 1L, 4L)),
+      list(c(3L, 0L), c(0L, 2L, 3L))
+    )
+    for (s in shapes) {
+      x <- array(as.numeric(seq_len(prod(s[[1L]]))), s[[1L]])
+      expected <- x
+      dim(expected) <- s[[2L]]
+      expect_equal(as_array(nv_reshape(x, s[[2L]])), expected, info = shape_repr(s[[1L]]))
+      expect_equal(as_array(jit(nv_reshape, static = "shape")(x, s[[2L]])), expected)
+    }
+  })
 })
 
 describe("nv_flatten", {
-  it("works for 2D input", {
+  it("flattens column-major, like as.vector()", {
     x <- matrix(1:4, nrow = 2)
-    expect_equal(
-      nv_flatten(nv_array(x)),
-      nv_array(as.vector(t(x)))
-    )
+    expect_equal(nv_flatten(nv_array(x)), nv_array(as.vector(x)))
+    a <- array(as.numeric(1:24), c(2L, 3L, 4L))
+    expect_equal(as.vector(nv_flatten(a)), as.vector(a))
+    expect_equal(as.vector(jit(nv_flatten)(a)), as.vector(a))
   })
   it("works for 1D input", {
     x <- nv_array(1:3)
@@ -2649,6 +2722,21 @@ describe("nv_flatten", {
       nv_flatten(nv_empty(c(2, 0), "f32")),
       nv_empty(0L, "f32")
     )
+  })
+})
+
+describe("nv_shift_left", {
+  it("keeps the data type of `x`", {
+    x <- nv_array(c(1L, 2L), dtype = "i64")
+    out <- nv_shift_left(x, nv_array(c(1L, 3L), dtype = "i32"))
+    expect_dtype(out, "i64")
+    expect_equal(as.integer(out), c(2L, 16L))
+    expect_dtype(nv_shift_left(nv_array(1L, dtype = "ui8"), 2L), "ui8")
+  })
+
+  it("errors when `shift` does not fit in the data type of `x`", {
+    x <- nv_array(c(1L, 2L), dtype = "i32")
+    expect_error(nv_shift_left(x, nv_array(c(1L, 3L), dtype = "i64")))
   })
 })
 
@@ -2776,15 +2864,15 @@ describe("the default integer", {
     expect_dtype(nv_which_max(x), i64)
     expect_dtype(nv_which_min(x), i64)
     expect_dtype(nv_order(x), i64)
-    expect_dtype(nv_cummax(x, with_indices = TRUE)$indices, i64)
-    expect_dtype(nv_cummin(x, with_indices = TRUE)$indices, i64)
+    expect_dtype(nv_cummax(x, indices = TRUE)$indices, i64)
+    expect_dtype(nv_cummin(x, indices = TRUE)$indices, i64)
     # `hlo_top_k` fixes its indices at i32, so these are converted.
-    expect_dtype(nv_top_k(x, k = 2L, with_indices = TRUE)$indices, i64)
+    expect_dtype(nv_top_k(x, k = 2L, indices = TRUE)$indices, i64)
     # And in a trace, where the program is keyed on the defaults.
     expect_dtype(jit(function(x) nv_which_max(x))(x), i64)
     expect_dtype(jit(function(x) nv_order(x))(x), i64)
-    expect_dtype(jit(function(x) nv_cummin(x, with_indices = TRUE)$indices)(x), i64)
-    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, with_indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_cummin(x, indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, indices = TRUE)$indices)(x), i64)
   })
 
   it("does not change the indices themselves", {
@@ -2792,14 +2880,14 @@ describe("the default integer", {
     at_i32 <- list(
       argmax = as_array(nv_which_max(x)),
       argsort = as_array(nv_order(x)),
-      cummax = as_array(nv_cummax(x, with_indices = TRUE)$indices),
-      top_k = as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices)
+      cummax = as_array(nv_cummax(x, indices = TRUE)$indices),
+      top_k = as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices)
     )
     local_default_dtypes(c(int = "i64"))
     expect_equal(as_array(nv_which_max(x)), at_i32$argmax)
     expect_equal(as_array(nv_order(x)), at_i32$argsort)
-    expect_equal(as_array(nv_cummax(x, with_indices = TRUE)$indices), at_i32$cummax)
-    expect_equal(as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), at_i32$top_k)
+    expect_equal(as_array(nv_cummax(x, indices = TRUE)$indices), at_i32$cummax)
+    expect_equal(as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices), at_i32$top_k)
   })
 
   it("decides the data type of an LU decomposition's pivots", {
@@ -2852,8 +2940,8 @@ test_that("the floating-point nv_* functions refuse a boolean", {
   rhs <- nv_array(c(1, 2), shape = c(2L, 1L), dtype = "f32")
   expect_error(nv_solve(bool_mat, rhs), "`a` must be a numeric data type")
   expect_error(nv_triangular_solve(bool_mat, rhs), "`a` must be a numeric data type")
-  expect_error(nv_matmul(bool_mat, bool_mat), "`lhs` must be a numeric data type")
-  expect_error(nv_crossprod(bool_mat, bool_mat), "`lhs` must be a numeric data type")
+  expect_error(nv_matmul(bool_mat, bool_mat), "`x` must be a numeric data type")
+  expect_error(nv_crossprod(bool_mat, bool_mat), "`x` must be a numeric data type")
   # An integer is still accepted and converted to a float.
   expect_equal(as.vector(as_array(nv_cospi(nv_array(1L)))), -1, tolerance = 1e-6)
   expect_equal(dtype(nv_sin(nv_array(1L))), default_float())
@@ -2869,7 +2957,7 @@ test_that("nv_conv1d/2d/3d promote their operands", {
   expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
-  # An integer input meets a float weight at the float; it used to be refused.
+  # An integer input meets a float kernel at the float; it used to be refused.
   expect_equal(
     dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
     as_dtype("f32")
@@ -2907,7 +2995,7 @@ test_that("the flag and enum arguments are checked in the nv_* layer", {
     expect_error(f(x, nan_rm = "yes"), "logical flag")
   }
   expect_error(nv_cumsum(x, nan_rm = "yes"), "logical flag")
-  expect_error(nv_cummax(x, with_indices = "yes"), "logical flag")
+  expect_error(nv_cummax(x, indices = "yes"), "logical flag")
   expect_error(nv_which_max(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_sum(x, axes = 1L, drop = "yes"), "logical flag")
@@ -2941,12 +3029,12 @@ test_that("the API layer checks what its pages promise", {
 
   # `nv_top_k()` coerced `k` before checking it, so a fractional or logical `k`
   # was silently truncated where `prim_top_k()` refuses both -- and
-  # `with_indices` reached a bare `if()`.
+  # `indices` reached a bare `if()`.
   expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
-  expect_error(nv_top_k(x3, 1L, with_indices = 1), "logical flag")
+  expect_error(nv_top_k(x3, 1L, indices = 1), "logical flag")
   expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
 
   # `nv_quantile()`'s bad-`probs` message was raw `checkmate` output.
@@ -2977,7 +3065,7 @@ test_that("the API layer checks what its pages promise", {
   # which is an argument of theirs.
   expect_error(
     nv_conv1d(nv_array(array(1, c(1, 2, 4))), nv_array(array(1, c(1, 3, 2)))),
-    "`weight`'s second axis"
+    "`kernel`'s second axis"
   )
   expect_error(
     nv_conv1d(nv_array(matrix(1, 2, 2)), nv_array(matrix(1, 2, 2))),
@@ -3094,7 +3182,7 @@ test_that("nv_quantile and nv_median interpolate at a float data type", {
   # The result is a float whatever the interpolation mode does, and a non-float
   # input is interpolated at the default float rather than a fixed one.
   expect_equal(
-    dtype(nv_quantile(nv_array(1:4), 0.5, interpolation = "lower")),
+    dtype(nv_quantile(nv_array(1:4), 0.5, method = "lower")),
     default_float()
   )
   expect_equal(dtype(nv_median(nv_array(1:4, dtype = "i8"))), default_float())
@@ -3128,7 +3216,7 @@ test_that("the quantile page's formula is the one the code computes", {
     )
     for (mode in names(want)) {
       expect_equal(
-        as.vector(as_array(nv_quantile(x, q, interpolation = mode))),
+        as.vector(as_array(nv_quantile(x, q, method = mode))),
         want[[mode]],
         tolerance = 1e-12,
         info = paste(mode, q)
@@ -3184,9 +3272,9 @@ describe("nv_quantile selection fast path", {
     withr::local_seed(3)
     v <- runif(22)
     q <- 1 / 7
-    sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, interpolation = "higher")))
+    sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, method = "higher")))
     srt <- as.numeric(as_array(
-      nv_quantile(nv_array(v), array(c(0.1, 0.9, q)), interpolation = "higher")
+      nv_quantile(nv_array(v), array(c(0.1, 0.9, q)), method = "higher")
     ))[3L]
     expect_identical(sel, srt)
   })
@@ -3199,9 +3287,9 @@ describe("nv_quantile selection fast path", {
     for (n in c(9L, 22L, 56L)) {
       v <- (seq_len(n) * 37L) %% (n + 1L) + 0.5
       for (q in c(0.7, 8 / 11, 0.9, 10 / 11, 1)) {
-        sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, interpolation = "higher")))
+        sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, method = "higher")))
         srt <- as.numeric(as_array(
-          nv_quantile(nv_array(v), array(c(0.02, 0.98, q)), interpolation = "higher")
+          nv_quantile(nv_array(v), array(c(0.02, 0.98, q)), method = "higher")
         ))[3L]
         expect_identical(sel, srt, info = sprintf("n = %d, q = %s", n, format(q)))
       }
@@ -3209,7 +3297,7 @@ describe("nv_quantile selection fast path", {
   })
   it("integer inputs still work", {
     x <- nv_array(c(5L, 1L, 9L, 3L), dtype = "i32")
-    expect_equal(as.numeric(as_array(nv_quantile(x, 0.25, interpolation = "lower"))), 1)
-    expect_equal(as.numeric(as_array(nv_quantile(x, 0.75, interpolation = "higher"))), 9)
+    expect_equal(as.numeric(as_array(nv_quantile(x, 0.25, method = "lower"))), 1)
+    expect_equal(as.numeric(as_array(nv_quantile(x, 0.75, method = "higher"))), 9)
   })
 })

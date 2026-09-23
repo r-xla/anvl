@@ -18,13 +18,36 @@ test_that("prim_rng_bit_generator", {
   expect_shape(out$values, c(2L, 2L))
 })
 
-test_that("prim_bitcast_convert", {
-  out <- nv_bitcast_convert(
-    nv_array(seq(-1, 1, length.out = 6), dtype = "f64", shape = c(2, 3)),
-    dtype = "i32"
-  )
-  expect_equal(dim(as_array(out)), c(2, 3, 2))
-  expect_true(is.integer(as_array(out)))
+describe("prim_bitcast_convert", {
+  it("keeps the shape when the widths match", {
+    expect_shape(nv_bitcast_convert(nv_array(c(1, 2, 3), dtype = "f32"), dtype = "i32"), 3L)
+  })
+
+  it("adds a leading axis when narrowing", {
+    out <- nv_bitcast_convert(
+      nv_array(seq(-1, 1, length.out = 6), dtype = "f64", shape = c(2, 3)),
+      dtype = "i32"
+    )
+    expect_equal(dim(as_array(out)), c(2, 2, 3))
+    expect_true(is.integer(as_array(out)))
+  })
+
+  it("lays an element's pieces out the way as_raw() writes them", {
+    x <- nv_array(c(1L, 2L), dtype = "i32")
+    bytes <- nv_flatten(nv_bitcast_convert(x, dtype = "i8"))
+    expect_equal(as.integer(as_array(bytes)), as.integer(as_raw(x)))
+  })
+
+  it("consumes the leading axis when widening, inverting a narrowing", {
+    x <- nv_array(c(1L, 2L), dtype = "i32")
+    narrowed <- nv_bitcast_convert(x, dtype = "i8")
+    expect_shape(narrowed, c(4L, 2L))
+    expect_equal(as_array(nv_bitcast_convert(narrowed, dtype = "i32")), as_array(x))
+  })
+
+  it("rejects a leading axis of the wrong size when widening", {
+    expect_error(nv_bitcast_convert(nv_array(rep(1L, 3), dtype = "i8"), dtype = "i32"))
+  })
 })
 
 test_that("prim_static_slice", {
@@ -121,22 +144,22 @@ test_that("prim_fill", {
 
 test_that("prim_shift_left", {
   x <- nv_array(as.integer(c(1L, 2L, 3L, 8L)), dtype = "i32")
-  y <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")
-  out <- as.integer(prim_shift_left(x, y))
+  shift <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")
+  out <- as.integer(prim_shift_left(x, shift))
   expect_equal(out, as.integer(c(1L, 4L, 12L, 64L)))
 })
 
 test_that("prim_shift_right_logical", {
   x <- nv_array(as.integer(c(16L, 8L, 7L, 1L)), dtype = "i32")
-  y <- nv_array(as.integer(c(0L, 1L, 2L, 0L)), dtype = "i32")
-  out <- as.integer(prim_shift_right_logical(x, y))
+  shift <- nv_array(as.integer(c(0L, 1L, 2L, 0L)), dtype = "i32")
+  out <- as.integer(prim_shift_right_logical(x, shift))
   expect_equal(out, as.integer(c(16L, 4L, 1L, 1L)))
 })
 
 test_that("prim_shift_right_arithmetic", {
   x <- nv_array(as.integer(c(-8L, -1L, 8L, -17L)), dtype = "i32")
-  y <- nv_array(as.integer(c(1L, 3L, 2L, 4L)), dtype = "i32")
-  out <- as.integer(prim_shift_right_arithmetic(x, y))
+  shift <- nv_array(as.integer(c(1L, 3L, 2L, 4L)), dtype = "i32")
+  out <- as.integer(prim_shift_right_arithmetic(x, shift))
   expect_equal(out, as.integer(c(-4L, -1L, 2L, -2L)))
 })
 
@@ -251,8 +274,8 @@ describe("cumulative ops", {
 
     expect_equal(as_array(pick(prim_fn(xm, axis = 2L))), t(apply(M, 1, base_fn)))
 
-    # row vs column major ordering
-    expect_equal(as_array(nv_fn(xm)), array(base_fn(t(M))))
+    # `axis = NULL` flattens column-major, as base R does
+    expect_equal(as_array(nv_fn(xm)), array(base_fn(M)))
   }
 
   it("prim_cumsum matches base R", verify_cum(prim_cumsum, nv_cumsum, base::cumsum))
@@ -315,23 +338,52 @@ test_that("prim_broadcast_in_axes", {
   )
 })
 
-test_that("prim_reshape", {
+describe("prim_reshape", {
   f <- jit(prim_reshape, static = "shape")
-  x <- array(1:6, c(3, 2))
-  expect_equal(
-    f(nv_array(x), shape = 6),
-    nv_array(as.integer(c(1, 4, 2, 5, 3, 6)), dtype = default_int())
-  )
-})
 
-test_that("prim_reshape infers a -1 dimension", {
-  x <- nv_array(1:6)
-  expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))
-  expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
-  expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
-  expect_error(prim_reshape(x, c(-1, -1)), "at most one")
-  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
-  expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
+  it("keeps the column-major element order, like base R's dim<-", {
+    x <- array(1:6, c(3, 2))
+    expect_equal(f(nv_array(x), shape = 6), nv_array(1:6))
+    expect_equal(as_array(f(nv_array(x), shape = c(2, 3))), array(1:6, c(2, 3)))
+  })
+
+  it("agrees with array() from rank 1 through 4, with size-1 and size-0 axes", {
+    shapes <- list(
+      list(24L, c(4L, 6L)),
+      list(c(2L, 3L, 4L), c(6L, 4L)),
+      list(c(2L, 3L, 4L), c(4L, 3L, 2L)),
+      list(c(2L, 1L, 3L, 4L), c(3L, 8L)),
+      list(c(6L, 4L), c(2L, 3L, 1L, 4L)),
+      list(c(2L, 0L, 3L), c(3L, 0L)),
+      list(c(0L, 4L), c(2L, 0L, 2L))
+    )
+    for (s in shapes) {
+      x <- array(seq_len(prod(s[[1L]])), s[[1L]])
+      out <- f(nv_array(x, dtype = "i32"), shape = s[[2L]])
+      expect_shape(out, s[[2L]])
+      expect_equal(as_array(out), array(x, s[[2L]]), info = shape_repr(s[[1L]]))
+    }
+  })
+
+  it("handles a rank-0 side, where there is no axis order to keep", {
+    expect_shape(f(nv_scalar(7L, dtype = "i32"), shape = 1L), 1L)
+    expect_shape(f(nv_array(7L, shape = 1L, dtype = "i32"), shape = integer()), integer())
+    # rank_in > 1 with a rank-0 result is the one corner where the operand is
+    # transposed but the result type rides on the reshape rather than a transpose
+    out <- f(nv_array(7L, shape = c(1L, 1L), dtype = "i32"), shape = integer())
+    expect_shape(out, integer())
+    expect_equal(as.vector(as_array(out)), 7L)
+  })
+
+  it("infers a -1 axis", {
+    x <- nv_array(1:6)
+    expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))
+    expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
+    expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(1:6))
+    expect_error(prim_reshape(x, c(-1, -1)), "at most one")
+    expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
+    expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
+  })
 })
 
 test_that("prim_transpose", {
@@ -1039,7 +1091,7 @@ test_that("prim_gather", {
     collapsed_slice_axes = 1L,
     x_batching_axes = integer(),
     start_indices_batching_axes = integer(),
-    start_indices_to_x_axes = 1L,
+    start_index_map = 1L,
     index_vector_axis = 2L,
     indices_are_sorted = FALSE,
     unique_indices = FALSE
@@ -1062,7 +1114,7 @@ test_that("prim_scatter", {
       index_vector_axis = 2L,
       indices_are_sorted = FALSE,
       unique_indices = TRUE,
-      update_computation = function(old, new) new
+      update_fn = function(old, new) new
     )
   })
 
@@ -1199,7 +1251,7 @@ describe("prim_sort", {
 
 describe("prim_top_k", {
   it("returns values and indices along the last axis", {
-    out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L, with_indices = TRUE)
+    out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L, indices = TRUE)
     expect_length(out, 2L)
     expect_named(out, c("values", "indices"))
     expect_equal(as.vector(out$values), c(9, 6, 5))
@@ -1209,35 +1261,35 @@ describe("prim_top_k", {
 
   it("operates per-row on a matrix", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    out <- prim_top_k(m, k = 2L, with_indices = TRUE)
+    out <- prim_top_k(m, k = 2L, indices = TRUE)
     expect_equal(as_array(out[[1L]]), matrix(c(5, 3, 4, 2), nrow = 2, byrow = TRUE))
     expect_equal(as_array(out[[2L]]), matrix(c(3L, 1L, 2L, 1L), nrow = 2, byrow = TRUE))
   })
 
   it("breaks ties with the smaller index", {
-    out <- prim_top_k(nv_array(c(1, 5, 5, 3)), k = 2L, with_indices = TRUE)
+    out <- prim_top_k(nv_array(c(1, 5, 5, 3)), k = 2L, indices = TRUE)
     expect_equal(as.vector(out[[1L]]), c(5, 5))
     expect_equal(as.vector(out[[2L]]), c(2L, 3L))
   })
 
   it("preserves the input dtype on values output", {
-    out <- prim_top_k(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), k = 2L)
+    out <- prim_top_k(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), k = 2L, indices = FALSE)
     expect_dtype(out[[1L]], "i32")
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
   })
 
-  it("returns only the values without with_indices", {
+  it("returns only the values without indices", {
     x <- nv_matrix(c(3, 1, 5, 2, 4, 0, 5, 5, 1), nrow = 3, byrow = TRUE)
-    out <- prim_top_k(x, k = 2L)
+    out <- prim_top_k(x, k = 2L, indices = FALSE)
     expect_length(out, 1L)
     expect_named(out, "values")
-    expect_equal(as_array(out$values), as_array(prim_top_k(x, k = 2L, with_indices = TRUE)$values))
-    expect_equal(as_array(jit(function(x) prim_top_k(x, k = 2L)$values)(x)), as_array(out$values))
+    expect_equal(as_array(out$values), as_array(prim_top_k(x, k = 2L, indices = TRUE)$values))
+    expect_equal(as_array(jit(function(x) prim_top_k(x, k = 2L, indices = FALSE)$values)(x)), as_array(out$values))
   })
 
   it("lowers values-only top_k to a sort and slice on CUDA and to chlo top_k elsewhere", {
     g <- trace_fn(
-      function(x) prim_top_k(x, k = 2L)$values,
+      function(x) prim_top_k(x, k = 2L, indices = FALSE)$values,
       list(nv_aval("f32", shape = c(3L, 5L)))
     )
     cuda <- repr(stablehlo(g, platform = "cuda")[[1L]])
@@ -1250,54 +1302,54 @@ describe("prim_top_k", {
   })
 
   it("rejects k larger than the last axis", {
-    expect_error(prim_top_k(nv_array(c(1, 2, 3)), k = 5L))
+    expect_error(prim_top_k(nv_array(c(1, 2, 3)), k = 5L, indices = FALSE))
   })
 })
 
 describe("prim_which_max", {
   it("returns the 1-based index of the max along a 1D array", {
-    expect_equal(as_array(prim_which_max(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axis = 1L)), 6L)
+    expect_equal(as_array(prim_which_max(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axes = 1L)), 6L)
   })
 
   it("breaks ties with the smallest index", {
-    expect_equal(as_array(prim_which_max(nv_array(c(1, 5, 5, 3)), axis = 1L)), 2L)
+    expect_equal(as_array(prim_which_max(nv_array(c(1, 5, 5, 3)), axes = 1L)), 2L)
   })
 
   it("operates per-row on a matrix", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.vector(prim_which_max(m, axis = 2L)), c(3L, 2L))
+    expect_equal(as.vector(prim_which_max(m, axes = 2L)), c(3L, 2L))
   })
 
   it("supports drop = FALSE", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    out <- prim_which_max(m, axis = 2L, drop = FALSE)
+    out <- prim_which_max(m, axes = 2L, drop = FALSE)
     expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(3L, 2L))
   })
 
   it("returns dtype i32", {
-    out <- prim_which_max(nv_array(c(1, 2, 3)), axis = 1L)
+    out <- prim_which_max(nv_array(c(1, 2, 3)), axes = 1L)
     expect_dtype(out, default_int())
   })
 
   it("works with integer input", {
-    out <- prim_which_max(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), axis = 1L)
+    out <- prim_which_max(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), axes = 1L)
     expect_equal(as_array(out), 3L)
   })
 
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
-      prim_which_max(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "must have elements along the axis this reads"
+      prim_which_max(nv_array(numeric(0), shape = 0L), axes = 1L),
+      "must have elements along the axes this reads"
     )
     expect_error(
-      prim_which_max(nv_matrix(numeric(0), nrow = 3, ncol = 0), axis = 2L),
-      "must have elements along the axis this reads"
+      prim_which_max(nv_matrix(numeric(0), nrow = 3, ncol = 0), axes = 2L),
+      "must have elements along the axes this reads"
     )
     # Inside jit too.
     expect_error(
-      jit(function(x) prim_which_max(x, axis = 1L))(nv_array(numeric(0), shape = 0L)),
-      "must have elements along the axis this reads"
+      jit(function(x) prim_which_max(x, axes = 1L))(nv_array(numeric(0), shape = 0L)),
+      "must have elements along the axes this reads"
     )
   })
 
@@ -1305,42 +1357,52 @@ describe("prim_which_max", {
     # 2D with shape (0, 3): reducing along axis 2 (size 3) is well-defined and
     # produces an empty (length-0) i32 vector.
     m <- nv_matrix(numeric(0), nrow = 0, ncol = 3)
-    out <- prim_which_max(m, axis = 2L)
+    out <- prim_which_max(m, axes = 2L)
     expect_shape(out, 0L)
     expect_dtype(out, default_int())
   })
 
-  it("accepts a negative dim", {
+  it("indexes the column-major flattening of several axes", {
+    a <- array(c(3, 1, 9, 2, 4, 0, 5, 7, 6, 8, 1, 2), dim = c(2, 3, 2))
+    x <- nv_array(a)
+    expect_equal(as.integer(prim_which_max(x, axes = 1:3)), which.max(a))
+    expect_equal(as.integer(prim_which_max(x, axes = c(3L, 1L))), apply(a, 2L, which.max))
+    out <- prim_which_max(x, axes = c(1L, 3L), drop = FALSE)
+    expect_shape(out, c(1L, 3L, 1L))
+    expect_equal(as.integer(out), apply(a, 2L, which.max))
+  })
+
+  it("accepts a negative axis", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(prim_which_max(m, axis = -1L), prim_which_max(m, axis = 2L))
-    expect_error(prim_which_max(m, axis = -3L), "between 1 and 2, or between -2 and -1")
+    expect_equal(prim_which_max(m, axes = -1L), prim_which_max(m, axes = 2L))
+    expect_error(prim_which_max(m, axes = -3L), "between 1 and 2, or between -2 and -1")
   })
 })
 
 describe("prim_which_min", {
   it("returns the 1-based index of the min along a 1D array", {
-    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axis = 1L)), 2L)
+    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axes = 1L)), 2L)
   })
 
   it("breaks ties with the smallest index", {
-    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)), 2L)
+    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axes = 1L)), 2L)
   })
 
   it("operates per-column on a matrix (axis = 1)", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.vector(prim_which_min(m, axis = 1L)), c(2L, 1L, 2L))
+    expect_equal(as.vector(prim_which_min(m, axes = 1L)), c(2L, 1L, 2L))
   })
 
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
-      prim_which_min(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "must have elements along the axis this reads"
+      prim_which_min(nv_array(numeric(0), shape = 0L), axes = 1L),
+      "must have elements along the axes this reads"
     )
   })
 
-  it("accepts a negative dim", {
+  it("accepts a negative axis", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(prim_which_min(m, axis = -2L), prim_which_min(m, axis = 1L))
+    expect_equal(prim_which_min(m, axes = -2L), prim_which_min(m, axes = 1L))
   })
 })
 
@@ -1476,8 +1538,8 @@ if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
 
-describe("prim_scatter update_computation", {
-  scatter_with <- function(update_computation) {
+describe("prim_scatter update_fn", {
+  scatter_with <- function(update_fn) {
     prim_scatter(
       nv_array(c(0, 0, 0), dtype = "f64"),
       nv_array(matrix(c(1L, 3L), ncol = 1)),
@@ -1488,7 +1550,7 @@ describe("prim_scatter update_computation", {
       scatter_indices_batching_axes = integer(0),
       scatter_axes_to_x_axes = 1L,
       index_vector_axis = 2L,
-      update_computation = update_computation
+      update_fn = update_fn
     )
   }
 
@@ -1502,11 +1564,11 @@ describe("prim_scatter update_computation", {
     # combiner returning something else made the inferred type a lie.
     expect_error(
       scatter_with(function(old, new) prim_convert(new, "f32")),
-      "`update_computation` must return a value with the same data type as `x`"
+      "`update_fn` must return a value with the same data type as `x`"
     )
     expect_error(
       scatter_with(function(old, new) prim_gt(new, old)),
-      "`update_computation` returns \"bool\""
+      "`update_fn` returns \"bool\""
     )
   })
 })

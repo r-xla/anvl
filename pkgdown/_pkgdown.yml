@@ -371,6 +371,7 @@ reference:
       - install_anvl
       - nv_device
       - default_device
+      - local_default_device
       - is_device
       - quickr_device
       - AnvlBackend
