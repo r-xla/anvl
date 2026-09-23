@@ -5,13 +5,7 @@
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
 * A primitive is now named after the `prim_*()` function that exports it rather
-  than the StableHLO op it lowers to, so a printed graph and an error message
-  name a function that exists. Fourteen primitives changed name: `divide` ->
-  `div`, `power` -> `pow`, `equal` -> `eq`, `not_equal` -> `ne`, `greater` ->
-  `gt`, `greater_equal` -> `ge`, `less` -> `lt`, `less_equal` -> `le`,
-  `maximum` -> `max`, `minimum` -> `min`, `sine` -> `sin`, `cosine` -> `cos`,
-  `cholesky` -> `chol` and `select` -> `ifelse`. The `prim_*()` functions
-  themselves are unchanged; only the name the graph carries is.
+  than the StableHLO op it lowers to.
 * `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
   `with_indices`, spelling it the way `prim_top_k()` does.
 * `nv_top_k()` takes `axes` instead of `axis`, ranking the elements of several
@@ -69,13 +63,7 @@
   default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
-* `vt2at()` was removed. Type inference no longer goes through stablehlo's
-  `ValueType`s, so there is nothing to convert back; `at2vt()` stays for
-  lowering rules that build stablehlo types.
-* `nv_rbinom()`, `nv_sample_int()` and `nv_sample()` draw at the default float
-  data type instead of always at `f64`, so they also run on hardware without
-  `f64`. Their samples change where the default float is not `f64`; set it with
-  `with_default_dtypes()` to draw on the finer grid.
+* `vt2at()` was removed.
 
 ## Features
 
@@ -98,15 +86,10 @@
 * `nv_sign()` accepts an unsigned integer array, returning `0` or `1` like
   base R's `sign()` on a non-negative number; `prim_sign()` still takes a
   signed input only.
-* Type inference is now anvl's own (`R/rules-inference.R`) rather than a call
-  into stablehlo's. Errors report 1-based axes and anvl's argument names
-  directly, and several constraints that previously surfaced only in the
-  compiler are now caught at trace time.
-* Inference rules now reject a malformed static parameter themselves -- a
-  missing value, a non-integer, a wrong length or a negative size -- instead of
-  letting it surface as a raw R error under the primitive's name.
-* `prim_if()` now reports a branch type mismatch itself, in anvl's terms,
-  rather than leaving it to the compiler.
+* Error messages of primitives should now be greatly improved and mention the right argument names.
+  This was achieved by porting the stablehlo inference functions to anvl's
+  terminology. A message about a parameter also reports the value it was
+  given, e.g. ``x` Got c(1, 2)`.
 * `nv_reverse()` gained an `axes = NULL` default that reverses every axis,
   matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
   `axes` instead of erroring.

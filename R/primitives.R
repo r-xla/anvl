@@ -267,12 +267,7 @@ prim_broadcast_in_axes <- new_primitive(
 prim_dot_general <- new_primitive(
   "dot_general",
   function(lhs, rhs, contracting_axes, batching_axes, precision = "highest") {
-    if (!checkmate::test_choice(precision, c("default", "high", "highest"))) {
-      cli_abort(c(
-        "{.arg precision} must be one of {.val {c('default', 'high', 'highest')}}.",
-        x = "Got {.val {precision}}."
-      ))
-    }
+    # `precision` is checked by `infer_dot_general()`, with every other param.
     operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(
       self,
@@ -585,7 +580,6 @@ prim_dynamic_update_slice <- new_primitive(
 make_reduce_op <- function(infer_fn = infer_reduce_simple) {
   force(infer_fn)
   function(x, axes, drop = TRUE) {
-    assert_flag(drop)
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     graph_desc_add(
       self,
@@ -2394,7 +2388,7 @@ prim_convert <- new_primitive(
   function(x, dtype) {
     # We need to be careful w.r.t. to handling R inputs so we prim_convert(pi, "f64")
     # is faithful and does not round-trip through f32
-    dtype <- as_dtype(dtype)
+    dtype <- assert_dtype_param(dtype, "dtype")
     # Directly materialize
     if (currently_tracing() && is_valid_r(x)) {
       return(build_r_at(x, dtype))
@@ -2836,10 +2830,14 @@ prim_scan <- new_primitive(
 prim_sort <- new_primitive(
   "sort",
   function(xs, axis, descending = FALSE, is_stable = FALSE) {
-    assert_flag(descending)
-    assert_flag(is_stable)
     if (is_arrayish(xs) || !is.list(xs) || !length(xs)) {
-      cli_abort("{.arg xs} must be a non-empty list of arrayish values")
+      cli_abort(
+        c(
+          "{.arg xs} must be a non-empty list of arrayish values.",
+          x = "Got {param_repr(xs)}."
+        ),
+        call = print_call_repr(self)
+      )
     }
     axis <- resolve_axis(axis, length(shape(xs[[1L]])))
 
@@ -2896,7 +2894,6 @@ prim_top_k <- new_primitive(
   "top_k",
   function(x, k, indices = TRUE) {
     k <- assert_int_param(k, "k", len = 1L)
-    assert_flag(indices)
 
     graph_desc_add(
       self,
@@ -3294,8 +3291,6 @@ prim_gather <- new_primitive(
     indices_are_sorted = FALSE,
     unique_indices = FALSE
   ) {
-    assert_flag(indices_are_sorted)
-    assert_flag(unique_indices)
     slice_sizes <- assert_shapevec(slice_sizes)
     graph_desc_add(
       self,
@@ -3350,7 +3345,6 @@ prim_gather <- new_primitive(
 prim_chol <- new_primitive(
   "chol",
   function(x, lower = FALSE) {
-    assert_flag(lower)
     assert_linalg_matrix(x, "x", square = TRUE, batched = TRUE)
     graph_desc_add(
       self,
@@ -3410,10 +3404,6 @@ prim_chol <- new_primitive(
 prim_triangular_solve <- new_primitive(
   "triangular_solve",
   function(a, b, left_side, lower, unit_diagonal, transpose_a) {
-    assert_flag(left_side)
-    assert_flag(lower)
-    assert_flag(unit_diagonal)
-    assert_flag(transpose_a)
     operands <- apply_promotion(list(a = a, b = b), promotion_rdata_common())
     graph_desc_add(
       self,

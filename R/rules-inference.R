@@ -36,6 +36,13 @@ NULL
 # `prim_while()`'s `cond` and `body`). And a guard the wrapper's own next line
 # depends on stays put -- `prim_sort()` reads `xs[[1L]]` to resolve `axis`.
 #
+# Whatever a rule refuses, the message says which argument it is about and what
+# that argument was given. For a param that means both halves, always: the name
+# the primitive takes it under, and the value the caller passed, reported by
+# `param_repr()` for a param of any type, `vec_repr()` for a whole-number one
+# and `params_repr()` for several at once. A primitive takes up to a dozen
+# params, so a complaint that names none of them leaves the caller guessing.
+#
 # The rules are anvl's own, in anvl's vocabulary: arrays rather than tensors,
 # axes rather than dimensions, `x` rather than `operand`, and axis numbers
 # 1-based throughout. The constraint numbers in the comments -- (C1), (I2) --
@@ -57,16 +64,33 @@ vec_repr <- function(x) {
   }
 }
 
-# The offending value as a message can show it. An atomic value prints (cli
-# truncates a long one), anything else -- a function, an environment, a list --
-# only by class and length, because `{.val}` cannot coerce those and would fail
-# inside the error it is trying to report.
-value_repr <- function(x) {
-  if (is.atomic(x) && length(x) > 0L) {
-    cli::format_inline("{.cls {class(x)[1L]}} {.val {x}}")
-  } else {
-    cli::format_inline("{.cls {class(x)[1L]}} of length {length(x)}")
+# A param of any type as a message reports it back. Every message about a param
+# says which one and what it was given, so that the caller can read the fix off
+# the error: the value itself when it is an atomic vector, and the class and
+# length otherwise, where the value would be noise rather than the mistake.
+param_repr <- function(x) {
+  if (!is.atomic(x) || is.object(x) || length(x) == 0L) {
+    return(cli::format_inline("{.cls {class(x)[1L]}} of length {length(x)}"))
   }
+  if (length(x) == 1L) {
+    return(cli::format_inline("{.val {x}}"))
+  }
+  # A vector reads as the caller spelled it, `c(1, 2)` rather than cli's
+  # "1 and 2", so that the message can be pasted back into the call.
+  entries <- vapply(x, function(e) cli::format_inline("{.val {e}}"), character(1L))
+  paste0("c(", paste0(entries, collapse = ", "), ")")
+}
+
+# Several whole-number params at once: "`strides` = 1, `x_dilation` = c(1, 2)".
+params_repr <- function(parts) {
+  paste0(
+    vapply(
+      names(parts),
+      function(nm) cli::format_inline("{.arg {nm}} = {vec_repr(parts[[nm]])}"),
+      character(1L)
+    ),
+    collapse = ", "
+  )
 }
 
 # A whole-number parameter the caller supplied: an integer vector with no
@@ -82,7 +106,7 @@ assert_int_param <- function(x, arg, len = NULL, min_len = NULL) {
   if (!is.numeric(x) || is.object(x)) {
     cli_abort(c(
       "{.arg {arg}} must be a whole number{if (identical(len, 1L)) \"\" else \" vector\"}.",
-      x = "Got {value_repr(x)}."
+      x = "Got {param_repr(x)}."
     ))
   }
   if (anyNA(x)) {
@@ -100,13 +124,13 @@ assert_int_param <- function(x, arg, len = NULL, min_len = NULL) {
   if (!is.null(len) && length(x) != len) {
     cli_abort(c(
       "{.arg {arg}} must have {len} entr{cli::qty(len)}{?y/ies}.",
-      x = "Got {length(x)} ({vec_repr(x)})."
+      x = "Got {vec_repr(x)}."
     ))
   }
   if (!is.null(min_len) && length(x) < min_len) {
     cli_abort(c(
       "{.arg {arg}} must have at least {min_len} entr{cli::qty(min_len)}{?y/ies}.",
-      x = "Got {length(x)} ({vec_repr(x)})."
+      x = "Got {vec_repr(x)}."
     ))
   }
   invisible(as.integer(x))
@@ -119,7 +143,7 @@ assert_dtype_param <- function(x, arg) {
   if (is.null(out)) {
     cli_abort(c(
       "{.arg {arg}} must name a data type.",
-      x = "Got {.val {if (is.character(x)) x else class(x)[1L]}}.",
+      x = "Got {param_repr(x)}.",
       i = "See {.fn tengen::as_dtype} for the data types anvl knows."
     ))
   }
@@ -127,16 +151,22 @@ assert_dtype_param <- function(x, arg) {
 }
 
 assert_flag_param <- function(x, arg) {
-  if (is.logical(x) && length(x) == 1L && is.na(x)) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
     cli_abort(c(
       "{.arg {arg}} must be {.val {TRUE}} or {.val {FALSE}}.",
-      x = "Got {.val {NA}}."
+      x = "Got {param_repr(x)}."
     ))
   }
-  if (!is.logical(x) || length(x) != 1L) {
+  invisible(x)
+}
+
+# A param the primitive spells out the alternatives for: `prim_round()`'s
+# `method`, `prim_dot_general()`'s `precision`.
+assert_choice_param <- function(x, arg, choices) {
+  if (!rlang::is_string(x) || !(x %in% choices)) {
     cli_abort(c(
-      "{.arg {arg}} must be {.val {TRUE}} or {.val {FALSE}}.",
-      x = "Got {value_repr(x)}."
+      "{.arg {arg}} must be one of {.or {.val {choices}}}.",
+      x = "Got {param_repr(x)}."
     ))
   }
   invisible(x)
@@ -184,7 +214,7 @@ assert_array <- function(x, arg = rlang::caller_arg(x)) {
   if (!inherits(x, "AbstractArray")) {
     cli_abort(c(
       "{.arg {arg}} must be an array.",
-      x = "Got {value_repr(x)}."
+      x = "Got {param_repr(x)}."
     ))
   }
   invisible(NULL)
@@ -327,13 +357,15 @@ assert_axis_layout <- function(parts, rank, what) {
     holders <- names(parts)[vapply(parts, function(p) dup %in% p, logical(1L))]
     cli_abort(c(
       "The axes of {what} must each be named exactly once.",
-      x = "Axis {dup} is named {n} times, by {.arg {holders}}."
+      x = "Axis {dup} is named {n} times, by {.arg {holders}}.",
+      i = "Got {params_repr(parts)}."
     ))
   }
   if (length(axes) != rank) {
     cli_abort(c(
       "The axes of {what} must each be named exactly once.",
-      x = "{.arg {names(parts)}} name {cli::qty(length(axes))}{length(axes)} ax{?is/es} between them, but {what} has {rank}." # nolint
+      x = "{.arg {names(parts)}} name {cli::qty(length(axes))}{length(axes)} ax{?is/es} between them, but {what} has {rank}.", # nolint
+      i = "Got {params_repr(parts)}."
     ))
   }
   for (nm in names(parts)) {
@@ -451,12 +483,7 @@ infer_polygamma <- function(n, x) {
 
 # Both rounding methods share an inference rule.
 infer_round <- function(x, method) {
-  if (!identical(method, "nearest_even") && !identical(method, "afz")) {
-    cli_abort(c(
-      "{.arg method} must be {.val nearest_even} or {.val afz}.",
-      x = "Got {.val {method}}."
-    ))
-  }
+  assert_choice_param(method, "method", c("nearest_even", "afz"))
   infer_float_uni(x)
 }
 
@@ -531,7 +558,7 @@ infer_broadcast_in_axes <- function(x, shape, broadcast_axes) {
   if (length(baxes) != length(in_shape)) {
     cli_abort(c(
       "{.arg broadcast_axes} must have one entry per axis of {.arg x}.",
-      x = "Got {length(baxes)} ({vec_repr(baxes)}) for an {.arg x} with {cli::qty(length(in_shape))}{length(in_shape)} ax{?is/es}." # nolint
+      x = "Got {vec_repr(baxes)} for an {.arg x} with {cli::qty(length(in_shape))}{length(in_shape)} ax{?is/es}." # nolint
     ))
   }
 
@@ -680,21 +707,11 @@ infer_static_slice <- function(x, start_indices, limit_indices, strides) {
   rank <- length(in_shape)
 
   # (C2)
-  lengths <- c(
-    start_indices = length(start),
-    limit_indices = length(limit),
-    strides = length(stride)
-  )
-  if (any(lengths != rank)) {
-    got <- paste0(
-      names(lengths),
-      " = ",
-      c(vec_repr(start), vec_repr(limit), vec_repr(stride)),
-      collapse = ", "
-    )
+  given <- list(start_indices = start, limit_indices = limit, strides = stride)
+  if (any(lengths(given) != rank)) {
     cli_abort(c(
       "{.arg start_indices}, {.arg limit_indices} and {.arg strides} must have one entry per axis of {.arg x} ({rank}).", # nolint
-      x = "Got {got}."
+      x = "Got {params_repr(given)}."
     ))
   }
 
@@ -770,7 +787,7 @@ infer_pad <- function(
     if (length(val) != rank) {
       cli_abort(c(
         "{.arg {nm}} must have one entry per axis of {.arg x} ({rank}).",
-        x = "Got {length(val)} ({vec_repr(val)})."
+        x = "Got {vec_repr(val)}."
       ))
     }
   }
@@ -790,7 +807,8 @@ infer_pad <- function(
     bad <- which(result_shape < 0L)
     cli_abort(c(
       "Negative padding must not remove more than an axis holds.",
-      x = "{.arg x} has shape {shape_repr(in_shape)}; {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)} would end up at {vec_repr(result_shape[bad])}." # nolint
+      x = "{.arg x} has shape {shape_repr(in_shape)}; {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)} would end up at {vec_repr(result_shape[bad])}.", # nolint
+      i = "Got {params_repr(list(edge_padding_low = low, edge_padding_high = high, interior_padding = interior))}." # nolint
     ))
   }
 
@@ -866,10 +884,13 @@ infer_fill <- function(value, shape, dtype) {
   if (inherits(value, "AbstractArray") || length(value) != 1L) {
     cli_abort(c(
       "{.arg value} must be a scalar.",
-      x = "Got {value_repr(value)}."
+      x = "Got {param_repr(value)}."
     ))
   }
-  list(AbstractArray(dtype = as_dtype(dtype), shape = Shape(assert_shapevec(shape))))
+  list(AbstractArray(
+    dtype = assert_dtype_param(dtype, "dtype"),
+    shape = Shape(assert_shapevec(shape))
+  ))
 }
 
 # `prim_print()` hands its operand straight back, so inserting one cannot
@@ -892,6 +913,7 @@ infer_dot_general <- function(
   assert_arrays(lhs = lhs, rhs = rhs)
   # (C13)
   assert_same_dtype(lhs, rhs)
+  assert_choice_param(precision, "precision", c("default", "high", "highest"))
 
   shape_lhs <- shape(lhs)
   shape_rhs <- shape(rhs)
@@ -903,7 +925,7 @@ infer_dot_general <- function(
     if (!is.list(val) || length(val) != 2L) {
       cli_abort(c(
         "{.arg {nm}} must be a list of two axis vectors, one for {.arg lhs} and one for {.arg rhs}.",
-        x = "Got {value_repr(val)}."
+        x = "Got {param_repr(val)}."
       ))
     }
   }
@@ -1025,7 +1047,7 @@ infer_dynamic_slice <- function(x, ..., slice_sizes) {
   if (length(sizes) != rank) {
     cli_abort(c(
       "{.arg slice_sizes} must have one entry per axis of {.arg x} ({rank}).",
-      x = "Got {length(sizes)} ({vec_repr(sizes)})."
+      x = "Got {vec_repr(sizes)}."
     ))
   }
 
@@ -1289,7 +1311,10 @@ infer_arg_extreme <- function(x, axis, drop) {
 infer_sort <- function(..., axis, descending, is_stable) {
   xs <- list(...)
   if (!length(xs)) {
-    cli_abort("{.arg xs} must be a non-empty list of arrayish values")
+    cli_abort(c(
+      "{.arg xs} must be a non-empty list of arrayish values.",
+      x = "Got nothing to sort."
+    ))
   }
   assert_flag_param(descending, "descending")
   assert_flag_param(is_stable, "is_stable")
@@ -1357,7 +1382,7 @@ infer_gather <- function(
   if (length(sizes) != x_rank) {
     cli_abort(c(
       "{.arg slice_sizes} must have one entry per axis of {.arg x} ({x_rank}).",
-      x = "Got {length(sizes)} ({vec_repr(sizes)})."
+      x = "Got {vec_repr(sizes)}."
     ))
   }
 
@@ -1389,7 +1414,7 @@ infer_gather <- function(
   if (length(start_index_map) != expected_map_size) {
     cli_abort(c(
       "{.arg start_index_map} must have one entry per index coordinate ({expected_map_size}).",
-      x = "Got {length(start_index_map)} ({vec_repr(start_index_map)})."
+      x = "Got {vec_repr(start_index_map)}."
     ))
   }
 
@@ -1635,7 +1660,7 @@ infer_scatter <- function(
   if (length(scatter_axes_to_x_axes) != expected_map_size) {
     cli_abort(c(
       "{.arg scatter_axes_to_x_axes} must have one entry per index coordinate ({expected_map_size}).",
-      x = "Got {length(scatter_axes_to_x_axes)} ({vec_repr(scatter_axes_to_x_axes)})."
+      x = "Got {vec_repr(scatter_axes_to_x_axes)}."
     ))
   }
 
@@ -1746,6 +1771,7 @@ infer_convolution <- function(
   kernel_dil <- assert_int_param(kernel_dilation, "kernel_dilation")
   fg_count <- assert_int_param(feature_group_count, "feature_group_count", len = 1L)
   bg_count <- assert_int_param(batch_group_count, "batch_group_count", len = 1L)
+  assert_choice_param(precision, "precision", c("default", "high", "highest"))
   pad_dim <- dim(padding)
   if (is.null(pad_dim) || !identical(as.integer(pad_dim), c(n_spatial, 2L))) {
     cli_abort(c(
@@ -1768,7 +1794,7 @@ infer_convolution <- function(
     if (length(val) != n_spatial) {
       cli_abort(c(
         "{.arg {nm}} must have one entry per spatial axis ({n_spatial}).",
-        x = "Got {length(val)} ({vec_repr(val)})."
+        x = "Got {vec_repr(val)}."
       ))
     }
     if (any(val <= 0L)) {
@@ -1801,16 +1827,22 @@ infer_convolution <- function(
 
   # (C12), (C17), (C19)
   for (nm in c("input_spatial_axes", "kernel_spatial_axes", "output_spatial_axes")) {
-    val <- switch(
-      nm,
-      input_spatial_axes = input_spatial_axes,
-      kernel_spatial_axes = kernel_spatial_axes,
-      output_spatial_axes
+    # Asserted here rather than left to `assert_axis_layout()` below, so that a
+    # param that is not a whole-number vector is reported as that, and one that
+    # is can be reported by its entries.
+    val <- assert_int_param(
+      switch(
+        nm,
+        input_spatial_axes = input_spatial_axes,
+        kernel_spatial_axes = kernel_spatial_axes,
+        output_spatial_axes
+      ),
+      nm
     )
     if (length(val) != n_spatial) {
       cli_abort(c(
         "{.arg {nm}} must have one entry per spatial axis ({n_spatial}).",
-        x = "Got {length(val)} ({vec_repr(val)})."
+        x = "Got {vec_repr(val)}."
       ))
     }
   }
@@ -1978,13 +2010,7 @@ infer_rng_bit_generator <- function(initial_state, rng_algorithm, dtype, shape) 
     ))
   }
 
-  algorithms <- c("DEFAULT", "THREE_FRY", "PHILOX")
-  if (!rlang::is_string(rng_algorithm) || !(rng_algorithm %in% algorithms)) {
-    cli_abort(c(
-      "{.arg rng_algorithm} must be one of {.val {algorithms}}.",
-      x = "Got {.val {rng_algorithm}}."
-    ))
-  }
+  assert_choice_param(rng_algorithm, "rng_algorithm", c("DEFAULT", "THREE_FRY", "PHILOX"))
 
   state_size <- shape(initial_state)[[1L]]
   if (rng_algorithm == "THREE_FRY" && state_size != 2L) {

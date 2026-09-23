@@ -1,27 +1,23 @@
-infer_at <- function(dtype, shape = integer()) {
-  AbstractArray(dtype = dtype, shape = Shape(shape))
-}
-
 describe("assert_array_dtype()", {
   it("names the categories it wanted and the data type it got", {
     expect_snapshot(
       error = TRUE,
-      assert_array_dtype(infer_at("i32", 3L), "float", arg = "x")
+      assert_array_dtype(nv_aval("i32", 3L), "float", arg = "x")
     )
   })
 
   it("accepts an array in any one of several categories", {
-    expect_silent(assert_array_dtype(infer_at("ui8", 2L), "float", "uint"))
+    expect_silent(assert_array_dtype(nv_aval("ui8", 2L), "float", "uint"))
   })
 
   it("checks shape and rank when asked", {
     expect_snapshot(
       error = TRUE,
-      assert_array_dtype(infer_at("f32", c(2L, 3L)), shape = integer(), arg = "pred")
+      assert_array_dtype(nv_aval("f32", c(2L, 3L)), shape = integer(), arg = "pred")
     )
     expect_snapshot(
       error = TRUE,
-      assert_array_dtype(infer_at("f32", c(2L, 3L)), naxes = 1L, arg = "initial_state")
+      assert_array_dtype(nv_aval("f32", c(2L, 3L)), naxes = 1L, arg = "initial_state")
     )
   })
 })
@@ -29,7 +25,7 @@ describe("assert_array_dtype()", {
 describe("assert_arrays()", {
   it("names each operand by the argument it arrived in", {
     expect_error(
-      assert_arrays(lhs = infer_at("f32"), rhs = 1L),
+      assert_arrays(lhs = nv_aval("f32", integer()), rhs = 1L),
       "`rhs` must be an array",
       fixed = TRUE
     )
@@ -37,7 +33,7 @@ describe("assert_arrays()", {
 
   it("indexes the argument a primitive collects its operands in", {
     expect_error(
-      assert_arrays(infer_at("f32"), 1L, .arg = "xs"),
+      assert_arrays(nv_aval("f32", integer()), 1L, .arg = "xs"),
       "`xs[[2]]` must be an array",
       fixed = TRUE
     )
@@ -45,7 +41,7 @@ describe("assert_arrays()", {
 
   it("names the caller's dots when the primitive takes them itself", {
     expect_error(
-      assert_arrays(infer_at("f32"), 1L),
+      assert_arrays(nv_aval("f32", integer()), 1L),
       "`..2` must be an array",
       fixed = TRUE
     )
@@ -64,7 +60,7 @@ describe("test_permutation()", {
 
 describe("the element-wise rules", {
   it("pass the operand type through unchanged", {
-    x <- infer_at("f32", c(2L, 3L))
+    x <- nv_aval("f32", c(2L, 3L))
     expect_equal(infer_generic_uni(x), list(x))
     expect_equal(infer_generic_biv(x, x), list(x))
   })
@@ -72,26 +68,26 @@ describe("the element-wise rules", {
   it("refuse operands whose types disagree", {
     expect_snapshot(
       error = TRUE,
-      infer_generic_biv(infer_at("i32", 4L), infer_at("i32", 6L))
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
     )
   })
 
   it("hold the bit shifts to integers, where booleans are not integers", {
     # StableHLO's `tensor of integer type` does not include `i1`, unlike the
     # bitwise `and` / `or` / `xor`, which take a `tensor of integer or boolean`.
-    b <- infer_at("bool", 2L)
+    b <- nv_aval("bool", 2L)
     expect_equal(infer_integerish_biv(b, b), list(b))
     expect_error(infer_integer_biv(b, b), "must have an integer or unsigned integer data type")
   })
 
   it("give a boolean result for a predicate", {
     expect_equal(
-      infer_is_finite(infer_at("f32", c(2L, 3L))),
-      list(infer_at("bool", c(2L, 3L)))
+      infer_is_finite(nv_aval("f32", c(2L, 3L))),
+      list(nv_aval("bool", c(2L, 3L)))
     )
     expect_equal(
-      infer_compare(infer_at("i32", 4L), infer_at("i32", 4L)),
-      list(infer_at("bool", 4L))
+      infer_compare(nv_aval("i32", 4L), nv_aval("i32", 4L)),
+      list(nv_aval("bool", 4L))
     )
   })
 })
@@ -99,15 +95,15 @@ describe("the element-wise rules", {
 describe("infer_transpose()", {
   it("permutes the shape with 1-based axes", {
     expect_equal(
-      infer_transpose(infer_at("f32", c(2L, 3L, 4L)), c(3L, 1L, 2L)),
-      list(infer_at("f32", c(4L, 2L, 3L)))
+      infer_transpose(nv_aval("f32", c(2L, 3L, 4L)), c(3L, 1L, 2L)),
+      list(nv_aval("f32", c(4L, 2L, 3L)))
     )
   })
 
   it("reports the permutation it expected in 1-based axes", {
     expect_snapshot(
       error = TRUE,
-      infer_transpose(infer_at("f32", c(2L, 2L)), 1L)
+      infer_transpose(nv_aval("f32", c(2L, 2L)), 1L)
     )
   })
 })
@@ -115,15 +111,15 @@ describe("infer_transpose()", {
 describe("infer_broadcast_in_axes()", {
   it("broadcasts a size-1 axis and keeps a matching one", {
     expect_equal(
-      infer_broadcast_in_axes(infer_at("f32", c(1L, 3L)), c(2L, 3L), c(1L, 2L)),
-      list(infer_at("f32", c(2L, 3L)))
+      infer_broadcast_in_axes(nv_aval("f32", c(1L, 3L)), c(2L, 3L), c(1L, 2L)),
+      list(nv_aval("f32", c(2L, 3L)))
     )
   })
 
   it("refuses an axis that is neither 1 nor the target size", {
     expect_snapshot(
       error = TRUE,
-      infer_broadcast_in_axes(infer_at("f32", c(2L, 3L)), c(4L, 3L), c(1L, 2L))
+      infer_broadcast_in_axes(nv_aval("f32", c(2L, 3L)), c(4L, 3L), c(1L, 2L))
     )
   })
 })
@@ -131,12 +127,12 @@ describe("infer_broadcast_in_axes()", {
 describe("infer_static_slice()", {
   it("treats start and limit as 1-based and inclusive", {
     expect_equal(
-      infer_static_slice(infer_at("i32", 10L), 2L, 5L, 1L),
-      list(infer_at("i32", 4L))
+      infer_static_slice(nv_aval("i32", 10L), 2L, 5L, 1L),
+      list(nv_aval("i32", 4L))
     )
     expect_equal(
-      infer_static_slice(infer_at("i32", 10L), 1L, 10L, 2L),
-      list(infer_at("i32", 5L))
+      infer_static_slice(nv_aval("i32", 10L), 1L, 10L, 2L),
+      list(nv_aval("i32", 5L))
     )
   })
 
@@ -145,31 +141,31 @@ describe("infer_static_slice()", {
     # an R coercion warning.
     expect_snapshot(
       error = TRUE,
-      infer_static_slice(infer_at("i32", 10L), 1L, 5L, 0L)
+      infer_static_slice(nv_aval("i32", 10L), 1L, 5L, 0L)
     )
   })
 
   it("refuses a limit past the end of the array", {
     expect_snapshot(
       error = TRUE,
-      infer_static_slice(infer_at("i32", 10L), 1L, 11L, 1L)
+      infer_static_slice(nv_aval("i32", 10L), 1L, 11L, 1L)
     )
   })
 })
 
 describe("infer_concatenate()", {
   it("sums the sizes along the concatenation axis", {
-    x <- infer_at("f32", c(2L, 3L))
+    x <- nv_aval("f32", c(2L, 3L))
     expect_equal(
       infer_concatenate(x, x, axis = 1L),
-      list(infer_at("f32", c(4L, 3L)))
+      list(nv_aval("f32", c(4L, 3L)))
     )
   })
 
   it("refuses inputs that disagree on any other axis", {
     expect_snapshot(
       error = TRUE,
-      infer_concatenate(infer_at("f32", c(2L, 3L)), infer_at("f32", c(2L, 4L)), axis = 1L)
+      infer_concatenate(nv_aval("f32", c(2L, 3L)), nv_aval("f32", c(2L, 4L)), axis = 1L)
     )
   })
 
@@ -179,15 +175,15 @@ describe("infer_concatenate()", {
     # of the shorter one.
     expect_snapshot(
       error = TRUE,
-      infer_concatenate(infer_at("f32", c(2L, 3L, 4L)), infer_at("f32", c(2L, 3L)), axis = 3L)
+      infer_concatenate(nv_aval("f32", c(2L, 3L, 4L)), nv_aval("f32", c(2L, 3L)), axis = 3L)
     )
   })
 })
 
 describe("infer_sort()", {
   it("mirrors each input, key and payloads alike", {
-    key <- infer_at("f32", c(2L, 3L))
-    payload <- infer_at("i32", c(2L, 3L))
+    key <- nv_aval("f32", c(2L, 3L))
+    payload <- nv_aval("i32", c(2L, 3L))
     expect_equal(
       infer_sort(key, payload, axis = 1L, descending = FALSE, is_stable = FALSE),
       list(key, payload)
@@ -196,7 +192,7 @@ describe("infer_sort()", {
 
   it("names `xs`, the argument the primitive collects the arrays in", {
     expect_error(
-      infer_sort(infer_at("f32", 3L), 1L, axis = 1L, descending = FALSE, is_stable = FALSE),
+      infer_sort(nv_aval("f32", 3L), 1L, axis = 1L, descending = FALSE, is_stable = FALSE),
       "`xs[[2]]` must be an array",
       fixed = TRUE
     )
@@ -210,8 +206,8 @@ describe("infer_sort()", {
 
 describe("infer_dot_general()", {
   it("puts the batch axes first, then the free axes of lhs and rhs", {
-    lhs <- infer_at("f32", c(5L, 2L, 3L))
-    rhs <- infer_at("f32", c(5L, 3L, 7L))
+    lhs <- nv_aval("f32", c(5L, 2L, 3L))
+    rhs <- nv_aval("f32", c(5L, 3L, 7L))
     expect_equal(
       infer_dot_general(
         lhs,
@@ -220,7 +216,7 @@ describe("infer_dot_general()", {
         batching_axes = list(1L, 1L),
         precision = "highest"
       ),
-      list(infer_at("f32", c(5L, 2L, 7L)))
+      list(nv_aval("f32", c(5L, 2L, 7L)))
     )
   })
 
@@ -228,8 +224,8 @@ describe("infer_dot_general()", {
     expect_snapshot(
       error = TRUE,
       infer_dot_general(
-        infer_at("f32", c(2L, 3L)),
-        infer_at("f32", c(4L, 5L)),
+        nv_aval("f32", c(2L, 3L)),
+        nv_aval("f32", c(4L, 5L)),
         contracting_axes = list(2L, 1L),
         batching_axes = list(integer(), integer()),
         precision = "highest"
@@ -241,20 +237,20 @@ describe("infer_dot_general()", {
 describe("infer_pad()", {
   it("accounts for edge and interior padding", {
     expect_equal(
-      infer_pad(infer_at("f32", 3L), infer_at("f32"), 2L, 1L, 0L),
-      list(infer_at("f32", 6L))
+      infer_pad(nv_aval("f32", 3L), nv_aval("f32", integer()), 2L, 1L, 0L),
+      list(nv_aval("f32", 6L))
     )
     # Interior padding goes between elements, so `n - 1` gaps.
     expect_equal(
-      infer_pad(infer_at("f32", 3L), infer_at("f32"), 0L, 0L, 1L),
-      list(infer_at("f32", 5L))
+      infer_pad(nv_aval("f32", 3L), nv_aval("f32", integer()), 0L, 0L, 1L),
+      list(nv_aval("f32", 5L))
     )
   })
 
   it("refuses negative padding that would empty an axis", {
     expect_snapshot(
       error = TRUE,
-      infer_pad(infer_at("f32", 3L), infer_at("f32"), -3L, -3L, 0L)
+      infer_pad(nv_aval("f32", 3L), nv_aval("f32", integer()), -3L, -3L, 0L)
     )
   })
 })
@@ -264,7 +260,7 @@ describe("reduced_shape()", {
     # `x[-integer(0)]` is `integer(0)`, not `x`, so an empty `axes` has to be a
     # special case: it once collapsed the result to a scalar while the emitted
     # program still produced the full shape.
-    x <- infer_at("f32", c(2L, 3L))
+    x <- nv_aval("f32", c(2L, 3L))
     expect_equal(reduced_shape(x, integer(0), drop = TRUE), c(2L, 3L))
     expect_equal(reduced_shape(x, integer(0), drop = FALSE), c(2L, 3L))
     expect_equal(reduced_shape(x, 1L, drop = TRUE), 3L)
@@ -293,8 +289,8 @@ describe("infer_convolution()", {
     # that shape, so this has to be checked before the matrix is built.
     conv <- function(padding) {
       infer_convolution(
-        infer_at("f32", c(1L, 1L, 5L)),
-        infer_at("f32", c(1L, 1L, 3L)),
+        nv_aval("f32", c(1L, 1L, 5L)),
+        nv_aval("f32", c(1L, 1L, 3L)),
         1L,
         2L,
         3L,
@@ -313,7 +309,7 @@ describe("infer_convolution()", {
         precision = "highest"
       )
     }
-    expect_equal(conv(matrix(0L, 1L, 2L)), list(infer_at("f32", c(1L, 1L, 3L))))
+    expect_equal(conv(matrix(0L, 1L, 2L)), list(nv_aval("f32", c(1L, 1L, 3L))))
     expect_error(conv(matrix(0L, 3L, 2L)), "must be a matrix of shape")
     expect_error(conv(c(1L, 2L)), "Got a vector of length 2")
   })
@@ -321,20 +317,20 @@ describe("infer_convolution()", {
 
 describe("infer_top_k()", {
   it("returns the values at the input's type and the indices at the default integer", {
-    out <- infer_top_k(infer_at("f32", c(2L, 8L)), k = 3L, indices = TRUE)
+    out <- infer_top_k(nv_aval("f32", c(2L, 8L)), k = 3L, indices = TRUE)
     expect_named(out, c("values", "indices"))
-    expect_equal(out$values, infer_at("f32", c(2L, 8L - 5L)))
+    expect_equal(out$values, nv_aval("f32", c(2L, 8L - 5L)))
     expect_equal(dtype(out$indices), default_int())
   })
 
   it("returns the values alone when the indices are not asked for", {
-    out <- infer_top_k(infer_at("f32", c(2L, 8L)), k = 3L, indices = FALSE)
+    out <- infer_top_k(nv_aval("f32", c(2L, 8L)), k = 3L, indices = FALSE)
     expect_named(out, "values")
-    expect_equal(out$values, infer_at("f32", c(2L, 3L)))
+    expect_equal(out$values, nv_aval("f32", c(2L, 3L)))
   })
 
   it("refuses a k larger than the last axis", {
-    expect_snapshot(error = TRUE, infer_top_k(infer_at("f32", c(2L, 3L)), k = 4L, indices = TRUE))
+    expect_snapshot(error = TRUE, infer_top_k(nv_aval("f32", c(2L, 3L)), k = 4L, indices = TRUE))
   })
 })
 
@@ -383,9 +379,9 @@ describe("the static parameters a rule is handed", {
   it("refuses a missing value instead of letting it reach an `if ()`", {
     # An `NA` used to reach the first comparison and come back out as R's own
     # "missing value where TRUE/FALSE needed", under the primitive's name.
-    x <- infer_at("f32", c(2L, 3L))
+    x <- nv_aval("f32", c(2L, 3L))
     expect_error(
-      infer_pad(x, infer_at("f32"), c(NA_integer_, 0L), c(0L, 0L), c(0L, 0L)),
+      infer_pad(x, nv_aval("f32", integer()), c(NA_integer_, 0L), c(0L, 0L), c(0L, 0L)),
       "`edge_padding_low` must not contain missing values",
       fixed = TRUE
     )
@@ -403,37 +399,37 @@ describe("the static parameters a rule is handed", {
   })
 
   it("refuses a value that is not a whole number", {
-    x <- infer_at("f32", 6L)
+    x <- nv_aval("f32", 6L)
     expect_error(infer_reshape(x, "a"), "`shape` must be a whole number vector", fixed = TRUE)
-    expect_error(infer_cum(infer_at("f32", 3L), NULL), "`axis` must have 1 entry", fixed = TRUE)
+    expect_error(infer_cum(nv_aval("f32", 3L), NULL), "`axis` must have 1 entry", fixed = TRUE)
     expect_error(infer_iota(1L, "f32", c(2L, 3L), "a"), "`start` must be a whole number", fixed = TRUE)
   })
 
   it("still reads `c()` as the empty set of axes", {
     # `c()` is `NULL`, and it is how a caller spells "no axes"; the old bare
     # `as.integer()` accepted it, so the guards must not refuse it.
-    expect_silent(infer_reverse(infer_at("f32", c(2L, 3L)), c()))
-    expect_silent(infer_reduce_simple(infer_at("f32", c(2L, 3L)), c(), TRUE))
+    expect_silent(infer_reverse(nv_aval("f32", c(2L, 3L)), c()))
+    expect_silent(infer_reduce_simple(nv_aval("f32", c(2L, 3L)), c(), TRUE))
     # A parameter that must be a single axis still refuses it.
-    expect_error(infer_top_k(infer_at("f32", 3L), NULL), "`k` must have 1 entry", fixed = TRUE)
+    expect_error(infer_top_k(nv_aval("f32", 3L), NULL), "`k` must have 1 entry", fixed = TRUE)
   })
 
   it("refuses a negative size rather than letting Shape() complain", {
     expect_error(
-      infer_reshape(infer_at("f32", 6L), c(-6L, -1L)),
+      infer_reshape(nv_aval("f32", 6L), c(-6L, -1L)),
       "`shape` must not be negative",
       fixed = TRUE
     )
   })
 
   it("refuses a data type it cannot resolve, naming the argument", {
-    expect_error(infer_convert(infer_at("f32"), "nope"), "`dtype` must name a data type", fixed = TRUE)
+    expect_error(infer_convert(nv_aval("f32", integer()), "nope"), "`dtype` must name a data type", fixed = TRUE)
   })
 
   it("refuses a flag that is not one", {
-    expect_error(infer_round(infer_at("f32", 3L), "bogus"), "`method` must be", fixed = TRUE)
+    expect_error(infer_round(nv_aval("f32", 3L), "bogus"), "`method` must be", fixed = TRUE)
     expect_error(
-      infer_cholesky(infer_at("f32", c(2L, 2L)), NULL),
+      infer_cholesky(nv_aval("f32", c(2L, 2L)), NULL),
       "`lower` must be",
       fixed = TRUE
     )
@@ -454,11 +450,11 @@ describe("infer_cond()", {
 
 describe("the reduce rules", {
   it("own their axis contract, as infer_reduce does", {
-    x <- infer_at("f32", c(2L, 3L))
+    x <- nv_aval("f32", c(2L, 3L))
     expect_error(infer_reduce_simple(x, 5L, TRUE), "must contain axes between 1 and 2", fixed = TRUE)
     expect_error(infer_reduce_simple(x, c(1L, 1L), TRUE), "must contain unique axes", fixed = TRUE)
     expect_error(
-      infer_reduce_boolean(infer_at("bool", c(2L, 3L)), 5L, TRUE),
+      infer_reduce_boolean(nv_aval("bool", c(2L, 3L)), 5L, TRUE),
       "must contain axes between 1 and 2",
       fixed = TRUE
     )
@@ -477,8 +473,8 @@ describe("infer_triangular_solve()", {
   it("refuses a flag it would otherwise branch on", {
     # `side <- if (left_side) ...` turned an `NA` into R's own
     # "missing value where TRUE/FALSE needed", under `prim_triangular_solve()`.
-    a <- infer_at("f32", c(2L, 2L))
-    b <- infer_at("f32", c(2L, 1L))
+    a <- nv_aval("f32", c(2L, 2L))
+    b <- nv_aval("f32", c(2L, 1L))
     for (flag in c("left_side", "lower", "unit_diagonal", "transpose_a")) {
       args <- list(a, b, TRUE, TRUE, FALSE, FALSE)
       names(args) <- c("a", "b", "left_side", "lower", "unit_diagonal", "transpose_a")
@@ -549,20 +545,235 @@ describe("infer_convolution()", {
   })
 })
 
-describe("value_repr()", {
-  it("prints the value a message complains about", {
-    expect_equal(cli::ansi_strip(value_repr(3.5)), "<numeric> 3.5")
-    expect_error(
-      assert_int_param("a", "axis"),
-      "`axis` must be a whole number vector",
-      fixed = TRUE
+# Every message a rule refuses a param with names the param and reports the
+# value it was handed. Each one is snapshotted through the primitive itself, so
+# that the snapshot holds the message a caller actually sees. A param a wrapper
+# resolves before the rule sees it (`resolve_axes()`, `assert_shapevec()`) is
+# answered there instead, in the same terms.
+
+test_that("prim_reshape", {
+  expect_snapshot(error = TRUE, prim_reshape(nv_array(1:4), shape = "a"))
+  expect_snapshot(error = TRUE, prim_reshape(nv_array(1:4), shape = c(3L, 3L)))
+})
+
+test_that("prim_reverse", {
+  expect_snapshot(error = TRUE, prim_reverse(nv_array(1:4), axes = list(1L)))
+})
+
+test_that("prim_cumsum", {
+  expect_snapshot(error = TRUE, prim_cumsum(nv_array(1:4), axis = c(1L, 1L)))
+})
+
+test_that("prim_reduce_sum", {
+  expect_snapshot(error = TRUE, prim_reduce_sum(nv_array(1:4), axes = 1L, drop = "yes"))
+  expect_snapshot(error = TRUE, prim_reduce_sum(nv_array(1:4), axes = 1L, drop = NA))
+  expect_snapshot(error = TRUE, prim_reduce_sum(nv_array(1:4), axes = "a"))
+})
+
+test_that("prim_convert", {
+  expect_snapshot(error = TRUE, prim_convert(nv_array(1:4), dtype = "nope"))
+  expect_snapshot(error = TRUE, prim_convert(nv_array(1:4), dtype = 42))
+})
+
+test_that("prim_round", {
+  expect_snapshot(error = TRUE, prim_round(nv_array(c(1.5, 2.5)), method = "bogus"))
+})
+
+test_that("prim_rng_bit_generator", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  expect_snapshot(error = TRUE, prim_rng_bit_generator(state, "MERSENNE", "f32", 3L))
+})
+
+test_that("prim_fill", {
+  expect_snapshot(error = TRUE, prim_fill(c(1, 2), 3L, "f32"))
+  expect_snapshot(error = TRUE, prim_fill(1, 3L, "nope"))
+})
+
+test_that("prim_iota", {
+  expect_snapshot(error = TRUE, prim_iota(axis = 1L, dtype = "f32", shape = "a"))
+  expect_snapshot(error = TRUE, prim_iota(axis = 1L, dtype = "bool", shape = 3L))
+})
+
+test_that("prim_broadcast_in_axes", {
+  x <- nv_array(as.double(1:12), shape = c(4, 3))
+  expect_snapshot(
+    error = TRUE,
+    prim_broadcast_in_axes(x, shape = c(4L, 3L), broadcast_axes = 1L)
+  )
+})
+
+test_that("prim_static_slice", {
+  x <- nv_array(as.double(1:12), shape = c(4, 3))
+  expect_snapshot(error = TRUE, prim_static_slice(x, 1L, c(2L, 2L), 1L))
+  expect_snapshot(error = TRUE, prim_static_slice(x, c(1L, 1L), c(2L, 2L), c(0L, 1L)))
+})
+
+test_that("prim_pad", {
+  x <- nv_array(as.double(1:12), shape = c(4, 3))
+  expect_snapshot(error = TRUE, prim_pad(x, nv_scalar(0), 0L, c(0L, 0L), c(0L, 0L)))
+  expect_snapshot(
+    error = TRUE,
+    prim_pad(nv_array(as.double(1:3)), nv_scalar(0), -3L, -3L, 0L)
+  )
+})
+
+test_that("prim_dynamic_slice", {
+  x <- nv_array(as.double(1:12), shape = c(4, 3))
+  expect_snapshot(
+    error = TRUE,
+    prim_dynamic_slice(x, nv_scalar(1L), nv_scalar(1L), slice_sizes = 2L)
+  )
+})
+
+test_that("prim_top_k", {
+  expect_snapshot(error = TRUE, prim_top_k(nv_array(1:4), k = 1L, indices = "yes"))
+  expect_snapshot(error = TRUE, prim_top_k(nv_array(1:4), k = c(1L, 2L)))
+})
+
+test_that("prim_chol", {
+  m <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f32")
+  expect_snapshot(error = TRUE, prim_chol(m, lower = "x"))
+})
+
+test_that("prim_sort", {
+  # The rule cannot answer for `xs`: the wrapper's next line resolves `axis`
+  # against `xs[[1L]]`. It answers in the rule's terms instead.
+  expect_snapshot(error = TRUE, prim_sort(list(), axis = 1L))
+  expect_snapshot(error = TRUE, prim_sort(list(nv_array(1:4)), axis = 1L, descending = "yes"))
+})
+
+test_that("prim_dot_general", {
+  lhs <- nv_array(as.double(1:6), shape = c(2, 3))
+  rhs <- nv_array(as.double(1:12), shape = c(3, 4))
+  expect_snapshot(
+    error = TRUE,
+    prim_dot_general(lhs, rhs, contracting_axes = 1L, batching_axes = list(integer(), integer()))
+  )
+  expect_snapshot(
+    error = TRUE,
+    prim_dot_general(
+      lhs,
+      rhs,
+      contracting_axes = list(2L, 1L),
+      batching_axes = list(1L, integer())
     )
-    expect_error(assert_int_param("a", "axis"), 'Got <character> "a"', fixed = TRUE)
+  )
+  expect_snapshot(
+    error = TRUE,
+    prim_dot_general(
+      lhs,
+      rhs,
+      contracting_axes = list(c(1L, 2L), 1L),
+      batching_axes = list(integer(), integer())
+    )
+  )
+  expect_snapshot(
+    error = TRUE,
+    prim_dot_general(
+      lhs,
+      rhs,
+      contracting_axes = list(2L, 1L),
+      batching_axes = list(integer(), integer()),
+      precision = "bogus"
+    )
+  )
+})
+
+test_that("prim_gather", {
+  gather <- function(
+    slice_sizes = c(1L, 3L),
+    collapsed_slice_axes = 1L,
+    x_batching_axes = integer(),
+    start_index_map = 1L
+  ) {
+    prim_gather(
+      nv_array(as.double(1:12), shape = c(4, 3)),
+      nv_array(matrix(c(1L, 2L), nrow = 2, ncol = 1)),
+      slice_sizes = slice_sizes,
+      offset_axes = 2L,
+      collapsed_slice_axes = collapsed_slice_axes,
+      x_batching_axes = x_batching_axes,
+      start_indices_batching_axes = integer(),
+      start_index_map = start_index_map,
+      index_vector_axis = 2L,
+      indices_are_sorted = FALSE,
+      unique_indices = FALSE
+    )
+  }
+  expect_equal(shape(gather()), c(2L, 3L))
+  expect_snapshot(error = TRUE, gather(slice_sizes = c(1L, 3L, 1L)))
+  expect_snapshot(error = TRUE, gather(start_index_map = c(1L, 2L)))
+  expect_snapshot(
+    error = TRUE,
+    gather(collapsed_slice_axes = integer(), x_batching_axes = 1L)
+  )
+})
+
+test_that("prim_scatter", {
+  scatter <- function(inserted_window_axes = 1L, x_batching_axes = integer(), scatter_axes_to_x_axes = 1L) {
+    prim_scatter(
+      nv_array(as.double(1:12), shape = c(4, 3)),
+      nv_array(matrix(c(1L, 2L), nrow = 2, ncol = 1)),
+      nv_array(as.double(1:6), shape = c(2, 3)),
+      update_window_axes = 2L,
+      inserted_window_axes = inserted_window_axes,
+      x_batching_axes = x_batching_axes,
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+      index_vector_axis = 2L,
+      indices_are_sorted = FALSE,
+      unique_indices = FALSE,
+      update_computation = function(a, b) b
+    )
+  }
+  expect_equal(shape(scatter()), c(4L, 3L))
+  expect_snapshot(error = TRUE, scatter(scatter_axes_to_x_axes = c(1L, 2L)))
+  expect_snapshot(
+    error = TRUE,
+    scatter(inserted_window_axes = integer(), x_batching_axes = 1L)
+  )
+})
+
+test_that("prim_convolution", {
+  conv <- function(window_strides = 1L, input_spatial_axes = 3L, input_batch_axis = 1L, precision = "highest") {
+    prim_convolution(
+      nv_array(as.double(1:5), shape = c(1, 1, 5)),
+      nv_array(as.double(1:3), shape = c(1, 1, 3)),
+      input_batch_axis = input_batch_axis,
+      input_feature_axis = 2L,
+      input_spatial_axes = input_spatial_axes,
+      kernel_input_feature_axis = 2L,
+      kernel_output_feature_axis = 1L,
+      kernel_spatial_axes = 3L,
+      output_batch_axis = 1L,
+      output_feature_axis = 2L,
+      output_spatial_axes = 3L,
+      window_strides = window_strides,
+      padding = matrix(0L, 1L, 2L),
+      x_dilation = 1L,
+      kernel_dilation = 1L,
+      feature_group_count = 1L,
+      batch_group_count = 1L,
+      precision = precision
+    )
+  }
+  expect_equal(shape(conv()), c(1L, 1L, 3L))
+  expect_snapshot(error = TRUE, conv(window_strides = c(1L, 1L)))
+  expect_snapshot(error = TRUE, conv(input_spatial_axes = c(3L, 4L)))
+  expect_snapshot(error = TRUE, conv(input_batch_axis = 2L))
+  expect_snapshot(error = TRUE, conv(input_batch_axis = integer()))
+  expect_snapshot(error = TRUE, conv(precision = "bogus"))
+})
+
+describe("param_repr()", {
+  it("prints the value a message complains about", {
+    expect_equal(cli::ansi_strip(param_repr(3.5)), "3.5")
+    expect_error(assert_int_param("a", "axis"), 'Got "a"', fixed = TRUE)
   })
 
   it("falls back to class and length for a value `{.val}` cannot print", {
     # `{.val {mean}}` errors inside the message it is meant to report.
-    expect_equal(cli::ansi_strip(value_repr(mean)), "<function> of length 1")
+    expect_equal(cli::ansi_strip(param_repr(mean)), "<function> of length 1")
     expect_error(assert_flag_param(mean, "drop"), "Got <function>", fixed = TRUE)
   })
 })

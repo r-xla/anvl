@@ -17,7 +17,10 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   }
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
-      cli_abort("{.arg {var_name}} must be an integer vector, not {value_repr(x)}")
+      cli_abort(c(
+        "{.arg {var_name}} must be an integer vector.",
+        x = "Got {param_repr(x)}."
+      ))
     }
     if (anyNA(x)) {
       cli_abort(c(
@@ -54,7 +57,10 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
 # Returns the resolved (positive) axes as an integer vector.
 resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique = FALSE) {
   if (!test_integerish(axes, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {value_repr(axes)}")
+    cli_abort(c(
+      "{.arg {arg}} must be an integer vector without missing values.",
+      x = "Got {param_repr(axes)}."
+    ))
   }
   original <- as.integer(axes)
   resolved <- original
@@ -65,18 +71,18 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
     if (max_axis < 1L) {
       cli_abort(c(
         "{.arg {arg}} cannot be used, there is no axis to select.",
-        x = "Got {.val {original[invalid]}}."
+        x = "Got {vec_repr(original[invalid])}."
       ))
     }
     cli_abort(c(
       "{.arg {arg}} must be between 1 and {max_axis}, or between {-max_axis} and -1 to count from the end.",
-      x = "Got {.val {original[invalid]}}."
+      x = "Got {vec_repr(original[invalid])}."
     ))
   }
   if (unique && anyDuplicated(resolved)) {
     cli_abort(c(
       "{.arg {arg}} must not contain duplicate axes.",
-      x = "Got {.val {original}}."
+      x = "Got {vec_repr(original)}."
     ))
   }
   resolved
@@ -85,7 +91,10 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
 # Like `resolve_axes()`, but for a single axis.
 resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
   if (length(axis) != 1L) {
-    cli_abort("{.arg {arg}} must have length 1, not {length(axis)} ({vec_repr(axis)})")
+    cli_abort(c(
+      "{.arg {arg}} must have length 1.",
+      x = "Got {param_repr(axis)}."
+    ))
   }
   resolve_axes(axis, max_axis, arg = arg)
 }
@@ -95,14 +104,17 @@ resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
 # Returns the resolved shape as an integer vector.
 resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
   if (!test_integerish(shape, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {value_repr(shape)}")
+    cli_abort(c(
+      "{.arg {arg}} must be an integer vector without missing values.",
+      x = "Got {param_repr(shape)}."
+    ))
   }
   shape <- as.integer(shape)
   invalid <- shape < -1L
   if (any(invalid)) {
     cli_abort(c(
       "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
-      x = "Got {.val {shape[invalid]}}."
+      x = "Got {vec_repr(shape[invalid])}."
     ))
   }
   inferred <- which(shape == -1L)
@@ -112,7 +124,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   if (length(inferred) > 1L) {
     cli_abort(c(
       "{.arg {arg}} must contain at most one {.val {-1L}}.",
-      x = "Got {length(inferred)} at positions {.val {inferred}}."
+      x = "Got {length(inferred)} at {cli::qty(length(inferred))}position{?s} {vec_repr(inferred)}."
     ))
   }
   known <- prod(shape[-inferred])
@@ -194,14 +206,14 @@ assert_r_fits_dtype <- function(x, dtype) {
 }
 
 assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
-  dt <- as_dtype(dtype)
+  dt <- assert_dtype_param(dtype, "dtype")
   is_int64 <- inherits(value, "integer64")
   is_number <- is.numeric(value) || is_int64
 
   if (length(value) != 1L) {
     cli_abort(c(
       "{.arg {arg}} must be a scalar.",
-      "x" = "Got {.obj_type_friendly {value}} of length {length(value)}."
+      "x" = "Got {param_repr(value)}."
     ))
   }
   if (is.na(value) && !is.nan(value)) {

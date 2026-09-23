@@ -22,7 +22,7 @@
     Condition
       Error in `resolve_axes()`:
       ! `permutation` must not contain duplicate axes.
-      x Got 2 and 2.
+      x Got c(2, 2).
 
 # error handling: type inference reports in anvl's terminology
 

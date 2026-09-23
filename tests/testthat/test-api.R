@@ -2887,10 +2887,12 @@ test_that("the flag and enum arguments are checked in the nv_* layer", {
   expect_error(nv_cummax(x, indices = "yes"), "logical flag")
   expect_error(nv_argmax(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
-  expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "logical flag")
+  # `drop` is a primitive param, so the reduce rule answers for it: by name,
+  # and with the value it was given.
+  expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "`drop` must be TRUE or FALSE")
   m <- nv_array(matrix(c(4, 2, 2, 3), 2), dtype = "f32")
-  expect_error(nv_chol(m, lower = "yes"), "logical flag")
-  expect_error(nv_triangular_solve(m, m, lower = "yes"), "logical flag")
+  expect_error(nv_chol(m, lower = "yes"), "`lower` must be TRUE or FALSE")
+  expect_error(nv_triangular_solve(m, m, lower = "yes"), "`lower` must be TRUE or FALSE")
 })
 
 test_that("the variadic functions and `like` refuse nothing to work with", {

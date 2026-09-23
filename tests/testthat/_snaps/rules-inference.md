@@ -1,7 +1,7 @@
 # assert_array_dtype() / names the categories it wanted and the data type it got
 
     Code
-      assert_array_dtype(infer_at("i32", 3L), "float", arg = "x")
+      assert_array_dtype(nv_aval("i32", 3L), "float", arg = "x")
     Condition
       Error in `assert_array_dtype()`:
       ! `x` must have a float data type.
@@ -10,7 +10,7 @@
 # assert_array_dtype() / checks shape and rank when asked
 
     Code
-      assert_array_dtype(infer_at("f32", c(2L, 3L)), shape = integer(), arg = "pred")
+      assert_array_dtype(nv_aval("f32", c(2L, 3L)), shape = integer(), arg = "pred")
     Condition
       Error in `assert_array_dtype()`:
       ! `pred` must have shape ().
@@ -19,7 +19,7 @@
 ---
 
     Code
-      assert_array_dtype(infer_at("f32", c(2L, 3L)), naxes = 1L, arg = "initial_state")
+      assert_array_dtype(nv_aval("f32", c(2L, 3L)), naxes = 1L, arg = "initial_state")
     Condition
       Error in `assert_array_dtype()`:
       ! `initial_state` must have 1 axis.
@@ -28,7 +28,7 @@
 # the element-wise rules / refuse operands whose types disagree
 
     Code
-      infer_generic_biv(infer_at("i32", 4L), infer_at("i32", 6L))
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
     Condition
       Error in `assert_same_type()`:
       ! `lhs` and `rhs` must have the same array type.
@@ -37,7 +37,7 @@
 # infer_transpose() / reports the permutation it expected in 1-based axes
 
     Code
-      infer_transpose(infer_at("f32", c(2L, 2L)), 1L)
+      infer_transpose(nv_aval("f32", c(2L, 2L)), 1L)
     Condition
       Error in `infer_transpose()`:
       ! `permutation` must be a permutation of c(1, 2).
@@ -46,7 +46,7 @@
 # infer_broadcast_in_axes() / refuses an axis that is neither 1 nor the target size
 
     Code
-      infer_broadcast_in_axes(infer_at("f32", c(2L, 3L)), c(4L, 3L), c(1L, 2L))
+      infer_broadcast_in_axes(nv_aval("f32", c(2L, 3L)), c(4L, 3L), c(1L, 2L))
     Condition
       Error in `infer_broadcast_in_axes()`:
       ! Axis 1 of `x` must be 4 or 1 to broadcast to axis 1 of the result.
@@ -55,7 +55,7 @@
 # infer_static_slice() / refuses a stride of zero rather than computing an infinite shape
 
     Code
-      infer_static_slice(infer_at("i32", 10L), 1L, 5L, 0L)
+      infer_static_slice(nv_aval("i32", 10L), 1L, 5L, 0L)
     Condition
       Error in `infer_static_slice()`:
       ! `strides` must be positive.
@@ -64,7 +64,7 @@
 # infer_static_slice() / refuses a limit past the end of the array
 
     Code
-      infer_static_slice(infer_at("i32", 10L), 1L, 11L, 1L)
+      infer_static_slice(nv_aval("i32", 10L), 1L, 11L, 1L)
     Condition
       Error in `infer_static_slice()`:
       ! `limit_indices` must not exceed the shape of `x` (10).
@@ -73,7 +73,7 @@
 # infer_concatenate() / refuses inputs that disagree on any other axis
 
     Code
-      infer_concatenate(infer_at("f32", c(2L, 3L)), infer_at("f32", c(2L, 4L)), axis = 1L)
+      infer_concatenate(nv_aval("f32", c(2L, 3L)), nv_aval("f32", c(2L, 4L)), axis = 1L)
     Condition
       Error in `infer_concatenate()`:
       ! Every input must have the same shape except along `axis` (1).
@@ -82,7 +82,7 @@
 # infer_concatenate() / refuses inputs with a different number of axes
 
     Code
-      infer_concatenate(infer_at("f32", c(2L, 3L, 4L)), infer_at("f32", c(2L, 3L)),
+      infer_concatenate(nv_aval("f32", c(2L, 3L, 4L)), nv_aval("f32", c(2L, 3L)),
       axis = 3L)
     Condition
       Error in `infer_concatenate()`:
@@ -92,7 +92,7 @@
 # infer_dot_general() / refuses contracted axes whose sizes differ
 
     Code
-      infer_dot_general(infer_at("f32", c(2L, 3L)), infer_at("f32", c(4L, 5L)),
+      infer_dot_general(nv_aval("f32", c(2L, 3L)), nv_aval("f32", c(4L, 5L)),
       contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()),
       precision = "highest")
     Condition
@@ -103,16 +103,17 @@
 # infer_pad() / refuses negative padding that would empty an axis
 
     Code
-      infer_pad(infer_at("f32", 3L), infer_at("f32"), -3L, -3L, 0L)
+      infer_pad(nv_aval("f32", 3L), nv_aval("f32", integer()), -3L, -3L, 0L)
     Condition
       Error in `infer_pad()`:
       ! Negative padding must not remove more than an axis holds.
       x `x` has shape (3); axis 1 would end up at -3.
+      i Got `edge_padding_low` = -3, `edge_padding_high` = -3, `interior_padding` = 0.
 
 # infer_top_k() / refuses a k larger than the last axis
 
     Code
-      infer_top_k(infer_at("f32", c(2L, 3L)), k = 4L, indices = TRUE)
+      infer_top_k(nv_aval("f32", c(2L, 3L)), k = 4L, indices = TRUE)
     Condition
       Error in `infer_top_k()`:
       ! `k` must not exceed the size of the last axis of `x` (3).
@@ -127,4 +128,374 @@
       Error in `prim_transpose()`:
       ! `permutation` must be a permutation of c(1, 2).
       x Got 1.
+
+# prim_reshape
+
+    Code
+      prim_reshape(nv_array(1:4), shape = "a")
+    Condition
+      Error in `resolve_reshape_shape()`:
+      ! `shape` must be an integer vector without missing values.
+      x Got "a".
+
+---
+
+    Code
+      prim_reshape(nv_array(1:4), shape = c(3L, 3L))
+    Condition
+      Error in `prim_reshape()`:
+      ! `shape` must have as many elements as `x`.
+      x Got (4) and (3x3).
+
+# prim_reverse
+
+    Code
+      prim_reverse(nv_array(1:4), axes = list(1L))
+    Condition
+      Error in `resolve_axes()`:
+      ! `axes` must be an integer vector without missing values.
+      x Got <list> of length 1.
+
+# prim_cumsum
+
+    Code
+      prim_cumsum(nv_array(1:4), axis = c(1L, 1L))
+    Condition
+      Error in `resolve_axis()`:
+      ! `axis` must have length 1.
+      x Got c(1, 1).
+
+# prim_reduce_sum
+
+    Code
+      prim_reduce_sum(nv_array(1:4), axes = 1L, drop = "yes")
+    Condition
+      Error in `prim_reduce_sum()`:
+      ! `drop` must be TRUE or FALSE.
+      x Got "yes".
+
+---
+
+    Code
+      prim_reduce_sum(nv_array(1:4), axes = 1L, drop = NA)
+    Condition
+      Error in `prim_reduce_sum()`:
+      ! `drop` must be TRUE or FALSE.
+      x Got NA.
+
+---
+
+    Code
+      prim_reduce_sum(nv_array(1:4), axes = "a")
+    Condition
+      Error in `resolve_axes()`:
+      ! `axes` must be an integer vector without missing values.
+      x Got "a".
+
+# prim_convert
+
+    Code
+      prim_convert(nv_array(1:4), dtype = "nope")
+    Condition
+      Error in `assert_dtype_param()`:
+      ! `dtype` must name a data type.
+      x Got "nope".
+      i See `tengen::as_dtype()` for the data types anvl knows.
+
+---
+
+    Code
+      prim_convert(nv_array(1:4), dtype = 42)
+    Condition
+      Error in `assert_dtype_param()`:
+      ! `dtype` must name a data type.
+      x Got 42.
+      i See `tengen::as_dtype()` for the data types anvl knows.
+
+# prim_round
+
+    Code
+      prim_round(nv_array(c(1.5, 2.5)), method = "bogus")
+    Condition
+      Error in `prim_round()`:
+      ! `method` must be one of "nearest_even" or "afz".
+      x Got "bogus".
+
+# prim_rng_bit_generator
+
+    Code
+      prim_rng_bit_generator(state, "MERSENNE", "f32", 3L)
+    Condition
+      Error in `prim_rng_bit_generator()`:
+      ! `rng_algorithm` must be one of "DEFAULT", "THREE_FRY", or "PHILOX".
+      x Got "MERSENNE".
+
+# prim_fill
+
+    Code
+      prim_fill(c(1, 2), 3L, "f32")
+    Condition
+      Error in `assert_fill_value()`:
+      ! `value` must be a scalar.
+      x Got c(1, 2).
+
+---
+
+    Code
+      prim_fill(1, 3L, "nope")
+    Condition
+      Error in `assert_dtype_param()`:
+      ! `dtype` must name a data type.
+      x Got "nope".
+      i See `tengen::as_dtype()` for the data types anvl knows.
+
+# prim_iota
+
+    Code
+      prim_iota(axis = 1L, dtype = "f32", shape = "a")
+    Condition
+      Error in `assert_shapevec()`:
+      ! `shape` must be an integer vector.
+      x Got "a".
+
+---
+
+    Code
+      prim_iota(axis = 1L, dtype = "bool", shape = 3L)
+    Condition
+      Error in `prim_iota()`:
+      ! `dtype` must name an integer, unsigned integer, or float data type.
+      x Got "bool".
+
+# prim_broadcast_in_axes
+
+    Code
+      prim_broadcast_in_axes(x, shape = c(4L, 3L), broadcast_axes = 1L)
+    Condition
+      Error in `prim_broadcast_in_axes()`:
+      ! `broadcast_axes` must have one entry per axis of `x`.
+      x Got 1 for an `x` with 2 axes.
+
+# prim_static_slice
+
+    Code
+      prim_static_slice(x, 1L, c(2L, 2L), 1L)
+    Condition
+      Error in `prim_static_slice()`:
+      ! `start_indices`, `limit_indices` and `strides` must have one entry per axis of `x` (2).
+      x Got `start_indices` = 1, `limit_indices` = c(2, 2), `strides` = 1.
+
+---
+
+    Code
+      prim_static_slice(x, c(1L, 1L), c(2L, 2L), c(0L, 1L))
+    Condition
+      Error in `prim_static_slice()`:
+      ! `strides` must be positive.
+      x Got c(0, 1).
+
+# prim_pad
+
+    Code
+      prim_pad(x, nv_scalar(0), 0L, c(0L, 0L), c(0L, 0L))
+    Condition
+      Error in `prim_pad()`:
+      ! `edge_padding_low` must have one entry per axis of `x` (2).
+      x Got 0.
+
+---
+
+    Code
+      prim_pad(nv_array(as.double(1:3)), nv_scalar(0), -3L, -3L, 0L)
+    Condition
+      Error in `prim_pad()`:
+      ! Negative padding must not remove more than an axis holds.
+      x `x` has shape (3); axis 1 would end up at -3.
+      i Got `edge_padding_low` = -3, `edge_padding_high` = -3, `interior_padding` = 0.
+
+# prim_dynamic_slice
+
+    Code
+      prim_dynamic_slice(x, nv_scalar(1L), nv_scalar(1L), slice_sizes = 2L)
+    Condition
+      Error in `prim_dynamic_slice()`:
+      ! `slice_sizes` must have one entry per axis of `x` (2).
+      x Got 2.
+
+# prim_top_k
+
+    Code
+      prim_top_k(nv_array(1:4), k = 1L, indices = "yes")
+    Condition
+      Error in `prim_top_k()`:
+      ! `indices` must be TRUE or FALSE.
+      x Got "yes".
+
+---
+
+    Code
+      prim_top_k(nv_array(1:4), k = c(1L, 2L))
+    Condition
+      Error in `assert_int_param()`:
+      ! `k` must have 1 entry.
+      x Got c(1, 2).
+
+# prim_chol
+
+    Code
+      prim_chol(m, lower = "x")
+    Condition
+      Error in `prim_chol()`:
+      ! `lower` must be TRUE or FALSE.
+      x Got "x".
+
+# prim_sort
+
+    Code
+      prim_sort(list(), axis = 1L)
+    Condition
+      Error in `prim_sort()`:
+      ! `xs` must be a non-empty list of arrayish values.
+      x Got <list> of length 0.
+
+---
+
+    Code
+      prim_sort(list(nv_array(1:4)), axis = 1L, descending = "yes")
+    Condition
+      Error in `prim_sort()`:
+      ! `descending` must be TRUE or FALSE.
+      x Got "yes".
+
+# prim_dot_general
+
+    Code
+      prim_dot_general(lhs, rhs, contracting_axes = 1L, batching_axes = list(integer(),
+      integer()))
+    Condition
+      Error in `prim_dot_general()`:
+      ! `contracting_axes` must be a list of two axis vectors, one for `lhs` and one for `rhs`.
+      x Got 1.
+
+---
+
+    Code
+      prim_dot_general(lhs, rhs, contracting_axes = list(2L, 1L), batching_axes = list(
+        1L, integer()))
+    Condition
+      Error in `prim_dot_general()`:
+      ! `batching_axes` must name as many axes of `lhs` as of `rhs`.
+      x Got 1 and nothing.
+
+---
+
+    Code
+      prim_dot_general(lhs, rhs, contracting_axes = list(c(1L, 2L), 1L),
+      batching_axes = list(integer(), integer()))
+    Condition
+      Error in `prim_dot_general()`:
+      ! `contracting_axes` must name as many axes of `lhs` as of `rhs`.
+      x Got c(1, 2) and 1.
+
+---
+
+    Code
+      prim_dot_general(lhs, rhs, contracting_axes = list(2L, 1L), batching_axes = list(
+        integer(), integer()), precision = "bogus")
+    Condition
+      Error in `prim_dot_general()`:
+      ! `precision` must be one of "default", "high", or "highest".
+      x Got "bogus".
+
+# prim_gather
+
+    Code
+      gather(slice_sizes = c(1L, 3L, 1L))
+    Condition
+      Error in `prim_gather()`:
+      ! `slice_sizes` must have one entry per axis of `x` (2).
+      x Got c(1, 3, 1).
+
+---
+
+    Code
+      gather(start_index_map = c(1L, 2L))
+    Condition
+      Error in `prim_gather()`:
+      ! `start_index_map` must have one entry per index coordinate (1).
+      x Got c(1, 2).
+
+---
+
+    Code
+      gather(collapsed_slice_axes = integer(), x_batching_axes = 1L)
+    Condition
+      Error in `prim_gather()`:
+      ! `x_batching_axes` and `start_indices_batching_axes` must have the same length.
+      x Got 1 and nothing.
+
+# prim_scatter
+
+    Code
+      scatter(scatter_axes_to_x_axes = c(1L, 2L))
+    Condition
+      Error in `prim_scatter()`:
+      ! `scatter_axes_to_x_axes` must have one entry per index coordinate (1).
+      x Got c(1, 2).
+
+---
+
+    Code
+      scatter(inserted_window_axes = integer(), x_batching_axes = 1L)
+    Condition
+      Error in `prim_scatter()`:
+      ! `x_batching_axes` and `scatter_indices_batching_axes` must have the same length.
+      x Got 1 and nothing.
+
+# prim_convolution
+
+    Code
+      conv(window_strides = c(1L, 1L))
+    Condition
+      Error in `prim_convolution()`:
+      ! `window_strides` must have one entry per spatial axis (1).
+      x Got c(1, 1).
+
+---
+
+    Code
+      conv(input_spatial_axes = c(3L, 4L))
+    Condition
+      Error in `prim_convolution()`:
+      ! `input_spatial_axes` must have one entry per spatial axis (1).
+      x Got c(3, 4).
+
+---
+
+    Code
+      conv(input_batch_axis = 2L)
+    Condition
+      Error in `prim_convolution()`:
+      ! The axes of x must each be named exactly once.
+      x Axis 2 is named 2 times, by `input_batch_axis` and `input_feature_axis`.
+      i Got `input_batch_axis` = 2, `input_spatial_axes` = 3, `input_feature_axis` = 2.
+
+---
+
+    Code
+      conv(input_batch_axis = integer())
+    Condition
+      Error in `prim_convolution()`:
+      ! The axes of x must each be named exactly once.
+      x `input_batch_axis`, `input_spatial_axes`, and `input_feature_axis` name 2 axes between them, but x has 3.
+      i Got `input_batch_axis` = nothing, `input_spatial_axes` = 3, `input_feature_axis` = 2.
+
+---
+
+    Code
+      conv(precision = "bogus")
+    Condition
+      Error in `prim_convolution()`:
+      ! `precision` must be one of "default", "high", or "highest".
+      x Got "bogus".
 
