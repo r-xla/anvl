@@ -25,7 +25,7 @@ describe("gather_clamp_indices", {
       start_indices = idx,
       x_shape = c(10L),
       slice_sizes = 3L,
-      start_indices_to_x_axes = 1L,
+      start_index_map = 1L,
       index_vector_axis = 2L # implicit
     )
     expect_equal(as.integer(result), c(8L, 8L, 5L))
@@ -37,7 +37,7 @@ describe("gather_clamp_indices", {
       start_indices = idx,
       x_shape = c(10L),
       slice_sizes = 1L,
-      start_indices_to_x_axes = 1L,
+      start_index_map = 1L,
       index_vector_axis = 2L
     )
     expect_equal(as.integer(result), c(1L, 1L, 3L))
@@ -49,7 +49,7 @@ describe("gather_clamp_indices", {
       start_indices = idx,
       x_shape = c(10L),
       slice_sizes = c(3L),
-      start_indices_to_x_axes = 1L,
+      start_index_map = 1L,
       index_vector_axis = 2L
     )
     expect_equal(as.integer(result), c(1L, 5L, 8L))
@@ -64,15 +64,15 @@ describe("gather_clamp_indices", {
       start_indices = idx,
       x_shape = c(5L, 8L),
       slice_sizes = c(2L, 3L),
-      start_indices_to_x_axes = c(1L, 2L),
+      start_index_map = c(1L, 2L),
       index_vector_axis = 1L
     )
     expect_equal(as.integer(result), c(4L, 6L))
   })
 
-  it("clamps batch of indices with explicit index vector axis and reverse start_indices_to_x_axes", {
+  it("clamps batch of indices with explicit index vector axis and reverse start_index_map", {
     # x_shape = c(8, 5), slice_sizes = c(2, 3)
-    # because we reverse the start_indices_to_x_axes, we clamp:
+    # because we reverse the start_index_map, we clamp:
     # clamp(1, coord_1, max(1, 5 - 3 + 1) = 3)
     # clamp(1, coord_2, max(1, 8 - 2 + 1) = 7)
     idx <- nv_array(
@@ -94,7 +94,7 @@ describe("gather_clamp_indices", {
       start_indices = idx,
       x_shape = c(8L, 5L),
       slice_sizes = c(2L, 3L),
-      start_indices_to_x_axes = c(2L, 1L),
+      start_index_map = c(2L, 1L),
       index_vector_axis = 2L
     )
     expected <- matrix(
@@ -119,7 +119,7 @@ describe("gather_clamp_indices", {
       start_indices = idx,
       x_shape = 10L,
       slice_sizes = 10L,
-      start_indices_to_x_axes = 1L,
+      start_index_map = 1L,
       index_vector_axis = 2L
     )
     expect_equal(nv_array(c(1L, 1L), dtype = "i32"), result)

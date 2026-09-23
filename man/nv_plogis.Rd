@@ -19,7 +19,7 @@ Has the input's shape, and its data type -- or the default float data type
 (see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
 }
 \description{
-Element-wise logistic sigmoid: \code{1 / (1 + exp(-x))}. This is
+Element-wise logistic sigmoid: \code{1 / (1 + exp(-x))}. This is like
 \code{\link[stats:plogis]{stats::plogis()}} with the default location and scale.
 }
 \examples{

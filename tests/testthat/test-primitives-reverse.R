@@ -609,20 +609,20 @@ test_that("prim_popcnt", {
 describe("shift ops", {
   it("prim_shift_left returns zero gradients", {
     x <- nv_array(c(1L, 2L, 4L, 8L), dtype = "i32")
-    y <- nv_array(c(1L, 1L, 1L, 1L), dtype = "i32")
-    verify_zero_grad_binary(prim_shift_left, x, y)
+    shift <- nv_array(c(1L, 1L, 1L, 1L), dtype = "i32")
+    verify_zero_grad_binary(prim_shift_left, x, shift)
   })
 
   it("prim_shift_right_arithmetic returns zero gradients", {
     x <- nv_array(c(8L, 16L, 32L, -8L), dtype = "i32")
-    y <- nv_array(c(1L, 2L, 1L, 1L), dtype = "i32")
-    verify_zero_grad_binary(prim_shift_right_arithmetic, x, y)
+    shift <- nv_array(c(1L, 2L, 1L, 1L), dtype = "i32")
+    verify_zero_grad_binary(prim_shift_right_arithmetic, x, shift)
   })
 
   it("prim_shift_right_logical returns zero gradients", {
     x <- nv_array(c(8L, 16L, 32L, 64L), dtype = "i32")
-    y <- nv_array(c(1L, 2L, 1L, 2L), dtype = "i32")
-    verify_zero_grad_binary(prim_shift_right_logical, x, y)
+    shift <- nv_array(c(1L, 2L, 1L, 2L), dtype = "i32")
+    verify_zero_grad_binary(prim_shift_right_logical, x, shift)
   })
 })
 
@@ -733,7 +733,7 @@ describe("prim_scatter", {
     expect_equal(g[[1]], g[[2]][[1]])
   })
 
-  it("errors for non-simple replacement update_computation", {
+  it("errors for non-simple replacement update_fn", {
     expect_error(
       jit(gradient(function(x) {
         out <- prim_scatter(
@@ -748,7 +748,7 @@ describe("prim_scatter", {
           index_vector_axis = 1L,
           indices_are_sorted = TRUE,
           unique_indices = TRUE,
-          update_computation = function(old, new) prim_add(old, new)
+          update_fn = function(old, new) prim_add(old, new)
         )
         nv_sum(out, axes = 1L, drop = TRUE)
       }))(nv_array(1:5, dtype = "f32")),
@@ -861,7 +861,7 @@ test_that("prim_which_max / prim_which_min have zero gradient", {
   x <- nv_array(c(3, 1, 4), dtype = "f32")
   for (prim in list(prim_which_max, prim_which_min)) {
     verify_zero_grad_unary(prim, x, f_wrapper = function(x) {
-      out <- prim(x, axis = 1L)
+      out <- prim(x, axes = 1L)
       prim_convert(out, "f32")
     })
   }
@@ -980,7 +980,7 @@ test_that("prim_sort", {
 })
 
 test_that("prim_top_k", {
-  for (with_indices in c(TRUE, FALSE)) {
+  for (indices in c(TRUE, FALSE)) {
     withr::local_seed(42)
     x_arr <- matrix(rnorm(4 * 6), nrow = 4)
     k <- 3L
@@ -990,7 +990,7 @@ test_that("prim_top_k", {
     w_nv <- nv_array(w_arr)
 
     f_nv <- function(x) {
-      top <- prim_top_k(x, k = k, with_indices = with_indices)[[1L]]
+      top <- prim_top_k(x, k = k, indices = indices)[[1L]]
       nv_sum(top * w_nv, axes = c(1L, 2L))
     }
     grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
@@ -1039,3 +1039,15 @@ test_that("prim_prod: drop = FALSE matches drop = TRUE", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-reverse-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("prim_reshape reverse", {
+  it("reshapes the gradient back in column-major order", {
+    # d/dx sum(reshape(x) * w) = reshape(w, shape(x)), so a distinct weight per
+    # element pins the order the gradient travels back in.
+    x <- nv_array(array(0, c(2L, 3L, 4L)), dtype = "f32")
+    w <- array(as.numeric(1:24), c(4L, 6L))
+    f <- function(x) nv_sum(prim_reshape(x, c(4L, 6L)) * w)
+    grads <- jit(gradient(f))(x)
+    expect_equal(as_array(grads[[1L]]), array(w, c(2L, 3L, 4L)))
+  })
+})

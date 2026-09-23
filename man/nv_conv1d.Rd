@@ -6,7 +6,7 @@
 \usage{
 nv_conv1d(
   x,
-  weight,
+  kernel,
   stride = 1L,
   padding = 0L,
   dilation = 1L,
@@ -16,11 +16,11 @@ nv_conv1d(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}. Can be any data type; \code{x} and
-\code{weight} are \link[=nv_promote_to_common]{promoted to a common data type}. An
+\code{kernel} are \link[=nv_promote_to_common]{promoted to a common data type}. An
 R value assumes the other operand's data type, and materializes at its
 \link[=default_dtypes]{default data type} when that has none either.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.
+\item{kernel}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.
 Promoted together with \code{x} -- see \code{x}.}
 
 \item{stride, padding, dilation}{(\code{integer()})\cr Length 1.}
@@ -36,7 +36,7 @@ Has the operands' common data type, and shape
 }
 \description{
 Torch-style 1D convolution in NCW layout: \code{x} is
-\verb{[batch, in_channels, width]}, \code{weight} is
+\verb{[batch, in_channels, width]}, \code{kernel} is
 \verb{[out_channels, in_channels / groups, kW]}, output is
 \verb{[batch, out_channels, out_w]}. Symmetric zero padding.
 }
@@ -44,13 +44,13 @@ Torch-style 1D convolution in NCW layout: \code{x} is
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # one batch, one channel, width 5, convolved with a width-3 kernel
 x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-weight <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
-nv_conv1d(x, weight)
+kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+nv_conv1d(x, kernel)
 
 # `padding = 1` keeps the input width, `stride = 2` visits every other
 # window position
-nv_conv1d(x, weight, padding = 1L)
-nv_conv1d(x, weight, stride = 2L)
+nv_conv1d(x, kernel, padding = 1L)
+nv_conv1d(x, kernel, stride = 2L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

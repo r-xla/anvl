@@ -4,29 +4,31 @@
 \alias{prim_which_min}
 \title{Primitive Index of the Minimum}
 \usage{
-prim_which_min(x, axis, drop = TRUE)
+prim_which_min(x, axes, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
-\item{axis}{(\code{integer(1)})\cr
-Axis along which to find the index of the minimum.
-Negative values count from the end, i.e. \code{-1} refers to the last axis.}
+\item{axes}{(\code{integer()})\cr
+Axes over which to find the index of the minimum. Their elements are
+ranked together, and the index counts through them in column-major order,
+as \code{\link[base:which.min]{base::which.min()}} does. Negative values count from the end, i.e.
+\code{-1} refers to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
-If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
+If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE} they are
 kept with size 1.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
-the input's, and the input's shape with \code{axis} removed (\code{drop = TRUE}) or
+the input's, and the input's shape with \code{axes} removed (\code{drop = TRUE}) or
 set to 1 (\code{drop = FALSE}).
 }
 \description{
-Returns the index of the minimum value along a single axis. Ties
+Returns the index of the minimum value over one or more axes. Ties
 are broken by returning the smallest index.
 }
 \section{Implemented Rules}{
@@ -48,7 +50,7 @@ The reduction is variadic over \verb{(values, indices)}, with a
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the index comes out at the default integer data type
-prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
+prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

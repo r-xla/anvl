@@ -7,7 +7,7 @@
 \usage{
 nv_crossprod(x, y = NULL)
 
-\method{crossprod}{AnvlArray}(x, y = NULL)
+\method{crossprod}{AnvlArray}(x, y = NULL, ...)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -17,6 +17,8 @@ data type; \code{x} and \code{y} are
 
 \item{y}{(\code{\link{arrayish}} | \code{NULL})\cr
 Optional second array. If \code{NULL}, uses \code{x}.}
+
+\item{...}{No additional arguments.}
 }
 \value{
 (\code{\link{arrayish}})\cr

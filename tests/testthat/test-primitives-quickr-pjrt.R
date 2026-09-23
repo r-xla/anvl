@@ -397,9 +397,9 @@ test_that("quickr pipeline matches PJRT: pad supports negative edge padding crop
     nv_pad(
       x,
       nv_scalar(0L, dtype = "i32"),
-      edge_padding_low = c(-1L, 1L),
-      edge_padding_high = c(0L, 0L),
-      interior_padding = c(0L, 0L)
+      low = c(-1L, 1L),
+      high = c(0L, 0L),
+      interior = c(0L, 0L)
     )
   }
 
@@ -804,15 +804,15 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
     dus1 <- prim_dynamic_update_slice(x, upd, s)
     dus2 <- prim_dynamic_update_slice(X, upd2, r, c)
 
-    p0 <- nv_pad(s, padv, edge_padding_low = integer(), edge_padding_high = integer())
-    p1 <- nv_pad(x, padv, edge_padding_low = 2L, edge_padding_high = 1L, interior_padding = 0L)
-    p2 <- nv_pad(X, padv, edge_padding_low = c(1L, 2L), edge_padding_high = c(0L, 1L))
+    p0 <- nv_pad(s, padv, low = integer(), high = integer())
+    p1 <- nv_pad(x, padv, low = 2L, high = 1L, interior = 0L)
+    p2 <- nv_pad(X, padv, low = c(1L, 2L), high = c(0L, 1L))
     p3 <- nv_pad(
       X3,
       padv,
-      edge_padding_low = c(1L, 0L, 1L),
-      edge_padding_high = c(0L, 1L, 0L),
-      interior_padding = c(0L, 1L, 0L)
+      low = c(1L, 0L, 1L),
+      high = c(0L, 1L, 0L),
+      interior = c(0L, 1L, 0L)
     )
 
     # Gather/scatter via user-facing subsetting APIs.
@@ -832,7 +832,7 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
       scatter_indices_batching_axes = integer(),
       scatter_axes_to_x_axes = 1L,
       index_vector_axis = 2L,
-      update_computation = function(old, new) old + new
+      update_fn = function(old, new) old + new
     )
 
     list(
@@ -919,7 +919,7 @@ test_that("quickr pipeline matches PJRT: gather can return a scalar", {
       collapsed_slice_axes = 1L,
       x_batching_axes = integer(),
       start_indices_batching_axes = integer(),
-      start_indices_to_x_axes = 1L,
+      start_index_map = 1L,
       index_vector_axis = 1L
     )
   }
@@ -1027,4 +1027,45 @@ test_that("quickr pipeline matches PJRT: control flow (if/while)", {
   run_false <- list(args = list(p = FALSE), info = "p=FALSE")
 
   expect_quickr_matches_pjrt_fn(cf_ops, templates, list(run_true, run_false))
+})
+
+test_that("quickr pipeline matches PJRT: reshape is column-major from rank 1 through 4", {
+  skip_if_no_quickr_or_pjrt()
+
+  reshape_ops <- function(v, m, a3, a4) {
+    list(
+      v_to_2d = nv_reshape(v, shape = c(3L, 4L)),
+      m_flat = nv_flatten(m),
+      m_to_3d = nv_reshape(m, shape = c(2L, 3L, 2L)),
+      a3_to_2d = nv_reshape(a3, shape = c(6L, 4L)),
+      a3_to_4d = nv_reshape(a3, shape = c(2L, 1L, 4L, 3L)),
+      a4_to_2d = nv_reshape(a4, shape = c(4L, 6L)),
+      a4_flat = nv_flatten(a4)
+    )
+  }
+
+  templates <- list(
+    v = nv_array(rep(0L, 12L), shape = 12L, dtype = "i32"),
+    m = nv_matrix(0L, nrow = 3L, ncol = 4L, dtype = "i32"),
+    a3 = nv_array(rep(0, 24L), shape = c(2L, 3L, 4L), dtype = "f64"),
+    a4 = nv_array(rep(0, 24L), shape = c(2L, 1L, 3L, 4L), dtype = "f64")
+  )
+
+  run <- list(
+    args = list(
+      v = 1:12,
+      m = matrix(1:12, nrow = 3L),
+      a3 = array(as.numeric(1:24), c(2L, 3L, 4L)),
+      a4 = array(as.numeric(1:24), c(2L, 1L, 3L, 4L))
+    ),
+    info = "run"
+  )
+
+  expect_quickr_matches_pjrt_fn(reshape_ops, templates, list(run))
+  # and both agree with base R
+  f_quick <- graph_to_quickr_function(trace_fn(reshape_ops, templates), unwrap = TRUE)
+  got <- do.call(f_quick, unname(run$args[names(templates)]))
+  expect_equal(got$m_flat, array(1:12))
+  expect_equal(got$a3_to_2d, array(as.numeric(1:24), c(6L, 4L)))
+  expect_equal(got$a4_flat, array(as.numeric(1:24)))
 })

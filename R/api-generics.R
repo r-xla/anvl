@@ -832,10 +832,9 @@ rev.AnvlBox <- rev.AnvlArray
 #' @usage NULL
 #' @section The `c()` generic:
 #' `c()` concatenates scalars and 1-D arrays into a 1-D array, like
-#' [base::c()] does for vectors. An array with more than one axis is an error:
-#' base R would flatten it in column-major order, whereas an anvl array
-#' flattens in row-major order (see the "Gotchas" vignette), so concatenate
-#' those along an explicit `axis` instead.
+#' [base::c()] does for vectors. An array with more than one axis is an error
+#' rather than being flattened the way base R does; concatenate those along an
+#' explicit `axis`, or [nv_flatten()] them first.
 #' @method c AnvlArray
 #' @export
 c.AnvlArray <- function(...) {
@@ -865,9 +864,9 @@ c.AnvlBox <- c.AnvlArray
 #' @param ... No additional arguments.
 #' @method median AnvlArray
 #' @export
-median.AnvlArray <- function(x, na.rm = FALSE, ..., axes = NULL, drop = TRUE, interpolation = "linear") {
+median.AnvlArray <- function(x, na.rm = FALSE, ..., axes = NULL, drop = TRUE, method = "linear") {
   rlang::check_dots_empty()
-  nv_median(x, axes = axes, drop = drop, interpolation = interpolation, nan_rm = na.rm)
+  nv_median(x, axes = axes, drop = drop, method = method, nan_rm = na.rm)
 }
 
 #' @method median AnvlBox
@@ -892,7 +891,7 @@ quantile.AnvlArray <- function(
   ...,
   axes = NULL,
   drop = TRUE,
-  interpolation = "linear"
+  method = "linear"
 ) {
   rlang::check_dots_empty()
   nv_quantile(
@@ -900,7 +899,7 @@ quantile.AnvlArray <- function(
     probs = probs,
     axes = axes,
     drop = drop,
-    interpolation = interpolation,
+    method = method,
     nan_rm = na.rm
   )
 }
@@ -972,9 +971,11 @@ sort.AnvlBox <- sort.AnvlArray
 # version: on 4.3 they register but never dispatch, and `crossprod(x)` on an
 # `AnvlArray` errors from base instead.
 #' @rdname nv_crossprod
+#' @param ... No additional arguments.
 #' @method crossprod AnvlArray
 #' @export
-crossprod.AnvlArray <- function(x, y = NULL) {
+crossprod.AnvlArray <- function(x, y = NULL, ...) {
+  rlang::check_dots_empty()
   nv_crossprod(x, y)
 }
 
@@ -983,9 +984,11 @@ crossprod.AnvlArray <- function(x, y = NULL) {
 crossprod.AnvlBox <- crossprod.AnvlArray
 
 #' @rdname nv_tcrossprod
+#' @param ... No additional arguments.
 #' @method tcrossprod AnvlArray
 #' @export
-tcrossprod.AnvlArray <- function(x, y = NULL) {
+tcrossprod.AnvlArray <- function(x, y = NULL, ...) {
+  rlang::check_dots_empty()
   nv_tcrossprod(x, y)
 }
 

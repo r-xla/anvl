@@ -12,21 +12,23 @@ One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. The input's axes are matched against its trailing axes, and
-each must either match or be 1; leading axes are added.}
+Target shape. The input's axes are matched against its leading axes, and
+each must either match or be 1; trailing axes are added.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
-Broadcasts an array to a target shape using NumPy-style broadcasting rules.
+Broadcasts an array to a target shape, aligning the array's axes with the
+leading axes of \code{shape}, so that a vector fills a column.
+See \code{\link{nv_broadcast_arrays}} for more information.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the length-3 vector is repeated along a new leading axis
+# the vector fills a column and is repeated along the new trailing axis
 x <- nv_array(c(1, 2, 3))
-nv_broadcast_to(x, shape = c(2, 3))
+nv_broadcast_to(x, shape = c(3, 2))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

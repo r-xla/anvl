@@ -4,7 +4,7 @@
 \alias{prim_top_k}
 \title{Primitive Top-K}
 \usage{
-prim_top_k(x, k, with_indices = FALSE)
+prim_top_k(x, k, indices)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -15,7 +15,7 @@ One input, with at least 1 axis. Can be any numeric data type. An R value materi
 Number of top elements. Must satisfy
 \verb{1 <= k <= shape(x)[naxes(x)]}.}
 
-\item{with_indices}{(\code{logical(1)})\cr
+\item{indices}{(\code{logical(1)})\cr
 Whether to also return the indices of the top elements. Without them
 the order among tied values is unspecified, which lets the lowering
 pick the cheapest selection for the platform.}
@@ -23,14 +23,14 @@ pick the cheapest selection for the platform.}
 \value{
 (named \code{list} of one or two \code{\link{arrayish}})\cr
 Element \code{values}, the top-\code{k} values at the input's data type, and, when
-\code{with_indices} is \code{TRUE}, \code{indices}, their indices along the last axis at
+\code{indices} is \code{TRUE}, \code{indices}, their indices along the last axis at
 the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the
 input's shape with the last axis replaced by \code{k}. With indices, ties are
 broken by lower index first.
 }
 \description{
 Returns the \code{k} largest values along the last axis, sorted in
-decreasing order, and with \code{with_indices = TRUE} their indices into that
+decreasing order, and with \code{indices = TRUE} their indices into that
 axis as well.
 
 For other axes, transpose so the target axis is last, call
@@ -46,7 +46,7 @@ For other axes, transpose so the target axis is last, call
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}. Without \code{with_indices} on CUDA it lowers to an
+Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}. Without \code{indices} on CUDA it lowers to an
 unstable descending \code{\link[stablehlo:hlo_sort]{hlo_sort()}} of the values followed by an
 \code{\link[stablehlo:hlo_slice]{hlo_slice()}}, which is what the CHLO op expands to there minus the
 index operand and the stability the ties no longer need; XLA's CPU
@@ -57,8 +57,8 @@ backend has a dedicated top-k kernel, so it keeps \code{\link[stablehlo:hlo_top_
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # `values` keeps the input's data type, `indices` is the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
-prim_top_k(x, k = 3L)
-prim_top_k(x, k = 3L, with_indices = TRUE)
+prim_top_k(x, k = 3L, indices = FALSE)
+prim_top_k(x, k = 3L, indices = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

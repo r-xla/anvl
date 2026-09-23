@@ -413,9 +413,7 @@ maybe_box_input <- function(x, desc, mode) {
     }
     # e.g.: prim_while(list(i = nv_scalar(1)), ...)
     if (is_anvl_array(x)) {
-      if (backend(x) != "plain") {
-        desc$devices <- c(desc$devices, device(x))
-      }
+      desc$devices <- c(desc$devices, placement_device(x))
       gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
       return(register_input(desc, gval))
     }
@@ -427,7 +425,7 @@ maybe_box_input <- function(x, desc, mode) {
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
-    # is used internally by prim_scatter() to trace `update_computation()` with avals
+    # is used internally by prim_scatter() to trace `update_fn()` with avals
     if (is_abstract_array(x)) {
       gval <- GraphValue(aval = x)
       return(register_input(desc, gval))
@@ -438,9 +436,7 @@ maybe_box_input <- function(x, desc, mode) {
   if (mode == "inline") {
     # gradient(f)(nv_scalar(1))
     if (is_anvl_array(x)) {
-      if (backend(x) != "plain") {
-        desc$devices <- c(desc$devices, device(x))
-      }
+      desc$devices <- c(desc$devices, placement_device(x))
       parent_desc <- maybe_previous_descriptor()
       parent_box <- get_box_or_register_const(parent_desc, x)
       return(register_input(desc, parent_box$gnode))
@@ -463,9 +459,7 @@ maybe_box_input <- function(x, desc, mode) {
 
   # mode == "toplevel"
   if (is_anvl_array(x)) {
-    if (backend(x) != "plain") {
-      desc$devices <- c(desc$devices, device(x))
-    }
+    desc$devices <- c(desc$devices, placement_device(x))
     gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
     return(register_input(desc, gval))
   }
@@ -528,9 +522,7 @@ register_gval <- function(desc, x) {
 # Returns a Box
 get_box_or_register_const <- function(desc, x) {
   if (is_anvl_array(x)) {
-    if (backend(x) != "plain") {
-      desc$devices <- c(desc$devices, device(x))
-    }
+    desc$devices <- c(desc$devices, placement_device(x))
     gval <- desc$array_to_gval[[x]]
     if (!is.null(gval)) {
       return(desc$gval_to_box[[gval]])
@@ -894,30 +886,7 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
 }
 
 print_call_repr <- function(prim) {
-  rlang::exec(call, primitive_r_name(prim$name))
-}
-
-# The `prim_*` symbol a primitive is bound to is not always `prim_<name>`:
-# a primitive's name is its IR opcode, which follows StableHLO where an op
-# exists (`prim_pmax` is named `maximum`). Error messages should name the
-# symbol the user called, so look it up once and cache the mapping.
-primitive_r_name <- function(name) {
-  map <- globals[["PRIMITIVE_R_NAMES"]]
-  if (is.null(map)) {
-    ns <- asNamespace("anvl")
-    syms <- grep("^prim_", names(ns), value = TRUE)
-    ids <- vapply(
-      syms,
-      function(sym) {
-        obj <- get(sym, envir = ns)
-        if (inherits(obj, "JitPrimitive")) attr(obj, "primitive")$name else NA_character_
-      },
-      character(1L)
-    )
-    map <- setNames(syms[!is.na(ids)], ids[!is.na(ids)])
-    globals[["PRIMITIVE_R_NAMES"]] <- map
-  }
-  if (name %in% names(map)) map[[name]] else paste0("prim_", name)
+  rlang::exec(call, paste0("prim_", prim$name))
 }
 
 # Restate a type-inference error in anvl's own vocabulary: stablehlo speaks of

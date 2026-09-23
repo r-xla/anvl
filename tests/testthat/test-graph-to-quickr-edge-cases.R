@@ -81,7 +81,7 @@ test_that("graph_to_quickr_function rejects transpose ranks other than 2", {
 
   x3 <- array(1:8, dim = c(2L, 2L, 2L))
   graph <- trace_fn(
-    function(x) prim_transpose(x, permutation = c(2L, 1L, 3L)),
+    function(x) prim_transpose(x, perm = c(2L, 1L, 3L)),
     list(x = nv_array(x3, dtype = "i32", shape = dim(x3)))
   )
   testthat::expect_error(graph_to_quickr_function(graph), "transpose: only rank-2", fixed = FALSE)

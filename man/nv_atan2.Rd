@@ -28,8 +28,7 @@ positive x-axis and the point \verb{(x, y)}.
 }
 \details{
 The operands are named \code{y} and \code{x}, in that order, after
-\code{\link[base:atan2]{base::atan2()}} -- the one exception to the \code{lhs} / \code{rhs} naming the
-other binary operations share.
+\code{\link[base:atan2]{base::atan2()}}, rather than \code{lhs} / \code{rhs}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

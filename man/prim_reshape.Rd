@@ -22,7 +22,8 @@ Has the same data type as the input and the given \code{shape}.
 }
 \description{
 Reshapes an array to a new shape without changing the underlying data.
-Note that row-major order is used, which differs from R's column-major order.
+The elements keep their column-major order, exactly as base R's \verb{dim<-}
+does.
 }
 \section{Implemented Rules}{
 
@@ -37,11 +38,14 @@ Note that row-major order is used, which differs from R's column-major order.
 
 Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}, specified under
 \href{https://openxla.org/stablehlo/spec#reshape}{reshape}.
+The lowering wraps it in two \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}} calls that reverse every
+axis, which is what turns stablehlo's row-major reshape into a column-major
+one; each is skipped where that side has at most one axis.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the elements are reread in row-major order; the data type is untouched
+# the elements keep their column-major order; the data type is untouched
 x <- nv_array(1:6)
 prim_reshape(x, shape = c(2, 3))
 \dontshow{\}) # examplesIf}

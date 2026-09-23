@@ -183,7 +183,7 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
 #'   - slice_sizes: integer vector
 #'   - offset_axes: integer vector
 #'   - collapsed_slice_axes: integer vector
-#'   - start_indices_to_x_axes: integer vector
+#'   - start_index_map: integer vector
 #'   - index_vector_axis: integer
 #'   - indices_are_sorted: logical
 #'   - unique_indices: logical
@@ -240,7 +240,7 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
     slice_sizes = slice_sizes,
     offset_axes = offset_axes,
     collapsed_slice_axes = collapsed_slice_axes,
-    start_indices_to_x_axes = seq_len(rank),
+    start_index_map = seq_len(rank),
     index_vector_axis = index_vector_axis,
     indices_are_sorted = !multi_index_subset,
     # TODO: Could improve this
@@ -567,7 +567,7 @@ nv_subset <- function(x, ...) {
     collapsed_slice_axes = params$collapsed_slice_axes,
     x_batching_axes = integer(),
     start_indices_batching_axes = integer(),
-    start_indices_to_x_axes = params$start_indices_to_x_axes,
+    start_index_map = params$start_index_map,
     index_vector_axis = params$index_vector_axis,
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices

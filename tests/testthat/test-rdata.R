@@ -596,7 +596,7 @@ describe("an R value in an nv_* function", {
       if (is_dtype_float(as_dtype(dt))) {
         expect_equal(dtype(nv_pad(x, 0, 1L, 1L)), as_dtype(dt), info = dt)
       } else {
-        expect_error(nv_pad(x, 0, 1L, 1L), "Cannot bring `padding_value`", info = dt)
+        expect_error(nv_pad(x, 0, 1L, 1L), "Cannot bring `value`", info = dt)
       }
     }
     x <- nv_array(c(1, 2), dtype = "f64")

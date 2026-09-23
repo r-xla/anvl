@@ -44,17 +44,17 @@ prim_div[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
 
 prim_remainder[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   # prim_remainder lowers to StableHLO `remainder`, which truncates the quotient:
-  # y = lhs - trunc(lhs / rhs) * rhs, so the result follows the sign of lhs.
+  # the result is x - trunc(x / y) * y, so it follows the sign of x.
   # Match that here — using floor() would silently disagree with the forward op
-  # for inputs of opposite sign. Non-differentiable points (rhs == 0, lhs an
-  # integer multiple of rhs) are ignored.
-  lhs <- inputs[[1L]]
-  rhs <- inputs[[2L]]
+  # for inputs of opposite sign. Non-differentiable points (y == 0, x an
+  # integer multiple of y) are ignored.
+  x <- inputs[[1L]]
+  y <- inputs[[2L]]
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) grad,
     if (required[[2L]]) {
-      q <- prim_div(lhs, rhs)
+      q <- prim_div(x, y)
       # trunc(q) = sign(q) * floor(|q|); valid at q == 0 too (sign(0) = 0).
       k <- prim_mul(prim_sign(q), prim_floor(prim_abs(q)))
       prim_mul(grad, prim_negate(k))
@@ -63,17 +63,17 @@ prim_remainder[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, par
 })
 
 prim_pow[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  lhs <- inputs[[1L]]
-  rhs <- inputs[[2L]]
-  y <- outputs[[1L]]
+  x <- inputs[[1L]]
+  y <- inputs[[2L]]
+  out <- outputs[[1L]]
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) {
-      one <- ones_like(lhs)
-      prim_mul(prim_mul(grad, rhs), prim_pow(lhs, prim_sub(rhs, one)))
+      one <- ones_like(x)
+      prim_mul(prim_mul(grad, y), prim_pow(x, prim_sub(y, one)))
     },
     if (required[[2L]]) {
-      prim_mul(grad, prim_mul(prim_log(lhs), y))
+      prim_mul(grad, prim_mul(prim_log(x), out))
     }
   )
 })
@@ -429,11 +429,11 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 })
 
 prim_transpose[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  permutation <- params$permutation
+  perm <- params$perm
   grad <- grads[[1L]]
-  inv <- integer(length(permutation))
-  for (i in seq_along(permutation)) {
-    inv[permutation[[i]]] <- i
+  inv <- integer(length(perm))
+  for (i in seq_along(perm)) {
+    inv[perm[[i]]] <- i
   }
   list(
     if (required[[1L]]) prim_transpose(grad, inv)
@@ -803,11 +803,11 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # only, so the backward has them without a second top_k.
 prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   x <- inputs[[1L]]
-  out <- prim_top_k(x, k = params$k, with_indices = TRUE)
+  out <- prim_top_k(x, k = params$k, indices = TRUE)
   indices <- out[[2L]]
 
   list(
-    outputs = if (params$with_indices) out else out[1L],
+    outputs = if (params$indices) out else out[1L],
     backward = function(inputs, outputs, grads, params, required) {
       if (!required[[1L]]) {
         return(list(NULL))
@@ -967,7 +967,7 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
     scatter_axes_to_x_axes = axis,
     index_vector_axis = rank + 1L,
     unique_indices = FALSE,
-    update_computation = prim_add
+    update_fn = prim_add
   ))
 }
 
@@ -1043,7 +1043,7 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   collapsed_slice_axes <- params$collapsed_slice_axes
   x_batching_axes <- params$x_batching_axes
   start_indices_batching_axes <- params$start_indices_batching_axes
-  start_indices_to_x_axes <- params$start_indices_to_x_axes
+  start_index_map <- params$start_index_map
   index_vector_axis <- params$index_vector_axis
   indices_are_sorted <- params$indices_are_sorted
   unique_indices <- params$unique_indices
@@ -1071,7 +1071,7 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
         start_indices = start_indices,
         x_shape = shape(x),
         slice_sizes = slice_sizes,
-        start_indices_to_x_axes = start_indices_to_x_axes,
+        start_index_map = start_index_map,
         index_vector_axis = index_vector_axis
       )
 
@@ -1083,13 +1083,13 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
         inserted_window_axes = collapsed_slice_axes,
         x_batching_axes = x_batching_axes,
         scatter_indices_batching_axes = start_indices_batching_axes,
-        scatter_axes_to_x_axes = start_indices_to_x_axes,
+        scatter_axes_to_x_axes = start_index_map,
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
         # Use addition to accumulate gradients when multiple gather positions
         # read from the same source location
-        update_computation = prim_add
+        update_fn = prim_add
       )
     },
     if (required[[2L]]) zeros_like(start_indices)
@@ -1106,15 +1106,15 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   index_vector_axis <- params$index_vector_axis
   indices_are_sorted <- params$indices_are_sorted
   unique_indices <- params$unique_indices
-  update_computation_graph <- params$update_computation_graph
+  update_fn_graph <- params$update_fn
 
   x <- inputs[[1L]]
   scatter_indices <- inputs[[2L]]
   update <- inputs[[3L]]
   grad <- grads[[1L]]
 
-  if (!identical(update_computation_graph$outputs[[1L]], update_computation_graph$inputs[[2L]])) {
-    cli_abort("Scatter reverse only supports simple replacement (update_computation = function(old, new) new)")
+  if (!identical(update_fn_graph$outputs[[1L]], update_fn_graph$inputs[[2L]])) {
+    cli_abort("Scatter reverse only supports simple replacement (update_fn = function(old, new) new)")
   }
 
   # Generally, the reverse of scatter is:
@@ -1152,7 +1152,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
-        update_computation = function(old, new) new
+        update_fn = function(old, new) new
       )
     },
     # Gradient for scatter_indices: not differentiable
@@ -1168,7 +1168,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           collapsed_slice_axes = inserted_window_axes,
           x_batching_axes = x_batching_axes,
           start_indices_batching_axes = scatter_indices_batching_axes,
-          start_indices_to_x_axes = scatter_axes_to_x_axes,
+          start_index_map = scatter_axes_to_x_axes,
           index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = TRUE
@@ -1205,7 +1205,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE,
-          update_computation = function(old, new) new
+          update_fn = function(old, new) new
         )
 
         # c) Gather scattered IDs back to update positions
@@ -1217,7 +1217,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           collapsed_slice_axes = inserted_window_axes,
           x_batching_axes = x_batching_axes,
           start_indices_batching_axes = scatter_indices_batching_axes,
-          start_indices_to_x_axes = scatter_axes_to_x_axes,
+          start_index_map = scatter_axes_to_x_axes,
           index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE
@@ -1232,7 +1232,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           collapsed_slice_axes = inserted_window_axes,
           x_batching_axes = x_batching_axes,
           start_indices_batching_axes = scatter_indices_batching_axes,
-          start_indices_to_x_axes = scatter_axes_to_x_axes,
+          start_index_map = scatter_axes_to_x_axes,
           index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE

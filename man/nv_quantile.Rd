@@ -10,7 +10,7 @@ nv_quantile(
   probs,
   axes = NULL,
   drop = TRUE,
-  interpolation = "linear",
+  method = "linear",
   nan_rm = FALSE
 )
 
@@ -21,7 +21,7 @@ nv_quantile(
   ...,
   axes = NULL,
   drop = TRUE,
-  interpolation = "linear"
+  method = "linear"
 )
 }
 \arguments{
@@ -43,7 +43,7 @@ to the last axis. If \code{NULL} (default), reduces over all axes.}
 Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
 set to 1 if \code{FALSE}.}
 
-\item{interpolation}{(\code{character(1)})\cr
+\item{method}{(\code{character(1)})\cr
 One of \code{"linear"} (default), \code{"lower"}, \code{"higher"}, \code{"nearest"},
 \code{"midpoint"}. See "Interpolation modes".}
 
@@ -114,7 +114,7 @@ subset instead. The result is unnamed, and \code{probs} follows
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_quantile(x, 0.5) # = nv_median(x)
 nv_quantile(x, array(c(0.25, 0.5, 0.75)))
-nv_quantile(x, 0.5, interpolation = "lower")
+nv_quantile(x, 0.5, method = "lower")
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 nv_quantile(m, 0.5) # over every element
 nv_quantile(m, 0.5, axes = 2L) # one quantile per row
