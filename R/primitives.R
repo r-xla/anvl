@@ -3361,7 +3361,6 @@ prim_gather <- new_primitive(
 prim_chol <- new_primitive(
   "chol",
   function(x, lower = FALSE) {
-    assert_linalg_matrix(x, "x", square = TRUE, batched = TRUE)
     graph_desc_add(
       self,
       list(x = x),

@@ -172,6 +172,10 @@
   surfaced as R's `missing value where TRUE/FALSE needed`.
 * `prim_if()` refuses a `true` or `false` that is not a function, as
   `prim_while()` already did for `cond` and `body`.
+* A malformed whole-number argument has one wording wherever it is made:
+  `assert_shapevec()`, `resolve_axes()` and `resolve_reshape_shape()` check it
+  the way an inference rule does. `prim_chol()` no longer checks its operand
+  twice, and refuses a zero-sized axis like the other decompositions.
 * `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
   inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second

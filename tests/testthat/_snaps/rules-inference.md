@@ -135,7 +135,7 @@
       prim_reshape(nv_array(1:4), shape = "a")
     Condition
       Error in `prim_reshape()`:
-      ! `shape` must be an integer vector without missing values.
+      ! `shape` must be a whole number vector.
       x Got "a".
 
 ---
@@ -153,7 +153,7 @@
       prim_reverse(nv_array(1:4), axes = list(1L))
     Condition
       Error in `prim_reverse()`:
-      ! `axes` must be an integer vector without missing values.
+      ! `axes` must be a whole number vector.
       x Got <list> of length 1.
 
 # prim_cumsum
@@ -189,7 +189,7 @@
       prim_reduce_sum(nv_array(1:4), axes = "a")
     Condition
       Error in `prim_reduce_sum()`:
-      ! `axes` must be an integer vector without missing values.
+      ! `axes` must be a whole number vector.
       x Got "a".
 
 # prim_convert
@@ -255,7 +255,7 @@
       prim_iota(axis = 1L, dtype = "f32", shape = "a")
     Condition
       Error in `prim_iota()`:
-      ! `shape` must be an integer vector.
+      ! `shape` must be a whole number vector.
       x Got "a".
 
 ---

@@ -9,36 +9,33 @@
 #'   Name of the variable to use in error messages.
 #' @return (`integer()`)\cr
 #'   `x` as an integer vector.
+# `assert_int_param()` reads `NULL` as the empty set of axes, which is how a
+# caller spells `c()`. A shape is not that, so the helpers that resolve one say
+# so first.
+assert_shape_not_null <- function(x, arg) {
+  if (is.null(x)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a whole number vector.",
+      x = "Got {value_repr(x)}."
+    ))
+  }
+  invisible(NULL)
+}
+
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
-  ok <- test_integerish(x, lower = 0L, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
-  if (!isTRUE(ok)) {
-    if (is.null(x) || !is.numeric(x)) {
-      cli_abort(c(
-        "{.arg {var_name}} must be an integer vector.",
-        x = "Got {value_repr(x)}."
-      ))
-    }
-    if (anyNA(x)) {
-      cli_abort(c(
-        "{.arg {var_name}} must not contain missing values.",
-        x = "Got {value_repr(x)}."
-      ))
-    }
-    if (length(x) < min_len) {
-      cli_abort(c(
-        "{.arg {var_name}} must have at least {min_len} element{?s}.",
-        x = "Got {value_repr(x)}."
-      ))
-    }
-    if (any(x < 0L)) {
-      cli_abort(c(
-        "{.arg {var_name}} must not contain a negative axis size.",
-        x = "Got {value_repr(x)}."
-      ))
-    }
+  # Before `x` is rebound below: `caller_arg()` deparses whatever `x` holds
+  # when it is first forced, so an unforced default would name the value
+  # (`-2L`) rather than the argument (`shape`).
+  force(var_name)
+  # `NULL` is refused rather than read as the empty shape `assert_int_param()`
+  # takes it for: a shape is not a set of axes a caller spells with `c()`, and
+  # silently building a scalar out of a forgotten argument hides the mistake.
+  assert_shape_not_null(x, var_name)
+  x <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL)
+  if (any(x < 0L)) {
     cli_abort(c(
-      "{.arg {var_name}} must contain whole numbers in the integer range.",
+      "{.arg {var_name}} must not contain a negative axis size.",
       x = "Got {value_repr(x)}."
     ))
   }
@@ -62,13 +59,12 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
 # new axis (e.g. `nv_unsqueeze()`).
 # Returns the resolved (positive) axes as an integer vector.
 resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique = FALSE) {
-  if (!test_integerish(axes, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort(c(
-      "{.arg {arg}} must be an integer vector without missing values.",
-      x = "Got {value_repr(axes)}."
-    ))
-  }
-  original <- as.integer(axes)
+  # The whole-number check is `assert_int_param()`'s, so that one mistake has
+  # one wording wherever it is made -- in a `prim_*()` wrapper here, or in an
+  # inference rule. `NULL` is refused rather than read as the empty set: an
+  # `axes = NULL` that means "every axis" is resolved before this is reached.
+  assert_shape_not_null(axes, arg)
+  original <- assert_int_param(axes, arg)
   resolved <- original
   negative <- original < 0L
   resolved[negative] <- max_axis + 1L + resolved[negative]
@@ -109,13 +105,9 @@ resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
 # corresponding extent from the total number of elements `nelts`.
 # Returns the resolved shape as an integer vector.
 resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
-  if (!test_integerish(shape, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort(c(
-      "{.arg {arg}} must be an integer vector without missing values.",
-      x = "Got {value_repr(shape)}."
-    ))
-  }
-  shape <- as.integer(shape)
+  force(arg)
+  assert_shape_not_null(shape, arg)
+  shape <- assert_int_param(shape, arg)
   invalid <- shape < -1L
   if (any(invalid)) {
     cli_abort(c(

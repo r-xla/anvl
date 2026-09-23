@@ -1,9 +1,9 @@
-# assert_shapevec() / ends every complaint with a full stop, as the rest of the set does
+# assert_shapevec() / reports a malformed whole number the way `assert_int_param()` does
 
     Code
       assert_shapevec(c(1L, NA_integer_), var_name = "shape")
     Condition
-      Error in `assert_shapevec()`:
+      Error in `assert_int_param()`:
       ! `shape` must not contain missing values.
       x Got c(1, NA).
 
@@ -12,7 +12,7 @@
     Code
       assert_shapevec(Inf, var_name = "shape")
     Condition
-      Error in `assert_shapevec()`:
+      Error in `assert_int_param()`:
       ! `shape` must contain whole numbers in the integer range.
       x Got Inf.
 
@@ -21,9 +21,36 @@
     Code
       assert_shapevec(integer(), min_len = 1L, var_name = "shape")
     Condition
-      Error in `assert_shapevec()`:
-      ! `shape` must have at least 1 element.
+      Error in `assert_int_param()`:
+      ! `shape` must have at least 1 entry.
       x Got integer(0).
+
+# assert_shapevec() / keeps the checks only a shape needs, and names the argument for them
+
+    Code
+      assert_shapevec(-2L, var_name = "shape")
+    Condition
+      Error in `assert_shapevec()`:
+      ! `shape` must not contain a negative axis size.
+      x Got -2.
+
+---
+
+    Code
+      assert_shapevec(rep(2147483647L, 3L), var_name = "shape")
+    Condition
+      Error in `assert_shapevec()`:
+      ! `shape` must describe an array with fewer than 2^63 elements.
+      x Got c(2147483647, 2147483647, 2147483647).
+
+---
+
+    Code
+      assert_shapevec(NULL, var_name = "shape")
+    Condition
+      Error in `assert_shape_not_null()`:
+      ! `shape` must be a whole number vector.
+      x Got NULL.
 
 # assert_fill_value() / reports a NaN as the value it is
 

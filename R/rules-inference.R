@@ -2169,29 +2169,13 @@ infer_rng_bit_generator <- function(initial_state, rng_algorithm, dtype, shape) 
 }
 
 infer_cholesky <- function(x, lower) {
-  # (I1) Float operands only; complex is not supported yet.
-  assert_array_dtype(x, "float")
+  assert_array(x)
+  # (I1), (C2), (C3) The same helper the other linalg rules use, so that one
+  # mistake has one wording across them: float operands only (complex is not
+  # supported yet), at least two axes with the last two square, and no
+  # zero-sized axis. Axes before the last two are batch axes.
+  assert_linalg_matrix(x, "x", square = TRUE, batched = TRUE)
   assert_flag_param(lower, "lower")
-
-  in_shape <- shape(x)
-  rank <- length(in_shape)
-
-  # (C2) Axes before the last two are batch axes, so rank 2 is the minimum
-  # rather than the requirement.
-  if (rank < 2L) {
-    cli_abort(c(
-      "{.arg x} must have at least two axes.",
-      x = "Got shape {shape_repr(in_shape)}."
-    ))
-  }
-
-  # (C3)
-  if (in_shape[[rank]] != in_shape[[rank - 1L]]) {
-    cli_abort(c(
-      "{.arg x} must be square in its last two axes.",
-      x = "Got shape {shape_repr(in_shape)}."
-    ))
-  }
 
   # (C1)
   list(AbstractArray(dtype = dtype(x), shape = x$shape))
