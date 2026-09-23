@@ -52,25 +52,23 @@ nv_unif_rand <- function(
 # Random Number Generation API
 # This file contains user-facing RNG sampling functions
 
-#' @title Sample from a Uniform Distribution
-#' @description
-#' Samples from a uniform distribution in the open interval `(min, max)`.
+#' @rdname nv_uniform
 #' @template param_shape
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Floating point data type.
-#'   The default (`NULL`) uses the [default float type][default_dtypes].
-#' @param min,max (`numeric(1)`)\cr
-#'   Lower and upper bound.
-#' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state, and `values`, the sample of shape
-#'   `shape` and data type `dtype`.
+#'   Floating point data type of the sample.
+#'   The default (`NULL`) takes it from `min` and `max`, and uses the
+#'   [default float type][default_dtypes] where both are R values.
+#' @section Random generation:
+#' `nv_runif` samples from the open interval \eqn{(a, b)}.
+#'
+#' `min` and `max` are [`arrayish`], so they may vary across the sample: they
+#' are applied to the draws after they have been reshaped to `shape`, and so
+#' may either be scalars or have exactly that shape. As in base R's `runif()`,
+#' an element whose `min` equals its `max` is that value, and one whose `min` or
+#' `max` is not finite, or whose `max` is less than its `min`, is `NaN`. The RNG
+#' state is advanced regardless.
 #' @family rng
-#' @examplesIf pjrt::plugins_downloaded()
-#' # `state` is the updated RNG state, `values` the sample
-#' state <- nv_rng_state(42L)
-#' result <- nv_runif(c(2, 3), state)
-#' result$values
 #' @export
 nv_runif <- jit(
   function(shape, initial_state, dtype = NULL, min = 0, max = 1) {
