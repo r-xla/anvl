@@ -356,7 +356,7 @@
     Condition
       Error in `prim_sort()`:
       ! `xs` must be a non-empty list of arrayish values.
-      x Got <list> of length 0.
+      x Got list().
 
 ---
 
@@ -385,7 +385,7 @@
     Condition
       Error in `prim_dot_general()`:
       ! `batching_axes` must name as many axes of `lhs` as of `rhs`.
-      x Got 1 and nothing.
+      x Got 1 and integer(0).
 
 ---
 
@@ -432,7 +432,7 @@
     Condition
       Error in `prim_gather()`:
       ! `x_batching_axes` and `start_indices_batching_axes` must have the same length.
-      x Got 1 and nothing.
+      x Got 1 and integer(0).
 
 # prim_scatter
 
@@ -450,7 +450,7 @@
     Condition
       Error in `prim_scatter()`:
       ! `x_batching_axes` and `scatter_indices_batching_axes` must have the same length.
-      x Got 1 and nothing.
+      x Got 1 and integer(0).
 
 # prim_convolution
 
@@ -488,7 +488,7 @@
       Error in `prim_convolution()`:
       ! The axes of x must each be named exactly once.
       x `input_batch_axis`, `input_spatial_axes`, and `input_feature_axis` name 2 axes between them, but x has 3.
-      i Got `input_batch_axis` = nothing, `input_spatial_axes` = 3, `input_feature_axis` = 2.
+      i Got `input_batch_axis` = integer(0), `input_spatial_axes` = 3, `input_feature_axis` = 2.
 
 ---
 
@@ -498,4 +498,198 @@
       Error in `prim_convolution()`:
       ! `precision` must be one of "default", "high", or "highest".
       x Got "bogus".
+
+# value_repr() / spells a value the way format_param() does
+
+    Code
+      show_repr(NULL)
+    Output
+      NULL
+    Code
+      show_repr(3.5)
+    Output
+      3.5
+    Code
+      show_repr(TRUE)
+    Output
+      TRUE
+    Code
+      show_repr("afz")
+    Output
+      "afz"
+    Code
+      show_repr(c(1L, 3L))
+    Output
+      c(1, 3)
+    Code
+      show_repr(c("a", "b"))
+    Output
+      c("a", "b")
+    Code
+      show_repr(integer())
+    Output
+      integer(0)
+    Code
+      show_repr(character())
+    Output
+      character(0)
+
+# value_repr() / cuts a long vector or string short
+
+    Code
+      show_repr(1:8)
+    Output
+      c(1, 2, 3, 4, 5, 6, 7, 8)
+    Code
+      show_repr(1:1000)
+    Output
+      c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000
+    Code
+      show_repr(rep("afz", 1000))
+    Output
+      c("afz", "afz", "afz", "afz", "afz", "afz", "afz", "afz", ...) of length 1000
+    Code
+      show_repr(strrep("a", 5000))
+    Output
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaa..."
+
+# value_repr() / copes with values format_param() never sees
+
+    Code
+      show_repr(NA)
+    Output
+      NA
+    Code
+      show_repr(NA_character_)
+    Output
+      NA
+    Code
+      show_repr(c(1L, NA))
+    Output
+      c(1, NA)
+    Code
+      show_repr(NaN)
+    Output
+      NaN
+    Code
+      show_repr(Inf)
+    Output
+      Inf
+    Code
+      show_repr(matrix(1:4, 2))
+    Output
+      matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2)
+    Code
+      show_repr(matrix(1:1000, 10))
+    Output
+      matrix(c(1, 2, 3, 4, 5, 6, 7, 8, ...), nrow = 10, ncol = 100)
+    Code
+      show_repr(matrix(5L, 1, 1))
+    Output
+      matrix(5, nrow = 1, ncol = 1)
+    Code
+      show_repr(matrix(integer(), 0, 3))
+    Output
+      matrix(integer(0), nrow = 0, ncol = 3)
+    Code
+      show_repr(array(1:8, c(2, 2, 2)))
+    Output
+      array(c(1, 2, 3, 4, 5, 6, 7, 8), dim = c(2, 2, 2))
+    Code
+      show_repr(array(1:3))
+    Output
+      array(c(1, 2, 3), dim = 3)
+    Code
+      show_repr(list())
+    Output
+      list()
+    Code
+      show_repr(as.list(1:1000))
+    Output
+      <list> of length 1000
+    Code
+      show_repr(factor(letters))
+    Output
+      <factor>
+    Code
+      show_repr(mean)
+    Output
+      <function>
+    Code
+      show_repr(globalenv())
+    Output
+      <environment>
+
+# messages stay short for oversized params
+
+    Code
+      prim_fill(1:1000, 3L, "f32")
+    Condition
+      Error in `assert_fill_value()`:
+      ! `value` must be a scalar.
+      x Got c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000.
+
+---
+
+    Code
+      prim_fill(1, 3L, strrep("a", 5000))
+    Condition
+      Error in `assert_dtype_param()`:
+      ! `dtype` must name a data type.
+      x Got "aaaaaaaaaaaaaaaaaaaaaaaaaaa...".
+      i See `tengen::as_dtype()` for the data types anvl knows.
+
+---
+
+    Code
+      prim_round(nv_array(c(1.5, 2.5)), method = rep("afz", 1000))
+    Condition
+      Error in `prim_round()`:
+      ! `method` must be one of "nearest_even" or "afz".
+      x Got c("afz", "afz", "afz", "afz", "afz", "afz", "afz", "afz", ...) of length 1000.
+
+---
+
+    Code
+      prim_static_slice(nv_array(1:4), 1:1000, 1:1000, 1:1000)
+    Condition
+      Error in `prim_static_slice()`:
+      ! `start_indices`, `limit_indices` and `strides` must have one entry per axis of `x` (1).
+      x Got `start_indices` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000, `limit_indices` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000, `strides` = c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000.
+
+---
+
+    Code
+      prim_reshape(nv_array(1:4), shape = 1:1000)
+    Condition
+      Error in `prim_reshape()`:
+      ! `shape` must have as many elements as `x`.
+      x Got (4) and (1x2x3x4x5x6x7x8x...) with 1000 axes.
+
+# a shape with too many elements is refused before it reaches XLA
+
+    Code
+      prim_fill(1, 1:1000, "f32")
+    Condition
+      Error in `assert_shapevec()`:
+      ! `shape` must describe an array with fewer than 2^63 elements.
+      x Got c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000.
+
+# a whole-number param outside the integer range is not reported as NA
+
+    Code
+      prim_top_k(nv_array(1:4), k = Inf)
+    Condition
+      Error in `assert_int_param()`:
+      ! `k` must contain whole numbers in the integer range.
+      x Got Inf.
+
+# broadcasting to a size-1 axis names 1 once
+
+    Code
+      prim_broadcast_in_axes(x, shape = c(1L, 3L), broadcast_axes = 1:2)
+    Condition
+      Error in `prim_broadcast_in_axes()`:
+      ! Axis 1 of `x` must be 1 to broadcast to axis 1 of the result.
+      x Got shapes (4x3) and (1x3).
 

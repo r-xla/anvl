@@ -12,37 +12,43 @@
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   ok <- test_integerish(x, lower = 0L, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
-  fmt <- function(x) {
-    sprintf("(%s)", paste0(x, collapse = ", "))
-  }
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
       cli_abort(c(
         "{.arg {var_name}} must be an integer vector.",
-        x = "Got {param_repr(x)}."
+        x = "Got {value_repr(x)}."
       ))
     }
     if (anyNA(x)) {
       cli_abort(c(
         "{.arg {var_name}} must not contain missing values",
-        x = "Got {fmt(x)}."
+        x = "Got {value_repr(x)}."
       ))
     }
     if (length(x) < min_len) {
       cli_abort(c(
         "{.arg {var_name}} must have at least {min_len} element{?s}",
-        x = "Got {fmt(x)}."
+        x = "Got {value_repr(x)}."
       ))
     }
     if (any(x < 0L)) {
       cli_abort(c(
         "{.arg {var_name}} must not contain a negative axis size.",
-        x = "Got {fmt(x)}."
+        x = "Got {value_repr(x)}."
       ))
     }
     cli_abort(c(
       "{.arg {var_name}} must contain whole numbers in the integer range",
-      x = "Got {fmt(x)}."
+      x = "Got {value_repr(x)}."
+    ))
+  }
+  # XLA counts an array's elements in an int64. A shape past that -- easy to
+  # type, `1:1000` is one -- is otherwise refused at compile time with a raw
+  # "overflow in static extent product" listing every axis size.
+  if (prod(as.double(x)) >= 2^63) {
+    cli_abort(c(
+      "{.arg {var_name}} must describe an array with fewer than 2^63 elements.",
+      x = "Got {value_repr(x)}."
     ))
   }
   as.integer(x)
@@ -59,7 +65,7 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
   if (!test_integerish(axes, any.missing = FALSE, null.ok = FALSE)) {
     cli_abort(c(
       "{.arg {arg}} must be an integer vector without missing values.",
-      x = "Got {param_repr(axes)}."
+      x = "Got {value_repr(axes)}."
     ))
   }
   original <- as.integer(axes)
@@ -71,18 +77,18 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
     if (max_axis < 1L) {
       cli_abort(c(
         "{.arg {arg}} cannot be used, there is no axis to select.",
-        x = "Got {vec_repr(original[invalid])}."
+        x = "Got {value_repr(original[invalid])}."
       ))
     }
     cli_abort(c(
       "{.arg {arg}} must be between 1 and {max_axis}, or between {-max_axis} and -1 to count from the end.",
-      x = "Got {vec_repr(original[invalid])}."
+      x = "Got {value_repr(original[invalid])}."
     ))
   }
   if (unique && anyDuplicated(resolved)) {
     cli_abort(c(
       "{.arg {arg}} must not contain duplicate axes.",
-      x = "Got {vec_repr(original)}."
+      x = "Got {value_repr(original)}."
     ))
   }
   resolved
@@ -93,7 +99,7 @@ resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
   if (length(axis) != 1L) {
     cli_abort(c(
       "{.arg {arg}} must have length 1.",
-      x = "Got {param_repr(axis)}."
+      x = "Got {value_repr(axis)}."
     ))
   }
   resolve_axes(axis, max_axis, arg = arg)
@@ -106,7 +112,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   if (!test_integerish(shape, any.missing = FALSE, null.ok = FALSE)) {
     cli_abort(c(
       "{.arg {arg}} must be an integer vector without missing values.",
-      x = "Got {param_repr(shape)}."
+      x = "Got {value_repr(shape)}."
     ))
   }
   shape <- as.integer(shape)
@@ -114,7 +120,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   if (any(invalid)) {
     cli_abort(c(
       "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
-      x = "Got {vec_repr(shape[invalid])}."
+      x = "Got {value_repr(shape[invalid])}."
     ))
   }
   inferred <- which(shape == -1L)
@@ -124,7 +130,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   if (length(inferred) > 1L) {
     cli_abort(c(
       "{.arg {arg}} must contain at most one {.val {-1L}}.",
-      x = "Got {length(inferred)} at {cli::qty(length(inferred))}position{?s} {vec_repr(inferred)}."
+      x = "Got {length(inferred)} at {cli::qty(length(inferred))}position{?s} {value_repr(inferred)}."
     ))
   }
   known <- prod(shape[-inferred])
@@ -213,10 +219,10 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   if (length(value) != 1L) {
     cli_abort(c(
       "{.arg {arg}} must be a scalar.",
-      "x" = "Got {param_repr(value)}."
+      "x" = "Got {value_repr(value)}."
     ))
   }
-  if (is.na(value) && !is.nan(value)) {
+  if (is.atomic(value) && is.na(value) && !is.nan(value)) {
     cli_abort(c(
       "{.arg {arg}} must not be {.val {NA}}.",
       "i" = "There is no missing value at the XLA level; {.val {NaN}} is the closest a float comes."

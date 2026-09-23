@@ -2834,7 +2834,7 @@ prim_sort <- new_primitive(
       cli_abort(
         c(
           "{.arg xs} must be a non-empty list of arrayish values.",
-          x = "Got {param_repr(xs)}."
+          x = "Got {value_repr(xs)}."
         ),
         call = print_call_repr(self)
       )

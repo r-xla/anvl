@@ -39,9 +39,9 @@ NULL
 # Whatever a rule refuses, the message says which argument it is about and what
 # that argument was given. For a param that means both halves, always: the name
 # the primitive takes it under, and the value the caller passed, reported by
-# `param_repr()` for a param of any type, `vec_repr()` for a whole-number one
-# and `params_repr()` for several at once. A primitive takes up to a dozen
-# params, so a complaint that names none of them leaves the caller guessing.
+# `value_repr()` (or `params_repr()` for several at once). A primitive takes up
+# to a dozen params, so a complaint that names none of them leaves the caller
+# guessing.
 #
 # The rules are anvl's own, in anvl's vocabulary: arrays rather than tensors,
 # axes rather than dimensions, `x` rather than `operand`, and axis numbers
@@ -52,41 +52,85 @@ NULL
 # Shared checking helpers
 # ---------------------------------------------------------------------------
 
-# An integer vector as it appears in a message: `nothing`, `3` or `c(1, 3)`.
-vec_repr <- function(x) {
-  x <- unclass(x)
-  if (!length(x)) {
-    "nothing"
-  } else if (length(x) == 1L) {
-    as.character(x)
+# A caller's value as a message reports it back. What a caller hands a param
+# is not bounded -- `prim_fill(1:1000, ...)` is one typo away -- so, unlike
+# `format_param()`, which prints params that inference has already accepted,
+# this has to cope with anything. A long vector is cut to its first
+# `repr_max_entries` entries with the length stated, a long string to
+# `repr_max_chars` characters, and a matrix or array reads as the call that
+# builds it, shape included. A value that is not a plain atomic vector (a
+# function, a list, a factor) is reported by class -- and length, for a list --
+# where printing it would be noise rather than the mistake. What is left is
+# spelled by `format_param()`, so that a value reads the same in an error as in
+# a printed graph. Never report a caller's value with a bare `{x}` or
+# `{.val {x}}` unless its length is already checked to be 1.
+repr_max_entries <- 8L
+repr_max_chars <- 30L
+
+value_repr <- function(x) {
+  if (is.null(x) || identical(x, list())) {
+    return(format_param(x))
+  }
+  if (!is.atomic(x) || is.object(x)) {
+    # A length is only worth stating for a plain vector, which a list is.
+    if (is.vector(x)) {
+      return(cli::format_inline("{.cls {class(x)[1L]}} of length {length(x)}"))
+    }
+    return(cli::format_inline("{.cls {class(x)[1L]}}"))
+  }
+  shape <- dim(x)
+  x <- as.vector(x)
+  n <- length(x)
+  if (n <= 1L && is.null(shape)) {
+    return(value_entries_repr(x))
+  }
+  entries <- if (n <= 1L) {
+    value_entries_repr(x)
   } else {
-    paste0("c(", paste0(x, collapse = ", "), ")")
+    # Only the entries shown are formatted, not every one given.
+    shown <- value_entries_repr(x[seq_len(min(n, repr_max_entries))])
+    paste0("c(", shown, if (n > repr_max_entries) ", ...", ")")
   }
+  # A matrix or array reads as the call that builds it, so that its shape is
+  # part of what the caller sees. Its shape states its size already.
+  if (length(shape) == 2L) {
+    return(sprintf("matrix(%s, nrow = %d, ncol = %d)", entries, shape[[1L]], shape[[2L]]))
+  }
+  if (!is.null(shape)) {
+    return(sprintf("array(%s, dim = %s)", entries, value_repr(shape)))
+  }
+  if (n > repr_max_entries) {
+    return(paste0(entries, " of length ", n))
+  }
+  entries
 }
 
-# A param of any type as a message reports it back. Every message about a param
-# says which one and what it was given, so that the caller can read the fix off
-# the error: the value itself when it is an atomic vector, and the class and
-# length otherwise, where the value would be noise rather than the mistake.
-param_repr <- function(x) {
-  if (!is.atomic(x) || is.object(x) || length(x) == 0L) {
-    return(cli::format_inline("{.cls {class(x)[1L]}} of length {length(x)}"))
+# The entries of a short atomic vector, comma-separated. A string is cut to
+# `repr_max_chars` characters, and a missing one reads `NA` rather than the
+# `"NA"` that `format_param()` would quote.
+value_entries_repr <- function(x) {
+  if (!length(x)) {
+    return(format_param(x))
   }
-  if (length(x) == 1L) {
-    return(cli::format_inline("{.val {x}}"))
+  if (is.character(x)) {
+    long <- !is.na(x) & nchar(x) > repr_max_chars
+    x[long] <- paste0(substr(x[long], 1L, repr_max_chars - 3L), "...")
   }
-  # A vector reads as the caller spelled it, `c(1, 2)` rather than cli's
-  # "1 and 2", so that the message can be pasted back into the call.
-  entries <- vapply(x, function(e) cli::format_inline("{.val {e}}"), character(1L))
-  paste0("c(", paste0(entries, collapse = ", "), ")")
+  entries <- vapply(
+    x,
+    function(e) if (is.na(e) && !is.nan(e)) "NA" else format_param(e),
+    character(1L),
+    USE.NAMES = FALSE
+  )
+  paste(entries, collapse = ", ")
 }
 
-# Several whole-number params at once: "`strides` = 1, `x_dilation` = c(1, 2)".
+# Several params at once: "`strides` = 1, `x_dilation` = c(1, 2)".
 params_repr <- function(parts) {
   paste0(
     vapply(
       names(parts),
-      function(nm) cli::format_inline("{.arg {nm}} = {vec_repr(parts[[nm]])}"),
+      function(nm) cli::format_inline("{.arg {nm}} = {value_repr(parts[[nm]])}"),
       character(1L)
     ),
     collapse = ", "
@@ -106,31 +150,40 @@ assert_int_param <- function(x, arg, len = NULL, min_len = NULL) {
   if (!is.numeric(x) || is.object(x)) {
     cli_abort(c(
       "{.arg {arg}} must be a whole number{if (identical(len, 1L)) \"\" else \" vector\"}.",
-      x = "Got {param_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   if (anyNA(x)) {
     cli_abort(c(
       "{.arg {arg}} must not contain missing values.",
-      x = "Got {vec_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   if (any(x != trunc(x))) {
     cli_abort(c(
       "{.arg {arg}} must contain whole numbers.",
-      x = "Got {vec_repr(x)}."
+      x = "Got {value_repr(x)}."
+    ))
+  }
+  # `as.integer()` below would turn these into `NA` with a coercion warning,
+  # and a wrapper that coerces first would hand the rule an `NA` the caller
+  # never passed.
+  if (any(abs(x) > .Machine$integer.max)) {
+    cli_abort(c(
+      "{.arg {arg}} must contain whole numbers in the integer range.",
+      x = "Got {value_repr(x)}."
     ))
   }
   if (!is.null(len) && length(x) != len) {
     cli_abort(c(
       "{.arg {arg}} must have {len} entr{cli::qty(len)}{?y/ies}.",
-      x = "Got {vec_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   if (!is.null(min_len) && length(x) < min_len) {
     cli_abort(c(
       "{.arg {arg}} must have at least {min_len} entr{cli::qty(min_len)}{?y/ies}.",
-      x = "Got {vec_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   invisible(as.integer(x))
@@ -143,7 +196,7 @@ assert_dtype_param <- function(x, arg) {
   if (is.null(out)) {
     cli_abort(c(
       "{.arg {arg}} must name a data type.",
-      x = "Got {param_repr(x)}.",
+      x = "Got {value_repr(x)}.",
       i = "See {.fn tengen::as_dtype} for the data types anvl knows."
     ))
   }
@@ -154,7 +207,7 @@ assert_flag_param <- function(x, arg) {
   if (!is.logical(x) || length(x) != 1L || is.na(x)) {
     cli_abort(c(
       "{.arg {arg}} must be {.val {TRUE}} or {.val {FALSE}}.",
-      x = "Got {param_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   invisible(x)
@@ -166,7 +219,7 @@ assert_choice_param <- function(x, arg, choices) {
   if (!rlang::is_string(x) || !(x %in% choices)) {
     cli_abort(c(
       "{.arg {arg}} must be one of {.or {.val {choices}}}.",
-      x = "Got {param_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   invisible(x)
@@ -179,7 +232,7 @@ assert_size_param <- function(x, arg, len = NULL) {
   if (any(x < 0L)) {
     cli_abort(c(
       "{.arg {arg}} must not be negative.",
-      x = "Got {vec_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   invisible(x)
@@ -214,7 +267,7 @@ assert_array <- function(x, arg = rlang::caller_arg(x)) {
   if (!inherits(x, "AbstractArray")) {
     cli_abort(c(
       "{.arg {arg}} must be an array.",
-      x = "Got {param_repr(x)}."
+      x = "Got {value_repr(x)}."
     ))
   }
   invisible(NULL)
@@ -320,13 +373,13 @@ assert_axes_in_range <- function(axes, rank, arg) {
   if (rank == 0L) {
     cli_abort(c(
       "{.arg {arg}} cannot be used, there is no axis to select.",
-      x = "Got {vec_repr(axes)}."
+      x = "Got {value_repr(axes)}."
     ))
   }
   if (any(axes < 1L) || any(axes > rank)) {
     cli_abort(c(
       "{.arg {arg}} must contain axes between {.val {1L}} and {.val {rank}}.",
-      x = "Got {vec_repr(axes)}."
+      x = "Got {value_repr(axes)}."
     ))
   }
   invisible(NULL)
@@ -336,7 +389,7 @@ assert_axes_unique <- function(axes, arg) {
   if (anyDuplicated(axes)) {
     cli_abort(c(
       "{.arg {arg}} must contain unique axes.",
-      x = "Got {vec_repr(axes)}."
+      x = "Got {value_repr(axes)}."
     ))
   }
   invisible(NULL)
@@ -378,7 +431,7 @@ assert_axes_sorted <- function(axes, arg) {
   if (is.unsorted(axes)) {
     cli_abort(c(
       "{.arg {arg}} must be sorted in ascending order.",
-      x = "Got {vec_repr(axes)}."
+      x = "Got {value_repr(axes)}."
     ))
   }
   invisible(NULL)
@@ -558,7 +611,7 @@ infer_broadcast_in_axes <- function(x, shape, broadcast_axes) {
   if (length(baxes) != length(in_shape)) {
     cli_abort(c(
       "{.arg broadcast_axes} must have one entry per axis of {.arg x}.",
-      x = "Got {vec_repr(baxes)} for an {.arg x} with {cli::qty(length(in_shape))}{length(in_shape)} ax{?is/es}." # nolint
+      x = "Got {value_repr(baxes)} for an {.arg x} with {cli::qty(length(in_shape))}{length(in_shape)} ax{?is/es}." # nolint
     ))
   }
 
@@ -572,7 +625,7 @@ infer_broadcast_in_axes <- function(x, shape, broadcast_axes) {
     to <- shape[[baxes[[d]]]]
     if (from != to && from != 1L) {
       cli_abort(c(
-        "Axis {d} of {.arg x} must be {.val {to}} or {.val {1L}} to broadcast to axis {baxes[[d]]} of the result.",
+        "Axis {d} of {.arg x} must be {.or {.val {unique(c(to, 1L))}}} to broadcast to axis {baxes[[d]]} of the result.", # nolint
         x = "Got shapes {shape_repr(in_shape)} and {shape_repr(shape)}."
       ))
     }
@@ -594,12 +647,12 @@ infer_transpose <- function(x, permutation) {
     if (!length(in_shape)) {
       cli_abort(c(
         "{.arg permutation} must be empty, because {.arg x} is a scalar.",
-        x = "Got {vec_repr(perm)}."
+        x = "Got {value_repr(perm)}."
       ))
     }
     cli_abort(c(
-      "{.arg permutation} must be a permutation of {vec_repr(seq_along(in_shape))}.",
-      x = "Got {vec_repr(perm)}."
+      "{.arg permutation} must be a permutation of {value_repr(seq_along(in_shape))}.",
+      x = "Got {value_repr(perm)}."
     ))
   }
 
@@ -720,21 +773,21 @@ infer_static_slice <- function(x, start_indices, limit_indices, strides) {
     bad <- which(start < 1L)
     cli_abort(c(
       "{.arg start_indices} must be at least {.val {1L}}.",
-      x = "Got {vec_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)}."
+      x = "Got {value_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
   if (any(start > limit + 1L)) {
     bad <- which(start > limit + 1L)
     cli_abort(c(
       "{.arg start_indices} must not exceed {.arg limit_indices}.",
-      x = "Got {vec_repr(start[bad])} and {vec_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)}."
+      x = "Got {value_repr(start[bad])} and {value_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
   if (any(limit > in_shape)) {
     bad <- which(limit > in_shape)
     cli_abort(c(
       "{.arg limit_indices} must not exceed the shape of {.arg x} {shape_repr(in_shape)}.",
-      x = "Got {vec_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)}."
+      x = "Got {value_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
 
@@ -744,7 +797,7 @@ infer_static_slice <- function(x, start_indices, limit_indices, strides) {
   if (any(stride < 1L)) {
     cli_abort(c(
       "{.arg strides} must be positive.",
-      x = "Got {vec_repr(stride)}."
+      x = "Got {value_repr(stride)}."
     ))
   }
 
@@ -787,7 +840,7 @@ infer_pad <- function(
     if (length(val) != rank) {
       cli_abort(c(
         "{.arg {nm}} must have one entry per axis of {.arg x} ({rank}).",
-        x = "Got {vec_repr(val)}."
+        x = "Got {value_repr(val)}."
       ))
     }
   }
@@ -796,7 +849,7 @@ infer_pad <- function(
   if (any(interior < 0L)) {
     cli_abort(c(
       "{.arg interior_padding} must be non-negative.",
-      x = "Got {vec_repr(interior)}."
+      x = "Got {value_repr(interior)}."
     ))
   }
 
@@ -807,7 +860,7 @@ infer_pad <- function(
     bad <- which(result_shape < 0L)
     cli_abort(c(
       "Negative padding must not remove more than an axis holds.",
-      x = "{.arg x} has shape {shape_repr(in_shape)}; {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)} would end up at {vec_repr(result_shape[bad])}.", # nolint
+      x = "{.arg x} has shape {shape_repr(in_shape)}; {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)} would end up at {value_repr(result_shape[bad])}.", # nolint
       i = "Got {params_repr(list(edge_padding_low = low, edge_padding_high = high, interior_padding = interior))}." # nolint
     ))
   }
@@ -884,7 +937,7 @@ infer_fill <- function(value, shape, dtype) {
   if (inherits(value, "AbstractArray") || length(value) != 1L) {
     cli_abort(c(
       "{.arg value} must be a scalar.",
-      x = "Got {param_repr(value)}."
+      x = "Got {value_repr(value)}."
     ))
   }
   list(AbstractArray(
@@ -925,7 +978,7 @@ infer_dot_general <- function(
     if (!is.list(val) || length(val) != 2L) {
       cli_abort(c(
         "{.arg {nm}} must be a list of two axis vectors, one for {.arg lhs} and one for {.arg rhs}.",
-        x = "Got {param_repr(val)}."
+        x = "Got {value_repr(val)}."
       ))
     }
   }
@@ -938,7 +991,7 @@ infer_dot_general <- function(
   if (length(lhs_batching) != length(rhs_batching)) {
     cli_abort(c(
       "{.arg batching_axes} must name as many axes of {.arg lhs} as of {.arg rhs}.",
-      x = "Got {vec_repr(lhs_batching)} and {vec_repr(rhs_batching)}."
+      x = "Got {value_repr(lhs_batching)} and {value_repr(rhs_batching)}."
     ))
   }
 
@@ -946,7 +999,7 @@ infer_dot_general <- function(
   if (length(lhs_contracting) != length(rhs_contracting)) {
     cli_abort(c(
       "{.arg contracting_axes} must name as many axes of {.arg lhs} as of {.arg rhs}.",
-      x = "Got {vec_repr(lhs_contracting)} and {vec_repr(rhs_contracting)}."
+      x = "Got {value_repr(lhs_contracting)} and {value_repr(rhs_contracting)}."
     ))
   }
 
@@ -975,7 +1028,7 @@ infer_dot_general <- function(
   if (!identical(size_contract_lhs, size_contract_rhs)) {
     cli_abort(c(
       "The contracted axes of {.arg lhs} and {.arg rhs} must have the same sizes.",
-      x = "Axes {vec_repr(lhs_contracting)} of {shape_repr(shape_lhs)} are {vec_repr(size_contract_lhs)}, axes {vec_repr(rhs_contracting)} of {shape_repr(shape_rhs)} are {vec_repr(size_contract_rhs)}." # nolint
+      x = "Axes {value_repr(lhs_contracting)} of {shape_repr(shape_lhs)} are {value_repr(size_contract_lhs)}, axes {value_repr(rhs_contracting)} of {shape_repr(shape_rhs)} are {value_repr(size_contract_rhs)}." # nolint
     ))
   }
 
@@ -983,7 +1036,7 @@ infer_dot_general <- function(
   if (!identical(size_batch_lhs, size_batch_rhs)) {
     cli_abort(c(
       "The batching axes of {.arg lhs} and {.arg rhs} must have the same sizes.",
-      x = "Axes {vec_repr(lhs_batching)} of {shape_repr(shape_lhs)} are {vec_repr(size_batch_lhs)}, axes {vec_repr(rhs_batching)} of {shape_repr(shape_rhs)} are {vec_repr(size_batch_rhs)}." # nolint
+      x = "Axes {value_repr(lhs_batching)} of {shape_repr(shape_lhs)} are {value_repr(size_batch_lhs)}, axes {value_repr(rhs_batching)} of {shape_repr(shape_rhs)} are {value_repr(size_batch_rhs)}." # nolint
     ))
   }
 
@@ -1047,7 +1100,7 @@ infer_dynamic_slice <- function(x, ..., slice_sizes) {
   if (length(sizes) != rank) {
     cli_abort(c(
       "{.arg slice_sizes} must have one entry per axis of {.arg x} ({rank}).",
-      x = "Got {vec_repr(sizes)}."
+      x = "Got {value_repr(sizes)}."
     ))
   }
 
@@ -1382,7 +1435,7 @@ infer_gather <- function(
   if (length(sizes) != x_rank) {
     cli_abort(c(
       "{.arg slice_sizes} must have one entry per axis of {.arg x} ({x_rank}).",
-      x = "Got {vec_repr(sizes)}."
+      x = "Got {value_repr(sizes)}."
     ))
   }
 
@@ -1414,7 +1467,7 @@ infer_gather <- function(
   if (length(start_index_map) != expected_map_size) {
     cli_abort(c(
       "{.arg start_index_map} must have one entry per index coordinate ({expected_map_size}).",
-      x = "Got {vec_repr(start_index_map)}."
+      x = "Got {value_repr(start_index_map)}."
     ))
   }
 
@@ -1449,7 +1502,7 @@ infer_gather <- function(
     bad <- collapsed_slice_axes[sizes[collapsed_slice_axes] > 1L]
     cli_abort(c(
       "{.arg slice_sizes} must be at most {.val {1L}} at {.arg collapsed_slice_axes}.",
-      x = "Got {vec_repr(sizes[bad])} at {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)}."
+      x = "Got {value_repr(sizes[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
 
@@ -1462,7 +1515,7 @@ infer_gather <- function(
     bad <- x_batching_axes[sizes[x_batching_axes] > 1L]
     cli_abort(c(
       "{.arg slice_sizes} must be at most {.val {1L}} at {.arg x_batching_axes}.",
-      x = "Got {vec_repr(sizes[bad])} at {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)}."
+      x = "Got {value_repr(sizes[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
 
@@ -1474,7 +1527,7 @@ infer_gather <- function(
   if (index_vector_axis %in% start_indices_batching_axes) {
     cli_abort(c(
       "{.arg index_vector_axis} must not be one of {.arg start_indices_batching_axes}.",
-      x = "{.arg index_vector_axis} is {.val {index_vector_axis}} and {.arg start_indices_batching_axes} is {vec_repr(start_indices_batching_axes)}." # nolint
+      x = "{.arg index_vector_axis} is {.val {index_vector_axis}} and {.arg start_indices_batching_axes} is {value_repr(start_indices_batching_axes)}." # nolint
     ))
   }
 
@@ -1482,7 +1535,7 @@ infer_gather <- function(
   if (length(x_batching_axes) != length(start_indices_batching_axes)) {
     cli_abort(c(
       "{.arg x_batching_axes} and {.arg start_indices_batching_axes} must have the same length.",
-      x = "Got {vec_repr(x_batching_axes)} and {vec_repr(start_indices_batching_axes)}."
+      x = "Got {value_repr(x_batching_axes)} and {value_repr(start_indices_batching_axes)}."
     ))
   }
 
@@ -1509,7 +1562,7 @@ infer_gather <- function(
   if (any(sizes < 0L) || any(sizes > x_shape)) {
     cli_abort(c(
       "{.arg slice_sizes} must be between {.val {0L}} and the shape of {.arg x} {shape_repr(x_shape)}.",
-      x = "Got {vec_repr(sizes)}."
+      x = "Got {value_repr(sizes)}."
     ))
   }
 
@@ -1629,7 +1682,7 @@ infer_scatter <- function(
   if (index_vector_axis %in% scatter_indices_batching_axes) {
     cli_abort(c(
       "{.arg index_vector_axis} must not be one of {.arg scatter_indices_batching_axes}.",
-      x = "{.arg index_vector_axis} is {.val {index_vector_axis}} and {.arg scatter_indices_batching_axes} is {vec_repr(scatter_indices_batching_axes)}." # nolint
+      x = "{.arg index_vector_axis} is {.val {index_vector_axis}} and {.arg scatter_indices_batching_axes} is {value_repr(scatter_indices_batching_axes)}." # nolint
     ))
   }
 
@@ -1637,7 +1690,7 @@ infer_scatter <- function(
   if (length(x_batching_axes) != length(scatter_indices_batching_axes)) {
     cli_abort(c(
       "{.arg x_batching_axes} and {.arg scatter_indices_batching_axes} must have the same length.",
-      x = "Got {vec_repr(x_batching_axes)} and {vec_repr(scatter_indices_batching_axes)}."
+      x = "Got {value_repr(x_batching_axes)} and {value_repr(scatter_indices_batching_axes)}."
     ))
   }
 
@@ -1660,7 +1713,7 @@ infer_scatter <- function(
   if (length(scatter_axes_to_x_axes) != expected_map_size) {
     cli_abort(c(
       "{.arg scatter_axes_to_x_axes} must have one entry per index coordinate ({expected_map_size}).",
-      x = "Got {vec_repr(scatter_axes_to_x_axes)}."
+      x = "Got {value_repr(scatter_axes_to_x_axes)}."
     ))
   }
 
@@ -1685,7 +1738,7 @@ infer_scatter <- function(
     if (any(actual_window > window_sizes)) {
       cli_abort(c(
         "{.arg update} must not be larger than {.arg x} along its window axes.",
-        x = "Got {vec_repr(actual_window)}, at most {vec_repr(window_sizes)} is allowed."
+        x = "Got {value_repr(actual_window)}, at most {value_repr(window_sizes)} is allowed."
       ))
     }
   }
@@ -1695,7 +1748,7 @@ infer_scatter <- function(
     if (!identical(actual_scatter, scatter_sizes)) {
       cli_abort(c(
         "The scatter axes of {.arg update} must match the shape of {.arg scatter_indices}.",
-        x = "Got {vec_repr(actual_scatter)}, expected {vec_repr(scatter_sizes)}."
+        x = "Got {value_repr(actual_scatter)}, expected {value_repr(scatter_sizes)}."
       ))
     }
   }
@@ -1794,13 +1847,13 @@ infer_convolution <- function(
     if (length(val) != n_spatial) {
       cli_abort(c(
         "{.arg {nm}} must have one entry per spatial axis ({n_spatial}).",
-        x = "Got {vec_repr(val)}."
+        x = "Got {value_repr(val)}."
       ))
     }
     if (any(val <= 0L)) {
       cli_abort(c(
         "{.arg {nm}} must be positive.",
-        x = "Got {vec_repr(val)}."
+        x = "Got {value_repr(val)}."
       ))
     }
   }
@@ -1842,7 +1895,7 @@ infer_convolution <- function(
     if (length(val) != n_spatial) {
       cli_abort(c(
         "{.arg {nm}} must have one entry per spatial axis ({n_spatial}).",
-        x = "Got {vec_repr(val)}."
+        x = "Got {value_repr(val)}."
       ))
     }
   }

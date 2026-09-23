@@ -97,17 +97,18 @@ Use the `cli_abort()` form with a headline stating the requirement and an `x` bu
 ```r
 cli_abort(c(
   "{.arg strides} must be positive.",
-  x = "Got {vec_repr(stride)}."
+  x = "Got {value_repr(stride)}."
 ))
 ```
 
 - **Headline**: `{.arg <name>} must ...`: the requirement, phrased positively, naming the argument as the primitive spells it. Mention relevant context in parentheses (e.g. `one entry per axis of {.arg x} ({rank})`).
 - **`x` bullet**: `Got <value>.`. Print the value with the helper that fits:
-  - `vec_repr()` for a whole-number param (`nothing`, `3`, `c(1, 3)`). Show the vector itself, not its length: `Got c(3, 4).`, not `Got 2 (c(3, 4)).`
-  - `param_repr()` for a param of any type (strings, flags, anything that might not be atomic). It falls back to `<class> of length n` for functions, lists and environments, where `{.val}` would error inside the error.
+  - `value_repr()` for a caller's value of any type. It spells the value the way the caller would type it (`3`, `"afz"`, `c(1, 3)`, `integer(0)`, `NULL`), using `format_param()` from the graph printer for the entries, so show the vector itself, not its length: `Got c(3, 4).`, not `Got 2 (c(3, 4)).` Unlike `format_param()`, which only prints params that inference already accepted, it copes with anything: a matrix or array reads as the call that builds it (`matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2)`), a list prints as `<list> of length n`, and anything else with a class as `<class>` (`<factor>`, `<function>`). Interpolate it plain, not inside `{.val}`, which would quote the string it returns.
   - `params_repr(list(a = ..., b = ...))` when the check involves several params at once (`` `start_indices` = 1, `strides` = c(1, 2) ``).
   - `shape_repr()` for shapes (`(2x3)`), `repr()` for a whole array type, `{.val {as.character(dtype(x))}}` for a data type.
-- **Point at the offending entries** when only some are wrong: `Got {vec_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)}.`
+- **Never print a caller's value with a bare `{x}` / `{.val {x}}`** unless its length is already checked to be 1. A caller can pass anything (`prim_fill(1:1000, ...)`, a 5000-character string, a list), and the helpers above are what keep the message short and quick to build: they show at most 8 entries (`c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000`) and cut strings at 30 characters; `shape_repr()` stops after 8 axes. Don't paste a vector into a message yourself (`paste0(x, collapse = ", ")`).
+- **Refuse input that would fail later with a worse message.** Examples: a shape whose element count overflows int64 (`assert_shapevec()` checks this), and a whole number outside the integer range, which `as.integer()` would silently turn into `NA` (`assert_int_param()` checks this).
+- **Point at the offending entries** when only some are wrong: `Got {value_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}.`
 - **An `i` bullet** adds context that isn't the offending value: the full set of params on a clash (`i = "Got {params_repr(parts)}."`), or where to look (`i = "See {.fn tengen::as_dtype} ..."`).
 - **Operands without their own formal** are named by the argument the caller used: `..2` for operands passed through `...` (`prim_concatenate()`), `xs[[2]]` for ones collected in a list (`prim_sort()`). `assert_arrays(..., .arg = "xs")` does this for you. When operands disagree, name the first one *and* the one that disagrees: `` `..1` has shape (2x3), `..2` has shape (2x4). ``
 - Pluralize with `cli::qty()` (`{cli::qty(n)}ax{?is/es}`, `entr{?y/ies}`). Don't write "axis(es)".

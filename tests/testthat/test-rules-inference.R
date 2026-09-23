@@ -765,15 +765,88 @@ test_that("prim_convolution", {
   expect_snapshot(error = TRUE, conv(precision = "bogus"))
 })
 
-describe("param_repr()", {
-  it("prints the value a message complains about", {
-    expect_equal(cli::ansi_strip(param_repr(3.5)), "3.5")
-    expect_error(assert_int_param("a", "axis"), 'Got "a"', fixed = TRUE)
+describe("value_repr()", {
+  # `cat()` so that the snapshot holds the text a message shows, unescaped.
+  show_repr <- function(x) cat(value_repr(x), "\n", sep = "")
+
+  it("spells a value the way format_param() does", {
+    expect_snapshot({
+      show_repr(NULL)
+      show_repr(3.5)
+      show_repr(TRUE)
+      show_repr("afz")
+      show_repr(c(1L, 3L))
+      show_repr(c("a", "b"))
+      show_repr(integer())
+      show_repr(character())
+    })
   })
 
-  it("falls back to class and length for a value `{.val}` cannot print", {
+  it("cuts a long vector or string short", {
+    expect_snapshot({
+      show_repr(1:8)
+      show_repr(1:1000)
+      show_repr(rep("afz", 1000))
+      show_repr(strrep("a", 5000))
+    })
+  })
+
+  it("copes with values format_param() never sees", {
+    expect_snapshot({
+      show_repr(NA)
+      show_repr(NA_character_)
+      show_repr(c(1L, NA))
+      show_repr(NaN)
+      show_repr(Inf)
+      show_repr(matrix(1:4, 2))
+      show_repr(matrix(1:1000, 10))
+      show_repr(matrix(5L, 1, 1))
+      show_repr(matrix(integer(), 0, 3))
+      show_repr(array(1:8, c(2, 2, 2)))
+      show_repr(array(1:3))
+      show_repr(list())
+      show_repr(as.list(1:1000))
+      show_repr(factor(letters))
+      show_repr(mean)
+      show_repr(globalenv())
+    })
+  })
+
+  it("is what a rule reports", {
+    expect_error(assert_int_param("a", "axis"), 'Got "a"', fixed = TRUE)
     # `{.val {mean}}` errors inside the message it is meant to report.
-    expect_equal(cli::ansi_strip(param_repr(mean)), "<function> of length 1")
     expect_error(assert_flag_param(mean, "drop"), "Got <function>", fixed = TRUE)
   })
+})
+
+describe("shape_repr()", {
+  it("prints a real shape whole and a typed-in one cut short", {
+    expect_equal(shape_repr(c(2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L)), "(2x3x4x5x6x7x8x9)")
+    expect_equal(shape_repr(1:1000), "(1x2x3x4x5x6x7x8x...) with 1000 axes")
+  })
+})
+
+# A caller's value can be arbitrarily large -- a whole data vector passed where
+# a scalar belongs. The message reports it cut short, and is quick to build.
+test_that("messages stay short for oversized params", {
+  expect_snapshot(error = TRUE, prim_fill(1:1000, 3L, "f32"))
+  expect_snapshot(error = TRUE, prim_fill(1, 3L, strrep("a", 5000)))
+  expect_snapshot(error = TRUE, prim_round(nv_array(c(1.5, 2.5)), method = rep("afz", 1000)))
+  expect_snapshot(error = TRUE, prim_static_slice(nv_array(1:4), 1:1000, 1:1000, 1:1000))
+  expect_snapshot(error = TRUE, prim_reshape(nv_array(1:4), shape = 1:1000))
+  elapsed <- system.time(try(prim_fill(seq_len(1e6), 3L, "f32"), silent = TRUE))[["elapsed"]]
+  expect_lt(elapsed, 1)
+})
+
+test_that("a shape with too many elements is refused before it reaches XLA", {
+  expect_snapshot(error = TRUE, prim_fill(1, 1:1000, "f32"))
+})
+
+test_that("a whole-number param outside the integer range is not reported as NA", {
+  expect_snapshot(error = TRUE, prim_top_k(nv_array(1:4), k = Inf))
+})
+
+test_that("broadcasting to a size-1 axis names 1 once", {
+  x <- nv_array(as.double(1:12), shape = c(4, 3))
+  expect_snapshot(error = TRUE, prim_broadcast_in_axes(x, shape = c(1L, 3L), broadcast_axes = 1:2))
 })

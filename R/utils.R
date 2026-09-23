@@ -95,8 +95,16 @@ shape2string <- function(x, parenthesize = TRUE) {
 # `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
 # `RData(double, (2,3))` are built from and stays as it is -- so everything a
 # caller reads in an error or warning goes through these two instead.
+#
+# A shape can also be one a caller typed (`shape = 1:1000`), so past
+# `repr_max_entries` axes it is cut short, with the rank stated. That is enough
+# for an array's real shape to print whole.
 shape_repr <- function(shape) {
-  sprintf("(%s)", paste0(shape, collapse = "x"))
+  n <- length(shape)
+  if (n <= repr_max_entries) {
+    return(sprintf("(%s)", paste0(shape, collapse = "x")))
+  }
+  sprintf("(%sx...) with %d axes", paste0(shape[seq_len(repr_max_entries)], collapse = "x"), n)
 }
 
 shapes_repr <- function(shapes) {
