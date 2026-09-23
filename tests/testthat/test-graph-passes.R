@@ -18,7 +18,7 @@ describe("inline_scalarish_constants", {
       expect_length(new_graph$constants, expected_constants_after)
     }
 
-    expect_gte(length(new_graph$calls), length(graph$calls))
+    expect_length(new_graph$calls, length(graph$calls))
     expect_equal(length(new_graph$inputs), length(graph$inputs))
     expect_equal(length(new_graph$outputs), length(graph$outputs))
     expect_identical(new_graph$in_tree, graph$in_tree)
@@ -32,16 +32,19 @@ describe("inline_scalarish_constants", {
       out <- stablehlo(graph)
       func <- out[[1L]]
       consts <- out[[2L]]
+      # `args` are built wherever the default device is, so the constants and
+      # the executable have to follow them there.
+      dev <- default_device()
       const_arrays <- lapply(consts, \(c) {
         arr <- c$aval$data
         if (backend(arr) == "plain") {
-          pjrt::pjrt_buffer(as_array(arr), as.character(dtype(arr)), shape = shape(arr))
+          pjrt::pjrt_buffer(as_array(arr), as.character(dtype(arr)), shape = shape(arr), device = dev)
         } else {
           arr$data
         }
       })
       program <- pjrt::pjrt_program(src = stablehlo::repr(func), format = "mlir")
-      exec <- pjrt::pjrt_compile(program)
+      exec <- pjrt::pjrt_compile(program, device = dev)
       inputs_flat <- lapply(flatten(args), \(a) a$data)
       do.call(pjrt::pjrt_execute, c(list(exec), const_arrays, inputs_flat, list(simplify = FALSE)))
     }
@@ -133,8 +136,9 @@ describe("inline_scalarish_constants", {
       graph_fun = f,
       args = list(list(x = nv_scalar(1))),
       check_literals = function(new_graph, original_graph) {
-        # one fill call is added
-        expect_true(length(new_graph$calls) == length(original_graph$calls) + 1L)
+        lit <- new_graph$calls[[1L]]$inputs[[2L]]
+        expect_true(is_graph_literal(lit))
+        expect_identical(new_graph$calls[[2L]]$inputs[[2L]], lit)
       }
     )
   })
@@ -196,14 +200,16 @@ describe("inline_scalarish_constants", {
       )
     }
 
-    g1 <- trace_fn(f, list(x = nv_scalar(TRUE), y = nv_scalar(TRUE)))
-    g2 <- inline_scalarish_constants(g1)
-
     check_inlining(
       graph_fun = f,
       args = list(list(x = nv_scalar(TRUE), y = nv_scalar(TRUE))),
       check_literals = function(new_graph, original_graph) {
-        expect_equal(length(new_graph$calls), length(original_graph$calls) + 4L)
+        outer <- new_graph$calls[[1L]]$params
+        branch_outputs <- lapply(
+          c(outer$true$calls[[1L]]$params, outer$false$calls[[1L]]$params),
+          \(g) g$outputs[[1L]]
+        )
+        expect_true(all(vapply(branch_outputs, is_graph_literal, logical(1L))))
       }
     )
   })
@@ -219,7 +225,7 @@ describe("inline_scalarish_constants", {
       expected_constants_before = 1L,
       expected_constants_after = 0L,
       check_literals = function(new_graph, original_graph) {
-        expect_equal(length(new_graph$calls), length(original_graph$calls) + 1L)
+        expect_true(is_graph_literal(new_graph$outputs[[1L]]))
         expect_identical(new_graph$outputs[[1L]], new_graph$outputs[[2L]])
       }
     )

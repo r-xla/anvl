@@ -9,7 +9,7 @@ test_that("shape2string", {
 test_that("peek_dtype", {
   expect_equal(
     peek_dtype(1L),
-    as_dtype("i32")
+    default_int()
   )
   expect_equal(
     peek_dtype(nv_scalar(1L, dtype = "f32")),
@@ -197,4 +197,15 @@ describe("scatter_to_gather_slice_sizes", {
     )
     expect_equal(result, c(1L, 3L, 6L))
   })
+})
+
+test_that("shape_repr", {
+  # The message spelling, which is `x`-separated where the repr spelling
+  # (`f32[2,2]`) is comma-separated.
+  expect_equal(shape_repr(c(2, 3)), "(2x3)")
+  expect_equal(shape_repr(Shape(c(2, 3))), "(2x3)")
+  expect_equal(shape_repr(3L), "(3)")
+  expect_equal(shape_repr(integer()), "()")
+  expect_equal(shape_repr(c(0L, 3L)), "(0x3)")
+  expect_equal(shapes_repr(list(c(2L, 3L), integer(), 4L)), "(2x3), (), (4)")
 })

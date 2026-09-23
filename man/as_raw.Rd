@@ -17,7 +17,7 @@ Whether to write the bytes in row-major order.
 }}
 }
 \value{
-A \code{\link{raw}} vector.
+(\code{\link{raw}})
 }
 \description{
 Returns the underlying bytes of an array as a \link{raw} vector.

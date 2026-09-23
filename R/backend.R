@@ -1,14 +1,20 @@
+#' @include default-dtypes.R
+NULL
+
 #' Create a backend
 #'
 #' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
 #' This should be a `structure()` with at least a `$data` field that contains the actual
 #' underlying data (`PJRTBuffer` for `"pjrt"` backend, `array()` for `"quickr"` backend).
+#' Receives `row_major` (`logical(1)`, default `FALSE`), which gives the
+#' element order of raw byte payloads; backends that do not support raw
+#' `data` should abort on it.
 #' @param new_empty (`function`)\cr Constructs an AnvlArray of the given
 #' `dtype` and `shape` with unspecified contents. Called by [`nv_empty()`].
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
 #' @param shape (`function`)\cr Extracts the shape from an AnvlArray.
 #' @param as_array (`function(x, check)`)\cr Converts an AnvlArray to an R
-#'   array. The `check` flag is forwarded from [`as_array()`]; backends may use
+#'   array. The `check` level is forwarded from [`as_array()`]; backends may use
 #'   it to abort when materialization would lose information (e.g. ui64 values
 #'   wrapping through `bit64::integer64`). See [`pjrt::as_array.PJRTBuffer()`].
 #' @param as_raw (`function`)\cr Converts an AnvlArray to raw bytes.
@@ -21,7 +27,10 @@
 #' @param await_data (`function`)\cr Blocks until the array's underlying data
 #'   is ready. Called by [`await()`] for `AnvlArray`s; a no-op for backends
 #'   without async execution.
-#' @return An `AnvlBackend` object.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The default data types for this backend.
+#'   Can be overwritten, see [`default_dtypes()`].
+#' @return (`AnvlBackend`)
 #' @keywords internal
 #' @export
 AnvlBackend <- function(
@@ -36,8 +45,15 @@ AnvlBackend <- function(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 ) {
+  if (!is.null(default_dtypes)) {
+    default_dtypes <- list(
+      float = as_dtype(default_dtypes$float),
+      int = as_dtype(default_dtypes$int)
+    )
+  }
   structure(
     list(
       new_data = new_data,
@@ -51,14 +67,29 @@ AnvlBackend <- function(
       new_device = new_device,
       print_data = print_data,
       jit = jit,
-      await_data = await_data
+      await_data = await_data,
+      default_dtypes = default_dtypes
     ),
     class = "AnvlBackend"
   )
 }
 
+# `backend` is deliberately left unevaluated and built on first use.
+#
+# Registration happens as top-level code, which R evaluates when the namespace
+# is *installed* and then restores from the lazy-load database on load. A
+# backend constructed there would be a set of closures serialized before
+# anything can instrument the namespace, which is why covr reported every
+# backend method as untested however often the tests called it -- the methods
+# it instruments and the ones the registry holds were different objects
+# (r-lib/covr#556). A promise is forced by the first array operation instead,
+# long after load, and builds its methods from whatever the namespace holds
+# then. R forces it once and caches the value, so this costs nothing per call.
 register_backend <- function(name, backend) {
-  globals$backends[[name]] <- backend
+  if (name %in% c("float", "int")) {
+    cli_abort("A backend must not be named after a data type category ({.val float} or {.val int}).")
+  }
+  delayedAssign(name, backend, eval.env = environment(), assign.env = globals$backends)
 }
 
 # Compare two device objects for equality, returning FALSE when they are of
@@ -76,10 +107,10 @@ eq_device <- function(x, y) {
 check_single_backend <- function(graph, arg_devices, expected) {
   const_backends <- vapply(
     graph$constants,
-    function(const) if (is_concrete_tensor(const$aval)) backend(const$aval$data) else NA_character_,
-    character(1)
+    function(const) if (is_concrete_array(const$aval)) backend(const$aval$data) else NA_character_,
+    character(1L)
   )
-  arg_backends <- vapply(arg_devices, backend, character(1))
+  arg_backends <- vapply(arg_devices, backend, character(1L))
   found <- unique(c(const_backends, arg_backends))
   mismatches <- setdiff(found, c(expected, "plain", NA_character_))
   if (length(mismatches)) {
@@ -105,16 +136,16 @@ print.PlainDeviceCpu <- function(x, ...) {
   invisible(x)
 }
 
-globals$backends <- list()
+globals$backends <- new.env(parent = emptyenv())
 
 # The plain backend is merely for capturing constants during jitting in a backend-agnostic way.
 # Otherwise it is unused
 register_backend(
   "plain",
   AnvlBackend(
-    new_data = function(data, dtype, shape, device) {
-      if (is.null(dtype)) {
-        dtype <- default_dtype(data)
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      if (is.raw(data)) {
+        cli_abort("Raw {.arg data} payloads are not supported inside {.fn jit}.")
       }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
@@ -130,7 +161,7 @@ register_backend(
       }
       dtype_chr <- as.character(dtype)
       data <- switch(
-        substr(dtype_chr, 1, 1),
+        substr(dtype_chr, 1L, 1L),
         "f" = as.double(data),
         "i" = ,
         "u" = as.integer(data),
@@ -176,53 +207,60 @@ register_backend(
     jit = function(f, static, cache_size, ...) {
       cli_abort("JIT compilation is not supported for the {.val plain} backend.")
     },
-    await_data = function(x) invisible(NULL)
+    await_data = function(x) invisible(NULL),
+    default_dtypes = NULL
   )
 )
 
-#' Get the default backend
+#' Get Active Backend
 #'
-#' Returns the current default backend from `getOption("anvl.default_backend", "pjrt")`.
+#' Retrieves the active backend (option `anvl.backend`), falling back to the default `"pjrt"`
+#' backend.
 #'
-#' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
-#' @seealso [local_backend()]
+#' @return (`character(1)`)\cr
+#'   The backend name (e.g. `"pjrt"`, `"quickr"`).
+#' @seealso [local_backend()], [with_backend()], [default_dtypes()]
 #' @export
-default_backend <- function() {
-  getOption("anvl.default_backend", "pjrt")
+active_backend <- function() {
+  getOption("anvl.backend", "pjrt")
 }
 
 assert_backend <- function(backend) {
   assert_choice(backend, names(globals$backends))
 }
 
-#' Temporarily set the default backend
+#' Temporarily set the backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' calling scope. This affects `nv_array()`, `nv_scalar()`, and `jit()`.
+#' Sets the `anvl.backend` option for the duration of the calling scope. Every
+#' array built and every operation run in that scope uses the backend, and R
+#' values materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
 #' @param envir The environment to scope the change to.
-#' @return The previous value of the option (invisibly).
+#' @return (`character(1)`)\cr
+#'   The previous value of the option, invisibly.
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
-  withr::local_options(anvl.default_backend = backend, .local_envir = envir)
+  withr::local_options(anvl.backend = backend, .local_envir = envir)
 }
 
 #' Run code with a specific backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' expression. This affects [`jit()`] and data construction (e.g. via [`nv_array`]).
+#' Sets the `anvl.backend` option for the duration of the expression. Every
+#' array built and every operation run in `code` uses the backend, and R values
+#' materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
 #' @param code An expression to evaluate with the given backend.
-#' @return The result of evaluating `code`.
+#' @return (`any`)\cr
+#'   The result of evaluating `code`.
 #' @export
 with_backend <- function(backend, code) {
   backend <- assert_backend(backend)
-  withr::with_options(list(anvl.default_backend = backend), code)
+  withr::with_options(list(anvl.backend = backend), code)
 }
 
 #' Install what a backend needs to run
@@ -245,13 +283,14 @@ with_backend <- function(backend, code) {
 #' installation vignette: `vignette("installation", package = "anvl")`.
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to install for. Defaults to [default_backend()]. The `"plain"`
+#'   Backend to install for. Defaults to [active_backend()]. The `"plain"`
 #'   backend has nothing to install and is not accepted.
 #' @param ... Passed to the underlying installer: [pjrt::install_pjrt()] for
 #'   `"pjrt"`, [utils::install.packages()] for `"quickr"`.
-#' @return `NULL`, invisibly. Called for its side effect.
+#' @return (`NULL`)\cr
+#'   Invisibly. Called for its side effect.
 #' @export
-install_anvl <- function(backend = default_backend(), ...) {
+install_anvl <- function(backend = active_backend(), ...) {
   backend <- assert_choice(backend, c("pjrt", "quickr"))
   switch(
     backend,

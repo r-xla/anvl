@@ -5,9 +5,9 @@
 \alias{nv_iota_like}
 \title{Iota}
 \usage{
-nv_iota(axis, dtype, shape, start = 1L, device = NULL)
+nv_iota(axis, shape, dtype, start = 1L, device = NULL)
 
-nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
+nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 }
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
@@ -15,14 +15,15 @@ Axis along which values increase.
 Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
 last axis.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
-
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result.}
+
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result, required here. Can be any numeric data type.
+For \code{nv_iota_like()} it may be \code{NULL}, which uses \code{dtype(like)}.}
 
 \item{start}{(\code{integer(1)})\cr
-Starting value (default 1).}
+Starting value (default 1). Built at \code{dtype}, as the increments are.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -35,31 +36,34 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_iota_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
 Creates an array with values increasing along the specified axis,
 starting from \code{start}.
 
-\code{nv_iota_like()} is a variant where \code{dtype}, \code{shape}, and
+\code{nv_iota_like()} is a variant where \code{shape}, \code{dtype}, and
 \code{device} default to those of \code{like}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_iota(axis = 1L, dtype = "i32", shape = 5L)
+# the sequence is built at the requested data type
+nv_iota(axis = 1L, shape = 5L, dtype = "i32")
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_fill(0L, shape = c(2, 3))
 nv_iota_like(x, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_seq]{nv_seq()}} for a simpler 1-D sequence, \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
+\code{\link[=nv_seq]{nv_seq()}} for a simpler 1-D sequence, \code{\link[=nv_linspace]{nv_linspace()}} for evenly
+spaced values, \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }

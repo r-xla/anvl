@@ -2,7 +2,7 @@
 % Please edit documentation in R/serialize.R
 \name{nv_serialize}
 \alias{nv_serialize}
-\title{Serialize arrays to raw bytes}
+\title{Serialize Arrays to Raw Bytes}
 \usage{
 nv_serialize(arrays, con = NULL)
 }
@@ -15,7 +15,8 @@ An optional connection to write to.
 If \code{NULL} (default), a raw vector is returned.}
 }
 \value{
-A \code{\link{raw}} vector if \code{con} is \code{NULL}, otherwise \code{NULL} (invisibly).
+(\code{\link{raw}} | \code{NULL})\cr
+A raw vector if \code{con} is \code{NULL}, otherwise \code{NULL} invisibly.
 }
 \description{
 Serializes a named list of arrays into the
@@ -23,6 +24,7 @@ Serializes a named list of arrays into the
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 raw_data <- nv_serialize(list(x = x))

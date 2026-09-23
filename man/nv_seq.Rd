@@ -5,21 +5,25 @@
 \alias{nv_seq_like}
 \title{Sequence}
 \usage{
-nv_seq(start, end, steps = NULL, dtype = NULL, device = NULL)
+nv_seq(from, to, by = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(like, start, end, steps = NULL, dtype = NULL, device = NULL)
+nv_seq_like(like, from, to, by = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{start, end}{(\code{numeric(1)})\cr
-Start and end values. When \code{steps} is \code{NULL}, must satisfy \code{start <= end}.}
+\item{from, to}{(\code{integer(1)})\cr
+First value and upper (or, when counting down, lower) limit of the
+sequence.}
 
-\item{steps}{(\code{integer(1)} or \code{NULL})\cr
-Number of evenly spaced values to generate. Must be at least 1.
-When \code{NULL} (default), generates consecutive integer values from \code{start} to \code{end}.}
+\item{by}{(\code{NULL} | \code{integer(1)})\cr
+Step size, which must be a non-zero whole number pointing from \code{from}
+towards \code{to}. \code{NULL} (default) uses \code{-1} if \code{from > to} and \code{1}
+otherwise.}
 
-\item{dtype}{(\code{character(1)})\cr
-Data type. Default \code{"i32"} when \code{steps} is \code{NULL}, \code{"f32"} when \code{steps} is given.
-For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Can be any numeric data type.
+\code{NULL} (default) uses the default integer data
+type (see \code{\link[=default_dtypes]{default_dtypes()}}), since the values are whole. For
+\code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -32,22 +36,21 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_seq_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
-1-D array of length \code{end - start + 1}.
+(\code{\link{arrayish}})\cr
+Has \code{dtype} and shape \code{(to - from) \%/\% by + 1}.
 }
 \description{
-Creates a 1-D array with values from \code{start} to \code{end} (inclusive).
-
-Without \code{steps}, behaves like R's \code{seq(start, end)} producing integer values.
-With \code{steps}, produces \code{steps} evenly spaced values (like \code{seq(start, end, length.out = steps)}).
+Creates a 1-D array with the values from \code{from} to \code{to} in steps of \code{by},
+like R's \code{\link[=seq]{seq()}}. The sequence counts down when \code{to} lies below \code{from},
+and stops before \code{to} when \code{to} is not reachable in whole steps:
+\code{nv_seq(0, 9, by = 2)} ends at \code{8}.
 
 \code{nv_seq_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.
@@ -55,7 +58,23 @@ default to those of \code{like}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_seq(3, 7)
+
+# a range that counts down needs no `by`
+nv_seq(7, 3)
+
+# `to` is only reached where a whole number of steps lands on it
+nv_seq(0, 9, by = 2)
+
+# a float data type gives the same values as floats
+nv_seq(3, 7, dtype = "f32")
+
+# nv_seq_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 \dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=nv_linspace]{nv_linspace()}} for a given number of evenly spaced values,
+\code{\link[=nv_iota]{nv_iota()}} for values increasing along an axis of any shape,
+\code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }

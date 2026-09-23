@@ -4,18 +4,19 @@
 \alias{install_anvl}
 \title{Install what a backend needs to run}
 \usage{
-install_anvl(backend = default_backend(), ...)
+install_anvl(backend = active_backend(), ...)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to install for. Defaults to \code{\link[=default_backend]{default_backend()}}. The \code{"plain"}
+Backend to install for. Defaults to \code{\link[=active_backend]{active_backend()}}. The \code{"plain"}
 backend has nothing to install and is not accepted.}
 
 \item{...}{Passed to the underlying installer: \code{\link[pjrt:install_pjrt]{pjrt::install_pjrt()}} for
 \code{"pjrt"}, \code{\link[utils:install.packages]{utils::install.packages()}} for \code{"quickr"}.}
 }
 \value{
-\code{NULL}, invisibly. Called for its side effect.
+(\code{NULL})\cr
+Invisibly. Called for its side effect.
 }
 \description{
 A backend needs more than the packages anvl declares as dependencies: the

@@ -55,7 +55,7 @@ format.GraphLiteral <- function(x, ...) {
   } else {
     as.character(x$aval$data)
   }
-  sprintf("GraphLiteral(%s, %s, %s)", val, repr(x$aval$dtype), shape2string(x$aval$shape))
+  sprintf("GraphLiteral(%s, %s, %s)", val, as.character(x$aval$dtype), shape2string(x$aval$shape))
 }
 
 #' @export
@@ -110,11 +110,11 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -167,17 +167,17 @@ AnvlGraph <- function(
 #' Descriptor of an [`AnvlGraph`]. This is a mutable class.
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param tensor_to_gval (`hashtab`)\cr
+#' @param array_to_gval (`hashtab`)\cr
 #'   Mapping: `AnvlArray` -> `GraphValue`
 #' @param gval_to_box (`hashtab`)\cr
 #'   Mapping: `GraphValue` -> `GraphBox`
 #' @param constants (`list(GraphValue)`)\cr
 #'   The constants of the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -188,14 +188,23 @@ AnvlGraph <- function(
 #'   `NULL` when all args are array inputs.
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
-#' @param devices (`character()`)\cr
-#'   Device platforms encountered during tracing (e.g. `"cpu"`, `"cuda"`).
-#'   Populated automatically as arrays are registered.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The data types every R value in this trace materializes at when nothing
+#'   else decides one (see [`default_dtypes()`]).
+#' @param backend (`character(1)`)\cr
+#'   The backend this trace is compiled for. Required: it decides which entry
+#'   of the `anvl.default_dtypes` option applies to the trace, so switching the
+#'   active backend inside a traced body changes nothing.
+#'   [`local_descriptor()`] fills it in from [`active_backend()`], so only a
+#'   direct call has to name it.
+#' @param devices (`list()`)\cr
+#'   Devices encountered during tracing: the device of every concrete array
+#'   registered in the graph, plus the ones declared by [`graph_desc_add()`].
 #' @return (`GraphDescriptor`)
 #' @export
 GraphDescriptor <- function(
   calls = list(),
-  tensor_to_gval = NULL,
+  array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -204,7 +213,9 @@ GraphDescriptor <- function(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character()
+  devices = character(),
+  default_dtypes = NULL,
+  backend
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -215,7 +226,7 @@ GraphDescriptor <- function(
   if (length(calls)) {
     env$calls$madd(.list = calls)
   }
-  env$data_to_gval <- tensor_to_gval %||% hashtab()
+  env$array_to_gval <- array_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
   env$constants <- constants
   env$in_tree <- in_tree
@@ -225,6 +236,8 @@ GraphDescriptor <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$devices <- devices
+  env$default_dtypes <- default_dtypes
+  env$backend <- backend
   # Calls that have to run before everything else, because they only depend on
   # the graph's inputs: the converts finalize_rdata_inputs() adds for an R
   # argument that one program used at more than one dtype.
@@ -356,7 +369,7 @@ format.GraphBox <- function(x, ...) {
 maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
     # An R value belongs to the graph it was written in, so one reaching
-    # another graph has to commit before it can be captured there.
+    # another graph has to materialize before it can be captured there.
     if (is_rdata_box(x) && !identical(x$desc, desc)) {
       materialize_rdata(x, peek_dtype(x))
     }
@@ -400,21 +413,19 @@ maybe_box_input <- function(x, desc, mode) {
     }
     # e.g.: prim_while(list(i = nv_scalar(1)), ...)
     if (is_anvl_array(x)) {
-      if (backend(x) != "plain") {
-        desc$devices <- c(desc$devices, device(x))
-      }
+      desc$devices <- c(desc$devices, placement_device(x))
       gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
       return(register_input(desc, gval))
     }
     # e.g.: \(x) prim_while(list(i = x), ...)
     if (is_graph_box(x)) {
       # A subgraph parameter needs a dtype, and the subgraph is traced before
-      # its operands meet anything, so an R value commits here.
-      x <- commit_rdata_box(x)
+      # its operands meet anything, so an R value materializes here.
+      x <- materialize_rdata_box(x)
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
-    # is used internally by prim_scatter() to trace `update_computation()` with avals
+    # is used internally by prim_scatter() to trace `update_fn()` with avals
     if (is_abstract_array(x)) {
       gval <- GraphValue(aval = x)
       return(register_input(desc, gval))
@@ -425,9 +436,7 @@ maybe_box_input <- function(x, desc, mode) {
   if (mode == "inline") {
     # gradient(f)(nv_scalar(1))
     if (is_anvl_array(x)) {
-      if (backend(x) != "plain") {
-        desc$devices <- c(desc$devices, device(x))
-      }
+      desc$devices <- c(desc$devices, placement_device(x))
       parent_desc <- maybe_previous_descriptor()
       parent_box <- get_box_or_register_const(parent_desc, x)
       return(register_input(desc, parent_box$gnode))
@@ -450,9 +459,7 @@ maybe_box_input <- function(x, desc, mode) {
 
   # mode == "toplevel"
   if (is_anvl_array(x)) {
-    if (backend(x) != "plain") {
-      desc$devices <- c(desc$devices, device(x))
-    }
+    desc$devices <- c(desc$devices, placement_device(x))
     gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
     return(register_input(desc, gval))
   }
@@ -464,7 +471,7 @@ maybe_box_input <- function(x, desc, mode) {
     return(register_rdata_input(desc, x))
   }
   if (is_graph_box(x)) {
-    x <- commit_rdata_box(x)
+    x <- materialize_rdata_box(x)
     return(register_input(desc, x$gnode))
   }
   if (is_abstract_array(x)) {
@@ -477,7 +484,7 @@ maybe_box_input <- function(x, desc, mode) {
 # Strip data from a (possibly concrete) array aval, returning a pure
 # AbstractArray with the same dtype and shape.
 abstract_aval <- function(aval) {
-  if (is_concrete_tensor(aval)) {
+  if (is_concrete_array(aval)) {
     AbstractArray(dtype = aval$dtype, shape = aval$shape)
   } else {
     aval
@@ -515,15 +522,13 @@ register_gval <- function(desc, x) {
 # Returns a Box
 get_box_or_register_const <- function(desc, x) {
   if (is_anvl_array(x)) {
-    if (backend(x) != "plain") {
-      desc$devices <- c(desc$devices, device(x))
-    }
-    gval <- desc$data_to_gval[[x]]
+    desc$devices <- c(desc$devices, placement_device(x))
+    gval <- desc$array_to_gval[[x]]
     if (!is.null(gval)) {
       return(desc$gval_to_box[[gval]])
     }
     gval <- GraphValue(aval = ConcreteArray(x))
-    desc$data_to_gval[[x]] <- gval
+    desc$array_to_gval[[x]] <- gval
     desc$constants <- c(desc$constants, list(gval))
     box <- GraphBox(gval, desc)
     desc$gval_to_box[[gval]] <- box
@@ -554,8 +559,8 @@ get_box_or_register_const <- function(desc, x) {
   # Now, we create the new box and register it, so if we see it again, we can return it immediately.
   new_box <- GraphBox(x, desc)
 
-  if (is_concrete_tensor(x$aval)) {
-    desc$data_to_gval[[x$aval$data]] <- x
+  if (is_concrete_array(x$aval)) {
+    desc$array_to_gval[[x$aval$data]] <- x
   }
   desc$gval_to_box[[x]] <- new_box
   desc$constants <- c(desc$constants, list(x))
@@ -576,7 +581,7 @@ subgraph_captures <- function(graphs) {
   captures <- list()
   for (graph in graphs) {
     for (gval in graph$constants) {
-      if (is_concrete_tensor(gval$aval) || !is.null(seen[[gval]])) {
+      if (is_concrete_array(gval$aval) || !is.null(seen[[gval]])) {
         next
       }
       seen[[gval]] <- TRUE
@@ -606,6 +611,22 @@ match_args_to_formals <- function(f, args) {
   do.call(g, args)
 }
 
+# Points `e`'s call at the primitive the marker names while the error is on its
+# way out, once: a sub-graph trace names it before restoring the marker to the
+# higher-order primitive that traced it, which would otherwise take the blame
+# at the top level. With no primitive marked, the call is left as raised.
+name_failing_primitive <- function(e) {
+  if (isTRUE(e$anvl_primitive_named)) {
+    return(e)
+  }
+  prim <- globals[["INFER_PRIMITIVE"]]
+  if (!is.null(prim)) {
+    e$call <- print_call_repr(prim)
+  }
+  e$anvl_primitive_named <- TRUE
+  e
+}
+
 #' @title Trace an R function into a Graph
 #' @description
 #' Executes `f` with abstract array arguments and records every primitive operation into
@@ -630,10 +651,11 @@ match_args_to_formals <- function(f, args) {
 #'     into the parent graph.
 #' @param args_flat (`list`)\cr
 #'   Flattened arguments. Must be accompanied by `in_tree`.
-#' @param in_tree (`Node`)\cr
+#' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
-#' @return An [`AnvlGraph`] containing the traced operations.
+#' @return ([`AnvlGraph`])
+#'   Contains the traced operations.
 #' @seealso [`stablehlo()`] to lower the graph, [`jit()`] for end-to-end
 #'   compilation.
 #' @export
@@ -691,26 +713,32 @@ trace_fn <- function(
     output <- tryCatch(
       do.call(f_flat, inputs_flat),
       error = function(e) {
-        prim <- globals[["INFER_PRIMITIVE"]]
+        e <- name_failing_primitive(e)
         globals[["INFER_PRIMITIVE"]] <- NULL
-        if (!is.null(prim)) {
-          e$call <- print_call_repr(prim)
-          # only stablehlo errors carry 0-based indices to convert
-          if (inherits(e, "ErrorStablehlo")) {
-            e <- stablehlo::to_one_based(e)
-          }
-          e <- to_user_terminology(e)
-        }
         rlang::cnd_signal(e)
       }
     )
   } else {
-    output <- do.call(f_flat, inputs_flat)
+    # A higher-order primitive traces its sub-graphs here and then goes on to
+    # check them, so the primitive it named on the way in has to survive the
+    # sub-trace: every primitive *inside* the sub-graph names itself and clears
+    # the marker again on its way out. An error out of the sub-graph restores it
+    # too, but is named first, so it keeps the primitive that raised it.
+    prim <- globals[["INFER_PRIMITIVE"]]
+    output <- tryCatch(
+      do.call(f_flat, inputs_flat),
+      error = function(e) {
+        e <- name_failing_primitive(e)
+        globals[["INFER_PRIMITIVE"]] <- prim
+        rlang::cnd_signal(e)
+      }
+    )
+    globals[["INFER_PRIMITIVE"]] <- prim
   }
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
-  outputs_flat <- lapply(output[[2L]], function(x) commit_rdata_box(maybe_box_arrayish(x)))
+  outputs_flat <- lapply(output[[2L]], function(x) materialize_rdata_box(maybe_box_arrayish(x)))
 
   desc$out_tree <- out_tree
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
@@ -720,7 +748,8 @@ trace_fn <- function(
   # the enclosing trace and stay open there, so the input is handed back up to
   # it and only the converts between dtypes stay here, where
   # transform_gradient() differentiates them. A sub-graph has none to settle:
-  # its R values commit when `maybe_box_input()` builds the parameter slots.
+  # its R values materialize when `maybe_box_input()` builds the parameter
+  # slots.
   # We might
   if (mode == "toplevel") {
     # Standard case:
@@ -765,7 +794,7 @@ maybe_restore_previous_desc <- function(desc = NULL) {
 #' Get the current graph being built (via [`local_descriptor`]).
 #' @param silent (`logical(1)`)\cr
 #'   Whether to return `NULL` if no graph is currently being built (as opposed to aborting).
-#' @return A [`GraphDescriptor`] object.
+#' @return ([`GraphDescriptor`])
 #' @export
 .current_descriptor <- function(silent = FALSE) {
   maybe_desc <- globals[["CURRENT_DESCRIPTOR"]]
@@ -780,6 +809,7 @@ currently_tracing <- function() {
   # read the global directly: this runs on every jitted call (hot path)
   !is.null(globals[["CURRENT_DESCRIPTOR"]])
 }
+
 
 maybe_previous_descriptor <- function() {
   stash <- globals[["DESCRIPTOR_STASH"]]
@@ -803,7 +833,7 @@ maybe_previous_descriptor <- function() {
 #'   [`GraphDescriptor`] if it was not returned yet.
 #' @param ... (`any`)\cr
 #'   Additional arguments to pass to the [`GraphDescriptor`] constructor.
-#' @return A [`GraphDescriptor`] object.
+#' @return ([`GraphDescriptor`])
 #' @export
 local_descriptor <- function(..., envir = parent.frame()) {
   if (identical(envir, globalenv())) {
@@ -811,7 +841,12 @@ local_descriptor <- function(..., envir = parent.frame()) {
     cli_abort("Don't run local_descriptor in the global environment")
   }
 
-  desc <- GraphDescriptor(...)
+  args <- list(...)
+  # assumes that backend does not change during a trace.
+  # If this happens, we get undefined behavior.
+  args$backend <- args$backend %||% active_backend()
+  args$default_dtypes <- args$default_dtypes %||% current_default_dtypes()
+  desc <- do.call(GraphDescriptor, args)
   if (!is.null(globals[["CURRENT_DESCRIPTOR"]])) {
     globals[["DESCRIPTOR_STASH"]] <- c(
       globals[["DESCRIPTOR_STASH"]],
@@ -855,10 +890,21 @@ is_graph_box <- function(x) {
 #' @param desc ([`GraphDescriptor`] | `NULL`)\cr
 #'   The graph descriptor to add the primitive call to.
 #'   Uses the [current descriptor][.current_descriptor] if `NULL`.
+#' @param device (`NULL` | `character(1)` | device object)\cr
+#'   The device the call places its result on, for a primitive that constructs
+#'   an array out of nothing (e.g. [`prim_fill()`], [`prim_iota()`]) and so has
+#'   no operand to carry one. It is declared to `desc`, where it counts like
+#'   the device of an array input to the same trace: it decides what that
+#'   program is compiled for, and disagreeing with another device in it is an
+#'   error. Every other primitive takes its device from its operands and leaves
+#'   this `NULL`.
 #' @return (`list` of [`GraphBox`])
 #' @export
-graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL) {
+graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL, device = NULL) {
   desc <- desc %||% .current_descriptor(silent = TRUE)
+  if (!is.null(device)) {
+    desc$devices <- c(desc$devices, nv_device(device))
+  }
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
@@ -869,14 +915,16 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    # Commit R values to their default dtype, which happens when no promotion rule
-    # materialized them (default behavior)
-    gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
+    # Materialize R values at their default dtype, which happens when no
+    # promotion rule materialized them (default behavior)
+    gnode <- materialize_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval
   }
   names(avals_in) <- names(args)
-  globals[["INFER_PRIMITIVE"]] <- primitive
+  # The primitive under way is named by its wrapper, on the way in; this clears
+  # it again once inference has passed, so that a later error somewhere else in
+  # the traced function is not attributed to the last primitive that ran.
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["INFER_PRIMITIVE"]] <- NULL
   gvals_out <- lapply(ats_out, GraphValue)
@@ -885,45 +933,11 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   lapply(gvals_out, register_gval, desc = desc)
 }
 
+# A primitive is named for the `prim_*()` that exports it, so the call an error
+# reports is that name with the prefix put back on.
 print_call_repr <- function(prim) {
   rlang::exec(call, paste0("prim_", prim$name))
 }
-
-# Restate a type-inference error in anvl's own vocabulary: stablehlo speaks of
-# "tensors" and names its primary argument `operand`, anvl speaks of arrays and
-# names it `x`. Both message paths have to be covered: `ErrorStablehlo`
-# subclasses build their message lazily in `conditionMessage()` methods, while
-# `cli_abort()` conditions store an already formatted message in the `message`
-# and `body` fields, which `rlang::cnd_message()` reads without dispatching on
-# `conditionMessage()`.
-to_user_terminology <- function(x) {
-  if (!inherits(x, "condition")) {
-    return(x)
-  }
-  if (is.character(x$message)) {
-    x$message <- user_terminology(x$message)
-  }
-  if (is.character(x$body)) {
-    x$body <- user_terminology(x$body)
-  }
-  class(x) <- c("AnvlErrorTerminology", class(x))
-  x
-}
-
-#' @export
-conditionMessage.AnvlErrorTerminology <- function(c, ...) {
-  user_terminology(NextMethod())
-}
-
-# The substitutions are anchored on word boundaries. `_` is a word character,
-# so identifiers such as `TensorType`, `hlo_tensor()` or `operand_batching_dims`
-# contain no boundary around the word and are left alone.
-user_terminology <- function(x) {
-  x <- gsub("\\btensor(s?)\\b", "array\\1", x)
-  x <- gsub("\\bTensor(s?)\\b", "Array\\1", x)
-  gsub("\\boperand\\b", "x", x)
-}
-
 
 inline_graph_into_desc <- function(desc, graph) {
   # By contract, `graph` was produced by `trace_fn(..., mode = "inline")` so

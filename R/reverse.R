@@ -9,9 +9,11 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       }
 
       if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
+        # `repr()` on a data type gives stablehlo's spelling (`i1` for a
+        # boolean); the pages speak anvl's, which `as.character()` gives.
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          x = "Got {repr(peek_dtype(args_flat[[i]]))}"
+          x = "Got {.val {as.character(peek_dtype(args_flat[[i]]))}}."
         ))
       }
 
@@ -19,12 +21,12 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       # respect to: the gradient comes back at whatever data type the forward
       # pass happened to settle the value at, so the answer would depend on how
       # the rest of the body used it rather than on what the caller passed.
-      # Committing it here would only hide that behind the default.
+      # Materializing it here would only hide that behind the default.
       if (has_no_dtype(args_flat[[i]])) {
         cli_abort(c(
           "Cannot compute gradient with respect to a value that has no data type.",
           x = "It is an R {peek_r_type(args_flat[[i]])}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-          i = "Give it one first, e.g. {.code nv_array(x, \"f32\")} or {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
+          i = "Give it one first, e.g. {.code nv_array(x, dtype = \"f32\")} or an explicit {.code nv_array(x, dtype = \"f64\")}, so the gradient's data type is the caller's choice." # nolint
         ))
       }
     }
@@ -68,7 +70,7 @@ prepare_gradient_args <- function(args, wrt) {
 #'   Backward hook for default case.
 #' @param forward (`function`)\cr
 #'   Alternative-forward hook that returns both primals and backward closure.
-#' @return An `anvl_rule_reverse` object.
+#' @return (`anvl_rule_reverse`)
 #' @seealso [`transform_gradient()`]
 #' @export
 rule_reverse <- function(backward = NULL, forward = NULL) {
@@ -106,7 +108,8 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #'   The graph to transform. Must produce a single scalar float output.
 #' @param wrt (`character`)\cr
 #'   Names of the graph inputs to differentiate with respect to.
-#' @return An [`AnvlGraph`] whose outputs are the requested gradients.
+#' @return ([`AnvlGraph`])\cr
+#'   Its outputs are the requested gradients.
 #' @seealso [`gradient()`], [`value_and_gradient()`], [`rule_reverse()`]
 #' @export
 #' @examples
@@ -169,10 +172,10 @@ validate_gradient_output <- function(out_gvals) {
     cli_abort("gradient can only be computed for functions that return a scalar")
   }
   dt <- out$aval$dtype
-  if (!(dt == as_dtype("f32") || dt == as_dtype("f64"))) {
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
       x = "gradient can only be computed for functions that return float scalar",
-      i = "Got dtype={.field {repr(dt)}}"
+      i = "Got dtype={.field {as.character(dt)}}"
     ))
   }
   out
@@ -484,7 +487,7 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     output_grads <- lapply(call$outputs, \(output) {
       # Output grad may be NULL if there is dead code.
       grad_env[[output]] %||%
-        prim_fill(0L, dtype = dtype(output), shape = shape(output))
+        zeros(dtype(output), shape(output))
     })
 
     bwd <- backwards[[i]]
@@ -546,7 +549,7 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #'   must not appear in `wrt`.
 #'   If `NULL` (the default), the gradient is computed with respect to all
 #'   arguments (which must all be arrayish in that case).
-#' @return `function`
+#' @return (`function`)
 #' @seealso [`value_and_gradient()`] to get both the output and gradients,
 #'   [`transform_gradient()`] for the low-level graph transformation.
 #' @export
@@ -555,11 +558,11 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #' g <- jit(gradient(f))
 #' g(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #'
-#' # Differentiate with respect to a single argument
+#' # differentiate with respect to a single argument
 #' g_x <- jit(gradient(f, wrt = "x"))
 #' g_x(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #'
-#' # Static (non-array) arguments are passed through but cannot be in wrt
+#' # static (non-array) arguments are passed through but cannot be in wrt
 #' f2 <- function(x, power) sum(x^power)
 #' g2 <- jit(gradient(f2, wrt = "x"), static = "power")
 #' g2(nv_array(c(1, 2, 3), dtype = "f32"), power = 2L)
@@ -602,7 +605,8 @@ gradient <- function(f, wrt = NULL) {
 #' original return value of `f`) and `grad` (the gradients, structured like the inputs or
 #' the `wrt` subset).
 #' @inheritParams gradient
-#' @return A function with the same formals as `f` that returns
+#' @return (`function`)\cr
+#'   Has the same formals as `f` and returns
 #'   `list(value = ..., grad = ...)`.
 #' @seealso [`gradient()`]
 #' @export

@@ -13,9 +13,11 @@ Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 \item{code}{An expression to evaluate with the given backend.}
 }
 \value{
+(\code{any})\cr
 The result of evaluating \code{code}.
 }
 \description{
-Sets the \code{anvl.default_backend} option for the duration of the
-expression. This affects \code{\link[=jit]{jit()}} and data construction (e.g. via \code{\link{nv_array}}).
+Sets the \code{anvl.backend} option for the duration of the expression. Every
+array built and every operation run in \code{code} uses the backend, and R values
+materialize at its default data types (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }

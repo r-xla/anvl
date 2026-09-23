@@ -13,7 +13,7 @@ An array-like object.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-\code{integer()}
+(\code{integer()})
 }
 \description{
 Returns the shape of an array as an \code{integer()} vector.

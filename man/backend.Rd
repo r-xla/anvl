@@ -12,7 +12,8 @@ backend(x, ...)
 \item{...}{Additional arguments (unused)}
 }
 \value{
-\code{character(1)} - the backend name
+(\code{character(1)})\cr
+The backend name.
 }
 \description{
 Get Backend of an Array

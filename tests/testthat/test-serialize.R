@@ -3,6 +3,10 @@
 test_that("nv_serialize and nv_unserialize work for single array", {
   x <- nv_matrix(rnorm(12), nrow = 3)
   lst <- list(x = x)
+  # A bare array, not a list: `assert_list(types = )` subsets its input and an
+  # `AnvlArray` has a `[` method, so the assertion itself went into
+  # `nv_subset()` and reported a subsetting error.
+  expect_error(nv_serialize(x), "must be a named list of arrays")
   raw_data <- nv_serialize(lst)
   expect_type(raw_data, "raw")
   reloaded <- nv_unserialize(raw_data)
@@ -12,7 +16,15 @@ test_that("nv_serialize and nv_unserialize work for single array", {
 test_that("nv_save and nv_read works for a single array", {
   x <- nv_matrix(rnorm(12), nrow = 3)
   lst <- list(x = x)
+  expect_error(nv_save(x, tempfile()), "must be a named list of arrays")
   tmp <- tempfile(fileext = ".safetensors")
+  # Writing to a connection is done for the side effect, so it returns
+  # invisibly, as `nv_save()` does.
+  con <- file(tempfile(), "wb")
+  res <- withVisible(nv_serialize(lst, con))
+  close(con)
+  expect_null(res$value)
+  expect_false(res$visible)
   nv_save(lst, tmp)
   reloaded <- nv_read(tmp)
   expect_equal(lst, reloaded)
@@ -20,36 +32,38 @@ test_that("nv_save and nv_read works for a single array", {
 
 test_that("nv_serialize and nv_unserialize work for quickr backend", {
   skip_if_no_quickr()
-  x <- nv_matrix(1:6, nrow = 2, dtype = "i32", backend = "quickr")
+  local_backend("quickr")
+  x <- nv_matrix(1:6, nrow = 2, dtype = "i32")
   lst <- list(x = x)
   raw_data <- nv_serialize(lst)
   expect_type(raw_data, "raw")
-  reloaded <- nv_unserialize(raw_data, backend = "quickr")
+  reloaded <- nv_unserialize(raw_data)
   expect_equal(backend(reloaded$x), "quickr")
   expect_equal(as_array(reloaded$x), as_array(x))
-  expect_equal(dtype(reloaded$x), dtype(x))
-  expect_equal(shape(reloaded$x), shape(x))
+  expect_dtype(reloaded$x, dtype(x))
+  expect_shape(reloaded$x, shape(x))
 })
 
 test_that("nv_save and nv_read work for quickr backend", {
   skip_if_no_quickr()
-  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64", backend = "quickr")
+  local_backend("quickr")
+  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
   lst <- list(x = x)
   tmp <- tempfile(fileext = ".safetensors")
   nv_save(lst, tmp)
-  reloaded <- nv_read(tmp, backend = "quickr")
+  reloaded <- nv_read(tmp)
   expect_equal(backend(reloaded$x), "quickr")
   expect_equal(as_array(reloaded$x), as_array(x))
-  expect_equal(dtype(reloaded$x), dtype(x))
+  expect_dtype(reloaded$x, dtype(x))
 })
 
 test_that("serialization round-trips scalars and typed arrays", {
-  scalar_tensor <- nv_scalar(1.0)
-  typed_tensor <- nv_array(1.0, dtype = "f32")
+  scalar_arr <- nv_scalar(1.0)
+  typed_arr <- nv_array(1.0, dtype = "f32")
 
   lst <- list(
-    scalar = scalar_tensor,
-    typed = typed_tensor
+    scalar = scalar_arr,
+    typed = typed_arr
   )
 
   # Test with nv_serialize/nv_unserialize
@@ -64,4 +78,10 @@ test_that("serialization round-trips scalars and typed arrays", {
   reloaded2 <- nv_read(tmp)
   expect_equal(lst$scalar, reloaded2$scalar)
   expect_equal(lst$typed, reloaded2$typed)
+})
+
+test_that("nv_unserialize places the arrays on the default device", {
+  local_default_device("cpu:1")
+  lst <- list(x = nv_array(1:3))
+  expect_equal(device(nv_unserialize(nv_serialize(lst))$x), nv_device("cpu:1"))
 })

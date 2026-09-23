@@ -10,7 +10,7 @@ unwrap_if_array(x)
 \item{x}{An AnvlArray or any other value}
 }
 \value{
-The underlying PJRT buffer if x is an AnvlArray, otherwise x unchanged
+(\code{PJRTBuffer} | \code{any})
 }
 \description{
 Get the underlying PJRT buffer from an AnvlArray or pass through other values

@@ -15,29 +15,55 @@ Object to check.}
 Whether to accept \code{numeric(1)} and \code{logical(1)} and R arrays of type \code{numeric} and \code{logical}.}
 }
 \value{
-\code{logical(1)}
+(\code{logical(1)})\cr
+Whether \code{x} is arrayish.
 }
 \description{
-A \code{arrayish} value is any object that can be input to a primitive such as \code{\link{prim_add}}.
+A \code{arrayish} value is anything that represents an \code{\link{AnvlArray}}
+or can be converted to one.
 
-During runtime of a JIT-compiled function, these are \code{\link{AnvlArray}} objects.
-
-The following types are arrayish (during tracing):
+Specifically, these values are \code{arrayish}:
 \itemize{
 \item \code{\link{AnvlArray}}: a concrete array holding data on a device.
-\item \code{\link{GraphBox}}: a boxed abstract array representing a value in a graph.
-\item Length-1 vectors: \code{numeric(1)} and \code{logical(1)}
-\item R arrays of types: \code{numeric} and \code{logical}.
+\item R objects:
+\itemize{
+\item \code{numeric(1)} and \code{logical(1)} which represent scalars.
+\item \code{numeric} and \code{logical} R arrays.
+}
 }
 
 Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayish.
+
+The group words the parameter descriptions use are listed below;
+\code{\link{dtypes}} gives the categories they are built from, and
+\code{\link[=default_dtypes]{default_dtypes()}} the default an R value materializes at.
 }
+\details{
+During \code{jit()}, \code{\link{GraphBox}} is also arrayish, but it is simply the
+trace-time representation of an \code{AnvlArray}.
+}
+\section{Data Type Vocabulary}{
+
+Where a page says which data types an argument takes, it names a group of
+them with a single word:
+\itemize{
+\item \emph{any data type} -- all of them: \code{bool}, the signed and unsigned integers,
+and the floats.
+\item \emph{numeric} -- signed integer, unsigned integer and float.
+\item \emph{integer} -- signed and unsigned integer.
+\item \emph{integerish} -- boolean and integer, signed or unsigned.
+\item \emph{signed numeric} -- signed integer and float.
+\item \emph{float} -- the whole float category: \code{f32} and \code{f64}.
+\item \emph{boolean} -- \code{bool}, the only member of its category.
+}
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# AnvlArrays are arrayish
+# AnvlArray objects are arrayish
 is_arrayish(nv_array(1:4))
 
-# Scalar R literals are arrayish by default
+# scalar R literals are arrayish by default
 is_arrayish(1.5)
 # R arrays are arrayish by default
 is_arrayish(array(1.5))
@@ -46,7 +72,7 @@ is_arrayish(array(1.5))
 is_arrayish(array(1:4), convert_ok = TRUE)
 is_arrayish(array(1:4), convert_ok = FALSE)
 
-# Length 1 vectors
+# length 1 vectors
 is_arrayish(1.5, convert_ok = FALSE)
 is_arrayish(1.5, convert_ok = TRUE)
 \dontshow{\}) # examplesIf}

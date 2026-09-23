@@ -1,9 +1,41 @@
+# The platform of the device the suite runs on, from `ANVL_DEFAULT_DEVICE`.
+test_platform <- function() {
+  sub(":.*$", "", Sys.getenv("ANVL_DEFAULT_DEVICE", "cpu"))
+}
+
 is_cuda <- function() {
-  Sys.getenv("PJRT_PLATFORM") == "cuda"
+  test_platform() == "cuda"
+}
+
+# Set the fallback anvl read from `ANVL_DEFAULT_<name>` when it was loaded
+# (`"DTYPES"` or `"DEVICE"`) for the calling scope.
+local_env_default <- function(name, value, envir = parent.frame()) {
+  key <- paste0("ENV_DEFAULT_", name)
+  old <- globals[[key]]
+  globals[[key]] <- value
+  withr::defer(assign(key, old, envir = globals), envir = envir)
+}
+
+# Clear the `anvl.default_dtypes` / `ANVL_DEFAULT_DTYPES` override for the
+# calling scope, so that the defaults are whatever the active backend registers. For the few tests that
+# assert the *registered* pair and would otherwise see the suite-wide override
+# `ANVL_DEFAULT_DTYPES` sets (see `setup.R`).
+local_registered_default_dtypes <- function(envir = parent.frame()) {
+  withr::local_options(list(anvl.default_dtypes = NULL), .local_envir = envir)
+  local_env_default("DTYPES", NULL, envir)
 }
 
 is_cpu <- function() {
-  Sys.getenv("PJRT_PLATFORM", "cpu") == "cpu"
+  test_platform() == "cpu"
+}
+
+# Clear the `anvl.default_device` / `ANVL_DEFAULT_DEVICE` override for the
+# calling scope, so that the default device is the first CPU device. For the few tests that assert that and
+# would otherwise see the suite-wide override `ANVL_DEFAULT_DEVICE`
+# sets (see `setup.R`).
+local_unset_default_device <- function(envir = parent.frame()) {
+  withr::local_options(list(anvl.default_device = NULL), .local_envir = envir)
+  local_env_default("DEVICE", NULL, envir)
 }
 
 if (nzchar(system.file(package = "torch"))) {
@@ -57,7 +89,7 @@ verify_zero_grad_unary <- function(prim_fn, x, f_wrapper = NULL) {
       x_inner <- nv_convert(x, x_dtype)
       out <- prim_fn(x_inner)
       out <- nv_convert(out, "f32")
-      nv_reduce_sum(out, axes = 1L, drop = TRUE)
+      nv_sum(out, axes = 1L, drop = TRUE)
     }
   } else {
     f <- f_wrapper
@@ -77,7 +109,7 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
     y_inner <- nv_convert(y, y_dtype)
     out <- prim_fn(x_inner, y_inner)
     out <- nv_convert(out, "f32")
-    nv_reduce_sum(out, axes = 1L, drop = TRUE)
+    nv_sum(out, axes = 1L, drop = TRUE)
   }
   grads <- jit(gradient(f))(x_f32, y_f32)
   expected1 <- nv_array(0, shape = shape(x), dtype = "f32")

@@ -27,8 +27,7 @@ The general guidelines are:
 1. The function should work with arbitrary devices.
 1. The function should (unless there are specific reasons) work in eager and jit mode.
 1. Use static arguments when you require data-dependent input checks.
-1. Tag the function with `#' @jit` so it is jit-wrapped at package build time
-   (see *Jit-wrapping API Functions* below).
+1. Wrap the function in `jit()` (see *Jit-wrapping API Functions* below).
 
 ## Pure Functions
 
@@ -54,7 +53,7 @@ Below, we add a function that performs the addition after coercing all inputs to
 
 ```{r}
 nv_add_f32 <- function(x, y) {
-  args <- as_anvl_arrays(x, y, .promote = promote_dtype("f32", coerce = TRUE))
+  args <- as_anvl_arrays(x, y, .promote = promotion_dtype("f32", coerce = TRUE))
   do.call(prim_add, args)
 }
 nv_add_f32(1, nv_scalar(1, "f64"))
@@ -108,54 +107,48 @@ Don't convert it to an `AnvlArray` before checking its value.
 Later in the function, it will actually be converted, but from XLA's point of view, it will just be a constant within the compiled program and not a dynamic input.
 
 ```{r}
-nv_rbernoulli <- function(initial_state, p) {
-  initial_state <- as_anvl_array(initial_state)
+nv_rbernoulli <- function(state, p) {
+  state <- as_anvl_array(state)
   stopifnot((p >= 0) && (p <= 1))
 
   # returns: (state, sample)
-  out <- nv_runif(1L, initial_state)
+  out <- nv_runif(1L, state)
   out_state <- out[[1L]]
   x <- nv_convert(out[[2L]] <= p, "i32")
   list(out_state, x)
 }
-nv_rbernoulli(nv_rng_state(1), 0.2)[[2L]]
+nv_rbernoulli(nv_rng_state(1L), 0.2)[[2L]]
 ```
 
 ## Jit-wrapping API Functions
 
-Most user-facing API functions in anvl are wrapped in `jit(f, backend = "auto", ...)` so that calling them traces and compiles a single program instead of executing each operation eagerly.
-The wrapping is driven by the `@jit` roclet (see `?jit_roclet`).
-
-In `R/api*.R`, tag any function that performs more than one primitive operation with `#' @jit`:
+Most user-facing API functions in anvl are wrapped in `jit(f, ...)` so that calling them traces and compiles a single program instead of executing each operation eagerly.
+In `R/api*.R`, wrap any function that performs more than one primitive operation in `jit()` at the definition itself:
 
 ```r
 #' @export
-#' @jit
-nv_log2 <- function(x) {
+nv_log2 <- jit(function(x) {
   x <- as_anvl_array(x)
   nv_log(x) / log(2)
-}
+})
 ```
 
 If the function has static arguments (anything that is not an arrayish input -- axes, shape, dtype, control flags, functions used as templates, ...), list them with `static = c(...)` using either positional indices or argument names:
 
 ```r
 #' @export
-#' @jit static = c(2L, 3L)
-nv_mean <- function(x, axes = NULL, drop = TRUE) {
+nv_mean <- jit(function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   ...
-}
+}, static = 2:4)
 
 #' @export
-#' @jit static = c("axis")
-nv_concatenate <- function(..., axis = NULL) {
+nv_concatenate <- jit(function(..., axis = NULL) {
   ...
-}
+}, static = "axis")
 ```
 
+Put `static` after the function, so that the signature reads on its own line.
 Use names rather than positions whenever an argument lives after `...`, since `...` has no fixed position.
 
-**When to skip `#' @jit`.** Don't tag a function whose body is essentially a single primitive call -- direct aliases (`nv_log <- prim_log`), `make_do_binary(prim_X)` factories, or thin wrappers that just validate and forward to one primitive. The underlying primitive is already jit-wrapped, so adding another `jit()` layer adds tracing overhead without fusing anything new.
+**When to skip `jit()`.** Don't wrap a function whose body is essentially a single primitive call -- direct aliases (`nv_log <- prim_log`) or thin wrappers that just validate and forward to one primitive. The underlying primitive is already jit-wrapped, so adding another `jit()` layer adds tracing overhead without fusing anything new.
 Also skip pure I/O (`nv_save`, `nv_serialize`), backend constructors (`nv_array`, `nv_scalar`, `nv_matrix`), and device/state objects (`nv_device`, `nv_rng_state`).
-
-The roclet writes the list of tagged functions to `R/jit-registry.R` on every `devtools::document()` run, and `R/zzz.R` applies that registry at package source time so the wrapped functions are byte-compiled with the rest of the package.
