@@ -20,7 +20,7 @@ nv_extract_diag(x)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the input's data type, and one axis of length `min(nrow, ncol)`
+Has the input's data type, and one axis of size `min(nrow, ncol)`
 holding the diagonal elements.
 
 ## See also

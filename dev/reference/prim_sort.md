@@ -14,7 +14,7 @@ preserved.
 ## Usage
 
 ``` r
-prim_sort(xs, axis, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis, decreasing = FALSE, stable = FALSE)
 ```
 
 ## Arguments
@@ -33,14 +33,14 @@ prim_sort(xs, axis, descending = FALSE, is_stable = FALSE)
   Axis along which to sort. Negative values count from the end, i.e.
   `-1` refers to the last axis.
 
-- descending:
+- decreasing:
 
   (`logical(1)`)  
-  If `TRUE`, sort the key in descending order (largest first). Default
+  If `TRUE`, sort the key in decreasing order (largest first). Default
   `FALSE`. Additional arrays are reordered by the same permutation
   regardless.
 
-- is_stable:
+- stable:
 
   (`logical(1)`)  
   If `TRUE`, the sort is stable: the relative order of equal *keys* is
@@ -75,7 +75,7 @@ use `SIGNED` / `UNSIGNED` as appropriate.
 ## See also
 
 [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md),
-[`nv_argsort()`](https://r-xla.github.io/anvl/dev/reference/nv_argsort.md),
+[`nv_order()`](https://r-xla.github.io/anvl/dev/reference/nv_order.md),
 [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md),
 [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
 
@@ -94,7 +94,7 @@ prim_sort(list(x), axis = 1L)[[1L]]
 
 # sort indices by the values (argsort): pair x with iota and read off
 # the second result
-idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
+idx <- nv_iota(axis = 1L, shape = 5L, dtype = "i64")
 out <- prim_sort(list(x, idx), axis = 1L)
 out[[1L]] # sorted x
 #> AnvlArray

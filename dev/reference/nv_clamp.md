@@ -1,16 +1,23 @@
 # Clamp
 
-Element-wise clamp: `min(max(min_val, x), max_val)`.
+Element-wise clamp: `min(max(min, x), max)`.
 
 ## Usage
 
 ``` r
-nv_clamp(min_val, x, max_val)
+nv_clamp(x, min, max)
 ```
 
 ## Arguments
 
-- min_val, max_val:
+- x:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+
+- min, max:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Lower and upper bound, each scalar or the same shape as `x`. They are
@@ -19,13 +26,6 @@ nv_clamp(min_val, x, max_val)
   `0` only a float one), and a value that already has a data type is
   converted unless that would narrow it – an `f64` bound for an `f32`
   `x` is an error rather than a silent narrowing.
-
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  One input. Can be any data type. An R value materializes at its
-  [default data
-  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 
@@ -42,7 +42,7 @@ for the underlying primitive.
 ``` r
 # the bounds are brought to `x`'s data type
 x <- nv_array(c(-1, 0.5, 2))
-nv_clamp(nv_scalar(0), x, nv_scalar(1))
+nv_clamp(x, nv_scalar(0), nv_scalar(1))
 #> AnvlArray
 #>  0.0000
 #>  0.5000
@@ -50,7 +50,7 @@ nv_clamp(nv_scalar(0), x, nv_scalar(1))
 #> [ CPUf32{3} ] 
 
 # an R integer serves a float `x` too, since a float can hold it
-nv_clamp(0L, x, 1L)
+nv_clamp(x, 0L, 1L)
 #> AnvlArray
 #>  0.0000
 #>  0.5000

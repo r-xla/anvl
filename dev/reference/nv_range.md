@@ -40,9 +40,8 @@ range(..., na.rm = FALSE)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrays to reduce, plus named arguments for
-  [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md)
-  and
-  [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md)
+  [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md) and
+  [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md)
   (e.g. `axes`), which are only accepted when there is a single array to
   reduce.
 
@@ -50,9 +49,8 @@ range(..., na.rm = FALSE)
 
   (`logical(1)`)  
   Forwarded to the `nan_rm` argument of
-  [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md)
-  and
-  [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md).
+  [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md) and
+  [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md).
 
 ## Value
 
@@ -71,8 +69,8 @@ reduces a single axis – but only when `x` is the only data argument.
 
 ## See also
 
-[`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md),
-[`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md)
+[`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md),
+[`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md)
 
 ## Examples
 

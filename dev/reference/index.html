@@ -415,7 +415,7 @@
 
         <dt>
 
-          <code><a href="nv_transpose.html">nv_transpose()</a></code>
+          <code><a href="nv_aperm.html">nv_aperm()</a></code> <code><a href="nv_aperm.html">nv_transpose()</a></code> <code><a href="nv_aperm.html">aperm(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Transpose</dd>
@@ -457,14 +457,14 @@
 
         <dt>
 
-          <code><a href="nv_reverse.html">nv_reverse()</a></code>
+          <code><a href="nv_rev.html">nv_rev()</a></code>
 
         </dt>
         <dd>Reverse</dd>
 
         <dt>
 
-          <code><a href="nv_squeeze.html">nv_squeeze()</a></code>
+          <code><a href="nv_squeeze.html">nv_squeeze()</a></code> <code><a href="nv_squeeze.html">nv_drop()</a></code>
 
         </dt>
         <dd>Squeeze</dd>
@@ -841,7 +841,7 @@
 
         <dt>
 
-          <code><a href="nv_logistic.html">nv_logistic()</a></code>
+          <code><a href="nv_plogis.html">nv_plogis()</a></code>
 
         </dt>
         <dd>Logistic (Sigmoid)</dd>
@@ -890,10 +890,10 @@
 
         <dt>
 
-          <code><a href="nv_polygamma.html">nv_polygamma()</a></code>
+          <code><a href="nv_psigamma.html">nv_psigamma()</a></code>
 
         </dt>
-        <dd>Polygamma</dd>
+        <dd>Psigamma</dd>
 
         <dt>
 
@@ -927,28 +927,28 @@
 
       <dl><dt>
 
-          <code><a href="nv_reduce_sum.html">nv_reduce_sum()</a></code>
+          <code><a href="nv_sum.html">nv_sum()</a></code>
 
         </dt>
         <dd>Sum Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_prod.html">nv_reduce_prod()</a></code>
+          <code><a href="nv_prod.html">nv_prod()</a></code>
 
         </dt>
         <dd>Product Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_max.html">nv_reduce_max()</a></code>
+          <code><a href="nv_max.html">nv_max()</a></code>
 
         </dt>
         <dd>Max Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_min.html">nv_reduce_min()</a></code>
+          <code><a href="nv_min.html">nv_min()</a></code>
 
         </dt>
         <dd>Min Reduction</dd>
@@ -962,14 +962,14 @@
 
         <dt>
 
-          <code><a href="nv_reduce_any.html">nv_reduce_any()</a></code>
+          <code><a href="nv_any.html">nv_any()</a></code>
 
         </dt>
         <dd>Any Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_all.html">nv_reduce_all()</a></code>
+          <code><a href="nv_all.html">nv_all()</a></code>
 
         </dt>
         <dd>All Reduction</dd>
@@ -999,7 +999,7 @@
 
         <dt>
 
-          <code><a href="nv_quantile.html">nv_quantile()</a></code>
+          <code><a href="nv_quantile.html">nv_quantile()</a></code> <code><a href="nv_quantile.html">quantile(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Quantile</dd>
@@ -1310,17 +1310,17 @@
 
       <dl><dt>
 
-          <code><a href="nv_min.html">nv_min()</a></code>
+          <code><a href="nv_pmin.html">nv_pmin()</a></code>
 
         </dt>
-        <dd>Minimum</dd>
+        <dd>Parallel Minimum</dd>
 
         <dt>
 
-          <code><a href="nv_max.html">nv_max()</a></code>
+          <code><a href="nv_pmax.html">nv_pmax()</a></code>
 
         </dt>
-        <dd>Maximum</dd>
+        <dd>Parallel Maximum</dd>
 
         <dt>
 
@@ -1347,10 +1347,10 @@
 
         <dt>
 
-          <code><a href="nv_argsort.html">nv_argsort()</a></code>
+          <code><a href="nv_order.html">nv_order()</a></code>
 
         </dt>
-        <dd>Argsort</dd>
+        <dd>Sort Order</dd>
 
         <dt>
 
@@ -1361,14 +1361,14 @@
 
         <dt>
 
-          <code><a href="nv_argmax.html">nv_argmax()</a></code>
+          <code><a href="nv_which_max.html">nv_which_max()</a></code>
 
         </dt>
         <dd>Index of the Maximum</dd>
 
         <dt>
 
-          <code><a href="nv_argmin.html">nv_argmin()</a></code>
+          <code><a href="nv_which_min.html">nv_which_min()</a></code>
 
         </dt>
         <dd>Index of the Minimum</dd>
@@ -2017,6 +2017,13 @@
 
         <dt>
 
+          <code><a href="prim_all.html">prim_all()</a></code>
+
+        </dt>
+        <dd>Primitive All Reduction</dd>
+
+        <dt>
+
           <code><a href="prim_and.html">prim_and()</a></code>
 
         </dt>
@@ -2024,17 +2031,10 @@
 
         <dt>
 
-          <code><a href="prim_argmax.html">prim_argmax()</a></code>
+          <code><a href="prim_any.html">prim_any()</a></code>
 
         </dt>
-        <dd>Primitive Index of the Maximum</dd>
-
-        <dt>
-
-          <code><a href="prim_argmin.html">prim_argmin()</a></code>
-
-        </dt>
-        <dd>Primitive Index of the Minimum</dd>
+        <dd>Primitive Any Reduction</dd>
 
         <dt>
 
@@ -2094,7 +2094,7 @@
 
         <dt>
 
-          <code><a href="prim_ceil.html">prim_ceil()</a></code>
+          <code><a href="prim_ceiling.html">prim_ceiling()</a></code>
 
         </dt>
         <dd>Primitive Ceiling</dd>
@@ -2353,13 +2353,6 @@
 
         <dt>
 
-          <code><a href="prim_logistic.html">prim_logistic()</a></code>
-
-        </dt>
-        <dd>Primitive Logistic (Sigmoid)</dd>
-
-        <dt>
-
           <code><a href="prim_lt.html">prim_lt()</a></code>
 
         </dt>
@@ -2377,14 +2370,14 @@
           <code><a href="prim_max.html">prim_max()</a></code>
 
         </dt>
-        <dd>Primitive Maximum</dd>
+        <dd>Primitive Max Reduction</dd>
 
         <dt>
 
           <code><a href="prim_min.html">prim_min()</a></code>
 
         </dt>
-        <dd>Primitive Minimum</dd>
+        <dd>Primitive Min Reduction</dd>
 
         <dt>
 
@@ -2430,10 +2423,24 @@
 
         <dt>
 
-          <code><a href="prim_polygamma.html">prim_polygamma()</a></code>
+          <code><a href="prim_plogis.html">prim_plogis()</a></code>
 
         </dt>
-        <dd>Primitive Polygamma</dd>
+        <dd>Primitive Logistic (Sigmoid)</dd>
+
+        <dt>
+
+          <code><a href="prim_pmax.html">prim_pmax()</a></code>
+
+        </dt>
+        <dd>Primitive Parallel Maximum</dd>
+
+        <dt>
+
+          <code><a href="prim_pmin.html">prim_pmin()</a></code>
+
+        </dt>
+        <dd>Primitive Parallel Minimum</dd>
 
         <dt>
 
@@ -2447,7 +2454,7 @@
           <code><a href="prim_pow.html">prim_pow()</a></code>
 
         </dt>
-        <dd>Primitive Power</dd>
+        <dd>Primitive Power Raises <code>x</code> to the power of <code>y</code> element-wise.</dd>
 
         <dt>
 
@@ -2455,6 +2462,20 @@
 
         </dt>
         <dd>Primitive Print</dd>
+
+        <dt>
+
+          <code><a href="prim_prod.html">prim_prod()</a></code>
+
+        </dt>
+        <dd>Primitive Product Reduction</dd>
+
+        <dt>
+
+          <code><a href="prim_psigamma.html">prim_psigamma()</a></code>
+
+        </dt>
+        <dd>Primitive Psigamma</dd>
 
         <dt>
 
@@ -2472,48 +2493,6 @@
 
         <dt>
 
-          <code><a href="prim_reduce_all.html">prim_reduce_all()</a></code>
-
-        </dt>
-        <dd>Primitive All Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_any.html">prim_reduce_any()</a></code>
-
-        </dt>
-        <dd>Primitive Any Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_max.html">prim_reduce_max()</a></code>
-
-        </dt>
-        <dd>Primitive Max Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_min.html">prim_reduce_min()</a></code>
-
-        </dt>
-        <dd>Primitive Min Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_prod.html">prim_reduce_prod()</a></code>
-
-        </dt>
-        <dd>Primitive Product Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_sum.html">prim_reduce_sum()</a></code>
-
-        </dt>
-        <dd>Primitive Sum Reduction</dd>
-
-        <dt>
-
           <code><a href="prim_remainder.html">prim_remainder()</a></code>
 
         </dt>
@@ -2528,7 +2507,7 @@
 
         <dt>
 
-          <code><a href="prim_reverse.html">prim_reverse()</a></code>
+          <code><a href="prim_rev.html">prim_rev()</a></code>
 
         </dt>
         <dd>Primitive Reverse</dd>
@@ -2640,6 +2619,13 @@
 
         <dt>
 
+          <code><a href="prim_sum.html">prim_sum()</a></code>
+
+        </dt>
+        <dd>Primitive Sum Reduction</dd>
+
+        <dt>
+
           <code><a href="prim_svd.html">prim_svd()</a></code>
 
         </dt>
@@ -2679,6 +2665,20 @@
 
         </dt>
         <dd>Primitive Triangular Solve</dd>
+
+        <dt>
+
+          <code><a href="prim_which_max.html">prim_which_max()</a></code>
+
+        </dt>
+        <dd>Primitive Index of the Maximum</dd>
+
+        <dt>
+
+          <code><a href="prim_which_min.html">prim_which_min()</a></code>
+
+        </dt>
+        <dd>Primitive Index of the Minimum</dd>
 
         <dt>
 

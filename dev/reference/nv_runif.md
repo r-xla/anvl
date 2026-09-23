@@ -5,7 +5,7 @@ Samples from a uniform distribution in the open interval `(min, max)`.
 ## Usage
 
 ``` r
-nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
+nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
 ```
 
 ## Arguments
@@ -15,7 +15,7 @@ nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Shape of the result.
 
-- initial_state:
+- state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   RNG state: a 1-D array of two `ui64` elements, as
@@ -23,17 +23,17 @@ nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
   returns. The data type and length are fixed by the generator, not by
   the default data types, and the returned `state` has them too.
 
+- min, max:
+
+  (`numeric(1)`)  
+  Lower and upper bound.
+
 - dtype:
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Floating point data type. The default (`NULL`) uses the [default float
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
-
-- min, max:
-
-  (`numeric(1)`)  
-  Lower and upper bound.
 
 ## Value
 

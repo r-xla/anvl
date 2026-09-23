@@ -235,7 +235,7 @@ factories that generate the body for you:
 - `make_binary_op(stablehlo_infer)` – elementwise binary
   (e.g. `prim_add`, `prim_mul`).
 - `make_reduce_op(infer_fn)` – reductions with `axes` / `drop`
-  parameters (e.g. `prim_reduce_sum`).
+  parameters (e.g. `prim_sum`).
 - `make_compare_op(direction)` – comparison ops with a fixed `direction`
   string (e.g. `prim_eq`, `prim_lt`).
 
@@ -246,7 +246,7 @@ primitive definition collapses to a one-liner:
 
 prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
-prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
+prim_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 ```
 
 Reach for the manual
@@ -320,7 +320,7 @@ prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
   new_shape <- append(new_shape, times, after = axis)
 
   grad_reshaped <- prim_reshape(grad, new_shape)
-  grad_summed <- prim_reduce_sum(grad_reshaped, axes = axis + 1L, drop = TRUE)
+  grad_summed <- prim_sum(grad_reshaped, axes = axis + 1L, drop = TRUE)
   list(grad_summed)
 })
 ```
@@ -425,7 +425,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x55c4d68b7808>
+#> <environment: 0x556d346d3c08>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")

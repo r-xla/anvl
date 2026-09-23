@@ -72,11 +72,11 @@ slice along one axis instead, which keeps the shape.
 
 [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md)
 for the underlying primitive,
-[`nv_argsort()`](https://r-xla.github.io/anvl/dev/reference/nv_argsort.md),
+[`nv_order()`](https://r-xla.github.io/anvl/dev/reference/nv_order.md),
 [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md),
 [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md),
-[`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md),
-[`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md).
+[`nv_which_max()`](https://r-xla.github.io/anvl/dev/reference/nv_which_max.md),
+[`nv_which_min()`](https://r-xla.github.io/anvl/dev/reference/nv_which_min.md).
 
 ## Examples
 

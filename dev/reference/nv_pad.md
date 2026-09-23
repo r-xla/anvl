@@ -6,13 +6,7 @@ elements.
 ## Usage
 
 ``` r
-nv_pad(
-  x,
-  padding_value,
-  edge_padding_low,
-  edge_padding_high,
-  interior_padding = NULL
-)
+nv_pad(x, value, low, high, interior = NULL)
 ```
 
 ## Arguments
@@ -20,10 +14,9 @@ nv_pad(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  The array to pad. Can be any data type; `padding_value` is brought to
-  it.
+  The array to pad. Can be any data type; `value` is brought to it.
 
-- padding_value:
+- value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Scalar value to use for padding. It is brought to `x`'s data type: an
@@ -33,17 +26,17 @@ nv_pad(
   `f64` padding value for an `f32` `x` is an error rather than a silent
   narrowing.
 
-- edge_padding_low:
+- low:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Amount of padding to add at the start of each axis.
 
-- edge_padding_high:
+- high:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Amount of padding to add at the end of each axis.
 
-- interior_padding:
+- interior:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
   Amount of padding to add between elements in each axis. If `NULL`
@@ -52,9 +45,8 @@ nv_pad(
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has `x`'s data type. Each axis grows by
-`edge_padding_low + edge_padding_high`, plus `interior_padding` between
-every pair of elements; negative edge padding trims.
+Has `x`'s data type. Each axis grows by `low + high`, plus `interior`
+between every pair of elements; negative edge padding trims.
 
 ## See also
 
@@ -66,7 +58,7 @@ for the underlying primitive.
 ``` r
 # two zeros in front, one behind
 x <- nv_array(c(1, 2, 3))
-nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
+nv_pad(x, nv_scalar(0), low = 2L, high = 1L)
 #> AnvlArray
 #>  0
 #>  0

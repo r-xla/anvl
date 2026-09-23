@@ -6,10 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Static Slice — prim_static_slice"><meta name="description" content="Extracts a slice from an array using static (compile-time) indices.
-All indices, limits, and strides are fixed R integers.
+All indices and strides are fixed R integers, and both ends are inclusive.
 Use prim_dynamic_slice() instead when the start position must be
 computed at runtime (e.g. depends on array values)."><meta property="og:description" content="Extracts a slice from an array using static (compile-time) indices.
-All indices, limits, and strides are fixed R integers.
+All indices and strides are fixed R integers, and both ends are inclusive.
 Use prim_dynamic_slice() instead when the start position must be
 computed at runtime (e.g. depends on array values)."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -83,14 +83,14 @@ computed at runtime (e.g. depends on array values)."><meta property="og:image" c
 
     <div class="ref-description section level2">
     <p>Extracts a slice from an array using static (compile-time) indices.
-All indices, limits, and strides are fixed R integers.</p>
+All indices and strides are fixed R integers, and both ends are inclusive.</p>
 <p>Use <code><a href="prim_dynamic_slice.html">prim_dynamic_slice()</a></code> instead when the start position must be
 computed at runtime (e.g. depends on array values).</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, <span class="va">start_indices</span>, <span class="va">limit_indices</span>, <span class="va">strides</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, <span class="va">start_indices</span>, <span class="va">end_indices</span>, <span class="va">strides</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -106,13 +106,14 @@ One input. Can be any data type. An R value materializes at its
 <dt id="arg-start-indices">start_indices<a class="anchor" aria-label="anchor" href="#arg-start-indices"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 Start indices (inclusive), one per axis. Must satisfy
-<code>1 &lt;= start_indices &lt;= limit_indices</code> per axis.</p></dd>
+<code>1 &lt;= start_indices &lt;= end_indices</code> per axis.</p></dd>
 
 
-<dt id="arg-limit-indices">limit_indices<a class="anchor" aria-label="anchor" href="#arg-limit-indices"></a></dt>
+<dt id="arg-end-indices">end_indices<a class="anchor" aria-label="anchor" href="#arg-end-indices"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 End indices (inclusive), one per axis. Must satisfy
-<code>limit_indices &lt;= shape(x)</code> per axis.</p></dd>
+<code>end_indices &lt;= shape(x)</code> per axis. Unlike StableHLO's exclusive
+<code>limit_indices</code>, the element at <code>end_indices</code> is part of the slice.</p></dd>
 
 
 <dt id="arg-strides">strides<a class="anchor" aria-label="anchor" href="#arg-strides"></a></dt>
@@ -125,7 +126,7 @@ selects every element; a stride of <code>2</code> selects every other element, e
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has the same data type as the input and shape
-<code>ceiling((limit_indices - start_indices + 1) / strides)</code>.</p>
+<code>ceiling((end_indices - start_indices + 1) / strides)</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -149,9 +150,9 @@ Has the same data type as the input and shape
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># 1-D: extract elements 2 through 5, the limit being inclusive</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># 1-D: extract elements 2 through 5, the end being inclusive</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">2L</span>, limit_indices <span class="op">=</span> <span class="fl">5L</span>, strides <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">2L</span>, end_indices <span class="op">=</span> <span class="fl">5L</span>, strides <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
@@ -161,7 +162,7 @@ Has the same data type as the input and shape
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># 1-D: every other element using strides</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">1L</span>, limit_indices <span class="op">=</span> <span class="fl">10L</span>, strides <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">1L</span>, end_indices <span class="op">=</span> <span class="fl">10L</span>, strides <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
@@ -174,8 +175,8 @@ Has the same data type as the input and shape
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, ncol <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>,</span></span>
 <span class="r-in"><span>  start_indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  limit_indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">4L</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  strides       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  end_indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">4L</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  strides <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   4  7 10</span>

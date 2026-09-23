@@ -87,7 +87,7 @@ replacement, analogous to R's <code><a href="https://rdrr.io/r/base/sample.html"
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sample_int</span><span class="op">(</span><span class="va">shape</span>, <span class="va">initial_state</span>, <span class="va">n</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sample_int</span><span class="op">(</span><span class="va">shape</span>, <span class="va">state</span>, <span class="va">n</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -99,7 +99,7 @@ replacement, analogous to R's <code><a href="https://rdrr.io/r/base/sample.html"
 Shape of the result.</p></dd>
 
 
-<dt id="arg-initial-state">initial_state<a class="anchor" aria-label="anchor" href="#arg-initial-state"></a></dt>
+<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 RNG state: a 1-D array of two <code>ui64</code> elements, as <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
 returns. The data type and length are fixed by the generator, not by the

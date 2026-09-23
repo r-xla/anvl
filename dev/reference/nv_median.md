@@ -1,37 +1,24 @@
 # Median
 
 Computes the median over one or more axes. Equivalent to
-`nv_quantile(x, 0.5, axes, drop, interpolation)`; for an even number of
-reduced elements with the default `"linear"` interpolation, the average
-of the two middle values is returned, matching base R's
+`nv_quantile(x, 0.5, axes, drop, method)`; for an even number of reduced
+elements with the default `"linear"` interpolation, the average of the
+two middle values is returned, matching base R's
 [`median()`](https://rdrr.io/r/stats/median.html).
 
 You can also use [`median()`](https://rdrr.io/r/stats/median.html)
 directly on an
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 or [`AnvlBox`](https://r-xla.github.io/anvl/dev/reference/AnvlBox.md);
-extra arguments (e.g. `interpolation`) are forwarded via `...`.
+extra arguments (e.g. `method`) are forwarded via `...`.
 
 ## Usage
 
 ``` r
-nv_median(
-  x,
-  axes = NULL,
-  drop = TRUE,
-  interpolation = "linear",
-  nan_rm = FALSE
-)
+nv_median(x, axes = NULL, drop = TRUE, method = "linear", nan_rm = FALSE)
 
 # S3 method for class 'AnvlArray'
-median(
-  x,
-  na.rm = FALSE,
-  ...,
-  axes = NULL,
-  drop = TRUE,
-  interpolation = "linear"
-)
+median(x, na.rm = FALSE, ..., axes = NULL, drop = TRUE, method = "linear")
 ```
 
 ## Arguments
@@ -55,7 +42,7 @@ median(
   Whether to drop the reduced axes: removed from the output shape if
   `TRUE`, set to 1 if `FALSE`.
 
-- interpolation:
+- method:
 
   (`character(1)`)  
   Forwarded to
@@ -119,7 +106,7 @@ nv_median(m, axes = 2L) # one median per row
 #>  2
 #> [ CPUf32{2} ] 
 # forwards through the S3 generic via `...`
-median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")
+median(nv_array(c(1, 2, 3, 4)), method = "lower")
 #> AnvlArray
 #>  2
 #> [ CPUf32{} ] 

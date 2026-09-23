@@ -5,7 +5,7 @@ Permutes the axes of an array.
 ## Usage
 
 ``` r
-prim_transpose(x, permutation)
+prim_transpose(x, perm)
 ```
 
 ## Arguments
@@ -17,7 +17,7 @@ prim_transpose(x, permutation)
   [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
-- permutation:
+- perm:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Specifies the new ordering of axes. Must be a permutation of
@@ -27,7 +27,7 @@ prim_transpose(x, permutation)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the input's data type and shape `shape(x)[permutation]`.
+Has the input's data type and shape `shape(x)[perm]`.
 
 ## Implemented Rules
 
@@ -46,7 +46,7 @@ specified under
 
 ## See also
 
-[`nv_transpose()`](https://r-xla.github.io/anvl/dev/reference/nv_transpose.md),
+[`nv_aperm()`](https://r-xla.github.io/anvl/dev/reference/nv_aperm.md),
 [`t()`](https://rdrr.io/r/base/t.html)
 
 ## Examples
@@ -54,7 +54,7 @@ specified under
 ``` r
 # the 2x3 becomes a 3x2, keeping its data type
 x <- nv_matrix(1:6, nrow = 2)
-prim_transpose(x, permutation = c(2L, 1L))
+prim_transpose(x, perm = c(2L, 1L))
 #> AnvlArray
 #>  1 2
 #>  3 4

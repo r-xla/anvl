@@ -6,10 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="2D Convolution — nv_conv2d"><meta name="description" content="Torch-style 2D convolution in NCHW layout: x is
-[batch, in_channels, height, width], weight is
+[batch, in_channels, height, width], kernel is
 [out_channels, in_channels / groups, kh, kw], output is
 [batch, out_channels, out_h, out_w]. Symmetric zero padding."><meta property="og:description" content="Torch-style 2D convolution in NCHW layout: x is
-[batch, in_channels, height, width], weight is
+[batch, in_channels, height, width], kernel is
 [out_channels, in_channels / groups, kh, kw], output is
 [batch, out_channels, out_h, out_w]. Symmetric zero padding."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -83,7 +83,7 @@
 
     <div class="ref-description section level2">
     <p>Torch-style 2D convolution in NCHW layout: <code>x</code> is
-<code>[batch, in_channels, height, width]</code>, <code>weight</code> is
+<code>[batch, in_channels, height, width]</code>, <code>kernel</code> is
 <code>[out_channels, in_channels / groups, kh, kw]</code>, output is
 <code>[batch, out_channels, out_h, out_w]</code>. Symmetric zero padding.</p>
     </div>
@@ -92,7 +92,7 @@
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_conv2d</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
-<span>  <span class="va">weight</span>,</span>
+<span>  <span class="va">kernel</span>,</span>
 <span>  stride <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  padding <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  dilation <span class="op">=</span> <span class="fl">1L</span>,</span>
@@ -107,12 +107,12 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[N, C_in, H, W]</code>. Can be any data type; <code>x</code> and
-<code>weight</code> are <a href="nv_promote_to_common.html">promoted to a common data type</a>. An
+<code>kernel</code> are <a href="nv_promote_to_common.html">promoted to a common data type</a>. An
 R value assumes the other operand's data type, and materializes at its
 <a href="default_dtypes.html">default data type</a> when that has none either.</p></dd>
 
 
-<dt id="arg-weight">weight<a class="anchor" aria-label="anchor" href="#arg-weight"></a></dt>
+<dt id="arg-kernel">kernel<a class="anchor" aria-label="anchor" href="#arg-kernel"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[C_out, C_in / groups, kH, kW]</code>.
 Promoted together with <code>x</code> – see <code>x</code>.</p></dd>
 
@@ -152,8 +152,8 @@ Has the operands' common data type, and shape
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># one batch, one channel, 4x4, convolved with a 3x3 kernel</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">16</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">4</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">weight</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_conv2d</span><span class="op">(</span><span class="va">x</span>, <span class="va">weight</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">kernel</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_conv2d</span><span class="op">(</span><span class="va">x</span>, <span class="va">kernel</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (1,1,.,.) =</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  54 90</span>
@@ -161,8 +161,8 @@ Has the operands' common data type, and shape
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{1,1,2,2} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># two output channels give a result with two channels</span></span></span>
-<span class="r-in"><span><span class="va">weight2</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="shape.html">shape</a></span><span class="op">(</span><span class="fu">nv_conv2d</span><span class="op">(</span><span class="va">x</span>, <span class="va">weight2</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">kernel2</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="shape.html">shape</a></span><span class="op">(</span><span class="fu">nv_conv2d</span><span class="op">(</span><span class="va">x</span>, <span class="va">kernel2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1 2 2 2</span>
 </code></pre></div>
     </div>

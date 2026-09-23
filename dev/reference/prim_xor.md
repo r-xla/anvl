@@ -6,12 +6,12 @@ bit-by-bit one on an integer.
 ## Usage
 
 ``` r
-prim_xor(lhs, rhs)
+prim_xor(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs of the same data type and shape. Can be any integerish data

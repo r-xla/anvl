@@ -5,19 +5,22 @@ Element-wise left bit shift.
 ## Usage
 
 ``` r
-prim_shift_left(lhs, rhs)
+prim_shift_left(x, shift)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Two inputs of the same data type and shape. Can be any integer data
-  type. R values assume the other operand's data type when it is in
-  their [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  their [default data
+  The array whose bits are shifted. Can be any integer data type.
+
+- shift:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  By how many bits to shift each element of `x`. Has the same data type
+  and shape as `x`. An R value takes the other operand's data type, and
+  its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   when neither operand has one.
 

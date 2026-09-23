@@ -131,10 +131,10 @@ which one it should take, it materializes at the default of its category, which
 configures. <code><a href="peek_dtype.html">peek_dtype()</a></code> reports the default a given R value would
 materialize at.</p>
 <p>The same defaults settle the data type of a result anvl chooses on its own,
-where no R value is involved at all: an index (<code><a href="nv_argmax.html">nv_argmax()</a></code>,
-<code><a href="nv_argsort.html">nv_argsort()</a></code>, <code><a href="nv_top_k.html">nv_top_k()</a></code>, the cumulative extrema, <code><a href="nv_lu.html">nv_lu()</a></code>'s pivots),
-the accumulator a boolean input is counted at (<code><a href="nv_reduce_sum.html">nv_reduce_sum()</a></code>,
-<code><a href="nv_reduce_prod.html">nv_reduce_prod()</a></code>, <code><a href="nv_cumsum.html">nv_cumsum()</a></code>, <code><a href="nv_cumprod.html">nv_cumprod()</a></code>, <code><a href="nv_trace.html">nv_trace()</a></code>), and the
+where no R value is involved at all: an index (<code><a href="nv_which_max.html">nv_which_max()</a></code>,
+<code><a href="nv_order.html">nv_order()</a></code>, <code><a href="nv_top_k.html">nv_top_k()</a></code>, the cumulative extrema, <code><a href="nv_lu.html">nv_lu()</a></code>'s pivots),
+the accumulator a boolean input is counted at (<code><a href="nv_sum.html">nv_sum()</a></code>,
+<code><a href="nv_prod.html">nv_prod()</a></code>, <code><a href="nv_cumsum.html">nv_cumsum()</a></code>, <code><a href="nv_cumprod.html">nv_cumprod()</a></code>, <code><a href="nv_trace.html">nv_trace()</a></code>), and the
 float a non-float input is averaged or interpolated at (<code><a href="nv_mean.html">nv_mean()</a></code>,
 <code><a href="nv_var.html">nv_var()</a></code>, <code><a href="nv_sd.html">nv_sd()</a></code>, <code><a href="nv_median.html">nv_median()</a></code>, <code><a href="nv_quantile.html">nv_quantile()</a></code>).</p>
 <p>Within its own category an R value assumes the data type it meets instead,

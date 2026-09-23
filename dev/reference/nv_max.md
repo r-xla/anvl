@@ -1,31 +1,54 @@
-# Maximum
+# Max Reduction
 
-Element-wise maximum of two arrays.
+Finds the maximum of array elements along the specified axes.
 
 ## Usage
 
 ``` r
-nv_max(lhs, rhs)
+nv_max(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Two inputs with a [common data
-  type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
-  be any data type. Scalars are broadcast, and R values assume the other
-  operand's data type within their [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
-  otherwise falling back to their [default data
-  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  and being converted to the common data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+
+- axes:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis. If `NULL` (default), reduces over all axes.
+
+- drop:
+
+  (`logical(1)`)  
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in float inputs. If `FALSE` (default),
+  `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the inputs' broadcast shape and common data type.
+Has the input's data type. The shape is the input's with the reduced
+axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
+
+## The [`max()`](https://rdrr.io/r/base/Extremes.html) generic
+
+[`max()`](https://rdrr.io/r/base/Extremes.html) reduces over all axes
+and, like [`base::max()`](https://rdrr.io/r/base/Extremes.html), takes
+several data arguments: `max(x, y)` is the largest element of both
+arrays. `na.rm` becomes `nan_rm`. Beyond base R, named arguments are
+passed on, so `max(x, axes = 1L)` reduces a single axis – but only when
+`x` is the only data argument.
 
 ## See also
 
@@ -35,26 +58,39 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-x <- nv_array(c(1, 5, 3))
-y <- nv_array(c(4, 2, 6))
-nv_max(x, y)
+x <- nv_matrix(1:6, nrow = 2)
+# no axes given: reduce over all of them
+nv_max(x)
 #> AnvlArray
-#>  4
-#>  5
 #>  6
-#> [ CPUf32{3} ] 
+#> [ CPUi32{} ] 
 
-# different data types are promoted to their common one
-nv_max(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
-#> AnvlArray
-#>  5
-#> [ CPUf64{} ] 
-
-# a scalar is broadcast and an R integer is converted to a float
-nv_max(x, 2L)
+# reducing axis 1 removes it, drop = FALSE keeps it at size 1
+nv_max(x, axes = 1L)
 #> AnvlArray
 #>  2
+#>  4
+#>  6
+#> [ CPUi32{3} ] 
+nv_max(x, axes = 1L, drop = FALSE)
+#> AnvlArray
+#>  2 4 6
+#> [ CPUi32{1,3} ] 
+
+# negative axes count from the end
+nv_max(x, axes = -1L)
+#> AnvlArray
 #>  5
+#>  6
+#> [ CPUi32{2} ] 
+
+# NaN propagates unless nan_rm = TRUE
+nv_max(nv_array(c(1, NaN, 3)))
+#> AnvlArray
+#>  nan
+#> [ CPUf32{} ] 
+nv_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#> AnvlArray
 #>  3
-#> [ CPUf32{3} ] 
+#> [ CPUf32{} ] 
 ```

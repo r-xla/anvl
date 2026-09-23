@@ -7,12 +7,12 @@ than 2 axes.
 ## Usage
 
 ``` r
-nv_matmul(lhs, rhs, precision = "highest")
+nv_matmul(x, y, precision = "highest")
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Numeric arrays with at least 2 axes. Can be any numeric data type; the
@@ -38,9 +38,9 @@ Has the operands' common data type and the shape given under Shapes.
 
 ## Shapes
 
-- `lhs`: `(b1, ..., bk, m, n)`
+- `x`: `(b1, ..., bk, m, n)`
 
-- `rhs`: `(b1, ..., bk, n, p)`
+- `y`: `(b1, ..., bk, n, p)`
 
 - output: `(b1, ..., bk, m, p)`
 

@@ -7,12 +7,12 @@ bit-by-bit one on an integer. For *logical* inputs, you can also use
 ## Usage
 
 ``` r
-nv_xor(lhs, rhs)
+nv_xor(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs with a [common data

@@ -94,7 +94,7 @@ keeps its `L` even when it meets a float array:
 Drop the `L` only where the value is genuinely a real number that
 happens to be whole – a distribution parameter, a probability bound, a
 threshold, a coefficient: `sd = 1`, `lower = 0, upper = 1`,
-`nv_max(-d, 1)`, `2 / sqrt(pi)`, `base::log(2 * pi)`.
+`nv_pmax(-d, 1)`, `2 / sqrt(pi)`, `base::log(2 * pi)`.
 
 That distinction bites hardest on a literal that meets *nothing*, where
 it decides a data type outright by settling on the default of its own

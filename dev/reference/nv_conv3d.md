@@ -1,7 +1,7 @@
 # 3D Convolution
 
 Torch-style 3D convolution in NCDHW layout. `x` is
-`[batch, in_channels, depth, height, width]`, `weight` is
+`[batch, in_channels, depth, height, width]`, `kernel` is
 `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric padding
 (e.g. causal temporal padding) is available via
 [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md).
@@ -11,7 +11,7 @@ Torch-style 3D convolution in NCDHW layout. `x` is
 ``` r
 nv_conv3d(
   x,
-  weight,
+  kernel,
   stride = 1L,
   padding = 0L,
   dilation = 1L,
@@ -25,7 +25,7 @@ nv_conv3d(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[N, C_in, D, H, W]`. Can be any data type; `x` and `weight` are
+  `[N, C_in, D, H, W]`. Can be any data type; `x` and `kernel` are
   [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
   An R value assumes the other operand's data type, and materializes at
@@ -33,7 +33,7 @@ nv_conv3d(
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   when that has none either.
 
-- weight:
+- kernel:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   `[C_out, C_in / groups, kD, kH, kW]`. Promoted together with `x` – see
@@ -71,7 +71,7 @@ Has the operands' common data type, and shape
 ``` r
 # one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
 x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
-weight <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
-shape(nv_conv3d(x, weight))
+kernel <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+shape(nv_conv3d(x, kernel))
 #> [1] 1 1 2 2 2
 ```

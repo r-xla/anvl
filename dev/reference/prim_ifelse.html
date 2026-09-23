@@ -5,11 +5,15 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Ifelse — prim_ifelse"><meta name="description" content="Element-wise selection based on a boolean predicate, like R's ifelse().
-For each element, returns the corresponding element from true_value where
-pred is TRUE and from false_value where pred is FALSE."><meta property="og:description" content="Element-wise selection based on a boolean predicate, like R's ifelse().
-For each element, returns the corresponding element from true_value where
-pred is TRUE and from false_value where pred is FALSE."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Ifelse — prim_ifelse"><meta name="description" content="Element-wise selection based on a boolean predicate, mirroring R's
+ifelse(). For each element, returns the corresponding element from
+yes where test is TRUE and from no where test is FALSE.
+prim_if() is the other conditional: it mirrors R's if construct and
+branches between two functions, evaluating only the selected one."><meta property="og:description" content="Element-wise selection based on a boolean predicate, mirroring R's
+ifelse(). For each element, returns the corresponding element from
+yes where test is TRUE and from no where test is FALSE.
+prim_if() is the other conditional: it mirrors R's if construct and
+branches between two functions, evaluating only the selected one."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -80,39 +84,40 @@ pred is TRUE and from false_value where pred is FALSE."><meta property="og:image
     </div>
 
     <div class="ref-description section level2">
-    <p>Element-wise selection based on a boolean predicate, like R's <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>.
-For each element, returns the corresponding element from <code>true_value</code> where
-<code>pred</code> is <code>TRUE</code> and from <code>false_value</code> where <code>pred</code> is <code>FALSE</code>.</p>
+    <p>Element-wise selection based on a boolean predicate, mirroring R's
+<code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>. For each element, returns the corresponding element from
+<code>yes</code> where <code>test</code> is <code>TRUE</code> and from <code>no</code> where <code>test</code> is <code>FALSE</code>.</p>
+<p><code><a href="prim_if.html">prim_if()</a></code> is the other conditional: it mirrors R's <code>if</code> construct and
+branches between two <em>functions</em>, evaluating only the selected one.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_ifelse</span><span class="op">(</span><span class="va">pred</span>, <span class="va">true_value</span>, <span class="va">false_value</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_ifelse</span><span class="op">(</span><span class="va">test</span>, <span class="va">yes</span>, <span class="va">no</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-pred">pred<a class="anchor" aria-label="anchor" href="#arg-pred"></a></dt>
+<dl><dt id="arg-test">test<a class="anchor" aria-label="anchor" href="#arg-test"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Predicate array. Must be a boolean or an R logical, and scalar or the same
-shape as <code>true_value</code>.</p></dd>
+shape as <code>yes</code>.</p></dd>
 
 
-<dt id="arg-true-value-false-value">true_value, false_value<a class="anchor" aria-label="anchor" href="#arg-true-value-false-value"></a></dt>
+<dt id="arg-yes-no">yes, no<a class="anchor" aria-label="anchor" href="#arg-yes-no"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Values to select from, of the same shape. Can be any data type.
-<code>true_value</code> and <code>false_value</code> must have the same data type. An R value
-among them assumes the data type of the others when it is in its <a href="dtypes.html">data type category</a>, and its <a href="default_dtypes.html">default data type</a> when
-none of them has one.</p></dd>
+<code>yes</code> and <code>no</code> must have the same data type. An R value among them
+assumes the data type of the others when it is in its <a href="dtypes.html">data type category</a>, and its <a href="default_dtypes.html">default data type</a> when none
+of them has one.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Has the shape of <code>true_value</code> and <code>false_value</code>, and the data type they
-agreed on.</p>
+Has the shape of <code>yes</code> and <code>no</code>, and the data type they agreed on.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -131,14 +136,14 @@ agreed on.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="nv_ifelse.html">nv_ifelse()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="nv_ifelse.html">nv_ifelse()</a></code>, <code><a href="prim_if.html">prim_if()</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the result takes the branches' data type; `pred` only selects</span></span></span>
-<span class="r-in"><span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">prim_ifelse</span><span class="op">(</span><span class="va">pred</span>, <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the result takes the branches' data type; `test` only selects</span></span></span>
+<span class="r-in"><span><span class="va">test</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_ifelse</span><span class="op">(</span><span class="va">test</span>, <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>

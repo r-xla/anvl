@@ -1,17 +1,17 @@
 # Power
 
-Raises `lhs` to the power of `rhs` element-wise. You can also use the
-`^` operator.
+Raises `x` to the power of `y` element-wise. You can also use the `^`
+operator.
 
 ## Usage
 
 ``` r
-nv_pow(lhs, rhs)
+nv_pow(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs with a [common data

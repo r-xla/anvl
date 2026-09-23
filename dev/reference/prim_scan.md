@@ -8,7 +8,7 @@ receives the carry and, for every array in `xs`, its slice at position
 ## Usage
 
 ``` r
-prim_scan(init, xs, body, length, reverse = FALSE)
+prim_scan(init, xs, body, steps, reverse = FALSE)
 ```
 
 ## Arguments
@@ -23,7 +23,7 @@ prim_scan(init, xs, body, length, reverse = FALSE)
 
   ([`list()`](https://rdrr.io/r/base/list.html))  
   Per-step inputs: a (possibly nested) list of arrays sliced along axis
-  1, all of size `length` along it. An empty list runs a counted loop.
+  1, all of size `steps` along it. An empty list runs a counted loop.
 
 - body:
 
@@ -32,7 +32,7 @@ prim_scan(init, xs, body, length, reverse = FALSE)
   where `carry` has the structure of `init` and `out` is a (possibly
   nested) list of arrays or `NULL`. `x` is `NULL` when `xs` is empty.
 
-- length:
+- steps:
 
   (`integer(1)`)  
   Static trip count; the size of axis 1 of every array in `xs`. `0` runs
@@ -41,13 +41,13 @@ prim_scan(init, xs, body, length, reverse = FALSE)
 - reverse:
 
   (`logical(1)`)  
-  If `TRUE`, steps run from `length` down to `1`; each step still reads
+  If `TRUE`, steps run from `steps` down to `1`; each step still reads
   `xs` at its own position and writes its output there.
 
 ## Value
 
 `list(carry = , out = )`: the final carry and the stacked outputs, each
-leaf of `out` gaining a leading axis of size `length`.
+leaf of `out` gaining a leading axis of size `steps`.
 
 ## Implemented Rules
 
@@ -78,7 +78,7 @@ prim_scan(
     s <- carry$s + x$x
     list(carry = list(s = s), out = s)
   },
-  length = 3L
+  steps = 3L
 )
 #> $carry
 #> $carry$s

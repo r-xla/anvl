@@ -145,8 +145,8 @@ The <code>min</code> and <code>max</code> are converted to the data type of <cod
 value per element of <code>x</code>/<code>q</code>/<code>p</code>. Non-scalar <code>min</code>/<code>max</code> therefore give a
 separate univariate Uniform per element, <em>not</em> a multivariate Uniform over
 the hyper-rectangle \(\prod_i [a_i, b_i]\). For that, reduce over the
-result: <code>nv_reduce_prod(nv_dunif(x, min, max))</code>, or
-<code>nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))</code> on the log scale.</p>
+result: <code>nv_prod(nv_dunif(x, min, max))</code>, or
+<code>nv_sum(nv_dunif(x, min, max, log = TRUE))</code> on the log scale.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

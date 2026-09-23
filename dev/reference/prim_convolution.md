@@ -16,9 +16,9 @@ instead.
 prim_convolution(
   x,
   kernel,
-  input_batch_axis,
-  input_feature_axis,
-  input_spatial_axes,
+  x_batch_axis,
+  x_feature_axis,
+  x_spatial_axes,
   kernel_input_feature_axis,
   kernel_output_feature_axis,
   kernel_spatial_axes,
@@ -54,12 +54,12 @@ prim_convolution(
   Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`. Shares `x`'s data
   type – see `x`.
 
-- input_batch_axis, input_feature_axis:
+- x_batch_axis, x_feature_axis:
 
   (`integer(1)`)  
   Batch and feature axis of `x`.
 
-- input_spatial_axes:
+- x_spatial_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Spatial axes of `x`.
@@ -144,7 +144,7 @@ x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
 kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
 prim_convolution(
   x, kernel,
-  input_batch_axis = 1L, input_feature_axis = 2L, input_spatial_axes = 3L,
+  x_batch_axis = 1L, x_feature_axis = 2L, x_spatial_axes = 3L,
   kernel_output_feature_axis = 1L, kernel_input_feature_axis = 2L,
   kernel_spatial_axes = 3L,
   output_batch_axis = 1L, output_feature_axis = 2L, output_spatial_axes = 3L,

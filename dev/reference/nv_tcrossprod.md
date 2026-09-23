@@ -1,15 +1,15 @@
 # Transpose Cross Product (Matrix)
 
-Computes `lhs %*% t(rhs)`. If `rhs` is missing, computes
-`lhs %*% t(lhs)`. Above rank 2 the last two axes are the matrix and the
-leading ones are batch axes, as in
+Computes `x %*% t(y)`. If `y` is missing, computes `x %*% t(x)`. Above
+rank 2 the last two axes are the matrix and the leading ones are batch
+axes, as in
 [`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md):
 only the matrix is transposed.
 
 ## Usage
 
 ``` r
-nv_tcrossprod(lhs, rhs = NULL)
+nv_tcrossprod(x, y = NULL)
 
 # S3 method for class 'AnvlArray'
 tcrossprod(x, y = NULL, ...)
@@ -17,23 +17,19 @@ tcrossprod(x, y = NULL, ...)
 
 ## Arguments
 
-- lhs:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   An array with at least 2 axes, as for
   [`base::tcrossprod()`](https://rdrr.io/r/base/crossprod.html). Can be
-  any numeric data type; `lhs` and `rhs` are [promoted to a common data
+  any numeric data type; `x` and `y` are [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
 
-- rhs:
+- y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
   \| `NULL`)  
-  Optional second array. If `NULL`, uses `lhs`.
-
-- x, y:
-
-  Same as `lhs` and `rhs`; the names used by the base R S3 generic.
+  Optional second array. If `NULL`, uses `x`.
 
 - ...:
 
@@ -42,7 +38,7 @@ tcrossprod(x, y = NULL, ...)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the operands' common data type, and the shape of `lhs %*% t(rhs)`.
+Has the operands' common data type, and the shape of `x %*% t(y)`.
 
 ## See also
 

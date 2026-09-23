@@ -1,11 +1,15 @@
 # Squeeze
 
-Removes axes of size 1 from an array.
+Removes axes of size 1 from an array. `nv_drop()` is another spelling of
+the same function; with the default `axes = NULL` it drops every size-1
+axis, like [`base::drop()`](https://rdrr.io/r/base/drop.html).
 
 ## Usage
 
 ``` r
 nv_squeeze(x, axes = NULL)
+
+nv_drop(x, axes = NULL)
 ```
 
 ## Arguments
@@ -39,6 +43,15 @@ Has `x`'s data type, with the specified axes removed from its shape.
 # the two size-1 axes are dropped
 x <- nv_array(1:6, shape = c(1, 6, 1))
 nv_squeeze(x)
+#> AnvlArray
+#>  1
+#>  2
+#>  3
+#>  4
+#>  5
+#>  6
+#> [ CPUi32{6} ] 
+nv_drop(x)
 #> AnvlArray
 #>  1
 #>  2

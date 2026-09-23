@@ -1,25 +1,30 @@
 # Primitive Arctangent 2
 
-Element-wise atan2 operation.
+Element-wise atan2 operation: the angle (in radians) between the
+positive x-axis and the point `(x, y)`.
+
+The operands are named `y` and `x`, in that order, after
+[`base::atan2()`](https://rdrr.io/r/base/Trig.html), rather than `lhs` /
+`rhs`.
 
 ## Usage
 
 ``` r
-prim_atan2(lhs, rhs)
+prim_atan2(y, x)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- y, x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Two inputs of the same data type and shape. Can be any float data
-  type. R values assume the other operand's data type when it is in
-  their [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  their [default data
+  Ordinate and abscissa of the point, of the same shape. Can be any
+  float data type. `y` and `x` must have the same data type. An R value
+  among them assumes the data type of the others when it is in its [data
+  type category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
+  and its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  when neither operand has one.
+  when none of them has one.
 
 ## Value
 

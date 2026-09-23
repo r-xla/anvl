@@ -80,9 +80,11 @@ prim_gather(
 - start_index_map:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Maps each component of the index vector to an `x` axis. For example,
-  `start_index_map = c(1L)` means each index vector indexes into the
-  first axis of `x`.
+  Maps each component of an index vector in `start_indices` to an axis
+  of `x`. For example, `start_index_map = 1L` means each index vector
+  indexes into the first axis of `x`. This is
+  [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)'s
+  `scatter_axes_to_x_axes`.
 
 - index_vector_axis:
 

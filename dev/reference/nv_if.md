@@ -1,9 +1,11 @@
 # Conditional Branching
 
-Conditional execution of two branches. Unlike
-[`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md),
-which selects elements, this executes only one of the two branches
-depending on a scalar predicate.
+Conditional execution of two branches, mirroring R's `if` construct: it
+branches between two *functions* and evaluates only the selected one.
+Its arguments are named after that construct, where
+[`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md)
+– which selects element-wise between two *arrays* – is named after
+[`ifelse()`](https://rdrr.io/r/base/ifelse.html).
 
 ## Usage
 

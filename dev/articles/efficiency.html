@@ -210,8 +210,8 @@ arrays. A few rules of thumb:</p>
 Each iteration launches a separate kernel with non-trivial overhead, and
 the kernels run one after another instead of in parallel. Express the
 work as a single vectorized operation on the whole array whenever
-possible (e.g. <code>x * y</code> or <code>nv_reduce_sum(x)</code>
-instead of a <code>for</code> loop).</li>
+possible (e.g. <code>x * y</code> or <code>nv_sum(x)</code> instead of a
+<code>for</code> loop).</li>
 <li>
 <strong>Prefer batched operations.</strong> Operations like
 <code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> accept a full batch of matrices at once.
@@ -291,7 +291,7 @@ between calls:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sum_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compiling for length "</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"\n"</span>, sep <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/nv_sum.html">nv_sum</a></span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">n</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">11</span>, <span class="fl">13</span>, <span class="fl">17</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>

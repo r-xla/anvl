@@ -96,7 +96,7 @@ standard deviation <code>sd</code>.</p>
 <span></span>
 <span><span class="fu">nv_qnorm</span><span class="op">(</span><span class="va">p</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span>, lower_tail <span class="op">=</span> <span class="cn">TRUE</span>, log_p <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="va">shape</span>, <span class="va">initial_state</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="va">shape</span>, <span class="va">state</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -148,7 +148,7 @@ and <code>sd</code> are converted to it. An R value materializes at its
 Shape of the result.</p></dd>
 
 
-<dt id="arg-initial-state">initial_state<a class="anchor" aria-label="anchor" href="#arg-initial-state"></a></dt>
+<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 RNG state: a 1-D array of two <code>ui64</code> elements, as <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
 returns. The data type and length are fixed by the generator, not by the
@@ -166,7 +166,7 @@ The default (<code>NULL</code>) uses the <a href="default_dtypes.html">default f
     <p>(<code><a href="arrayish.html">arrayish</a></code> | named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br><code>nv_dnorm()</code>, <code>nv_pnorm()</code> and <code>nv_qnorm()</code> return an <code><a href="arrayish.html">arrayish</a></code> with the
 shape and data type of <code>x</code>/<code>q</code>/<code>p</code>.</p>
 <p><code>nv_rnorm()</code> returns a named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>: <code>state</code>, the updated
-RNG state with <code>initial_state</code>'s data type and shape, and <code>values</code>, the
+RNG state with the input <code>state</code>'s data type and shape, and <code>values</code>, the
 sample of shape <code>shape</code> and the data type described under <code>dtype</code>.</p>
     </div>
     <div class="section level2">

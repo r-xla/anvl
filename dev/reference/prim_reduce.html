@@ -6,9 +6,9 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Generic Reduce — prim_reduce"><meta name="description" content='Reduces an array along the specified axes using a user-supplied
-associative reducer. reductor and init must satisfy the constraints in
+associative reducer. reducer and init must satisfy the constraints in
 the "Associativity Requirement" section below.'><meta property="og:description" content='Reduces an array along the specified axes using a user-supplied
-associative reducer. reductor and init must satisfy the constraints in
+associative reducer. reducer and init must satisfy the constraints in
 the "Associativity Requirement" section below.'><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -81,13 +81,13 @@ the "Associativity Requirement" section below.'><meta property="og:image" conten
 
     <div class="ref-description section level2">
     <p>Reduces an array along the specified axes using a user-supplied
-associative reducer. <code>reductor</code> and <code>init</code> must satisfy the constraints in
+associative reducer. <code>reducer</code> and <code>init</code> must satisfy the constraints in
 the "Associativity Requirement" section below.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_reduce</span><span class="op">(</span><span class="va">x</span>, <span class="va">init</span>, <span class="va">axes</span>, drop <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">reductor</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_reduce</span><span class="op">(</span><span class="va">x</span>, <span class="va">init</span>, <span class="va">axes</span>, <span class="va">reducer</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -105,7 +105,7 @@ of them has one.</p></dd>
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Scalar initial value, with no axes. Must be the neutral element
-w.r.t. <code>reductor</code>, and shares <code>x</code>'s data type – see <code>x</code>.</p></dd>
+w.r.t. <code>reducer</code>, and shares <code>x</code>'s data type – see <code>x</code>.</p></dd>
 
 
 <dt id="arg-axes">axes<a class="anchor" aria-label="anchor" href="#arg-axes"></a></dt>
@@ -114,17 +114,17 @@ Axes to reduce over.
 Negative values count from the end, i.e. <code>-1</code> refers to the last axis.</p></dd>
 
 
+<dt id="arg-reducer">reducer<a class="anchor" aria-label="anchor" href="#arg-reducer"></a></dt>
+<dd><p>(<code>function(lhs, rhs)</code>)<br>
+Binary reducer producing a scalar of the same data type as <code>x</code>. Its two
+arguments are passed by position, so they may carry any names.
+Must be associative (see "Associativity Requirement").</p></dd>
+
+
 <dt id="arg-drop">drop<a class="anchor" aria-label="anchor" href="#arg-drop"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>TRUE</code> (default) the reduced axes are removed; if <code>FALSE</code>
 they are kept with size 1.</p></dd>
-
-
-<dt id="arg-reductor">reductor<a class="anchor" aria-label="anchor" href="#arg-reductor"></a></dt>
-<dd><p>(<code>function</code>)<br>
-Binary reducer producing a scalar of the same data type as <code>x</code>. Its two
-arguments are passed by position, so they may carry any names.
-Must be associative (see "Associativity Requirement").</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -137,10 +137,10 @@ removed (<code>drop = TRUE</code>) or set to 1 (<code>drop = FALSE</code>).</p>
     <h2 id="associativity-requirement">Associativity Requirement<a class="anchor" aria-label="anchor" href="#associativity-requirement"></a></h2>
 
 
-<p>The order in which <code>reductor</code> is applied across the reduction window is
-implementation-defined. If the reductor is not associative, the result
+<p>The order in which <code>reducer</code> is applied across the reduction window is
+implementation-defined. If the reducer is not associative, the result
 is ill-defined.
-Furthermore, <code>init</code> must be the neutral element for this reductor.
+Furthermore, <code>init</code> must be the neutral element for this reducer.
 Because arithmetic in a float data type is non-associative, the output of
 the reduction can differ between backends (GPU, CPU), even if the underlying mathematical
 function (like <code>+</code>) is associative.</p>
@@ -157,22 +157,22 @@ function (like <code>+</code>) is associative.</p>
 
 <p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce.html" class="external-link">hlo_reduce()</a></code>, specified under
 <a href="https://openxla.org/stablehlo/spec#reduce" class="external-link">reduce</a>.
-The body is <code>reductor</code>.</p>
+The body is <code>reducer</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="prim_reduce_sum.html">prim_reduce_sum()</a></code>, <code><a href="prim_reduce_max.html">prim_reduce_max()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="prim_sum.html">prim_sum()</a></code>, <code><a href="prim_max.html">prim_max()</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># `init` shares `x`'s data type, and the reduced axis disappears</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">prim_reduce</span><span class="op">(</span><span class="va">x</span>, init <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span>, reductor <span class="op">=</span> <span class="va">prim_add</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_reduce</span><span class="op">(</span><span class="va">x</span>, init <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span>, reducer <span class="op">=</span> <span class="va">prim_add</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
-<span class="r-in"><span><span class="fu">prim_reduce</span><span class="op">(</span><span class="va">x</span>, init <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span>, reductor <span class="op">=</span> <span class="va">prim_mul</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_reduce</span><span class="op">(</span><span class="va">x</span>, init <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span>, reducer <span class="op">=</span> <span class="va">prim_mul</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  24</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>

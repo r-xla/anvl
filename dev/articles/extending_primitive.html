@@ -344,7 +344,7 @@ you:</p>
 <li>
 <code>make_reduce_op(infer_fn)</code> – reductions with
 <code>axes</code> / <code>drop</code> parameters
-(e.g. <code>prim_reduce_sum</code>).</li>
+(e.g. <code>prim_sum</code>).</li>
 <li>
 <code>make_compare_op(direction)</code> – comparison ops with a
 fixed <code>direction</code> string (e.g. <code>prim_eq</code>,
@@ -355,7 +355,7 @@ the primitive definition collapses to a one-liner:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="fu">make_binary_op</span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_add.html" class="external-link">infer_types_add</a></span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">prim_negate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"negate"</span>, <span class="fu">make_unary_op</span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_negate.html" class="external-link">infer_types_negate</a></span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">prim_reduce_sum</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"reduce_sum"</span>, <span class="fu">make_reduce_op</span><span class="op">(</span><span class="op">)</span>, static <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">prim_sum</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"reduce_sum"</span>, <span class="fu">make_reduce_op</span><span class="op">(</span><span class="op">)</span>, static <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <p>Reach for the manual <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> form when the
 primitive has extra static parameters, a custom inference function, or
 multiple outputs.</p>
@@ -419,7 +419,7 @@ axis.</li>
 <span>  <span class="va">new_shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/append.html" class="external-link">append</a></span><span class="op">(</span><span class="va">new_shape</span>, <span class="va">times</span>, after <span class="op">=</span> <span class="va">axis</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">grad_reshaped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_reshape.html">prim_reshape</a></span><span class="op">(</span><span class="va">grad</span>, <span class="va">new_shape</span><span class="op">)</span></span>
-<span>  <span class="va">grad_summed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_reduce_sum.html">prim_reduce_sum</a></span><span class="op">(</span><span class="va">grad_reshaped</span>, axes <span class="op">=</span> <span class="va">axis</span> <span class="op">+</span> <span class="fl">1L</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">grad_summed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_sum.html">prim_sum</a></span><span class="op">(</span><span class="va">grad_reshaped</span>, axes <span class="op">=</span> <span class="va">axis</span> <span class="op">+</span> <span class="fl">1L</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">grad_summed</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>The wrapped backward receives:</p>
@@ -529,7 +529,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55c4d68b7808&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x556d346d3c08&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>

@@ -1,21 +1,21 @@
 # Arctangent 2
 
 Element-wise two-argument arctangent, i.e. the angle (in radians)
-between the positive x-axis and the point `(rhs, lhs)`.
+between the positive x-axis and the point `(x, y)`.
 
 ## Usage
 
 ``` r
-nv_atan2(lhs, rhs)
+nv_atan2(y, x)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- y, x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Two inputs. Can be any numeric data type: the two are first brought to
-  a [common data
+  Ordinate and abscissa of the point. Can be any numeric data type: the
+  two are first brought to a [common data
   type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md) and
   that is then converted to the default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
@@ -32,6 +32,12 @@ Has the inputs' broadcast shape, and their common data type – or the
 default float data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
 where that was an integer one.
+
+## Details
+
+The operands are named `y` and `x`, in that order, after
+[`base::atan2()`](https://rdrr.io/r/base/Trig.html), rather than `lhs` /
+`rhs`.
 
 ## See also
 

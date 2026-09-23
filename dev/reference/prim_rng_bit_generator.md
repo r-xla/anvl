@@ -6,17 +6,12 @@ returns the updated RNG state together with the generated values.
 ## Usage
 
 ``` r
-prim_rng_bit_generator(
-  initial_state,
-  rng_algorithm = "THREE_FRY",
-  dtype,
-  shape
-)
+prim_rng_bit_generator(state, rng_algorithm = "THREE_FRY", dtype, shape)
 ```
 
 ## Arguments
 
-- initial_state:
+- state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   RNG state: a 1-D array of the `ui64` data type. Its length depends on
@@ -45,9 +40,9 @@ prim_rng_bit_generator(
 
 (named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Elements `state`, the updated RNG state with `initial_state`'s data type
-and shape, and `values`, the random values with the given `dtype` and
-`shape`.
+Elements `state`, the updated RNG state with the input `state`'s data
+type and shape, and `values`, the random values with the given `dtype`
+and `shape`.
 
 ## Implemented Rules
 

@@ -5,13 +5,13 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Triangular Solve — nv_triangular_solve"><meta name="description" content="Solves a triangular system of linear equations. When left_side = TRUE,
-returns x such that op(a) %*% x = b. When left_side = FALSE,
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Triangular Solve — nv_triangular_solve"><meta name="description" content="Solves a triangular system of linear equations. When left = TRUE,
+returns x such that op(a) %*% x = b. When left = FALSE,
 returns x such that x %*% op(a) = b. Here op is a or t(a)
-depending on transpose_a."><meta property="og:description" content="Solves a triangular system of linear equations. When left_side = TRUE,
-returns x such that op(a) %*% x = b. When left_side = FALSE,
+depending on transpose."><meta property="og:description" content="Solves a triangular system of linear equations. When left = TRUE,
+returns x such that op(a) %*% x = b. When left = FALSE,
 returns x such that x %*% op(a) = b. Here op is a or t(a)
-depending on transpose_a."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+depending on transpose."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -82,10 +82,10 @@ depending on transpose_a."><meta property="og:image" content="https://r-xla.gith
     </div>
 
     <div class="ref-description section level2">
-    <p>Solves a triangular system of linear equations. When <code>left_side = TRUE</code>,
-returns <code>x</code> such that <code>op(a) %*% x = b</code>. When <code>left_side = FALSE</code>,
+    <p>Solves a triangular system of linear equations. When <code>left = TRUE</code>,
+returns <code>x</code> such that <code>op(a) %*% x = b</code>. When <code>left = FALSE</code>,
 returns <code>x</code> such that <code>x %*% op(a) = b</code>. Here <code>op</code> is <code>a</code> or <code>t(a)</code>
-depending on <code>transpose_a</code>.</p>
+depending on <code>transpose</code>.</p>
     </div>
 
     <div class="section level2">
@@ -93,10 +93,10 @@ depending on <code>transpose_a</code>.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_triangular_solve</span><span class="op">(</span></span>
 <span>  <span class="va">a</span>,</span>
 <span>  <span class="va">b</span>,</span>
-<span>  left_side <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  left <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  lower <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  unit_diagonal <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  transpose_a <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  unit_diag <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  transpose <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -119,17 +119,17 @@ neither has one.</p></dd>
 
 <dt id="arg-b">b<a class="anchor" aria-label="anchor" href="#arg-b"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Right-hand side. For <code>a</code> of shape <code>(B..., n, n)</code>, <code>b</code> may be either:</p><ul><li><p>full rank — shape <code>(B..., n, k)</code> when <code>left_side = TRUE</code>, or
-<code>(B..., k, n)</code> when <code>left_side = FALSE</code>;</p></li>
+Right-hand side. For <code>a</code> of shape <code>(B..., n, n)</code>, <code>b</code> may be either:</p><ul><li><p>full rank — shape <code>(B..., n, k)</code> when <code>left = TRUE</code>, or
+<code>(B..., k, n)</code> when <code>left = FALSE</code>;</p></li>
 <li><p>one rank less, shape <code>(B..., n)</code>, meaning a single column
-(<code>left_side = TRUE</code>) or row (<code>left_side = FALSE</code>) per batch — it
+(<code>left = TRUE</code>) or row (<code>left = FALSE</code>) per batch — it
 is reshaped internally and the reshape is undone on the result so
 the output rank matches <code>b</code>.</p></li>
 </ul><p><code>b</code>'s batch axes (<code>B...</code>) must match <code>a</code>'s exactly. It is promoted
 together with <code>a</code> – see <code>a</code>.</p></dd>
 
 
-<dt id="arg-left-side">left_side<a class="anchor" aria-label="anchor" href="#arg-left-side"></a></dt>
+<dt id="arg-left">left<a class="anchor" aria-label="anchor" href="#arg-left"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>TRUE</code> (default), solve <code>op(a) %*% x = b</code>; if <code>FALSE</code>,
 solve <code>x %*% op(a) = b</code>.</p></dd>
@@ -140,13 +140,13 @@ solve <code>x %*% op(a) = b</code>.</p></dd>
 Whether <code>a</code> is lower or upper triangular. Defaults to <code>TRUE</code>.</p></dd>
 
 
-<dt id="arg-unit-diagonal">unit_diagonal<a class="anchor" aria-label="anchor" href="#arg-unit-diagonal"></a></dt>
+<dt id="arg-unit-diag">unit_diag<a class="anchor" aria-label="anchor" href="#arg-unit-diag"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>TRUE</code>, the diagonal of <code>a</code> is treated as all ones (and the actual
 values on the diagonal are ignored). Defaults to <code>FALSE</code>.</p></dd>
 
 
-<dt id="arg-transpose-a">transpose_a<a class="anchor" aria-label="anchor" href="#arg-transpose-a"></a></dt>
+<dt id="arg-transpose">transpose<a class="anchor" aria-label="anchor" href="#arg-transpose"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>TRUE</code>, solve with <code>t(a)</code> in place of <code>a</code>. Defaults to <code>FALSE</code>.</p></dd>
 
@@ -162,7 +162,7 @@ an integer one.</p>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>As a convenience, <code>b</code> may have one fewer axis than <code>a</code> (a single
 right-hand side per batch, shape <code>(B..., n)</code> for <code>a</code> of shape
-<code>(B..., n, n)</code>). It is reshaped internally to a column (<code>left_side = TRUE</code>) or row (<code>left_side = FALSE</code>) and reshaped back on the way out.
+<code>(B..., n, n)</code>). It is reshaped internally to a column (<code>left = TRUE</code>) or row (<code>left = FALSE</code>) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).</p>
 <p>Differentiation is only implemented for a single system: a <code><a href="gradient.html">gradient()</a></code> of a
 batched solve errors.</p>

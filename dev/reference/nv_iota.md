@@ -3,15 +3,15 @@
 Creates an array with values increasing along the specified axis,
 starting from `start`.
 
-`nv_iota_like()` is a variant where `dtype`, `shape`, and `device`
+`nv_iota_like()` is a variant where `shape`, `dtype`, and `device`
 default to those of `like`.
 
 ## Usage
 
 ``` r
-nv_iota(axis, dtype, shape, start = 1L, device = NULL)
+nv_iota(axis, shape, dtype, start = 1L, device = NULL)
 
-nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
+nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 ```
 
 ## Arguments
@@ -22,17 +22,17 @@ nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
   Axis along which values increase. Negative values count from the end
   of `shape`, i.e. `-1` refers to the last axis.
 
+- shape:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Shape of the result.
+
 - dtype:
 
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type of the result, required here. Can be any numeric data type.
   For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
-
-- shape:
-
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape of the result.
 
 - start:
 
@@ -84,7 +84,7 @@ for the underlying primitive.
 
 ``` r
 # the sequence is built at the requested data type
-nv_iota(axis = 1L, dtype = "i32", shape = 5L)
+nv_iota(axis = 1L, shape = 5L, dtype = "i32")
 #> AnvlArray
 #>  1
 #>  2

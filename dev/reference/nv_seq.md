@@ -1,9 +1,9 @@
 # Sequence
 
-Creates a 1-D array with the values from `start` to `end` in steps of
-`by`, like R's `seq(start, end, by)`. The sequence counts down when
-`end` lies below `start`, and stops before `end` when `end` is not
-reachable in whole steps: `nv_seq(0, 9, by = 2)` ends at `8`.
+Creates a 1-D array with the values from `from` to `to` in steps of
+`by`, like R's [`seq()`](https://rdrr.io/r/base/seq.html). The sequence
+counts down when `to` lies below `from`, and stops before `to` when `to`
+is not reachable in whole steps: `nv_seq(0, 9, by = 2)` ends at `8`.
 
 `nv_seq_like()` is a variant where `dtype` and `device` default to those
 of `like`.
@@ -11,14 +11,14 @@ of `like`.
 ## Usage
 
 ``` r
-nv_seq(start, end, by = NULL, dtype = NULL, device = NULL)
+nv_seq(from, to, by = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
+nv_seq_like(like, from, to, by = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
 
-- start, end:
+- from, to:
 
   (`integer(1)`)  
   First value and upper (or, when counting down, lower) limit of the
@@ -27,8 +27,8 @@ nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
 - by:
 
   (`NULL` \| `integer(1)`)  
-  Step size, which must be a non-zero whole number pointing from `start`
-  towards `end`. `NULL` (default) uses `-1` if `start > end` and `1`
+  Step size, which must be a non-zero whole number pointing from `from`
+  towards `to`. `NULL` (default) uses `-1` if `from > to` and `1`
   otherwise.
 
 - dtype:
@@ -71,7 +71,7 @@ nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has `dtype` and shape `(end - start) %/% by + 1`.
+Has `dtype` and shape `(to - from) %/% by + 1`.
 
 ## See also
 
@@ -104,7 +104,7 @@ nv_seq(7, 3)
 #>  3
 #> [ CPUi32{5} ] 
 
-# `end` is only reached where a whole number of steps lands on it
+# `to` is only reached where a whole number of steps lands on it
 nv_seq(0, 9, by = 2)
 #> AnvlArray
 #>  0

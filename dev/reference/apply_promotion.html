@@ -153,13 +153,13 @@ The rule to apply; see <a href="promotion_rule.html">promotion_rule</a>.</p></dd
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Pass only the operands that must agree, and name them as the
 <code><a href="graph_desc_add.html">graph_desc_add()</a></code> call names them. <code><a href="prim_ifelse.html">prim_ifelse()</a></code> promotes its two
-branches and leaves <code>pred</code> a <code>bool</code>; <code><a href="prim_scatter.html">prim_scatter()</a></code> promotes <code>x</code> and
+branches and leaves <code>test</code> a <code>bool</code>; <code><a href="prim_scatter.html">prim_scatter()</a></code> promotes <code>x</code> and
 <code>update</code> and leaves the indices alone. A primitive with one arrayish operand,
 or with deliberately heterogeneous ones (<code><a href="prim_sort.html">prim_sort()</a></code>'s payload,
 <code><a href="prim_while.html">prim_while()</a></code>'s loop state), calls this not at all.</p>
 <p>Call it before the body uses the operands for anything else, so it sees
 settled data types throughout: <code><a href="prim_reduce.html">prim_reduce()</a></code> reads <code>dtype(init)</code> to trace
-its reductor and <code><a href="prim_scatter.html">prim_scatter()</a></code> builds its update computation's parameter
+its reducer and <code><a href="prim_scatter.html">prim_scatter()</a></code> builds its update computation's parameter
 slots from <code><a href="peek_dtype.html">peek_dtype()</a></code>, both before recording a call.</p>
 <p>It is idempotent: once every operand is at the data type the rule names,
 materializing them again changes nothing.</p>

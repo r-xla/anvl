@@ -1,16 +1,16 @@
-# Primitive Power
+# Primitive Power Raises `x` to the power of `y` element-wise.
 
-Raises lhs to the power of rhs element-wise.
+Primitive Power Raises `x` to the power of `y` element-wise.
 
 ## Usage
 
 ``` r
-prim_pow(lhs, rhs)
+prim_pow(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs of the same data type and shape. Can be any numeric data

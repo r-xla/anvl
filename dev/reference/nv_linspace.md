@@ -1,9 +1,10 @@
 # Evenly Spaced Sequence
 
-Creates a 1-D array with `steps` evenly spaced values from `start` to
-`end` (both inclusive), like R's `seq(start, end, length.out = steps)`.
+Creates a 1-D array with `length_out` evenly spaced values from `from`
+to `to` (both inclusive), like R's
+`seq(from, to, length.out = length_out)`.
 
-The spacing `(end - start) / (steps - 1)` is generally not a whole
+The spacing `(to - from) / (length_out - 1)` is generally not a whole
 number, so the result is a float.
 
 `nv_linspace_like()` is a variant where `dtype` and `device` default to
@@ -12,24 +13,24 @@ those of `like`.
 ## Usage
 
 ``` r
-nv_linspace(start, end, steps, dtype = NULL, device = NULL)
+nv_linspace(from, to, length_out, dtype = NULL, device = NULL)
 
-nv_linspace_like(like, start, end, steps, dtype = NULL, device = NULL)
+nv_linspace_like(like, from, to, length_out, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
 
-- start, end:
+- from, to:
 
   (`numeric(1)`)  
-  First and last value of the sequence. `end` may lie below `start`, in
+  First and last value of the sequence. `to` may lie below `from`, in
   which case the values decrease.
 
-- steps:
+- length_out:
 
   (`integer(1)`)  
-  Number of values to generate. Must be at least 1; for `steps = 1` the
-  result is `start`.
+  Number of values to generate. Must be at least 1; for `length_out = 1`
+  the result is `from`.
 
 - dtype:
 
@@ -71,7 +72,7 @@ nv_linspace_like(like, start, end, steps, dtype = NULL, device = NULL)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has `dtype` and shape `steps`.
+Has `dtype` and shape `length_out`.
 
 ## See also
 
@@ -85,7 +86,7 @@ data type categories.
 ## Examples
 
 ``` r
-nv_linspace(0, 1, steps = 5L)
+nv_linspace(0, 1, length_out = 5L)
 #> AnvlArray
 #>  0.0000
 #>  0.2500
@@ -94,22 +95,22 @@ nv_linspace(0, 1, steps = 5L)
 #>  1.0000
 #> [ CPUf32{5} ] 
 
-# end below start counts down
-nv_linspace(1, 0, steps = 3L)
+# to below from counts down
+nv_linspace(1, 0, length_out = 3L)
 #> AnvlArray
 #>  1.0000
 #>  0.5000
 #>  0.0000
 #> [ CPUf32{3} ] 
 
-# steps = 1 gives start alone
-nv_linspace(2.5, 10, steps = 1L)
+# length_out = 1 gives from alone
+nv_linspace(2.5, 10, length_out = 1L)
 #> AnvlArray
 #>  2.5000
 #> [ CPUf32{1} ] 
 
 # the data type must be a float; convert afterwards for integers
-nv_convert(nv_linspace(0, 10, steps = 5L), "i32")
+nv_convert(nv_linspace(0, 10, length_out = 5L), "i32")
 #> AnvlArray
 #>   0
 #>   2
@@ -120,7 +121,7 @@ nv_convert(nv_linspace(0, 10, steps = 5L), "i32")
 
 # nv_linspace_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
-nv_linspace_like(x, 0, 1, steps = 3L)
+nv_linspace_like(x, 0, 1, length_out = 3L)
 #> AnvlArray
 #>  0.0000
 #>  0.5000

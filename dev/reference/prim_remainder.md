@@ -8,12 +8,12 @@ the divisor instead and is available via
 ## Usage
 
 ``` r
-prim_remainder(lhs, rhs)
+prim_remainder(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs of the same data type and shape. Can be any numeric data

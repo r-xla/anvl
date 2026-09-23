@@ -27,8 +27,19 @@ nv_quantile(
   probs,
   axes = NULL,
   drop = TRUE,
-  interpolation = "linear",
+  method = "linear",
   nan_rm = FALSE
+)
+
+# S3 method for class 'AnvlArray'
+quantile(
+  x,
+  probs = array(seq(0, 1, 0.25)),
+  na.rm = FALSE,
+  ...,
+  axes = NULL,
+  drop = TRUE,
+  method = "linear"
 )
 ```
 
@@ -61,7 +72,7 @@ nv_quantile(
   Whether to drop the reduced axes: removed from the output shape if
   `TRUE`, set to 1 if `FALSE`.
 
-- interpolation:
+- method:
 
   (`character(1)`)  
   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
@@ -72,6 +83,14 @@ nv_quantile(
   (`logical(1)`)  
   How to handle `NaN` values in float inputs. If `FALSE` (default),
   `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+
+- na.rm:
+
+  Forwarded to `nv_quantile()`'s `nan_rm` argument.
+
+- ...:
+
+  No additional arguments.
 
 ## Value
 
@@ -102,6 +121,16 @@ Reducing several axes at once ranks all of their elements together, so
 `nv_quantile(x, q, axes = c(1, 2))` equals
 `nv_quantile(nv_flatten(x), q)` for a matrix `x`.
 
+## The [`quantile()`](https://rdrr.io/r/stats/quantile.html) generic
+
+[`stats::quantile()`](https://rdrr.io/r/stats/quantile.html) reduces
+every axis of a multi-axis array, and so does `nv_quantile()` by
+default, so the two agree. Pass `axes` to reduce a subset instead. The
+result is unnamed, and `probs` follows `nv_quantile()`'s rules: several
+probabilities have to be wrapped in
+[`array()`](https://rdrr.io/r/base/array.html), which the default
+already is.
+
 ## See also
 
 [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md),
@@ -122,7 +151,7 @@ nv_quantile(x, array(c(0.25, 0.5, 0.75)))
 #>  3.5000
 #>  5.2500
 #> [ CPUf32{3} ] 
-nv_quantile(x, 0.5, interpolation = "lower")
+nv_quantile(x, 0.5, method = "lower")
 #> AnvlArray
 #>  3
 #> [ CPUf32{} ] 

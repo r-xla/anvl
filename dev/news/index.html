@@ -78,7 +78,16 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
-<ul><li>
+<ul><li>The element-wise <code><a href="../reference/nv_max.html">nv_max()</a></code> / <code><a href="../reference/nv_min.html">nv_min()</a></code> and <code><a href="../reference/prim_max.html">prim_max()</a></code> / <code><a href="../reference/prim_min.html">prim_min()</a></code> are now <code><a href="../reference/nv_pmax.html">nv_pmax()</a></code> / <code><a href="../reference/nv_pmin.html">nv_pmin()</a></code> and <code><a href="../reference/prim_pmax.html">prim_pmax()</a></code> / <code><a href="../reference/prim_pmin.html">prim_pmin()</a></code>, following <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmax()</a></code> / <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmin()</a></code>.</li>
+<li>The reductions lost their <code>reduce_</code> prefix: write <code><a href="../reference/nv_sum.html">nv_sum()</a></code>, <code><a href="../reference/nv_prod.html">nv_prod()</a></code>, <code><a href="../reference/nv_max.html">nv_max()</a></code>, <code><a href="../reference/nv_min.html">nv_min()</a></code>, <code><a href="../reference/nv_any.html">nv_any()</a></code>, <code><a href="../reference/nv_all.html">nv_all()</a></code> and the matching <code>prim_*()</code> instead of <code>nv_reduce_sum()</code> and friends. <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> keeps its name.</li>
+<li>
+<code>nv_argsort()</code> is now <code><a href="../reference/nv_order.html">nv_order()</a></code>, <code>nv_reverse()</code> / <code>prim_reverse()</code> are <code><a href="../reference/nv_rev.html">nv_rev()</a></code> / <code><a href="../reference/prim_rev.html">prim_rev()</a></code>, <code>nv_argmax()</code> / <code>nv_argmin()</code> and their primitives are <code><a href="../reference/nv_which_max.html">nv_which_max()</a></code> / <code><a href="../reference/nv_which_min.html">nv_which_min()</a></code> and <code><a href="../reference/prim_which_max.html">prim_which_max()</a></code> / <code><a href="../reference/prim_which_min.html">prim_which_min()</a></code>, and <code>prim_ceil()</code> is <code><a href="../reference/prim_ceiling.html">prim_ceiling()</a></code>.</li>
+<li>
+<code>nv_polygamma()</code> / <code>prim_polygamma()</code> are now <code><a href="../reference/nv_psigamma.html">nv_psigamma()</a></code> / <code><a href="../reference/prim_psigamma.html">prim_psigamma()</a></code> and take <code>(x, deriv)</code> like <code><a href="https://rdrr.io/r/base/Special.html" class="external-link">base::psigamma()</a></code> instead of <code>(n, x)</code>; <code>deriv</code> defaults to <code>0</code>.</li>
+<li>
+<code>nv_logistic()</code> / <code>prim_logistic()</code> are now <code><a href="../reference/nv_plogis.html">nv_plogis()</a></code> / <code><a href="../reference/prim_plogis.html">prim_plogis()</a></code>.</li>
+<li>The general transpose is now <code>nv_aperm(x, perm)</code>, matching <code><a href="https://rdrr.io/r/base/aperm.html" class="external-link">base::aperm()</a></code>; <code><a href="../reference/nv_aperm.html">nv_transpose()</a></code> stays as another spelling of it. It and <code><a href="../reference/prim_transpose.html">prim_transpose()</a></code> call their second argument <code>perm</code> instead of <code>permutation</code>.</li>
+<li>
 <code><a href="../reference/default_device.html">default_device()</a></code> no longer follows <code>PJRT_PLATFORM</code>; set <code>ANVL_DEFAULT_DEVICE</code> or the <code>anvl.default_device</code> option instead.</li>
 <li>
 <code><a href="../reference/prim_reshape.html">prim_reshape()</a></code> and <code><a href="../reference/nv_reshape.html">nv_reshape()</a></code>, and with them <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> and every <code>axis = NULL</code> flattening default, are now column-major like base R.</li>
@@ -89,6 +98,48 @@
 <li>The <code>@jit</code> roxygen tag was removed; wrap functions in <code><a href="../reference/jit.html">jit()</a></code> at the definition instead.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code>, <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> and <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> take <code>indices</code> instead of <code>with_indices</code>, spelling it the way <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code> does.</li>
+<li>
+<code><a href="../reference/nv_clamp.html">nv_clamp()</a></code> and <code><a href="../reference/prim_clamp.html">prim_clamp()</a></code> take <code>(x, min, max)</code> instead of <code>(min_val, x, max_val)</code>.</li>
+<li>
+<code><a href="../reference/nv_seq.html">nv_seq()</a></code> / <code><a href="../reference/nv_seq.html">nv_seq_like()</a></code> call their bounds <code>from</code> and <code>to</code>, like <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">base::seq()</a></code>.</li>
+<li>
+<code><a href="../reference/nv_ifelse.html">nv_ifelse()</a></code> and <code><a href="../reference/prim_ifelse.html">prim_ifelse()</a></code> take <code>(test, yes, no)</code>, like <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">base::ifelse()</a></code>. <code><a href="../reference/prim_if.html">prim_if()</a></code> / <code><a href="../reference/nv_if.html">nv_if()</a></code> keep <code>(pred, true, false)</code>: they mirror the <code>if</code> construct, not <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>.</li>
+<li>
+<code><a href="../reference/nv_scan.html">nv_scan()</a></code> takes <code>(init, xs, body)</code>, the order <code><a href="../reference/prim_scan.html">prim_scan()</a></code> uses, and both call the trip count <code>steps</code> instead of <code>length</code>.</li>
+<li>
+<code><a href="../reference/prim_sort.html">prim_sort()</a></code>’s <code>descending</code> / <code>is_stable</code> are now <code>decreasing</code> / <code>stable</code>, as in <code><a href="../reference/nv_sort.html">nv_sort()</a></code>.</li>
+<li>
+<code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>’s <code>indices</code> no longer has a default; pass it explicitly.</li>
+<li>
+<code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> takes <code>(x, init, axes, reducer, drop)</code>: <code>reductor</code> is now <code>reducer</code>, and it comes before <code>drop</code>.</li>
+<li>
+<code><a href="../reference/prim_static_slice.html">prim_static_slice()</a></code> / <code><a href="../reference/nv_static_slice.html">nv_static_slice()</a></code> call their (inclusive) upper bound <code>end_indices</code> instead of <code>limit_indices</code>.</li>
+<li>
+<code><a href="../reference/nv_crossprod.html">nv_crossprod()</a></code>, <code><a href="../reference/nv_tcrossprod.html">nv_tcrossprod()</a></code>, <code><a href="../reference/nv_outer.html">nv_outer()</a></code> and <code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> call their operands <code>x</code> and <code>y</code>, as base R does. So do <code><a href="../reference/nv_pow.html">nv_pow()</a></code>, <code><a href="../reference/nv_remainder.html">nv_remainder()</a></code>, <code><a href="../reference/nv_xor.html">nv_xor()</a></code> and their primitives, instead of <code>lhs</code> / <code>rhs</code>.</li>
+<li>
+<code><a href="../reference/nv_linspace.html">nv_linspace()</a></code> / <code><a href="../reference/nv_linspace.html">nv_linspace_like()</a></code> take <code>(from, to, length_out)</code> instead of <code>(start, end, steps)</code>, like <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">base::seq()</a></code>.</li>
+<li>
+<code><a href="../reference/nv_runif.html">nv_runif()</a></code> and <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> take <code>dtype</code> after the distribution parameters, as <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code> and <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> do.</li>
+<li>
+<code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> calls its input axes <code>x_batch_axis</code>, <code>x_feature_axis</code> and <code>x_spatial_axes</code> instead of <code>input_*</code>, and <code><a href="../reference/nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="../reference/nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="../reference/nv_conv3d.html">nv_conv3d()</a></code> call their second operand <code>kernel</code> instead of <code>weight</code>, as <code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> does.</li>
+<li>
+<code><a href="../reference/nv_pad.html">nv_pad()</a></code> takes <code>(x, value, low, high, interior)</code> instead of <code>(x, padding_value, edge_padding_low, edge_padding_high, interior_padding)</code>; <code><a href="../reference/prim_pad.html">prim_pad()</a></code> keeps the StableHLO names.</li>
+<li>
+<code><a href="../reference/nv_triangular_solve.html">nv_triangular_solve()</a></code> takes <code>left</code>, <code>unit_diag</code> and <code>transpose</code> instead of <code>left_side</code>, <code>unit_diagonal</code> and <code>transpose_a</code>; <code><a href="../reference/prim_triangular_solve.html">prim_triangular_solve()</a></code> keeps the StableHLO names.</li>
+<li>
+<code><a href="../reference/prim_scatter.html">prim_scatter()</a></code>’s <code>update_computation</code> is now <code>update_fn</code>.</li>
+<li>
+<code><a href="../reference/nv_lower_tri.html">nv_lower_tri_like()</a></code> / <code><a href="../reference/nv_upper_tri.html">nv_upper_tri_like()</a></code> take <code>shape</code> before <code>diagonal</code>, as <code><a href="../reference/nv_lower_tri.html">nv_lower_tri()</a></code> / <code><a href="../reference/nv_upper_tri.html">nv_upper_tri()</a></code> do.</li>
+<li>
+<code><a href="../reference/nv_quantile.html">nv_quantile()</a></code>, <code><a href="../reference/nv_median.html">nv_median()</a></code> and their <code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile()</a></code> / <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code> methods call <code>interpolation</code> <code>method</code>.</li>
+<li>
+<code><a href="../reference/nv_unsqueeze.html">nv_unsqueeze()</a></code> takes <code>axes</code>, inserting several axes at once.</li>
+<li>
+<code><a href="../reference/nv_atan2.html">nv_atan2()</a></code> and <code><a href="../reference/prim_atan2.html">prim_atan2()</a></code> take <code>(y, x)</code>, like <code><a href="https://rdrr.io/r/base/Trig.html" class="external-link">base::atan2()</a></code>.</li>
+<li>The array constructors spell their trailing arguments <code>shape</code>, <code>dtype</code>, <code>device</code> in that order: <code>nv_array(data, shape, dtype, device, byrow)</code>, <code>nv_empty(shape, dtype, device)</code>, <code><a href="../reference/nv_iota.html">nv_iota()</a></code> / <code><a href="../reference/prim_iota.html">prim_iota()</a></code> <code>(axis, shape, dtype, start, device)</code>, and likewise <code><a href="../reference/AnvlArray.html">nv_array_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_empty_like()</a></code> and <code><a href="../reference/nv_iota.html">nv_iota_like()</a></code>.</li>
+<li>
+<code><a href="../reference/nv_shift_left.html">nv_shift_left()</a></code>, <code><a href="../reference/nv_shift_right_logical.html">nv_shift_right_logical()</a></code>, <code><a href="../reference/nv_shift_right_arithmetic.html">nv_shift_right_arithmetic()</a></code> and their primitives take <code>(x, shift)</code> instead of <code>(lhs, rhs)</code>. The result keeps <code>x</code>’s data type, which <code>shift</code> is brought to, instead of promoting both.</li>
+<li>The RNG functions (<code><a href="../reference/nv_runif.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>, <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample.html">nv_sample()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, <code><a href="../reference/prim_rng_bit_generator.html">prim_rng_bit_generator()</a></code>) call their state argument <code>state</code> instead of <code>initial_state</code>, matching the <code>state</code> element they return.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code> takes <code>axes</code> instead of <code>axis</code>, ranking the elements of several axes together, and <code>axes = NULL</code> (the default) now ranks over every axis where it used to take the last one. Write <code>axes = -1</code> for the old default.</li>
 <li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
@@ -102,7 +153,7 @@
 <li>
 <code>jit_eval()</code> was removed as it is no longer needed.</li>
 <li>
-<code><a href="../reference/nv_reduce_sum.html">nv_reduce_sum()</a></code>, <code><a href="../reference/nv_reduce_prod.html">nv_reduce_prod()</a></code>, <code><a href="../reference/nv_cumsum.html">nv_cumsum()</a></code> and <code><a href="../reference/nv_cumprod.html">nv_cumprod()</a></code> now accumulate a boolean array at the default integer data type instead of returning a boolean.</li>
+<code><a href="../reference/nv_sum.html">nv_sum()</a></code>, <code><a href="../reference/nv_prod.html">nv_prod()</a></code>, <code><a href="../reference/nv_cumsum.html">nv_cumsum()</a></code> and <code><a href="../reference/nv_cumprod.html">nv_cumprod()</a></code> now accumulate a boolean array at the default integer data type instead of returning a boolean.</li>
 <li>
 <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> on an <code>AnvlArray</code> now only accepts <code>mode = "any"</code> (the default) and errors for any other <code>mode</code>.</li>
 <li>The <code>steps</code> argument of <code><a href="../reference/nv_seq.html">nv_seq()</a></code> / <code><a href="../reference/nv_seq.html">nv_seq_like()</a></code> was removed.</li>
@@ -115,11 +166,11 @@
 <li>
 <code><a href="../reference/nv_quantile.html">nv_quantile()</a></code> and <code><a href="../reference/nv_median.html">nv_median()</a></code> now reduce over <code>axes</code> (plural) instead of a single <code>axis</code>, defaulting to every axis like <code><a href="../reference/nv_mean.html">nv_mean()</a></code> and base R’s <code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile()</a></code> / <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code>, and gained a <code>drop</code> argument. Write <code>nv_median(x, axes = -1L)</code> for the previous default.</li>
 <li>
-<code><a href="../reference/nv_sort.html">nv_sort()</a></code> and <code><a href="../reference/nv_argsort.html">nv_argsort()</a></code> now flatten a multi-axis array when <code>axis = NULL</code>, instead of working along the last axis, so <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> on an anvl array agrees with base R. Write <code>axis = -1L</code> for the previous default.</li>
+<code><a href="../reference/nv_sort.html">nv_sort()</a></code> and <code><a href="../reference/nv_order.html">nv_order()</a></code> now flatten a multi-axis array when <code>axis = NULL</code>, instead of working along the last axis, so <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> on an anvl array agrees with base R. Write <code>axis = -1L</code> for the previous default.</li>
 <li>
 <code><a href="../reference/prim_sort.html">prim_sort()</a></code> no longer defaults <code>axis</code> to <code>1L</code>; pass it explicitly, as with every other primitive.</li>
 <li>
-<code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> and <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> now reduce over <code>axes</code> (plural) instead of a single <code>axis</code>, defaulting to every axis so that they pair with <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code> / <code><a href="../reference/nv_reduce_min.html">nv_reduce_min()</a></code>. Reducing several axes indexes their column-major flattening. Write <code>nv_argmax(x, axes = -1L)</code> for the previous default.</li>
+<code><a href="../reference/nv_which_max.html">nv_which_max()</a></code> and <code><a href="../reference/nv_which_min.html">nv_which_min()</a></code> now reduce over <code>axes</code> (plural) instead of a single <code>axis</code>, defaulting to every axis so that they pair with <code><a href="../reference/nv_max.html">nv_max()</a></code> / <code><a href="../reference/nv_min.html">nv_min()</a></code>. Reducing several axes indexes their column-major flattening. Write <code>nv_which_max(x, axes = -1L)</code> for the previous default.</li>
 <li>The <code>tensor_to_gval</code> argument of <code><a href="../reference/GraphDescriptor.html">GraphDescriptor()</a></code> is now called <code>array_to_gval</code>.</li>
 </ul></div>
 <div class="section level3">
@@ -138,9 +189,12 @@
 <li>
 <code><a href="../reference/nv_sign.html">nv_sign()</a></code> accepts an unsigned integer array, returning <code>0</code> or <code>1</code> like base R’s <code><a href="https://rdrr.io/r/base/sign.html" class="external-link">sign()</a></code> on a non-negative number; <code><a href="../reference/prim_sign.html">prim_sign()</a></code> still takes a signed input only.</li>
 <li>
-<code><a href="../reference/nv_reverse.html">nv_reverse()</a></code> gained an <code>axes = NULL</code> default that reverses every axis, matching <code><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev()</a></code> and <code>numpy.flip()</code>, and returns <code>x</code> unchanged for an empty <code>axes</code> instead of erroring.</li>
+<code><a href="https://rdrr.io/r/base/aperm.html" class="external-link">aperm()</a></code> and <code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile()</a></code> now work on an <code>AnvlArray</code> / <code>AnvlBox</code>, forwarding to <code><a href="../reference/nv_aperm.html">nv_aperm()</a></code> and <code><a href="../reference/nv_quantile.html">nv_quantile()</a></code>.</li>
+<li>New <code><a href="../reference/nv_squeeze.html">nv_drop()</a></code>, another spelling of <code><a href="../reference/nv_squeeze.html">nv_squeeze()</a></code>; with the default <code>axes = NULL</code> it drops every size-1 axis like <code><a href="https://rdrr.io/r/base/drop.html" class="external-link">base::drop()</a></code>.</li>
 <li>
-<code><a href="../reference/nv_seq.html">nv_seq()</a></code> / <code><a href="../reference/nv_seq.html">nv_seq_like()</a></code> gained a <code>by</code> argument and now count down when <code>start &gt; end</code>, like <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq()</a></code>.</li>
+<code><a href="../reference/nv_rev.html">nv_rev()</a></code> gained an <code>axes = NULL</code> default that reverses every axis, matching <code><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev()</a></code> and <code>numpy.flip()</code>, and returns <code>x</code> unchanged for an empty <code>axes</code> instead of erroring.</li>
+<li>
+<code><a href="../reference/nv_seq.html">nv_seq()</a></code> / <code><a href="../reference/nv_seq.html">nv_seq_like()</a></code> gained a <code>by</code> argument and now count down when <code>from &gt; to</code>, like <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq()</a></code>.</li>
 <li>New <code><a href="../reference/jit_cache_size.html">jit_cache_size()</a></code> reports how many compiled programs a jitted function currently holds for a backend.</li>
 <li>The random number generators (<code><a href="../reference/nv_runif.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>, <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, <code><a href="../reference/nv_sample.html">nv_sample()</a></code>) and <code><a href="../reference/prim_rng_bit_generator.html">prim_rng_bit_generator()</a></code> return a named list with elements <code>state</code> and <code>values</code> instead of an unnamed pair, and <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_cummax.html">prim_cummax()</a></code> and <code><a href="../reference/prim_cummin.html">prim_cummin()</a></code> name theirs <code>values</code> and <code>indices</code>.</li>
 <li>
@@ -202,9 +256,9 @@
 <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> now works correctly for <code>AnvlArray</code>s that are converted to <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. It used to drop that class along with the shape, exposing the raw 64-bit pattern as a double.</li>
 <li>The gradient of a conversion into a non-float data type is now zero instead of one. <code><a href="../reference/prim_convert.html">prim_convert()</a></code> / <code><a href="../reference/nv_convert.html">nv_convert()</a></code> passed the cotangent through whatever the data types were, so <code>nv_convert(nv_convert(x, "i32"), "f64")</code> reported a gradient of 1 where <code><a href="../reference/nv_floor.html">nv_floor()</a></code> – the same function on the reals – correctly reported 0. Conversions between floats still pass the gradient through.</li>
 <li>
-<code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> now checks that <code>update_computation</code> returns one value of <code>x</code>’s data type, as <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> already did for its <code>reductor</code>. A combiner returning something else made type inference declare a data type the call could not produce, and failed in the backend.</li>
+<code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> now checks that <code>update_computation</code> returns one value of <code>x</code>’s data type, as <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> already did for its <code>reducer</code>. A combiner returning something else made type inference declare a data type the call could not produce, and failed in the backend.</li>
 <li>
-<code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>’s <code>reductor</code> no longer has to name its arguments <code>lhs</code> and <code>rhs</code>. They were passed by name, so <code>function(a, b)</code> failed with <code>unused arguments (lhs = ..., rhs = ...)</code>; they are now matched positionally, as <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> already matched its <code>update_computation</code>.</li>
+<code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>’s <code>reducer</code> no longer has to name its arguments <code>lhs</code> and <code>rhs</code>. They were passed by name, so <code>function(a, b)</code> failed with <code>unused arguments (lhs = ..., rhs = ...)</code>; they are now matched positionally, as <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> already matched its <code>update_computation</code>.</li>
 <li>Improved the numerics for <code><a href="../reference/nv_mod.html">nv_mod()</a></code>.</li>
 <li>The variadic array functions (<code><a href="../reference/nv_concatenate.html">nv_concatenate()</a></code>, <code><a href="../reference/nv_bind.html">nv_rbind()</a></code>, <code><a href="../reference/nv_bind.html">nv_cbind()</a></code>, <code><a href="../reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code>, <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code>, <code><a href="../reference/nv_promote_to_common.html">nv_promote_to_common()</a></code>) say so when given no array, instead of warning or failing internally.</li>
 <li>
@@ -216,7 +270,7 @@
 <code><a href="../reference/nv_solve.html">nv_solve()</a></code> and <code><a href="../reference/nv_triangular_solve.html">nv_triangular_solve()</a></code> promote their operands, as <code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> does, instead of refusing two arrays that disagree.</li>
 <li>On the <code>"quickr"</code> backend a call whose outputs are all empty emits the empty arrays directly, instead of an elementwise operation quickr rejects.</li>
 <li>
-<code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code>, <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code> and <code><a href="../reference/nv_sort.html">nv_sort()</a></code> are jitted, and <code><a href="../reference/nv_polygamma.html">nv_polygamma()</a></code>’s <code>n</code> is no longer static, so it accepts an array as <code><a href="../reference/prim_polygamma.html">prim_polygamma()</a></code> does.</li>
+<code><a href="../reference/nv_any.html">nv_any()</a></code>, <code><a href="../reference/nv_all.html">nv_all()</a></code> and <code><a href="../reference/nv_sort.html">nv_sort()</a></code> are jitted, and <code><a href="../reference/nv_psigamma.html">nv_psigamma()</a></code>’s <code>deriv</code> is no longer static, so it accepts an array as <code><a href="../reference/prim_psigamma.html">prim_psigamma()</a></code> does.</li>
 <li>
 <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> is accurate to its operand’s data type rather than to the default float; its coefficients used to be materialized at the default.</li>
 <li>
@@ -226,7 +280,7 @@
 <li>Every data type of the float category counts as a float, so <code>f16</code> and <code>bf16</code> pass the checks that used to accept only <code>f32</code> and <code>f64</code>. <code><a href="../reference/nv_normal.html">nv_pnorm()</a></code> and <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> keep the narrower requirement, as they carry one coefficient set per width.</li>
 <li>The gradient of <code><a href="../reference/nv_gamma.html">nv_gamma()</a></code> is now correct for positive whole numbers.</li>
 <li>
-<code><a href="../reference/prim_reduce_any.html">prim_reduce_any()</a></code> / <code><a href="../reference/prim_reduce_all.html">prim_reduce_all()</a></code> (and <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code> / <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code>) now reject a non-boolean input when the call is traced. Type inference declared a <code>bool</code> output whatever the input was, so an integer operand reached the lowering and failed with <code>Data types of inputs and init_values must match</code>.</li>
+<code><a href="../reference/prim_any.html">prim_any()</a></code> / <code><a href="../reference/prim_all.html">prim_all()</a></code> (and <code><a href="../reference/nv_any.html">nv_any()</a></code> / <code><a href="../reference/nv_all.html">nv_all()</a></code>) now reject a non-boolean input when the call is traced. Type inference declared a <code>bool</code> output whatever the input was, so an integer operand reached the lowering and failed with <code>Data types of inputs and init_values must match</code>.</li>
 <li>Printed graphs, arrays and error messages now spell a data type the way anvl does, so <code>bool</code> no longer shows up as its MLIR spelling <code>i1</code>.</li>
 <li>Improved the documentation and various error messages.</li>
 <li>
@@ -289,7 +343,7 @@
 <li>
 <code>NULL</code> is now treated as an empty node when flattening and unflattening trees.</li>
 <li>
-<code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> and <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> now break ties order-independently, so they return the same result on GPU as on CPU (<a href="https://github.com/r-xla/anvl/issues/368" class="external-link">#368</a>). <code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> prefer the smallest index; <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> prefer the last occurrence.</li>
+<code>nv_argmax()</code> / <code>nv_argmin()</code> and <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> now break ties order-independently, so they return the same result on GPU as on CPU (<a href="https://github.com/r-xla/anvl/issues/368" class="external-link">#368</a>). <code>nv_argmax()</code> / <code>nv_argmin()</code> prefer the smallest index; <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> prefer the last occurrence.</li>
 <li>
 <code><a href="../reference/nv_diag.html">nv_diag()</a></code> now errors on non-1-D input instead of silently producing an incorrect result.</li>
 <li>
@@ -342,16 +396,16 @@
 </ul></div>
 <div class="section level4">
 <h4 id="sorting-and-searching-0-3-0">Sorting and searching<a class="anchor" aria-label="anchor" href="#sorting-and-searching-0-3-0"></a></h4>
-<ul><li>New primitives <code><a href="../reference/prim_sort.html">prim_sort()</a></code>, <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>, <code><a href="../reference/prim_argmax.html">prim_argmax()</a></code>, <code><a href="../reference/prim_argmin.html">prim_argmin()</a></code>.</li>
+<ul><li>New primitives <code><a href="../reference/prim_sort.html">prim_sort()</a></code>, <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>, <code>prim_argmax()</code>, <code>prim_argmin()</code>.</li>
 <li>New API functions:
 <ul><li>
-<code><a href="../reference/nv_sort.html">nv_sort()</a></code> / <code><a href="../reference/nv_argsort.html">nv_argsort()</a></code> – sort along a dimension, or return the permutation that does.</li>
+<code><a href="../reference/nv_sort.html">nv_sort()</a></code> / <code>nv_argsort()</code> – sort along a dimension, or return the permutation that does.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code> – the <code>k</code> largest values along a dimension.</li>
 <li>
 <code><a href="../reference/nv_median.html">nv_median()</a></code> / <code><a href="../reference/nv_quantile.html">nv_quantile()</a></code> – median / quantiles along a dimension. <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code> dispatches to <code><a href="../reference/nv_median.html">nv_median()</a></code>.</li>
 <li>
-<code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> – index of the maximum / minimum along a dimension (ties broken by smallest index).</li>
+<code>nv_argmax()</code> / <code>nv_argmin()</code> – index of the maximum / minimum along a dimension (ties broken by smallest index).</li>
 <li>
 <code><a href="../reference/nv_select.html">nv_select()</a></code> – select a slice along a dimension by index.</li>
 </ul></li>
@@ -376,12 +430,12 @@
 <div class="section level3">
 <h3 id="other-0-3-0">Other<a class="anchor" aria-label="anchor" href="#other-0-3-0"></a></h3>
 <ul><li>
-<code><a href="../reference/nv_reduce_sum.html">nv_reduce_sum()</a></code>, <code><a href="../reference/nv_reduce_prod.html">nv_reduce_prod()</a></code>, <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code>, <code><a href="../reference/nv_reduce_min.html">nv_reduce_min()</a></code>, <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code>, <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code> and <code><a href="../reference/nv_mean.html">nv_mean()</a></code> now default <code>dims = NULL</code>, which reduces over all dimensions and returns a scalar. Previously, <code>dims</code> was required.</li>
+<code>nv_reduce_sum()</code>, <code>nv_reduce_prod()</code>, <code>nv_reduce_max()</code>, <code>nv_reduce_min()</code>, <code>nv_reduce_any()</code>, <code>nv_reduce_all()</code> and <code><a href="../reference/nv_mean.html">nv_mean()</a></code> now default <code>dims = NULL</code>, which reduces over all dimensions and returns a scalar. Previously, <code>dims</code> was required.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-0-3-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-3-0"></a></h3>
 <ul><li>The overloaded <code>%%</code> operator now calls the new <code><a href="../reference/nv_mod.html">nv_mod()</a></code> to be consistent with base R.</li>
-<li>The reverse rule for <code><a href="../reference/prim_reduce_prod.html">prim_reduce_prod()</a></code> no longer produces <code>NaN</code> / <code>Inf</code> gradients when the input contains zeros.</li>
+<li>The reverse rule for <code>prim_reduce_prod()</code> no longer produces <code>NaN</code> / <code>Inf</code> gradients when the input contains zeros.</li>
 <li>The CI now actually runs the torch-comparison tests.</li>
 <li>
 <code><a href="../reference/nv_runif.html">nv_runif()</a></code> not properly respects the <code>lower</code> argument.</li>
@@ -455,7 +509,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-0-2-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
-<ul><li>+-Inf/NaN are correctly created for <code>f64</code> when inlined into the XLA exectuable (<a href="https://github.com/r-xla/anvl/issues/182" class="external-link">#182</a>). This caused wrong results with e.g. <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code> when working with <code>f64</code>.</li>
+<ul><li>+-Inf/NaN are correctly created for <code>f64</code> when inlined into the XLA exectuable (<a href="https://github.com/r-xla/anvl/issues/182" class="external-link">#182</a>). This caused wrong results with e.g. <code>nv_reduce_max()</code> when working with <code>f64</code>.</li>
 <li>Corrected argument checks in <code><a href="../reference/nv_iota.html">nv_iota()</a></code>.</li>
 <li>Fix check that <code>wrt</code> arguments in <code><a href="../reference/gradient.html">gradient()</a></code> must be floats.</li>
 <li>

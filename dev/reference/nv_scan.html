@@ -11,12 +11,12 @@ At step t, body receives the current carry and the step's slice of
 xs (taken along axis 1, with that unit axis dropped; a 1-D leaf
 yields a scalar), and must return
 list(carry = &amp;lt;same structure as init&amp;gt;, out = &amp;lt;arrays to stack&amp;gt;).
-The stacked out buffers gain a new leading axis of size length.
+The stacked out buffers gain a new leading axis of size steps.
 The whole loop, written out in R:
 carry &amp;lt;- init
-out &amp;lt;- &amp;lt;empty, `length` rows&amp;gt;
-steps &amp;lt;- if (reverse) rev(seq_len(length)) else seq_len(length)
-for (t in steps) {
+out &amp;lt;- &amp;lt;empty, `steps` rows&amp;gt;
+order &amp;lt;- if (reverse) rev(seq_len(steps)) else seq_len(steps)
+for (t in order) {
   step &amp;lt;- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
   carry &amp;lt;- step$carry
   out[t, ...] &amp;lt;- step$out          # position t, not the loop's position
@@ -28,12 +28,12 @@ At step t, body receives the current carry and the step's slice of
 xs (taken along axis 1, with that unit axis dropped; a 1-D leaf
 yields a scalar), and must return
 list(carry = &amp;lt;same structure as init&amp;gt;, out = &amp;lt;arrays to stack&amp;gt;).
-The stacked out buffers gain a new leading axis of size length.
+The stacked out buffers gain a new leading axis of size steps.
 The whole loop, written out in R:
 carry &amp;lt;- init
-out &amp;lt;- &amp;lt;empty, `length` rows&amp;gt;
-steps &amp;lt;- if (reverse) rev(seq_len(length)) else seq_len(length)
-for (t in steps) {
+out &amp;lt;- &amp;lt;empty, `steps` rows&amp;gt;
+order &amp;lt;- if (reverse) rev(seq_len(steps)) else seq_len(steps)
+for (t in order) {
   step &amp;lt;- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
   carry &amp;lt;- step$carry
   out[t, ...] &amp;lt;- step$out          # position t, not the loop's position
@@ -116,12 +116,12 @@ stacking each step's output into preallocated buffers.</p>
 <code>xs</code> (taken along axis 1, with that unit axis dropped; a 1-D leaf
 yields a scalar), and must return
 <code>list(carry = &lt;same structure as init&gt;, out = &lt;arrays to stack&gt;)</code>.
-The stacked <code>out</code> buffers gain a new leading axis of size <code>length</code>.</p>
+The stacked <code>out</code> buffers gain a new leading axis of size <code>steps</code>.</p>
 <p>The whole loop, written out in R:</p>
 <p></p><div class="sourceCode r"><pre><code>carry &lt;- init
-out &lt;- &lt;empty, `length` rows&gt;
-steps &lt;- if (reverse) rev(seq_len(length)) else seq_len(length)
-for (t in steps) {
+out &lt;- &lt;empty, `steps` rows&gt;
+order &lt;- if (reverse) rev(seq_len(steps)) else seq_len(steps)
+for (t in order) {
   step &lt;- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
   carry &lt;- step$carry
   out[t, ...] &lt;- step$out          # position t, not the loop's position
@@ -132,7 +132,7 @@ list(carry = carry, out = out)
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_scan</span><span class="op">(</span><span class="va">init</span>, <span class="va">body</span>, xs <span class="op">=</span> <span class="cn">NULL</span>, length <span class="op">=</span> <span class="cn">NULL</span>, reverse <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_scan</span><span class="op">(</span><span class="va">init</span>, xs <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">body</span>, steps <span class="op">=</span> <span class="cn">NULL</span>, reverse <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -145,6 +145,13 @@ Initial carry: a single array or a (possibly nested) named list.
 Every slot must keep a fixed shape and dtype across steps.</p></dd>
 
 
+<dt id="arg-xs">xs<a class="anchor" aria-label="anchor" href="#arg-xs"></a></dt>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code> | <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> | <code>NULL</code>)<br>
+Per-step inputs, sliced along axis 1. All leaves must agree on
+the size of axis 1. <code>NULL</code> or a list with no leaves runs a counted
+loop over <code>steps</code> steps instead.</p></dd>
+
+
 <dt id="arg-body">body<a class="anchor" aria-label="anchor" href="#arg-body"></a></dt>
 <dd><p>(<code>function</code>)<br>
 Step function <code>function(carry, x)</code> returning
@@ -153,14 +160,7 @@ list of arrays, or <code>NULL</code> (loop for the carry only). Its structure
 must be identical at every step. <code>x</code> is <code>NULL</code> when <code>xs</code> is empty.</p></dd>
 
 
-<dt id="arg-xs">xs<a class="anchor" aria-label="anchor" href="#arg-xs"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code> | <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> | <code>NULL</code>)<br>
-Per-step inputs, sliced along axis 1. All leaves must agree on
-the size of axis 1. <code>NULL</code> or a list with no leaves runs a counted
-loop over <code>length</code> steps instead.</p></dd>
-
-
-<dt id="arg-length">length<a class="anchor" aria-label="anchor" href="#arg-length"></a></dt>
+<dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>
 <dd><p>(<code>integer(1)</code> | <code>NULL</code>)<br>
 Static trip count. Required when <code>xs</code> is empty; otherwise inferred
 from (and checked against) axis 1 of <code>xs</code>. A trip count of <code>0</code> runs
@@ -169,7 +169,7 @@ no step.</p></dd>
 
 <dt id="arg-reverse">reverse<a class="anchor" aria-label="anchor" href="#arg-reverse"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-If <code>TRUE</code>, steps run <code>t = length, ..., 1</code>; each step still reads
+If <code>TRUE</code>, steps run <code>t = steps, ..., 1</code>; each step still reads
 <code>xs</code> at position <code>t</code> and writes its output at position <code>t</code>, so a
 reverse scan consumes and produces arrays in the original order.</p></dd>
 
@@ -178,7 +178,7 @@ reverse scan consumes and produces arrays in the original order.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list(carry = , out = )</code>: the final carry (same structure as
 <code>init</code>) and the stacked outputs (structure of <code>body</code>'s <code>out</code>, each
-leaf gaining a leading axis of size <code>length</code>).</p>
+leaf gaining a leading axis of size <code>steps</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -191,8 +191,8 @@ leaf gaining a leading axis of size <code>length</code>).</p>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_scan</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  init <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  body <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">carry</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>carry <span class="op">=</span> <span class="va">carry</span> <span class="op">+</span> <span class="va">x</span>, out <span class="op">=</span> <span class="va">carry</span> <span class="op">+</span> <span class="va">x</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  xs <span class="op">=</span> <span class="va">x</span></span></span>
+<span class="r-in"><span>  xs <span class="op">=</span> <span class="va">x</span>,</span></span>
+<span class="r-in"><span>  body <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">carry</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>carry <span class="op">=</span> <span class="va">carry</span> <span class="op">+</span> <span class="va">x</span>, out <span class="op">=</span> <span class="va">carry</span> <span class="op">+</span> <span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span><span class="op">$</span><span class="va">out</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1</span>

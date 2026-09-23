@@ -142,12 +142,12 @@ and not a dynamic input.
 
 ``` r
 
-nv_rbernoulli <- function(initial_state, p) {
-  initial_state <- as_anvl_array(initial_state)
+nv_rbernoulli <- function(state, p) {
+  state <- as_anvl_array(state)
   stopifnot((p >= 0) && (p <= 1))
 
   # returns: (state, sample)
-  out <- nv_runif(1L, initial_state)
+  out <- nv_runif(1L, state)
   out_state <- out[[1L]]
   x <- nv_convert(out[[2L]] <= p, "i32")
   list(out_state, x)

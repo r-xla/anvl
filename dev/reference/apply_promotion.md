@@ -55,7 +55,7 @@ Pass only the operands that must agree, and name them as the
 [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
 call names them.
 [`prim_ifelse()`](https://r-xla.github.io/anvl/dev/reference/prim_ifelse.md)
-promotes its two branches and leaves `pred` a `bool`;
+promotes its two branches and leaves `test` a `bool`;
 [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)
 promotes `x` and `update` and leaves the indices alone. A primitive with
 one arrayish operand, or with deliberately heterogeneous ones
@@ -67,7 +67,7 @@ loop state), calls this not at all.
 Call it before the body uses the operands for anything else, so it sees
 settled data types throughout:
 [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)
-reads `dtype(init)` to trace its reductor and
+reads `dtype(init)` to trace its reducer and
 [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)
 builds its update computation's parameter slots from
 [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md),

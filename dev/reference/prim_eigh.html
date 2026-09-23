@@ -12,14 +12,16 @@ $$A = \mathrm{vectors} \, \mathrm{diag}(\mathrm{values}) \,
 Only the lower triangle of x is read. The columns of vectors
 are the (orthonormal) eigenvectors and values is the length-n
 vector of (real) eigenvalues in ascending order. Output names and
-order match base::eigen()."><meta property="og:description" content="Computes the eigendecomposition of a symmetric matrix x of
+order match base::eigen(), which unlike this primitive also handles
+non-symmetric matrices."><meta property="og:description" content="Computes the eigendecomposition of a symmetric matrix x of
 shape (n, n):
 $$A = \mathrm{vectors} \, \mathrm{diag}(\mathrm{values}) \,
   \mathrm{vectors}^\top.$$
 Only the lower triangle of x is read. The columns of vectors
 are the (orthonormal) eigenvectors and values is the length-n
 vector of (real) eigenvalues in ascending order. Output names and
-order match base::eigen()."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+order match base::eigen(), which unlike this primitive also handles
+non-symmetric matrices."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -97,7 +99,8 @@ $$A = \mathrm{vectors} \, \mathrm{diag}(\mathrm{values}) \,
 Only the lower triangle of <code>x</code> is read. The columns of <code>vectors</code>
 are the (orthonormal) eigenvectors and <code>values</code> is the length-<code>n</code>
 vector of (real) eigenvalues in ascending order. Output names and
-order match <code><a href="https://rdrr.io/r/base/eigen.html" class="external-link">base::eigen()</a></code>.</p>
+order match <code><a href="https://rdrr.io/r/base/eigen.html" class="external-link">base::eigen()</a></code>, which unlike this primitive also handles
+non-symmetric matrices.</p>
     </div>
 
     <div class="section level2">

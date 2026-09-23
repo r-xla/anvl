@@ -6,7 +6,7 @@ and lives on a device, which can be a CPU or a GPU.
 ## Usage
 
 ``` r
-nv_array(data, dtype = NULL, device = NULL, shape = NULL, byrow = FALSE)
+nv_array(data, shape = NULL, dtype = NULL, device = NULL, byrow = FALSE)
 
 nv_scalar(data, dtype = NULL, device = NULL)
 
@@ -19,13 +19,13 @@ nv_matrix(
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL)
+nv_empty(shape, dtype, device = NULL)
 
-nv_array_like(like, data, dtype = NULL, device = NULL, shape = NULL)
+nv_array_like(like, data, shape = NULL, dtype = NULL, device = NULL)
 
 nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
-nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
+nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -41,6 +41,16 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
   elements of `dtype`; both `dtype` and `shape` are then required (only
   supported on the `"pjrt"` backend). Raw payloads are read in
   column-major element order, or row-major with `byrow = TRUE`.
+
+- shape:
+
+  (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
+  The output shape of the array. The default (`NULL`) is to infer it
+  from the data if possible. Note that `nv_array` interprets length 1
+  vectors as having shape `(1)`. Empty data has no shape to infer – `0`,
+  `c(2, 0)` and `c(0, 3)` all hold no elements – so `shape` is required
+  there. To create a "scalar" with no axes (shape `()`), use `nv_scalar`
+  or explicitly specify `shape = c()`.
 
 - dtype:
 
@@ -77,16 +87,6 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
   The default (`NULL`) uses
   [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
 
-- shape:
-
-  (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
-  The output shape of the array. The default (`NULL`) is to infer it
-  from the data if possible. Note that `nv_array` interprets length 1
-  vectors as having shape `(1)`. Empty data has no shape to infer – `0`,
-  `c(2, 0)` and `c(0, 3)` all hold no elements – so `shape` is required
-  there. To create a "scalar" with no axes (shape `()`), use `nv_scalar`
-  or explicitly specify `shape = c()`.
-
 - byrow:
 
   (`logical(1)`)  
@@ -112,7 +112,7 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 - like:
 
   (`AnvlArray`)  
-  An existing array. Any of `dtype`, `device` and `shape` that are
+  An existing array. Any of `shape`, `dtype` and `device` that are
   `NULL` (the default) are taken from `like`.
 
 ## Value
@@ -254,10 +254,10 @@ nv_scalar(3.14)
 #> [ CPUf32{} ] 
 
 # an uninitialized 2x3 array (contents are unspecified)
-nv_empty("f32", shape = c(2L, 3L))
+nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  3.5677e-04 3.0743e-41 3.5677e-04
-#>  3.0743e-41 3.5677e-04 3.0743e-41
+#>  9.8091e-45 1.2612e-44 1.2612e-44
+#>  1.9618e-44 1.9618e-44 1.8217e-44
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

@@ -5,7 +5,7 @@ Creates an array with values increasing along the specified axis.
 ## Usage
 
 ``` r
-prim_iota(axis, dtype, shape, start = 1L, device = NULL)
+prim_iota(axis, shape, dtype, start = 1L, device = NULL)
 ```
 
 ## Arguments
@@ -16,17 +16,17 @@ prim_iota(axis, dtype, shape, start = 1L, device = NULL)
   Axis along which values increase. Negative values count from the end
   of `shape`, i.e. `-1` refers to the last axis.
 
+- shape:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Shape of the output array.
+
 - dtype:
 
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type of the result. Can be any numeric data type, boolean being
   the one exception.
-
-- shape:
-
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape of the output array.
 
 - start:
 
@@ -79,7 +79,7 @@ specified under [iota](https://openxla.org/stablehlo/spec#iota).
 
 ``` r
 # the sequence is built at the requested data type
-prim_iota(axis = 1L, dtype = "i32", shape = 5L)
+prim_iota(axis = 1L, shape = 5L, dtype = "i32")
 #> AnvlArray
 #>  1
 #>  2

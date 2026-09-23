@@ -62,7 +62,7 @@ otherwise. The shape is the input's with the reduced axes removed
 
 ## See also
 
-[`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md)
+[`nv_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_sum.md)
 
 ## Examples
 

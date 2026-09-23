@@ -84,7 +84,7 @@ For dynamic indexing, use <code><a href="nv_subset.html">nv_subset()</a></code> 
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_static_slice</span><span class="op">(</span><span class="va">x</span>, <span class="va">start_indices</span>, <span class="va">limit_indices</span>, <span class="va">strides</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_static_slice</span><span class="op">(</span><span class="va">x</span>, <span class="va">start_indices</span>, <span class="va">end_indices</span>, <span class="va">strides</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -102,9 +102,10 @@ One input. Can be any data type. An R value materializes at its
 Start indices (inclusive), one per axis.</p></dd>
 
 
-<dt id="arg-limit-indices">limit_indices<a class="anchor" aria-label="anchor" href="#arg-limit-indices"></a></dt>
+<dt id="arg-end-indices">end_indices<a class="anchor" aria-label="anchor" href="#arg-end-indices"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-End indices (inclusive), one per axis.</p></dd>
+End indices (inclusive), one per axis: the element at <code>end_indices</code>
+is part of the slice.</p></dd>
 
 
 <dt id="arg-strides">strides<a class="anchor" aria-label="anchor" href="#arg-strides"></a></dt>
@@ -116,7 +117,7 @@ Step sizes, one per axis. A stride of 1 selects every element.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has <code>x</code>'s data type and shape
-<code>ceiling((limit_indices - start_indices + 1) / strides)</code> per axis.</p>
+<code>ceiling((end_indices - start_indices + 1) / strides)</code> per axis.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -125,9 +126,9 @@ Has <code>x</code>'s data type and shape
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># elements 2 through 5, the limit being inclusive</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># elements 2 through 5, the end being inclusive</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">2L</span>, limit_indices <span class="op">=</span> <span class="fl">5L</span>, strides <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">2L</span>, end_indices <span class="op">=</span> <span class="fl">5L</span>, strides <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>

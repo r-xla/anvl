@@ -12,7 +12,7 @@ and never an overload of `x`.
 ## Usage
 
 ``` r
-nv_sample(shape, initial_state, x)
+nv_sample(shape, state, x)
 ```
 
 ## Arguments
@@ -22,7 +22,7 @@ nv_sample(shape, initial_state, x)
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Shape of the result.
 
-- initial_state:
+- state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   RNG state: a 1-D array of two `ui64` elements, as

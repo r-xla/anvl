@@ -8,14 +8,14 @@
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Scatter — prim_scatter"><meta name="description" content="Produces a result array identical to x except that slices at
 positions specified by scatter_indices are updated with values from
 the update array. When multiple indices point to the same location,
-the update_computation function determines how to combine the values
+the update_fn function determines how to combine the values
 (by default the new value replaces the old one).
 This is the inverse of prim_gather(): gather reads slices from an array
 at given indices, while scatter writes slices into an array at given
 indices."><meta property="og:description" content="Produces a result array identical to x except that slices at
 positions specified by scatter_indices are updated with values from
 the update array. When multiple indices point to the same location,
-the update_computation function determines how to combine the values
+the update_fn function determines how to combine the values
 (by default the new value replaces the old one).
 This is the inverse of prim_gather(): gather reads slices from an array
 at given indices, while scatter writes slices into an array at given
@@ -93,7 +93,7 @@ indices."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.s
     <p>Produces a result array identical to <code>x</code> except that slices at
 positions specified by <code>scatter_indices</code> are updated with values from
 the <code>update</code> array. When multiple indices point to the same location,
-the <code>update_computation</code> function determines how to combine the values
+the <code>update_fn</code> function determines how to combine the values
 (by default the new value replaces the old one).</p>
 <p>This is the inverse of <code><a href="prim_gather.html">prim_gather()</a></code>: gather reads slices from an array
 at given indices, while scatter writes slices into an array at given
@@ -114,7 +114,7 @@ indices.</p>
 <span>  <span class="va">index_vector_axis</span>,</span>
 <span>  indices_are_sorted <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  unique_indices <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  update_computation <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  update_fn <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -171,9 +171,10 @@ axes. Must have the same length as <code>x_batching_axes</code>.</p></dd>
 
 <dt id="arg-scatter-axes-to-x-axes">scatter_axes_to_x_axes<a class="anchor" aria-label="anchor" href="#arg-scatter-axes-to-x-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Maps each component of the index vector to an <code>x</code> axis.
-For example, <code>scatter_axes_to_x_axes = c(1L)</code> means each
-index vector indexes into the first axis of <code>x</code>.</p></dd>
+Maps each component of an index vector in <code>scatter_indices</code> to an axis
+of <code>x</code>. For example, <code>scatter_axes_to_x_axes = 1L</code> means each index
+vector indexes into the first axis of <code>x</code>. This is <code><a href="prim_gather.html">prim_gather()</a></code>'s
+<code>start_index_map</code>.</p></dd>
 
 
 <dt id="arg-index-vector-axis">index_vector_axis<a class="anchor" aria-label="anchor" href="#arg-index-vector-axis"></a></dt>
@@ -197,7 +198,7 @@ Setting to <code>TRUE</code> may improve performance but produces undefined
 behavior if the indices are not actually unique. Default <code>FALSE</code>.</p></dd>
 
 
-<dt id="arg-update-computation">update_computation<a class="anchor" aria-label="anchor" href="#arg-update-computation"></a></dt>
+<dt id="arg-update-fn">update_fn<a class="anchor" aria-label="anchor" href="#arg-update-fn"></a></dt>
 <dd><p>(<code>function</code>)<br>
 Binary function <code>f(old, new)</code> that combines the existing value in
 <code>x</code> with the value from <code>update</code>. The default (<code>NULL</code>) uses
@@ -221,7 +222,7 @@ update for that index is silently ignored.</p>
 
 
 <p>When multiple indices in <code>scatter_indices</code> map to the same element
-of <code>x</code>, the order in which <code>update_computation</code> is applied is
+of <code>x</code>, the order in which <code>update_fn</code> is applied is
 implementation-defined and may vary between plugins ("cpu", "cuda").</p>
     </div>
     <div class="section level2">

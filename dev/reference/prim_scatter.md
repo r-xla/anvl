@@ -2,9 +2,9 @@
 
 Produces a result array identical to `x` except that slices at positions
 specified by `scatter_indices` are updated with values from the `update`
-array. When multiple indices point to the same location, the
-`update_computation` function determines how to combine the values (by
-default the new value replaces the old one).
+array. When multiple indices point to the same location, the `update_fn`
+function determines how to combine the values (by default the new value
+replaces the old one).
 
 This is the inverse of
 [`prim_gather()`](https://r-xla.github.io/anvl/dev/reference/prim_gather.md):
@@ -26,7 +26,7 @@ prim_scatter(
   index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
-  update_computation = NULL
+  update_fn = NULL
 )
 ```
 
@@ -84,9 +84,11 @@ prim_scatter(
 - scatter_axes_to_x_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Maps each component of the index vector to an `x` axis. For example,
-  `scatter_axes_to_x_axes = c(1L)` means each index vector indexes into
-  the first axis of `x`.
+  Maps each component of an index vector in `scatter_indices` to an axis
+  of `x`. For example, `scatter_axes_to_x_axes = 1L` means each index
+  vector indexes into the first axis of `x`. This is
+  [`prim_gather()`](https://r-xla.github.io/anvl/dev/reference/prim_gather.md)'s
+  `start_index_map`.
 
 - index_vector_axis:
 
@@ -109,7 +111,7 @@ prim_scatter(
   to `TRUE` may improve performance but produces undefined behavior if
   the indices are not actually unique. Default `FALSE`.
 
-- update_computation:
+- update_fn:
 
   (`function`)  
   Binary function `f(old, new)` that combines the existing value in `x`
@@ -129,8 +131,8 @@ for that index is silently ignored.
 ## Update Order
 
 When multiple indices in `scatter_indices` map to the same element of
-`x`, the order in which `update_computation` is applied is
-implementation-defined and may vary between plugins ("cpu", "cuda").
+`x`, the order in which `update_fn` is applied is implementation-defined
+and may vary between plugins ("cpu", "cuda").
 
 ## Implemented Rules
 

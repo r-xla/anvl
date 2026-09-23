@@ -47,14 +47,14 @@ reports the default a given R value would materialize at.
 
 The same defaults settle the data type of a result anvl chooses on its
 own, where no R value is involved at all: an index
-([`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md),
-[`nv_argsort()`](https://r-xla.github.io/anvl/dev/reference/nv_argsort.md),
+([`nv_which_max()`](https://r-xla.github.io/anvl/dev/reference/nv_which_max.md),
+[`nv_order()`](https://r-xla.github.io/anvl/dev/reference/nv_order.md),
 [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md),
 the cumulative extrema,
 [`nv_lu()`](https://r-xla.github.io/anvl/dev/reference/nv_lu.md)'s
 pivots), the accumulator a boolean input is counted at
-([`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md),
-[`nv_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_prod.md),
+([`nv_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_sum.md),
+[`nv_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_prod.md),
 [`nv_cumsum()`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md),
 [`nv_cumprod()`](https://r-xla.github.io/anvl/dev/reference/nv_cumprod.md),
 [`nv_trace()`](https://r-xla.github.io/anvl/dev/reference/nv_trace.md)),

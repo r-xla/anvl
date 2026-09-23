@@ -4,6 +4,63 @@
 
 ### Breaking changes
 
+- The element-wise
+  [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md) /
+  [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md) and
+  [`prim_max()`](https://r-xla.github.io/anvl/dev/reference/prim_max.md)
+  /
+  [`prim_min()`](https://r-xla.github.io/anvl/dev/reference/prim_min.md)
+  are now
+  [`nv_pmax()`](https://r-xla.github.io/anvl/dev/reference/nv_pmax.md) /
+  [`nv_pmin()`](https://r-xla.github.io/anvl/dev/reference/nv_pmin.md)
+  and
+  [`prim_pmax()`](https://r-xla.github.io/anvl/dev/reference/prim_pmax.md)
+  /
+  [`prim_pmin()`](https://r-xla.github.io/anvl/dev/reference/prim_pmin.md),
+  following [`base::pmax()`](https://rdrr.io/r/base/Extremes.html) /
+  [`base::pmin()`](https://rdrr.io/r/base/Extremes.html).
+- The reductions lost their `reduce_` prefix: write
+  [`nv_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_sum.md),
+  [`nv_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_prod.md),
+  [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md),
+  [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md),
+  [`nv_any()`](https://r-xla.github.io/anvl/dev/reference/nv_any.md),
+  [`nv_all()`](https://r-xla.github.io/anvl/dev/reference/nv_all.md) and
+  the matching `prim_*()` instead of `nv_reduce_sum()` and friends.
+  [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)
+  keeps its name.
+- `nv_argsort()` is now
+  [`nv_order()`](https://r-xla.github.io/anvl/dev/reference/nv_order.md),
+  `nv_reverse()` / `prim_reverse()` are
+  [`nv_rev()`](https://r-xla.github.io/anvl/dev/reference/nv_rev.md) /
+  [`prim_rev()`](https://r-xla.github.io/anvl/dev/reference/prim_rev.md),
+  `nv_argmax()` / `nv_argmin()` and their primitives are
+  [`nv_which_max()`](https://r-xla.github.io/anvl/dev/reference/nv_which_max.md)
+  /
+  [`nv_which_min()`](https://r-xla.github.io/anvl/dev/reference/nv_which_min.md)
+  and
+  [`prim_which_max()`](https://r-xla.github.io/anvl/dev/reference/prim_which_max.md)
+  /
+  [`prim_which_min()`](https://r-xla.github.io/anvl/dev/reference/prim_which_min.md),
+  and `prim_ceil()` is
+  [`prim_ceiling()`](https://r-xla.github.io/anvl/dev/reference/prim_ceiling.md).
+- `nv_polygamma()` / `prim_polygamma()` are now
+  [`nv_psigamma()`](https://r-xla.github.io/anvl/dev/reference/nv_psigamma.md)
+  /
+  [`prim_psigamma()`](https://r-xla.github.io/anvl/dev/reference/prim_psigamma.md)
+  and take `(x, deriv)` like
+  [`base::psigamma()`](https://rdrr.io/r/base/Special.html) instead of
+  `(n, x)`; `deriv` defaults to `0`.
+- `nv_logistic()` / `prim_logistic()` are now
+  [`nv_plogis()`](https://r-xla.github.io/anvl/dev/reference/nv_plogis.md)
+  /
+  [`prim_plogis()`](https://r-xla.github.io/anvl/dev/reference/prim_plogis.md).
+- The general transpose is now `nv_aperm(x, perm)`, matching
+  [`base::aperm()`](https://rdrr.io/r/base/aperm.html);
+  [`nv_transpose()`](https://r-xla.github.io/anvl/dev/reference/nv_aperm.md)
+  stays as another spelling of it. It and
+  [`prim_transpose()`](https://r-xla.github.io/anvl/dev/reference/prim_transpose.md)
+  call their second argument `perm` instead of `permutation`.
 - [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)
   no longer follows `PJRT_PLATFORM`; set `ANVL_DEFAULT_DEVICE` or the
   `anvl.default_device` option instead.
@@ -40,6 +97,132 @@
   take `indices` instead of `with_indices`, spelling it the way
   [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md)
   does.
+- [`nv_clamp()`](https://r-xla.github.io/anvl/dev/reference/nv_clamp.md)
+  and
+  [`prim_clamp()`](https://r-xla.github.io/anvl/dev/reference/prim_clamp.md)
+  take `(x, min, max)` instead of `(min_val, x, max_val)`.
+- [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md) /
+  [`nv_seq_like()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
+  call their bounds `from` and `to`, like
+  [`base::seq()`](https://rdrr.io/r/base/seq.html).
+- [`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md)
+  and
+  [`prim_ifelse()`](https://r-xla.github.io/anvl/dev/reference/prim_ifelse.md)
+  take `(test, yes, no)`, like
+  [`base::ifelse()`](https://rdrr.io/r/base/ifelse.html).
+  [`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md) /
+  [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) keep
+  `(pred, true, false)`: they mirror the `if` construct, not
+  [`ifelse()`](https://rdrr.io/r/base/ifelse.html).
+- [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md)
+  takes `(init, xs, body)`, the order
+  [`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
+  uses, and both call the trip count `steps` instead of `length`.
+- [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md)’s
+  `descending` / `is_stable` are now `decreasing` / `stable`, as in
+  [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md).
+- [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md)’s
+  `indices` no longer has a default; pass it explicitly.
+- [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)
+  takes `(x, init, axes, reducer, drop)`: `reductor` is now `reducer`,
+  and it comes before `drop`.
+- [`prim_static_slice()`](https://r-xla.github.io/anvl/dev/reference/prim_static_slice.md)
+  /
+  [`nv_static_slice()`](https://r-xla.github.io/anvl/dev/reference/nv_static_slice.md)
+  call their (inclusive) upper bound `end_indices` instead of
+  `limit_indices`.
+- [`nv_crossprod()`](https://r-xla.github.io/anvl/dev/reference/nv_crossprod.md),
+  [`nv_tcrossprod()`](https://r-xla.github.io/anvl/dev/reference/nv_tcrossprod.md),
+  [`nv_outer()`](https://r-xla.github.io/anvl/dev/reference/nv_outer.md)
+  and
+  [`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md)
+  call their operands `x` and `y`, as base R does. So do
+  [`nv_pow()`](https://r-xla.github.io/anvl/dev/reference/nv_pow.md),
+  [`nv_remainder()`](https://r-xla.github.io/anvl/dev/reference/nv_remainder.md),
+  [`nv_xor()`](https://r-xla.github.io/anvl/dev/reference/nv_xor.md) and
+  their primitives, instead of `lhs` / `rhs`.
+- [`nv_linspace()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
+  /
+  [`nv_linspace_like()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
+  take `(from, to, length_out)` instead of `(start, end, steps)`, like
+  [`base::seq()`](https://rdrr.io/r/base/seq.html).
+- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
+  and
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  take `dtype` after the distribution parameters, as
+  [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)
+  and
+  [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
+  do.
+- [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md)
+  calls its input axes `x_batch_axis`, `x_feature_axis` and
+  `x_spatial_axes` instead of `input_*`, and
+  [`nv_conv1d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv1d.md)
+  /
+  [`nv_conv2d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv2d.md)
+  /
+  [`nv_conv3d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv3d.md)
+  call their second operand `kernel` instead of `weight`, as
+  [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md)
+  does.
+- [`nv_pad()`](https://r-xla.github.io/anvl/dev/reference/nv_pad.md)
+  takes `(x, value, low, high, interior)` instead of
+  `(x, padding_value, edge_padding_low, edge_padding_high, interior_padding)`;
+  [`prim_pad()`](https://r-xla.github.io/anvl/dev/reference/prim_pad.md)
+  keeps the StableHLO names.
+- [`nv_triangular_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_triangular_solve.md)
+  takes `left`, `unit_diag` and `transpose` instead of `left_side`,
+  `unit_diagonal` and `transpose_a`;
+  [`prim_triangular_solve()`](https://r-xla.github.io/anvl/dev/reference/prim_triangular_solve.md)
+  keeps the StableHLO names.
+- [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)’s
+  `update_computation` is now `update_fn`.
+- [`nv_lower_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
+  /
+  [`nv_upper_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md)
+  take `shape` before `diagonal`, as
+  [`nv_lower_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
+  /
+  [`nv_upper_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md)
+  do.
+- [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md),
+  [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
+  and their [`quantile()`](https://rdrr.io/r/stats/quantile.html) /
+  [`median()`](https://rdrr.io/r/stats/median.html) methods call
+  `interpolation` `method`.
+- [`nv_unsqueeze()`](https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.md)
+  takes `axes`, inserting several axes at once.
+- [`nv_atan2()`](https://r-xla.github.io/anvl/dev/reference/nv_atan2.md)
+  and
+  [`prim_atan2()`](https://r-xla.github.io/anvl/dev/reference/prim_atan2.md)
+  take `(y, x)`, like
+  [`base::atan2()`](https://rdrr.io/r/base/Trig.html).
+- The array constructors spell their trailing arguments `shape`,
+  `dtype`, `device` in that order:
+  `nv_array(data, shape, dtype, device, byrow)`,
+  `nv_empty(shape, dtype, device)`,
+  [`nv_iota()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md) /
+  [`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md)
+  `(axis, shape, dtype, start, device)`, and likewise
+  [`nv_array_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`nv_empty_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  and
+  [`nv_iota_like()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md).
+- [`nv_shift_left()`](https://r-xla.github.io/anvl/dev/reference/nv_shift_left.md),
+  [`nv_shift_right_logical()`](https://r-xla.github.io/anvl/dev/reference/nv_shift_right_logical.md),
+  [`nv_shift_right_arithmetic()`](https://r-xla.github.io/anvl/dev/reference/nv_shift_right_arithmetic.md)
+  and their primitives take `(x, shift)` instead of `(lhs, rhs)`. The
+  result keeps `x`’s data type, which `shift` is brought to, instead of
+  promoting both.
+- The RNG functions
+  ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
+  [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
+  [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md),
+  [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
+  [`prim_rng_bit_generator()`](https://r-xla.github.io/anvl/dev/reference/prim_rng_bit_generator.md))
+  call their state argument `state` instead of `initial_state`, matching
+  the `state` element they return.
 - [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md)
   takes `axes` instead of `axis`, ranking the elements of several axes
   together, and `axes = NULL` (the default) now ranks over every axis
@@ -79,8 +262,8 @@
   which could not hold every `ui64` value. Convert one of them with
   [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md).
 - `jit_eval()` was removed as it is no longer needed.
-- [`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md),
-  [`nv_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_prod.md),
+- [`nv_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_sum.md),
+  [`nv_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_prod.md),
   [`nv_cumsum()`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md)
   and
   [`nv_cumprod()`](https://r-xla.github.io/anvl/dev/reference/nv_cumprod.md)
@@ -118,7 +301,7 @@
   argument. Write `nv_median(x, axes = -1L)` for the previous default.
 - [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md)
   and
-  [`nv_argsort()`](https://r-xla.github.io/anvl/dev/reference/nv_argsort.md)
+  [`nv_order()`](https://r-xla.github.io/anvl/dev/reference/nv_order.md)
   now flatten a multi-axis array when `axis = NULL`, instead of working
   along the last axis, so [`sort()`](https://rdrr.io/r/base/sort.html)
   on an anvl array agrees with base R. Write `axis = -1L` for the
@@ -126,16 +309,15 @@
 - [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md)
   no longer defaults `axis` to `1L`; pass it explicitly, as with every
   other primitive.
-- [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
+- [`nv_which_max()`](https://r-xla.github.io/anvl/dev/reference/nv_which_max.md)
   and
-  [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
+  [`nv_which_min()`](https://r-xla.github.io/anvl/dev/reference/nv_which_min.md)
   now reduce over `axes` (plural) instead of a single `axis`, defaulting
   to every axis so that they pair with
-  [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md)
-  /
-  [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md).
+  [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md) /
+  [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md).
   Reducing several axes indexes their column-major flattening. Write
-  `nv_argmax(x, axes = -1L)` for the previous default.
+  `nv_which_max(x, axes = -1L)` for the previous default.
 - The `tensor_to_gval` argument of
   [`GraphDescriptor()`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
   is now called `array_to_gval`.
@@ -192,13 +374,25 @@
   [`sign()`](https://rdrr.io/r/base/sign.html) on a non-negative number;
   [`prim_sign()`](https://r-xla.github.io/anvl/dev/reference/prim_sign.md)
   still takes a signed input only.
-- [`nv_reverse()`](https://r-xla.github.io/anvl/dev/reference/nv_reverse.md)
+- [`aperm()`](https://rdrr.io/r/base/aperm.html) and
+  [`quantile()`](https://rdrr.io/r/stats/quantile.html) now work on an
+  `AnvlArray` / `AnvlBox`, forwarding to
+  [`nv_aperm()`](https://r-xla.github.io/anvl/dev/reference/nv_aperm.md)
+  and
+  [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md).
+- New
+  [`nv_drop()`](https://r-xla.github.io/anvl/dev/reference/nv_squeeze.md),
+  another spelling of
+  [`nv_squeeze()`](https://r-xla.github.io/anvl/dev/reference/nv_squeeze.md);
+  with the default `axes = NULL` it drops every size-1 axis like
+  [`base::drop()`](https://rdrr.io/r/base/drop.html).
+- [`nv_rev()`](https://r-xla.github.io/anvl/dev/reference/nv_rev.md)
   gained an `axes = NULL` default that reverses every axis, matching
   [`rev()`](https://rdrr.io/r/base/rev.html) and `numpy.flip()`, and
   returns `x` unchanged for an empty `axes` instead of erroring.
 - [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md) /
   [`nv_seq_like()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
-  gained a `by` argument and now count down when `start > end`, like
+  gained a `by` argument and now count down when `from > to`, like
   [`seq()`](https://rdrr.io/r/base/seq.html).
 - New
   [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
@@ -413,11 +607,11 @@
   now checks that `update_computation` returns one value of `x`’s data
   type, as
   [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)
-  already did for its `reductor`. A combiner returning something else
+  already did for its `reducer`. A combiner returning something else
   made type inference declare a data type the call could not produce,
   and failed in the backend.
 - [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)’s
-  `reductor` no longer has to name its arguments `lhs` and `rhs`. They
+  `reducer` no longer has to name its arguments `lhs` and `rhs`. They
   were passed by name, so `function(a, b)` failed with
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched
   positionally, as
@@ -454,14 +648,13 @@
 - On the `"quickr"` backend a call whose outputs are all empty emits the
   empty arrays directly, instead of an elementwise operation quickr
   rejects.
-- [`nv_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_any.md),
-  [`nv_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_all.md)
-  and
+- [`nv_any()`](https://r-xla.github.io/anvl/dev/reference/nv_any.md),
+  [`nv_all()`](https://r-xla.github.io/anvl/dev/reference/nv_all.md) and
   [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md)
   are jitted, and
-  [`nv_polygamma()`](https://r-xla.github.io/anvl/dev/reference/nv_polygamma.md)’s
-  `n` is no longer static, so it accepts an array as
-  [`prim_polygamma()`](https://r-xla.github.io/anvl/dev/reference/prim_polygamma.md)
+  [`nv_psigamma()`](https://r-xla.github.io/anvl/dev/reference/nv_psigamma.md)’s
+  `deriv` is no longer static, so it accepts an array as
+  [`prim_psigamma()`](https://r-xla.github.io/anvl/dev/reference/prim_psigamma.md)
   does.
 - [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   is accurate to its operand’s data type rather than to the default
@@ -486,13 +679,12 @@
 - The gradient of
   [`nv_gamma()`](https://r-xla.github.io/anvl/dev/reference/nv_gamma.md)
   is now correct for positive whole numbers.
-- [`prim_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_any.md)
+- [`prim_any()`](https://r-xla.github.io/anvl/dev/reference/prim_any.md)
   /
-  [`prim_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_all.md)
+  [`prim_all()`](https://r-xla.github.io/anvl/dev/reference/prim_all.md)
   (and
-  [`nv_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_any.md)
-  /
-  [`nv_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_all.md))
+  [`nv_any()`](https://r-xla.github.io/anvl/dev/reference/nv_any.md) /
+  [`nv_all()`](https://r-xla.github.io/anvl/dev/reference/nv_all.md))
   now reject a non-boolean input when the call is traced. Type inference
   declared a `bool` output whatever the input was, so an integer operand
   reached the lowering and failed with
@@ -611,19 +803,13 @@
   instead of silently ignoring them.
 - `NULL` is now treated as an empty node when flattening and
   unflattening trees.
-- [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
-  /
-  [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
-  and
+- `nv_argmax()` / `nv_argmin()` and
   [`nv_cummax()`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
   /
   [`nv_cummin()`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
   now break ties order-independently, so they return the same result on
   GPU as on CPU ([\#368](https://github.com/r-xla/anvl/issues/368)).
-  [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
-  /
-  [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
-  prefer the smallest index;
+  `nv_argmax()` / `nv_argmin()` prefer the smallest index;
   [`nv_cummax()`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
   /
   [`nv_cummin()`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
@@ -729,13 +915,11 @@
   [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md),
   [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md),
   [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md),
-  [`prim_argmax()`](https://r-xla.github.io/anvl/dev/reference/prim_argmax.md),
-  [`prim_argmin()`](https://r-xla.github.io/anvl/dev/reference/prim_argmin.md).
+  `prim_argmax()`, `prim_argmin()`.
 - New API functions:
   - [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md)
-    /
-    [`nv_argsort()`](https://r-xla.github.io/anvl/dev/reference/nv_argsort.md)
-    – sort along a dimension, or return the permutation that does.
+    / `nv_argsort()` – sort along a dimension, or return the permutation
+    that does.
   - [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md)
     – the `k` largest values along a dimension.
   - [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
@@ -744,11 +928,8 @@
     – median / quantiles along a dimension.
     [`median()`](https://rdrr.io/r/stats/median.html) dispatches to
     [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md).
-  - [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
-    /
-    [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
-    – index of the maximum / minimum along a dimension (ties broken by
-    smallest index).
+  - `nv_argmax()` / `nv_argmin()` – index of the maximum / minimum along
+    a dimension (ties broken by smallest index).
   - [`nv_select()`](https://r-xla.github.io/anvl/dev/reference/nv_select.md)
     – select a slice along a dimension by index.
 
@@ -791,13 +972,8 @@
 
 ### Other
 
-- [`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md),
-  [`nv_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_prod.md),
-  [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md),
-  [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md),
-  [`nv_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_any.md),
-  [`nv_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_all.md)
-  and
+- `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_reduce_max()`,
+  `nv_reduce_min()`, `nv_reduce_any()`, `nv_reduce_all()` and
   [`nv_mean()`](https://r-xla.github.io/anvl/dev/reference/nv_mean.md)
   now default `dims = NULL`, which reduces over all dimensions and
   returns a scalar. Previously, `dims` was required.
@@ -807,10 +983,8 @@
 - The overloaded `%%` operator now calls the new
   [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md) to
   be consistent with base R.
-- The reverse rule for
-  [`prim_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_prod.md)
-  no longer produces `NaN` / `Inf` gradients when the input contains
-  zeros.
+- The reverse rule for `prim_reduce_prod()` no longer produces `NaN` /
+  `Inf` gradients when the input contains zeros.
 - The CI now actually runs the torch-comparison tests.
 - [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
   not properly respects the `lower` argument.
@@ -923,9 +1097,8 @@
 
 - +-Inf/NaN are correctly created for `f64` when inlined into the XLA
   exectuable ([\#182](https://github.com/r-xla/anvl/issues/182)). This
-  caused wrong results with
-  e.g. [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md)
-  when working with `f64`.
+  caused wrong results with e.g. `nv_reduce_max()` when working with
+  `f64`.
 - Corrected argument checks in
   [`nv_iota()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md).
 - Fix check that `wrt` arguments in

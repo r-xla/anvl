@@ -1,31 +1,34 @@
 # Primitive Ifelse
 
-Element-wise selection based on a boolean predicate, like R's
+Element-wise selection based on a boolean predicate, mirroring R's
 [`ifelse()`](https://rdrr.io/r/base/ifelse.html). For each element,
-returns the corresponding element from `true_value` where `pred` is
-`TRUE` and from `false_value` where `pred` is `FALSE`.
+returns the corresponding element from `yes` where `test` is `TRUE` and
+from `no` where `test` is `FALSE`.
+
+[`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md) is
+the other conditional: it mirrors R's `if` construct and branches
+between two *functions*, evaluating only the selected one.
 
 ## Usage
 
 ``` r
-prim_ifelse(pred, true_value, false_value)
+prim_ifelse(test, yes, no)
 ```
 
 ## Arguments
 
-- pred:
+- test:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Predicate array. Must be a boolean or an R logical, and scalar or the
-  same shape as `true_value`.
+  same shape as `yes`.
 
-- true_value, false_value:
+- yes, no:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Values to select from, of the same shape. Can be any data type.
-  `true_value` and `false_value` must have the same data type. An R
-  value among them assumes the data type of the others when it is in its
-  [data type
+  Values to select from, of the same shape. Can be any data type. `yes`
+  and `no` must have the same data type. An R value among them assumes
+  the data type of the others when it is in its [data type
   category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
   its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
@@ -34,8 +37,7 @@ prim_ifelse(pred, true_value, false_value)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the shape of `true_value` and `false_value`, and the data type they
-agreed on.
+Has the shape of `yes` and `no`, and the data type they agreed on.
 
 ## Implemented Rules
 
@@ -53,14 +55,15 @@ specified under [select](https://openxla.org/stablehlo/spec#select).
 
 ## See also
 
-[`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md)
+[`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md),
+[`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md)
 
 ## Examples
 
 ``` r
-# the result takes the branches' data type; `pred` only selects
-pred <- nv_array(c(TRUE, FALSE, TRUE))
-prim_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+# the result takes the branches' data type; `test` only selects
+test <- nv_array(c(TRUE, FALSE, TRUE))
+prim_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 #> AnvlArray
 #>  1
 #>  5

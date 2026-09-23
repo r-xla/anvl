@@ -167,14 +167,14 @@ precision:
 ``` r
 
 nv_clamp(
-  min_val = nv_scalar(0, "f64"),
   x = nv_scalar(0, "f32"),
-  max_val = nv_scalar(0, "f64")
+  min = nv_scalar(0, "f64"),
+  max = nv_scalar(0, "f64")
 )
 ```
 
     ## Error:
-    ## ! Cannot bring `min_val` to data type "f32".
+    ## ! Cannot bring `min` to data type "f32".
     ## ✖ "f64" is not promotable to "f32".
     ## ℹ Convert it explicitly with `nv_convert()`.
 

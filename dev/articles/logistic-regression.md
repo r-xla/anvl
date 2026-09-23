@@ -86,7 +86,7 @@ combination of features and then applying the logistic function.
 
 predict_proba <- function(X, beta, alpha) {
   logits <- X %*% beta + alpha
-  nv_logistic(logits)
+  nv_plogis(logits)
 }
 ```
 
@@ -103,7 +103,7 @@ avoid taking the log of exactly 0.
 
 binary_cross_entropy <- function(y_true, y_pred) {
   eps <- 1e-7
-  y_pred_clipped <- nv_clamp(eps, y_pred, 1 - eps)
+  y_pred_clipped <- nv_clamp(y_pred, eps, 1 - eps)
   loss <- -(y_true * log(y_pred_clipped) + (1 - y_true) * log(1 - y_pred_clipped))
   mean(loss)
 }

@@ -89,7 +89,7 @@ few rules of thumb:
   launches a separate kernel with non-trivial overhead, and the kernels
   run one after another instead of in parallel. Express the work as a
   single vectorized operation on the whole array whenever possible
-  (e.g. `x * y` or `nv_reduce_sum(x)` instead of a `for` loop).
+  (e.g. `x * y` or `nv_sum(x)` instead of a `for` loop).
 - **Prefer batched operations.** Operations like
   [`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md)
   accept a full batch of matrices at once. Stacking many small inputs
@@ -168,7 +168,7 @@ calls:
 
 sum_jit <- jit(function(x) {
   cat("compiling for length ", shape(x), "\n", sep = "")
-  nv_reduce_sum(x, axes = 1L)
+  nv_sum(x, axes = 1L)
 })
 
 for (n in c(7, 11, 13, 17)) {

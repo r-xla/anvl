@@ -27,7 +27,7 @@ Has the input's shape and data type.
 
 ## See also
 
-[`prim_ceil()`](https://r-xla.github.io/anvl/dev/reference/prim_ceil.md)
+[`prim_ceiling()`](https://r-xla.github.io/anvl/dev/reference/prim_ceiling.md)
 for the underlying primitive.
 
 ## Examples

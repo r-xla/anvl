@@ -5,27 +5,26 @@ Element-wise logical right bit shift.
 ## Usage
 
 ``` r
-nv_shift_right_logical(lhs, rhs)
+nv_shift_right_logical(x, shift)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Two inputs with a [common data
-  type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
-  be any integer data type. Scalars are broadcast, and R values assume
-  the other operand's data type within their [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
-  otherwise falling back to their [default data
-  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  and being converted to the common data type.
+  The array whose bits are shifted. Can be any integer data type.
+
+- shift:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  By how many bits to shift each element of `x`. Brought to `x`'s data
+  type, which it must fit in. Scalars are broadcast.
 
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the inputs' broadcast shape and common data type.
+Has the inputs' broadcast shape and `x`'s data type.
 
 ## See also
 
@@ -36,16 +35,16 @@ for the underlying primitive.
 
 ``` r
 x <- nv_array(c(8L, 16L, 32L))
-y <- nv_array(c(1L, 2L, 3L))
-nv_shift_right_logical(x, y)
+shift <- nv_array(c(1L, 2L, 3L))
+nv_shift_right_logical(x, shift)
 #> AnvlArray
 #>  4
 #>  4
 #>  4
 #> [ CPUi32{3} ] 
 
-# different data types are promoted to their common one
-nv_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64"))
+# the result keeps `x`'s data type, which `shift` is brought to
+nv_shift_right_logical(nv_scalar(32L, "i64"), nv_scalar(2L, "i32"))
 #> AnvlArray
 #>  8
 #> [ CPUi64{} ] 

@@ -198,7 +198,7 @@ combination of features and then applying the logistic function.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">predict_proba</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">X</span>, <span class="va">beta</span>, <span class="va">alpha</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">logits</span> <span class="op">&lt;-</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span> <span class="op">+</span> <span class="va">alpha</span></span>
-<span>  <span class="fu"><a href="../reference/nv_logistic.html">nv_logistic</a></span><span class="op">(</span><span class="va">logits</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/nv_plogis.html">nv_plogis</a></span><span class="op">(</span><span class="va">logits</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>For binary classification, we use the binary cross-entropy loss:</p>
 <p><span class="math display">\[\mathcal{L} = -\frac{1}{n}
@@ -210,7 +210,7 @@ avoid taking the log of exactly 0.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">binary_cross_entropy</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">y_true</span>, <span class="va">y_pred</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">eps</span> <span class="op">&lt;-</span> <span class="fl">1e-7</span></span>
-<span>  <span class="va">y_pred_clipped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_clamp.html">nv_clamp</a></span><span class="op">(</span><span class="va">eps</span>, <span class="va">y_pred</span>, <span class="fl">1</span> <span class="op">-</span> <span class="va">eps</span><span class="op">)</span></span>
+<span>  <span class="va">y_pred_clipped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_clamp.html">nv_clamp</a></span><span class="op">(</span><span class="va">y_pred</span>, <span class="va">eps</span>, <span class="fl">1</span> <span class="op">-</span> <span class="va">eps</span><span class="op">)</span></span>
 <span>  <span class="va">loss</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="op">(</span><span class="va">y_true</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">y_pred_clipped</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y_true</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">y_pred_clipped</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">loss</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>

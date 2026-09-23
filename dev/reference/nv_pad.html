@@ -81,13 +81,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_pad</span><span class="op">(</span></span>
-<span>  <span class="va">x</span>,</span>
-<span>  <span class="va">padding_value</span>,</span>
-<span>  <span class="va">edge_padding_low</span>,</span>
-<span>  <span class="va">edge_padding_high</span>,</span>
-<span>  interior_padding <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_pad</span><span class="op">(</span><span class="va">x</span>, <span class="va">value</span>, <span class="va">low</span>, <span class="va">high</span>, interior <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,10 +90,10 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-The array to pad. Can be any data type; <code>padding_value</code> is brought to it.</p></dd>
+The array to pad. Can be any data type; <code>value</code> is brought to it.</p></dd>
 
 
-<dt id="arg-padding-value">padding_value<a class="anchor" aria-label="anchor" href="#arg-padding-value"></a></dt>
+<dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Scalar value to use for padding. It is
 brought to <code>x</code>'s data type: an R value is built at it when its category can
@@ -109,17 +103,17 @@ would narrow it – an <code>f64</code> padding value for an <code>f32</code> <c
 a silent narrowing.</p></dd>
 
 
-<dt id="arg-edge-padding-low">edge_padding_low<a class="anchor" aria-label="anchor" href="#arg-edge-padding-low"></a></dt>
+<dt id="arg-low">low<a class="anchor" aria-label="anchor" href="#arg-low"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 Amount of padding to add at the start of each axis.</p></dd>
 
 
-<dt id="arg-edge-padding-high">edge_padding_high<a class="anchor" aria-label="anchor" href="#arg-edge-padding-high"></a></dt>
+<dt id="arg-high">high<a class="anchor" aria-label="anchor" href="#arg-high"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 Amount of padding to add at the end of each axis.</p></dd>
 
 
-<dt id="arg-interior-padding">interior_padding<a class="anchor" aria-label="anchor" href="#arg-interior-padding"></a></dt>
+<dt id="arg-interior">interior<a class="anchor" aria-label="anchor" href="#arg-interior"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> | <code>NULL</code>)<br>
 Amount of padding to add between elements in each axis.
 If <code>NULL</code> (default), no interior padding is applied.</p></dd>
@@ -129,7 +123,7 @@ If <code>NULL</code> (default), no interior padding is applied.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has <code>x</code>'s data type. Each axis grows by
-<code>edge_padding_low + edge_padding_high</code>, plus <code>interior_padding</code> between
+<code>low + high</code>, plus <code>interior</code> between
 every pair of elements; negative edge padding trims.</p>
     </div>
     <div class="section level2">
@@ -141,7 +135,7 @@ every pair of elements; negative edge padding trims.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># two zeros in front, one behind</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_pad</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>, edge_padding_low <span class="op">=</span> <span class="fl">2L</span>, edge_padding_high <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_pad</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>, low <span class="op">=</span> <span class="fl">2L</span>, high <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>

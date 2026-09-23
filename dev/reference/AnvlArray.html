@@ -87,7 +87,7 @@ be a CPU or a GPU.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_array</span><span class="op">(</span><span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, byrow <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_array</span><span class="op">(</span><span class="va">data</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, byrow <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_scalar</span><span class="op">(</span><span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
@@ -100,13 +100,13 @@ be a CPU or a GPU.</p>
 <span>  byrow <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_empty</span><span class="op">(</span><span class="va">dtype</span>, <span class="va">shape</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">nv_empty</span><span class="op">(</span><span class="va">shape</span>, <span class="va">dtype</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_array_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, shape <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">nv_array_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">data</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_scalar_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_empty_like</span><span class="op">(</span><span class="va">like</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_empty_like</span><span class="op">(</span><span class="va">like</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -120,6 +120,16 @@ payload of <code>prod(shape)</code> elements of <code>dtype</code>; both <code>d
 are then required (only supported on the <code>"pjrt"</code> backend).
 Raw payloads are read in column-major element order, or row-major
 with <code>byrow = TRUE</code>.</p></dd>
+
+
+<dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
+<dd><p>(<code>NULL</code> | <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
+The output shape of the array.
+The default (<code>NULL</code>) is to infer it from the data if possible.
+Note that <code>nv_array</code> interprets length 1 vectors as having shape <code>(1)</code>.
+Empty data has no shape to infer – <code>0</code>, <code>c(2, 0)</code> and <code>c(0, 3)</code> all hold
+no elements – so <code>shape</code> is required there.
+To create a "scalar" with no axes (shape <code>()</code>), use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
@@ -140,16 +150,6 @@ The device the data lives on, given either as:</p><ul><li><p>a <em>device string
 <code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
 is backend-specific, it also determines the backend.</p></li>
 </ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>.</p></dd>
-
-
-<dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
-<dd><p>(<code>NULL</code> | <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-The output shape of the array.
-The default (<code>NULL</code>) is to infer it from the data if possible.
-Note that <code>nv_array</code> interprets length 1 vectors as having shape <code>(1)</code>.
-Empty data has no shape to infer – <code>0</code>, <code>c(2, 0)</code> and <code>c(0, 3)</code> all hold
-no elements – so <code>shape</code> is required there.
-To create a "scalar" with no axes (shape <code>()</code>), use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
 
 
 <dt id="arg-byrow">byrow<a class="anchor" aria-label="anchor" href="#arg-byrow"></a></dt>
@@ -175,7 +175,7 @@ Defaults to <code>1</code> when <code>data</code> is a scalar.</p></dd>
 
 <dt id="arg-like">like<a class="anchor" aria-label="anchor" href="#arg-like"></a></dt>
 <dd><p>(<code>AnvlArray</code>)<br>
-An existing array. Any of <code>dtype</code>, <code>device</code> and <code>shape</code> that are <code>NULL</code>
+An existing array. Any of <code>shape</code>, <code>dtype</code> and <code>device</code> that are <code>NULL</code>
 (the default) are taken from <code>like</code>.</p></dd>
 
 </dl></div>
@@ -297,10 +297,10 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span>shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.5677e-04 3.0743e-41 3.5677e-04</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0743e-41 3.5677e-04 3.0743e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  9.8091e-45 1.2612e-44 1.2612e-44</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.9618e-44 1.9618e-44 1.8217e-44</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

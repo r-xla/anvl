@@ -90,7 +90,7 @@ along axis 1 with that axis dropped.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_scan</span><span class="op">(</span><span class="va">init</span>, <span class="va">xs</span>, <span class="va">body</span>, <span class="va">length</span>, reverse <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_scan</span><span class="op">(</span><span class="va">init</span>, <span class="va">xs</span>, <span class="va">body</span>, <span class="va">steps</span>, reverse <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -106,7 +106,7 @@ shape and data type across steps.</p></dd>
 <dt id="arg-xs">xs<a class="anchor" aria-label="anchor" href="#arg-xs"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
 Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-all of size <code>length</code> along it. An empty list runs a counted loop.</p></dd>
+all of size <code>steps</code> along it. An empty list runs a counted loop.</p></dd>
 
 
 <dt id="arg-body">body<a class="anchor" aria-label="anchor" href="#arg-body"></a></dt>
@@ -116,7 +116,7 @@ where <code>carry</code> has the structure of <code>init</code> and <code>out</c
 nested) list of arrays or <code>NULL</code>. <code>x</code> is <code>NULL</code> when <code>xs</code> is empty.</p></dd>
 
 
-<dt id="arg-length">length<a class="anchor" aria-label="anchor" href="#arg-length"></a></dt>
+<dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
 Static trip count; the size of axis 1 of every array in <code>xs</code>. <code>0</code> runs
 no step and returns <code>init</code> with zero-length stacked outputs.</p></dd>
@@ -124,14 +124,14 @@ no step and returns <code>init</code> with zero-length stacked outputs.</p></dd>
 
 <dt id="arg-reverse">reverse<a class="anchor" aria-label="anchor" href="#arg-reverse"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-If <code>TRUE</code>, steps run from <code>length</code> down to <code>1</code>; each step still reads
+If <code>TRUE</code>, steps run from <code>steps</code> down to <code>1</code>; each step still reads
 <code>xs</code> at its own position and writes its output there.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list(carry = , out = )</code>: the final carry and the stacked
-outputs, each leaf of <code>out</code> gaining a leading axis of size <code>length</code>.</p>
+outputs, each leaf of <code>out</code> gaining a leading axis of size <code>steps</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -161,7 +161,7 @@ outputs, each leaf of <code>out</code> gaining a leading axis of size <code>leng
 <span class="r-in"><span>    <span class="va">s</span> <span class="op">&lt;-</span> <span class="va">carry</span><span class="op">$</span><span class="va">s</span> <span class="op">+</span> <span class="va">x</span><span class="op">$</span><span class="va">x</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>carry <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>s <span class="op">=</span> <span class="va">s</span><span class="op">)</span>, out <span class="op">=</span> <span class="va">s</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span>,</span></span>
-<span class="r-in"><span>  length <span class="op">=</span> <span class="fl">3L</span></span></span>
+<span class="r-in"><span>  steps <span class="op">=</span> <span class="fl">3L</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $carry</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $carry$s</span>

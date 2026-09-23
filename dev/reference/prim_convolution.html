@@ -90,9 +90,9 @@ Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_convolution</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
 <span>  <span class="va">kernel</span>,</span>
-<span>  <span class="va">input_batch_axis</span>,</span>
-<span>  <span class="va">input_feature_axis</span>,</span>
-<span>  <span class="va">input_spatial_axes</span>,</span>
+<span>  <span class="va">x_batch_axis</span>,</span>
+<span>  <span class="va">x_feature_axis</span>,</span>
+<span>  <span class="va">x_spatial_axes</span>,</span>
 <span>  <span class="va">kernel_input_feature_axis</span>,</span>
 <span>  <span class="va">kernel_output_feature_axis</span>,</span>
 <span>  <span class="va">kernel_spatial_axes</span>,</span>
@@ -125,12 +125,12 @@ of them has one.</p></dd>
 Shares <code>x</code>'s data type – see <code>x</code>.</p></dd>
 
 
-<dt id="arg-input-batch-axis-input-feature-axis">input_batch_axis, input_feature_axis<a class="anchor" aria-label="anchor" href="#arg-input-batch-axis-input-feature-axis"></a></dt>
+<dt id="arg-x-batch-axis-x-feature-axis">x_batch_axis, x_feature_axis<a class="anchor" aria-label="anchor" href="#arg-x-batch-axis-x-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
 Batch and feature axis of <code>x</code>.</p></dd>
 
 
-<dt id="arg-input-spatial-axes">input_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-input-spatial-axes"></a></dt>
+<dt id="arg-x-spatial-axes">x_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-x-spatial-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> Spatial axes of <code>x</code>.</p></dd>
 
 
@@ -209,7 +209,7 @@ The axis numbers are converted on the way down.</p>
 <span class="r-in"><span><span class="va">kernel</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="op">-</span><span class="fl">1</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_convolution</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">x</span>, <span class="va">kernel</span>,</span></span>
-<span class="r-in"><span>  input_batch_axis <span class="op">=</span> <span class="fl">1L</span>, input_feature_axis <span class="op">=</span> <span class="fl">2L</span>, input_spatial_axes <span class="op">=</span> <span class="fl">3L</span>,</span></span>
+<span class="r-in"><span>  x_batch_axis <span class="op">=</span> <span class="fl">1L</span>, x_feature_axis <span class="op">=</span> <span class="fl">2L</span>, x_spatial_axes <span class="op">=</span> <span class="fl">3L</span>,</span></span>
 <span class="r-in"><span>  kernel_output_feature_axis <span class="op">=</span> <span class="fl">1L</span>, kernel_input_feature_axis <span class="op">=</span> <span class="fl">2L</span>,</span></span>
 <span class="r-in"><span>  kernel_spatial_axes <span class="op">=</span> <span class="fl">3L</span>,</span></span>
 <span class="r-in"><span>  output_batch_axis <span class="op">=</span> <span class="fl">1L</span>, output_feature_axis <span class="op">=</span> <span class="fl">2L</span>, output_spatial_axes <span class="op">=</span> <span class="fl">3L</span>,</span></span>

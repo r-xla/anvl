@@ -95,7 +95,7 @@ computed (and returned) at the default float data type."><meta property="og:imag
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Quantile</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_quantile.Rd</code></div>
     </div>
 
@@ -119,8 +119,19 @@ computed (and returned) at the default float data type.</p>
 <span>  <span class="va">probs</span>,</span>
 <span>  axes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  drop <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  interpolation <span class="op">=</span> <span class="st">"linear"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"linear"</span>,</span>
 <span>  nan_rm <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'AnvlArray'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  probs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0.25</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  na.rm <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  axes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  drop <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"linear"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -154,7 +165,7 @@ Whether to drop the reduced axes: removed from the output shape if <code>TRUE</c
 set to 1 if <code>FALSE</code>.</p></dd>
 
 
-<dt id="arg-interpolation">interpolation<a class="anchor" aria-label="anchor" href="#arg-interpolation"></a></dt>
+<dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
 <dd><p>(<code>character(1)</code>)<br>
 One of <code>"linear"</code> (default), <code>"lower"</code>, <code>"higher"</code>, <code>"nearest"</code>,
 <code>"midpoint"</code>. See "Interpolation modes".</p></dd>
@@ -164,6 +175,14 @@ One of <code>"linear"</code> (default), <code>"lower"</code>, <code>"higher"</co
 <dd><p>(<code>logical(1)</code>)<br>
 How to handle <code>NaN</code> values in float inputs. If <code>FALSE</code>
 (default), <code>NaN</code> propagates. If <code>TRUE</code>, <code>NaN</code> values are skipped.</p></dd>
+
+
+<dt id="arg-na-rm">na.rm<a class="anchor" aria-label="anchor" href="#arg-na-rm"></a></dt>
+<dd><p>Forwarded to <code>nv_quantile()</code>'s <code>nan_rm</code> argument.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>No additional arguments.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -191,6 +210,16 @@ with <code>lo = floor(h)</code>, <code>hi = ceiling(h)</code> and <code>frac = h
 <code>nv_quantile(nv_flatten(x), q)</code> for a matrix <code>x</code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="the-quantile-generic">The <code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-quantile-generic"></a></h2>
+
+
+<p><code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">stats::quantile()</a></code> reduces every axis of a multi-axis array, and so does
+<code>nv_quantile()</code> by default, so the two agree. Pass <code>axes</code> to reduce a
+subset instead. The result is unnamed, and <code>probs</code> follows
+<code>nv_quantile()</code>'s rules: several probabilities have to be wrapped in
+<code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>, which the default already is.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="nv_median.html">nv_median()</a></code>, <code><a href="nv_sort.html">nv_sort()</a></code>.</p></div>
     </div>
@@ -209,7 +238,7 @@ with <code>lo = floor(h)</code>, <code>hi = ceiling(h)</code> and <code>frac = h
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3.5000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5.2500</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
-<span class="r-in"><span><span class="fu">nv_quantile</span><span class="op">(</span><span class="va">x</span>, <span class="fl">0.5</span>, interpolation <span class="op">=</span> <span class="st">"lower"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_quantile</span><span class="op">(</span><span class="va">x</span>, <span class="fl">0.5</span>, method <span class="op">=</span> <span class="st">"lower"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>

@@ -7,7 +7,7 @@ distribution.
 ## Usage
 
 ``` r
-nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
+nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
 ```
 
 ## Arguments
@@ -17,7 +17,7 @@ nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Shape of the result.
 
-- initial_state:
+- state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   RNG state: a 1-D array of two `ui64` elements, as

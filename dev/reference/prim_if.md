@@ -1,9 +1,12 @@
 # Primitive If
 
 Conditional execution of one of two branches based on a scalar boolean
-predicate. Unlike
+predicate, mirroring R's `if` construct: it branches between two
+*functions* and evaluates only the selected one. Its arguments are named
+after that construct, where
 [`prim_ifelse()`](https://r-xla.github.io/anvl/dev/reference/prim_ifelse.md)
-which operates element-wise, this evaluates only the selected branch.
+– which selects element-wise between two *arrays* – is named after
+[`ifelse()`](https://rdrr.io/r/base/ifelse.html).
 
 ## Usage
 

@@ -11,7 +11,7 @@ zero out the other triangle of an existing array instead.
 ``` r
 nv_upper_tri(shape, diagonal = 1L, device = NULL)
 
-nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
+nv_upper_tri_like(like, shape = NULL, diagonal = 1L, device = NULL)
 ```
 
 ## Arguments

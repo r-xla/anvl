@@ -6,7 +6,8 @@ Computes the eigendecomposition of a symmetric matrix `x` of shape
 columns of `vectors` are the (orthonormal) eigenvectors and `values` is
 the length-`n` vector of (real) eigenvalues in ascending order. Output
 names and order match
-[`base::eigen()`](https://rdrr.io/r/base/eigen.html).
+[`base::eigen()`](https://rdrr.io/r/base/eigen.html), which unlike this
+primitive also handles non-symmetric matrices.
 
 ## Usage
 

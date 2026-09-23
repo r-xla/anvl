@@ -169,9 +169,10 @@ axes. Must have the same length as <code>x_batching_axes</code>.</p></dd>
 
 <dt id="arg-start-index-map">start_index_map<a class="anchor" aria-label="anchor" href="#arg-start-index-map"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Maps each component of the index vector to an <code>x</code>
-axis. For example, <code>start_index_map = c(1L)</code> means each
-index vector indexes into the first axis of <code>x</code>.</p></dd>
+Maps each component of an index vector in <code>start_indices</code> to an axis
+of <code>x</code>. For example, <code>start_index_map = 1L</code> means each index
+vector indexes into the first axis of <code>x</code>. This is <code><a href="prim_scatter.html">prim_scatter()</a></code>'s
+<code>scatter_axes_to_x_axes</code>.</p></dd>
 
 
 <dt id="arg-index-vector-axis">index_vector_axis<a class="anchor" aria-label="anchor" href="#arg-index-vector-axis"></a></dt>

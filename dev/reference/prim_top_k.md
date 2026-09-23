@@ -1,7 +1,7 @@
 # Primitive Top-K
 
-Returns the `k` largest values along the last axis, sorted in descending
-order, together with their indices into that axis.
+Returns the `k` largest values along the last axis, sorted in decreasing
+order, and with `indices = TRUE` their indices into that axis as well.
 
 For other axes, transpose so the target axis is last, call
 `prim_top_k()`, then transpose back.
@@ -11,7 +11,7 @@ does this.
 ## Usage
 
 ``` r
-prim_top_k(x, k, indices = TRUE)
+prim_top_k(x, k, indices)
 ```
 
 ## Arguments
@@ -75,7 +75,15 @@ top-k kernel, so it keeps
 ``` r
 # `values` keeps the input's data type, `indices` is the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
-prim_top_k(x, k = 3L)
+prim_top_k(x, k = 3L, indices = FALSE)
+#> $values
+#> AnvlArray
+#>  9
+#>  6
+#>  5
+#> [ CPUf32{3} ] 
+#> 
+prim_top_k(x, k = 3L, indices = TRUE)
 #> $values
 #> AnvlArray
 #>  9

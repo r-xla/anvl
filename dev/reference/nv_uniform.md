@@ -65,8 +65,8 @@ All three are univariate functions evaluated elementwise, returning one
 value per element of `x`/`q`/`p`. Non-scalar `min`/`max` therefore give
 a separate univariate Uniform per element, *not* a multivariate Uniform
 over the hyper-rectangle \\\prod_i \[a_i, b_i\]\\. For that, reduce over
-the result: `nv_reduce_prod(nv_dunif(x, min, max))`, or
-`nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
+the result: `nv_prod(nv_dunif(x, min, max))`, or
+`nv_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
 
 ## See also
 
