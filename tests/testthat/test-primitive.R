@@ -89,28 +89,36 @@ describe("subgraphs", {
 })
 
 describe("the call a primitive's error reports", {
+  call_of <- function(expr) {
+    err <- tryCatch(expr, error = identity)
+    deparse(conditionCall(err))
+  }
+
   it("is the `prim_*()` the caller wrote, whichever helper raised it", {
     # Without this the caller reads `Error in assert_int_param()`,
     # `Error in resolve_axes()` or `Error in (function (init, cond, body)` --
     # the helper a body checks its arguments with, or the anonymous function
     # `jit()` wraps. An inference rule's error is already rewritten this way in
     # `trace_fn()`; this covers everything raised in the wrapper.
-    call_of <- function(expr) {
-      err <- tryCatch(expr, error = identity)
-      deparse(conditionCall(err))
-    }
     expect_equal(call_of(prim_top_k(nv_array(1:4), 2.5)), "prim_top_k()")
     expect_equal(call_of(prim_reverse(nv_array(1:4), 5L)), "prim_reverse()")
     expect_equal(call_of(prim_reshape(nv_array(1:4), mean)), "prim_reshape()")
     expect_equal(call_of(prim_chol(nv_array(c(1, 2), dtype = "f32"))), "prim_chol()")
     expect_equal(call_of(prim_fill(NaN, 2L, "i32")), "prim_fill()")
+    # Not raised by a checking helper at all: `prim_scan()` asserts with
+    # checkmate, and a `NULL` operand dies inside the tracer.
     expect_equal(
-      call_of(prim_while(
-        list(i = nv_scalar(1L)),
-        cond = function(i) i < 3L,
-        body = function(i) list(nv_convert(i, "f32"))
+      call_of(prim_scan(
+        nv_scalar(0L),
+        list(nv_array(1:3)),
+        function(c, x) list(carry = c + x, out = c),
+        length = NA
       )),
-      "prim_while()"
+      "prim_scan()"
+    )
+    expect_equal(
+      call_of(prim_concatenate(nv_array(1:4), NULL, axis = 1L)),
+      "prim_concatenate()"
     )
     # An inference error, which `trace_fn()` had already attributed.
     expect_equal(
@@ -119,11 +127,37 @@ describe("the call a primitive's error reports", {
     )
   })
 
-  it("is left alone once an inner primitive has claimed it", {
-    # `is_primitive_call()` keeps the innermost `prim_*()`, so a primitive
-    # built out of others does not relabel their errors as its own.
-    expect_true(is_primitive_call(quote(prim_add())))
-    expect_false(is_primitive_call(quote(assert_int_param())))
-    expect_false(is_primitive_call(NULL))
+  it("survives the sub-graphs a higher-order primitive traces", {
+    # Every primitive inside `body` names itself and clears the marker again on
+    # its way out, so without `trace_fn()` restoring it the check that follows
+    # the sub-trace would report no call at all.
+    expect_equal(
+      call_of(prim_while(
+        list(i = nv_scalar(1L)),
+        cond = function(i) i < 3L,
+        body = function(i) list(nv_convert(i, "f32"))
+      )),
+      "prim_while()"
+    )
+    expect_equal(
+      call_of(prim_reduce(
+        nv_array(1:4),
+        nv_scalar(0L),
+        1L,
+        reductor = function(a, b) nv_convert(a + b, "f32")
+      )),
+      "prim_reduce()"
+    )
+  })
+
+  it("is cleared again, so a later error is not blamed on the last primitive", {
+    err <- tryCatch(
+      jit(function(a) {
+        b <- a + 1L
+        stop("user error")
+      })(nv_array(1:4)),
+      error = identity
+    )
+    expect_false(identical(deparse(conditionCall(err)), "prim_add()"))
   })
 })

@@ -83,7 +83,7 @@ Every primitive has an inference rule `infer_<name>()` in `R/rules-inference.R`,
 
 ### Where a check goes
 
-- Anything decidable from the avals and params goes **in the rule, not in the `prim_*()` body**. A check in both places gives one mistake two wordings. (Either place reports `prim_<name>()` as the call: the rule's error is rewritten in `trace_fn()`, and `new_primitive()` wraps the body so anything raised there is too.)
+- Anything decidable from the avals and params goes **in the rule, not in the `prim_*()` body**. A check in both places gives one mistake two wordings. (Either place reports `prim_<name>()` as the call: a primitive names itself on the way in, and `trace_fn()` rewrites the call of anything raised under it.)
 - The wrapper keeps only what a rule cannot do: normalizing (`resolve_axis()` / `resolve_axes()` turn a negative axis into a concrete one, so the rule only sees the result), coercing a param before it is stored (then use the same `assert_*_param()` helper the rule uses, so the wording stays the same), checking sub-graph functions (traced before `graph_desc_add()`), and a guard the wrapper's own next line depends on.
 - Validate every whole-number param with `assert_int_param()` / `assert_size_param()` **before** indexing or comparing with it. Otherwise an `NA` reaches an `if ()` and the caller sees R's raw `missing value where TRUE/FALSE needed`.
 - That check is per entry, so it does not survive arithmetic: params each inside the integer range still overflow when a rule adds or multiplies them. Compute a result shape in double (`as.double()`) and hand it to `assert_result_shape()`, as `infer_convolution()` does.

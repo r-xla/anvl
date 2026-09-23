@@ -119,7 +119,7 @@ new_primitive <- function(
   self_env <- new.env(parent = environment(fn))
   self_env$self <- primitive
   environment(fn) <- self_env
-  body(fn) <- wrap_primitive_body(body(fn))
+  body(fn) <- mark_primitive_body(body(fn))
 
   jit_fn <- jit(fn, static = static)
   attr(jit_fn, "primitive") <- primitive
@@ -133,34 +133,22 @@ new_primitive <- function(
 }
 
 
-# Whatever a primitive refuses, the caller reads as coming from the `prim_*()`
-# they wrote. Without this the helpers a body checks its arguments with report
-# themselves (`Error in assert_int_param()`), and a `cli_abort()` in the body
-# reports the anonymous function `jit()` wraps
-# (`Error in (function (init, cond, body)`). The call is built on the way out
-# rather than here, because `print_call_repr()` is collated after this file.
-wrap_primitive_body <- function(body) {
-  rlang::expr(
-    tryCatch(
-      !!body,
-      error = function(cnd) {
-        if (!is_primitive_call(cnd$call)) {
-          cnd$call <- print_call_repr(self)
-        }
-        rlang::cnd_signal(cnd)
-      }
-    )
-  )
-}
-
-# Has a condition's call already been attributed to a `prim_*()`? An inference
-# error is rewritten this way in `trace_fn()`, and a primitive that calls
-# another one leaves the inner attribution alone, so the innermost `prim_*()`
-# is the one reported.
-is_primitive_call <- function(call) {
-  is.call(call) &&
-    is.name(call[[1L]]) &&
-    startsWith(as.character(call[[1L]]), "prim_")
+# Say which primitive is running, so that whatever it refuses reaches the caller
+# as coming from the `prim_*()` they wrote. `trace_fn()` already rewrites the
+# call of any error raised under a trace to the primitive this names; until now
+# `graph_desc_add()` set it, which is only reached once the wrapper's own checks
+# have passed -- so `resolve_axes()` and friends reported themselves
+# (`Error in resolve_axes()`), and a `cli_abort()` in a body reported the
+# anonymous function `jit()` wraps (`Error in (function (init, cond, body)`).
+#
+# This is one assignment into an environment, taken out of `graph_desc_add()`
+# rather than added to it, and no handler: an error is still caught in the one
+# place it always was.
+mark_primitive_body <- function(body) {
+  rlang::expr({
+    globals[["INFER_PRIMITIVE"]] <- self
+    !!body
+  })
 }
 
 

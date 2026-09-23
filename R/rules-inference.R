@@ -23,9 +23,9 @@ NULL
 # The rules are also where a primitive's arguments are checked. Anything that
 # can be decided from the incoming avals and the params belongs here and not in
 # the `prim_*()` body: a check in both places gives one mistake two wordings.
-# Either place reports the primitive as the call -- a rule's error is rewritten
-# in `trace_fn()`, and `new_primitive()` wraps the body so that anything raised
-# there is too.
+# Either place reports the primitive as the call: a primitive names itself on
+# the way in (`new_primitive()`), and `trace_fn()` rewrites the call of
+# anything raised under it.
 #
 # What stays in the wrapper is what a rule cannot do. `resolve_axis()` and
 # `resolve_axes()` normalize rather than check -- they turn a negative axis into

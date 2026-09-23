@@ -690,7 +690,13 @@ trace_fn <- function(
       }
     )
   } else {
+    # A higher-order primitive traces its sub-graphs here and then goes on to
+    # check them, so the primitive it named on the way in has to survive the
+    # sub-trace: every primitive *inside* the sub-graph names itself and clears
+    # the marker again on its way out.
+    prim <- globals[["INFER_PRIMITIVE"]]
     output <- do.call(f_flat, inputs_flat)
+    globals[["INFER_PRIMITIVE"]] <- prim
   }
 
   out_tree <- output[[1L]]
@@ -879,7 +885,9 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
     avals_in[[i]] <- gnode$aval
   }
   names(avals_in) <- names(args)
-  globals[["INFER_PRIMITIVE"]] <- primitive
+  # The primitive under way is named by its wrapper, on the way in; this clears
+  # it again once inference has passed, so that a later error somewhere else in
+  # the traced function is not attributed to the last primitive that ran.
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["INFER_PRIMITIVE"]] <- NULL
   gvals_out <- lapply(ats_out, GraphValue)
