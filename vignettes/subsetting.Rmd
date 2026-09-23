@@ -153,11 +153,23 @@ x[x > 6]
 ```
 
 The elements come back in the same order as in R, i.e. column-major.
-Note that a single subscript that is *not* shaped like the whole array still refers to the first axis, as everywhere else in {anvl}:
+A single subscript that is *not* shaped like the whole array still refers to the first axis, as everywhere else in {anvl}:
 
 ```{r}
 x[arr(TRUE, FALSE, TRUE)]
 ```
+
+This differs from base R.
+There, a single subscript on a matrix indexes the flattened matrix, and a mask shorter than the matrix is recycled, so the same call picks elements from all columns:
+
+```{r}
+r_x <- matrix(1:12, nrow = 3, byrow = TRUE)
+r_x[c(TRUE, FALSE, TRUE)]
+```
+
+{anvl} keeps one rule instead: `x[i]` always means `x[i, ]` for an index, a range or an array of indices alike.
+A mask follows it too.
+Only a mask of the array's full shape selects across all axes, since it cannot be read as a subset of one axis.
 
 Masks work in assignment as well, where the result keeps the shape of the array:
 

@@ -210,8 +210,12 @@ resolve_flat_mask <- function(quos, x_shape) {
   }
   mask <- as_r_mask(e)
   if (!identical(as.integer(dim(mask)), as.integer(x_shape))) {
-    # splice the host-side mask back in so it is not read from the device twice
-    quos[[1L]] <- rlang::new_quosure(mask)
+    # splice the host-side mask back in so it is not read from the device twice;
+    # a scalar mask comes back without `dim`, where it would be mistaken for an R
+    # logical vector, so that one keeps its array form
+    if (!is.null(dim(mask))) {
+      quos[[1L]] <- rlang::new_quosure(mask)
+    }
     return(list(mask = NULL, quos = quos))
   }
   list(mask = mask, quos = quos)

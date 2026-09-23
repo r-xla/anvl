@@ -544,44 +544,36 @@ describe("subset_specs_start_indices", {
   })
 })
 
-describe("zero-sized subsets", {
-  it("empty index array yields a zero-sized axis", {
+describe("nv_subset", {
+  it("returns a zero-sized axis for an empty index array", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(shape(x[array(integer(0)), ]), c(0L, 4L))
     expect_equal(as_array(x[array(integer(0)), ]), r_arr[integer(0), , drop = FALSE])
   })
 
-  it("assigning to an empty subset is a no-op", {
-    x <- nv_array(1:10)
-    x[array(integer(0))] <- 0L
-    expect_equal(as_array(x), array(1:10))
-  })
-})
-
-describe("boolean masks", {
-  it("1D: mask selects the TRUE positions", {
+  it("selects the TRUE positions of a mask on a 1-D array", {
     r_arr <- array(1:10)
     x <- nv_array(r_arr)
     m <- arr(TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE)
     expect_equal(as_array(x[m]), r_arr[as.vector(m)])
   })
 
-  it("2D: mask on the first axis", {
+  it("applies a mask to the first axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m <- arr(TRUE, FALSE, TRUE)
     expect_equal(as_array(x[m, ]), r_arr[as.vector(m), , drop = FALSE])
   })
 
-  it("2D: mask on the second axis", {
+  it("applies a mask to the second axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m <- arr(FALSE, TRUE, TRUE, FALSE)
     expect_equal(as_array(x[, m]), r_arr[, as.vector(m), drop = FALSE])
   })
 
-  it("2D: masks on both axes", {
+  it("applies masks to both axes of a matrix", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m1 <- arr(TRUE, FALSE, TRUE)
@@ -589,14 +581,7 @@ describe("boolean masks", {
     expect_equal(as_array(x[m1, m2]), r_arr[as.vector(m1), as.vector(m2), drop = FALSE])
   })
 
-  it("2D: mask combines with a range", {
-    r_arr <- array(1:12, dim = c(3L, 4L))
-    x <- nv_array(r_arr)
-    m <- arr(TRUE, FALSE, TRUE)
-    expect_equal(as_array(x[m, 2:3]), r_arr[as.vector(m), 2:3, drop = FALSE])
-  })
-
-  it("3D: masks on all three axes", {
+  it("applies masks to all three axes of a 3-D array", {
     r_arr <- array(1:24, dim = c(2L, 3L, 4L))
     x <- nv_array(r_arr)
     m1 <- arr(TRUE, FALSE)
@@ -608,85 +593,47 @@ describe("boolean masks", {
     )
   })
 
-  it("subset_assign with masks on both axes", {
-    r_arr <- array(1:12, dim = c(3L, 4L))
-    m1 <- arr(TRUE, FALSE, TRUE)
-    m2 <- arr(FALSE, TRUE, TRUE, FALSE)
-    r_expected <- r_arr
-    r_expected[as.vector(m1), as.vector(m2)] <- array(101:104, dim = c(2L, 2L))
-
-    x <- nv_array(r_arr)
-    x[m1, m2] <- nv_array(101:104, shape = c(2L, 2L))
-    expect_equal(as_array(x), r_expected)
-  })
-
-  it("2D: mask combines with other subset kinds", {
+  it("combines a mask with a range", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m <- arr(TRUE, FALSE, TRUE)
-    # the scalar index drops the second axis, so the result is 1-D
+    expect_equal(as_array(x[m, 2:3]), r_arr[as.vector(m), 2:3, drop = FALSE])
+  })
+
+  it("combines a mask with a scalar index, which drops its axis", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m <- arr(TRUE, FALSE, TRUE)
     expect_equal(as_array(x[m, 2L]), array(r_arr[as.vector(m), 2L]))
   })
 
-  it("all-TRUE mask keeps the axis size", {
+  it("keeps the axis size for an all-TRUE mask", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(as_array(x[arr(TRUE, TRUE, TRUE), ]), r_arr)
   })
 
-  it("all-FALSE mask yields a zero-sized axis", {
+  it("returns a zero-sized axis for an all-FALSE mask", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(shape(x[arr(FALSE, FALSE, FALSE), ]), c(0L, 4L))
   })
 
-  it("subset_assign with a mask on the first axis", {
-    r_arr <- array(1:12, dim = c(3L, 4L))
-    m <- arr(TRUE, FALSE, TRUE)
-    r_expected <- r_arr
-    r_expected[as.vector(m), ] <- array(101:108, dim = c(2L, 4L))
-
-    x <- nv_array(r_arr)
-    x[m, ] <- nv_array(101:108, shape = c(2L, 4L))
-    expect_equal(as_array(x), r_expected)
-  })
-
-  it("subset_assign with a mask broadcasts a scalar", {
-    r_arr <- array(1:12, dim = c(3L, 4L))
-    m <- arr(TRUE, FALSE, TRUE)
-    r_expected <- r_arr
-    r_expected[as.vector(m), ] <- 0L
-
-    x <- nv_array(r_arr)
-    x[m, ] <- 0L
-    expect_equal(as_array(x), r_expected)
-  })
-
-  it("a static mask works under jit", {
+  it("accepts an R logical mask under jit", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     m <- arr(TRUE, FALSE, TRUE)
     f <- jit(function(x) x[m, ])
     expect_equal(as_array(f(nv_array(r_arr))), r_arr[as.vector(m), , drop = FALSE])
   })
-})
 
-describe("boolean masks from arrays", {
-  it("2D: an anvl mask selects rows in eager mode", {
+  it("accepts a bool array as a mask in eager mode", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m <- nv_array(arr(TRUE, FALSE, TRUE))
     expect_equal(as_array(x[m, ]), r_arr[c(TRUE, FALSE, TRUE), , drop = FALSE])
   })
 
-  it("an anvl mask errors under jit", {
-    f <- jit(function(x, m) x[m, ])
-    expect_error(
-      f(nv_array(array(1:12, dim = c(3L, 4L))), nv_array(arr(TRUE, FALSE, TRUE))),
-      "only supported in eager mode"
-    )
-  })
-
-  it("2D: anvl masks in both dimensions", {
+  it("accepts bool arrays as masks on both axes", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     row_mask <- nv_sum(x, axes = 2L) > 20L
@@ -697,10 +644,26 @@ describe("boolean masks from arrays", {
     )
   })
 
+  it("errors on a bool array mask under jit", {
+    f <- jit(function(x, m) x[m, ])
+    expect_error(
+      f(nv_array(array(1:12, dim = c(3L, 4L))), nv_array(arr(TRUE, FALSE, TRUE))),
+      "only supported in eager mode"
+    )
+  })
+
   it("errors on a logical vector", {
     x <- nv_array(1:3)
     expect_error(x[c(TRUE, FALSE, TRUE)], "Logical vectors are not allowed")
     expect_error(x[TRUE], "Logical vectors are not allowed")
+  })
+
+  it("errors on a scalar bool array, whatever the rank of x", {
+    expect_error(nv_array(1:3)[nv_scalar(TRUE)], "must have exactly one axis")
+    expect_error(
+      nv_array(array(1:12, dim = c(3L, 4L)))[nv_scalar(TRUE)],
+      "must have exactly one axis"
+    )
   })
 
   it("errors on a mask containing NA", {
@@ -712,47 +675,91 @@ describe("boolean masks from arrays", {
     x <- nv_array(1:3)
     expect_error(x[arr(TRUE, FALSE)], "does not match an axis of size 3")
   })
-})
 
-describe("whole-array boolean masks", {
-  it("1D: selects the TRUE positions", {
+  it("selects with a whole-array mask on a 1-D array", {
     r_arr <- array(1:10)
     x <- nv_array(r_arr)
     expect_equal(as_array(x[x > 6L]), array(r_arr[r_arr > 6L]))
   })
 
-  it("2D: flattens to the selected elements in column-major order", {
+  it("flattens a whole-array mask selection in column-major order", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(as_array(x[x > 6L]), array(r_arr[r_arr > 6L]))
   })
 
-  it("2D: works with an R logical mask of the array's shape", {
+  it("accepts an R logical array of x's shape as a whole-array mask", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(as_array(x[r_mask]), array(r_arr[r_mask]))
   })
 
-  it("3D: flattens to the selected elements", {
+  it("flattens a whole-array mask selection on a 3-D array", {
     r_arr <- array(1:24, dim = c(2L, 3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(as_array(x[x %% 5L == 0L]), array(r_arr[r_arr %% 5L == 0L]))
   })
 
-  it("all-FALSE mask yields a zero-sized array", {
-    r_arr <- array(1:12, dim = c(3L, 4L))
-    x <- nv_array(r_arr)
+  it("returns a zero-sized array for an all-FALSE whole-array mask", {
+    x <- nv_array(array(1:12, dim = c(3L, 4L)))
     expect_equal(shape(x[x > 100L]), 0L)
   })
 
-  it("all-TRUE mask selects every element", {
+  it("selects every element for an all-TRUE whole-array mask", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(as_array(x[x > 0L]), array(as.vector(r_arr)))
   })
 
-  it("subset_assign replaces the selected elements", {
+  it("errors when a whole-array mask is combined with another subscript", {
+    x <- nv_array(array(1:12, dim = c(3L, 4L)))
+    expect_error(x[x > 6L, 1L], "must have exactly one axis")
+  })
+})
+
+describe("nv_subset_assign", {
+  it("is a no-op for an empty subset", {
+    x <- nv_array(1:10)
+    x[array(integer(0))] <- 0L
+    expect_equal(as_array(x), array(1:10))
+  })
+
+  it("replaces the rows a mask selects", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m <- arr(TRUE, FALSE, TRUE)
+    r_expected <- r_arr
+    r_expected[as.vector(m), ] <- array(101:108, dim = c(2L, 4L))
+
+    x <- nv_array(r_arr)
+    x[m, ] <- nv_array(101:108, shape = c(2L, 4L))
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("replaces the block masks on both axes select", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m1 <- arr(TRUE, FALSE, TRUE)
+    m2 <- arr(FALSE, TRUE, TRUE, FALSE)
+    r_expected <- r_arr
+    r_expected[as.vector(m1), as.vector(m2)] <- array(101:104, dim = c(2L, 2L))
+
+    x <- nv_array(r_arr)
+    x[m1, m2] <- nv_array(101:104, shape = c(2L, 2L))
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("broadcasts a scalar over the rows a mask selects", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m <- arr(TRUE, FALSE, TRUE)
+    r_expected <- r_arr
+    r_expected[as.vector(m), ] <- 0L
+
+    x <- nv_array(r_arr)
+    x[m, ] <- 0L
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("replaces the elements a whole-array mask selects", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     r_expected <- r_arr
     r_expected[r_arr > 6L] <- 101:106
@@ -762,7 +769,7 @@ describe("whole-array boolean masks", {
     expect_equal(as_array(x), r_expected)
   })
 
-  it("subset_assign broadcasts a scalar", {
+  it("broadcasts a scalar over the elements a whole-array mask selects", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     r_expected <- r_arr
     r_expected[r_arr > 6L] <- 0L
@@ -772,12 +779,7 @@ describe("whole-array boolean masks", {
     expect_equal(as_array(x), r_expected)
   })
 
-  it("errors when a whole-array mask is combined with another subscript", {
-    x <- nv_array(array(1:12, dim = c(3L, 4L)))
-    expect_error(x[x > 6L, 1L], "must have exactly one axis")
-  })
-
-  it("subset_assign errors when the update length does not match", {
+  it("errors when the update length does not match a whole-array mask", {
     x <- nv_array(array(1:12, dim = c(3L, 4L)))
     expect_error(
       {
