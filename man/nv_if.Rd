@@ -7,18 +7,22 @@
 nv_if(pred, true, false)
 }
 \arguments{
-\item{pred}{(\code{\link{arrayish}} of boolean type, scalar)\cr
-Predicate.}
+\item{pred}{(\code{\link{arrayish}})\cr
+Predicate. Must be a scalar of the boolean data type, or an R logical.}
 
 \item{true}{(\verb{function()})\cr
 Zero-argument function for the true branch.}
 
 \item{false}{(\verb{function()})\cr
 Zero-argument function for the false branch.
-Must return outputs with the same shapes as the true branch.}
+Must return the same structure, data types and shapes as the true
+branch; nothing is promoted.}
 }
 \value{
-Result of the executed branch.
+(\code{\link{arrayish}} | \code{list})\cr
+Result of the executed branch: an array, or a tree of them in the sense
+of pjrt's \code{\link[pjrt:build_tree]{RTree}} -- a \code{list}, nested arbitrarily -- with
+the structure, data types and shapes both branches share.
 }
 \description{
 Conditional execution of two branches.
@@ -27,6 +31,7 @@ of the two branches depending on a scalar predicate.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# both branches must return the same structure, data types and shapes
 nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 \dontshow{\}) # examplesIf}
 }

@@ -11,12 +11,13 @@ nv_sort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to sort. Negative values count from the end,
-i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses the last
-axis.}
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input is
+first flattened to a 1-D array, like \code{\link[base:sort]{base::sort()}}.}
 
 \item{decreasing}{(\code{logical(1)})\cr If \code{TRUE}, sort in decreasing order.}
 
@@ -30,8 +31,8 @@ values the result is identical either way.}
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Same shape and data type as \code{x}.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Sorts an array along an axis.
@@ -44,15 +45,27 @@ You can also use \code{sort()} directly.
 (descending), regardless of sign. \code{+0} and \code{-0} compare equal.
 }
 
+\section{The \code{sort()} generic}{
+
+Like \code{\link[base:sort]{base::sort()}}, \code{nv_sort()} with \code{axis = NULL} flattens a multi-axis
+array into one sorted vector, so \code{sort()} on an anvl array agrees with base
+R (the flatten order does not matter once the elements are sorted). It
+differs in one respect: base R drops \code{NA} by default, whereas \code{NaN} is kept
+and sorted to the end. Pass \code{axis} to sort each slice along one axis
+instead, which keeps the shape.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# sorting moves elements, so the data type and shape stay
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_sort(x)
 sort(x) # via the S3 generic
 nv_sort(x, decreasing = TRUE)
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_sort(m, axis = 2L)
+nv_sort(m) # one sorted vector, like base R
+nv_sort(m, axis = 2L) # each row sorted, shape kept
 \dontshow{\}) # examplesIf}
 }
 \seealso{

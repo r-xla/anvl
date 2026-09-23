@@ -2,21 +2,218 @@
 
 ## Breaking changes
 
+* `default_device()` no longer follows `PJRT_PLATFORM`; set `ANVL_DEFAULT_DEVICE`
+  or the `anvl.default_device` option instead.
+* `prim_reshape()` and `nv_reshape()`, and with them `nv_flatten()` and every
+  `axis = NULL` flattening default, are now column-major like base R.
+* `prim_bitcast_convert()` puts the axis holding an element's pieces first
+  rather than last when the two data types differ in width, so the pieces of
+  one element are adjacent in the order `nv_flatten()` reads and a narrowing
+  conversion lays the bytes out the way `as_raw()` writes them.
+* `nv_broadcast_to()` and `nv_broadcast_arrays()` align axes from the first
+  instead of the last: a shorter shape gets size-1 axes appended, so a
+  length-`nrow` vector broadcasts against a matrix where a length-`ncol` one
+  no longer does. Write `prim_broadcast_in_axes()` with an explicit axis
+  mapping for the previous right-aligned behavior.
+* The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
+  definition instead.
+* `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
+  `with_indices`, spelling it the way `prim_top_k()` does.
+* `nv_top_k()` takes `axes` instead of `axis`, ranking the elements of several
+  axes together, and `axes = NULL` (the default) now ranks over every axis
+  where it used to take the last one. Write `axes = -1` for the old default.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* An R value is now built directly at every data type of its own category,
+  narrow and unsigned integers included, so one the data type cannot hold is an
+  error instead of wrapping around: `x_ui8 + (-2L)` and `x_i8 + 300L` are
+  refused. Write `nv_convert()` on an array where the wraparound is what you
+  want.
+* `as_array()` and the `as.double()` / `as.integer()` /
+  `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
+  `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
+  default about a value R's type cannot hold. Write `check = "err"` where
+  you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
+* `nv_array()` and `nv_scalar()` no longer take a `check` argument, following
+  {pjrt}: what happens to an `NA` is fixed by the dtype it is built at, and the
+  input is always scanned for values the requested dtype cannot hold. Call
+  `anyNA()` on the data yourself if you want to hear about a missing value the
+  dtype accepts.
+* `common_dtype()` now errors for `ui64` and a signed integer instead of
+  returning `i64`, which could not hold every `ui64` value. Convert one of them
+  with `nv_convert()`.
 * `jit_eval()` was removed as it is no longer needed.
+* `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
+  accumulate a boolean array at the default integer data type instead of returning a boolean.
+* `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
+  default) and errors for any other `mode`.
+* The `steps` argument of `nv_seq()` / `nv_seq_like()` was removed.
+* `default_backend()` is now called `active_backend()`.
+* There is now exactly one backend used at a time and it is configured via the
+  `anvl.backend` option.
+  With this change the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* A `Shape` is now represented as an integer vector.
+* The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
+  now require a boolean input array, improving consistency with base R.
+* The method for `round` was removed, as `digits` is currently not supported.
+* `nv_quantile()` and `nv_median()` now reduce over `axes` (plural) instead of a
+  single `axis`, defaulting to every axis like `nv_mean()` and base R's
+  `quantile()` / `median()`, and gained a `drop` argument. Write
+  `nv_median(x, axes = -1L)` for the previous default.
+* `nv_sort()` and `nv_argsort()` now flatten a multi-axis array when
+  `axis = NULL`, instead of working along the last axis, so `sort()` on an
+  anvl array agrees with base R. Write `axis = -1L` for the previous default.
+* `prim_sort()` no longer defaults `axis` to `1L`; pass it explicitly, as with
+  every other primitive.
+* `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a
+  single `axis`, defaulting to every axis so that they pair with
+  `nv_reduce_max()` / `nv_reduce_min()`. Reducing several axes indexes their
+  column-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
+  default.
+* The `tensor_to_gval` argument of `GraphDescriptor()` is now called
+  `array_to_gval`.
+
+## Features
+
+* New `local_default_device()` and `with_default_device()` set the
+  `anvl.default_device` option, which names the device a call that names none
+  allocates on in place of the first CPU device.
+* The environment variables `ANVL_DEFAULT_DEVICE` and `ANVL_DEFAULT_DTYPES`, read
+  when anvl is loaded, are used when the `anvl.default_device` and
+  `anvl.default_dtypes` options are not set.
+* `nv_rng_state()` accepts a seed of any signed or unsigned integer data type,
+  bringing it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
+  whatever the seed and the default integer data type are.
+* `nv_flatten()` accepts a scalar, returning a length-1 array, instead of
+  erroring.
+* `as_anvl_array()` gained a `.promote` argument, naming the data type the
+  input is brought to, as `as_anvl_arrays()` already had.
+* `nv_is_nan()`, `nv_is_finite()` and `nv_is_infinite()` accept any data type
+  and answer a constant (all `FALSE` / all `TRUE` / all `FALSE`) for one that
+  holds no NaN or infinity, instead of comparing -- or, for `nv_is_finite()`
+  and `nv_is_infinite()`, erroring.
+* The linear algebra functions (`nv_solve()`, `nv_triangular_solve()`,
+  `nv_chol()`, `nv_inv()`, `nv_det()`, `nv_determinant()`, `nv_lu()`,
+  `nv_qr()`, `nv_svd()`, `nv_eigh()`) accept integer input, computing at the
+  default float data type where the input is not a float already, instead of
+  erroring. The `prim_*` ones still take a float only.
+* `nv_sign()` accepts an unsigned integer array, returning `0` or `1` like
+  base R's `sign()` on a non-negative number; `prim_sign()` still takes a
+  signed input only.
+* `nv_reverse()` gained an `axes = NULL` default that reverses every axis,
+  matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
+  `axes` instead of erroring.
+* `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
+  when `start > end`, like `seq()`.
+* New `jit_cache_size()` reports how many compiled programs a jitted function
+  currently holds for a backend.
+* The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
+  `nv_sample_int()`, `nv_sample()`) and `prim_rng_bit_generator()` return a
+  named list with elements `state` and `values` instead of an unnamed pair,
+  and `prim_top_k()`, `prim_cummax()` and `prim_cummin()` name theirs
+  `values` and `indices`.
+* `nv_array()` accepts a `raw()` vector holding the native byte payload of
+  `prod(shape)` elements of `dtype` (both then required); `byrow` selects
+  row-major element order for the payload. Only supported on the `"pjrt"`
+  backend; the inverse direction is the existing `as_raw()`.
+* New `nv_scan()`: a fixed-length loop in the style of JAX's `lax.scan` that
+  threads a carry through a body function and stacks each step's outputs
+  along a new leading axis. Supports nested carries, multiple `xs` and
+  `out` leaves, reverse scans, `xs = NULL` counted loops, carry-only loops
+  and zero-length scans. Backed by the new `prim_scan()` primitive, which
+  lowers to a `while` loop on the pjrt backend.
+* The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
+  `all()`) now work with multiple data inputs.
+* The default data types for floating point numbers and integers can now be
+  configured via the `anvl.default_dtypes` field.
+  You can configure this for a specific scope via `local_default_dtypes()`
+  and `with_default_dtypes()`.
+  To convert a function to one running at a specified precision, use
+  `with_dtypes()`.
+* New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with
+  a provided `steps` argument.
+* `as.vector()` now returns a `bit64::integer64` for integer data types that
+  do not fit into R's 32 bit integers.
+* New `nv_floor_div()` for flooring (integer) division, and the `%/%` operator
+  now works on arrays.
+* Added support for more generics:
+  * Reversing an array via `rev`.
+  * Concatenating vectors via `c()`.
+  * Floor division via `nv_floor_div`/`%/%`.
+  * Trigonometric functions `sinpi`, `cospi` and `tanpi` and their corresponding `nv_*` functions.
+  * The `gamma` generic.
+* `log(x, base)` now accepts its second argument like in base R.
+* New `nv_range()` returns the minimum and the maximum of an array, stacked
+  along a new first axis, and is what the `range()` uses.
+* The `nv_*` functions that compute in floating point (`nv_sqrt()`,
+  `nv_log()`, `nv_atan2()`, ...) now compute an integer array at the default
+  float data type.
+* `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
+  integer array unchanged, like base R does.
+* Improved documentation of API functions and primitives.
+* Printed graphs read as `[captures] (inputs) { ... return ... }`, show
+  sub-graphs in full, and wrap long lines to the console width; `format()`
+  takes `width` and `digits` arguments.
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
+
+## Performance
+
+* `nv_quantile()` and `nv_median()` select the needed order statistics with
+  `top_k` instead of a full sort when every requested quantile lies in the
+  same half of the axis. Results are unchanged: the interpolation index is
+  computed at `f64`, so it agrees with the window the host sizes.
+* `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
+  unstable sort of the values and a slice instead of the CHLO op, which
+  costs no more than a full sort there. `nv_top_k(indices = FALSE)`
+  and the quantile fast path use it.
 
 ## Bug fixes
 
 * The index operands of `prim_dynamic_slice()`, `prim_dynamic_update_slice()`,
-  `prim_gather()` and `prim_scatter()` are now checked when the call is traced
-  instead of failing in the lowering with a raw MLIR message. A non-integer
-  index (an R `1` rather than `1L`) is rejected by name, and the several start
-  indices of a dynamic slice are brought to one data type, as StableHLO
-  requires -- previously mixing an `i64` index with an `i32` one produced
-  `error: start indices must have same element type`.
+  `prim_gather()` and `prim_scatter()` reject a non-integer index (an R `1`
+  rather than `1L`) by name instead of failing in the lowering, and the start
+  indices of a dynamic slice are promoted to one data type.
+* The `_like` constructors (`nv_scalar_like()`, `nv_array_like()`,
+  `nv_fill_like()`, `nv_iota_like()`, `nv_empty_like()`) no longer allocate on
+  the first CPU device when `like` is an array built inside a trace. The stray
+  device made `jit()` abort with "found more than one device" wherever the
+  operands were elsewhere, which took out every `nv_qnorm()` call on CUDA.
+* `nv_unserialize()` / `nv_read()` place the loaded arrays on
+  [`default_device()`], where they always used pjrt's first device.
+* `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
+  inputs again: axes before the last two are batch axes.
+* A function returned by `jit()` no longer evaluates its arguments a second
+  time. It used to rebuild the call with `match.call()` and evaluate the
+  argument expressions again in the caller's frame, which computed them twice
+  whenever something had evaluated them already -- most visibly under S3
+  dispatch, which evaluates the first argument to choose a method.
+* `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
+  to a common data type.
+* The floating-point `nv_*` functions refuse a boolean, `nv_matmul()`,
+  `nv_solve()` and `nv_triangular_solve()` included -- a boolean used to meet a
+  numeric operand at that operand's data type and pass their data type check.
+* `nv_crossprod()` and `nv_tcrossprod()` transpose only the last two axes, so
+  they work on batched arrays.
+* `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
+  is refused rather than silently truncated.
+* A range that counts down (`x[3:1]`) now selects in reverse instead of failing.
+* Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
+  `as.numeric()`, `as.character()` and friends -- now aborts with an
+  explanation instead of falling through to the base R generic. Some of those
+  used to fail with a message about lists or dimensions, and `as.vector()`,
+  `as.list()` and `as.character()` silently returned the traced box itself.
+* `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
+  hold a count or an index.
+* Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
+  error message, as `drop` is not supported.
+* `nv_quantile()` and `nv_median()` now compute at the default float data
+  type for a non-float input.
+* `as.vector()` now works correctly for `AnvlArray`s that are converted
+  to `bit64::integer64`. It used to drop that class along with the shape,
+  exposing the raw 64-bit pattern as a double.
 * The gradient of a conversion into a non-float data type is now zero instead
   of one. `prim_convert()` / `nv_convert()` passed the cotangent through
   whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
@@ -31,14 +228,55 @@
   `rhs`. They were passed by name, so `function(a, b)` failed with
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
+* Improved the numerics for `nv_mod()`.
+* The variadic array functions (`nv_concatenate()`, `nv_rbind()`, `nv_cbind()`,
+  `nv_broadcast_scalars()`, `nv_broadcast_arrays()`, `nv_promote_to_common()`)
+  say so when given no array, instead of warning or failing internally.
+* `nv_array()` of a zero-length vector asks for a `shape` instead of failing
+  inside the backend; which axis is empty cannot be inferred from the data.
+* `nv_save()` and `nv_serialize()` given a single array say so, instead of
+  failing inside `nv_subset()`. `nv_serialize()` to a connection returns
+  invisibly.
+* The `_like()` functions name `like` when it is an R value with no data type.
+* `nv_solve()` and `nv_triangular_solve()` promote their operands, as
+  `nv_matmul()` does, instead of refusing two arrays that disagree.
+* On the `"quickr"` backend a call whose outputs are all empty emits the empty
+  arrays directly, instead of an elementwise operation quickr rejects.
+* `nv_reduce_any()`, `nv_reduce_all()` and `nv_sort()` are jitted, and
+  `nv_polygamma()`'s `n` is no longer static, so it accepts an array as
+  `prim_polygamma()` does.
+* `nv_qnorm()` is accurate to its operand's data type rather than to the
+  default float; its coefficients used to be materialized at the default.
+* `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` name their own operand when it
+  is not a float.
+* `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold:
+  a whole number for an integer data type, a non-negative one for an unsigned
+  one, a logical or `0` / `1` for `bool`.
+* Every data type of the float category counts as a float, so `f16` and `bf16`
+  pass the checks that used to accept only `f32` and `f64`. `nv_pnorm()` and
+  `nv_qnorm()` keep the narrower requirement, as they carry one coefficient
+  set per width.
+* The gradient of `nv_gamma()` is now correct for positive whole numbers.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
   `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
   Type inference declared a `bool` output whatever the input was, so an
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.
+* Printed graphs, arrays and error messages now spell a data type the way anvl
+  does, so `bool` no longer shows up as its MLIR spelling `i1`.
+* Improved the documentation and various error messages.
+* `nv_runif()` with `min == max` returns the `state` / `values` pair every
+  other sampler returns, instead of the filled array on its own.
 
 ## Tests
 
+* The environment variables that configure only the test suite are now spelled
+  with an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`. `ANVL_TEST` itself is
+  unchanged.
+* The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes anything
+  allocating on the first CPU device rather than following the trace land on a
+  device of its own instead of agreeing with everything else by accident. The
+  `default-device` workflow runs it that way on the `full-test` label.
 * Moved some of pjrt's dispatcher tests into anvl.
 
 # anvl 0.4.0

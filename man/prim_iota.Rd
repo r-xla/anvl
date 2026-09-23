@@ -12,7 +12,8 @@ Axis along which values increase. Negative values count from the end
 of \code{shape}, i.e. \code{-1} refers to the last axis.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Data type of the result. Can be any numeric data type, boolean being the
+one exception.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
@@ -31,11 +32,10 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
@@ -51,11 +51,13 @@ Creates an array with values increasing along the specified axis.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}.
+Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}, specified under
+\href{https://openxla.org/stablehlo/spec#iota}{iota}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the sequence is built at the requested data type
 prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 \dontshow{\}) # examplesIf}
 }

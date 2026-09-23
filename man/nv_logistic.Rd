@@ -8,19 +8,27 @@ nv_logistic(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape, and its data type -- or the default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
 }
 \description{
 Element-wise logistic sigmoid: \code{1 / (1 + exp(-x))}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-2, 0, 2))
 nv_logistic(x)
+
+# an R value materializes at its default data type
+nv_logistic(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

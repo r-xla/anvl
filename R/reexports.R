@@ -7,7 +7,7 @@
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `integer()`
+#' @returns (`integer()`)
 #' @name shape
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
@@ -28,7 +28,10 @@ tengen::shape
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns [`PJRTDevice`][pjrt::pjrt_device]
+#' @returns (device object)\cr
+#' Backend-dependent device object. One of:
+#'   - [`PJRTDevice`][pjrt::pjrt_device]
+#'   - [`quickr_device`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' device(x)
@@ -43,7 +46,7 @@ tengen::device
 #' @title Convert to an R array
 #'
 #' @description
-#' Transfers array data to R and returns it as an R [`array`].
+#' Transfers array data to R and returns it as an R [`array`][base::array].
 #' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 axes.
 #'
 #' @details
@@ -52,7 +55,9 @@ tengen::device
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns An R [`array`] or `vector` of length 1.
+#' @returns ([`array`][base::array] | `vector(1)`)\cr
+#'   An R array with the input's shape, or -- for a scalar, which R cannot
+#'   represent as an array -- a vector of length 1.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' as_array(x)
@@ -78,7 +83,7 @@ tengen::as_array
 #' @param ... Additional arguments passed to method:
 #'   - `row_major` (`logical(1)`)\cr
 #'     Whether to write the bytes in row-major order.
-#' @returns A [`raw`] vector.
+#' @returns ([`raw`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, shape = c(2, 2), dtype = "f32")
 #' as_raw(x, row_major = TRUE)
@@ -101,7 +106,7 @@ tengen::as_raw
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns A [`DataType`][tengen::DataType].
+#' @returns ([`DataType`][tengen::DataType])
 #' @seealso [tengen::dtype()]
 #' @name dtype
 #' @examplesIf pjrt::plugins_downloaded()
@@ -121,7 +126,7 @@ tengen::dtype
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
-#' @returns `integer(1)`
+#' @returns (`integer(1)`)
 #' @seealso [tengen::naxes()]
 #' @name naxes
 #' @examplesIf pjrt::plugins_downloaded()
@@ -139,7 +144,7 @@ tengen::naxes
 #' @description Tests whether `x` is a `DataType` object.
 #'
 #' @param x An object to test.
-#' @returns `TRUE` or `FALSE`.
+#' @returns (`logical(1)`)
 #' @seealso [as_dtype()], [tengen::is_dtype()]
 #' @name is_dtype
 #' @examples
@@ -161,7 +166,7 @@ tengen::is_dtype
 #' This is implemented via the generic [`tengen::as_dtype()`].
 #'
 #' @param x A character string or `DataType` to convert.
-#' @returns A `DataType` object.
+#' @returns (`DataType`)
 #' @seealso [is_dtype()], [tengen::as_dtype()], [`tengen::DataType`]
 #' @name as_dtype
 #'
@@ -177,10 +182,14 @@ tengen::as_dtype
 
 #' @title Create a Shape object
 #'
-#' @description Constructs a `Shape` representing array dimensions.
+#' @description
+#' Constructs a `Shape`, the axis sizes of an array. A `Shape` *is* its integer
+#' vector, with a class attached, so `length()` is the number of axes and
+#' `shape[i]` is the size of axis `i`.
 #'
-#' @param dims An `integer()` vector of dimension sizes (>= 0).
-#' @returns A `Shape` object.
+#' @param dims An `integer()` vector of axis sizes (>= 0). `NA` marks an axis
+#'   whose size is only known at run time.
+#' @returns (`Shape`)
 #' @seealso [shape()], [stablehlo::Shape()]
 #' @name Shape
 #' @rdname Shape-constructor
@@ -205,7 +214,7 @@ stablehlo::Shape
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `character(1)`
+#' @returns (`character(1)`)
 #' @seealso [pjrt::platform()]
 #' @name platform
 #' @examplesIf pjrt::plugins_downloaded()
@@ -232,14 +241,15 @@ pjrt::platform
 #' @param x ([`AnvlArray`] or other awaitable)\cr
 #'   An object with an [`await()`] method.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `x`, invisibly.
+#' @returns (`any`)\cr
+#'   `x`, invisibly.
 #' @seealso [pjrt::await()], [map_tree()] (to await a tree of outputs)
 #' @name await
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' await(x)
 #'
-#' # Await all leaves of a (possibly nested) list of arrays.
+#' # await all leaves of a (possibly nested) list of arrays
 #' map_tree(list(x, list(y = x)), await)
 NULL
 

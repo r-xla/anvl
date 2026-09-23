@@ -21,16 +21,19 @@ prim_scatter(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type. The base array to scatter into.}
+The base array to scatter into. Can be any data type.
+\code{x} and \code{update} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
-Array of indices; must have an integer data type, and never takes \code{x}'s.
-Contains index vectors that map to positions in
+Array of indices, of an integer data type, which it keeps -- the indices
+take no part in \code{x}'s. Contains index vectors that map to positions in
 \code{x} via \code{scatter_axes_to_x_axes}. The axis specified
 by \code{index_vector_axis} holds the index vectors.}
 
 \item{update}{(\code{\link{arrayish}})\cr
-Update values array. Must have the same data type as \code{x}.}
+Update values array. Shares \code{x}'s data type -- see \code{x}.}
 
 \item{update_window_axes}{(\code{integer()})\cr
 Axes of \code{update} that are window axes, i.e. they
@@ -76,7 +79,7 @@ Binary function \code{f(old, new)} that combines the existing value in
 \code{function(old, new) new}, which replaces the old value.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type and shape as \code{x}.
 }
 \description{
@@ -90,7 +93,7 @@ This is the inverse of \code{\link[=prim_gather]{prim_gather()}}: gather reads s
 at given indices, while scatter writes slices into an array at given
 indices.
 }
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 If a computed result index falls outside the bounds of \code{x}, the
 update for that index is silently ignored.
@@ -114,12 +117,15 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}.
+Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}, specified under
+\href{https://openxla.org/stablehlo/spec#scatter}{scatter}.
+The axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Scatter values 10 and 30 into positions 1 and 3 of a zero vector
+# scatter values 10 and 30 into positions 1 and 3 of a zero vector
 x <- nv_array(c(0, 0, 0, 0, 0))
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))

@@ -16,13 +16,14 @@ Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
 last axis.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Data type of the result, required here. Can be any numeric data type.
+For \code{nv_iota_like()} it may be \code{NULL}, which uses \code{dtype(like)}.}
 
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result.}
 
 \item{start}{(\code{integer(1)})\cr
-Starting value (default 1).}
+Starting value (default 1). Built at \code{dtype}, as the increments are.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -35,15 +36,14 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_iota_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
@@ -55,11 +55,15 @@ starting from \code{start}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the sequence is built at the requested data type
 nv_iota(axis = 1L, dtype = "i32", shape = 5L)
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_fill(0L, shape = c(2, 3))
 nv_iota_like(x, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_seq]{nv_seq()}} for a simpler 1-D sequence, \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
+\code{\link[=nv_seq]{nv_seq()}} for a simpler 1-D sequence, \code{\link[=nv_linspace]{nv_linspace()}} for evenly
+spaced values, \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }

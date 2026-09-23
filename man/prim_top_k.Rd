@@ -4,21 +4,28 @@
 \alias{prim_top_k}
 \title{Primitive Top-K}
 \usage{
-prim_top_k(x, k)
+prim_top_k(x, k, indices = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.}
+One input, with at least 1 axis. Can be any numeric data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements. Must satisfy
 \verb{1 <= k <= shape(x)[naxes(x)]}.}
+
+\item{indices}{(\code{logical(1)})\cr
+Whether to also return the indices of the top elements. Without them
+the order among tied values is unspecified, which lets the lowering
+pick the cheapest selection for the platform.}
 }
 \value{
-\code{list} of two \code{\link{arrayish}} values:\cr
-The top-\code{k} values (same dtype as \code{x}) and their indices along
-the last axis (dtype \code{i32}, matching JAX). Both have the same
-shape as \code{x} with the last axis replaced by \code{k}. Ties are
+(named \code{list} of one or two \code{\link{arrayish}})\cr
+Element \code{values}, the top-\code{k} values at the input's data type, and, when
+\code{indices} is \code{TRUE}, \code{indices}, their indices along the last axis at the
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the
+input's shape with the last axis replaced by \code{k}. With indices, ties are
 broken by lower index first.
 }
 \description{
@@ -38,11 +45,16 @@ For other axes, transpose so the target axis is last, call
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}.
+Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}. Without \code{indices} on CUDA it lowers to an
+unstable descending \code{\link[stablehlo:hlo_sort]{hlo_sort()}} of the values followed by an
+\code{\link[stablehlo:hlo_slice]{hlo_slice()}}, which is what the CHLO op expands to there minus the
+index operand and the stability the ties no longer need; XLA's CPU
+backend has a dedicated top-k kernel, so it keeps \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` keeps the input's data type, `indices` is the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 prim_top_k(x, k = 3L)
 \dontshow{\}) # examplesIf}

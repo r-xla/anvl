@@ -99,8 +99,8 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     dA <- out[[1L]]
     dB <- out[[2L]]
 
-    expect_equal(shape(dA), shape(A))
-    expect_equal(shape(dB), shape(B))
+    expect_shape(dA, shape(A))
+    expect_shape(dB, shape(B))
 
     # Verify linearization: <A, dA> == l(A,B) and <B, dB> == l(A,B)
     all_axes_A <- seq_along(shape(A))
@@ -355,7 +355,7 @@ test_that("prim_convert reverse converts gradients to the input dtype", {
 
   grads <- f(x)
   expect_equal(as_array(grads[[1L]]), array(1, dim = dim(x_arr)))
-  expect_equal(dtype(grads[[1L]]), as_dtype("f32"))
+  expect_dtype(grads[[1L]], "f32")
 })
 
 test_that("prim_convert reverse is zero across a non-float data type", {
@@ -379,7 +379,7 @@ test_that("prim_convert reverse passes the gradient through between floats", {
   x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
   f <- jit(gradient(function(x) nv_reduce_sum(prim_convert(prim_convert(x, "f32"), "f64"))))
   expect_equal(as.numeric(f(x)[[1L]]), c(1, 1, 1))
-  expect_equal(dtype(f(x)[[1L]]), as_dtype("f64"))
+  expect_dtype(f(x)[[1L]], "f64")
 })
 
 test_that("prim_convert reverse leaves the rest of an expression differentiable", {
@@ -720,7 +720,7 @@ describe("prim_scatter", {
   it("non-unique indices: only winning update gets gradient", {
     update <- nv_array(1:10, dtype = "f32")
     f <- function(update) {
-      x <- nv_array(0)
+      x <- nv_array(0, dtype = "f32")
       x[array(rep(1L, 10))] <- update
       mean(x^2)
     }
@@ -780,7 +780,7 @@ describe("gather/scatter reverse via subset operators", {
       out <- gradient(\(x, value) {
         mean(x_subset * value)
       })(x_subset, value)
-      g1 <- nv_fill(0, shape = shape)
+      g1 <- nv_fill(0, shape = shape, dtype = dtype(x))
       out[[1L]] <- rlang::inject(nv_subset_assign(g1, !!!quos, value = out[[1]]))
       out
     }
@@ -980,28 +980,30 @@ test_that("prim_sort", {
 })
 
 test_that("prim_top_k", {
-  withr::local_seed(42)
-  x_arr <- matrix(rnorm(4 * 6), nrow = 4)
-  k <- 3L
-  w_arr <- matrix(as.double(seq_len(4 * k)), nrow = 4)
+  for (indices in c(TRUE, FALSE)) {
+    withr::local_seed(42)
+    x_arr <- matrix(rnorm(4 * 6), nrow = 4)
+    k <- 3L
+    w_arr <- matrix(as.double(seq_len(4 * k)), nrow = 4)
 
-  x_nv <- nv_array(x_arr)
-  w_nv <- nv_array(w_arr)
+    x_nv <- nv_array(x_arr)
+    w_nv <- nv_array(w_arr)
 
-  f_nv <- function(x) {
-    top <- prim_top_k(x, k = k)[[1L]]
-    nv_reduce_sum(top * w_nv, axes = c(1L, 2L))
+    f_nv <- function(x) {
+      top <- prim_top_k(x, k = k, indices = indices)[[1L]]
+      nv_reduce_sum(top * w_nv, axes = c(1L, 2L))
+    }
+    grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
+
+    # Scatter w along the top-k indices for each row.
+    expected_grad <- matrix(0, nrow = nrow(x_arr), ncol = ncol(x_arr))
+    for (i in seq_len(nrow(x_arr))) {
+      top_idx <- order(x_arr[i, ], decreasing = TRUE)[seq_len(k)]
+      expected_grad[i, top_idx] <- w_arr[i, ]
+    }
+
+    expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
   }
-  grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
-
-  # Scatter w along the top-k indices for each row.
-  expected_grad <- matrix(0, nrow = nrow(x_arr), ncol = ncol(x_arr))
-  for (i in seq_len(nrow(x_arr))) {
-    top_idx <- order(x_arr[i, ], decreasing = TRUE)[seq_len(k)]
-    expected_grad[i, top_idx] <- w_arr[i, ]
-  }
-
-  expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
 })
 
 test_that("prim_reduce_prod: gradient is safe at zeros", {
@@ -1037,3 +1039,15 @@ test_that("prim_reduce_prod: drop = FALSE matches drop = TRUE", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-reverse-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("prim_reshape reverse", {
+  it("reshapes the gradient back in column-major order", {
+    # d/dx sum(reshape(x) * w) = reshape(w, shape(x)), so a distinct weight per
+    # element pins the order the gradient travels back in.
+    x <- nv_array(array(0, c(2L, 3L, 4L)), dtype = "f32")
+    w <- array(as.numeric(1:24), c(4L, 6L))
+    f <- function(x) nv_reduce_sum(prim_reshape(x, c(4L, 6L)) * w)
+    grads <- jit(gradient(f))(x)
+    expect_equal(as_array(grads[[1L]]), array(w, c(2L, 3L, 4L)))
+  })
+})

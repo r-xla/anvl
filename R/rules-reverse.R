@@ -43,11 +43,11 @@ prim_div[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
 })
 
 prim_remainder[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  # prim_remainder lowers to StableHLO `remainder`, which uses IEEE-754 truncating
-  # semantics: y = lhs - trunc(lhs / rhs) * rhs (sign of result follows lhs). Match
-  # that here — using floor() would silently disagree with the forward op for inputs
-  # of opposite sign. Non-differentiable points (rhs == 0, lhs an integer multiple
-  # of rhs) are ignored.
+  # prim_remainder lowers to StableHLO `remainder`, which truncates the quotient:
+  # y = lhs - trunc(lhs / rhs) * rhs, so the result follows the sign of lhs.
+  # Match that here — using floor() would silently disagree with the forward op
+  # for inputs of opposite sign. Non-differentiable points (rhs == 0, lhs an
+  # integer multiple of rhs) are ignored.
   lhs <- inputs[[1L]]
   rhs <- inputs[[2L]]
   grad <- grads[[1L]]
@@ -124,7 +124,7 @@ prim_tanh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx tanh(x) = 1 - tanh(x)^2
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(y), shape = shape(y))
+      one <- ones_like(y)
       prim_mul(grad, prim_sub(one, prim_mul(y, y)))
     }
   )
@@ -136,7 +136,7 @@ prim_tan[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   list(
     # d/dx tan(x) = 1 + tan(x)^2
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(y), shape = shape(y))
+      one <- ones_like(y)
       prim_mul(grad, prim_add(one, prim_mul(y, y)))
     }
   )
@@ -166,7 +166,7 @@ prim_acos[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx acos(x) = -1 / sqrt(1 - x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_sub(one, prim_mul(x, x)))
       prim_negate(prim_div(grad, denom))
     }
@@ -179,7 +179,7 @@ prim_acosh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx acosh(x) = 1 / sqrt(x^2 - 1)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_sub(prim_mul(x, x), one))
       prim_div(grad, denom)
     }
@@ -192,7 +192,7 @@ prim_asin[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx asin(x) = 1 / sqrt(1 - x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_sub(one, prim_mul(x, x)))
       prim_div(grad, denom)
     }
@@ -205,7 +205,7 @@ prim_asinh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx asinh(x) = 1 / sqrt(1 + x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_add(one, prim_mul(x, x)))
       prim_div(grad, denom)
     }
@@ -218,7 +218,7 @@ prim_atan[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx atan(x) = 1 / (1 + x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       prim_div(grad, prim_add(one, prim_mul(x, x)))
     }
   )
@@ -230,7 +230,7 @@ prim_atanh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx atanh(x) = 1 / (1 - x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       prim_div(grad, prim_sub(one, prim_mul(x, x)))
     }
   )
@@ -260,7 +260,7 @@ prim_digamma[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   list(
     # d/dx digamma(x) = trigamma(x) = polygamma(1, x)
     if (required[[1L]]) {
-      n_one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      n_one <- ones_like(x)
       prim_mul(grad, prim_polygamma(n_one, x))
     }
   )
@@ -285,7 +285,7 @@ prim_polygamma[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, par
     if (required[[1L]]) cli_abort("Gradient for {.arg n} of {.fn prim_polygamma} not implemented"),
     # d/dx polygamma(n, x) = polygamma(n + 1, x)
     if (required[[2L]]) {
-      one <- prim_fill(1, dtype = dtype(n), shape = shape(n))
+      one <- ones_like(n)
       prim_mul(grad, prim_polygamma(prim_add(n, one), x))
     }
   )
@@ -550,10 +550,6 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
-prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  cli_abort("Not yet implemented")
-})
-
 # convert reverse -----------------
 
 # A conversion is the identity, and so passes the cotangent through, only
@@ -567,7 +563,7 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   differentiable <- is_dtype_float(dtype(x)) && is_dtype_float(dtype(outputs[[1L]]))
   list(
     if (required[[1L]]) {
-      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else prim_fill(0L, dtype = dtype(x), shape = shape(x))
+      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else zeros_like(x)
     }
   )
 })
@@ -582,7 +578,7 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 
 reverse_zero_bin <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
-  grad_in <- nv_fill(0L, dtype = dtype(x), shape = shape(x))
+  grad_in <- zeros_like(x)
 
   list(
     if (required[[1L]]) grad_in,
@@ -602,7 +598,7 @@ prim_le[["reverse"]] <- reverse_zero_bin
 reverse_zero_uni <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   list(
-    if (required[[1L]]) prim_fill(0L, dtype = dtype(x), shape = shape(x))
+    if (required[[1L]]) zeros_like(x)
   )
 })
 
@@ -620,7 +616,7 @@ prim_cbrt[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx cbrt(x) = 1 / (3 * cbrt(x)^2)
     if (required[[1L]]) {
-      three <- prim_fill(3, dtype = dtype(y), shape = shape(y))
+      three <- prim_fill(3L, dtype = dtype(y), shape = shape(y))
       prim_div(grad, nv_mul(prim_mul(y, y), three))
     }
   )
@@ -641,7 +637,7 @@ prim_log1p[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx log(1 + x) = 1 / (1 + x)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       prim_div(grad, prim_add(one, x))
     }
   )
@@ -653,7 +649,7 @@ prim_logistic[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, para
   list(
     # d/dx sigmoid(x) = sigmoid(x) * (1 - sigmoid(x))
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(y), shape = shape(y))
+      one <- ones_like(y)
       prim_mul(grad, prim_mul(y, prim_sub(one, y)))
     }
   )
@@ -744,7 +740,7 @@ prim_reduce_any[["reverse"]] <- prim_reduce_all[["reverse"]]
 prim_bitcast_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   list(
-    if (required[[1L]]) prim_fill(0L, dtype = dtype(x), shape = shape(x))
+    if (required[[1L]]) zeros_like(x)
   )
 })
 
@@ -813,39 +809,48 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # than recomputing a permutation) is correct by construction even when
 # `x` has duplicate values — top-k indices are pairwise unique along
 # the last axis.
-prim_top_k[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  if (!required[[1L]]) {
-    return(list(NULL))
-  }
+# The forward always runs with indices, even when the call asked for the values
+# only, so the backward has them without a second top_k.
+prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   x <- inputs[[1L]]
-  grad_values <- grads[[1L]]
-  indices <- outputs[[2L]]
-  full_shape <- shape(x)
-  rank <- length(full_shape)
-  batching <- seq_len(rank - 1L)
+  out <- prim_top_k(x, k = params$k, indices = TRUE)
+  indices <- out[[2L]]
 
-  zero_input <- prim_fill(
-    0,
-    dtype = dtype(grad_values),
-    shape = full_shape
+  list(
+    outputs = if (params$indices) out else out[1L],
+    backward = function(inputs, outputs, grads, params, required) {
+      if (!required[[1L]]) {
+        return(list(NULL))
+      }
+      grad_values <- grads[[1L]]
+      full_shape <- shape(x)
+      rank <- length(full_shape)
+      batching <- seq_len(rank - 1L)
+
+      zero_input <- prim_fill(
+        0L,
+        dtype = dtype(grad_values),
+        shape = full_shape
+      )
+
+      # All axes are iteration axes and we have a single index vector axis that
+      # indicates the position to write to (in the last axis of the input)
+      list(prim_scatter(
+        x = zero_input,
+        # index vectors selecting positions along the last axis of `x`
+        scatter_indices = indices,
+        update = grad_values,
+        update_window_axes = integer(0L),
+        inserted_window_axes = rank,
+        x_batching_axes = batching,
+        scatter_indices_batching_axes = batching,
+        scatter_axes_to_x_axes = rank,
+        # we sort along a single axis -> all axes are iteration axes
+        index_vector_axis = rank + 1L,
+        unique_indices = TRUE
+      ))
+    }
   )
-
-  # All axes are iteration axes and we have a single index vector axis that
-  # indicates the position to write to (in the last axis of the input)
-  list(prim_scatter(
-    x = zero_input,
-    # index vectors selecting positions along the last axis of `x`
-    scatter_indices = indices,
-    update = grad_values,
-    update_window_axes = integer(0),
-    inserted_window_axes = rank,
-    x_batching_axes = batching,
-    scatter_indices_batching_axes = batching,
-    scatter_axes_to_x_axes = rank,
-    # we sort along a single axis -> all axes are iteration axes
-    index_vector_axis = rank + 1L,
-    unique_indices = TRUE
-  ))
 })
 
 # concatenate reverse: split the gradient back along the concatenation axis
@@ -857,7 +862,7 @@ prim_concatenate[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 
   offset <- 1L
   limit_indices <- shape(grad)
-  start_indices <- rep(1L, length(shape(inputs[[1]])))
+  start_indices <- rep(1L, length(shape(inputs[[1L]])))
   for (i in seq_len(n_inputs)) {
     input_shape <- shape(inputs[[i]])
     axis_size <- input_shape[axis]
@@ -905,7 +910,7 @@ prim_reduce_prod[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
     n <- reduced_size
     ones_shape <- collapsed_shape
     ones_shape[rank] <- 1L
-    ones <- prim_fill(1, dtype = dtype(x), shape = ones_shape)
+    ones <- prim_fill(1L, dtype = dtype(x), shape = ones_shape)
     full_strides <- rep(1L, rank)
 
     starts_n <- rep(1L, rank)
@@ -965,7 +970,7 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
     x = zeros_like(x),
     scatter_indices = indices,
     update = grad,
-    update_window_axes = integer(0),
+    update_window_axes = integer(0L),
     inserted_window_axes = axis,
     x_batching_axes = batching,
     scatter_indices_batching_axes = batching,
@@ -1270,7 +1275,10 @@ triangular_mask <- function(n, lower, unit_diagonal) {
 prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   lower <- params$lower
   if (length(shape(outputs[[1L]])) > 2L) {
-    cli_abort("Batched cholesky gradient is not yet supported.")
+    cli_abort(c(
+      "The gradient of a batched Cholesky decomposition is not supported yet.",
+      i = "Differentiate one matrix at a time."
+    ))
   }
 
   # The Jacobian for cholesky is actually not unique.
@@ -1290,7 +1298,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   # Phi: keep lower triangle, halve diagonal, zero upper triangle
   phi <- function(x) {
     eye <- prim_convert(diag_mask(n), dtype = dtype(x))
-    one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+    one <- ones_like(x)
     x <- prim_div(x, prim_add(one, eye))
     prim_ifelse(tri_mask(c(n, n), 0L, lower = TRUE), x, zeros_like(x))
   }
@@ -1337,7 +1345,10 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
   grad <- grads[[1L]]
 
   if (length(shape(a)) > 2L) {
-    cli_abort("Batched triangular_solve gradient is not yet supported.")
+    cli_abort(c(
+      "The gradient of a batched triangular solve is not supported yet.",
+      i = "Differentiate one system at a time."
+    ))
   }
 
   # op(A) is A or A^T depending on transpose_a

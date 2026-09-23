@@ -8,23 +8,32 @@ nv_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+The input to convert.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Target data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{dtype} and the same shape as \code{x}.
+(\code{\link{arrayish}})\cr
+Has the given \code{dtype} and the input's shape.
 }
 \description{
 Converts the elements of an array to a different data type.
-Returns the input unchanged if it already has the target type.
+Note that R objects are handled differently than \code{AnvlArray}
+inputs.
+For R objects, we check whether the requested data type can
+meaningfully hold the provided data and otherwise err.
+For \code{AnvlArray} inputs such a check is \emph{not} performed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the values are preserved, the data type changes
 x <- nv_array(c(1L, 2L, 3L))
+# For R inputs, we check compatability
 nv_convert(x, dtype = "f32")
+try(nv_convert(257L, dtype = "i8"))
+# For AnvlArrays, we wrap around
+nv_convert(nv_scalar(257L), dtype = "i8")
 \dontshow{\}) # examplesIf}
 }
 \seealso{
