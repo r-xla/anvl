@@ -13,7 +13,7 @@ permissions: read-all
 # Runs the test suite with the default data types set to something other than
 # what the pjrt backend registers, so that anything hardcoding `f32` / `i32`
 # where it should read `default_dtypes()` fails here. `setup.R` turns
-# ANVL_DEFAULT_DTYPES into the `anvl.default_dtypes` option for the whole run.
+# ANVL_TEST_DEFAULT_DTYPES into the `anvl.default_dtypes` option for the whole run.
 jobs:
   default-dtypes:
     runs-on: ubuntu-latest
@@ -30,7 +30,7 @@ jobs:
       PJRT_PLATFORM: cpu
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
-      ANVL_DEFAULT_DTYPES: ${{ matrix.dtypes }}
+      ANVL_TEST_DEFAULT_DTYPES: ${{ matrix.dtypes }}
 
     steps:
       - uses: actions/checkout@v7

@@ -250,7 +250,10 @@
 
 ## Tests
 
-* The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes anything
+* The environment variables that configure the test suite are now spelled with
+  an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`, `ANVL_TEST_DEFAULT_DTYPES`
+  and `ANVL_TEST_DEFAULT_DEVICE`. `ANVL_TEST` itself is unchanged.
+* The suite can be run with `ANVL_TEST_DEFAULT_DEVICE=cpu:1`, which makes anything
   allocating on the platform's first device rather than following the trace
   land on a device of its own instead of agreeing with everything else by
   accident. The `default-device` workflow runs it that way on the `full-test`

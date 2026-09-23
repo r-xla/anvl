@@ -15,7 +15,7 @@ permissions: read-all
 # so that anything allocating on the platform's first device where it should
 # have followed the trace or its operands ends up on a device of its own --
 # which jit's device autodetect reports, where at the same default the two
-# would silently agree. `setup.R` turns ANVL_DEFAULT_DEVICE into the
+# would silently agree. `setup.R` turns ANVL_TEST_DEFAULT_DEVICE into the
 # `anvl.default_device` option for the whole run.
 #
 # It costs a full suite run, so on pull requests it waits for the `full-test`
@@ -39,7 +39,7 @@ jobs:
       PJRT_PLATFORM: cpu
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
-      ANVL_DEFAULT_DEVICE: ${{ matrix.device }}
+      ANVL_TEST_DEFAULT_DEVICE: ${{ matrix.device }}
 
     steps:
       - uses: actions/checkout@v7

@@ -38,17 +38,18 @@ needed; see \code{\link[=default_device]{default_device()}} and \code{\link[=nv_
 pjrt's, anvl only follows it.
 }
 
-The remaining ones affect only anvl's own test suite, not the package:
+The remaining ones, all prefixed \code{ANVL_TEST}, affect only anvl's own test
+suite, not the package:
 \itemize{
 \item \code{ANVL_TEST}: \code{tests/testthat.R} runs the tests only when this is \code{"1"},
 so \verb{R CMD check} in a shell without it runs none of them.
-\item \code{ANVL_SKIP_QUICKR}: when set to anything non-empty, the tests that need
+\item \code{ANVL_TEST_SKIP_QUICKR}: when set to anything non-empty, the tests that need
 the quickr backend are skipped -- they are comparatively slow.
-\item \code{ANVL_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
+\item \code{ANVL_TEST_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
 \code{"float=f64,int=i64"}, which the test setup turns into the
 \code{anvl.default_dtypes} option for the whole run, so that anything
 hardcoding \code{f32} / \code{i32} where it should read \code{\link[=default_dtypes]{default_dtypes()}} fails.
-\item \code{ANVL_DEFAULT_DEVICE}: a device identifier such as \code{"cpu:1"}, which the
+\item \code{ANVL_TEST_DEFAULT_DEVICE}: a device identifier such as \code{"cpu:1"}, which the
 test setup turns into the \code{anvl.default_device} option for the whole run,
 so that anything allocating on the platform's first device where it should
 have followed the trace or its operands ends up on a device of its own and

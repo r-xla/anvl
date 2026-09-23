@@ -5,7 +5,7 @@ is_cuda <- function() {
 # Clear the `anvl.default_dtypes` override for the calling scope, so that the
 # defaults are whatever the active backend registers. For the few tests that
 # assert the *registered* pair and would otherwise see the suite-wide override
-# `ANVL_DEFAULT_DTYPES` sets (see `setup.R`).
+# `ANVL_TEST_DEFAULT_DTYPES` sets (see `setup.R`).
 local_registered_default_dtypes <- function(envir = parent.frame()) {
   withr::local_options(list(anvl.default_dtypes = NULL), .local_envir = envir)
 }
@@ -16,7 +16,7 @@ is_cpu <- function() {
 
 # Clear the `anvl.default_device` override for the calling scope, so that the
 # default device is the platform's own first one. For the few tests that assert
-# that and would otherwise see the suite-wide override `ANVL_DEFAULT_DEVICE`
+# that and would otherwise see the suite-wide override `ANVL_TEST_DEFAULT_DEVICE`
 # sets (see `setup.R`).
 local_platform_default_device <- function(envir = parent.frame()) {
   withr::local_options(list(anvl.default_device = NULL), .local_envir = envir)

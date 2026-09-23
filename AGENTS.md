@@ -15,17 +15,17 @@ config above. anvl-specific:
   `PJRT_INSTALL=1`) for work inside the package.
 - Single file: `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
   `devtools::test(filter = "reverse")`.
-- `ANVL_SKIP_QUICKR=1` skips the (slow) quickr tests; `PJRT_PLATFORM=cuda` runs the suite on the CUDA
-  plugin (`is_cpu()` / `is_cuda()` in `helper.R` branch on it). `setup.R` sets
+- `ANVL_TEST_SKIP_QUICKR=1` skips the (slow) quickr tests; `PJRT_PLATFORM=cuda` runs the suite on
+  the CUDA plugin (`is_cpu()` / `is_cuda()` in `helper.R` branch on it). `setup.R` sets
   `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to spread over.
-- `ANVL_DEFAULT_DTYPES="float=f64,int=i64"` runs the whole suite at another pair of default data
-  types; `setup.R` turns it into the `anvl.default_dtypes` option. The `default-dtypes` workflow
+- `ANVL_TEST_DEFAULT_DTYPES="float=f64,int=i64"` runs the whole suite at another pair of default
+  data types; `setup.R` turns it into the `anvl.default_dtypes` option. The `default-dtypes` workflow
   runs the suite this way so that anything hardcoding `f32` / `i32` where it should read
   `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
   `local_registered_default_dtypes()` (`helper.R`) to clear the override.
-- `ANVL_DEFAULT_DEVICE=cpu:1` runs the whole suite with the default device set to the second CPU
-  device; `setup.R` turns it into the `anvl.default_device` option (and skips quickr, which has a
-  single device). Anything allocating on the platform's first device where it should have followed
+- `ANVL_TEST_DEFAULT_DEVICE=cpu:1` runs the whole suite with the default device set to the second
+  CPU device; `setup.R` turns it into the `anvl.default_device` option (and skips quickr, which has
+  a single device). Anything allocating on the platform's first device where it should have followed
   the trace or its operands then lands on a device of its own, which jit's autodetect reports. The
   `default-device` workflow runs it on the `full-test` PR label. A test that asserts the platform's
   own default calls `local_platform_default_device()` (`helper.R`).
@@ -165,7 +165,7 @@ Each rule of each primitive should be tested. Tests are organized as:
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
-This helper skips when quickr is not installed, and also when the `ANVL_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
+This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
 
 ## Documentation
