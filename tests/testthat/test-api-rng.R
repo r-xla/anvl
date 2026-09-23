@@ -51,6 +51,17 @@ test_that("nv_rnorm accepts arrayish mean and sd", {
   odd_means <- nv_array(matrix(rep(c(-1000, 0, 1000), each = 3), nrow = 3))
   odd <- as_array(nv_rnorm(c(3, 3), state, dtype = "f64", mean = odd_means)[[2]])
   expect_true(all(odd[, 1] < -900) && all(abs(odd[, 2]) < 100) && all(odd[, 3] > 900))
+
+  # Anything else than a scalar or the sample's shape is refused, including for
+  # a scalar sample, which would otherwise take the shape of `mean`/`sd`
+  expect_error(
+    nv_rnorm(c(2, 3), state, mean = nv_array(matrix(0, 2, 1))),
+    "must be a scalar or have the shape of the sample"
+  )
+  expect_error(
+    nv_rnorm(integer(), state, sd = nv_array(c(1, 2, 3))),
+    "must be a scalar or have the shape of the sample"
+  )
 })
 
 test_that("rng rejects non-f32/f64 dtypes", {

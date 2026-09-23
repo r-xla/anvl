@@ -176,6 +176,10 @@ nv_rnorm <- jit(
       arg = "mean/sd",
       hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
     )
+    # a non-scalar `mean`/`sd` must have the sample's shape
+    assert_sample_param_shape(mean, shape)
+    assert_sample_param_shape(sd, shape)
+
     # n: amount of rvs needed
     n <- prod(shape)
 

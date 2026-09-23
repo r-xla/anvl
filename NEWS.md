@@ -176,6 +176,9 @@
 
 ## Bug fixes
 
+* `nv_rnorm()` with a scalar `shape` and a non-scalar `mean` or `sd` returned
+  one draw shifted/scaled to the shape of `mean`/`sd`; it is now an error, as
+  any shape other than a scalar or `shape` already was.
 * The `_like` constructors (`nv_scalar_like()`, `nv_array_like()`,
   `nv_fill_like()`, `nv_iota_like()`, `nv_empty_like()`) no longer allocate on
   the first CPU device when `like` is an array built inside a trace. The stray
