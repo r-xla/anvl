@@ -8,17 +8,18 @@ prim_cummax(x, axis)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to accumulate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{list} of two \code{\link{arrayish}} values:\cr
-The running maximum (same dtype as \code{x}) and the
-running argmax (of the default integer data
-type -- see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the same shape as \code{x}.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{values}, the running maximum at the input's data
+type, and \code{indices}, the running argmax at the default
+integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the input's shape.
 }
 \description{
 Running maximum of array elements along a single axis along with
@@ -37,11 +38,15 @@ indices output is the largest \code{i} in \code{1:j} with
 
 \section{StableHLO}{
 
-Lowers to a variadic \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} over \verb{(values, iota)}.
+Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce_window}{reduce_window}.
+The window is variadic over \verb{(values, iota)}, so the index of the running
+extremum is carried alongside it.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` keeps the input's data type, `indices` is the default integer
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 prim_cummax(x, axis = 1L)
 \dontshow{\}) # examplesIf}

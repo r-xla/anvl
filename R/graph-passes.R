@@ -74,10 +74,11 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     rdata_types = graph$rdata_types
   )
 
-  is_top_level <- is.null(map)
+  # `map` answers "what did this node become", shared with the sub-graphs so a
+  # constant captured by several of them becomes the same literal.
   map <- map %||% hashtab()
   for (const in new_graph$constants) {
-    if (is_scalarish(const)) {
+    if (is_scalarish(const) && is.null(map[[const]])) {
       map[[const]] <- scalarish_to_lit(const)
     }
   }
@@ -111,22 +112,6 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     if (!is.null(replacement)) {
       new_graph$outputs[[i]] <- replacement
     }
-  }
-  # TODO: We could ensure that each constant is only added once to the graph (currently, two
-  # nv_scalar(1) will create to fill calls)
-  if (is_top_level) {
-    consts <- hashvalues(map)
-    new_graph$calls <- c(
-      new_graph$calls,
-      lapply(consts, function(const) {
-        PrimitiveCall(
-          primitive = prim_fill,
-          inputs = list(),
-          params = list(value = const$aval$data, dtype = dtype(const$aval), shape = shape(const$aval)),
-          outputs = list(const)
-        )
-      })
-    )
   }
   new_graph$constants <- new_graph$constants[vapply(
     new_graph$constants,

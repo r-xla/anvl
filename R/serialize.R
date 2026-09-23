@@ -1,4 +1,4 @@
-#' @title Save arrays to a file
+#' @title Save Arrays to a File
 #'
 #' @description
 #' Saves a named list of arrays to a file in the
@@ -9,20 +9,25 @@
 #' a file connection.
 #'
 #' @param arrays (named `list` of [`AnvlArray`])\cr
-#'   Named list of arrays to save. Names must be unique.
+#'   Named list of arrays. Names must be unique.
 #' @param path (`character(1)`)\cr
 #'   File path to write to.
 #'
-#' @returns `NULL` (invisibly).
+#' @returns (`NULL`)\cr
+#'   Invisibly.
 #' @seealso [nv_read()], [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' path <- tempfile(fileext = ".safetensors")
 #' nv_save(list(x = x), path)
 #' nv_read(path)
 nv_save <- function(arrays, path) {
+  if (is_arrayish(arrays) || !is.list(arrays)) {
+    cli_abort("{.arg arrays} must be a named list of arrays, not a single array.")
+  }
   checkmate::assert_list(arrays, names = "unique", types = "AnvlArray")
   checkmate::assert_string(path)
 
@@ -32,7 +37,7 @@ nv_save <- function(arrays, path) {
   invisible(NULL)
 }
 
-#' @title Read arrays from a file
+#' @title Read Arrays from a File
 #'
 #' @description
 #' Loads arrays from a file in the
@@ -46,12 +51,14 @@ nv_save <- function(arrays, path) {
 #'   Path to the safetensors file.
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
-#'   Default is to use the CPU.
+#'   Defaults to [`default_device()`] of the `"pjrt"` backend, which the loader
+#'   goes through whatever the active backend is.
 #'
-#' @returns Named `list` of [`AnvlArray`] objects.
+#' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_save()], [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' path <- tempfile(fileext = ".safetensors")
@@ -65,7 +72,7 @@ nv_read <- function(path, device = NULL) {
   nv_unserialize(con, device = device)
 }
 
-#' @title Serialize arrays to raw bytes
+#' @title Serialize Arrays to Raw Bytes
 #'
 #' @description
 #' Serializes a named list of arrays into the
@@ -77,16 +84,25 @@ nv_read <- function(path, device = NULL) {
 #'   An optional connection to write to.
 #'   If `NULL` (default), a raw vector is returned.
 #'
-#' @returns A [`raw`] vector if `con` is `NULL`, otherwise `NULL` (invisibly).
+#' @returns ([`raw`] | `NULL`)\cr
+#'   A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
 #' @seealso [nv_unserialize()], [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' raw_data <- nv_serialize(list(x = x))
 #' raw_data
 #' nv_unserialize(raw_data)
 nv_serialize <- function(arrays, con = NULL) {
+  # `assert_list(types = )` subsets `arrays` internally, and an `AnvlArray` has
+  # a `[` method -- so a bare array sends the *assertion* into `nv_subset()` and
+  # the caller sees a subsetting error. Say what is wrong first, as
+  # `prim_sort()` does for the same trap.
+  if (is_arrayish(arrays) || !is.list(arrays)) {
+    cli_abort("{.arg arrays} must be a named list of arrays, not a single array.")
+  }
   checkmate::assert_list(arrays, names = "unique", types = "AnvlArray")
 
   # TODO(hack): do this properly
@@ -99,13 +115,15 @@ nv_serialize <- function(arrays, con = NULL) {
   })
 
   if (is.null(con)) {
-    safetensors::safe_serialize(arrays_unwrapped)
-  } else {
-    safetensors::safe_save_file(arrays_unwrapped, con)
+    return(safetensors::safe_serialize(arrays_unwrapped))
   }
+  safetensors::safe_save_file(arrays_unwrapped, con)
+  # The connection is written for its side effect; `nv_save()` returns nothing
+  # either.
+  invisible(NULL)
 }
 
-#' @title Deserialize arrays from raw bytes
+#' @title Deserialize Arrays from Raw Bytes
 #'
 #' @description
 #' Deserializes arrays from the
@@ -119,12 +137,14 @@ nv_serialize <- function(arrays, con = NULL) {
 #'   A connection or raw vector to read from.
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
-#'   Default is to use the CPU.
+#'   Defaults to [`default_device()`] of the `"pjrt"` backend, which the loader
+#'   goes through whatever the active backend is.
 #'
-#' @returns Named `list` of [`AnvlArray`] objects.
+#' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_serialize()], [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' raw_data <- nv_serialize(list(x = x))
@@ -132,6 +152,7 @@ nv_serialize <- function(arrays, con = NULL) {
 #' nv_unserialize(raw_data)
 nv_unserialize <- function(con, device = NULL) {
   # TODO: don't convert to pjrt first
+  device <- device %||% default_device("pjrt")
   result <- safetensors::safe_load_file(con, framework = "pjrt", device = device)
 
   # The arrays are built on the active backend.
@@ -142,7 +163,7 @@ nv_unserialize <- function(con, device = NULL) {
       nv_array(buf)
     } else {
       nv_array(
-        tengen::as_array(buf),
+        tengen::as_array(buf, check = FALSE),
         dtype = as.character(pjrt::elt_type(buf)),
         shape = tengen::shape(buf)
       )

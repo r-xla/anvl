@@ -125,7 +125,8 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
 #'   the program and its cache key agree. `NULL` (a caller with no dispatcher in
 #'   front of it) falls back to [`default_device()`].
-#' @return A `list` with elements:
+#' @return (`list`)\cr
+#'   With elements:
 #'   - `exec`: The compiled PJRT executable.
 #'   - `out_tree`: The output tree structure.
 #'   - `const_arrays`: Constants needed at execution time.
@@ -181,7 +182,7 @@ compile_pjrt <- function(
       # a caller with no dispatcher in front of it falls back to the default.
       device <- fallback_device %||% default_device("pjrt")
     } else if (length(unique_devices) > 1L) {
-      devices_str <- paste0(vapply(unique_devices, as.character, character(1)), collapse = ", ")
+      devices_str <- paste0(vapply(unique_devices, as.character, character(1L)), collapse = ", ")
       cli_abort(c(
         "device is `NULL` (autodetect) but found more than one device",
         i = "Found devices: {devices_str}"
@@ -273,8 +274,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' [`device()`]. A device is a [`pjrt::as_pjrt_device()`] object (e.g. the
 #' platform `"cpu"` or `"cuda"`, optionally with an index such as `"cuda:1"`).
 #' When `device` is `NULL` in [`nv_array()`] or the [`jit()`] wrapper, the
-#' device defaults to the `PJRT_PLATFORM` environment variable (falling back
-#' to `"cpu"`), or is inferred from the existing inputs of a jitted call.
+#' device defaults to [`default_device()`], or is inferred from the existing
+#' inputs of a jitted call.
 #' Operations require all inputs to live on the same device.
 #'
 #' @section Supported data types:
@@ -283,6 +284,14 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' An R double materializes at `f32` on this backend and an R integer at `i32`
 #' unless the defaults say otherwise (see [`default_dtypes()`]).
 #'
+#' @section Floating-point behavior:
+#' Subnormal floating-point values may be preserved when stored in an array and
+#' read back into R, yet treated as zero in calculations. On CPUs, XLA enables
+#' a mode that replaces subnormal inputs and results with zero. The exact
+#' behavior depends on the platform, backend, and operation.
+#'
+#' See `vignette("gotchas", package = "anvl")` for an explanation and examples.
+#'
 #' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose
 #'   underlying buffers may be donated to (i.e., reused/consumed by) the
@@ -290,7 +299,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #'   caller after the call; this can reduce memory usage and copies for large
 #'   inputs. Must not overlap with `static`.
 #'
-#' @return An [`AnvlBackend`] object with subclass `"AnvlBackendPjrt"`.
+#' @return ([`AnvlBackend`])\cr
+#'   With subclass `"AnvlBackendPjrt"`.
 #' @seealso [`AnvlBackend()`], [`AnvlBackendQuickr()`], [`local_backend()`], [`jit()`].
 #' @export
 AnvlBackendPjrt <- function() {
@@ -300,8 +310,17 @@ AnvlBackendPjrt <- function() {
     # already do for dtype/shape). This turns the per-call dtype()/shape()/
     # device() reads on the hot dispatch path into plain field accesses instead
     # of repeated S3-dispatch -> C++/pjrt calls.
-    new_data = function(data, dtype, shape, device) {
-      buf <- pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      # A buffer arrives on a device of its own; everything else is placed on
+      # the default when the call names none.
+      if (is.null(device) && !inherits(data, "PJRTBuffer")) {
+        device <- default_device("pjrt")
+      }
+      buf <- if (is.raw(data)) {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape, row_major = row_major)
+      } else {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+      }
       structure(
         list(
           data = buf,
@@ -314,7 +333,7 @@ AnvlBackendPjrt <- function() {
       )
     },
     new_empty = function(dtype, shape, device) {
-      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device)
+      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device %||% default_device("pjrt"))
       structure(
         list(
           data = buf,

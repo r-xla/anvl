@@ -9,7 +9,10 @@ describe("nv_subset and nv_subset_assign", {
       arg <- if (is_subset_full(spec[[i]])) {
         seq(shape[i])
       } else if (is_subset_range(spec[[i]])) {
-        (spec[[i]]$start):(spec[[i]]$start + spec[[i]]$size - 1L)
+        # A decreasing range is stored ascending plus a `reversed` flag, so the
+        # base R argument has to be turned back around to match.
+        rng <- (spec[[i]]$start):(spec[[i]]$start + spec[[i]]$size - 1L)
+        if (spec[[i]]$reversed) rev(rng) else rng
       } else if (is_subset_index(spec[[i]])) {
         drop <- TRUE
         spec[[i]]$index
@@ -178,6 +181,18 @@ describe("nv_subset and nv_subset_assign", {
     check(c(6L), 1:6)
   })
 
+  it("1D: range that counts down", {
+    check(c(10L), 8:3)
+  })
+
+  it("2D: ranges that count down in both axes", {
+    check(c(6L, 8L), 4:2, 6:3)
+  })
+
+  it("3D: range that counts down next to a gather and a scalar", {
+    check(c(4L, 5L, 6L), array(c(1L, 3L)), 2L, 5:2)
+  })
+
   it("1D: gather with non-ascending indices", {
     check(c(10L), array(c(7L, 3L, 1L)))
   })
@@ -313,6 +328,113 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[array(c(0, 5))], "out of bounds")
   })
 
+  it("names the axis a rejected subset came from", {
+    x <- nv_array(array(1:24, dim = c(2, 3, 4)))
+    expect_error(x[1, 99, 1], "out of bounds for axis 2")
+    expect_error(x[1, 1:99, 1], "out of bounds for axis 2")
+    expect_error(x[1, array(c(9L)), 1], "out of bounds for axis 2")
+    expect_error(x[1, 1, 99], "out of bounds for axis 3")
+    expect_error(x[1, 2.5, 1], "For axis 2")
+    expect_error(x[1, c(1, 2), 1], "for axis 2")
+    expect_error(x[1, nv_array(c(1.5, 2.5)), 1], "for axis 2")
+    expect_error(x[1, array(1:4, dim = c(2, 2)), 1], "for axis 2 has 2 axes")
+    # The same is true of the assignment path.
+    expect_error(
+      {
+        x[1, 99, 1] <- 0L
+      },
+      "out of bounds for axis 2"
+    )
+  })
+
+  it("lists every out-of-bounds index, once", {
+    x <- nv_array(1:3)
+    expect_error(x[array(c(0L, 9L, 9L))], "indices 0 and 9 are out of bounds")
+    expect_error(x[array(c(9L))], "index 9 is out of bounds")
+  })
+
+  it("selects in reverse for a range that counts down", {
+    # Used to reach prim_gather() and fail there on a negative slice size.
+    r <- 1:10
+    x <- nv_array(r)
+    # A range keeps the axis, so the result is a 1-D array where base R has a
+    # dimensionless vector. Compare the values via as.integer(): at int = i64
+    # the array comes back as a bit64::integer64, whose storage is a double, so
+    # as.vector() would strip the class and expose the bit pattern.
+    vals <- function(v) as.integer(as_array(v))
+    expect_equal(vals(x[3:1]), r[3:1])
+    expect_equal(vals(x[10:1]), r[10:1])
+    expect_equal(vals(x[2:2]), r[2:2])
+
+    m <- array(1:12, dim = c(3, 4))
+    y <- nv_array(m)
+    expect_equal(vals(y[3:1, 2:1]), as.integer(m[3:1, 2:1]))
+    expect_equal(shape(y[3:1, 2:1]), c(3L, 2L))
+
+    # Assignment follows the same order as base R.
+    rr <- 1:5
+    rr[4:2] <- c(100L, 200L, 300L)
+    xx <- nv_array(1:5)
+    xx[4:2] <- nv_array(c(100L, 200L, 300L))
+    expect_equal(vals(xx), rr)
+
+    # Bounds are checked whichever way the range runs.
+    expect_error(x[11:1], "out of bounds for axis 1")
+    expect_error(x[3:0], "out of bounds for axis 1")
+  })
+
+  it("reverses the right output axis when other axes are dropped or gathered", {
+    # A decreasing range lowers to the ascending slice plus a reverse, so the
+    # axis to reverse has to be found in the *output*, after scalar indices
+    # have dropped theirs and gather axes have taken their places.
+    vals <- function(v) as.integer(as_array(v))
+    m <- array(1:12, dim = c(3, 4))
+    y <- nv_array(m)
+
+    expect_equal(vals(y[2, 4:1]), as.integer(m[2, 4:1]))
+    expect_equal(vals(y[3:1, 2]), as.integer(m[3:1, 2]))
+    expect_equal(vals(y[3:1, array(c(1L, 3L))]), as.integer(m[3:1, c(1, 3)]))
+    expect_equal(vals(y[array(c(1L, 3L)), 4:1]), as.integer(m[c(1, 3), 4:1]))
+
+    # Assignment has to reverse the value along the same output axis.
+    expected <- m
+    expected[3:1, 2] <- c(10L, 20L, 30L)
+    yy <- nv_array(m)
+    yy[3:1, 2] <- nv_array(c(10L, 20L, 30L))
+    expect_equal(vals(yy), as.integer(expected))
+  })
+
+  it("differentiates through a range that counts down", {
+    m <- array(as.double(1:12), dim = c(3, 4))
+    y <- nv_array(m)
+    f <- function(y) nv_sum(y[3:1, ] * nv_array(m))
+    expect_equal(as_array(jit(gradient(f))(y)[[1L]]), m[3:1, ])
+  })
+
+  it("reports too many subsets the same way from every path", {
+    x <- nv_array(array(1:24, dim = c(2, 3, 4)))
+    msg <- "Got 4 for an array of shape \\(2x3x4\\), which has 3 axes"
+    expect_error(x[1, 1, 1, 1], msg)
+    expect_error(nv_subset(x, 1, 1, 1, 1), msg)
+    expect_error(
+      {
+        x[1, 1, 1, 1] <- 0L
+      },
+      msg
+    )
+    # A rank-1 array is singular.
+    expect_error(nv_array(1:10)[1, 1], "which has 1 axis")
+  })
+
+  it("errors on a dynamic range index", {
+    # Used to build a SubsetRange from a field IotaArray does not have.
+    x <- nv_array(1:10)
+    expect_error(
+      x[IotaArray(shape = 3L, dtype = "i32", axis = 1L)],
+      "dynamic range is not supported"
+    )
+  })
+
   it("works with all-static indices via [", {
     r_arr <- array(1:24, dim = c(2, 3, 4))
     x <- nv_array(r_arr)
@@ -357,21 +479,21 @@ describe("subset_specs_start_indices", {
   it("returns all 1s for SubsetFull specs", {
     subsets <- list(SubsetFull(5L), SubsetFull(3L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(1L, 1L))
   })
 
   it("returns start values for SubsetRange specs", {
     subsets <- list(SubsetRange(3L, 5L), SubsetRange(2L, 4L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(3L, 2L))
   })
 
   it("returns the index for scalar SubsetIndices", {
     subsets <- list(SubsetIndex(nv_scalar(4L, dtype = "i64")))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i64"))
+    expect_dtype(result, "i64")
     expect_equal(as.integer(result), 4L)
   })
 
@@ -382,14 +504,14 @@ describe("subset_specs_start_indices", {
       SubsetIndex(nv_scalar(3L, dtype = "i64"))
     )
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i64"))
+    expect_dtype(result, "i64")
     expect_equal(as.integer(result), c(2L, 1L, 3L))
   })
 
   it("uses i32 for all-static subsets", {
     subsets <- list(SubsetFull(5L), SubsetRange(3L, 5L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(1L, 3L))
   })
 
@@ -399,13 +521,13 @@ describe("subset_specs_start_indices", {
       SubsetRange(3L, 5L)
     )
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
   })
 
   it("works with a single axis", {
     subsets <- list(SubsetRange(2L, 7L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), 2L)
   })
 
@@ -428,12 +550,6 @@ describe("zero-sized subsets", {
     x <- nv_array(r_arr)
     expect_equal(shape(x[array(integer(0)), ]), c(0L, 4L))
     expect_equal(as_array(x[array(integer(0)), ]), r_arr[integer(0), , drop = FALSE])
-  })
-
-  it("empty range yields a zero-sized axis", {
-    r_arr <- array(1:12, dim = c(3L, 4L))
-    x <- nv_array(r_arr)
-    expect_equal(shape(x[1:0, ]), c(0L, 4L))
   })
 
   it("assigning to an empty subset is a no-op", {
@@ -573,8 +689,8 @@ describe("boolean masks from arrays", {
   it("2D: anvl masks in both dimensions", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
-    row_mask <- nv_reduce_sum(x, axes = 2L) > 20L
-    col_mask <- nv_reduce_sum(x, axes = 1L) > 10L
+    row_mask <- nv_sum(x, axes = 2L) > 20L
+    col_mask <- nv_sum(x, axes = 1L) > 10L
     expect_equal(
       as_array(x[row_mask, col_mask]),
       r_arr[rowSums(r_arr) > 20L, colSums(r_arr) > 10L, drop = FALSE]

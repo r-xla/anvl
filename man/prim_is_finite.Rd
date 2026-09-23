@@ -8,10 +8,11 @@ prim_is_finite(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point.}
+One input. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape as the input and boolean data type.
 }
 \description{
@@ -27,13 +28,18 @@ Element-wise check if values are finite (not Inf, -Inf, or NaN).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_is_finite]{hlo_is_finite()}}.
+Lowers to \code{\link[stablehlo:hlo_is_finite]{hlo_is_finite()}}, specified under
+\href{https://openxla.org/stablehlo/spec#is_finite}{is_finite}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result is boolean, whatever float data type the input has
 x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 prim_is_finite(x)
+
+# an R value materializes at its default data type before the test
+prim_is_finite(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -9,7 +9,8 @@ nv_cumprod(x, axis = NULL, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to accumulate. Negative values count from the end,
@@ -17,35 +18,27 @@ i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cumprod]{base::cumprod()}}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates forward from its first occurrence. If
 \code{TRUE}, \code{NaN} is treated as the identity element of the cumulative
 op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min) and
 contributes nothing to the running value.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the input, and the same data type, except for a
-boolean input, which is accumulated at the default integer data type (see
-\code{\link[=default_dtypes]{default_dtypes()}}).
+(\code{\link{arrayish}})\cr
+Has the input's shape when \code{axis} is given, and is 1-D of length
+\code{prod(shape(x))} when \code{axis} is \code{NULL}, which flattens first. Has the
+input's data type, except for a boolean input, which is accumulated at the
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 \description{
 Cumulative product, optionally along a single axis.
 A boolean array is multiplied as zeroes and ones, like \code{\link[base:cumprod]{base::cumprod()}} does.
 }
-\section{Relation to base R}{
-
-Both \code{nv_cumprod()} (with \code{axis = NULL}) and \code{\link[base:cumprod]{base::cumprod()}}
-flatten a multi-dimensional input to 1-D before accumulating, but the
-flatten order differs: anvl arrays are row-major (C order), so the
-flattened sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. The two agree on 1-D inputs.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_cumprod(x)              # row-major flatten, then accumulate
+nv_cumprod(x)              # flatten, then accumulate
 nv_cumprod(x, axis = 1L)    # accumulate along rows
 nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1

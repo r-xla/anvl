@@ -1,9 +1,15 @@
+#' @include jit.R
+NULL
+
 SubsetFull <- function(size) {
   structure(list(size = size), class = "SubsetFull")
 }
 
-SubsetRange <- function(start, end) {
-  structure(list(start = start, size = end - start + 1L), class = "SubsetRange")
+SubsetRange <- function(start, end, reversed = FALSE) {
+  structure(
+    list(start = start, size = end - start + 1L, reversed = reversed),
+    class = "SubsetRange"
+  )
 }
 
 SubsetIndex <- function(index) {
@@ -34,6 +40,15 @@ is_subset_full <- function(x) inherits(x, "SubsetFull")
 is_subset_range <- function(x) inherits(x, "SubsetRange")
 is_subset_index <- function(x) inherits(x, "SubsetIndex")
 is_subset_indices <- function(x) inherits(x, "SubsetIndices")
+
+# Output axes carrying a decreasing range. A range always survives into the
+# output, so its output axis is its position among the axes that no scalar
+# index drops.
+subset_reversed_axes <- function(subsets) {
+  surviving <- !vapply(subsets, is_subset_index, logical(1L))
+  reversed <- vapply(subsets, function(s) isTRUE(s$reversed), logical(1L))
+  which(reversed[surviving])
+}
 
 subset_spec_to_shape <- function(specs) {
   shp <- integer()
@@ -125,7 +140,8 @@ static_start_indices <- function(starts, like = NULL) {
 #'   gather axes' indices are broadcast across the cartesian product.
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return An array of start indices
+#' @return ([`arrayish`])\cr
+#'   An array of start indices
 #' @noRd
 subset_specs_start_indices <- function(subsets, like = NULL) {
   starts <- subset_start_positions(subsets)
@@ -246,7 +262,8 @@ flat_mask_to_scatter <- function(mask, like = NULL) {
 #' Convert subset specs to gather parameters
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return A list with all parameters needed for prim_gather:
+#' @return (`list`)\cr
+#'   All parameters needed for `prim_gather()`:
 #'   - start_indices: array of start indices (shape `(gather_shape..., rank)` or `(1, rank)`)
 #'   - slice_sizes: integer vector
 #'   - offset_axes: integer vector
@@ -320,7 +337,8 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #' Convert subset specs to scatter parameters
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return A list with all parameters needed for prim_scatter:
+#' @return (`list`)\cr
+#'   All parameters needed for `prim_scatter()`:
 #'   - scatter_indices: array of scatter indices
 #'   - update_window_axes: integer vector
 #'   - inserted_window_axes: integer vector
@@ -396,20 +414,33 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
 
 # Helper functions for subset operations ======================================
 
+abort_too_many_subsets <- function(n, x_shape, call = rlang::caller_env()) {
+  rank <- length(x_shape)
+  cli_abort(
+    c(
+      "Too many subset specifications.",
+      x = "Got {n} for an array of shape {shape_repr(x_shape)}, which has
+           {rank} {cli::qty(rank)}ax{?is/es}.",
+      i = "Trailing axes can be left out; they select all elements."
+    ),
+    call = call
+  )
+}
+
 #' Parse subset specifications and fill unspecified axes
 #' @param quos List of quosures (from enquos)
 #' @param x_shape Shape of the input array
-#' @return List of SubsetSpec objects
+#' @return (`list` of `SubsetSpec`)
 #' @noRd
 parse_subset_specs <- function(quos, x_shape) {
   rank <- length(x_shape)
 
   if (length(quos) > rank) {
-    cli_abort("Too many subset specifications: got {length(quos)}, expected at most {rank}")
+    abort_too_many_subsets(length(quos), x_shape)
   }
 
   subsets <- lapply(seq_along(quos), function(i) {
-    parse_subset_spec(quos[[i]], x_shape[i])
+    parse_subset_spec(quos[[i]], x_shape[i], axis = i)
   })
 
   # Trailing subsets don't need to be specified, so we fill them with full selections
@@ -472,9 +503,12 @@ as_r_mask <- function(e) {
 #' Parse a single subset specification
 #' @param quo Quosure to parse
 #' @param axis_size Size of the axis being indexed
-#' @return A SubsetSpec object (SubsetFull, SubsetRange, or SubsetIndices)
+#' @param axis Axis the subset applies to, used to name it in errors
+#' @return (`SubsetSpec`)\cr
+#'   One of `SubsetFull`, `SubsetRange` or `SubsetIndices`.
 #' @noRd
-parse_subset_spec <- function(quo, axis_size) {
+parse_subset_spec <- function(quo, axis_size, axis) {
+  in_bounds <- "Axis {axis} has size {axis_size}, so indices must be between 1 and {axis_size}."
   is_integerish <- function(x) {
     is.null(dim(x)) && test_integerish(x, len = 1L, any.missing = FALSE)
   }
@@ -489,18 +523,34 @@ parse_subset_spec <- function(quo, axis_size) {
   # Check for range expression (a:b) before evaluating
   if (rlang::is_call(e, ":")) {
     env <- rlang::quo_get_env(quo)
-    start <- rlang::eval_tidy(e[[2]], env = env)
-    end <- rlang::eval_tidy(e[[3]], env = env)
+    start <- rlang::eval_tidy(e[[2L]], env = env)
+    end <- rlang::eval_tidy(e[[3L]], env = env)
 
     if (!is_integerish(start) || !is_integerish(end)) {
-      cli_abort("Range indices must be scalar integers")
+      bad <- if (!is_integerish(start)) start else end
+      side <- if (!is_integerish(start)) "start" else "end"
+      cli_abort(c(
+        "The {side} of a range subset must be a single whole number.",
+        x = "For axis {axis}, got {.obj_type_friendly {bad}}."
+      ))
     }
 
     start <- as.integer(start)
     end <- as.integer(end)
 
-    if (start < 1L || end > axis_size) {
-      cli_abort("Range {start}:{end} is out of bounds for axis of size {axis_size}")
+    # Either end may be the larger one, since a range is allowed to count down.
+    if (min(start, end) < 1L || max(start, end) > axis_size) {
+      cli_abort(c(
+        "The range subset {start}:{end} is out of bounds for axis {axis}.",
+        x = in_bounds
+      ))
+    }
+
+    # A range that counts down selects in reverse, as in base R. There is no
+    # descending slice, so it becomes the ascending one plus a reverse of the
+    # output axis
+    if (end < start) {
+      return(SubsetRange(end, start, reversed = TRUE))
     }
 
     return(SubsetRange(start, end))
@@ -532,7 +582,10 @@ parse_subset_spec <- function(quo, axis_size) {
   if (is_integerish(e)) {
     idx <- as.integer(e)
     if (idx < 1L || idx > axis_size) {
-      cli_abort("Index {idx} is out of bounds for axis of size {axis_size}")
+      cli_abort(c(
+        "The index {idx} is out of bounds for axis {axis}.",
+        x = in_bounds
+      ))
     }
     return(SubsetIndex(idx))
   }
@@ -541,7 +594,8 @@ parse_subset_spec <- function(quo, axis_size) {
   if (is.numeric(e) && length(e) > 1L && is.null(dim(e))) {
     cli_abort(c(
       "Vectors of length > 1 are not allowed as subset indices.",
-      "i" = "Use {.code array()} to select multiple elements, e.g. {.code x[array(c(1L, 3L)), ]}."
+      x = "Got one of length {length(e)} for axis {axis}.",
+      i = "Use {.code array()} to select multiple elements, e.g. {.code x[array(c(1L, 3L)), ]}."
     ))
   }
 
@@ -550,27 +604,34 @@ parse_subset_spec <- function(quo, axis_size) {
     if (length(dim(e)) != 1L) {
       cli_abort(c(
         "An array of indices must have exactly one axis.",
-        x = "Got {length(dim(e))} axes."
+        x = "The array given for axis {axis} has {length(dim(e))} axes."
       ))
     }
     indices <- as.integer(e)
     oob <- indices < 1L | indices > axis_size
     if (any(oob)) {
-      bad <- indices[oob][1L] # nolint
-      cli_abort("Index {bad} is out of bounds for an axis of size {axis_size}.")
+      bad <- unique(indices[oob])
+      # Each `{?}` gets its own quantity: left to infer one from `{.val {bad}}`,
+      # cli reads the index *values* as the count.
+      nbad <- length(bad)
+      cli_abort(c(
+        "{cli::qty(nbad)}The ind{?ex/ices} {.val {bad}} {cli::qty(nbad)}{?is/are}
+         out of bounds for axis {axis}.",
+        x = in_bounds
+      ))
     }
     return(SubsetIndices(indices))
   }
 
-  # AnvlRange (dynamic range) - not supported
+  # A dynamic range is not supported. This used to build a SubsetRange from
+  # `e$end`, which an IotaArray does not have, so the call failed further down
+  # with a length-0 slice size instead of saying what was wrong.
   if (inherits(e, "IotaArray")) {
-    if (length(shape) != 1L) {
-      cli_abort(c(
-        "A range index must have exactly one axis.",
-        x = "Got {length(shape)} axes."
-      ))
-    }
-    return(SubsetRange(e$start, e$end))
+    cli_abort(c(
+      "A dynamic range is not supported as a subset index.",
+      x = "Got {.cls IotaArray} for axis {axis}.",
+      i = "Use a literal range such as {.code 2:4}, or an array of indices."
+    ))
   }
 
   # Array indices (AnvlArray or GraphBox)
@@ -579,7 +640,7 @@ parse_subset_spec <- function(quo, axis_size) {
     if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
       cli_abort(c(
         "An array of indices must have an integer data type.",
-        x = "Got {.val {as.character(dt)}}.",
+        x = "The array given for axis {axis} has data type {.val {as.character(dt)}}.",
         i = "Convert it with {.fn nv_convert}."
       ))
     }
@@ -587,7 +648,7 @@ parse_subset_spec <- function(quo, axis_size) {
     if (nd > 1L) {
       cli_abort(c(
         "An array of indices must have at most one axis.",
-        x = "Got {nd} axes."
+        x = "The array given for axis {axis} has {nd} axes."
       ))
     }
     # Scalar array drops axis, 1D array preserves
@@ -598,13 +659,14 @@ parse_subset_spec <- function(quo, axis_size) {
   }
 
   detail <- if (is.numeric(e) && length(e) == 1L && is.finite(e)) {
-    "Got {.val {e}}, which is not whole."
+    "For axis {axis}, got {.val {e}}, which is not whole."
   } else {
-    "Got {.obj_type_friendly {e}}."
+    "For axis {axis}, got {.obj_type_friendly {e}}."
   }
   cli_abort(c(
     "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
-    x = detail
+    x = detail,
+    i = "See {.code vignette(\"subsetting\")}."
   ))
 }
 
@@ -614,7 +676,8 @@ parse_subset_spec <- function(quo, axis_size) {
 #' Supports R-style indexing including scalar indices (which drop axes),
 #' ranges (`a:b`), `array(c(...))` for selecting multiple elements along an
 #' axis, and boolean masks.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
 #'   axes select all elements.
 #'
@@ -627,17 +690,20 @@ parse_subset_spec <- function(quo, axis_size) {
 #'   selected elements determines the output shape.
 #'
 #'   See `vignette("subsetting")` for details.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])\cr
+#'   Has the input's data type, and the shape the specifications select --
+#'   a scalar index drops its axis, a range, an index array or an axis mask
+#'   keeps it, and a whole-array mask yields a 1-D result.
 #' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
 #' x
-#' # Select row 2
+#' # select row 2
 #' nv_subset(x, 2)
 #' x[2, ]
 #'
-#' # Select rows 1 to 2, all columns
+#' # select rows 1 to 2, all columns
 #' nv_subset(x, 1:2)
 #' x[1:2, ]
 #'
@@ -658,10 +724,12 @@ nv_subset <- function(x, ...) {
   quos <- rlang::enquos(...)
 
   flat <- resolve_flat_mask(quos, x_shape)
-  params <- if (is.null(flat$mask)) {
-    subset_specs_to_gather(parse_subset_specs(flat$quos, x_shape), like = x)
+  if (is.null(flat$mask)) {
+    subsets <- parse_subset_specs(flat$quos, x_shape)
+    params <- subset_specs_to_gather(subsets, like = x)
   } else {
-    flat_mask_to_gather(flat$mask, like = x)
+    subsets <- list()
+    params <- flat_mask_to_gather(flat$mask, like = x)
   }
 
   out <- prim_gather(
@@ -677,6 +745,11 @@ nv_subset <- function(x, ...) {
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices
   )
+
+  reversed_axes <- subset_reversed_axes(subsets)
+  if (length(reversed_axes)) {
+    out <- prim_rev(out, axes = reversed_axes)
+  }
 
   out
 }
@@ -743,17 +816,20 @@ subset_scatter_core <- jit(
 #' @description
 #' Updates elements of an array at specified positions, returning a new array.
 #' You can also use the `[<-` operator.
-#' @template param_x
+#' @param x ([`arrayish`])\cr
+#'   The array to update. Can be any data type.
+#'   An R object is materialized at its [default data type][default_dtypes].
 #' @inheritParams nv_subset
 #' @param value ([`arrayish`])\cr
-#'   Replacement values. Scalars are broadcast to the subset shape.
-#'   Non-scalar values must match the subset shape.
-#' @return [`arrayish`]\cr
-#'   A new array with the same shape as `x` and the subset replaced.
+#'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
+#'   values must match it.
+#'   The value is converted to the data type of `x`.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type and shape, with the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
-#' # Set row 1 to zeros
+#' # set row 1 to zeros
 #' nv_subset_assign(x, 1, value = nv_scalar(0L))
 #' x[1, ] <- nv_scalar(0L)
 #' x
@@ -762,7 +838,7 @@ subset_scatter_core <- jit(
 #' x[x > 6] <- 0L
 #' x
 #' @export
-# Not `@jit`-tagged: the `...` subscripts are captured via NSE (`enquos()`),
+# Not wrapped in `jit()`: the `...` subscripts are captured via NSE (`enquos()`),
 # which jit's argument handling cannot trace. The parsing stays here (eager) and
 # the array work is delegated to the jitted [subset_scatter_core()].
 nv_subset_assign <- function(x, ..., value) {
@@ -784,10 +860,19 @@ nv_subset_assign <- function(x, ..., value) {
   quos <- rlang::enquos(...)
 
   flat <- resolve_flat_mask(quos, lhs_shape)
-  params <- if (is.null(flat$mask)) {
-    subset_specs_to_scatter(parse_subset_specs(flat$quos, lhs_shape), like = x)
+  if (is.null(flat$mask)) {
+    subsets <- parse_subset_specs(flat$quos, lhs_shape)
+    params <- subset_specs_to_scatter(subsets, like = x)
   } else {
-    flat_mask_to_scatter(flat$mask, like = x)
+    subsets <- list()
+    params <- flat_mask_to_scatter(flat$mask, like = x)
+  }
+
+  # The scatter writes the ascending slice, so a decreasing range means the
+  # value goes in back to front. A scalar value broadcasts either way.
+  reversed_axes <- subset_reversed_axes(subsets)
+  if (length(reversed_axes) && naxes(value)) {
+    value <- prim_rev(value, axes = reversed_axes)
   }
 
   subset_scatter_core(

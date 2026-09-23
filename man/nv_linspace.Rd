@@ -5,24 +5,24 @@
 \alias{nv_linspace_like}
 \title{Evenly Spaced Sequence}
 \usage{
-nv_linspace(start, end, steps, dtype = NULL, device = NULL)
+nv_linspace(from, to, length_out, dtype = NULL, device = NULL)
 
-nv_linspace_like(like, start, end, steps, dtype = NULL, device = NULL)
+nv_linspace_like(like, from, to, length_out, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{start, end}{(\code{numeric(1)})\cr
-First and last value of the sequence. \code{end} may lie below \code{start}, in
+\item{from, to}{(\code{numeric(1)})\cr
+First and last value of the sequence. \code{to} may lie below \code{from}, in
 which case the values decrease.}
 
-\item{steps}{(\code{integer(1)})\cr
-Number of values to generate. Must be at least 1; for \code{steps = 1} the
-result is \code{start}.}
+\item{length_out}{(\code{integer(1)})\cr
+Number of values to generate. Must be at least 1; for \code{length_out = 1} the
+result is \code{from}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Floating-point data type. \code{NULL} (default) uses the backend's default
-float data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
-For \code{nv_linspace_like()}, \code{NULL} uses \code{dtype(like)}, which must then be a
-floating-point data type.}
+Data type of the result. Must be a float data type; \code{NULL} (default) uses
+the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}), since
+the spacing is fractional. For \code{nv_linspace_like()}, \code{NULL} uses
+\code{dtype(like)}, which must then be a float too.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -35,36 +35,46 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_linspace_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
-1-D array of length \code{steps}.
+(\code{\link{arrayish}})\cr
+Has \code{dtype} and shape \code{length_out}.
 }
 \description{
-Creates a 1-D array with \code{steps} evenly spaced values from \code{start} to \code{end}
-(both inclusive), like R's \code{seq(start, end, length.out = steps)}.
+Creates a 1-D array with \code{length_out} evenly spaced values from \code{from} to \code{to}
+(both inclusive), like R's \code{seq(from, to, length.out = length_out)}.
 
-The spacing \code{(end - start) / (steps - 1)} is generally not a whole number, so
-the result is floating-point and \code{dtype} must name a float data type. Convert
-the result with \code{\link[=nv_convert]{nv_convert()}} to obtain integers, which leaves the
-rounding yours to choose.
+The spacing \code{(to - from) / (length_out - 1)} is generally not a whole number,
+so the result is a float.
 
 \code{nv_linspace_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_linspace(0, 1, steps = 5L)
+nv_linspace(0, 1, length_out = 5L)
+
+# to below from counts down
+nv_linspace(1, 0, length_out = 3L)
+
+# length_out = 1 gives from alone
+nv_linspace(2.5, 10, length_out = 1L)
+
+# the data type must be a float; convert afterwards for integers
+nv_convert(nv_linspace(0, 10, length_out = 5L), "i32")
+
+# nv_linspace_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
-nv_linspace_like(x, 0, 1, steps = 3L)
+nv_linspace_like(x, 0, 1, length_out = 3L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_seq]{nv_seq()}} for consecutive integers.
+\code{\link[=nv_seq]{nv_seq()}} for consecutive integers, \code{\link[=nv_iota]{nv_iota()}} for values
+increasing along an axis of any shape, \code{\link{dtypes}} for the data type
+categories.
 }

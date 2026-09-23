@@ -15,14 +15,22 @@ config above. anvl-specific:
   `PJRT_INSTALL=1`) for work inside the package.
 - Single file: `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
   `devtools::test(filter = "reverse")`.
-- `ANVL_SKIP_QUICKR=1` skips the (slow) quickr tests; `PJRT_PLATFORM=cuda` runs the suite on the CUDA
-  plugin (`is_cpu()` / `is_cuda()` in `helper.R` branch on it). `setup.R` sets
-  `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to spread over.
-- `ANVL_DEFAULT_DTYPES="float=f64,int=i64"` runs the whole suite at another pair of default data
-  types; `setup.R` turns it into the `anvl.default_dtypes` option. The `default-dtypes` workflow
-  runs the suite this way so that anything hardcoding `f32` / `i32` where it should read
-  `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
-  `local_registered_default_dtypes()` (`helper.R`) to clear the override.
+- `ANVL_TEST_SKIP_QUICKR=1` skips the (slow) quickr tests. `setup.R` sets `PJRT_CPU_DEVICE_COUNT=2`
+  so multi-device tests have something to spread over.
+- `ANVL_DEFAULT_DEVICE` / `ANVL_DEFAULT_DTYPES` are package-level: anvl reads them once when it is
+  loaded and falls back to them when the `anvl.default_device` / `anvl.default_dtypes` options are
+  not set. The suite uses them to run on another configuration, and `setup.R` skips quickr for
+  such a run:
+  - `ANVL_DEFAULT_DEVICE=cuda` runs the suite on the CUDA plugin (`is_cpu()` / `is_cuda()` in
+    `helper.R` branch on it). `ANVL_DEFAULT_DEVICE=cpu:1` runs it on the second CPU device, so
+    anything allocating on the first CPU device where it should have followed the trace or its
+    operands lands on a device of its own, which jit's autodetect reports; the `default-device`
+    workflow runs it on the `full-test` PR label. A test that asserts the unset default calls
+    `local_unset_default_device()` (`helper.R`) to clear both.
+  - `ANVL_DEFAULT_DTYPES="float=f64,int=i64"` runs the suite at another pair of default data types;
+    the `default-dtypes` workflow runs it so that anything hardcoding `f32` / `i32` where it should
+    read `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
+    `local_registered_default_dtypes()` (`helper.R`) to clear the override.
 - anvl tracks the **dev** versions of its r-xla dependencies:
   `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
 
@@ -33,7 +41,22 @@ config above. anvl-specific:
 
 When adding new functionality, decide which layer it belongs to. Most new operations need both: a `prim_*` primitive with rules, and an `nv_*` wrapper with R-idiomatic semantics.
 
-Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets, so write it in the *category* the operand is in -- `0` for a float array, `0L` for an integer one. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
+Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
+
+The two spellings of a whole number are not symmetric here. An R integer widens into whatever
+category it meets, while a plain `1` is an R *double* and pulls an integer array into the float
+category -- `x_i32 - 1` is `f32`, where `x_i32 - 1L` is `i32`. So a whole number keeps its `L`
+even when it meets a float array: `nv_ifelse(mask, 0L, x)`, `prim_fill(1L, dtype = dtype(x),
+...)`, `hlo_scalar(0L, dtype = dtype(x), ...)`, `U - 1L`.
+
+Drop the `L` only where the value is genuinely a real number that happens to be whole -- a
+distribution parameter, a probability bound, a threshold, a coefficient: `sd = 1`,
+`lower = 0, upper = 1`, `nv_pmax(-d, 1)`, `2 / sqrt(pi)`, `base::log(2 * pi)`.
+
+That distinction bites hardest on a literal that meets *nothing*, where it decides a data type
+outright by settling on the default of its own category. `nv_rnorm(mean = 0, sd = 1)` has to stay
+plain: written `0L` / `1L`, a call that names no dtype returns the sample at the default
+*integer*.
 
 ## Terminology
 
@@ -56,7 +79,12 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 ## Supported dtypes
 
-- there is currently no support for complex numbers.
+The data types and the words the docs use for groups of them are in `?dtypes`
+(`R/promotion.R`) and `man-roxygen/section_dtype_words.R`: *any* / *numeric* / *integer* /
+*integerish* / *signed numeric* / *float* / *boolean*. Two things to keep in mind:
+
+- There is currently no support for complex numbers.
+- We currently do not worry about any float type other than `f32` and `f64`.
 
 ## Type Promotion
 
@@ -67,7 +95,7 @@ is the reference for how this works and for the `.promote` rules (`promotion_com
 `as_anvl_arrays()`. Two rules that bite while writing code:
 
 - Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
-  `peek_dtype()` to ask which data type it would take.
+  `peek_dtype()` to ask what it *would* materialize at.
 - A primitive promotes nothing unless its body says so: one whose operands must agree calls
   `apply_promotion()` on them before anything else reads them.
 - A trace output that met nothing materializes at the default float / integer of the active backend,
@@ -94,21 +122,24 @@ another backend is an error. Only helpers *about* the backend name one (`install
 
 ## Primitive System
 
-Primitives are `JitPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`. Primitives are stored as `prim_<name>` variables. `new_primitive()` lexically binds `self` (the `AnvlPrimitive`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+Primitives are `JitPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitive`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
-## `@jit` Roclet
+## Jit-wrapping
 
-`R/jit-registry.R` is **generated** by `anvl::jit_roclet` (activated in the `Roxygen` field of
-`DESCRIPTION`): tagging a function with `#' @jit [static = ...]` makes `devtools::document()` add it
-to the registry, and `R/zzz.R` rebinds those functions to their jitted versions at build time. Never
-edit `R/jit-registry.R` by hand; because the roclet lives in anvl itself, documenting requires an
-installed anvl that already exports it.
+API functions are wrapped in `jit()` at the definition itself, with `static`
+after the function so the signature reads on its own line:
 
-Tag every function whose body issues **more than one operation** with `@jit`.
+```r
+nv_foo <- jit(function(x, axis) {
+  ...
+}, static = "axis")
+```
+
+Wrap every function whose body issues **more than one operation**.
 
 ## Broadcasting
 
@@ -136,7 +167,7 @@ Each rule of each primitive should be tested. Tests are organized as:
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
-This helper skips when quickr is not installed, and also when the `ANVL_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
+This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
 
 ## Documentation

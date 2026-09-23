@@ -10,7 +10,7 @@ is_dtype(x)
 \item{x}{An object to test.}
 }
 \value{
-\code{TRUE} or \code{FALSE}.
+(\code{logical(1)})
 }
 \description{
 Tests whether \code{x} is a \code{DataType} object.

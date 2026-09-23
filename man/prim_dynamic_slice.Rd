@@ -8,11 +8,12 @@ prim_dynamic_slice(x, ..., slice_sizes)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
-\item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per axis. Each must be a
-scalar array. Pass one scalar per axis of \code{x}.}
+\item{...}{(\code{\link{arrayish}})\cr
+Scalar start indices, one per axis of \code{x}. Each must be a scalar of
+the same integer data type.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice in each axis. Must have length equal to
@@ -20,8 +21,8 @@ Size of the slice in each axis. Must have length equal to
 per axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as the input and shape \code{slice_sizes}.
+(\code{\link{arrayish}})\cr
+Has the input's data type and shape \code{slice_sizes}.
 }
 \description{
 Extracts a slice from an array whose start position is determined at
@@ -50,7 +51,8 @@ the effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dynamic_slice]{hlo_dynamic_slice()}}.
+Lowers to \code{\link[stablehlo:hlo_dynamic_slice]{hlo_dynamic_slice()}}, specified under
+\href{https://openxla.org/stablehlo/spec#dynamic_slice}{dynamic_slice}.
 }
 
 \examples{
@@ -68,5 +70,6 @@ prim_dynamic_slice(x, row_start, col_start, slice_sizes = c(2L, 2L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_static_slice]{prim_static_slice()}}, \code{\link[=prim_dynamic_update_slice]{prim_dynamic_update_slice()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=nv_subset]{nv_subset()}}, \code{[}
+\code{\link[=prim_static_slice]{prim_static_slice()}}, \code{\link[=prim_dynamic_update_slice]{prim_dynamic_update_slice()}},
+\code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=nv_subset]{nv_subset()}}, \code{[}
 }

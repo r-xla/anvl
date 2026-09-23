@@ -8,14 +8,15 @@ prim_lu(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 axes.}
+One input, with exactly 2 axes. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{list} of three \code{\link{arrayish}} values: \code{LU} \verb{(m, n)} with the same
-dtype as the input; \code{pivots} \verb{(k,)} of the default integer data type
-(see \code{\link[=default_dtypes]{default_dtypes()}}) with \code{k = min(m, n)} (1-based row swaps such
-that row \code{i} was exchanged with row \code{pivots[i]} during elimination step
-\code{i}); and \code{permutation} \verb{(m,)} of the same data type, a 1-based
+(named \code{list} of three \code{\link{arrayish}})\cr
+Elements \code{LU} \verb{(m, n)} with the input's data type; \code{pivots} \verb{(k,)} at the
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) with \code{k = min(m, n)}
+(sequential row swaps: row \code{i} was exchanged with row \code{pivots[i]} during
+elimination step \code{i}); and \code{permutation} \verb{(m,)} at that same data type, a
 permutation vector for \eqn{P} such that \code{(P \%*\% A)[i, ]} equals
 \code{A[permutation[i], ]}.
 }
@@ -46,6 +47,7 @@ in-graph.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `LU` keeps the input's data type; the pivots are the default integer
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 prim_lu(x)
 \dontshow{\}) # examplesIf}

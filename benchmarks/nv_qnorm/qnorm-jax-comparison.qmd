@@ -54,9 +54,9 @@ PERF    <- env_or("QNORM_PERF", "1") != "0"
 USEJAX  <- env_or("QNORM_JAX",  "1") != "0"
 DENSE_N <- as.integer(env_or("QNORM_DENSE", if (FULL) "2000" else "60"))
 DEVICE  <- env_or("DEVICE", "cpu")
-## anvl reads PJRT_PLATFORM in default_device(); nv_array()/jit() then place and
+## anvl reads ANVL_DEFAULT_DEVICE when loaded; nv_array()/jit() then place and
 ## compile on it. JAX is steered per-subprocess via JAX_PLATFORMS (run_py_chunk).
-Sys.setenv(PJRT_PLATFORM = DEVICE)
+Sys.setenv(ANVL_DEFAULT_DEVICE = DEVICE)
 
 suppressPackageStartupMessages({
   library(anvl)
@@ -407,15 +407,15 @@ gen_inputs <- function(regime, log_p, n) {
 REGIMES <- c("central", "tail", "deep tail", "mixed")
 
 ## --- the three implementations, as timed and as evaluated -----------------
-## nv_qnorm is tagged `@jit static c("lower_tail", "log_p")`, so it is already
+## nv_qnorm is wrapped in `jit(static = c("lower_tail", "log_p"), ...)`, so it is already
 ## jit-compiled: calling it directly exercises the compiled path, and wrapping it
 ## in jit() again would measure something the user never runs.
 anvl_value <- function(arr, log_p) as.vector(nv_qnorm(arr, log_p = log_p))
 anvl_grad_fn <- function(log_p) {
-  jit(gradient(function(p) nv_reduce_sum(nv_qnorm(p, log_p = log_p)), wrt = "p"))
+  jit(gradient(function(p) nv_sum(nv_qnorm(p, log_p = log_p)), wrt = "p"))
 }
 anvl_value_grad_fn <- function(log_p) {
-  jit(value_and_gradient(function(p) nv_reduce_sum(nv_qnorm(p, log_p = log_p)),
+  jit(value_and_gradient(function(p) nv_sum(nv_qnorm(p, log_p = log_p)),
                          wrt = "p"))
 }
 
@@ -847,7 +847,7 @@ anvl_mlir <- function(log_p, op, dt) tryCatch({
   fn <- if (op == "value") {
     function(z) nv_qnorm(z, log_p = log_p)
   } else {
-    value_and_gradient(function(z) nv_reduce_sum(nv_qnorm(z, log_p = log_p)),
+    value_and_gradient(function(z) nv_sum(nv_qnorm(z, log_p = log_p)),
                        wrt = "z")
   }
   g <- trace_fn(fn, list(z = nv_aval(shape = OPCOUNT_N, dtype = dt)),
@@ -1032,7 +1032,7 @@ anvl_hlo <- function(log_p, op, dt) tryCatch({
       sprintf("invisible(as.vector(nv_qnorm(a, log_p = %s)))", log_p)
     } else {
       c(sprintf(paste0("vg <- jit(value_and_gradient(function(z) ",
-                       "nv_reduce_sum(nv_qnorm(z, log_p = %s)), wrt = 'z'))"),
+                       "nv_sum(nv_qnorm(z, log_p = %s)), wrt = 'z'))"),
                 log_p),
         "r <- vg(a)",
         "invisible(as.vector(r$value)); invisible(as.vector(r$grad[[1L]]))")
@@ -1040,7 +1040,7 @@ anvl_hlo <- function(log_p, op, dt) tryCatch({
   system2(file.path(R.home("bin"), "Rscript"), shQuote(script),
           env = quote_env(c(
             sprintf("XLA_FLAGS=--xla_dump_to=%s --xla_dump_hlo_as_text", dd),
-            paste0("PJRT_PLATFORM=", DEVICE))),
+            paste0("ANVL_DEFAULT_DEVICE=", DEVICE))),
           stdout = FALSE, stderr = FALSE)
   ## cpu_ or gpu_ depending on the device. If more than one module was dumped,
   ## keep the largest -- an incidental transfer/convert module is tiny next to

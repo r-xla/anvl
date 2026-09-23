@@ -23,7 +23,10 @@ AnvlBackend(
 \arguments{
 \item{new_data}{(\code{function})\cr Constructs an AnvlArray from R data.
 This should be a \code{structure()} with at least a \verb{$data} field that contains the actual
-underlying data (\code{PJRTBuffer} for \code{"pjrt"} backend, \code{array()} for \code{"quickr"} backend).}
+underlying data (\code{PJRTBuffer} for \code{"pjrt"} backend, \code{array()} for \code{"quickr"} backend).
+Receives \code{row_major} (\code{logical(1)}, default \code{FALSE}), which gives the
+element order of raw byte payloads; backends that do not support raw
+\code{data} should abort on it.}
 
 \item{new_empty}{(\code{function})\cr Constructs an AnvlArray of the given
 \code{dtype} and \code{shape} with unspecified contents. Called by \code{\link[=nv_empty]{nv_empty()}}.}
@@ -33,7 +36,7 @@ underlying data (\code{PJRTBuffer} for \code{"pjrt"} backend, \code{array()} for
 \item{shape}{(\code{function})\cr Extracts the shape from an AnvlArray.}
 
 \item{as_array}{(\verb{function(x, check)})\cr Converts an AnvlArray to an R
-array. The \code{check} flag is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
+array. The \code{check} level is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
 it to abort when materialization would lose information (e.g. ui64 values
 wrapping through \code{bit64::integer64}). See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}}.}
 
@@ -59,7 +62,7 @@ The default data types for this backend.
 Can be overwritten, see \code{\link[=default_dtypes]{default_dtypes()}}.}
 }
 \value{
-An \code{AnvlBackend} object.
+(\code{AnvlBackend})
 }
 \description{
 Create a backend

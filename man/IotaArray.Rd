@@ -39,8 +39,8 @@ x
 shape(x)
 naxes(x)
 dtype(x)
-# How it appears during tracing:
-graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
+# how it appears during tracing:
+graph <- trace_fn(function() nv_iota(axis = 1L, shape = 4L, dtype = "i32"), list())
 graph
 graph$outputs[[1]]$aval
 \dontshow{\}) # examplesIf}

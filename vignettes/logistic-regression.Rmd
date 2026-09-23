@@ -58,12 +58,13 @@ summary(titanic)
 ```
 
 The general survival rate was `r sprintf("%.2f", mean(y) * 100)`%.
-
 Now we convert the data to `AnvlArray`s.
+Here, `X` naturally lands on the default floating point type because it is a `double`.
+Because `y` is an integer, we explicitly request it to assume the default float type.
 
 ```{r}
-X_arr <- nv_array(X, dtype = "f32")
-y_arr <- nv_array(y, dtype = "f32", shape = c(n, 1L))
+X_arr <- nv_array(X)
+y_arr <- nv_array(y, dtype = default_float(), shape = c(n, 1L))
 ```
 
 ## Model
@@ -73,7 +74,7 @@ The logistic regression model consists of computing the linear combination of fe
 ```{r}
 predict_proba <- function(X, beta, alpha) {
   logits <- X %*% beta + alpha
-  nv_logistic(logits)
+  nv_plogis(logits)
 }
 ```
 
@@ -87,7 +88,7 @@ We'll add a small epsilon to avoid taking the log of exactly 0.
 ```{r}
 binary_cross_entropy <- function(y_true, y_pred) {
   eps <- 1e-7
-  y_pred_clipped <- nv_clamp(eps, y_pred, 1 - eps)
+  y_pred_clipped <- nv_clamp(y_pred, eps, 1 - eps)
   loss <- -(y_true * log(y_pred_clipped) + (1 - y_true) * log(1 - y_pred_clipped))
   mean(loss)
 }
@@ -134,8 +135,8 @@ fit_logreg <- jit(function(X, y, beta, alpha, n_epochs, lr) {
 We initialize the parameters and train the model with a single function call.
 
 ```{r}
-beta_init <- nv_array(rnorm(p), dtype = "f32", shape = c(p, 1L))
-alpha_init <- nv_scalar(0, dtype = "f32")
+beta_init <- nv_array(rnorm(p), shape = c(p, 1L))
+alpha_init <- nv_scalar(0)
 
 result <- fit_logreg(
   X_arr, y_arr,

@@ -49,7 +49,8 @@ one (see \code{\link[=default_dtypes]{default_dtypes()}}), read off \code{info$c
 matches the cache key it is filed under. \code{NULL} uses the active pair.}
 }
 \value{
-A \code{list} with elements:
+(\code{list})\cr
+With elements:
 \itemize{
 \item \code{exec}: The compiled PJRT executable.
 \item \code{out_tree}: The output tree structure.

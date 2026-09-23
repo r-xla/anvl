@@ -1,14 +1,24 @@
 #' @title Type Promotion Rules
 #' @description
 #' Compute the common data type.
-#' @param lhs_dtype ([`tengen::DataType`])\cr
-#'   The left-hand side type.
-#' @param rhs_dtype ([`tengen::DataType`])\cr
-#'   The right-hand side type.
-#' @return ([`tengen::DataType`])
+#'
+#' Two integer data types meet at one that holds every value of both: a signed
+#' and an unsigned one at the narrowest signed data type wide enough for the
+#' unsigned side (`ui8` and `i8` at `i16`, `ui32` and `i32` at `i64`). `ui64`
+#' is the exception -- no signed data type holds it, and an integer does not
+#' become a float on its own -- so `ui64` and a signed integer have no common
+#' data type and the pair is an error. Convert one side with [`nv_convert()`]
+#' to decide what they meet at.
+#'
+#' See the *Type Promotion* article for more information.
+#' @param lhs_dtype,rhs_dtype ([`tengen::DataType`])\cr
+#'   The two data types.
+#' @return ([`tengen::DataType`])\cr
+#'   The narrowest common data type.
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
+#' try(common_dtype("ui64", "i8"))
 #' @export
 common_dtype <- function(lhs_dtype, rhs_dtype) {
   promote_dt_known(as_dtype(lhs_dtype), as_dtype(rhs_dtype))
@@ -28,7 +38,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #'   `i32`, or an `f32` array at `i32`), and narrowing a value the target cannot
 #'   hold (an `f64` array at `f32`). The default is `FALSE`.
 #'
-#' @return `function(args) -> list()`
+#' @return (`function(args) -> list()`)
 #'   A function returning data types for those inputs to be converted and `NULL` for those
 #'   to be left unchanged.
 #' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
@@ -69,7 +79,7 @@ promotion_common <- function(on = NULL, fallback = NULL) {
 
 #' @description
 #' `promotion_like()` brings the inputs to the data type of a selected input.
-#' If the selected data type is an R value, it's default data type is used.
+#' If the selected input is an R value, its default data type is used.
 #' @param arg (`character(1)` | `numeric(1)`)\cr
 #'   Which input to take the data type from: its name in the
 #'   [`as_anvl_arrays()`] call, or its position. Naming it needs the call's
@@ -78,7 +88,7 @@ promotion_common <- function(on = NULL, fallback = NULL) {
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
-#' # Without `coerce`, a target the input cannot hold is refused.
+#' # without `coerce`, a target the input cannot hold is refused
 #' try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 promotion_like <- function(arg, on = NULL, coerce = FALSE) {
   assert_arg_ref(arg, "arg", len = 1L)
@@ -118,8 +128,9 @@ promotion_dtype <- function(dtype, on = NULL, coerce = FALSE) {
 }
 
 #' @description
-#' `promotion_rdata_common()` brings the *R values* to the common data type, as long
-#' it is within their category (a `double` can e.g. *not* become a float).
+#' `promotion_rdata_common()` brings the *R values* to the common data type, as
+#' long as it is within their category (a `double` can e.g. *not* become an
+#' integer).
 #' `AnvlArray` inputs are left as they are and the function throws an error
 #' if not all of them have exactly the same data type.
 #' This rule is commonly used in primitives expecting homogenous inputs
@@ -213,7 +224,7 @@ assert_disjoint_rules <- function(rules) {
 #'   What the rule is, for printing: it shows as `<{kind}>`, so give it the
 #'   name of the function that builds it.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Every input at the widest float in the call, and never below f32.
+#' # every input at the widest float in the call, and never below f32.
 #' widest_float <- promotion_rule(
 #'   function(args) {
 #'     widths <- vapply(args, function(a) {
@@ -358,14 +369,14 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #' @details
 #' Pass only the operands that must agree, and name them as the
 #' [`graph_desc_add()`] call names them. [`prim_ifelse()`] promotes its two
-#' branches and leaves `pred` a `bool`; [`prim_scatter()`] promotes `x` and
+#' branches and leaves `test` a `bool`; [`prim_scatter()`] promotes `x` and
 #' `update` and leaves the indices alone. A primitive with one arrayish operand,
 #' or with deliberately heterogeneous ones ([`prim_sort()`]'s payload,
 #' [`prim_while()`]'s loop state), calls this not at all.
 #'
 #' Call it before the body uses the operands for anything else, so it sees
 #' settled data types throughout: [`prim_reduce()`] reads `dtype(init)` to trace
-#' its reductor and [`prim_scatter()`] builds its update computation's parameter
+#' its reducer and [`prim_scatter()`] builds its update computation's parameter
 #' slots from [`peek_dtype()`], both before recording a call.
 #'
 #' It is idempotent: once every operand is at the data type the rule names,
@@ -379,7 +390,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   `operands`, each materialized at the data type the rule named for it.
 #' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # An R value takes the data type of the operand it meets.
+#' # an R value takes the data type of the operand it meets
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 #' dtype(operands$rhs)
 #' @export
@@ -446,9 +457,12 @@ dtypes_merged <- function(answers, args) {
   out
 }
 
+# An unnamed operand is spelled the way a primitive that takes its operands
+# through `...` names it -- `..2` -- so that the promotion layer and the
+# inference rules call the same operand the same thing.
 arg_label <- function(args, i) {
   nm <- rlang::names2(args)[[i]]
-  if (nzchar(nm)) sprintf("`%s`", nm) else sprintf("argument %d", i)
+  if (nzchar(nm)) sprintf("`%s`", nm) else sprintf("`..%d`", i)
 }
 
 # Whether `x` reaches `dtype` without losing what it holds: a value that has a
@@ -611,6 +625,47 @@ common_dtype_of <- function(..., .fallback = NULL) {
 }
 
 
+#' @title Data Type Categories
+#' @name dtypes
+#' @description
+#' For promotion, every data type belongs to one of three categories, ordered
+#' boolean < integer < float:
+#'
+#' * **boolean** -- `bool`
+#' * **integer** -- `i8`, `i16`, `i32`, `i64` and their unsigned counterparts
+#'   `ui8`, `ui16`, `ui32`, `ui64`
+#' * **float** -- `f32` and `f64`.
+#'
+#' These are the categories promotion works in, where signed and unsigned
+#' integers count as one. [`tengen::dtype_category()`] reports a finer split
+#' that names `int` and `uint` separately.
+#'
+#' @template section_dtype_words
+#' @section Where a Data Type Comes From:
+#' An R value has no data type of its own. Where nothing in the program says
+#' which one it should take, it materializes at the default of its category, which
+#' [`default_dtypes()`] reports and the `anvl.default_dtypes` option
+#' configures. [`peek_dtype()`] reports the default a given R value would
+#' materialize at.
+#'
+#' The same defaults settle the data type of a result anvl chooses on its own,
+#' where no R value is involved at all: an index (`nv_which_max()`,
+#' `nv_order()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
+#' the accumulator a boolean input is counted at (`nv_sum()`,
+#' `nv_prod()`, `nv_cumsum()`, `nv_cumprod()`, `nv_trace()`), and the
+#' float a non-float input is averaged or interpolated at (`nv_mean()`,
+#' `nv_var()`, `nv_sd()`, `nv_median()`, `nv_quantile()`).
+#'
+#' Within its own category an R value assumes the data type it meets instead,
+#' and is built at it directly rather than converted to it, which is what keeps
+#' `nv_scalar(1, "f64") / sqrt(2)` exact. The primitives require operands that
+#' have a data type to agree on it; the `nv_*` functions promote them to a
+#' common one.
+#' @seealso [`default_dtypes()`], [`common_dtype()`],
+#'   [`nv_promote_to_common()`], [`nv_convert()`],
+#'   `vignette("type-promotion")`
+NULL
+
 dtype_category <- function(dtype) {
   if (is_dtype_bool(dtype)) {
     1L
@@ -625,7 +680,15 @@ promote_dt_rdata <- function(rdtype, dtype) {
   if (dtype_category(dtype) >= dtype_category(rdtype)) dtype else rdtype
 }
 
+# The data type two data types meet at. Errors where they meet at none, which
+# `promote_dt_known_or_null()` describes.
 promote_dt_known <- function(dt1, dt2) {
+  promote_dt_known_or_null(dt1, dt2) %||% abort_no_common_dtype(dt1, dt2)
+}
+
+# The same, answering `NULL` instead of erroring -- for the callers asking
+# whether a promotion exists rather than performing one.
+promote_dt_known_or_null <- function(dt1, dt2) {
   if (dt1 == dt2) {
     return(dt1)
   }
@@ -649,21 +712,11 @@ promote_dt_known <- function(dt1, dt2) {
     if (is_dtype_int(dt2)) {
       return(as_dtype(paste0("i", max(dtype_width(dt1), dtype_width(dt2)))))
     }
-    if (dtype_width(dt2) < dtype_width(dt1)) {
-      # the int can hold the unsigned int
-      return(dt1)
-    }
-    # int can't hold the unsigned int
-    # we use signed int, but increase bits of unsigned int
-    # this can lead to overflows then we have uint64 but this can't be avoided
-    return(as_dtype(paste0("i", min(64L, dtype_width(dt2) * 2L))))
+    return(promote_dt_int_uint(dt1, dt2))
   }
   if (is_dtype_int(dt2)) {
     if (is_dtype_uint(dt1)) {
-      if (dtype_width(dt2) > dtype_width(dt1)) {
-        return(dt2)
-      }
-      return(as_dtype(paste0("i", min(64L, dtype_width(dt1) * 2L))))
+      return(promote_dt_int_uint(dt2, dt1))
     }
     cli_abort("internal error")
   }
@@ -671,11 +724,40 @@ promote_dt_known <- function(dt1, dt2) {
   as_dtype(paste0("ui", max(dtype_width(dt1), dtype_width(dt2))))
 }
 
+# A signed and an unsigned integer meet at the narrowest signed data type that
+# holds both: one wider than the unsigned one already does, and otherwise it
+# takes twice its width -- `ui8` meets `i8` at `i16`, `ui32` meets `i32` at
+# `i64`. `ui64` has no such data type, its values reaching past what `i64`
+# holds, and an integer does not cross into the floats on its own, so the pair
+# meets nowhere.
+promote_dt_int_uint <- function(int_dtype, uint_dtype) {
+  if (dtype_width(uint_dtype) < dtype_width(int_dtype)) {
+    return(int_dtype)
+  }
+  width <- dtype_width(uint_dtype) * 2L
+  if (width > 64L) {
+    return(NULL)
+  }
+  as_dtype(paste0("i", width))
+}
+
+abort_no_common_dtype <- function(dt1, dt2) {
+  cli_abort(
+    c(
+      "{.val {as.character(dt1)}} and {.val {as.character(dt2)}} have no common data type.",
+      x = "No integer data type holds every value of both, and an integer does not become a float on its own.", # nolint
+      i = "Convert one of them with {.fn nv_convert} -- {.val f64} holds both, exactly up to 2^53."
+    ),
+    call = NULL
+  )
+}
+
 promotable_to <- function(from, to) {
   if (identical(from, to)) {
     return(TRUE)
   }
-  common_dtype(from, to) == to
+  common <- promote_dt_known_or_null(from, to)
+  !is.null(common) && common == to
 }
 
 # Whether `x` is (or would materialize as) an int-like array, i.e. a signed or
@@ -685,10 +767,41 @@ is_intlike <- function(x) {
   is_dtype_int(dt) || is_dtype_uint(dt)
 }
 
-# Convert an int-like array to the default float and leave everything else
-# alone: this is the step a floating-point `nv_*` function takes before it
-# reaches its primitive. A boolean array passes through untouched, so the
-# primitive rejects it rather than computing on it.
-int_to_float <- function(x) {
+# Convert an int-like array to the default float and leave a float alone: the
+# step a floating-point `nv_*` function takes before it reaches its primitive.
+# A boolean is refused here rather than left to the primitive, which may never
+# see it -- `nv_cospi()`'s `+ 1/2` promotes it to a float on the way.
+int_to_float <- function(x, arg = rlang::caller_arg(x)) {
+  assert_numeric_dtype(peek_dtype(x), arg = arg)
   if (is_intlike(x)) nv_convert(x, default_float()) else x
+}
+
+# The operands of an `nv_*` function that computes on numbers: each is refused
+# if it is a boolean, reported under the name the caller wrote, and they are
+# then brought to their common data type.
+#
+# The boolean is refused before the promotion rather than after it: a `bool`
+# meets every numeric data type at that data type, so a check on the promoted
+# operands would let one past and the primitive that would refuse it never sees
+# it.
+promote_numeric_operands <- function(..., .fallback = NULL) {
+  args <- list(...)
+  Map(
+    function(x, arg) assert_numeric_dtype(peek_dtype(x), arg = arg),
+    args,
+    rlang::names2(args)
+  )
+  do.call(as_anvl_arrays, c(args, list(.promote = promotion_common(fallback = .fallback))))
+}
+
+# The same, brought to the float data type they *compute* at: their common data
+# type where that is a float, and the default float where they are all
+# integers. The binary counterpart of `int_to_float()`.
+#
+# Promoting before converting is what keeps the values exact: an `i32` meeting
+# an `f64` is built at `f64` directly, where converting it to the default float
+# first would round it through `f32` on the way.
+promote_to_common_float <- function(...) {
+  args <- promote_numeric_operands(..., .fallback = default_float())
+  lapply(args, function(x) if (is_dtype_float(dtype(x))) x else nv_convert(x, default_float()))
 }

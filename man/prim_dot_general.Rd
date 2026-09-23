@@ -14,9 +14,10 @@ prim_dot_general(
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs of the same data type whose shapes are constrained by \code{contracting_axes} and \code{batching_axes} rather than having to match. Can be any data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 
 \item{contracting_axes}{(\code{list(integer(), integer())})\cr
 A list of two integer vectors specifying which axes of \code{lhs} and
@@ -32,8 +33,9 @@ operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
 Only the StableHLO backend honors this; it is ignored by the quickr backend.}
 }
 \value{
-\code{\link{arrayish}}\cr
-The output shape is the batch axes followed by the remaining
+(\code{\link{arrayish}})\cr
+Has the data type the operands agreed on. The output shape is the batch
+axes followed by the remaining
 (non-contracted, non-batched) axes of \code{lhs}, then \code{rhs}.
 }
 \description{
@@ -51,11 +53,13 @@ axes and batching.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}.
+Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}, specified under
+\href{https://openxla.org/stablehlo/spec#dot_general}{dot_general}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,

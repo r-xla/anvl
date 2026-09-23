@@ -8,15 +8,17 @@ prim_print(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Returns \code{x} as-is.
+(\code{\link{arrayish}})\cr
+Returns the input unchanged.
 }
 \description{
 Prints an array value to the console during execution and returns the
 input unchanged. This is useful for debugging JIT-compiled code.
+Bare R inputs print at their category's default data type.
 }
 \section{Implemented Rules}{
 
@@ -32,8 +34,11 @@ Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the value is printed and handed back unchanged
 x <- nv_array(c(1, 2, 3))
 prim_print(x)
+# bare R inputs are printed at their category's default data type
+prim_print(1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

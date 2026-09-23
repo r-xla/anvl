@@ -85,7 +85,7 @@ test_that("broadcasting works", {
   res <- g(nv_scalar(2), nv_array(c(1, 2, 3), dtype = "f32"))
   # d/da sum(a * b) = sum(b) = 6, reduced back to a scalar
   expect_equal(res$a, nv_scalar(6))
-  expect_equal(shape(res$a), integer())
+  expect_shape(res$a, integer())
   # d/db sum(a * b) = a broadcast over b's shape
   expect_equal(res$b, nv_array(c(2, 2, 2), dtype = "f32"))
 })
@@ -437,7 +437,7 @@ describe("rdata", {
     # materialize at the default would show up in the gradient.
     f <- jit(gradient(function(v, k) v * k, wrt = "v"))
     r <- f(nv_scalar(1, dtype = "f64"), sqrt(2))
-    expect_equal(dtype(r$v), as_dtype("f64"))
+    expect_dtype(r$v, "f64")
     expect_identical(as_array(r$v), sqrt(2))
   })
 
@@ -459,7 +459,7 @@ describe("rdata", {
     # and the differentiated body builds it at the data type it meets there.
     f <- jit(function(x) gradient(function(a, b) a * b, wrt = "a")(x, sqrt(2))$a)
     r <- f(nv_scalar(1, dtype = "f64"))
-    expect_equal(dtype(r), as_dtype("f64"))
+    expect_dtype(r, "f64")
     expect_identical(as_array(r), sqrt(2))
   })
 
@@ -471,7 +471,7 @@ describe("rdata", {
       })(v)[[1L]]
     })
     r <- f(nv_scalar(sqrt(2), dtype = "f64"))
-    expect_equal(dtype(r), as_dtype("f64"))
+    expect_dtype(r, "f64")
     expect_identical(as_array(r), 4 * sqrt(2))
   })
 
@@ -506,19 +506,19 @@ describe("a scoped override inside a differentiated body", {
   x32 <- nv_array(c(1, 2, 3), dtype = "f32")
 
   it("leaves the cotangent at the data type of the primal", {
-    f <- function(x) with_default_dtypes(c(float = "f64"), nv_reduce_sum(x * 2 + 0.5))
+    f <- function(x) with_default_dtypes(c(float = "f64"), nv_sum(x * 2 + 0.5))
     out <- jit(gradient(f))(x32)
-    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_dtype(out[[1L]], "f32")
     expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
   })
 
   it("holds when the override covers only part of the body", {
     g <- function(x) {
       a <- x * 2
-      nv_reduce_sum(with_default_dtypes(c(float = "f64"), a + 0.5))
+      nv_sum(with_default_dtypes(c(float = "f64"), a + 0.5))
     }
     out <- jit(gradient(g))(x32)
-    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_dtype(out[[1L]], "f32")
     expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
   })
 
@@ -526,17 +526,17 @@ describe("a scoped override inside a differentiated body", {
     # The scope makes the body's literals `f32`; the primal is `f64` and the
     # cotangent stays there rather than following the scope down.
     x64 <- nv_array(c(1, 2, 3), dtype = "f64")
-    h <- function(x) with_default_dtypes(c(float = "f32"), nv_reduce_sum(x * 2 + 0.5))
+    h <- function(x) with_default_dtypes(c(float = "f32"), nv_sum(x * 2 + 0.5))
     out <- jit(gradient(h))(x64)
-    expect_equal(dtype(out[[1L]]), as_dtype("f64"))
+    expect_dtype(out[[1L]], "f64")
     expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
   })
 
   it("agrees with the same override set outside the body", {
-    k <- function(x) nv_reduce_sum(x * 2 + 0.5)
+    k <- function(x) nv_sum(x * 2 + 0.5)
     scoped <- jit(gradient(function(x) with_default_dtypes(c(float = "f64"), k(x))))(x32)
     outside <- with_default_dtypes(c(float = "f64"), jit(gradient(k))(x32))
-    expect_equal(dtype(scoped[[1L]]), dtype(outside[[1L]]))
+    expect_dtype(scoped[[1L]], dtype(outside[[1L]]))
     expect_equal(as_array(scoped[[1L]]), as_array(outside[[1L]]))
   })
 })
@@ -546,14 +546,14 @@ describe("the float category", {
     # The check on the output used to name `f32` and `f64` explicitly, so a
     # function returning any other float was refused even though the gradient
     # itself is well defined.
-    g <- jit(gradient(function(x) nv_convert(nv_reduce_sum(x), "bf16")))
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "bf16")))
     out <- g(nv_array(c(1, 2), dtype = "f32"))
-    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_dtype(out[[1L]], "f32")
     expect_equal(as.vector(out[[1L]]), c(1, 1))
   })
 
   it("still refuses a non-float return", {
-    g <- jit(gradient(function(x) nv_convert(nv_reduce_sum(x), "i32")))
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "i32")))
     expect_error(g(nv_array(c(1, 2), dtype = "f32")), "return float scalar")
   })
 })

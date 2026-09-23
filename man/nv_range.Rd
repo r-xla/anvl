@@ -11,7 +11,8 @@ nv_range(x, axes = NULL, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
 Axes to reduce over. \code{NULL} (default) reduces over all of them, which
@@ -19,20 +20,20 @@ makes the result a length-2 array like \code{\link[base:range]{base::range()}}. 
 count from the end.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to reduce, plus named arguments for \code{\link[=nv_reduce_min]{nv_reduce_min()}} and
-\code{\link[=nv_reduce_max]{nv_reduce_max()}} (e.g. \code{axes}), which are only accepted when there is a
+Arrays to reduce, plus named arguments for \code{\link[=nv_min]{nv_min()}} and
+\code{\link[=nv_max]{nv_max()}} (e.g. \code{axes}), which are only accepted when there is a
 single array to reduce.}
 
 \item{na.rm}{(\code{logical(1)})\cr
-Forwarded to the \code{nan_rm} argument of \code{\link[=nv_reduce_min]{nv_reduce_min()}} and
-\code{\link[=nv_reduce_max]{nv_reduce_max()}}.}
+Forwarded to the \code{nan_rm} argument of \code{\link[=nv_min]{nv_min()}} and
+\code{\link[=nv_max]{nv_max()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as \code{x} and the shape of the reduced array with a
 leading axis of size 2 added: element 1 is the minimum, element 2 the
 maximum.
@@ -56,5 +57,5 @@ nv_range(nv_matrix(1:6, nrow = 2), axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_reduce_min]{nv_reduce_min()}}, \code{\link[=nv_reduce_max]{nv_reduce_max()}}
+\code{\link[=nv_min]{nv_min()}}, \code{\link[=nv_max]{nv_max()}}
 }

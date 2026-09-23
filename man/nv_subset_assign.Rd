@@ -9,7 +9,8 @@ nv_subset_assign(x, ..., value)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+The array to update. Can be any data type.
+An R object is materialized at its \link[=default_dtypes]{default data type}.}
 
 \item{...}{Subset specifications, one per axis. Omitted trailing
 axes select all elements.
@@ -25,12 +26,13 @@ selected elements determines the output shape.
 See \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
-Replacement values. Scalars are broadcast to the subset shape.
-Non-scalar values must match the subset shape.}
+Replacement values. Scalars are broadcast to the subset shape and non-scalar
+values must match it.
+The value is converted to the data type of \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-A new array with the same shape as \code{x} and the subset replaced.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type and shape, with the subset replaced.
 }
 \description{
 Updates elements of an array at specified positions, returning a new array.
@@ -39,7 +41,7 @@ You can also use the \verb{[<-} operator.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:12, nrow = 3)
-# Set row 1 to zeros
+# set row 1 to zeros
 nv_subset_assign(x, 1, value = nv_scalar(0L))
 x[1, ] <- nv_scalar(0L)
 x

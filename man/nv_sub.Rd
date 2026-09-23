@@ -9,13 +9,15 @@ nv_sub(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any numeric data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and common data type.
 }
 \description{
 Subtracts two arrays element-wise. You can also use the \code{-} operator.
@@ -26,6 +28,12 @@ x <- nv_array(c(4, 5, 6))
 y <- nv_array(c(1, 2, 3))
 nv_sub(x, y)
 x - y
+
+# different data types are promoted to their common one
+nv_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64"))
+
+# a scalar is broadcast and an R integer is converted to a float
+x - 1L
 \dontshow{\}) # examplesIf}
 }
 \seealso{

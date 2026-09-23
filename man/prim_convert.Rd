@@ -2,23 +2,27 @@
 % Please edit documentation in R/primitives.R
 \name{prim_convert}
 \alias{prim_convert}
-\title{Primitive Convert}
+\title{Primitive Convert Data Type}
 \usage{
 prim_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Target data type.}
+Target data type. Can be any data type; the conversion is a value
+conversion, so it may lose precision or wrap around.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{dtype} and the same shape as \code{x}.
+(\code{\link{arrayish}})\cr
+Has the given \code{dtype} and the input's shape.
 }
 \description{
 Converts the elements of an array to a different data type.
+Bare R inputs are directly materialized at the requested data type
+and are checked for out-of-range or missing values.
 }
 \section{Implemented Rules}{
 
@@ -31,11 +35,13 @@ Converts the elements of an array to a different data type.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_convert]{hlo_convert()}}.
+Lowers to \code{\link[stablehlo:hlo_convert]{hlo_convert()}}, specified under
+\href{https://openxla.org/stablehlo/spec#convert}{convert}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the values are preserved, the data type changes
 x <- nv_array(c(1L, 2L, 3L))
 prim_convert(x, dtype = "f32")
 \dontshow{\}) # examplesIf}
