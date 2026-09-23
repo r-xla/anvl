@@ -1308,48 +1308,48 @@ describe("prim_top_k", {
 
 describe("prim_which_max", {
   it("returns the 1-based index of the max along a 1D array", {
-    expect_equal(as_array(prim_which_max(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axes = 1L)), 6L)
+    expect_equal(as_array(prim_which_max(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axis = 1L)), 6L)
   })
 
   it("breaks ties with the smallest index", {
-    expect_equal(as_array(prim_which_max(nv_array(c(1, 5, 5, 3)), axes = 1L)), 2L)
+    expect_equal(as_array(prim_which_max(nv_array(c(1, 5, 5, 3)), axis = 1L)), 2L)
   })
 
   it("operates per-row on a matrix", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.vector(prim_which_max(m, axes = 2L)), c(3L, 2L))
+    expect_equal(as.vector(prim_which_max(m, axis = 2L)), c(3L, 2L))
   })
 
   it("supports drop = FALSE", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    out <- prim_which_max(m, axes = 2L, drop = FALSE)
+    out <- prim_which_max(m, axis = 2L, drop = FALSE)
     expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(3L, 2L))
   })
 
   it("returns dtype i32", {
-    out <- prim_which_max(nv_array(c(1, 2, 3)), axes = 1L)
+    out <- prim_which_max(nv_array(c(1, 2, 3)), axis = 1L)
     expect_dtype(out, default_int())
   })
 
   it("works with integer input", {
-    out <- prim_which_max(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), axes = 1L)
+    out <- prim_which_max(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), axis = 1L)
     expect_equal(as_array(out), 3L)
   })
 
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
-      prim_which_max(nv_array(numeric(0), shape = 0L), axes = 1L),
-      "must have elements along the axes this reads"
+      prim_which_max(nv_array(numeric(0), shape = 0L), axis = 1L),
+      "must have elements along the axis this reads"
     )
     expect_error(
-      prim_which_max(nv_matrix(numeric(0), nrow = 3, ncol = 0), axes = 2L),
-      "must have elements along the axes this reads"
+      prim_which_max(nv_matrix(numeric(0), nrow = 3, ncol = 0), axis = 2L),
+      "must have elements along the axis this reads"
     )
     # Inside jit too.
     expect_error(
-      jit(function(x) prim_which_max(x, axes = 1L))(nv_array(numeric(0), shape = 0L)),
-      "must have elements along the axes this reads"
+      jit(function(x) prim_which_max(x, axis = 1L))(nv_array(numeric(0), shape = 0L)),
+      "must have elements along the axis this reads"
     )
   })
 
@@ -1357,52 +1357,42 @@ describe("prim_which_max", {
     # 2D with shape (0, 3): reducing along axis 2 (size 3) is well-defined and
     # produces an empty (length-0) i32 vector.
     m <- nv_matrix(numeric(0), nrow = 0, ncol = 3)
-    out <- prim_which_max(m, axes = 2L)
+    out <- prim_which_max(m, axis = 2L)
     expect_shape(out, 0L)
     expect_dtype(out, default_int())
   })
 
-  it("indexes the column-major flattening of several axes", {
-    a <- array(c(3, 1, 9, 2, 4, 0, 5, 7, 6, 8, 1, 2), dim = c(2, 3, 2))
-    x <- nv_array(a)
-    expect_equal(as.integer(prim_which_max(x, axes = 1:3)), which.max(a))
-    expect_equal(as.integer(prim_which_max(x, axes = c(3L, 1L))), apply(a, 2L, which.max))
-    out <- prim_which_max(x, axes = c(1L, 3L), drop = FALSE)
-    expect_shape(out, c(1L, 3L, 1L))
-    expect_equal(as.integer(out), apply(a, 2L, which.max))
-  })
-
   it("accepts a negative axis", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(prim_which_max(m, axes = -1L), prim_which_max(m, axes = 2L))
-    expect_error(prim_which_max(m, axes = -3L), "between 1 and 2, or between -2 and -1")
+    expect_equal(prim_which_max(m, axis = -1L), prim_which_max(m, axis = 2L))
+    expect_error(prim_which_max(m, axis = -3L), "between 1 and 2, or between -2 and -1")
   })
 })
 
 describe("prim_which_min", {
   it("returns the 1-based index of the min along a 1D array", {
-    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axes = 1L)), 2L)
+    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), axis = 1L)), 2L)
   })
 
   it("breaks ties with the smallest index", {
-    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axes = 1L)), 2L)
+    expect_equal(as_array(prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)), 2L)
   })
 
   it("operates per-column on a matrix (axis = 1)", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.vector(prim_which_min(m, axes = 1L)), c(2L, 1L, 2L))
+    expect_equal(as.vector(prim_which_min(m, axis = 1L)), c(2L, 1L, 2L))
   })
 
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
-      prim_which_min(nv_array(numeric(0), shape = 0L), axes = 1L),
-      "must have elements along the axes this reads"
+      prim_which_min(nv_array(numeric(0), shape = 0L), axis = 1L),
+      "must have elements along the axis this reads"
     )
   })
 
   it("accepts a negative axis", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(prim_which_min(m, axes = -2L), prim_which_min(m, axes = 1L))
+    expect_equal(prim_which_min(m, axis = -2L), prim_which_min(m, axis = 1L))
   })
 })
 

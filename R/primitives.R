@@ -1204,27 +1204,26 @@ prim_reduce <- new_primitive(
 )
 
 # Shared shape inference for prim_which_max / prim_which_min: x -> the default
-# integer data type with `axes` dropped (or kept as size 1).
-infer_fn_arg_extreme <- function(x, axes, drop) {
+# integer data type with `axis` dropped (or kept as size 1).
+infer_fn_arg_extreme <- function(x, axis, drop) {
   shp <- shape(x)
-  if (any(axes > length(shp))) {
+  if (axis > length(shp)) {
     cli_abort(c(
-      "{.arg axes} is out of bounds.",
-      x = "{.arg x} has {length(shp)} axi{?s/es}, but {.arg axes} is {axes}."
+      "{.arg axis} is out of bounds.",
+      x = "{.arg x} has {length(shp)} axi{?s/es}, but {.arg axis} is {axis}."
     ))
   }
   # The reduction lowering uses `init_v = +/-Inf` and `init_i = 0`. Reducing
   # along a size-0 axis would silently emit those sentinels (i.e. index 1)
   # rather than failing. The index of an extremum of nothing is undefined, so
   # reject it here at trace time.
-  empty <- axes[shp[axes] == 0L]
-  if (length(empty)) {
+  if (shp[axis] == 0L) {
     cli_abort(c(
-      "{.arg x} must have elements along the axes this reads.",
-      x = "{.arg x} has shape {shape_repr(shp)}; axis {empty} has size 0."
+      "{.arg x} must have elements along the axis this reads.",
+      x = "{.arg x} has shape {shape_repr(shp)}; axis {axis} has size 0."
     ))
   }
-  new_shape <- if (drop) shp[setdiff(seq_along(shp), axes)] else replace(shp, axes, 1L)
+  new_shape <- if (drop) shp[-axis] else replace(shp, axis, 1L)
   list(AbstractArray(
     dtype = default_int(),
     shape = Shape(new_shape)
@@ -1232,13 +1231,13 @@ infer_fn_arg_extreme <- function(x, axes, drop) {
 }
 
 make_arg_extreme <- function() {
-  function(x, axes, drop = TRUE) {
-    axes <- sort(resolve_axes(axes, naxes(x), unique = TRUE))
+  function(x, axis, drop = TRUE) {
+    axis <- resolve_axis(axis, naxes(x))
     assert_flag(drop)
     graph_desc_add(
       self,
       args = list(x = x),
-      params = list(axes = axes, drop = drop),
+      params = list(axis = axis, drop = drop),
       infer_fn = infer_fn_arg_extreme
     )[[1L]]
   }
@@ -1246,21 +1245,19 @@ make_arg_extreme <- function() {
 
 #' @title Primitive Index of the Maximum
 #' @description
-#' Returns the index of the maximum value over one or more axes. Ties
+#' Returns the index of the maximum value along a single axis. Ties
 #' are broken by returning the smallest index.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
-#' @param axes (`integer()`)\cr
-#'   Axes over which to find the index of the maximum. Their elements are
-#'   ranked together, and the index counts through them in column-major order,
-#'   as [base::which.max()] does. Negative values count from the end, i.e.
-#'   `-1` refers to the last axis.
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which to find the index of the maximum.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   If `TRUE` (default) the reduced axes are removed; if `FALSE` they are
+#'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it is
 #'   kept with size 1.
 #' @return ([`arrayish`])\cr
 #'   Has the default integer data type (see [`default_dtypes()`]) regardless of
-#'   the input's, and the input's shape with `axes` removed (`drop = TRUE`) or
+#'   the input's, and the input's shape with `axis` removed (`drop = TRUE`) or
 #'   set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmax
 #' @template section_rules
@@ -1271,28 +1268,23 @@ make_arg_extreme <- function() {
 #' @seealso [prim_which_min()], [nv_which_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the index comes out at the default integer data type
-#' prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axes = 1L)
-#'
-#' # several axes index their column-major flattening
-#' prim_which_max(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2), axes = 1:2)
+#' prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_which_max <- new_primitive("argmax", make_arg_extreme(), static = 2:3)
 
 #' @title Primitive Index of the Minimum
 #' @description
-#' Returns the index of the minimum value over one or more axes. Ties
+#' Returns the index of the minimum value along a single axis. Ties
 #' are broken by returning the smallest index.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
-#' @param axes (`integer()`)\cr
-#'   Axes over which to find the index of the minimum. Their elements are
-#'   ranked together, and the index counts through them in column-major order,
-#'   as [base::which.min()] does. Negative values count from the end, i.e.
-#'   `-1` refers to the last axis.
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which to find the index of the minimum.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @inheritParams prim_which_max
 #' @return ([`arrayish`])\cr
 #'   Has the default integer data type (see [`default_dtypes()`]) regardless of
-#'   the input's, and the input's shape with `axes` removed (`drop = TRUE`) or
+#'   the input's, and the input's shape with `axis` removed (`drop = TRUE`) or
 #'   set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmin
 #' @template section_rules
@@ -1303,7 +1295,7 @@ prim_which_max <- new_primitive("argmax", make_arg_extreme(), static = 2:3)
 #' @seealso [prim_which_max()], [nv_which_min()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the index comes out at the default integer data type
-#' prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axes = 1L)
+#' prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_which_min <- new_primitive("argmin", make_arg_extreme(), static = 2:3)
 

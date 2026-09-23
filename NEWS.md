@@ -75,9 +75,7 @@
   `diagonal`, as `nv_lower_tri()` / `nv_upper_tri()` do.
 * `nv_quantile()`, `nv_median()` and their `quantile()` / `median()` methods
   call `interpolation` `method`.
-* `prim_which_max()` / `prim_which_min()` take `axes` instead of `axis`, like
-  `nv_which_max()` / `nv_which_min()`, and `nv_unsqueeze()` takes `axes`,
-  inserting several axes at once.
+* `nv_unsqueeze()` takes `axes`, inserting several axes at once.
 * `nv_atan2()` and `prim_atan2()` take `(y, x)`, like `base::atan2()`.
 * The array constructors spell their trailing arguments `shape`, `dtype`,
   `device` in that order: `nv_array(data, shape, dtype, device, byrow)`,

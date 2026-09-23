@@ -4,31 +4,29 @@
 \alias{prim_which_max}
 \title{Primitive Index of the Maximum}
 \usage{
-prim_which_max(x, axes, drop = TRUE)
+prim_which_max(x, axis, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
-\item{axes}{(\code{integer()})\cr
-Axes over which to find the index of the maximum. Their elements are
-ranked together, and the index counts through them in column-major order,
-as \code{\link[base:which.max]{base::which.max()}} does. Negative values count from the end, i.e.
-\code{-1} refers to the last axis.}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which to find the index of the maximum.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
-If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE} they are
+If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
 kept with size 1.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
-the input's, and the input's shape with \code{axes} removed (\code{drop = TRUE}) or
+the input's, and the input's shape with \code{axis} removed (\code{drop = TRUE}) or
 set to 1 (\code{drop = FALSE}).
 }
 \description{
-Returns the index of the maximum value over one or more axes. Ties
+Returns the index of the maximum value along a single axis. Ties
 are broken by returning the smallest index.
 }
 \section{Implemented Rules}{
@@ -50,10 +48,7 @@ The reduction is variadic over \verb{(values, indices)}, with a
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the index comes out at the default integer data type
-prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axes = 1L)
-
-# several axes index their column-major flattening
-prim_which_max(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2), axes = 1:2)
+prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

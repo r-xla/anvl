@@ -4724,7 +4724,9 @@ nv_which_min <- jit(
   static = 2:4
 )
 
-# Shared NaN-aware argmax/argmin.
+# Shared NaN-aware argmax/argmin. The primitives read a single axis, so several
+# axes are gathered into one first, exactly as `nv_quantile()` does -- which is
+# what makes the result index the column-major flattening of `axes`.
 #
 # The XLA arg-reduction kernels are comparison-based and silently skip NaN, so
 # `nan_rm = TRUE` is free -- we just call the primitive. For `nan_rm = FALSE` we
@@ -4732,18 +4734,20 @@ nv_which_min <- jit(
 # NaN in an integer, so we surface "a NaN was here" by returning the first NaN's
 # index instead.
 .nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
-  axes <- .resolve_reduce_axes(x, axes)
-  result <- prim_arg(x, axes = axes, drop = drop)
+  flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
+  x <- flat$x
+  axis <- naxes(x)
+  result <- prim_arg(x, axis = axis)
   if (!nan_rm && is_dtype_float(peek_dtype(x))) {
     # argmax on the bool mask returns the index of the first TRUE (tie-break:
     # smallest index) — exactly the first NaN's position — or 1 if no NaN
     # exists. `any_nan` disambiguates those two cases.
     nan_mask <- nv_is_nan(x)
-    any_nan <- prim_any(nan_mask, axes = axes, drop = drop)
-    first_nan_idx <- prim_which_max(nan_mask, axes = axes, drop = drop)
+    any_nan <- prim_any(nan_mask, axes = axis)
+    first_nan_idx <- prim_which_max(nan_mask, axis = axis)
     result <- nv_ifelse(any_nan, first_nan_idx, result)
   }
-  result
+  prim_reshape(result, flat$keep_shape)
 }
 
 # Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.

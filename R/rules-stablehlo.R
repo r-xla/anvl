@@ -349,23 +349,11 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reducer, .env) {
   stablehlo(graph, id = "", constants_as_inputs = FALSE)[[1L]]
 }
 
-.stablehlo_arg_extreme <- function(x, axes, drop, direction, init_v_fn, index_dtype) {
+.stablehlo_arg_extreme <- function(x, axis, drop, direction, init_v_fn, index_dtype) {
   shp <- shape(x$value_type)
   v_dtype <- x$value_type$type$dtype
   i_dtype <- as.character(index_dtype)
-  # The 0-based position of each element in the column-major flattening of
-  # `axes`: the sum of its coordinates along them, each scaled by the product
-  # of the sizes of the axes before it.
-  strides <- cumprod(c(1L, shp[axes]))[seq_along(axes)]
-  iota <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = i_dtype, func = x$func), integer(), shp)
-  for (k in seq_along(axes)) {
-    coord <- hlo_iota(iota_dimension = axes[[k]] - 1L, dtype = i_dtype, shape = shp)
-    if (strides[[k]] != 1L) {
-      stride <- hlo_scalar(strides[[k]], dtype = i_dtype, func = x$func)
-      coord <- hlo_multiply(coord, hlo_broadcast_in_dim(stride, integer(), shp))
-    }
-    iota <- hlo_add(iota, coord)
-  }
+  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = i_dtype, shape = shp)
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
   init_i <- hlo_scalar(0L, dtype = i_dtype, func = x$func)
 
@@ -392,7 +380,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reducer, .env) {
   out <- hlo_reduce(
     inputs = list(x, iota),
     init_values = list(init_v, init_i),
-    dimensions = axes - 1L,
+    dimensions = axis - 1L,
     body = body
   )
   # convert to 1-based
@@ -403,13 +391,13 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reducer, .env) {
   if (drop) {
     return(list(result))
   }
-  list(hlo_reshape(result, replace(shp, axes, 1L)))
+  list(hlo_reshape(result, replace(shp, axis, 1L)))
 }
 
-prim_which_max[["stablehlo"]] <- function(x, axes, drop, output_types) {
+prim_which_max[["stablehlo"]] <- function(x, axis, drop, output_types) {
   .stablehlo_arg_extreme(
     x,
-    axes,
+    axis,
     drop,
     direction = "GT",
     init_v_fn = nv_minval,
@@ -417,10 +405,10 @@ prim_which_max[["stablehlo"]] <- function(x, axes, drop, output_types) {
   )
 }
 
-prim_which_min[["stablehlo"]] <- function(x, axes, drop, output_types) {
+prim_which_min[["stablehlo"]] <- function(x, axis, drop, output_types) {
   .stablehlo_arg_extreme(
     x,
-    axes,
+    axis,
     drop,
     direction = "LT",
     init_v_fn = nv_maxval,

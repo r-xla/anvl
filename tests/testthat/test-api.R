@@ -2319,8 +2319,8 @@ describe("nv_which_max / nv_which_min", {
   })
 
   it("reduces the named axes only", {
-    expect_equal(nv_which_max(m, axes = 2L), prim_which_max(m, axes = 2L))
-    expect_equal(nv_which_min(m, axes = 2L), prim_which_min(m, axes = 2L))
+    expect_equal(nv_which_max(m, axes = 2L), prim_which_max(m, axis = 2L))
+    expect_equal(nv_which_min(m, axes = 2L), prim_which_min(m, axis = 2L))
     expect_equal(as.integer(nv_which_max(m, axes = 1L)), apply(mr, 2L, which.max))
   })
 

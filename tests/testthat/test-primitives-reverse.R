@@ -861,7 +861,7 @@ test_that("prim_which_max / prim_which_min have zero gradient", {
   x <- nv_array(c(3, 1, 4), dtype = "f32")
   for (prim in list(prim_which_max, prim_which_min)) {
     verify_zero_grad_unary(prim, x, f_wrapper = function(x) {
-      out <- prim(x, axes = 1L)
+      out <- prim(x, axis = 1L)
       prim_convert(out, "f32")
     })
   }
