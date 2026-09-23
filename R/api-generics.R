@@ -814,10 +814,9 @@ rev.AnvlBox <- rev.AnvlArray
 #' @usage NULL
 #' @section The `c()` generic:
 #' `c()` concatenates scalars and 1-D arrays into a 1-D array, like
-#' [base::c()] does for vectors. An array with more than one axis is an error:
-#' base R would flatten it in column-major order, whereas an anvl array
-#' flattens in row-major order (see the "Gotchas" vignette), so concatenate
-#' those along an explicit `axis` instead.
+#' [base::c()] does for vectors. An array with more than one axis is an error
+#' rather than being flattened the way base R does; concatenate those along an
+#' explicit `axis`, or [nv_flatten()] them first.
 #' @method c AnvlArray
 #' @export
 c.AnvlArray <- function(...) {

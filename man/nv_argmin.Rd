@@ -38,9 +38,9 @@ broken by returning the smallest index.
 \code{nv_argmin()} is the index to \code{\link[=nv_reduce_min]{nv_reduce_min()}}'s value: called with the
 same \code{axes} and \code{drop}, it points at the element whose value
 \code{nv_reduce_min()} returns. Reducing several axes ranks their elements
-together, and the result indexes the row-major flattening of those axes --
-the order \code{\link[=nv_flatten]{nv_flatten()}} produces -- which is also the order ties are
-broken in.
+together, and the result indexes the column-major flattening of those axes
+-- the order \code{\link[=nv_flatten]{nv_flatten()}} produces and \code{\link[base:which.min]{base::which.min()}} reports -- which
+is also the order ties are broken in.
 }
 
 \section{NaN handling}{

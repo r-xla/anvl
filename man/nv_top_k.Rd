@@ -42,8 +42,8 @@ order.
 
 Taking the top \code{k} over several axes ranks all of their elements together,
 so \code{nv_top_k(x, k)} equals \code{nv_top_k(nv_flatten(x), k)}. The indices then
-index the row-major flattening of those axes -- the order \code{\link[=nv_flatten]{nv_flatten()}}
-produces -- rather than any single axis.
+index the column-major flattening of those axes -- the order
+\code{\link[=nv_flatten]{nv_flatten()}} produces -- rather than any single axis.
 }
 
 \section{NaN handling}{

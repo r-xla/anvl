@@ -4,6 +4,17 @@
 
 * `default_device()` no longer follows `PJRT_PLATFORM`; set `ANVL_DEFAULT_DEVICE`
   or the `anvl.default_device` option instead.
+* `prim_reshape()` and `nv_reshape()`, and with them `nv_flatten()` and every
+  `axis = NULL` flattening default, are now column-major like base R.
+* `prim_bitcast_convert()` puts the axis holding an element's pieces first
+  rather than last when the two data types differ in width, so the pieces of
+  one element are adjacent in the order `nv_flatten()` reads and a narrowing
+  conversion lays the bytes out the way `as_raw()` writes them.
+* `nv_broadcast_to()` and `nv_broadcast_arrays()` align axes from the first
+  instead of the last: a shorter shape gets size-1 axes appended, so a
+  length-`nrow` vector broadcasts against a matrix where a length-`ncol` one
+  no longer does. Write `prim_broadcast_in_axes()` with an explicit axis
+  mapping for the previous right-aligned behavior.
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
 * `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
@@ -59,7 +70,7 @@
 * `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a
   single `axis`, defaulting to every axis so that they pair with
   `nv_reduce_max()` / `nv_reduce_min()`. Reducing several axes indexes their
-  row-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
+  column-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
   default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.

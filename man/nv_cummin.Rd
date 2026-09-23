@@ -42,14 +42,6 @@ given, and are 1-D of length \code{prod(shape(x))} when \code{axis} is \code{NUL
 \description{
 Running minimum, optionally along a single axis.
 }
-\section{Relation to base R}{
-
-\code{nv_cummin()} with \code{axis = NULL} and \code{\link[base:cummin]{base::cummin()}}
-both flatten first, but in different orders -- anvl arrays are row-major (C
-order), base R is column-major (Fortran) -- so for a multi-axis input the
-two give different running values. They agree on 1-D inputs.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the running minimum keeps the data type; the indices are the default integer

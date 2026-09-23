@@ -57,9 +57,9 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   given_lhs <- shape_lhs
   given_rhs <- shape_rhs
   if (length(shape_lhs) > length(shape_rhs)) {
-    shape_rhs <- c(rep(1L, length(shape_lhs) - length(shape_rhs)), shape_rhs)
+    shape_rhs <- c(shape_rhs, rep(1L, length(shape_lhs) - length(shape_rhs)))
   } else if (length(shape_lhs) < length(shape_rhs)) {
-    shape_lhs <- c(rep(1L, length(shape_rhs) - length(shape_lhs)), shape_lhs)
+    shape_lhs <- c(shape_lhs, rep(1L, length(shape_rhs) - length(shape_lhs)))
   } else if (identical(shape_lhs, shape_rhs)) {
     return(shape_lhs)
   }
@@ -77,18 +77,6 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   }
   shape_out
 }
-
-make_broadcast_axes <- function(shape_in, shape_out) {
-  rank_in <- length(shape_in)
-  rank_out <- length(shape_out)
-  if (rank_in == rank_out) {
-    # When ranks match, each input axis maps to the same output axis
-    # StableHLO expects a mapping for every input axis
-    return(seq_along(shape_out))
-  }
-  tail(seq_len(rank_out), rank_in)
-}
-
 
 #' @title Broadcast Scalars to Common Shape
 #' @description
@@ -154,13 +142,29 @@ nv_promote_to_common <- jit(function(...) {
 
 #' @title Broadcast Arrays to a Common Shape
 #' @description
-#' Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
+#' Broadcasts arrays to a common shape, aligning their axes from the first
+#' one, so that a vector meets a matrix as a column.
 #'
 #' @section Broadcasting Rules:
-#' 1. If the arrays have different numbers of axes, prepend size-1
-#'    axes to the shorter shape.
+#' 1. If the arrays have different numbers of axes, append size-1
+#'    axes to the shorter shape, so axis 1 meets axis 1. A length-`n`
+#'    vector therefore lines up with the rows of an `n` by `m` matrix and
+#'    is replicated across its columns. NumPy prepends instead.
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
 #'    it to the other's size; otherwise raise an error.
+#'
+#' @section Relation to base R:
+#' Base R has no broadcasting between arrays -- `matrix(1, 3, 3) +
+#' matrix(1, 1, 3)` is a "non-conformable arrays" error. It does recycle a
+#' *vector* over a matrix, though, and for a vector as long as the first
+#' axis that lands on exactly this broadcast, which is why a vector meets a
+#' matrix as a column in both. The two part ways once the lengths stop
+#' lining up: `matrix(1, 2, 3) + c(1, 2, 3)` recycles on regardless, where
+#' the matching broadcast is an error.
+#'
+#' The deviation from NumPy's broadcasting rules is still motivated by
+#' keeping anvl's behaviour similar to base R in spirit, see the examples
+#' for more.
 #'
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to broadcast.
@@ -168,10 +172,16 @@ nv_promote_to_common <- jit(function(...) {
 #'   The inputs, each with its own data type and the common shape.
 #' @seealso [nv_broadcast_scalars()], [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the length-3 vector is stretched to the matrix's shape
-#' x1 <- nv_matrix(1:6, nrow = 2)
-#' x2 <- nv_array(c(10, 20, 30))
-#' nv_broadcast_arrays(x1, x2)
+#' # interpreting vectors as columns
+#' # base R:
+#' x1 <- c(1, 2)
+#' m1 <- array(1, dim = c(2, 2))
+#' x1 + m1
+#' # anvl:
+#' args <- nv_broadcast_arrays(nv_array(x1), nv_array(m1))
+#' print(args)
+#' args[[1]] + args[[2]]
+#'
 #'
 #' # axes of size 1 are expanded to the other operand's size
 #' y1 <- nv_array(1:3, shape = c(1, 3))
@@ -188,27 +198,31 @@ nv_broadcast_arrays <- jit(function(...) {
 
 #' @title Broadcast to Shape
 #' @description
-#' Broadcasts an array to a target shape using NumPy-style broadcasting rules.
+#' Broadcasts an array to a target shape, aligning the array's axes with the
+#' leading axes of `shape`, so that a vector fills a column.
+#' See [`nv_broadcast_arrays`] for more information.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param shape (`integer()`)\cr
-#'   Target shape. The input's axes are matched against its trailing axes, and
-#'   each must either match or be 1; leading axes are added.
+#'   Target shape. The input's axes are matched against its leading axes, and
+#'   each must either match or be 1; trailing axes are added.
 #' @return ([`arrayish`])\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
 #'   [prim_broadcast_in_axes()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the length-3 vector is repeated along a new leading axis
+#' # the vector fills a column and is repeated along the new trailing axis
 #' x <- nv_array(c(1, 2, 3))
-#' nv_broadcast_to(x, shape = c(2, 3))
+#' nv_broadcast_to(x, shape = c(3, 2))
 #' @export
 nv_broadcast_to <- function(x, shape) {
   x <- as_anvl_array(x)
   shape_op <- shape(x)
   if (!identical(shape_op, shape)) {
-    broadcast_axes <- make_broadcast_axes(shape_op, shape)
-    prim_broadcast_in_axes(x, shape, broadcast_axes)
+    # Axes align from the first: the array's existing axes map to the leading
+    # axes of `shape`, and the axes it lacks are appended. StableHLO wants a
+    # mapping for every input axis.
+    prim_broadcast_in_axes(x, shape, seq_along(shape_op))
   } else {
     x
   }
@@ -275,10 +289,8 @@ nv_transpose <- function(x, permutation = NULL) {
 
 #' @title Reshape
 #' @description
-#' Reshapes an array to a new shape without changing the underlying data.
-#' Returns the input unchanged if it already has the target shape.
-#' @section Differences from base R:
-#' Note that row-major order is used, which differs from R's column-major order.
+#' Reshapes an array to a new shape using col-major semantics.
+#'
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param shape (`integer()`)\cr
@@ -289,11 +301,10 @@ nv_transpose <- function(x, permutation = NULL) {
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [prim_reshape()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the elements are reread in row-major order; the data type is untouched
+#' # the elements keep their column-major order; the data type is untouched
 #' x <- array(1:6, dim = c(3, 2))
-#' # row-major
 #' nv_reshape(x, 6L)
-#' # differs from R (col-major)
+#' # the order base R reads them in, too
 #' c(x)
 #'
 #' # infer the size of the second axis
@@ -315,10 +326,7 @@ nv_reshape <- function(x, shape) {
 
 #' @title Flatten
 #' @description
-#' Flattens an array of any rank into an array with a single axis, reading the
-#' elements in row-major order (the last axis fastest), as [nv_reshape()] does.
-#' @section Differences from base R:
-#' Note that row-major order is used, which differs from R's column-major order.
+#' Flattens an array with one or more axes into a 1-D array, using col-major semantics.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
@@ -328,9 +336,8 @@ nv_reshape <- function(x, shape) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the 2x2 matrix becomes a length-4 vector
 #' x <- matrix(1:4, nrow = 2)
-#' # flatten in row-major
 #' nv_flatten(x)
-#' # differs from R's col-major encoding:
+#' # the same column-major order base R uses
 #' c(x)
 nv_flatten <- function(x) {
   x <- as_anvl_array(x)
@@ -342,7 +349,7 @@ nv_flatten <- function(x) {
 #' Concatenates arrays along an axis. Operands are promoted to a common
 #' data type and scalars are broadcast before concatenation.
 #'
-#' You can also use `c()`, which flattens its arguments first, like base R.
+#' You can also use `c()` on scalars and 1-D arrays, like base R.
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to concatenate. Can be of any data type; they are
 #'   [promoted to a common data type][nv_promote_to_common()] and scalars are
@@ -2828,8 +2835,11 @@ nv_eye <- jit(
 # Gather `axes` into a single trailing axis, so an operation that only ever
 # handles one axis -- a sort, an arg-reduction -- can reduce several at once by
 # ranking their elements together. `axes` must already be resolved and sorted.
-# Returns the reshaped array along with the shape its kept axes take afterwards,
-# which `drop = FALSE` restores the reduced axes into at size 1.
+# The reshape is column-major, so a position along the merged axis is the
+# column-major linear index within the block of `axes`, like `which.max()`
+# reports for a whole array. Returns the reshaped array along with the shape
+# its kept axes take afterwards, which `drop = FALSE` restores the reduced axes
+# into at size 1.
 .flatten_reduce_axes <- function(x, axes, drop) {
   x_shape <- shape(x)
   keep <- setdiff(seq_along(x_shape), axes)
@@ -2848,8 +2858,9 @@ nv_eye <- jit(
 }
 
 # Resolve the `axis` of a cumulative op. `NULL` accumulates over every element,
-# like base R's `cum*()` functions, which means flattening the input first --
-# so this hands back the array as well as the axis.
+# like base R's `cum*()` functions, which means flattening the input first (in
+# column-major order, as they do) -- so this hands back the array as well as
+# the axis.
 .resolve_cum_input <- function(x, axis) {
   if (is.null(axis)) {
     list(x = nv_reshape(x, prod(shape(x))), axis = 1L)
@@ -3182,12 +3193,10 @@ nv_reduce_all <- jit(
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
 #' @template return_cum_accumulate
-#' @templateVar cum_nv_name nv_cumsum
-#' @template section_nv_cum_relation
 #' @seealso [prim_cumsum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_cumsum(x)              # row-major flatten, then accumulate
+#' nv_cumsum(x)              # flatten, then accumulate
 #' nv_cumsum(x, axis = 1L)    # accumulate along rows
 #' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
@@ -3216,12 +3225,10 @@ nv_cumsum <- jit(
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
 #' @template return_cum_accumulate
-#' @templateVar cum_nv_name nv_cumprod
-#' @template section_nv_cum_relation
 #' @seealso [prim_cumprod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_cumprod(x)              # row-major flatten, then accumulate
+#' nv_cumprod(x)              # flatten, then accumulate
 #' nv_cumprod(x, axis = 1L)    # accumulate along rows
 #' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 #' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
@@ -3250,8 +3257,6 @@ nv_cumprod <- jit(
 #' @templateVar cum_extreme_name maximum
 #' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
-#' @templateVar cum_nv_name nv_cummax
-#' @template section_nv_cum_relation
 #' @template param_nan_rm_cum
 #' @seealso [prim_cummax()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3282,8 +3287,6 @@ nv_cummax <- jit(
 #' @templateVar cum_extreme_name minimum
 #' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
-#' @templateVar cum_nv_name nv_cummin
-#' @template section_nv_cum_relation
 #' @template param_nan_rm_cum
 #' @seealso [prim_cummin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -4225,8 +4228,8 @@ nv_argsort <- jit(
 #' @section Ranking several axes:
 #' Taking the top `k` over several axes ranks all of their elements together,
 #' so `nv_top_k(x, k)` equals `nv_top_k(nv_flatten(x), k)`. The indices then
-#' index the row-major flattening of those axes -- the order [nv_flatten()]
-#' produces -- rather than any single axis.
+#' index the column-major flattening of those axes -- the order
+#' [nv_flatten()] produces -- rather than any single axis.
 #' @section NaN handling:
 #' `NaN` ranks larger than any finite value (so it appears first in the
 #' top-`k` output); `-NaN` ranks smaller. Unlike [nv_sort()], the sign
@@ -4263,7 +4266,7 @@ nv_top_k <- jit(
     k <- as.integer(k)
 
     # `prim_top_k` reads the last axis only, so several axes are gathered into
-    # one first -- which is what makes the indices index their row-major
+    # one first -- which is what makes the indices index their column-major
     # flattening -- and the `k` axis is moved back to where the first of them
     # was.
     flat <- .flatten_reduce_axes(x, axes, drop = TRUE)
@@ -4601,9 +4604,9 @@ nv_median <- jit(
 #' `nv_argmax()` is the index to [nv_reduce_max()]'s value: called with the
 #' same `axes` and `drop`, it points at the element whose value
 #' `nv_reduce_max()` returns. Reducing several axes ranks their elements
-#' together, and the result indexes the row-major flattening of those axes --
-#' the order [nv_flatten()] produces -- which is also the order ties are
-#' broken in.
+#' together, and the result indexes the column-major flattening of those axes
+#' -- the order [nv_flatten()] produces and [base::which.max()] reports -- which
+#' is also the order ties are broken in.
 #' @section NaN handling:
 #' With `nan_rm = FALSE` (default), if any entry being reduced is `NaN`, the
 #' returned index points at the first such `NaN`. With `nan_rm = TRUE`, `NaN`
@@ -4644,9 +4647,9 @@ nv_argmax <- jit(
 #' `nv_argmin()` is the index to [nv_reduce_min()]'s value: called with the
 #' same `axes` and `drop`, it points at the element whose value
 #' `nv_reduce_min()` returns. Reducing several axes ranks their elements
-#' together, and the result indexes the row-major flattening of those axes --
-#' the order [nv_flatten()] produces -- which is also the order ties are
-#' broken in.
+#' together, and the result indexes the column-major flattening of those axes
+#' -- the order [nv_flatten()] produces and [base::which.min()] reports -- which
+#' is also the order ties are broken in.
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -4668,8 +4671,9 @@ nv_argmin <- jit(
 )
 
 # Shared NaN-aware argmax/argmin. The primitives read a single axis, so several
-# axes are gathered into one first, exactly as `nv_quantile()` does -- which is
-# what makes the result index the row-major flattening of `axes`.
+# axes are gathered into one trailing axis first, exactly as `nv_quantile()`
+# does -- which is what makes the result index the column-major flattening of
+# `axes`, the one `which.max()` reports.
 #
 # The XLA arg-reduction kernels are comparison-based and silently skip NaN, so
 # `nan_rm = TRUE` is free -- we just call the primitive. For `nan_rm = FALSE` we

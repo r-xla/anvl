@@ -70,8 +70,22 @@ prim_transpose[["stablehlo"]] <- function(x, permutation, output_types) {
   list(hlo_transpose(x, permutation - 1L, output_types = output_types))
 }
 
+# A column-major reshape, like base R's `dim<-`. `hlo_reshape()` is row-major,
+# and the two agree once every axis is reversed: the row-major linear index of
+# the reversed operand is its column-major one. So the operand is reversed,
+# reshaped to the reversed shape and reversed back; XLA folds the transposes
+# into the layout, and a rank <= 1 side has nothing to reverse.
 prim_reshape[["stablehlo"]] <- function(x, shape, output_types) {
-  list(hlo_reshape(x, shape, output_types = output_types))
+  rank_in <- length(shape(x))
+  rank_out <- length(shape)
+  if (rank_in > 1L) {
+    x <- hlo_transpose(x, rev(seq_len(rank_in)) - 1L)
+  }
+  if (rank_out <= 1L) {
+    return(list(hlo_reshape(x, shape, output_types = output_types)))
+  }
+  out <- hlo_reshape(x, rev(shape))
+  list(hlo_transpose(out, rev(seq_len(rank_out)) - 1L, output_types = output_types))
 }
 
 prim_concatenate[["stablehlo"]] <- function(..., axis, output_types) {
@@ -487,7 +501,18 @@ prim_atan2[["stablehlo"]] <- function(lhs, rhs, output_types) {
 }
 
 prim_bitcast_convert[["stablehlo"]] <- function(x, dtype, output_types) {
-  list(hlo_bitcast_convert(x, dtype, output_types = output_types))
+  lane <- bitcast_lane(dtype(x), dtype)
+  if (lane$joins) {
+    # anvl's leading lane axis is the trailing one stablehlo consumes
+    rank <- length(shape(x))
+    x <- hlo_transpose(x, c(seq_len(rank - 1L), 0L))
+  }
+  if (!lane$splits) {
+    return(list(hlo_bitcast_convert(x, dtype, output_types = output_types)))
+  }
+  rank_out <- length(shape(x)) + 1L
+  out <- hlo_bitcast_convert(x, dtype)
+  list(hlo_transpose(out, c(rank_out - 1L, seq_len(rank_out - 1L) - 1L), output_types = output_types))
 }
 
 # unary simple math jit rules ---------------------------------------------------
