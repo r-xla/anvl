@@ -160,9 +160,9 @@ See the "Gotchas" vignette for more information.
 
 \section{Out of Range values}{
 
-Because base R has fewer data types than {anvl}, creating \code{AnvlArray}s from R often involves
+Because base R has fewer data types than anvl, creating \code{AnvlArray}s from R often involves
 type conversions.
-When such conversions are performed, {anvl} performs a scan of the inputs to ensure that the
+When such conversions are performed, anvl performs a scan of the inputs to ensure that the
 requested data type can actually hold the input data.
 For example, trying to create an unsigned integer from a negative R \code{integer()} fails.
 The same holds where an R value takes its data type from the array it meets

@@ -40,7 +40,7 @@ lining up: \code{matrix(1, 2, 3) + c(1, 2, 3)} recycles on regardless, where
 the matching broadcast is an error.
 
 The deviation from NumPy's broadcasting rules is still motivated by
-keeping {anvl}'s behaviour similar to base R in spirit, see the examples
+keeping anvl's behaviour similar to base R in spirit, see the examples
 for more.
 }
 
