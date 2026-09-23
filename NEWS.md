@@ -150,6 +150,8 @@
 
 ## Features
 
+* `prim_if()` / `nv_if()` are now differentiable; only the taken branch's
+  gradient is computed.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.
@@ -253,6 +255,9 @@
 
 ## Bug fixes
 
+* `gradient()` no longer returns a zero gradient for a value that a
+  higher-order primitive's sub-graph closes over: `prim_if()` lists its
+  captures among its operands, and `prim_while()` refuses such a capture.
 * Whatever a `prim_*()` refuses now reports that primitive as the call, rather
   than the helper that checked the argument or the anonymous function `jit()`
   wraps.

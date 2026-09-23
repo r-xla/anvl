@@ -2244,7 +2244,7 @@ infer_eigh <- function(x) {
 # subgraphs, so their types are read straight off their input and output nodes.
 # ---------------------------------------------------------------------------
 
-infer_cond <- function(pred, true, false) {
+infer_cond <- function(pred, ..., true, false) {
   assert_array_dtype(pred, "bool", shape = integer())
   outs_true <- lapply(true$outputs, function(out) out$aval)
   outs_false <- lapply(false$outputs, function(out) out$aval)
