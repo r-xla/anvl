@@ -1103,7 +1103,7 @@ assert_start_indices <- function(start_indices, rank) {
   }
   for (i in seq_along(start_indices)) {
     idx <- start_indices[[i]]
-    arg <- sprintf("start index %d", i)
+    arg <- sprintf("..%d", i)
     assert_array_dtype(idx, "int", "uint", arg = arg)
     if (length(shape(idx)) != 0L) {
       cli_abort(c(
@@ -1116,10 +1116,10 @@ assert_start_indices <- function(start_indices, rank) {
   dtypes <- lapply(start_indices, dtype)
   if (length(unique(dtypes)) != 1L) {
     bad <- which(vapply(dtypes, function(dt) dt != dtypes[[1L]], logical(1L)))[[1L]]
-    bad_arg <- sprintf("start index %d", bad)
+    bad_arg <- sprintf("..%d", bad)
     cli_abort(c(
       "Every start index must have the same data type.",
-      x = "{.arg start index 1} is {.val {as.character(dtypes[[1L]])}} and {.arg {bad_arg}} is {.val {as.character(dtypes[[bad]])}}." # nolint
+      x = "{.arg ..1} is {.val {as.character(dtypes[[1L]])}} and {.arg {bad_arg}} is {.val {as.character(dtypes[[bad]])}}." # nolint
     ))
   }
   invisible(NULL)

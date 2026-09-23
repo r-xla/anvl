@@ -40,7 +40,7 @@ promote_start_indices <- function(indices) {
     return(indices)
   }
   # Named only for the messages; the graph keeps them positional.
-  names(indices) <- sprintf("start index %d", seq_along(indices))
+  names(indices) <- sprintf("..%d", seq_along(indices))
   unname(apply_promotion(indices, promotion_rdata_common()))
 }
 
