@@ -501,7 +501,18 @@ prim_atan2[["stablehlo"]] <- function(lhs, rhs, output_types) {
 }
 
 prim_bitcast_convert[["stablehlo"]] <- function(x, dtype, output_types) {
-  list(hlo_bitcast_convert(x, dtype, output_types = output_types))
+  lane <- bitcast_lane(dtype(x), dtype)
+  if (lane$joins) {
+    # anvl's leading lane axis is the trailing one stablehlo consumes
+    rank <- length(shape(x))
+    x <- hlo_transpose(x, c(seq_len(rank - 1L), 0L))
+  }
+  if (!lane$splits) {
+    return(list(hlo_bitcast_convert(x, dtype, output_types = output_types)))
+  }
+  rank_out <- length(shape(x)) + 1L
+  out <- hlo_bitcast_convert(x, dtype)
+  list(hlo_transpose(out, c(rank_out - 1L, seq_len(rank_out - 1L) - 1L), output_types = output_types))
 }
 
 # unary simple math jit rules ---------------------------------------------------

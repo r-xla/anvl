@@ -8,6 +8,10 @@
   first for the previous row-major order. A multi-axis RNG sample draws the
   same values but lays them out column-major, so a given seed now gives a
   permuted result.
+* `prim_bitcast_convert()` puts the axis holding an element's pieces first
+  rather than last when the two data types differ in width, so the pieces of
+  one element are adjacent in the order `nv_flatten()` reads and a narrowing
+  conversion lays the bytes out the way `as_raw()` writes them.
 * `nv_broadcast_to()` and `nv_broadcast_arrays()` align axes from the first
   instead of the last: a shorter shape gets size-1 axes appended, so a
   length-`nrow` vector broadcasts against a matrix where a length-`ncol` one

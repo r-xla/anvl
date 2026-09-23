@@ -18,13 +18,36 @@ test_that("prim_rng_bit_generator", {
   expect_shape(out$values, c(2L, 2L))
 })
 
-test_that("prim_bitcast_convert", {
-  out <- nv_bitcast_convert(
-    nv_array(seq(-1, 1, length.out = 6), dtype = "f64", shape = c(2, 3)),
-    dtype = "i32"
-  )
-  expect_equal(dim(as_array(out)), c(2, 3, 2))
-  expect_true(is.integer(as_array(out)))
+describe("prim_bitcast_convert", {
+  it("keeps the shape when the widths match", {
+    expect_shape(nv_bitcast_convert(nv_array(c(1, 2, 3), dtype = "f32"), dtype = "i32"), 3L)
+  })
+
+  it("adds a leading axis when narrowing", {
+    out <- nv_bitcast_convert(
+      nv_array(seq(-1, 1, length.out = 6), dtype = "f64", shape = c(2, 3)),
+      dtype = "i32"
+    )
+    expect_equal(dim(as_array(out)), c(2, 2, 3))
+    expect_true(is.integer(as_array(out)))
+  })
+
+  it("lays an element's pieces out the way as_raw() writes them", {
+    x <- nv_array(c(1L, 2L), dtype = "i32")
+    bytes <- nv_flatten(nv_bitcast_convert(x, dtype = "i8"))
+    expect_equal(as.integer(as.vector(as_array(bytes))), as.integer(as_raw(x)))
+  })
+
+  it("consumes the leading axis when widening, inverting a narrowing", {
+    x <- nv_array(c(1L, 2L), dtype = "i32")
+    narrowed <- nv_bitcast_convert(x, dtype = "i8")
+    expect_shape(narrowed, c(4L, 2L))
+    expect_equal(as_array(nv_bitcast_convert(narrowed, dtype = "i32")), as_array(x))
+  })
+
+  it("rejects a leading axis of the wrong size when widening", {
+    expect_error(nv_bitcast_convert(nv_array(rep(1L, 3), dtype = "i8"), dtype = "i32"))
+  })
 })
 
 test_that("prim_static_slice", {
