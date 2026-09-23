@@ -184,7 +184,7 @@ test_that("nv_matrix() errors when nrow * ncol does not match data length", {
 test_that("nv_matrix() handles existing AnvlArray inputs", {
   x <- nv_array(1:6, shape = c(2L, 3L))
   expect_equal(as_array(nv_matrix(x, nrow = 2L)), as_array(x))
-  expect_error(nv_matrix(x, nrow = 3L), "Cannot change shape")
+  expect_error(nv_matrix(x, nrow = 3L), "Cannot change the shape")
 })
 
 test_that("nv_matrix() handles zero-row / zero-column shapes", {

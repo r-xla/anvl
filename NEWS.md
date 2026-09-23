@@ -1,5 +1,5 @@
 # anvl (development version)
-  
+
 ## Breaking changes
 
 * The element-wise `nv_max()` / `nv_min()` and `prim_max()` / `prim_min()` are
@@ -34,8 +34,11 @@
 * `prim_sort()` takes `(operands, axis, decreasing, stable)`: `xs` is now
   `operands`, and `descending` / `is_stable` are `decreasing` / `stable`, as in
   `nv_sort()`.
-* `prim_top_k()`'s `indices` is now `with_indices` and defaults to `FALSE`,
-  agreeing with `nv_top_k()`.
+* `nv_top_k()`, `nv_cummax()`, `nv_cummin()` and `prim_top_k()` spell their
+  index flag `with_indices`, defaulting to `FALSE`.
+* `nv_top_k()` takes `axes` instead of `axis`, ranking the elements of several
+  axes together, and `axes = NULL` (the default) now ranks over every axis
+  where it used to take the last one. Write `axes = -1` for the old default.
 * `prim_reduce()` takes `(x, init, axes, reducer, drop)`: `reductor` is now
   `reducer`, and it comes before `drop`.
 * `prim_static_slice()` / `nv_static_slice()` call their (inclusive) upper
@@ -113,6 +116,25 @@
   forwarding to `nv_aperm()` and `nv_quantile()`.
 * New `nv_drop()`, another spelling of `nv_squeeze()`; with the default
   `axes = NULL` it drops every size-1 axis like `base::drop()`.
+* `nv_rng_state()` accepts a seed of any signed or unsigned integer data type,
+  bringing it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
+  whatever the seed and the default integer data type are.
+* `nv_flatten()` accepts a scalar, returning a length-1 array, instead of
+  erroring.
+* `as_anvl_array()` gained a `.promote` argument, naming the data type the
+  input is brought to, as `as_anvl_arrays()` already had.
+* `nv_is_nan()`, `nv_is_finite()` and `nv_is_infinite()` accept any data type
+  and answer a constant (all `FALSE` / all `TRUE` / all `FALSE`) for one that
+  holds no NaN or infinity, instead of comparing -- or, for `nv_is_finite()`
+  and `nv_is_infinite()`, erroring.
+* The linear algebra functions (`nv_solve()`, `nv_triangular_solve()`,
+  `nv_chol()`, `nv_inv()`, `nv_det()`, `nv_determinant()`, `nv_lu()`,
+  `nv_qr()`, `nv_svd()`, `nv_eigen()`) accept integer input, computing at the
+  default float data type where the input is not a float already, instead of
+  erroring. The `prim_*` ones still take a float only.
+* `nv_sign()` accepts an unsigned integer array, returning `0` or `1` like
+  base R's `sign()` on a non-negative number; `prim_sign()` still takes a
+  signed input only.
 * `nv_rev()` gained an `axes = NULL` default that reverses every axis,
   matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
   `axes` instead of erroring.

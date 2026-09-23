@@ -622,7 +622,8 @@ match_args_to_formals <- function(f, args) {
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
-#' @return An [`AnvlGraph`] containing the traced operations.
+#' @return ([`AnvlGraph`])
+#'   Contains the traced operations.
 #' @seealso [`stablehlo()`] to lower the graph, [`jit()`] for end-to-end
 #'   compilation.
 #' @export
@@ -755,7 +756,7 @@ maybe_restore_previous_desc <- function(desc = NULL) {
 #' Get the current graph being built (via [`local_descriptor`]).
 #' @param silent (`logical(1)`)\cr
 #'   Whether to return `NULL` if no graph is currently being built (as opposed to aborting).
-#' @return A [`GraphDescriptor`] object.
+#' @return ([`GraphDescriptor`])
 #' @export
 .current_descriptor <- function(silent = FALSE) {
   maybe_desc <- globals[["CURRENT_DESCRIPTOR"]]
@@ -794,7 +795,7 @@ maybe_previous_descriptor <- function() {
 #'   [`GraphDescriptor`] if it was not returned yet.
 #' @param ... (`any`)\cr
 #'   Additional arguments to pass to the [`GraphDescriptor`] constructor.
-#' @return A [`GraphDescriptor`] object.
+#' @return ([`GraphDescriptor`])
 #' @export
 local_descriptor <- function(..., envir = parent.frame()) {
   if (identical(envir, globalenv())) {

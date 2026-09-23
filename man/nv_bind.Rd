@@ -18,27 +18,32 @@ nv_cbind(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to combine. Inputs are promoted to a common data type.}
+Arrays to combine. Can be of any data type; they are
+\link[=nv_promote_to_common]{promoted to a common data type}, and a scalar is
+\link[=nv_broadcast_scalars]{broadcast} to match the non-stacked axes.}
 
 \item{deparse.level}{Ignored. Kept for compatibility with \code{\link[base:rbind]{base::rbind()}}
 and \code{\link[base:cbind]{base::cbind()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
+Has the inputs' common data type. The stacked axis is the sum of their
+sizes along it -- rows for \code{nv_rbind()}, columns for \code{nv_cbind()} -- and
+every other axis is theirs unchanged.
 }
 \description{
 Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) axis.
-Arguments are first promoted to a common data type
-(see \code{\link[=nv_promote_to_common]{nv_promote_to_common()}}).
 
-Each input is then handled according to its rank:
+Each input is handled according to its rank:
 \itemize{
-\item 0-D: broadcast to match the non-stacked axes of the other inputs.
+\item a scalar: broadcast to match the non-stacked axes of the other inputs.
 \item 1-D: treated as a single row/column.
 \item Other: used as-is.
 }
 }
 \section{Differences from base R}{
+
+
 \code{\link[base:rbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[base:array]{array()}} of rank > 2
 flatten the trailing axes into the column axis (so a \code{c(2, 3, 4)}
 array becomes a \verb{2 x 12} matrix). \code{nv_rbind} and \code{nv_cbind} instead

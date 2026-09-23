@@ -11,19 +11,23 @@ nv_trunc(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is returned unchanged.}
+One input. Can be any numeric data type: a float is rounded and
+keeps its own, and an integer one is already whole and is returned
+unchanged. An R value materializes at its
+\link[=default_dtypes]{default data type} and is treated in the same way.}
 
 \item{...}{Further arguments of \code{\link[=nv_trunc]{nv_trunc()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise truncation (round toward zero). You can also use \code{trunc()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 trunc(x)
 trunc(nv_array(1:3)) # an integer array is already whole

@@ -71,7 +71,7 @@ jit_cache_size(linear_jit)   # 1: a new entry was added
 linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
 jit_cache_size(linear_jit)
 
-# different shapes -> a second entry is added
+# different shapes -> a second entry, so a second trace
 linear_jit(
   nv_array(c(1, 2)),
   nv_array(c(3, 4)),
@@ -88,7 +88,7 @@ Each input to the function contributes to the cache key differently, depending o
   They stay as regular R values during the compilation, but their value is fixed for a compiled program.
   Two calls with `flag = TRUE` and `flag = FALSE` therefore land on different cache entries.
 
-In the snippet above all three inputs are dynamic, so the first two calls share a key (three `f32[]` scalars) and hit the cache, while the third call presents three `f32[2]` vectors and forces a retrace.
+In the snippet above all three inputs are dynamic, so the first two calls share a key (three scalars of the default float data type) and hit the cache, while the third call presents three vectors of length 2 and forces a retrace.
 
 You'll want `static =` when the body of the function needs to look at a concrete R value -- typically a flag, a small integer, or a string.
 It's also the only way to do R-level input validation on a value: a dynamic input is just a shape/dtype placeholder during tracing, so a check like `stopifnot(abs(sum(p) - 1) < 1e-6)` -- verifying that `p` is a proper probability vector -- only works if `p` is static.
@@ -220,7 +220,7 @@ linear_default_b <- function(x, w) linear(x, w, default_b)
 trace_fn(linear_default_b, args = list(x = f32_scalar, w = f32_scalar))
 ```
 
-The graph contains `add(%1, 5:f32?)` -- the value `5` is hard-wired into the program.
+The graph contains an `add` whose second operand is the literal `5` -- the value is hard-wired into the program, at the data type of the array it meets (`f32` here, from the `f32` inputs; a default only steps in for a literal that meets nothing typed).
 Changing `default_b` afterwards has no effect on the graph (and, once the graph is compiled, no effect on the executable either).
 
 ### Side effects only fire during tracing

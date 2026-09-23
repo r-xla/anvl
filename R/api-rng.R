@@ -57,16 +57,17 @@ nv_unif_rand <- function(
 #' Samples from a uniform distribution in the open interval `(min, max)`.
 #' @template param_shape
 #' @template param_state
-#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled values: a 32- or 64-bit float.
-#'   `NULL` (default) uses the backend's default
-#'   float data type (see [`default_dtypes()`]).
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#'   Floating point data type.
+#'   The default (`NULL`) uses the [default float type][default_dtypes].
 #' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound.
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state, and `values`, the sampled values.
+#'   Elements `state`, the updated RNG state, and `values`, the sample of shape
+#'   `shape` and data type `dtype`.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `state` is the updated RNG state, `values` the sample
 #' state <- nv_rng_state(42L)
 #' result <- nv_runif(c(2, 3), state)
 #' result$values
@@ -83,6 +84,7 @@ nv_runif <- jit(
     checkmate::assertNumeric(min, len = 1L, any.missing = FALSE, upper = max)
     checkmate::assertNumeric(max, len = 1L, any.missing = FALSE, lower = min)
     shape <- assert_shapevec(shape)
+    # TODO: Support max and min to be arrayish
 
     if (max == min) {
       return(list(
@@ -128,10 +130,8 @@ nv_runif <- jit(
 #' @template param_shape
 #' @template param_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the sample: a 32- or 64-bit float.
-#'   `NULL` (default) takes it from `mean` and `sd` where either is a
-#'   real array, and falls back to the default float data type (see [`default_dtypes()`])
-#'   where both are bare R values, which have none.
+#'   Floating point data type.
+#'   The default (`NULL`) uses the [default float type][default_dtypes].
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -141,6 +141,7 @@ nv_runif <- jit(
 #' may either be scalars or have exactly that shape.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `state` is the updated RNG state, `values` the sample
 #' state <- nv_rng_state(42L)
 #' result <- nv_rnorm(c(2, 3), state)
 #' result$values
@@ -233,16 +234,17 @@ nv_rnorm <- jit(
 #'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled values. Must be numeric.
-#'  `NULL` (default) uses the backend's
-#'   default integer data type (see [`default_dtypes()`]).
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#'   Numeric type of the sample.
+#'   `NULL` (default) uses the [default integer type][default_dtypes].
+#'   The number of successes are converted to it.
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state, and `values`, the sampled values.
+#'   Elements `state`, the updated RNG state, and `values`, the sample of shape
+#'   `shape` and data type `dtype`.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
+#' # Bernoulli samples; `state` is the updated RNG state
 #' state <- nv_rng_state(42L)
-#' # Bernoulli samples
 #' result <- nv_rbinom(c(2, 3), state)
 #' result$values
 #' @export
@@ -293,18 +295,18 @@ nv_rbinom <- jit(
 #' @template param_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled integers. Must be numeric.
-#'  `NULL` (default) uses the backend's default
-#'   integer data type (see [`default_dtypes()`]).
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#'   Numeric type of the sampled integers.
+#'   The sampled values are converted to it.
+#'   `NULL` (default) uses the [default integer type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state, and `values`, the sampled
-#'   integers of shape `shape`.
+#'   Elements `state`, the updated RNG state, and `values`, the sampled integers
+#'   of shape `shape` and data type `dtype`.
 #' @family rng
 #' @seealso [nv_sample()] to sample from an arbitrary population.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # roll six dice; `state` is the updated RNG state
 #' state <- nv_rng_state(42L)
-#' # roll 6 dice
 #' result <- nv_sample_int(6, state, 6L)
 #' result$values
 #' @export
@@ -336,13 +338,15 @@ nv_sample_int <- jit(
 #' @template param_shape
 #' @template param_state
 #' @param x ([`arrayish`])\cr
-#'   The population to sample from, a 1-D array.
+#'   The population vector to sample from.
+#'   An R value materializes at its [default data type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state, and `values`, the sampled values
-#'   of shape `shape` and with the data type of `x`.
+#'   Elements `state`, the updated RNG state, and `values`, the sample of shape
+#'   `shape` and `x`'s data type.
 #' @family rng
 #' @seealso [nv_sample_int()] to sample the integers `1` to `n`.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the sample takes the population's data type
 #' state <- nv_rng_state(42L)
 #' pop <- nv_array(c(10, 20, 30))
 #' result <- nv_sample(5, state, pop)

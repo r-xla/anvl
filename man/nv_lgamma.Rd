@@ -9,13 +9,15 @@ nv_lgamma(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is converted to the default floating point type
-(see \code{\link[=default_dtypes]{default_dtypes()}}).}
+One input. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the input, and its data type -- or the default float
-data type if the input was an integer array.
+(\code{\link{arrayish}})\cr
+Has the input's shape, and its data type -- or the default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
 }
 \description{
 Element-wise natural logarithm of the absolute value of the gamma
@@ -23,8 +25,12 @@ function. You can also use \code{lgamma()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0.5, 1, 2, 5))
 lgamma(x)
+
+# an R value materializes at its default data type
+nv_lgamma(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

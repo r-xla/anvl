@@ -14,8 +14,9 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 Size of the identity matrix.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type. \code{NULL} (default) uses the backend's default float data type
-(see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Data type of the result. Can be any data type; \code{NULL} (default) uses the
+default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}). For
+\code{nv_eye_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -31,13 +32,14 @@ is backend-specific, it also determines the backend.
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
 named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 
-\item{like}{(\code{\link{arrayish}})\cr
+\item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_eye_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
-An \verb{n x n} identity matrix.
+(\code{\link{arrayish}})\cr
+Has the given \code{dtype} and shape \verb{(n, n)}: ones on the diagonal, zeros
+elsewhere.
 }
 \description{
 Creates an \verb{n x n} identity matrix.
@@ -47,7 +49,10 @@ Creates an \verb{n x n} identity matrix.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a 3x3 identity matrix
 nv_eye(3L)
+
+# `_like` takes the data type and device from an existing array
 x <- nv_fill(0, shape = c(3, 3), dtype = "f64")
 nv_eye_like(x, 3L)
 \dontshow{\}) # examplesIf}

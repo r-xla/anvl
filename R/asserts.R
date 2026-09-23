@@ -1,12 +1,14 @@
 #' @title Assert Shape Vector
 #' @description
-#' Check whether an input is a valid shape vector (integer vector with all positive values).
+#' Check whether an input is a valid shape vector: whole, non-negative axis
+#' sizes.
 #' @param x Object to check.
 #' @param min_len (`integer(1)`)\cr
-#'   Minimum length of the shape vector. Default is 1.
+#'   Minimum number of axes. Default is 0.
 #' @param var_name (`character(1)`)\cr
 #'   Name of the variable to use in error messages.
-#' @return Invisibly returns `x` if the assertion passes.
+#' @return (`integer()`)\cr
+#'   `x` as an integer vector.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   ok <- test_integerish(x, lower = 0L, min.len = min_len, any.missing = FALSE, null.ok = FALSE)

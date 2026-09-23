@@ -33,6 +33,7 @@ If \code{TRUE} (default), register the result under \code{name} in the primitive
 registry.}
 }
 \value{
+(\code{JitPrimitive})\cr
 A callable of class \code{c("JitPrimitive", "JitFunction")}.
 }
 \description{

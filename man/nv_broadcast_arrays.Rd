@@ -12,7 +12,7 @@ Arrays to broadcast.}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr
-List of arrays, all with the same shape.
+The inputs, each with its own data type and the common shape.
 }
 \description{
 Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
@@ -29,9 +29,15 @@ it to the other's size; otherwise raise an error.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_matrix(1:6, nrow = 2)
-y <- nv_array(c(10, 20, 30))
-nv_broadcast_arrays(x, y)
+# the length-3 vector is stretched to the matrix's shape
+x1 <- nv_matrix(1:6, nrow = 2)
+x2 <- nv_array(c(10, 20, 30))
+nv_broadcast_arrays(x1, x2)
+
+# axes of size 1 are expanded to the other operand's size
+y1 <- nv_array(1:3, shape = c(1, 3))
+y2 <- nv_array(1:3, shape = c(3, 1))
+nv_broadcast_arrays(y1, y2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

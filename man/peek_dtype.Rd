@@ -11,7 +11,9 @@ peek_dtype(x)
 The value to ask about.}
 }
 \value{
-(\code{\link[tengen:DataType]{tengen::DataType}})
+(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+The data type \code{x} has, or the \link[=default_dtypes]{default data type} it would
+materialize at if it is still a bare R value.
 }
 \description{
 The data type \code{x} would take if it was converted to an \code{AnvlArray}.

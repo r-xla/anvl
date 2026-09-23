@@ -2,7 +2,7 @@
 % Please edit documentation in R/serialize.R
 \name{nv_unserialize}
 \alias{nv_unserialize}
-\title{Deserialize arrays from raw bytes}
+\title{Deserialize Arrays from Raw Bytes}
 \usage{
 nv_unserialize(con, device = NULL)
 }
@@ -15,7 +15,7 @@ The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...
 Default is to use the CPU.}
 }
 \value{
-Named \code{list} of \code{\link{AnvlArray}} objects.
+(named \code{list} of \code{\link{AnvlArray}})
 }
 \description{
 Deserializes arrays from the
@@ -27,6 +27,7 @@ restored from the serialized data.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 raw_data <- nv_serialize(list(x = x))

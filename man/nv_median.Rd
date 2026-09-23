@@ -24,15 +24,16 @@ nv_median(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. Negative values count from the end, i.e. \code{-1}
-refers to the last axis. If \code{NULL} (default), reduces over all
-axes, returning a scalar.}
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced axes.}
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 
 \item{interpolation}{(\code{character(1)})\cr
 Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. One of \code{"linear"} (default), \code{"lower"},
@@ -46,7 +47,7 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation fo
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Same shape as \code{x} with \code{axes} removed (or set to 1 if \code{drop = FALSE}).
 The data type is that of \code{x}, or the default float for a non-float \code{x}.
 }

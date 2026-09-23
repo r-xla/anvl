@@ -402,8 +402,10 @@ describe("nv_convert", {
     expect_equal(as_array(nv_convert(1.9, "i32")), 1L)
     expect_equal(as_array(nv_convert(-1.9, "i32")), -1L)
     # An R value is built at the target, so one it cannot hold is refused --
-    # where converting an array of that value wraps around.
-    expect_error(nv_convert(-2L, "ui8"), "Cannot build the R value -2")
+    # where converting an array of that value wraps around. Eagerly the value
+    # becomes a buffer, so it is the upload that refuses it.
+    expect_error(nv_convert(-2L, "ui8"), "ui8")
+    expect_error(jit(function() nv_convert(-2L, "ui8"))(), "Cannot build the R value -2")
     expect_equal(as.character(as_array(nv_convert(nv_scalar(-2L), "ui8"))), "254")
   })
 })

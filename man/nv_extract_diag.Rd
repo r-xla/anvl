@@ -8,17 +8,20 @@ nv_extract_diag(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input, with exactly 2 axes. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-A 1-D array of length \code{min(nrow, ncol)} containing the diagonal elements.
+(\code{\link{arrayish}})\cr
+Has the input's data type, and one axis of length \code{min(nrow, ncol)}
+holding the diagonal elements.
 }
 \description{
 Extracts the diagonal elements from a 2-D array.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the diagonal of a 3x3 matrix, keeping its data type
 x <- nv_array(1:9, shape = c(3, 3))
 nv_extract_diag(x)
 \dontshow{\}) # examplesIf}
