@@ -46,9 +46,21 @@ test_that("is_device recognizes backend device objects", {
 })
 
 describe("default_device()", {
-  it("returns the platform's own device when no option overrides it", {
-    local_platform_default_device()
-    expect_equal(default_device(), nv_device(Sys.getenv("PJRT_PLATFORM", "cpu")))
+  it("returns the first CPU device when no option overrides it", {
+    local_unset_default_device()
+    expect_equal(default_device(), nv_device("cpu"))
+  })
+
+  it("falls back to the device ANVL_DEFAULT_DEVICE names", {
+    local_unset_default_device()
+    local_env_default("DEVICE", "cpu:1")
+    expect_equal(default_device(), nv_device("cpu:1"))
+  })
+
+  it("prefers the `anvl.default_device` option over ANVL_DEFAULT_DEVICE", {
+    local_unset_default_device()
+    local_env_default("DEVICE", "cpu:1")
+    with_default_device("cpu:0", expect_equal(default_device(), nv_device("cpu:0")))
   })
 
   it("returns the device the `anvl.default_device` option names", {

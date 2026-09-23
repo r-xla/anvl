@@ -11,16 +11,9 @@ name: default-device
 
 permissions: read-all
 
-# Runs the test suite with the default device set to the *second* CPU device,
-# so that anything allocating on the platform's first device where it should
-# have followed the trace or its operands ends up on a device of its own --
-# which jit's device autodetect reports, where at the same default the two
-# would silently agree. `setup.R` turns ANVL_TEST_DEFAULT_DEVICE into the
-# `anvl.default_device` option for the whole run.
-#
-# It costs a full suite run, so on pull requests it waits for the `full-test`
-# label; pushes to main/master, the weekly cron and manual dispatches always
-# run it.
+# Runs the test suite with the default device set to the *second* CPU device.
+# This is partly a proxy for running the CUDA tests, because it also checks
+# device placement.
 jobs:
   default-device:
     if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
@@ -36,10 +29,9 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      PJRT_PLATFORM: cpu
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
-      ANVL_TEST_DEFAULT_DEVICE: ${{ matrix.device }}
+      ANVL_DEFAULT_DEVICE: ${{ matrix.device }}
 
     steps:
       - uses: actions/checkout@v7

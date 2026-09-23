@@ -274,8 +274,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' [`device()`]. A device is a [`pjrt::as_pjrt_device()`] object (e.g. the
 #' platform `"cpu"` or `"cuda"`, optionally with an index such as `"cuda:1"`).
 #' When `device` is `NULL` in [`nv_array()`] or the [`jit()`] wrapper, the
-#' device defaults to the `PJRT_PLATFORM` environment variable (falling back
-#' to `"cpu"`), or is inferred from the existing inputs of a jitted call.
+#' device defaults to [`default_device()`], or is inferred from the existing
+#' inputs of a jitted call.
 #' Operations require all inputs to live on the same device.
 #'
 #' @section Supported data types:

@@ -22,7 +22,7 @@ types an R double and integer materialize at when it cannot be inferred from
 another operand.
 See \code{\link[=default_dtypes]{default_dtypes()}} for more details.
 \item \code{anvl.default_device} (\code{character(1)} | device object): the device a call
-that names none allocates on, in place of the platform's own first device.
+that names none allocates on.
 Also see \code{\link[=default_device]{default_device()}}, \code{\link[=local_default_device]{local_default_device()}} and
 \code{\link[=with_default_device]{with_default_device()}}.
 }
@@ -31,12 +31,14 @@ Also see \code{\link[=default_device]{default_device()}}, \code{\link[=local_def
 \section{Environment variables}{
 
 \itemize{
-\item \code{PJRT_PLATFORM}: the platform the \code{"pjrt"} backend allocates on and
-compiles for when a call names no device -- \code{"cpu"} (the default),
-\code{"cuda"}, \code{"metal"}, ... It is read afresh whenever a default device is
-needed; see \code{\link[=default_device]{default_device()}} and \code{\link[=nv_device]{nv_device()}}. The variable is
-pjrt's, anvl only follows it.
+\item \code{ANVL_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
+\code{"float=f64,int=i64"}, used for every backend when the
+\code{anvl.default_dtypes} option is not set.
+\item \code{ANVL_DEFAULT_DEVICE}: a device identifier such as \code{"cuda"} or \code{"cpu:1"},
+used when the \code{anvl.default_device} option is not set.
 }
+
+Both are read once, when anvl is loaded.
 
 The remaining ones, all prefixed \code{ANVL_TEST}, affect only anvl's own test
 suite, not the package:
@@ -45,15 +47,6 @@ suite, not the package:
 so \verb{R CMD check} in a shell without it runs none of them.
 \item \code{ANVL_TEST_SKIP_QUICKR}: when set to anything non-empty, the tests that need
 the quickr backend are skipped -- they are comparatively slow.
-\item \code{ANVL_TEST_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
-\code{"float=f64,int=i64"}, which the test setup turns into the
-\code{anvl.default_dtypes} option for the whole run, so that anything
-hardcoding \code{f32} / \code{i32} where it should read \code{\link[=default_dtypes]{default_dtypes()}} fails.
-\item \code{ANVL_TEST_DEFAULT_DEVICE}: a device identifier such as \code{"cpu:1"}, which the
-test setup turns into the \code{anvl.default_device} option for the whole run,
-so that anything allocating on the platform's first device where it should
-have followed the trace or its operands ends up on a device of its own and
-is reported, rather than agreeing with everything else by accident.
 }
 }
 

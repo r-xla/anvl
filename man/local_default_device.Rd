@@ -28,7 +28,7 @@ invisibly, \code{with_default_device()} the value of \code{code}.
 }
 \description{
 Sets the \code{anvl.default_device} option, which \code{\link[=default_device]{default_device()}} returns in
-place of the platform's first device: \code{local_default_device()} for the
+place of the first CPU device: \code{local_default_device()} for the
 calling scope, \code{with_default_device()} for one expression.
 
 This is what a call that names no device allocates on, and what a jitted

@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+* `default_device()` no longer follows `PJRT_PLATFORM`; set `ANVL_DEFAULT_DEVICE`
+  or the `anvl.default_device` option instead.
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
 * `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
@@ -66,7 +68,10 @@
 
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
-  allocates on in place of the platform's first.
+  allocates on in place of the first CPU device.
+* The environment variables `ANVL_DEFAULT_DEVICE` and `ANVL_DEFAULT_DTYPES`, read
+  when anvl is loaded, are used when the `anvl.default_device` and
+  `anvl.default_dtypes` options are not set.
 * `nv_rng_state()` accepts a seed of any signed or unsigned integer data type,
   bringing it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
   whatever the seed and the default integer data type are.
@@ -250,14 +255,13 @@
 
 ## Tests
 
-* The environment variables that configure the test suite are now spelled with
-  an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`, `ANVL_TEST_DEFAULT_DTYPES`
-  and `ANVL_TEST_DEFAULT_DEVICE`. `ANVL_TEST` itself is unchanged.
-* The suite can be run with `ANVL_TEST_DEFAULT_DEVICE=cpu:1`, which makes anything
-  allocating on the platform's first device rather than following the trace
-  land on a device of its own instead of agreeing with everything else by
-  accident. The `default-device` workflow runs it that way on the `full-test`
-  label.
+* The environment variables that configure only the test suite are now spelled
+  with an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`. `ANVL_TEST` itself is
+  unchanged.
+* The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes anything
+  allocating on the first CPU device rather than following the trace land on a
+  device of its own instead of agreeing with everything else by accident. The
+  `default-device` workflow runs it that way on the `full-test` label.
 * Moved some of pjrt's dispatcher tests into anvl.
 
 # anvl 0.4.0

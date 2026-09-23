@@ -11,16 +11,18 @@ NULL
 #'   another operand.
 #'   See [`default_dtypes()`] for more details.
 #' * `anvl.default_device` (`character(1)` | device object): the device a call
-#'   that names none allocates on, in place of the platform's own first device.
+#'   that names none allocates on.
 #'   Also see [`default_device()`], [`local_default_device()`] and
 #'   [`with_default_device()`].
 #'
 #' @section Environment variables:
-#' * `PJRT_PLATFORM`: the platform the `"pjrt"` backend allocates on and
-#'   compiles for when a call names no device -- `"cpu"` (the default),
-#'   `"cuda"`, `"metal"`, ... It is read afresh whenever a default device is
-#'   needed; see [`default_device()`] and [`nv_device()`]. The variable is
-#'   pjrt's, anvl only follows it.
+#' * `ANVL_DEFAULT_DTYPES`: `category=dtype` pairs such as
+#'   `"float=f64,int=i64"`, used for every backend when the
+#'   `anvl.default_dtypes` option is not set.
+#' * `ANVL_DEFAULT_DEVICE`: a device identifier such as `"cuda"` or `"cpu:1"`,
+#'   used when the `anvl.default_device` option is not set.
+#'
+#' Both are read once, when anvl is loaded.
 #'
 #' The remaining ones, all prefixed `ANVL_TEST`, affect only anvl's own test
 #' suite, not the package:
@@ -29,15 +31,6 @@ NULL
 #'   so `R CMD check` in a shell without it runs none of them.
 #' * `ANVL_TEST_SKIP_QUICKR`: when set to anything non-empty, the tests that need
 #'   the quickr backend are skipped -- they are comparatively slow.
-#' * `ANVL_TEST_DEFAULT_DTYPES`: `category=dtype` pairs such as
-#'   `"float=f64,int=i64"`, which the test setup turns into the
-#'   `anvl.default_dtypes` option for the whole run, so that anything
-#'   hardcoding `f32` / `i32` where it should read [`default_dtypes()`] fails.
-#' * `ANVL_TEST_DEFAULT_DEVICE`: a device identifier such as `"cpu:1"`, which the
-#'   test setup turns into the `anvl.default_device` option for the whole run,
-#'   so that anything allocating on the platform's first device where it should
-#'   have followed the trace or its operands ends up on a device of its own and
-#'   is reported, rather than agreeing with everything else by accident.
 #'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically

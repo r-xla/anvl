@@ -48,9 +48,9 @@ env_or <- function(var, default = "") {
 FULL   <- env_or("PNORM_FULL", "1") != "0"
 PERF   <- env_or("PNORM_PERF", "1") != "0"
 DEVICE <- env_or("DEVICE", "cpu")
-## anvl reads PJRT_PLATFORM in default_device(); nv_array()/jit() then place and
+## anvl reads ANVL_DEFAULT_DEVICE when loaded; nv_array()/jit() then place and
 ## compile on it. JAX is steered per-subprocess via JAX_PLATFORMS (run_py_chunk).
-Sys.setenv(PJRT_PLATFORM = DEVICE)
+Sys.setenv(ANVL_DEFAULT_DEVICE = DEVICE)
 
 suppressPackageStartupMessages({
   library(anvl)

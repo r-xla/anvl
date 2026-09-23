@@ -1,12 +1,10 @@
 #' @title Get the default device
 #' @description
-#' Returns the default device of the active backend.
-#' For the `"pjrt"` backend, the default device is configured by the `PJRT_PLATFORM`
-#' environment variable (defaulting to `"cpu"`). Other backends (e.g. `"quickr"`)
-#' only support CPU.
-#'
-#' The `anvl.default_device` option overrides both, naming the device itself
-#' rather than only its platform -- see [`local_default_device()`].
+#' Returns the default device of the active backend: the device the
+#' `anvl.default_device` option names (see [`local_default_device()`]), else
+#' the one the `ANVL_DEFAULT_DEVICE` environment variable names (e.g.
+#' `ANVL_DEFAULT_DEVICE=cuda`, read once when anvl is loaded), else the first
+#' CPU device.
 #' @param backend (`NULL` | `character(1)`)\cr
 #'   Backend. Defaults to [`active_backend()`] when `NULL`.
 #' @return (device object)\cr
@@ -15,18 +13,14 @@
 #' @export
 default_device <- function(backend = NULL) {
   backend <- backend %||% active_backend()
-  override <- getOption("anvl.default_device")
-  if (!is.null(override)) {
-    return(backend_device(override, backend))
-  }
-  platform <- if (backend == "pjrt") Sys.getenv("PJRT_PLATFORM", "cpu") else "cpu"
-  backend_device(platform, backend)
+  device <- getOption("anvl.default_device") %||% globals[["ENV_DEFAULT_DEVICE"]] %||% "cpu"
+  backend_device(device, backend)
 }
 
 #' @title Temporarily Set the Default Device
 #' @description
 #' Sets the `anvl.default_device` option, which [`default_device()`] returns in
-#' place of the platform's first device: `local_default_device()` for the
+#' place of the first CPU device: `local_default_device()` for the
 #' calling scope, `with_default_device()` for one expression.
 #'
 #' This is what a call that names no device allocates on, and what a jitted
