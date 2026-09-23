@@ -457,9 +457,12 @@ dtypes_merged <- function(answers, args) {
   out
 }
 
+# An unnamed operand is spelled the way a primitive that takes its operands
+# through `...` names it -- `..2` -- so that the promotion layer and the
+# inference rules call the same operand the same thing.
 arg_label <- function(args, i) {
   nm <- rlang::names2(args)[[i]]
-  if (nzchar(nm)) sprintf("`%s`", nm) else sprintf("argument %d", i)
+  if (nzchar(nm)) sprintf("`%s`", nm) else sprintf("`..%d`", i)
 }
 
 # Whether `x` reaches `dtype` without losing what it holds: a value that has a

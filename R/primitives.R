@@ -2481,6 +2481,22 @@ prim_if <- new_primitive(
     force(true)
     force(false)
 
+    # As `prim_while()` checks `cond` and `body`: without this a branch that is
+    # not a function reaches `do.call()` inside the tracer and reports
+    # `'what' must be a function or character string`.
+    if (!is.function(true)) {
+      cli_abort(c(
+        "{.arg true} must be a function.",
+        x = "Got {value_repr(true)}."
+      ))
+    }
+    if (!is.function(false)) {
+      cli_abort(c(
+        "{.arg false} must be a function.",
+        x = "Got {value_repr(false)}."
+      ))
+    }
+
     # Build sub-graphs for each branch (no inputs, just capture closed-over values)
     # We need to ensure that constants that are captured in both branches receive the same
     # GraphValue if they capture the same constant

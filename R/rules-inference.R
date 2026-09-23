@@ -22,9 +22,10 @@ NULL
 #
 # The rules are also where a primitive's arguments are checked. Anything that
 # can be decided from the incoming avals and the params belongs here and not in
-# the `prim_*()` body: a check in both places gives one mistake two wordings,
-# and only a rule's error reaches the caller with its call rewritten to
-# `prim_*()`.
+# the `prim_*()` body: a check in both places gives one mistake two wordings.
+# Either place reports the primitive as the call -- a rule's error is rewritten
+# in `trace_fn()`, and `new_primitive()` wraps the body so that anything raised
+# there is too.
 #
 # What stays in the wrapper is what a rule cannot do. `resolve_axis()` and
 # `resolve_axes()` normalize rather than check -- they turn a negative axis into
@@ -70,6 +71,12 @@ repr_max_chars <- 30L
 value_repr <- function(x) {
   if (is.null(x) || identical(x, list())) {
     return(format_param(x))
+  }
+  # An array reads as its array type, not as the class it happens to arrive
+  # in: under `jit()` an operand is a `GraphBox`, which is the tracer's
+  # business and not something the caller wrote.
+  if (is_arrayish(x, convert_ok = FALSE)) {
+    return(repr(AbstractArray(dtype = dtype(x), shape = shape(x))))
   }
   if (!is.atomic(x) || is.object(x)) {
     # A length is only worth stating for a plain vector, which a list is.
@@ -147,21 +154,25 @@ assert_int_param <- function(x, arg, len = NULL, min_len = NULL) {
   if (is.null(x)) {
     x <- integer()
   }
+  # A param the primitive fixes at one entry is spoken of in the singular
+  # throughout, so that one mistake does not read as "`k` must be a whole
+  # number" in one branch and "`k` must contain whole numbers" in the next.
+  one <- identical(len, 1L)
   if (!is.numeric(x) || is.object(x)) {
     cli_abort(c(
-      "{.arg {arg}} must be a whole number{if (identical(len, 1L)) \"\" else \" vector\"}.",
+      "{.arg {arg}} must be a whole number{if (one) '' else ' vector'}.",
       x = "Got {value_repr(x)}."
     ))
   }
   if (anyNA(x)) {
     cli_abort(c(
-      "{.arg {arg}} must not contain missing values.",
+      "{.arg {arg}} must not {if (one) 'be a missing value' else 'contain missing values'}.",
       x = "Got {value_repr(x)}."
     ))
   }
   if (any(x != trunc(x))) {
     cli_abort(c(
-      "{.arg {arg}} must contain whole numbers.",
+      "{.arg {arg}} must {if (one) 'be a whole number' else 'contain whole numbers'}.",
       x = "Got {value_repr(x)}."
     ))
   }
@@ -170,7 +181,7 @@ assert_int_param <- function(x, arg, len = NULL, min_len = NULL) {
   # never passed.
   if (any(abs(x) > .Machine$integer.max)) {
     cli_abort(c(
-      "{.arg {arg}} must contain whole numbers in the integer range.",
+      "{.arg {arg}} must {if (one) 'be a whole number' else 'contain whole numbers'} in the integer range.", # nolint
       x = "Got {value_repr(x)}."
     ))
   }
@@ -236,6 +247,26 @@ assert_size_param <- function(x, arg, len = NULL) {
     ))
   }
   invisible(x)
+}
+
+# A result shape a rule computed from the caller's params. The arithmetic that
+# produces it runs in double, because params `assert_int_param()` accepted one
+# by one still overflow when they are summed -- and an `NA` from that overflow
+# reaches an `if ()` as the raw R error `missing value where TRUE/FALSE needed`,
+# which is what these rules exist to prevent. An axis that no longer fits an R
+# integer is refused here rather than at `Shape()`, where it would read as a
+# missing value the caller never passed.
+assert_result_shape <- function(shape, what, parts) {
+  int_max <- .Machine$integer.max
+  bad <- which(shape > int_max)
+  if (length(bad)) {
+    cli_abort(c(
+      "{what} must have at most {.val {int_max}} elements along each axis.",
+      x = "{cli::qty(length(bad))}Ax{?is/es} {value_repr(bad)} would end up at {value_repr(shape[bad])}.", # nolint
+      i = "Got {params_repr(parts)}."
+    ))
+  }
+  as.integer(shape)
 }
 
 # The categories as a message reads them, with the article that fits the first:
@@ -776,18 +807,22 @@ infer_static_slice <- function(x, start_indices, limit_indices, strides) {
       x = "Got {value_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
-  if (any(start > limit + 1L)) {
-    bad <- which(start > limit + 1L)
-    cli_abort(c(
-      "{.arg start_indices} must not exceed {.arg limit_indices}.",
-      x = "Got {value_repr(start[bad])} and {value_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
-    ))
-  }
+  # Before the comparison against `limit` below, which would otherwise compute
+  # `limit + 1L` on a `limit` of `.Machine$integer.max` and hand `if ()` the
+  # `NA` that overflows to. Once `limit` is at most an axis size, it cannot.
+  # It is also the better complaint: an out-of-range `limit` is the mistake.
   if (any(limit > in_shape)) {
     bad <- which(limit > in_shape)
     cli_abort(c(
       "{.arg limit_indices} must not exceed the shape of {.arg x} {shape_repr(in_shape)}.",
       x = "Got {value_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
+    ))
+  }
+  if (any(start > limit + 1L)) {
+    bad <- which(start > limit + 1L)
+    cli_abort(c(
+      "{.arg start_indices} must not exceed {.arg limit_indices}.",
+      x = "Got {value_repr(start[bad])} and {value_repr(limit[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}."
     ))
   }
 
@@ -1975,19 +2010,58 @@ infer_convolution <- function(
   result_shape <- integer(rank)
   result_shape[output_batch_axis] <- input_batch_size %/% bg_count
   result_shape[output_feature_axis] <- kernel_out_size
+  # The window arithmetic runs in double: a dilation or a padding in the
+  # billions overflows an integer, and the `NA` it produces reaches the tests
+  # below as the raw `missing value where TRUE/FALSE needed`.
+  result_shape <- as.double(result_shape)
   for (sd in seq_len(n_spatial)) {
-    x_size <- x_shape[[input_spatial_axes[[sd]]]]
-    k_size <- kernel_shape[[kernel_spatial_axes[[sd]]]]
-    dilated_input <- if (x_size == 0L) 0L else (x_size - 1L) * x_dil[[sd]] + 1L
+    x_size <- as.double(x_shape[[input_spatial_axes[[sd]]]])
+    k_size <- as.double(kernel_shape[[kernel_spatial_axes[[sd]]]])
+    dilated_input <- if (x_size == 0) 0 else (x_size - 1) * x_dil[[sd]] + 1
     padded_input <- pad[sd, 1L] + dilated_input + pad[sd, 2L]
-    dilated_window <- if (k_size == 0L) 0L else (k_size - 1L) * kernel_dil[[sd]] + 1L
-    num_windows <- if (padded_input == 0L || dilated_window > padded_input) {
-      0L
+
+    # Negative padding may empty a spatial axis but must not take away more
+    # than it holds: XLA infers the window bound from this and `CHECK`-fails on
+    # a negative one, which aborts the process rather than raising an error, so
+    # a negative extent can never leave this rule.
+    if (padded_input < 0) {
+      cli_abort(c(
+        "Negative {.arg padding} must not remove more than spatial axis {sd} of {.arg x} holds.",
+        x = "Axis {input_spatial_axes[[sd]]} of {.arg x} dilates to {dilated_input}, and padding {pad[sd, 1L]} and {pad[sd, 2L]} leaves {padded_input}.", # nolint
+        i = "Got {params_repr(list(padding = padding, x_dilation = x_dil))}."
+      ))
+    }
+
+    # A window has to have something in it. A zero-sized kernel axis gives a
+    # zero-wide window, which the arithmetic below reads as "not wider than the
+    # input" and infers a non-empty result from; StableHLO refuses it outright,
+    # reporting the axis 0-based.
+    if (k_size == 0) {
+      cli_abort(c(
+        "{.arg kernel} must not have a zero-sized spatial axis.",
+        x = "Axis {kernel_spatial_axes[[sd]]} of {.arg kernel} is {.val {0L}}."
+      ))
+    }
+
+    dilated_window <- (k_size - 1) * kernel_dil[[sd]] + 1
+    num_windows <- if (padded_input == 0 || dilated_window > padded_input) {
+      0
     } else {
-      as.integer(floor((padded_input - dilated_window) / strides[[sd]]) + 1L)
+      floor((padded_input - dilated_window) / strides[[sd]]) + 1
     }
     result_shape[output_spatial_axes[[sd]]] <- num_windows
   }
+
+  result_shape <- assert_result_shape(
+    result_shape,
+    "The convolution's result",
+    list(
+      padding = padding,
+      window_strides = strides,
+      x_dilation = x_dil,
+      kernel_dilation = kernel_dil
+    )
+  )
 
   list(AbstractArray(dtype = dtype(x), shape = Shape(result_shape)))
 }

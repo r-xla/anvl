@@ -83,9 +83,10 @@ Every primitive has an inference rule `infer_<name>()` in `R/rules-inference.R`,
 
 ### Where a check goes
 
-- Anything decidable from the avals and params goes **in the rule, not in the `prim_*()` body**. A check in both places gives one mistake two wordings, and only an error raised by the rule reaches the caller with its call rewritten to `prim_<name>()`.
+- Anything decidable from the avals and params goes **in the rule, not in the `prim_*()` body**. A check in both places gives one mistake two wordings. (Either place reports `prim_<name>()` as the call: the rule's error is rewritten in `trace_fn()`, and `new_primitive()` wraps the body so anything raised there is too.)
 - The wrapper keeps only what a rule cannot do: normalizing (`resolve_axis()` / `resolve_axes()` turn a negative axis into a concrete one, so the rule only sees the result), coercing a param before it is stored (then use the same `assert_*_param()` helper the rule uses, so the wording stays the same), checking sub-graph functions (traced before `graph_desc_add()`), and a guard the wrapper's own next line depends on.
 - Validate every whole-number param with `assert_int_param()` / `assert_size_param()` **before** indexing or comparing with it. Otherwise an `NA` reaches an `if ()` and the caller sees R's raw `missing value where TRUE/FALSE needed`.
+- That check is per entry, so it does not survive arithmetic: params each inside the integer range still overflow when a rule adds or multiplies them. Compute a result shape in double (`as.double()`) and hand it to `assert_result_shape()`, as `infer_convolution()` does.
 - Guard against inputs that would crash *later*, deeper in the stack, with a worse message: a stride of 0, an axis past the end of a lower-rank operand, a rank-0 input to an axis-taking op.
 
 ### Error messages
@@ -107,7 +108,7 @@ cli_abort(c(
   - `params_repr(list(a = ..., b = ...))` when the check involves several params at once (`` `start_indices` = 1, `strides` = c(1, 2) ``).
   - `shape_repr()` for shapes (`(2x3)`), `repr()` for a whole array type, `{.val {as.character(dtype(x))}}` for a data type.
 - **Never print a caller's value with a bare `{x}` / `{.val {x}}`** unless its length is already checked to be 1. A caller can pass anything (`prim_fill(1:1000, ...)`, a 5000-character string, a list), and the helpers above are what keep the message short and quick to build: they show at most 8 entries (`c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000`) and cut strings at 30 characters; `shape_repr()` stops after 8 axes. Don't paste a vector into a message yourself (`paste0(x, collapse = ", ")`).
-- **Refuse input that would fail later with a worse message.** Examples: a shape whose element count overflows int64 (`assert_shapevec()` checks this), and a whole number outside the integer range, which `as.integer()` would silently turn into `NA` (`assert_int_param()` checks this).
+- **Refuse input that would fail later with a worse message.** Examples: a shape whose element count overflows int64 (`assert_shapevec()` checks this), and a whole number outside the integer range, which `as.integer()` would silently turn into `NA` (`assert_int_param()` checks this). Some of these abort the process rather than raising: XLA `CHECK`-fails on a negative window bound, so `infer_convolution()` refuses a negative padded input itself.
 - **Point at the offending entries** when only some are wrong: `Got {value_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}.`
 - **An `i` bullet** adds context that isn't the offending value: the full set of params on a clash (`i = "Got {params_repr(parts)}."`), or where to look (`i = "See {.fn tengen::as_dtype} ..."`).
 - **Operands without their own formal** are named by the argument the caller used: `..2` for operands passed through `...` (`prim_concatenate()`), `xs[[2]]` for ones collected in a list (`prim_sort()`). `assert_arrays(..., .arg = "xs")` does this for you. When operands disagree, name the first one *and* the one that disagrees: `` `..1` has shape (2x3), `..2` has shape (2x4). ``
@@ -130,6 +131,7 @@ Reach for the shared helpers at the top of `R/rules-inference.R` before writing 
 | `assert_dtype_param()` | names a data type |
 | `assert_axes_in_range()` / `assert_axes_unique()` / `assert_axes_sorted()` | axis vectors |
 | `assert_axis_layout()` | several params that together name every axis once |
+| `assert_result_shape(shape, what, parts)` | a shape the rule *computed*: refuses an axis past the integer range |
 
 If a new check will be needed by more than one rule, add a helper next to these, in the same style.
 

@@ -119,6 +119,7 @@ new_primitive <- function(
   self_env <- new.env(parent = environment(fn))
   self_env$self <- primitive
   environment(fn) <- self_env
+  body(fn) <- wrap_primitive_body(body(fn))
 
   jit_fn <- jit(fn, static = static)
   attr(jit_fn, "primitive") <- primitive
@@ -129,6 +130,37 @@ new_primitive <- function(
   }
 
   jit_fn
+}
+
+
+# Whatever a primitive refuses, the caller reads as coming from the `prim_*()`
+# they wrote. Without this the helpers a body checks its arguments with report
+# themselves (`Error in assert_int_param()`), and a `cli_abort()` in the body
+# reports the anonymous function `jit()` wraps
+# (`Error in (function (init, cond, body)`). The call is built on the way out
+# rather than here, because `print_call_repr()` is collated after this file.
+wrap_primitive_body <- function(body) {
+  rlang::expr(
+    tryCatch(
+      !!body,
+      error = function(cnd) {
+        if (!is_primitive_call(cnd$call)) {
+          cnd$call <- print_call_repr(self)
+        }
+        rlang::cnd_signal(cnd)
+      }
+    )
+  )
+}
+
+# Has a condition's call already been attributed to a `prim_*()`? An inference
+# error is rewritten this way in `trace_fn()`, and a primitive that calls
+# another one leaves the inner attribution alone, so the innermost `prim_*()`
+# is the one reported.
+is_primitive_call <- function(call) {
+  is.call(call) &&
+    is.name(call[[1L]]) &&
+    startsWith(as.character(call[[1L]]), "prim_")
 }
 
 

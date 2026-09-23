@@ -20,7 +20,7 @@
       jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)),
       permutation = c(2, 2))
     Condition
-      Error in `resolve_axes()`:
+      Error in `prim_transpose()`:
       ! `permutation` must not contain duplicate axes.
       x Got c(2, 2).
 

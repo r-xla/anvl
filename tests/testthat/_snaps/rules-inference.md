@@ -134,7 +134,7 @@
     Code
       prim_reshape(nv_array(1:4), shape = "a")
     Condition
-      Error in `resolve_reshape_shape()`:
+      Error in `prim_reshape()`:
       ! `shape` must be an integer vector without missing values.
       x Got "a".
 
@@ -152,7 +152,7 @@
     Code
       prim_reverse(nv_array(1:4), axes = list(1L))
     Condition
-      Error in `resolve_axes()`:
+      Error in `prim_reverse()`:
       ! `axes` must be an integer vector without missing values.
       x Got <list> of length 1.
 
@@ -161,7 +161,7 @@
     Code
       prim_cumsum(nv_array(1:4), axis = c(1L, 1L))
     Condition
-      Error in `resolve_axis()`:
+      Error in `prim_cumsum()`:
       ! `axis` must have length 1.
       x Got c(1, 1).
 
@@ -188,7 +188,7 @@
     Code
       prim_reduce_sum(nv_array(1:4), axes = "a")
     Condition
-      Error in `resolve_axes()`:
+      Error in `prim_reduce_sum()`:
       ! `axes` must be an integer vector without missing values.
       x Got "a".
 
@@ -197,7 +197,7 @@
     Code
       prim_convert(nv_array(1:4), dtype = "nope")
     Condition
-      Error in `assert_dtype_param()`:
+      Error in `prim_convert()`:
       ! `dtype` must name a data type.
       x Got "nope".
       i See `tengen::as_dtype()` for the data types anvl knows.
@@ -207,7 +207,7 @@
     Code
       prim_convert(nv_array(1:4), dtype = 42)
     Condition
-      Error in `assert_dtype_param()`:
+      Error in `prim_convert()`:
       ! `dtype` must name a data type.
       x Got 42.
       i See `tengen::as_dtype()` for the data types anvl knows.
@@ -235,7 +235,7 @@
     Code
       prim_fill(c(1, 2), 3L, "f32")
     Condition
-      Error in `assert_fill_value()`:
+      Error in `prim_fill()`:
       ! `value` must be a scalar.
       x Got c(1, 2).
 
@@ -244,7 +244,7 @@
     Code
       prim_fill(1, 3L, "nope")
     Condition
-      Error in `assert_dtype_param()`:
+      Error in `prim_fill()`:
       ! `dtype` must name a data type.
       x Got "nope".
       i See `tengen::as_dtype()` for the data types anvl knows.
@@ -254,7 +254,7 @@
     Code
       prim_iota(axis = 1L, dtype = "f32", shape = "a")
     Condition
-      Error in `assert_shapevec()`:
+      Error in `prim_iota()`:
       ! `shape` must be an integer vector.
       x Got "a".
 
@@ -336,7 +336,7 @@
     Code
       prim_top_k(nv_array(1:4), k = c(1L, 2L))
     Condition
-      Error in `assert_int_param()`:
+      Error in `prim_top_k()`:
       ! `k` must have 1 entry.
       x Got c(1, 2).
 
@@ -625,7 +625,7 @@
     Code
       prim_fill(1:1000, 3L, "f32")
     Condition
-      Error in `assert_fill_value()`:
+      Error in `prim_fill()`:
       ! `value` must be a scalar.
       x Got c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000.
 
@@ -634,7 +634,7 @@
     Code
       prim_fill(1, 3L, strrep("a", 5000))
     Condition
-      Error in `assert_dtype_param()`:
+      Error in `prim_fill()`:
       ! `dtype` must name a data type.
       x Got "aaaaaaaaaaaaaaaaaaaaaaaaaaa...".
       i See `tengen::as_dtype()` for the data types anvl knows.
@@ -671,7 +671,7 @@
     Code
       prim_fill(1, 1:1000, "f32")
     Condition
-      Error in `assert_shapevec()`:
+      Error in `prim_fill()`:
       ! `shape` must describe an array with fewer than 2^63 elements.
       x Got c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000.
 
@@ -680,8 +680,8 @@
     Code
       prim_top_k(nv_array(1:4), k = Inf)
     Condition
-      Error in `assert_int_param()`:
-      ! `k` must contain whole numbers in the integer range.
+      Error in `prim_top_k()`:
+      ! `k` must be a whole number in the integer range.
       x Got Inf.
 
 # broadcasting to a size-1 axis names 1 once
@@ -692,4 +692,97 @@
       Error in `prim_broadcast_in_axes()`:
       ! Axis 1 of `x` must be 1 to broadcast to axis 1 of the result.
       x Got shapes (4x3) and (1x3).
+
+# a result shape a rule computes from the caller's parameters / refuses a negative padding that empties a spatial axis past zero
+
+    Code
+      conv(padding = matrix(-100L, 2L, 2L))
+    Condition
+      Error in `prim_convolution()`:
+      ! Negative `padding` must not remove more than spatial axis 1 of `x` holds.
+      x Axis 3 of `x` dilates to 4, and padding -100 and -100 leaves -196.
+      i Got `padding` = matrix(c(-100, -100, -100, -100), nrow = 2, ncol = 2), `x_dilation` = c(1, 1).
+
+# a result shape a rule computes from the caller's parameters / refuses a zero-sized kernel spatial axis
+
+    Code
+      conv(kernel = nv_array(array(numeric(), c(1L, 1L, 0L, 0L)), dtype = "f32"))
+    Condition
+      Error in `prim_convolution()`:
+      ! `kernel` must not have a zero-sized spatial axis.
+      x Axis 3 of `kernel` is 0.
+
+# a result shape a rule computes from the caller's parameters / refuses an overflowing dilation or padding rather than reaching an `if ()` with an `NA`
+
+    Code
+      conv(x_dilation = c(2000000000L, 1L))
+    Condition
+      Error in `prim_convolution()`:
+      ! The convolution's result must have at most 2147483647 elements along each axis.
+      x Axis 3 would end up at 6e+09.
+      i Got `padding` = matrix(c(0, 0, 0, 0), nrow = 2, ncol = 2), `window_strides` = c(1, 1), `x_dilation` = c(2000000000, 1), `kernel_dilation` = c(1, 1).
+
+---
+
+    Code
+      conv(padding = matrix(2000000000L, 2L, 2L))
+    Condition
+      Error in `prim_convolution()`:
+      ! The convolution's result must have at most 2147483647 elements along each axis.
+      x Axes c(3, 4) would end up at c(4e+09, 4e+09).
+      i Got `padding` = matrix(c(2000000000, 2000000000, 2000000000, 2000000000), nrow = 2, ncol = 2), `window_strides` = c(1, 1), `x_dilation` = c(1, 1), `kernel_dilation` = c(1, 1).
+
+# a result shape a rule computes from the caller's parameters / reports an out-of-range `limit_indices` rather than overflowing on it
+
+    Code
+      prim_static_slice(nv_array(1:4), 1L, .Machine$integer.max, 1L)
+    Condition
+      Error in `prim_static_slice()`:
+      ! `limit_indices` must not exceed the shape of `x` (4).
+      x Got 2147483647 at axis 1.
+
+# a whole-number parameter the primitive fixes at one entry / is spoken of in the singular by every branch that refuses it
+
+    Code
+      prim_top_k(nv_array(1:4), NA)
+    Condition
+      Error in `prim_top_k()`:
+      ! `k` must be a whole number.
+      x Got NA.
+
+---
+
+    Code
+      prim_top_k(nv_array(1:4), 2.5)
+    Condition
+      Error in `prim_top_k()`:
+      ! `k` must be a whole number.
+      x Got 2.5.
+
+---
+
+    Code
+      prim_top_k(nv_array(1:4), 3e+09)
+    Condition
+      Error in `prim_top_k()`:
+      ! `k` must be a whole number in the integer range.
+      x Got 3e+09.
+
+# the sub-graph arguments a primitive traces / refuses a `prim_if()` branch that is not a function
+
+    Code
+      prim_if(nv_scalar(TRUE), 1L, function() nv_scalar(1L))
+    Condition
+      Error in `prim_if()`:
+      ! `true` must be a function.
+      x Got 1.
+
+---
+
+    Code
+      prim_if(nv_scalar(TRUE), function() nv_scalar(1L), "x")
+    Condition
+      Error in `prim_if()`:
+      ! `false` must be a function.
+      x Got "x".
 

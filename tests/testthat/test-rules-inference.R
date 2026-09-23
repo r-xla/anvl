@@ -791,6 +791,17 @@ describe("value_repr()", {
     })
   })
 
+  it("reports an array by its array type, not the class it arrives in", {
+    # Under `jit()` an operand is a `GraphBox`, which is the tracer's business
+    # and not something the caller wrote.
+    expect_equal(value_repr(nv_array(1:4)), "i32[4]")
+    expect_error(
+      prim_sort(nv_array(1:4), axis = 1L),
+      "Got i32[4]",
+      fixed = TRUE
+    )
+  })
+
   it("copes with values format_param() never sees", {
     expect_snapshot({
       show_repr(NA)
@@ -849,4 +860,117 @@ test_that("a whole-number param outside the integer range is not reported as NA"
 test_that("broadcasting to a size-1 axis names 1 once", {
   x <- nv_array(as.double(1:12), shape = c(4, 3))
   expect_snapshot(error = TRUE, prim_broadcast_in_axes(x, shape = c(1L, 3L), broadcast_axes = 1:2))
+})
+
+describe("a result shape a rule computes from the caller's parameters", {
+  # `prim_convolution()` is the path a caller takes, and the one that used to
+  # reach XLA; the rule alone would not exercise the wrapper's promotion.
+  conv <- function(...) {
+    args <- list(
+      x = nv_array(array(as.double(1:16), c(1L, 1L, 4L, 4L)), dtype = "f32"),
+      kernel = nv_array(array(as.double(1:4), c(1L, 1L, 2L, 2L)), dtype = "f32"),
+      input_batch_axis = 1L,
+      input_feature_axis = 2L,
+      input_spatial_axes = c(3L, 4L),
+      kernel_input_feature_axis = 2L,
+      kernel_output_feature_axis = 1L,
+      kernel_spatial_axes = c(3L, 4L),
+      output_batch_axis = 1L,
+      output_feature_axis = 2L,
+      output_spatial_axes = c(3L, 4L),
+      window_strides = c(1L, 1L),
+      padding = matrix(0L, 2L, 2L),
+      x_dilation = c(1L, 1L),
+      kernel_dilation = c(1L, 1L)
+    )
+    do.call(prim_convolution, utils::modifyList(args, list(...)))
+  }
+
+  it("refuses a negative padding that empties a spatial axis past zero", {
+    # XLA's own shape inference `CHECK`-fails on the negative window bound this
+    # produces, which aborts the R process rather than raising an error.
+    expect_snapshot(error = TRUE, conv(padding = matrix(-100L, 2L, 2L)))
+  })
+
+  it("refuses it through the user-facing convolution too", {
+    expect_error(
+      nv_conv2d(
+        nv_array(array(as.double(1:16), c(1L, 1L, 4L, 4L)), dtype = "f32"),
+        nv_array(array(as.double(1:4), c(1L, 1L, 2L, 2L)), dtype = "f32"),
+        padding = -100L
+      ),
+      "must not remove more than spatial axis",
+      fixed = TRUE
+    )
+  })
+
+  it("refuses a zero-sized kernel spatial axis", {
+    # A zero-wide window reads as "not wider than the input" below, so the rule
+    # would infer a non-empty result from it; StableHLO refuses it outright,
+    # reporting the axis 0-based.
+    expect_snapshot(
+      error = TRUE,
+      conv(kernel = nv_array(array(numeric(), c(1L, 1L, 0L, 0L)), dtype = "f32"))
+    )
+  })
+
+  it("refuses an overflowing dilation or padding rather than reaching an `if ()` with an `NA`", {
+    # Each entry is inside the integer range, so `assert_int_param()` accepts
+    # it; the window arithmetic is what overflows.
+    expect_snapshot(error = TRUE, conv(x_dilation = c(2000000000L, 1L)))
+    expect_snapshot(error = TRUE, conv(padding = matrix(2000000000L, 2L, 2L)))
+  })
+
+  it("still accepts a large but legal dilation", {
+    expect_equal(shape(conv(x_dilation = c(3L, 1L))), c(1L, 1L, 9L, 3L))
+  })
+
+  it("reports an out-of-range `limit_indices` rather than overflowing on it", {
+    # `limit + 1L` at `.Machine$integer.max` overflows to `NA`, which used to
+    # reach the `start > limit + 1L` comparison, so the shape check runs first.
+    expect_snapshot(
+      error = TRUE,
+      prim_static_slice(nv_array(1:4), 1L, .Machine$integer.max, 1L)
+    )
+  })
+
+  it("still names `start_indices` when that is the mistake", {
+    expect_error(
+      prim_static_slice(nv_array(1:4), 3L, 1L, 1L),
+      "`start_indices` must not exceed `limit_indices`",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("a whole-number parameter the primitive fixes at one entry", {
+  it("is spoken of in the singular by every branch that refuses it", {
+    expect_snapshot(error = TRUE, prim_top_k(nv_array(1:4), NA))
+    expect_snapshot(error = TRUE, prim_top_k(nv_array(1:4), 2.5))
+    expect_snapshot(error = TRUE, prim_top_k(nv_array(1:4), 3e9))
+  })
+
+  it("leaves a vector parameter in the plural", {
+    expect_error(
+      prim_pad(nv_array(1:4), nv_scalar(1L), 0.5, 0L, 0L),
+      "`edge_padding_low` must contain whole numbers",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("the sub-graph arguments a primitive traces", {
+  it("refuses a `prim_if()` branch that is not a function", {
+    # Without this the branch reaches `do.call()` inside the tracer, which
+    # reports `'what' must be a function or character string`. `prim_while()`
+    # already checked `cond` and `body` this way.
+    expect_snapshot(
+      error = TRUE,
+      prim_if(nv_scalar(TRUE), 1L, function() nv_scalar(1L))
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_if(nv_scalar(TRUE), function() nv_scalar(1L), "x")
+    )
+  })
 })

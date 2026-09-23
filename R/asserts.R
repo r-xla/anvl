@@ -21,13 +21,13 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
     }
     if (anyNA(x)) {
       cli_abort(c(
-        "{.arg {var_name}} must not contain missing values",
+        "{.arg {var_name}} must not contain missing values.",
         x = "Got {value_repr(x)}."
       ))
     }
     if (length(x) < min_len) {
       cli_abort(c(
-        "{.arg {var_name}} must have at least {min_len} element{?s}",
+        "{.arg {var_name}} must have at least {min_len} element{?s}.",
         x = "Got {value_repr(x)}."
       ))
     }
@@ -38,7 +38,7 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
       ))
     }
     cli_abort(c(
-      "{.arg {var_name}} must contain whole numbers in the integer range",
+      "{.arg {var_name}} must contain whole numbers in the integer range.",
       x = "Got {value_repr(x)}."
     ))
   }
@@ -272,9 +272,20 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   } else {
     "a number"
   }
+  # `NaN` is the one value `{.obj_type_friendly}` describes unhelpfully -- it
+  # calls it "a numeric `NA`", which beside the value itself reads as three
+  # things ("a numeric `NA` NaN").
+  got <- if (is.numeric(value) && is.nan(value)) {
+    cli::format_inline("{.val {NaN}}")
+  } else {
+    paste0(
+      cli::format_inline("{.obj_type_friendly {value}}"),
+      if (is_number) cli::format_inline(" {.val {value}}") else ""
+    )
+  }
   cli_abort(c(
     "{.arg {arg}} must be {wanted} to be built at data type {.val {as.character(dt)}}.",
-    "x" = "Got {.obj_type_friendly {value}}{if (is_number) cli::format_inline(' {.val {value}}') else ''}."
+    "x" = "Got {got}."
   ))
 }
 

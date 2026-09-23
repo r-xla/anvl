@@ -160,6 +160,18 @@
 
 ## Bug fixes
 
+* Whatever a `prim_*()` refuses now reports that primitive as the call, rather
+  than the helper that checked the argument or the anonymous function `jit()`
+  wraps.
+* `prim_convolution()` (and so `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()`)
+  refuses a negative `padding` that takes away more than a spatial axis holds,
+  which made XLA's own inference abort the R process, and a zero-sized kernel
+  spatial axis. Negative padding that only empties an axis stays legal.
+* `prim_convolution()` and `prim_static_slice()` no longer overflow on a
+  padding, dilation or index that is large but inside the integer range, which
+  surfaced as R's `missing value where TRUE/FALSE needed`.
+* `prim_if()` refuses a `true` or `false` that is not a function, as
+  `prim_while()` already did for `cond` and `body`.
 * `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
   inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second

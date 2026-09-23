@@ -87,3 +87,43 @@ describe("subgraphs", {
     expect_length(subgraphs(call), 0L)
   })
 })
+
+describe("the call a primitive's error reports", {
+  it("is the `prim_*()` the caller wrote, whichever helper raised it", {
+    # Without this the caller reads `Error in assert_int_param()`,
+    # `Error in resolve_axes()` or `Error in (function (init, cond, body)` --
+    # the helper a body checks its arguments with, or the anonymous function
+    # `jit()` wraps. An inference rule's error is already rewritten this way in
+    # `trace_fn()`; this covers everything raised in the wrapper.
+    call_of <- function(expr) {
+      err <- tryCatch(expr, error = identity)
+      deparse(conditionCall(err))
+    }
+    expect_equal(call_of(prim_top_k(nv_array(1:4), 2.5)), "prim_top_k()")
+    expect_equal(call_of(prim_reverse(nv_array(1:4), 5L)), "prim_reverse()")
+    expect_equal(call_of(prim_reshape(nv_array(1:4), mean)), "prim_reshape()")
+    expect_equal(call_of(prim_chol(nv_array(c(1, 2), dtype = "f32"))), "prim_chol()")
+    expect_equal(call_of(prim_fill(NaN, 2L, "i32")), "prim_fill()")
+    expect_equal(
+      call_of(prim_while(
+        list(i = nv_scalar(1L)),
+        cond = function(i) i < 3L,
+        body = function(i) list(nv_convert(i, "f32"))
+      )),
+      "prim_while()"
+    )
+    # An inference error, which `trace_fn()` had already attributed.
+    expect_equal(
+      call_of(prim_reshape(nv_array(1:4), c(3L, 3L))),
+      "prim_reshape()"
+    )
+  })
+
+  it("is left alone once an inner primitive has claimed it", {
+    # `is_primitive_call()` keeps the innermost `prim_*()`, so a primitive
+    # built out of others does not relabel their errors as its own.
+    expect_true(is_primitive_call(quote(prim_add())))
+    expect_false(is_primitive_call(quote(assert_int_param())))
+    expect_false(is_primitive_call(NULL))
+  })
+})
