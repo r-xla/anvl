@@ -1441,45 +1441,8 @@ quickr_emit_reshape <- function(out_sym, operand_expr, shape_in, shape_out, out_
     return(quickr_emit_full_like(out_sym, scalar_expr, shape_out, out_aval))
   }
 
-  ctor <- quickr_dtype_to_r_ctor(as.character(dtype(out_aval)))
-  flat_sym <- as.name(paste0("flat_", as.character(out_sym)))
-  idx_sym <- as.name(paste0("idx_", as.character(out_sym)))
-  rank_in <- length(shape_in)
-  rank_out <- length(shape_out)
-
-  stmts <- list(
-    rlang::call2("<-", flat_sym, rlang::call2(ctor, as.integer(nflat))),
-    rlang::call2("<-", idx_sym, 0L)
-  )
-
-  in_idxs <- lapply(seq_len(rank_in), function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
-  elem_in <- quickr_subscript(operand_expr, in_idxs)
-  inner_in <- as.call(c(
-    list(as.name("{")),
-    list(rlang::call2("<-", idx_sym, rlang::call2("+", idx_sym, 1L))),
-    list(rlang::call2("<-", rlang::call2("[", flat_sym, idx_sym), elem_in))
-  ))
-  stmts <- c(stmts, list(quickr_row_major_loop(in_idxs, shape_in, inner_in)))
-
-  stmts <- c(stmts, list(rlang::call2("<-", idx_sym, 0L)))
-
-  alloc_out <- quickr_alloc_zero(shape_out, out_aval)
-
-  stmts <- c(stmts, quickr_emit_assign(out_sym, alloc_out))
-
-  out_idxs <- lapply(seq_len(rank_out), function(d) as.name(paste0("o_", as.character(out_sym), "_", d)))
-  assign_out <- if (rank_out == 1L) {
-    rlang::call2("<-", rlang::call2("[", out_sym, out_idxs[[1L]]), rlang::call2("[", flat_sym, idx_sym))
-  } else {
-    rlang::call2("<-", quickr_subscript(out_sym, out_idxs), rlang::call2("[", flat_sym, idx_sym))
-  }
-  inner_out <- as.call(c(
-    list(as.name("{")),
-    list(rlang::call2("<-", idx_sym, rlang::call2("+", idx_sym, 1L))),
-    list(assign_out)
-  ))
-  stmts <- c(stmts, list(quickr_row_major_loop(out_idxs, shape_out, inner_out)))
-  stmts
+  # A reshape is column-major, which is R's own element order.
+  quickr_emit_assign(out_sym, rlang::call2("array", operand_expr, dim = shape_out))
 }
 
 

@@ -12,7 +12,8 @@ Path to the safetensors file.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
 The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...).
-Default is to use the CPU.}
+Defaults to \code{\link[=default_device]{default_device()}} of the \code{"pjrt"} backend, which the loader
+goes through whatever the active backend is.}
 }
 \value{
 (named \code{list} of \code{\link{AnvlArray}})

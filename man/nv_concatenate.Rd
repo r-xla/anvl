@@ -30,15 +30,14 @@ axes except \code{axis}, which is the sum of input sizes.
 Concatenates arrays along an axis. Operands are promoted to a common
 data type and scalars are broadcast before concatenation.
 
-You can also use \code{c()}, which flattens its arguments first, like base R.
+You can also use \code{c()} on scalars and 1-D arrays, like base R.
 }
 \section{The \code{c()} generic}{
 
 \code{c()} concatenates scalars and 1-D arrays into a 1-D array, like
-\code{\link[base:c]{base::c()}} does for vectors. An array with more than one axis is an error:
-base R would flatten it in column-major order, whereas an anvl array
-flattens in row-major order (see the "Gotchas" vignette), so concatenate
-those along an explicit \code{axis} instead.
+\code{\link[base:c]{base::c()}} does for vectors. An array with more than one axis is an error
+rather than being flattened the way base R does; concatenate those along an
+explicit \code{axis}, or \code{\link[=nv_flatten]{nv_flatten()}} them first.
 }
 
 \examples{

@@ -18,13 +18,36 @@ test_that("prim_rng_bit_generator", {
   expect_shape(out$values, c(2L, 2L))
 })
 
-test_that("prim_bitcast_convert", {
-  out <- nv_bitcast_convert(
-    nv_array(seq(-1, 1, length.out = 6), dtype = "f64", shape = c(2, 3)),
-    dtype = "i32"
-  )
-  expect_equal(dim(as_array(out)), c(2, 3, 2))
-  expect_true(is.integer(as_array(out)))
+describe("prim_bitcast_convert", {
+  it("keeps the shape when the widths match", {
+    expect_shape(nv_bitcast_convert(nv_array(c(1, 2, 3), dtype = "f32"), dtype = "i32"), 3L)
+  })
+
+  it("adds a leading axis when narrowing", {
+    out <- nv_bitcast_convert(
+      nv_array(seq(-1, 1, length.out = 6), dtype = "f64", shape = c(2, 3)),
+      dtype = "i32"
+    )
+    expect_equal(dim(as_array(out)), c(2, 2, 3))
+    expect_true(is.integer(as_array(out)))
+  })
+
+  it("lays an element's pieces out the way as_raw() writes them", {
+    x <- nv_array(c(1L, 2L), dtype = "i32")
+    bytes <- nv_flatten(nv_bitcast_convert(x, dtype = "i8"))
+    expect_equal(as.integer(as_array(bytes)), as.integer(as_raw(x)))
+  })
+
+  it("consumes the leading axis when widening, inverting a narrowing", {
+    x <- nv_array(c(1L, 2L), dtype = "i32")
+    narrowed <- nv_bitcast_convert(x, dtype = "i8")
+    expect_shape(narrowed, c(4L, 2L))
+    expect_equal(as_array(nv_bitcast_convert(narrowed, dtype = "i32")), as_array(x))
+  })
+
+  it("rejects a leading axis of the wrong size when widening", {
+    expect_error(nv_bitcast_convert(nv_array(rep(1L, 3), dtype = "i8"), dtype = "i32"))
+  })
 })
 
 test_that("prim_static_slice", {
@@ -251,8 +274,8 @@ describe("cumulative ops", {
 
     expect_equal(as_array(pick(prim_fn(xm, axis = 2L))), t(apply(M, 1, base_fn)))
 
-    # row vs column major ordering
-    expect_equal(as_array(nv_fn(xm)), array(base_fn(t(M))))
+    # `axis = NULL` flattens column-major, as base R does
+    expect_equal(as_array(nv_fn(xm)), array(base_fn(M)))
   }
 
   it("prim_cumsum matches base R", verify_cum(prim_cumsum, nv_cumsum, base::cumsum))
@@ -315,23 +338,52 @@ test_that("prim_broadcast_in_axes", {
   )
 })
 
-test_that("prim_reshape", {
+describe("prim_reshape", {
   f <- jit(prim_reshape, static = "shape")
-  x <- array(1:6, c(3, 2))
-  expect_equal(
-    f(nv_array(x), shape = 6),
-    nv_array(as.integer(c(1, 4, 2, 5, 3, 6)), default_int())
-  )
-})
 
-test_that("prim_reshape infers a -1 dimension", {
-  x <- nv_array(1:6)
-  expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))
-  expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
-  expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
-  expect_error(prim_reshape(x, c(-1, -1)), "at most one")
-  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
-  expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
+  it("keeps the column-major element order, like base R's dim<-", {
+    x <- array(1:6, c(3, 2))
+    expect_equal(f(nv_array(x), shape = 6), nv_array(1:6))
+    expect_equal(as_array(f(nv_array(x), shape = c(2, 3))), array(1:6, c(2, 3)))
+  })
+
+  it("agrees with array() from rank 1 through 4, with size-1 and size-0 axes", {
+    shapes <- list(
+      list(24L, c(4L, 6L)),
+      list(c(2L, 3L, 4L), c(6L, 4L)),
+      list(c(2L, 3L, 4L), c(4L, 3L, 2L)),
+      list(c(2L, 1L, 3L, 4L), c(3L, 8L)),
+      list(c(6L, 4L), c(2L, 3L, 1L, 4L)),
+      list(c(2L, 0L, 3L), c(3L, 0L)),
+      list(c(0L, 4L), c(2L, 0L, 2L))
+    )
+    for (s in shapes) {
+      x <- array(seq_len(prod(s[[1L]])), s[[1L]])
+      out <- f(nv_array(x, dtype = "i32"), shape = s[[2L]])
+      expect_shape(out, s[[2L]])
+      expect_equal(as_array(out), array(x, s[[2L]]), info = shape_repr(s[[1L]]))
+    }
+  })
+
+  it("handles a rank-0 side, where there is no axis order to keep", {
+    expect_shape(f(nv_scalar(7L, dtype = "i32"), shape = 1L), 1L)
+    expect_shape(f(nv_array(7L, shape = 1L, dtype = "i32"), shape = integer()), integer())
+    # rank_in > 1 with a rank-0 result is the one corner where the operand is
+    # transposed but the result type rides on the reshape rather than a transpose
+    out <- f(nv_array(7L, shape = c(1L, 1L), dtype = "i32"), shape = integer())
+    expect_shape(out, integer())
+    expect_equal(as.vector(as_array(out)), 7L)
+  })
+
+  it("infers a -1 axis", {
+    x <- nv_array(1:6)
+    expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))
+    expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
+    expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(1:6))
+    expect_error(prim_reshape(x, c(-1, -1)), "at most one")
+    expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
+    expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
+  })
 })
 
 test_that("prim_transpose", {

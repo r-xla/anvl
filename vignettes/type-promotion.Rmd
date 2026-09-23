@@ -9,7 +9,7 @@ vignette: >
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
-  eval = Sys.getenv("PJRT_PLATFORM", "cpu") != "metal"
+  eval = !startsWith(Sys.getenv("ANVL_DEFAULT_DEVICE", "cpu"), "metal")
 )
 ```
 

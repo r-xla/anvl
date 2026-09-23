@@ -298,7 +298,7 @@ w
 The compiled executable now consumes `w`'s buffer as part of the call.
 The caller must not reuse an array that was donated to a function, otherwise an error is thrown:
 
-```{r, error = TRUE, eval = Sys.getenv("PJRT_PLATFORM") == "cpu"}
+```{r, error = TRUE, eval = startsWith(Sys.getenv("ANVL_DEFAULT_DEVICE", "cpu"), "cpu")}
 w_old <- nv_array(c(1, 2, 3), dtype = "f32")
 w_new <- step(w_old, g)
 w_old     # the old buffer has been donated

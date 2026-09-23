@@ -303,7 +303,7 @@
     Output
       <AnvlGraph> [%c1: i32[1]] (%x1: f32[3,4], %x2: i32[2]) {
         %1: i32[2,1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 1] (%x2)
-        %2: i32[2,1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 2] (%c1)
+        %2: i32[2,1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 1] (%c1)
         %3: i32[2,2] = concatenate [axis = 2] (%1, %2)
         %4: f32[2,4] = gather [
           slice_sizes = c(1, 4), offset_axes = 2, collapsed_slice_axes = 1,

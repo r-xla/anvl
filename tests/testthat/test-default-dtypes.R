@@ -293,3 +293,32 @@ describe("with_dtypes()", {
     expect_error(with_dtypes(nv_add, character()), "must map the data type categories")
   })
 })
+
+describe("parse_default_dtypes_env()", {
+  it("turns category=dtype pairs into a value of the option", {
+    expect_identical(parse_default_dtypes_env("float=f64, int=i64"), c(float = "f64", int = "i64"))
+    expect_identical(parse_default_dtypes_env("int=i64"), c(int = "i64"))
+  })
+
+  it("rejects anything but pairs for the float and int categories", {
+    expect_error(parse_default_dtypes_env("f64"), "ANVL_DEFAULT_DTYPES")
+    expect_error(parse_default_dtypes_env("flaot=f64"), "ANVL_DEFAULT_DTYPES")
+    expect_error(parse_default_dtypes_env("float=f64=x"), "ANVL_DEFAULT_DTYPES")
+  })
+})
+
+describe("default_dtypes_setting()", {
+  it("falls back to ANVL_DEFAULT_DTYPES when the option is not set", {
+    local_registered_default_dtypes()
+    local_env_default("DTYPES", c(int = "i64"))
+    expect_identical(default_dtypes_setting(), c(int = "i64"))
+    expect_dtype(nv_array(1L), "i64")
+  })
+
+  it("prefers the option", {
+    local_registered_default_dtypes()
+    local_env_default("DTYPES", c(int = "i64"))
+    withr::local_options(anvl.default_dtypes = c(float = "f64"))
+    expect_identical(default_dtypes_setting(), c(float = "f64"))
+  })
+})

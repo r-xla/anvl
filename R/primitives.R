@@ -321,7 +321,8 @@ prim_transpose <- new_primitive(
 #' @title Primitive Reshape
 #' @description
 #' Reshapes an array to a new shape without changing the underlying data.
-#' Note that row-major order is used, which differs from R's column-major order.
+#' The elements keep their column-major order, exactly as base R's `dim<-`
+#' does.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param shape (`integer()`)\cr
@@ -334,9 +335,12 @@ prim_transpose <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("reshape")`
+#' The lowering wraps it in two [hlo_transpose()] calls that reverse every
+#' axis, which is what turns stablehlo's row-major reshape into a column-major
+#' one; each is skipped where that side has at most one axis.
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the elements are reread in row-major order; the data type is untouched
+#' # the elements keep their column-major order; the data type is untouched
 #' x <- nv_array(1:6)
 #' prim_reshape(x, shape = c(2, 3))
 #' @export
@@ -1436,24 +1440,30 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv))
 #'   An R value materializes at its [default data type][default_dtypes].
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Any target data type except `bool`.
-#'   One of the same bit width as the input's leaves the shape unchanged; a narrower
-#'   one adds a trailing axis holding the pieces; a wider one consumes the last
-#'   axis, whose size must equal the ratio of the two widths.
+#'   One of the same bit width as the input's leaves the shape unchanged; a
+#'   narrower one adds a *leading* axis holding the pieces; a wider one consumes
+#'   the first axis, whose size must equal the ratio of the two widths. The
+#'   pieces of one element are therefore adjacent in the column-major element
+#'   order [nv_flatten()] reads, and a narrowing conversion lays the bytes out
+#'   the way [as_raw()] writes them.
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype`, and the shape described under `dtype`.
 #' @templateVar primitive_id bitcast_convert
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("bitcast_convert")`
+#' StableHLO puts the lane axis last, so a width-changing conversion is
+#' lowered with one [hlo_transpose()] that rotates it to the front, or off the
+#' front, depending on the direction.
 #' @seealso [nv_bitcast_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # same width: the bits are reread, the shape stays
 #' prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "f32")
 #'
-#' # narrower: a trailing axis holds the four bytes of each i32
+#' # narrower: a leading axis holds the four bytes of each i32
 #' prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "i8")
 #'
-#' # wider: the last axis is consumed, and its size must be the width ratio
+#' # wider: the first axis is consumed, and its size must be the width ratio
 #' prim_bitcast_convert(nv_array(rep(1L, 4), dtype = "i8"), dtype = "i32")
 #' @export
 prim_bitcast_convert <- new_primitive(

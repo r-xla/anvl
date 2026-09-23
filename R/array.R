@@ -82,9 +82,9 @@
 #' See the "Gotchas" vignette for more information.
 #'
 #' @section Out of Range values:
-#' Because base R has fewer data types than {anvl}, creating `AnvlArray`s from R often involves
+#' Because base R has fewer data types than anvl, creating `AnvlArray`s from R often involves
 #' type conversions.
-#' When such conversions are performed, {anvl} performs a scan of the inputs to ensure that the
+#' When such conversions are performed, anvl performs a scan of the inputs to ensure that the
 #' requested data type can actually hold the input data.
 #' For example, trying to create an unsigned integer from a negative R `integer()` fails.
 #' The same holds where an R value takes its data type from the array it meets
@@ -326,8 +326,9 @@ align_arrayish <- function(args) {
   # Target device is the first concrete input's device, else the default.
   dev <- default_device()
   for (a in args) {
-    if (is_anvl_array(a) && backend(a) != "plain") {
-      dev <- device(a)
+    placed <- placement_device(a)
+    if (!is.null(placed)) {
+      dev <- placed
       break
     }
   }
@@ -483,6 +484,11 @@ nv_matrix <- function(
 #' @export
 nv_empty <- function(dtype, shape, device = NULL) {
   shape <- as.integer(shape)
+  if (currently_tracing() && is.null(device)) {
+    # A constant of the trace, as in `nv_array()`: allocating one here would
+    # pin the graph to whichever device this call happens to run on.
+    return(globals$backends[["plain"]]$new_empty(dtype = dtype, shape = shape, device = device))
+  }
   backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)

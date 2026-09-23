@@ -5,31 +5,33 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
 
-name: default-dtypes
+name: default-device
 
 permissions: read-all
 
-# Runs the test suite with the default data types set to something other than
-# what the pjrt backend registers, so that anything hardcoding `f32` / `i32`
-# where it should read `default_dtypes()` fails here. anvl reads
-# ANVL_DEFAULT_DTYPES when the `anvl.default_dtypes` option is not set.
+# Runs the test suite with the default device set to the *second* CPU device.
+# This is partly a proxy for running the CUDA tests, because it also checks
+# device placement.
 jobs:
-  default-dtypes:
+  default-device:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
+
     runs-on: ubuntu-latest
-    name: default-dtypes (${{ matrix.dtypes }})
+    name: default-device (${{ matrix.device }})
 
     strategy:
       fail-fast: false
       matrix:
-        dtypes: ["float=f64,int=i64"]
+        device: ["cpu:1"]
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
-      ANVL_DEFAULT_DTYPES: ${{ matrix.dtypes }}
+      ANVL_DEFAULT_DEVICE: ${{ matrix.device }}
 
     steps:
       - uses: actions/checkout@v7

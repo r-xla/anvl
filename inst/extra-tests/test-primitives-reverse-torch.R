@@ -454,16 +454,13 @@ describe("prim_cumsum", {
 
 test_that("prim_broadcast_in_axes", {
   input_shape <- c(2L, 1L, 3L)
-  target_shape <- c(4L, 2L, 5L, 3L)
-
-  f <- function(x, shape) {
-    res <- nv_broadcast_to(x, shape)
-    nv_reduce_sum(res, axes = seq_along(shape), drop = TRUE)
-  }
+  # anvl aligns axes from the first and torch from the last, so the torch side
+  # appends the size-1 axis itself for the two to mean the same broadcast.
+  target_shape <- c(2L, 5L, 3L, 4L)
 
   verify_grad_uni_array(
     nv_broadcast_to,
-    \(x, shape) x$broadcast_to(shape),
+    \(x, shape) x$reshape(c(x$shape, 1L))$broadcast_to(shape),
     shape = input_shape,
     args_f = \(shp, dtype) {
       list(
