@@ -1915,7 +1915,7 @@ describe("nv_top_k", {
     # Over both, it is a position in `nv_flatten(m)`.
     # nv_flatten(m) is 3, 2, 1, 4, 5, 0, so 5, 4 and 3 sit at 5, 4 and 1
     out <- nv_top_k(m, k = 3L, indices = TRUE)
-    expect_equal(as.vector(as_array(out$indices)), c(5L, 4L, 1L))
+    expect_equal(as.integer(as_array(out$indices)), c(5L, 4L, 1L))
     expect_equal(
       as.vector(as_array(out$values)),
       as.vector(as_array(nv_flatten(m)))[c(5L, 4L, 1L)]

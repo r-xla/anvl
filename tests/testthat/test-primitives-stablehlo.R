@@ -35,7 +35,7 @@ describe("prim_bitcast_convert", {
   it("lays an element's pieces out the way as_raw() writes them", {
     x <- nv_array(c(1L, 2L), dtype = "i32")
     bytes <- nv_flatten(nv_bitcast_convert(x, dtype = "i8"))
-    expect_equal(as.integer(as.vector(as_array(bytes))), as.integer(as_raw(x)))
+    expect_equal(as.integer(as_array(bytes)), as.integer(as_raw(x)))
   })
 
   it("consumes the leading axis when widening, inverting a narrowing", {
