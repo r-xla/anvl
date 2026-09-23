@@ -127,8 +127,7 @@ nv_broadcast_to(nv_array(c(10, 20, 30)), shape = c(2, 3))
 ```
 
     ## Error in `prim_broadcast_in_axes()`:
-    ## ! `x` dimension 1 and `result` dimension 1 must match unless
-    ## `x` dim is 1.
+    ## ! Axis 1 of `x` must be 2 or 1 to broadcast to axis 1 of the result.
     ## ✖ Got shapes (3) and (2x3).
 
 This is *not* base R’s recycling, which is a different mechanism: base R

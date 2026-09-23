@@ -76,7 +76,11 @@ wraps the body with
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), attaches
 the metadata, and registers the result in the internal primitive
 registry. The returned callable becomes the primitive and is bound to a
-`prim_<name>` R symbol.
+`prim_<name>` R symbol. The name passed to
+[`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
+is that same `<name>`, not the StableHLO op the primitive lowers to, so
+an error or a printed graph naming a primitive names a function the
+reader can look up.
 
 ``` r
 
@@ -137,18 +141,22 @@ Every argument that is *not* a dynamic array must be listed in `static`.
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) internally,
 so the primitive runs on whichever backend is active when it is called.
 
-If the primitive is a wrapper around a stablehlo operation, it is
-possible to use the corresponding inference function from the stablehlo
-package (such as
-[`stablehlo::infer_types_concatenate`](https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html)).
-When doing so, you need to:
+Inference rules live together in `R/rules-inference.R`, one per
+primitive, named `infer_<primitive>()`. A rule’s formals are the
+primitive’s own – every operand and *every* static parameter, including
+ones the rule has no use for – because
+[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
+calls it as `do.call(infer_fn, c(avals_in, params))`. It returns a plain
+[`list()`](https://rdrr.io/r/base/list.html) of abstract arrays, named
+when the primitive has named outputs.
 
-1.  Convert the abstract arrays to stablehlo `ValueType`s using
-    [`at2vt()`](https://r-xla.github.io/anvl/dev/reference/at2vt.md).
-2.  Call the stablehlo inference function and obtain a list of
-    `ValueType`s.
-3.  Convert the `ValueType`s back to abstract arrays using
-    [`vt2at()`](https://r-xla.github.io/anvl/dev/reference/vt2at.md).
+If your primitive lowers to a StableHLO operation, implement the
+constraints from the [StableHLO
+specification](https://openxla.org/stablehlo/spec) directly, in anvl’s
+vocabulary: arrays rather than tensors, axes rather than dimensions, and
+axis numbers 1-based. Many rules need nothing of their own – an
+elementwise operation reuses `infer_generic_biv()`, `infer_float_uni()`
+and the like.
 
 #### Handling of R inputs
 
@@ -230,23 +238,23 @@ primitives are simpler – elementwise unary or binary ops, reductions,
 and comparisons all share a standard shape. `R/primitives.R` exposes
 factories that generate the body for you:
 
-- `make_unary_op(stablehlo_infer)` – elementwise unary (e.g. `prim_abs`,
+- `make_unary_op(infer_fn)` – elementwise unary (e.g. `prim_abs`,
   `prim_negate`).
-- `make_binary_op(stablehlo_infer)` – elementwise binary
-  (e.g. `prim_add`, `prim_mul`).
+- `make_binary_op(infer_fn)` – elementwise binary (e.g. `prim_add`,
+  `prim_mul`).
 - `make_reduce_op(infer_fn)` – reductions with `axes` / `drop`
   parameters (e.g. `prim_sum`).
 - `make_compare_op(direction)` – comparison ops with a fixed `direction`
   string (e.g. `prim_eq`, `prim_lt`).
 
-Used together with the corresponding stablehlo inference function, the
-primitive definition collapses to a one-liner:
+Used together with the matching inference rule, the primitive definition
+collapses to a one-liner:
 
 ``` r
 
-prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
-prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
-prim_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
+prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
+prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
+prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3)
 ```
 
 Reach for the manual
@@ -425,7 +433,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x556d346d3c08>
+#> <environment: 0x55e890f2bb30>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")
@@ -448,7 +456,7 @@ nv_add(1L, nv_array(2:3))
 prim_add(1L, nv_array(2:3))
 #> Error in `prim_add()`:
 #> ! `lhs` and `rhs` must have the same array type.
-#> ✖ Got tensor<i32> and tensor<2xi32>.
+#> ✖ Got i32[] and i32[2].
 ```
 
 In our case, no such convenience is needed and the functionality is not

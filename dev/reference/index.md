@@ -670,8 +670,6 @@ Utilities for working with nested structures
 
 - [`at2vt()`](https://r-xla.github.io/anvl/dev/reference/at2vt.md) :
   Convert AbstractArray to ValueType
-- [`vt2at()`](https://r-xla.github.io/anvl/dev/reference/vt2at.md) :
-  Convert ValueType to AbstractArray
 - [`vt()`](https://r-xla.github.io/anvl/dev/reference/vt.md) : Construct
   a stablehlo ValueType
 - [`is_arrayish()`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)

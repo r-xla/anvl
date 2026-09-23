@@ -192,7 +192,10 @@ the <code>AnvlPrimitive</code> metadata object that holds the rules,
 wraps the body with <code><a href="../reference/jit.html">jit()</a></code>, attaches the metadata, and
 registers the result in the internal primitive registry. The returned
 callable becomes the primitive and is bound to a
-<code>prim_&lt;name&gt;</code> R symbol.</p>
+<code>prim_&lt;name&gt;</code> R symbol. The name passed to
+<code><a href="../reference/new_primitive.html">new_primitive()</a></code> is that same <code>&lt;name&gt;</code>, not
+the StableHLO op the primitive lowers to, so an error or a printed graph
+naming a primitive names a function the reader can look up.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="va">prim_repeat_along</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span></span>
@@ -247,18 +250,21 @@ clear error messages — {anvl} programs are otherwise hard to debug.</li>
 <code>static</code>. <code>new_primitive</code> calls <code><a href="../reference/jit.html">jit()</a></code>
 internally, so the primitive runs on whichever backend is active when it
 is called.</p>
-<p>If the primitive is a wrapper around a stablehlo operation, it is
-possible to use the corresponding inference function from the stablehlo
-package (such as <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html" class="external-link">stablehlo::infer_types_concatenate</a></code>). When
-doing so, you need to:</p>
-<ol style="list-style-type: decimal">
-<li>Convert the abstract arrays to stablehlo <code>ValueType</code>s
-using <code><a href="../reference/at2vt.html">at2vt()</a></code>.</li>
-<li>Call the stablehlo inference function and obtain a list of
-<code>ValueType</code>s.</li>
-<li>Convert the <code>ValueType</code>s back to abstract arrays using
-<code><a href="../reference/vt2at.html">vt2at()</a></code>.</li>
-</ol>
+<p>Inference rules live together in <code>R/rules-inference.R</code>,
+one per primitive, named <code>infer_&lt;primitive&gt;()</code>. A
+rule’s formals are the primitive’s own – every operand and
+<em>every</em> static parameter, including ones the rule has no use for
+– because <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> calls it as
+<code>do.call(infer_fn, c(avals_in, params))</code>. It returns a plain
+<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> of abstract arrays, named when the primitive has
+named outputs.</p>
+<p>If your primitive lowers to a StableHLO operation, implement the
+constraints from the <a href="https://openxla.org/stablehlo/spec" class="external-link">StableHLO specification</a>
+directly, in anvl’s vocabulary: arrays rather than tensors, axes rather
+than dimensions, and axis numbers 1-based. Many rules need nothing of
+their own – an elementwise operation reuses
+<code>infer_generic_biv()</code>, <code>infer_float_uni()</code> and the
+like.</p>
 <div class="section level4">
 <h4 id="handling-of-r-inputs">Handling of R inputs<a class="anchor" aria-label="anchor" href="#handling-of-r-inputs"></a>
 </h4>
@@ -336,10 +342,10 @@ ops, reductions, and comparisons all share a standard shape.
 you:</p>
 <ul>
 <li>
-<code>make_unary_op(stablehlo_infer)</code> – elementwise unary
+<code>make_unary_op(infer_fn)</code> – elementwise unary
 (e.g. <code>prim_abs</code>, <code>prim_negate</code>).</li>
 <li>
-<code>make_binary_op(stablehlo_infer)</code> – elementwise binary
+<code>make_binary_op(infer_fn)</code> – elementwise binary
 (e.g. <code>prim_add</code>, <code>prim_mul</code>).</li>
 <li>
 <code>make_reduce_op(infer_fn)</code> – reductions with
@@ -350,12 +356,12 @@ you:</p>
 fixed <code>direction</code> string (e.g. <code>prim_eq</code>,
 <code>prim_lt</code>).</li>
 </ul>
-<p>Used together with the corresponding stablehlo inference function,
-the primitive definition collapses to a one-liner:</p>
+<p>Used together with the matching inference rule, the primitive
+definition collapses to a one-liner:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">prim_add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="fu">make_binary_op</span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_add.html" class="external-link">infer_types_add</a></span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">prim_negate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"negate"</span>, <span class="fu">make_unary_op</span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_negate.html" class="external-link">infer_types_negate</a></span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">prim_sum</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"reduce_sum"</span>, <span class="fu">make_reduce_op</span><span class="op">(</span><span class="op">)</span>, static <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">prim_add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="fu">make_binary_op</span><span class="op">(</span><span class="va">infer_generic_biv</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">prim_negate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"negate"</span>, <span class="fu">make_unary_op</span><span class="op">(</span><span class="va">infer_numeric_uni</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">prim_sum</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"sum"</span>, <span class="fu">make_reduce_op</span><span class="op">(</span><span class="op">)</span>, static <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <p>Reach for the manual <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> form when the
 primitive has extra static parameters, a custom inference function, or
 multiple outputs.</p>
@@ -529,7 +535,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x556d346d3c08&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x55e890f2bb30&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>
@@ -551,7 +557,7 @@ inputs:</p>
 <span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `prim_add()`:</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> `lhs` and `rhs` must have the same array type.</span></span>
-<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> Got <span style="color: #0000BB;">tensor&lt;i32&gt;</span> and <span style="color: #0000BB;">tensor&lt;2xi32&gt;</span>.</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> Got i32[] and i32[2].</span></span></code></pre></div>
 <p>In our case, no such convenience is needed and the functionality is
 not too low-level (for it to be generally useful), so we can just
 reassign the <code>prim_*</code> function to an <code>nv_*</code>

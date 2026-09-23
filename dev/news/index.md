@@ -90,6 +90,8 @@
 - The `@jit` roxygen tag was removed; wrap functions in
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) at the
   definition instead.
+- A primitive is now named after the `prim_*()` function that exports it
+  rather than the StableHLO op it lowers to.
 - [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md),
   [`nv_cummax()`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
   and
@@ -321,6 +323,7 @@
 - The `tensor_to_gval` argument of
   [`GraphDescriptor()`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
   is now called `array_to_gval`.
+- `vt2at()` was removed.
 
 ### Features
 
@@ -374,6 +377,11 @@
   [`sign()`](https://rdrr.io/r/base/sign.html) on a non-negative number;
   [`prim_sign()`](https://r-xla.github.io/anvl/dev/reference/prim_sign.md)
   still takes a signed input only.
+- Error messages of primitives should now be greatly improved and
+  mention the right argument names. This was achieved by porting the
+  stablehlo inference functions to anvl’s terminology. A message about a
+  parameter also reports the value it was given, e.g. \``x` Got c(1,
+  2)\`.
 - [`aperm()`](https://rdrr.io/r/base/aperm.html) and
   [`quantile()`](https://rdrr.io/r/stats/quantile.html) now work on an
   `AnvlArray` / `AnvlBox`, forwarding to
@@ -511,6 +519,31 @@
 
 ### Bug fixes
 
+- Whatever a `prim_*()` refuses now reports that primitive as the call,
+  rather than the helper that checked the argument or the anonymous
+  function [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)
+  wraps.
+- [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md)
+  (and so
+  [`nv_conv1d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv1d.md)
+  /
+  [`nv_conv2d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv2d.md)
+  /
+  [`nv_conv3d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv3d.md))
+  refuses a negative `padding` that takes away more than a spatial axis
+  holds, which made XLA’s own inference abort the R process, and a
+  zero-sized kernel spatial axis. Negative padding that only empties an
+  axis stays legal.
+- [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md)
+  and
+  [`prim_static_slice()`](https://r-xla.github.io/anvl/dev/reference/prim_static_slice.md)
+  no longer overflow on a padding, dilation or index that is large but
+  inside the integer range, which surfaced as R’s
+  `missing value where TRUE/FALSE needed`.
+- [`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md)
+  refuses a `true` or `false` that is not a function, as
+  [`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md)
+  already did for `cond` and `body`.
 - The `_like` constructors
   ([`nv_scalar_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`nv_array_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),

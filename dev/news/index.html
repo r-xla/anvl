@@ -96,6 +96,7 @@
 <li>
 <code><a href="../reference/nv_broadcast_to.html">nv_broadcast_to()</a></code> and <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> align axes from the first instead of the last: a shorter shape gets size-1 axes appended, so a length-<code>nrow</code> vector broadcasts against a matrix where a length-<code>ncol</code> one no longer does. Write <code><a href="../reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> with an explicit axis mapping for the previous right-aligned behavior.</li>
 <li>The <code>@jit</code> roxygen tag was removed; wrap functions in <code><a href="../reference/jit.html">jit()</a></code> at the definition instead.</li>
+<li>A primitive is now named after the <code>prim_*()</code> function that exports it rather than the StableHLO op it lowers to.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code>, <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> and <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> take <code>indices</code> instead of <code>with_indices</code>, spelling it the way <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code> does.</li>
 <li>
@@ -172,6 +173,8 @@
 <li>
 <code><a href="../reference/nv_which_max.html">nv_which_max()</a></code> and <code><a href="../reference/nv_which_min.html">nv_which_min()</a></code> now reduce over <code>axes</code> (plural) instead of a single <code>axis</code>, defaulting to every axis so that they pair with <code><a href="../reference/nv_max.html">nv_max()</a></code> / <code><a href="../reference/nv_min.html">nv_min()</a></code>. Reducing several axes indexes their column-major flattening. Write <code>nv_which_max(x, axes = -1L)</code> for the previous default.</li>
 <li>The <code>tensor_to_gval</code> argument of <code><a href="../reference/GraphDescriptor.html">GraphDescriptor()</a></code> is now called <code>array_to_gval</code>.</li>
+<li>
+<code>vt2at()</code> was removed.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
@@ -188,6 +191,7 @@
 <li>The linear algebra functions (<code><a href="../reference/nv_solve.html">nv_solve()</a></code>, <code><a href="../reference/nv_triangular_solve.html">nv_triangular_solve()</a></code>, <code><a href="../reference/nv_chol.html">nv_chol()</a></code>, <code><a href="../reference/nv_inv.html">nv_inv()</a></code>, <code><a href="../reference/nv_det.html">nv_det()</a></code>, <code><a href="../reference/nv_determinant.html">nv_determinant()</a></code>, <code><a href="../reference/nv_lu.html">nv_lu()</a></code>, <code><a href="../reference/nv_qr.html">nv_qr()</a></code>, <code><a href="../reference/nv_svd.html">nv_svd()</a></code>, <code><a href="../reference/nv_eigh.html">nv_eigh()</a></code>) accept integer input, computing at the default float data type where the input is not a float already, instead of erroring. The <code>prim_*</code> ones still take a float only.</li>
 <li>
 <code><a href="../reference/nv_sign.html">nv_sign()</a></code> accepts an unsigned integer array, returning <code>0</code> or <code>1</code> like base R’s <code><a href="https://rdrr.io/r/base/sign.html" class="external-link">sign()</a></code> on a non-negative number; <code><a href="../reference/prim_sign.html">prim_sign()</a></code> still takes a signed input only.</li>
+<li>Error messages of primitives should now be greatly improved and mention the right argument names. This was achieved by porting the stablehlo inference functions to anvl’s terminology. A message about a parameter also reports the value it was given, e.g. `<code>x</code> Got c(1, 2)`.</li>
 <li>
 <code><a href="https://rdrr.io/r/base/aperm.html" class="external-link">aperm()</a></code> and <code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile()</a></code> now work on an <code>AnvlArray</code> / <code>AnvlBox</code>, forwarding to <code><a href="../reference/nv_aperm.html">nv_aperm()</a></code> and <code><a href="../reference/nv_quantile.html">nv_quantile()</a></code>.</li>
 <li>New <code><a href="../reference/nv_squeeze.html">nv_drop()</a></code>, another spelling of <code><a href="../reference/nv_squeeze.html">nv_squeeze()</a></code>; with the default <code>axes = NULL</code> it drops every size-1 axis like <code><a href="https://rdrr.io/r/base/drop.html" class="external-link">base::drop()</a></code>.</li>
@@ -232,7 +236,14 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>The <code>_like</code> constructors (<code><a href="../reference/AnvlArray.html">nv_scalar_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_array_like()</a></code>, <code><a href="../reference/nv_fill.html">nv_fill_like()</a></code>, <code><a href="../reference/nv_iota.html">nv_iota_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_empty_like()</a></code>) no longer allocate on the first CPU device when <code>like</code> is an array built inside a trace. The stray device made <code><a href="../reference/jit.html">jit()</a></code> abort with “found more than one device” wherever the operands were elsewhere, which took out every <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> call on CUDA.</li>
+<ul><li>Whatever a <code>prim_*()</code> refuses now reports that primitive as the call, rather than the helper that checked the argument or the anonymous function <code><a href="../reference/jit.html">jit()</a></code> wraps.</li>
+<li>
+<code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> (and so <code><a href="../reference/nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="../reference/nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="../reference/nv_conv3d.html">nv_conv3d()</a></code>) refuses a negative <code>padding</code> that takes away more than a spatial axis holds, which made XLA’s own inference abort the R process, and a zero-sized kernel spatial axis. Negative padding that only empties an axis stays legal.</li>
+<li>
+<code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> and <code><a href="../reference/prim_static_slice.html">prim_static_slice()</a></code> no longer overflow on a padding, dilation or index that is large but inside the integer range, which surfaced as R’s <code>missing value where TRUE/FALSE needed</code>.</li>
+<li>
+<code><a href="../reference/prim_if.html">prim_if()</a></code> refuses a <code>true</code> or <code>false</code> that is not a function, as <code><a href="../reference/prim_while.html">prim_while()</a></code> already did for <code>cond</code> and <code>body</code>.</li>
+<li>The <code>_like</code> constructors (<code><a href="../reference/AnvlArray.html">nv_scalar_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_array_like()</a></code>, <code><a href="../reference/nv_fill.html">nv_fill_like()</a></code>, <code><a href="../reference/nv_iota.html">nv_iota_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_empty_like()</a></code>) no longer allocate on the first CPU device when <code>like</code> is an array built inside a trace. The stray device made <code><a href="../reference/jit.html">jit()</a></code> abort with “found more than one device” wherever the operands were elsewhere, which took out every <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> call on CUDA.</li>
 <li>
 <code><a href="../reference/nv_unserialize.html">nv_unserialize()</a></code> / <code><a href="../reference/nv_read.html">nv_read()</a></code> place the loaded arrays on [<code><a href="../reference/default_device.html">default_device()</a></code>], where they always used pjrt’s first device.</li>
 <li>

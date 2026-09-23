@@ -150,7 +150,7 @@ promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f
 #> 
 # without `coerce`, a target the input cannot hold is refused
 try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
-#> Error : Cannot bring argument 2 to data type "f32".
+#> Error : Cannot bring `..2` to data type "f32".
 #> ✖ "f64" is not promotable to "f32".
 #> ℹ Convert it explicitly with `nv_convert()`.
 # every input at the widest float in the call, and never below f32.

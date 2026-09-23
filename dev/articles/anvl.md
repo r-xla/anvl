@@ -207,7 +207,7 @@ prim_add(y, y)
 prim_add(y, x)
 ```
 
-    ## Error:
+    ## Error in `prim_add()`:
     ## ! These inputs have no common data type to reach without converting one
     ##   of them.
     ## ✖ `lhs` is `f32` and `rhs` is `i16`.

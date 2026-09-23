@@ -243,7 +243,12 @@ Primitives are `JitPrimitive` callables constructed by
 wraps `fn` with
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)) and
 carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`.
-Primitives are stored as `prim_<name>` variables.
+Primitives are stored as `prim_<name>` variables, and the string passed
+to
+[`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
+is that same `<name>` – not the StableHLO op it lowers to – so printed
+graphs and error messages name a function the reader can look up.
+`test-primitives-meta.R` enforces this.
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
 lexically binds `self` (the `AnvlPrimitive`) into the body’s enclosing
 environment, so inside a primitive body you write

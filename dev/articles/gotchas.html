@@ -199,8 +199,7 @@ not.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_broadcast_to.html">nv_broadcast_to</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `prim_broadcast_in_axes()`:</span></span></span>
-<span><span class="co">## <span style="color: #BBBB00;">!</span> `x` dimension 1 and `result` dimension 1 must match unless</span></span>
-<span><span class="co">## `x` dim is 1.</span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> Axis 1 of `x` must be <span style="color: #0000BB;">2</span> or <span style="color: #0000BB;">1</span> to broadcast to axis 1 of the result.</span></span>
 <span><span class="co">## <span style="color: #BB0000;">✖</span> Got shapes (3) and (2x3).</span></span></code></pre>
 <p>This is <em>not</em> base R’s recycling, which is a different
 mechanism: base R has no broadcasting between arrays at all
