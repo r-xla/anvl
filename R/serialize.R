@@ -51,7 +51,8 @@ nv_save <- function(arrays, path) {
 #'   Path to the safetensors file.
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
-#'   Default is to use the CPU.
+#'   Defaults to [`default_device()`] of the `"pjrt"` backend, which the loader
+#'   goes through whatever the active backend is.
 #'
 #' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_save()], [nv_serialize()], [nv_unserialize()]
@@ -136,7 +137,8 @@ nv_serialize <- function(arrays, con = NULL) {
 #'   A connection or raw vector to read from.
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
-#'   Default is to use the CPU.
+#'   Defaults to [`default_device()`] of the `"pjrt"` backend, which the loader
+#'   goes through whatever the active backend is.
 #'
 #' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_serialize()], [nv_save()], [nv_read()]
@@ -150,6 +152,7 @@ nv_serialize <- function(arrays, con = NULL) {
 #' nv_unserialize(raw_data)
 nv_unserialize <- function(con, device = NULL) {
   # TODO: don't convert to pjrt first
+  device <- device %||% default_device("pjrt")
   result <- safetensors::safe_load_file(con, framework = "pjrt", device = device)
 
   # The arrays are built on the active backend.

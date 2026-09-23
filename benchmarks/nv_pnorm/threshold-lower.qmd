@@ -139,7 +139,7 @@ asymp_coef <- function(n) {
 # approximation `log1p(x) ~= x`
 # NB actual implementation in `nv_pnorm` not written as loop
 branch_asymp <- function(d, series_terms, use_log1p = TRUE) {
-  d_asymp <- nv_max(-d, 1)
+  d_asymp <- nv_pmax(-d, 1)
   d2_asymp <- d_asymp * d_asymp
   w <- 1 / d2_asymp
   cf <- asymp_coef(series_terms)
@@ -168,7 +168,7 @@ eval_grad <- function(fn, z, type) {
   # a scalar, then differentiate wrt vector input.
   # Also sum's backward is linear, so non-finite elements do not
   # cross-contaminate finite ones.
-  f <- function(q) nv_reduce_sum(fn(q))
+  f <- function(q) nv_sum(fn(q))
   as.vector(jit(gradient(f, wrt = "q"))(nv_array(z, dtype = type))[[1L]])
 }
 ```

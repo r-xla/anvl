@@ -25,9 +25,10 @@ of pjrt's \code{\link[pjrt:build_tree]{RTree}} -- a \code{list}, nested arbitrar
 the structure, data types and shapes both branches share.
 }
 \description{
-Conditional execution of two branches.
-Unlike \code{\link[=nv_ifelse]{nv_ifelse()}}, which selects elements, this executes only one
-of the two branches depending on a scalar predicate.
+Conditional execution of two branches, mirroring R's \code{if} construct: it
+branches between two \emph{functions} and evaluates only the selected one. Its
+arguments are named after that construct, where \code{\link[=nv_ifelse]{nv_ifelse()}} -- which
+selects element-wise between two \emph{arrays} -- is named after \code{\link[=ifelse]{ifelse()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

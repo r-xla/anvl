@@ -4,13 +4,13 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
+nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}

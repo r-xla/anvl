@@ -14,7 +14,7 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
+nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -48,7 +48,7 @@ and \code{sd} are converted to it. An R value materializes at its
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
@@ -63,7 +63,7 @@ The default (\code{NULL}) uses the \link[=default_dtypes]{default float type}.}
 shape and data type of \code{x}/\code{q}/\code{p}.
 
 \code{nv_rnorm()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
-RNG state with \code{initial_state}'s data type and shape, and \code{values}, the
+RNG state with the input \code{state}'s data type and shape, and \code{values}, the
 sample of shape \code{shape} and the data type described under \code{dtype}.
 }
 \description{

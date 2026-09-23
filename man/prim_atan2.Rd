@@ -4,21 +4,26 @@
 \alias{prim_atan2}
 \title{Primitive Arctangent 2}
 \usage{
-prim_atan2(lhs, rhs)
+prim_atan2(y, x)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Two inputs of the same data type and shape. Can be any float data type. R
-values assume the other operand's data type when it is in their
-\link[=dtypes]{data type category}, and their
-\link[=default_dtypes]{default data type} when neither operand has one.}
+\item{y, x}{(\code{\link{arrayish}})\cr
+Ordinate and abscissa of the point, of the same shape. Can be any float
+data type.
+\code{y} and \code{x} must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has the inputs' shape and data type.
 }
 \description{
-Element-wise atan2 operation.
+Element-wise atan2 operation: the angle (in radians) between the positive
+x-axis and the point \verb{(x, y)}.
+
+The operands are named \code{y} and \code{x}, in that order, after
+\code{\link[base:atan2]{base::atan2()}}, rather than \code{lhs} / \code{rhs}.
 }
 \section{Implemented Rules}{
 

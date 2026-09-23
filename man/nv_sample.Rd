@@ -4,13 +4,13 @@
 \alias{nv_sample}
 \title{Sample from a Population}
 \usage{
-nv_sample(shape, initial_state, x)
+nv_sample(shape, state, x)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}

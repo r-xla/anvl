@@ -70,6 +70,6 @@ nv_sort(m, axis = 2L) # each row sorted, shape kept
 }
 \seealso{
 \code{\link[=prim_sort]{prim_sort()}} for the underlying primitive,
-\code{\link[=nv_argsort]{nv_argsort()}}, \code{\link[=nv_top_k]{nv_top_k()}}, \code{\link[=nv_median]{nv_median()}},
-\code{\link[=nv_argmax]{nv_argmax()}}, \code{\link[=nv_argmin]{nv_argmin()}}.
+\code{\link[=nv_order]{nv_order()}}, \code{\link[=nv_top_k]{nv_top_k()}}, \code{\link[=nv_median]{nv_median()}},
+\code{\link[=nv_which_max]{nv_which_max()}}, \code{\link[=nv_which_min]{nv_which_min()}}.
 }

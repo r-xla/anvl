@@ -13,10 +13,13 @@ like_defaults <- function(like, ...) {
   getters <- list(
     dtype = dtype,
     shape = shape,
-    # `device` only comes from a concrete AnvlArray. For a GraphBox (during
-    # tracing) it stays NULL so downstream constructors pick it up from the
-    # tracing context.
-    device = function(x) if (is_anvl_array(x)) device(x)
+    # `device` only comes from an array that is placed on one. A traced value
+    # is not, and neither is a constant of the trace -- reading the
+    # `PlainDeviceCpu()` of one back would allocate the result on the first CPU
+    # device, which under `jit()` is a device the graph never asked for. It
+    # stays `NULL` instead, so the constructor below builds a constant of the
+    # trace as well.
+    device = placement_device
   )
   for (name in names(args)) {
     if (is.null(args[[name]])) {
@@ -28,15 +31,15 @@ like_defaults <- function(like, ...) {
 
 #' @rdname AnvlArray
 #' @param like ([`AnvlArray`])\cr
-#'   An existing array. Any of `dtype`, `device` and `shape` that are `NULL`
+#'   An existing array. Any of `shape`, `dtype` and `device` that are `NULL`
 #'   (the default) are taken from `like`.
 #' @export
-nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = NULL) {
+nv_array_like <- function(like, data, shape = NULL, dtype = NULL, device = NULL) {
   do.call(
     nv_array,
     c(
       list(data = data),
-      like_defaults(like, dtype = dtype, device = device, shape = shape)
+      like_defaults(like, shape = shape, dtype = dtype, device = device)
     )
   )
 }
@@ -56,8 +59,8 @@ nv_scalar_like <- function(like, data, dtype = NULL, device = NULL) {
 #' @rdname AnvlArray
 #' @export
 nv_empty_like <- jit(
-  function(like, dtype = NULL, shape = NULL, device = NULL) {
-    do.call(nv_empty, like_defaults(like, dtype = dtype, shape = shape, device = device))
+  function(like, shape = NULL, dtype = NULL, device = NULL) {
+    do.call(nv_empty, like_defaults(like, shape = shape, dtype = dtype, device = device))
   },
   static = 2:4
 )
@@ -76,7 +79,7 @@ nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, device = NULL)
 
 #' @rdname nv_iota
 #' @export
-nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL) {
+nv_iota_like <- function(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL) {
   do.call(
     nv_iota,
     c(
@@ -89,11 +92,11 @@ nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, dev
 #' @rdname nv_seq
 #' @export
 nv_seq_like <- jit(
-  function(like, start, end, by = NULL, dtype = NULL, device = NULL) {
+  function(like, from, to, by = NULL, dtype = NULL, device = NULL) {
     do.call(
       nv_seq,
       c(
-        list(start = start, end = end, by = by),
+        list(from = from, to = to, by = by),
         like_defaults(like, dtype = dtype, device = device)
       )
     )
@@ -104,11 +107,11 @@ nv_seq_like <- jit(
 #' @rdname nv_linspace
 #' @export
 nv_linspace_like <- jit(
-  function(like, start, end, steps, dtype = NULL, device = NULL) {
+  function(like, from, to, length_out, dtype = NULL, device = NULL) {
     do.call(
       nv_linspace,
       c(
-        list(start = start, end = end, steps = steps),
+        list(from = from, to = to, length_out = length_out),
         like_defaults(like, dtype = dtype, device = device)
       )
     )
@@ -128,7 +131,7 @@ nv_eye_like <- jit(
 #' @rdname nv_lower_tri
 #' @export
 nv_lower_tri_like <- jit(
-  function(like, diagonal = -1L, shape = NULL, device = NULL) {
+  function(like, shape = NULL, diagonal = -1L, device = NULL) {
     do.call(
       nv_lower_tri,
       c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
@@ -140,7 +143,7 @@ nv_lower_tri_like <- jit(
 #' @rdname nv_upper_tri
 #' @export
 nv_upper_tri_like <- jit(
-  function(like, diagonal = 1L, shape = NULL, device = NULL) {
+  function(like, shape = NULL, diagonal = 1L, device = NULL) {
     do.call(
       nv_upper_tri,
       c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))

@@ -2,12 +2,95 @@
 
 ## Breaking changes
 
+* The element-wise `nv_max()` / `nv_min()` and `prim_max()` / `prim_min()` are
+  now `nv_pmax()` / `nv_pmin()` and `prim_pmax()` / `prim_pmin()`, following
+  `base::pmax()` / `base::pmin()`.
+* The reductions lost their `reduce_` prefix: write `nv_sum()`, `nv_prod()`,
+  `nv_max()`, `nv_min()`, `nv_any()`, `nv_all()` and the matching `prim_*()`
+  instead of `nv_reduce_sum()` and friends. `prim_reduce()` keeps its name.
+* `nv_argsort()` is now `nv_order()`, `nv_reverse()` / `prim_reverse()` are
+  `nv_rev()` / `prim_rev()`, `nv_argmax()` / `nv_argmin()` and their primitives
+  are `nv_which_max()` / `nv_which_min()` and `prim_which_max()` /
+  `prim_which_min()`, and `prim_ceil()` is `prim_ceiling()`.
+* `nv_polygamma()` / `prim_polygamma()` are now `nv_psigamma()` /
+  `prim_psigamma()` and take `(x, deriv)` like `base::psigamma()` instead of
+  `(n, x)`; `deriv` defaults to `0`.
+* `nv_logistic()` / `prim_logistic()` are now `nv_plogis()` /
+  `prim_plogis()`.
+* The general transpose is now `nv_aperm(x, perm)`, matching `base::aperm()`;
+  `nv_transpose()` stays as another spelling of it. It and `prim_transpose()`
+  call their second argument `perm` instead of `permutation`.
+* `default_device()` no longer follows `PJRT_PLATFORM`; set `ANVL_DEFAULT_DEVICE`
+  or the `anvl.default_device` option instead.
+* `prim_reshape()` and `nv_reshape()`, and with them `nv_flatten()` and every
+  `axis = NULL` flattening default, are now column-major like base R.
+* `prim_bitcast_convert()` puts the axis holding an element's pieces first
+  rather than last when the two data types differ in width, so the pieces of
+  one element are adjacent in the order `nv_flatten()` reads and a narrowing
+  conversion lays the bytes out the way `as_raw()` writes them.
+* `nv_broadcast_to()` and `nv_broadcast_arrays()` align axes from the first
+  instead of the last: a shorter shape gets size-1 axes appended, so a
+  length-`nrow` vector broadcasts against a matrix where a length-`ncol` one
+  no longer does. Write `prim_broadcast_in_axes()` with an explicit axis
+  mapping for the previous right-aligned behavior.
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
 * A primitive is now named after the `prim_*()` function that exports it rather
   than the StableHLO op it lowers to.
 * `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
   `with_indices`, spelling it the way `prim_top_k()` does.
+* `nv_clamp()` and `prim_clamp()` take `(x, min, max)` instead of
+  `(min_val, x, max_val)`.
+* `nv_seq()` / `nv_seq_like()` call their bounds `from` and `to`, like
+  `base::seq()`.
+* `nv_ifelse()` and `prim_ifelse()` take `(test, yes, no)`, like
+  `base::ifelse()`. `prim_if()` / `nv_if()` keep `(pred, true, false)`: they
+  mirror the `if` construct, not `ifelse()`.
+* `nv_scan()` takes `(init, xs, body)`, the order `prim_scan()` uses, and both
+  call the trip count `steps` instead of `length`.
+* `prim_sort()`'s `descending` / `is_stable` are now `decreasing` / `stable`,
+  as in `nv_sort()`.
+* `prim_top_k()`'s `indices` no longer has a default; pass it explicitly.
+* `prim_reduce()` takes `(x, init, axes, reducer, drop)`: `reductor` is now
+  `reducer`, and it comes before `drop`.
+* `prim_static_slice()` / `nv_static_slice()` call their (inclusive) upper
+  bound `end_indices` instead of `limit_indices`.
+* `nv_crossprod()`, `nv_tcrossprod()`, `nv_outer()` and `nv_matmul()` call
+  their operands `x` and `y`, as base R does. So do `nv_pow()`,
+  `nv_remainder()`, `nv_xor()` and their primitives, instead of `lhs` / `rhs`.
+* `nv_linspace()` / `nv_linspace_like()` take `(from, to, length_out)` instead
+  of `(start, end, steps)`, like `base::seq()`.
+* `nv_runif()` and `nv_rnorm()` take `dtype` after the distribution
+  parameters, as `nv_rbinom()` and `nv_sample_int()` do.
+* `prim_convolution()` calls its input axes `x_batch_axis`, `x_feature_axis`
+  and `x_spatial_axes` instead of `input_*`, and `nv_conv1d()` /
+  `nv_conv2d()` / `nv_conv3d()` call their second operand `kernel` instead of
+  `weight`, as `prim_convolution()` does.
+* `nv_pad()` takes `(x, value, low, high, interior)` instead of
+  `(x, padding_value, edge_padding_low, edge_padding_high, interior_padding)`;
+  `prim_pad()` keeps the StableHLO names.
+* `nv_triangular_solve()` takes `left`, `unit_diag` and `transpose` instead of
+  `left_side`, `unit_diagonal` and `transpose_a`; `prim_triangular_solve()`
+  keeps the StableHLO names.
+* `prim_scatter()`'s `update_computation` is now `update_fn`.
+* `nv_lower_tri_like()` / `nv_upper_tri_like()` take `shape` before
+  `diagonal`, as `nv_lower_tri()` / `nv_upper_tri()` do.
+* `nv_quantile()`, `nv_median()` and their `quantile()` / `median()` methods
+  call `interpolation` `method`.
+* `nv_unsqueeze()` takes `axes`, inserting several axes at once.
+* `nv_atan2()` and `prim_atan2()` take `(y, x)`, like `base::atan2()`.
+* The array constructors spell their trailing arguments `shape`, `dtype`,
+  `device` in that order: `nv_array(data, shape, dtype, device, byrow)`,
+  `nv_empty(shape, dtype, device)`, `nv_iota()` / `prim_iota()`
+  `(axis, shape, dtype, start, device)`, and likewise `nv_array_like()`,
+  `nv_empty_like()` and `nv_iota_like()`.
+* `nv_shift_left()`, `nv_shift_right_logical()`, `nv_shift_right_arithmetic()`
+  and their primitives take `(x, shift)` instead of `(lhs, rhs)`. The result
+  keeps `x`'s data type, which `shift` is brought to, instead of promoting both.
+* The RNG functions (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
+  `nv_sample()`, `nv_sample_int()`, `prim_rng_bit_generator()`) call their
+  state argument `state` instead of `initial_state`, matching the `state`
+  element they return.
 * `nv_top_k()` takes `axes` instead of `axis`, ranking the elements of several
   axes together, and `axes = NULL` (the default) now ranks over every axis
   where it used to take the last one. Write `axes = -1` for the old default.
@@ -34,7 +117,7 @@
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.
 * `jit_eval()` was removed as it is no longer needed.
-* `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
+* `nv_sum()`, `nv_prod()`, `nv_cumsum()` and `nv_cumprod()` now
   accumulate a boolean array at the default integer data type instead of returning a boolean.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
@@ -51,15 +134,15 @@
   single `axis`, defaulting to every axis like `nv_mean()` and base R's
   `quantile()` / `median()`, and gained a `drop` argument. Write
   `nv_median(x, axes = -1L)` for the previous default.
-* `nv_sort()` and `nv_argsort()` now flatten a multi-axis array when
+* `nv_sort()` and `nv_order()` now flatten a multi-axis array when
   `axis = NULL`, instead of working along the last axis, so `sort()` on an
   anvl array agrees with base R. Write `axis = -1L` for the previous default.
 * `prim_sort()` no longer defaults `axis` to `1L`; pass it explicitly, as with
   every other primitive.
-* `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a
+* `nv_which_max()` and `nv_which_min()` now reduce over `axes` (plural) instead of a
   single `axis`, defaulting to every axis so that they pair with
-  `nv_reduce_max()` / `nv_reduce_min()`. Reducing several axes indexes their
-  row-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
+  `nv_max()` / `nv_min()`. Reducing several axes indexes their
+  column-major flattening. Write `nv_which_max(x, axes = -1L)` for the previous
   default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
@@ -67,6 +150,12 @@
 
 ## Features
 
+* New `local_default_device()` and `with_default_device()` set the
+  `anvl.default_device` option, which names the device a call that names none
+  allocates on in place of the first CPU device.
+* The environment variables `ANVL_DEFAULT_DEVICE` and `ANVL_DEFAULT_DTYPES`, read
+  when anvl is loaded, are used when the `anvl.default_device` and
+  `anvl.default_dtypes` options are not set.
 * `nv_rng_state()` accepts a seed of any signed or unsigned integer data type,
   bringing it to `i32`, where it took an `i32` only. The state stays `ui64[2]`
   whatever the seed and the default integer data type are.
@@ -86,15 +175,23 @@
 * `nv_sign()` accepts an unsigned integer array, returning `0` or `1` like
   base R's `sign()` on a non-negative number; `prim_sign()` still takes a
   signed input only.
+<<<<<<< HEAD
 * Error messages of primitives should now be greatly improved and mention the right argument names.
   This was achieved by porting the stablehlo inference functions to anvl's
   terminology. A message about a parameter also reports the value it was
   given, e.g. ``x` Got c(1, 2)`.
 * `nv_reverse()` gained an `axes = NULL` default that reverses every axis,
+=======
+* `aperm()` and `quantile()` now work on an `AnvlArray` / `AnvlBox`,
+  forwarding to `nv_aperm()` and `nv_quantile()`.
+* New `nv_drop()`, another spelling of `nv_squeeze()`; with the default
+  `axes = NULL` it drops every size-1 axis like `base::drop()`.
+* `nv_rev()` gained an `axes = NULL` default that reverses every axis,
+>>>>>>> origin/main
   matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
   `axes` instead of erroring.
 * `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
-  when `start > end`, like `seq()`.
+  when `from > to`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
@@ -160,6 +257,7 @@
 
 ## Bug fixes
 
+<<<<<<< HEAD
 * Whatever a `prim_*()` refuses now reports that primitive as the call, rather
   than the helper that checked the argument or the anonymous function `jit()`
   wraps.
@@ -176,6 +274,15 @@
   `assert_shapevec()`, `resolve_axes()` and `resolve_reshape_shape()` check it
   the way an inference rule does. `prim_chol()` no longer checks its operand
   twice, and refuses a zero-sized axis like the other decompositions.
+=======
+* The `_like` constructors (`nv_scalar_like()`, `nv_array_like()`,
+  `nv_fill_like()`, `nv_iota_like()`, `nv_empty_like()`) no longer allocate on
+  the first CPU device when `like` is an array built inside a trace. The stray
+  device made `jit()` abort with "found more than one device" wherever the
+  operands were elsewhere, which took out every `nv_qnorm()` call on CUDA.
+* `nv_unserialize()` / `nv_read()` place the loaded arrays on
+  [`default_device()`], where they always used pjrt's first device.
+>>>>>>> origin/main
 * `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
   inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second
@@ -214,10 +321,10 @@
   reals -- correctly reported 0. Conversions between floats still pass the
   gradient through.
 * `prim_scatter()` now checks that `update_computation` returns one value of
-  `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
+  `x`'s data type, as `prim_reduce()` already did for its `reducer`. A
   combiner returning something else made type inference declare a data type
   the call could not produce, and failed in the backend.
-* `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
+* `prim_reduce()`'s `reducer` no longer has to name its arguments `lhs` and
   `rhs`. They were passed by name, so `function(a, b)` failed with
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
@@ -235,9 +342,9 @@
   `nv_matmul()` does, instead of refusing two arrays that disagree.
 * On the `"quickr"` backend a call whose outputs are all empty emits the empty
   arrays directly, instead of an elementwise operation quickr rejects.
-* `nv_reduce_any()`, `nv_reduce_all()` and `nv_sort()` are jitted, and
-  `nv_polygamma()`'s `n` is no longer static, so it accepts an array as
-  `prim_polygamma()` does.
+* `nv_any()`, `nv_all()` and `nv_sort()` are jitted, and
+  `nv_psigamma()`'s `deriv` is no longer static, so it accepts an array as
+  `prim_psigamma()` does.
 * `nv_qnorm()` is accurate to its operand's data type rather than to the
   default float; its coefficients used to be materialized at the default.
 * `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` name their own operand when it
@@ -250,8 +357,8 @@
   `nv_qnorm()` keep the narrower requirement, as they carry one coefficient
   set per width.
 * The gradient of `nv_gamma()` is now correct for positive whole numbers.
-* `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
-  `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
+* `prim_any()` / `prim_all()` (and `nv_any()` /
+  `nv_all()`) now reject a non-boolean input when the call is traced.
   Type inference declared a `bool` output whatever the input was, so an
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.
@@ -263,6 +370,13 @@
 
 ## Tests
 
+* The environment variables that configure only the test suite are now spelled
+  with an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`. `ANVL_TEST` itself is
+  unchanged.
+* The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes anything
+  allocating on the first CPU device rather than following the trace land on a
+  device of its own instead of agreeing with everything else by accident. The
+  `default-device` workflow runs it that way on the `full-test` label.
 * Moved some of pjrt's dispatcher tests into anvl.
 
 # anvl 0.4.0

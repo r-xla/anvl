@@ -207,10 +207,10 @@ test_that("can pass abstract arrays to trace_fn", {
 
 test_that("error handling", {
   local_registered_default_dtypes()
-  expect_snapshot(error = TRUE, jit(prim_ceil)(nv_array(1:4)))
+  expect_snapshot(error = TRUE, jit(prim_ceiling)(nv_array(1:4)))
   expect_snapshot(
     error = TRUE,
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = c(2, 2))
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = c(2, 2))
   )
 })
 
@@ -222,6 +222,7 @@ test_that("error handling: type inference reports in anvl's terminology", {
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
+<<<<<<< HEAD
   # The primary operand is `x`, never `operand`.
   err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
   expect_match(conditionMessage(err), "`x` must have a float data type", fixed = TRUE)
@@ -229,8 +230,18 @@ test_that("error handling: type inference reports in anvl's terminology", {
   # Axis numbers are 1-based, with no conversion step on the way out. A
   # too-short `permutation` passes anvl's own checks (every entry is a valid,
   # non-duplicated axis) and is only rejected by inference.
+=======
+  # stablehlo's `operand` is anvl's `x`
+  err <- tryCatch(jit(prim_ceiling)(nv_array(1:4)), error = identity)
+  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
+
+  # `ErrorStablehlo` conditions build their message lazily in a
+  # `conditionMessage()` method; they keep their class and their 1-based indices.
+  # A too-short `perm` passes anvl's own checks (every entry is a valid,
+  # non-duplicated dimension) and is only rejected by stablehlo.
+>>>>>>> origin/main
   err <- tryCatch(
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = 1L),
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = 1L),
     error = identity
   )
   expect_match(conditionMessage(err), "must be a permutation of c(1, 2)", fixed = TRUE)

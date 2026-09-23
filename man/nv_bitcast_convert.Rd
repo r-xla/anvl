@@ -13,9 +13,12 @@ An R value materializes at its \link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Any target data type except \code{bool}.
-One of the same bit width as the input's leaves the shape unchanged; a narrower
-one adds a trailing axis holding the pieces; a wider one consumes the last
-axis, whose size must equal the ratio of the two widths.}
+One of the same bit width as the input's leaves the shape unchanged; a
+narrower one adds a \emph{leading} axis holding the pieces; a wider one consumes
+the first axis, whose size must equal the ratio of the two widths. The
+pieces of one element are therefore adjacent in the column-major element
+order \code{\link[=nv_flatten]{nv_flatten()}} reads, and a narrowing conversion lays the bytes out
+the way \code{\link[=as_raw]{as_raw()}} writes them.}
 }
 \value{
 (\code{\link{arrayish}})\cr

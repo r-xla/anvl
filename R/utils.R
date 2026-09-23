@@ -199,12 +199,12 @@ gather_clamp_indices <- function(
     )
     max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-    prim_clamp(min_bound, start_indices, max_bound)
+    prim_clamp(start_indices, min_bound, max_bound)
   } else {
     # Implicit index vector (single coordinate)
     min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
     max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_bound, start_indices, max_bound)
+    prim_clamp(start_indices, min_bound, max_bound)
   }
 }
 
@@ -243,7 +243,7 @@ col_major_layouts <- function(...) {
 
 # Transpose the matrix an array's last two axes form, leaving any leading batch
 # axes in place -- what `t()` means for the batched operands `nv_matmul()`
-# takes. `nv_transpose()` reverses *every* axis, which would put a batch axis
+# takes. `nv_aperm()` reverses *every* axis, which would put a batch axis
 # into the contraction slot. An array with fewer than two axes is handed on
 # unchanged, for `nv_matmul()` to report.
 transpose_matrix_axes <- function(x) {
@@ -251,5 +251,20 @@ transpose_matrix_axes <- function(x) {
   if (n < 2L) {
     return(x)
   }
-  nv_transpose(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
+  nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
+}
+
+# Where `prim_bitcast_convert()` puts the axis holding an element's pieces when
+# the two data types differ in width. StableHLO puts it last, where the pieces
+# of one element sit next to each other under its row-major reading; anvl is
+# column-major, so the axis belongs first instead. Returns the number of pieces
+# and which way the conversion goes, so the shape rule and the lowering agree.
+bitcast_lane <- function(dtype_in, dtype_out) {
+  width_in <- dtype_width(as_dtype(dtype_in))
+  width_out <- dtype_width(as_dtype(dtype_out))
+  list(
+    pieces = as.integer(max(width_in, width_out) / min(width_in, width_out)),
+    splits = width_in > width_out,
+    joins = width_in < width_out
+  )
 }

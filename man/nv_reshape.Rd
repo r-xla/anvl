@@ -21,21 +21,14 @@ the remaining entries and the number of elements of \code{x}.}
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
-Reshapes an array to a new shape without changing the underlying data.
-Returns the input unchanged if it already has the target shape.
+Reshapes an array to a new shape using col-major semantics.
 }
-\section{Differences from base R}{
-
-Note that row-major order is used, which differs from R's column-major order.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the elements are reread in row-major order; the data type is untouched
+# the elements keep their column-major order; the data type is untouched
 x <- array(1:6, dim = c(3, 2))
-# row-major
 nv_reshape(x, 6L)
-# differs from R (col-major)
+# the order base R reads them in, too
 c(x)
 
 # infer the size of the second axis

@@ -35,4 +35,15 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
 
   # Register compare_proxy for waldo/testthat
   register_s3_method("waldo", "compare_proxy", "AnvlArray")
+
+  read_env_defaults()
+}
+
+# Read `ANVL_DEFAULT_DTYPES` / `ANVL_DEFAULT_DEVICE`, the fallbacks of the
+# `anvl.default_dtypes` / `anvl.default_device` options.
+read_env_defaults <- function() {
+  dtypes <- Sys.getenv("ANVL_DEFAULT_DTYPES")
+  globals[["ENV_DEFAULT_DTYPES"]] <- if (nzchar(dtypes)) parse_default_dtypes_env(dtypes)
+  device <- Sys.getenv("ANVL_DEFAULT_DEVICE")
+  globals[["ENV_DEFAULT_DEVICE"]] <- if (nzchar(device)) device
 }

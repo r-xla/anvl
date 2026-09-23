@@ -2,6 +2,27 @@ as_default_dtypes <- function(dtypes) {
   vapply(names(dtypes), function(category) as.character(as_dtype(dtypes[[category]])), character(1L))
 }
 
+# Parse the `ANVL_DEFAULT_DTYPES` environment variable, `category=dtype` pairs
+# such as `"float=f64,int=i64"`, into a value of the `anvl.default_dtypes` option.
+parse_default_dtypes_env <- function(value) {
+  pairs <- strsplit(trimws(strsplit(value, ",", fixed = TRUE)[[1L]]), "=", fixed = TRUE)
+  categories <- trimws(vapply(pairs, `[`, character(1L), 1L))
+  if (!all(lengths(pairs) == 2L) || !all(categories %in% c("float", "int"))) {
+    cli_abort(c(
+      "Invalid {.envvar ANVL_DEFAULT_DTYPES}: {.val {value}}.",
+      i = "Write {.code category=dtype} pairs for the categories {.val float} and {.val int},
+           e.g. {.val float=f64,int=i64}."
+    ))
+  }
+  as_default_dtypes(setNames(as.list(trimws(vapply(pairs, `[`, character(1L), 2L))), categories))
+}
+
+# The `anvl.default_dtypes` option, falling back to the `ANVL_DEFAULT_DTYPES`
+# environment variable read when anvl was loaded (see `read_env_defaults()`).
+default_dtypes_setting <- function() {
+  getOption("anvl.default_dtypes") %||% globals[["ENV_DEFAULT_DTYPES"]]
+}
+
 resolve_option_default_dtypes <- function(value, backend) {
   names_ <- names(value)
   override <- as_default_dtypes(value[names_ %in% c("float", "int")])
@@ -11,7 +32,7 @@ resolve_option_default_dtypes <- function(value, backend) {
 }
 
 option_default_dtypes <- function(backend) {
-  value <- getOption("anvl.default_dtypes")
+  value <- default_dtypes_setting()
   if (is.null(value)) {
     return(character())
   }
@@ -71,6 +92,10 @@ effective_default_dtypes <- function(backend) {
 #'
 #' An entry that names a backend wins over the categories beside it.
 #'
+#' When the option is not set, the `ANVL_DEFAULT_DTYPES` environment variable
+#' (read once, when anvl is loaded) is used instead, written as `category=dtype` pairs that apply to every
+#' backend, e.g. `ANVL_DEFAULT_DTYPES="float=f64,int=i64"`.
+#'
 #' The defaults decide only what a value becomes when *nothing else does*: an R
 #' value that meets a typed array of its own category still takes that array's
 #' data type, whatever the default (`vignette("type-promotion")`). The data
@@ -126,7 +151,7 @@ default_dtypes_context <- function(backend) {
   registered <- registered_default_dtypes(backend)
   fallback <- c(float = as.character(registered$float), int = as.character(registered$int))
   function() {
-    value <- getOption("anvl.default_dtypes")
+    value <- default_dtypes_setting()
     if (is.null(value)) {
       return(fallback)
     }
@@ -161,7 +186,7 @@ merged_default_dtypes <- function(dtypes, backend) {
   }
   backend <- backend %||% active_backend()
   new <- as_default_dtypes(dtypes)
-  current <- getOption("anvl.default_dtypes")
+  current <- default_dtypes_setting()
   if (is.null(current)) {
     current <- list()
   } else {

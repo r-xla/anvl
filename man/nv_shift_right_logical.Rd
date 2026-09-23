@@ -4,19 +4,19 @@
 \alias{nv_shift_right_logical}
 \title{Logical Shift Right}
 \usage{
-nv_shift_right_logical(lhs, rhs)
+nv_shift_right_logical(x, shift)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Two inputs with a \link[=common_dtype]{common data type}. Can be
-any integer data type. Scalars are broadcast, and R values assume the other
-operand's data type within their \link[=dtypes]{data type category},
-otherwise falling back to their \link[=default_dtypes]{default data type} and
-being converted to the common data type.}
+\item{x}{(\code{\link{arrayish}})\cr
+The array whose bits are shifted. Can be any integer data type.}
+
+\item{shift}{(\code{\link{arrayish}})\cr
+By how many bits to shift each element of \code{x}. Brought to \code{x}'s data type,
+which it must fit in. Scalars are broadcast.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the inputs' broadcast shape and common data type.
+Has the inputs' broadcast shape and \code{x}'s data type.
 }
 \description{
 Element-wise logical right bit shift.
@@ -24,11 +24,11 @@ Element-wise logical right bit shift.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(8L, 16L, 32L))
-y <- nv_array(c(1L, 2L, 3L))
-nv_shift_right_logical(x, y)
+shift <- nv_array(c(1L, 2L, 3L))
+nv_shift_right_logical(x, shift)
 
-# different data types are promoted to their common one
-nv_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64"))
+# the result keeps `x`'s data type, which `shift` is brought to
+nv_shift_right_logical(nv_scalar(32L, "i64"), nv_scalar(2L, "i32"))
 
 # a scalar is broadcast
 nv_shift_right_logical(x, 1L)

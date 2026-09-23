@@ -4,23 +4,23 @@
 \alias{nv_runif}
 \title{Sample from a Uniform Distribution}
 \usage{
-nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
+nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
+\item{min, max}{(\code{numeric(1)})\cr
+Lower and upper bound.}
+
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Floating point data type.
 The default (\code{NULL}) uses the \link[=default_dtypes]{default float type}.}
-
-\item{min, max}{(\code{numeric(1)})\cr
-Lower and upper bound.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

@@ -55,12 +55,12 @@ test_that("prim_le", {
   expect_jit_torch_binary(prim_le, torch::torch_le, c(2, 3), c(2, 3))
 })
 
-test_that("prim_max", {
-  expect_jit_torch_binary(prim_max, torch::torch_maximum, c(2, 3), c(2, 3))
+test_that("prim_pmax", {
+  expect_jit_torch_binary(prim_pmax, torch::torch_maximum, c(2, 3), c(2, 3))
 })
 
-test_that("prim_min", {
-  expect_jit_torch_binary(prim_min, torch::torch_minimum, c(2, 3), c(2, 3))
+test_that("prim_pmin", {
+  expect_jit_torch_binary(prim_pmin, torch::torch_minimum, c(2, 3), c(2, 3))
 })
 
 test_that("prim_remainder", {
@@ -168,8 +168,8 @@ test_that("prim_floor", {
   expect_jit_torch_unary(prim_floor, torch::torch_floor, c(2, 3))
 })
 
-test_that("prim_ceil", {
-  expect_jit_torch_unary(prim_ceil, torch::torch_ceil, c(2, 3))
+test_that("prim_ceiling", {
+  expect_jit_torch_unary(prim_ceiling, torch::torch_ceil, c(2, 3))
 })
 
 test_that("prim_sign", {
@@ -272,8 +272,8 @@ test_that("prim_log1p", {
   )
 })
 
-test_that("prim_logistic", {
-  expect_jit_torch_unary(prim_logistic, torch::torch_sigmoid, c(2, 3))
+test_that("prim_plogis", {
+  expect_jit_torch_unary(prim_plogis, torch::torch_sigmoid, c(2, 3))
 })
 
 # CHLO ops: inverse trig, hyperbolic, gamma family.
@@ -332,14 +332,14 @@ test_that("prim_lgamma", {
   expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = 1e-5)
 })
 
-test_that("prim_polygamma", {
+test_that("prim_psigamma", {
   shp <- c(2, 3)
   x <- sampler_unif(0.5, 5)(shp, "f32")
   for (n_val in c(0L, 1L, 2L)) {
     n_arr <- array(rep(n_val, prod(shp)), shp)
-    out_nv <- jit(prim_polygamma)(
-      nv_array(n_arr, dtype = "f32"),
-      nv_array(x, dtype = "f32")
+    out_nv <- jit(prim_psigamma)(
+      nv_array(x, dtype = "f32"),
+      nv_array(n_arr, dtype = "f32")
     )
     out_th <- torch::torch_polygamma(n_val, torch::torch_tensor(x, dtype = torch::torch_float32()))
     expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = 1e-5)
@@ -437,8 +437,8 @@ test_that("prim_pad rejects non-scalar padding_value", {
   arr_nv <- nv_array(arr, dtype = dtype)
   arr_th <- torch::torch_tensor(arr, dtype = str_to_torch_dtype(dtype))
   for (op in list(
-    list(anvl = prim_argmax, torch = torch::torch_argmax),
-    list(anvl = prim_argmin, torch = torch::torch_argmin)
+    list(anvl = prim_which_max, torch = torch::torch_argmax),
+    list(anvl = prim_which_min, torch = torch::torch_argmin)
   )) {
     out_nv <- op$anvl(arr_nv, axis = axis_anvl)
     out_th <- op$torch(arr_th, dim = axis_anvl)
@@ -446,7 +446,7 @@ test_that("prim_pad rejects non-scalar padding_value", {
   }
 }
 
-describe("prim_argmax / prim_argmin", {
+describe("prim_which_max / prim_which_min", {
   it("(forward) match torch on 1D", {
     .argmax_argmin_compare(c(3, 1, 4, 1.5, 5), "f32", axis_anvl = 1L)
   })
@@ -536,9 +536,9 @@ describe("prim_convolution", {
       prim_convolution(
         a,
         b,
-        input_batch_axis = 1L,
-        input_feature_axis = 2L,
-        input_spatial_axes = 3L,
+        x_batch_axis = 1L,
+        x_feature_axis = 2L,
+        x_spatial_axes = 3L,
         kernel_input_feature_axis = 2L,
         kernel_output_feature_axis = 1L,
         kernel_spatial_axes = 3L,

@@ -24,13 +24,13 @@ How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to reduce, plus named arguments for \code{\link[=nv_reduce_min]{nv_reduce_min()}} and
-\code{\link[=nv_reduce_max]{nv_reduce_max()}} (e.g. \code{axes}), which are only accepted when there is a
+Arrays to reduce, plus named arguments for \code{\link[=nv_min]{nv_min()}} and
+\code{\link[=nv_max]{nv_max()}} (e.g. \code{axes}), which are only accepted when there is a
 single array to reduce.}
 
 \item{na.rm}{(\code{logical(1)})\cr
-Forwarded to the \code{nan_rm} argument of \code{\link[=nv_reduce_min]{nv_reduce_min()}} and
-\code{\link[=nv_reduce_max]{nv_reduce_max()}}.}
+Forwarded to the \code{nan_rm} argument of \code{\link[=nv_min]{nv_min()}} and
+\code{\link[=nv_max]{nv_max()}}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -57,5 +57,5 @@ nv_range(nv_matrix(1:6, nrow = 2), axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_reduce_min]{nv_reduce_min()}}, \code{\link[=nv_reduce_max]{nv_reduce_max()}}
+\code{\link[=nv_min]{nv_min()}}, \code{\link[=nv_max]{nv_max()}}
 }

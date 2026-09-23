@@ -21,8 +21,8 @@ Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with 
 The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always named **`x`** — never `operand`, `input`, `a`, or anything else. This holds even when StableHLO's own spec calls it `operand` or `input`.
 
 - Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
-- Two symmetric operands of a binary op: `lhs` / `rhs`.
-- Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
+- Two symmetric operands of a binary op: `lhs` / `rhs`. The one exception is `prim_atan2(y, x)`, which follows `base::atan2()`.
+- Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reducer`, `padding_value`, ...
 - Axis arguments derived from `x` follow it, and are spelled _axes_, never _dims_: `x_batching_axes`, `scatter_axes_to_x_axes`, `offset_axes`, `index_vector_axis`.
 
 When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.

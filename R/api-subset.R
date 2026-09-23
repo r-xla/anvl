@@ -575,7 +575,7 @@ nv_subset <- function(x, ...) {
 
   reversed_axes <- subset_reversed_axes(subsets)
   if (length(reversed_axes)) {
-    out <- prim_reverse(out, axes = reversed_axes)
+    out <- prim_rev(out, axes = reversed_axes)
   }
 
   out
@@ -690,7 +690,7 @@ nv_subset_assign <- function(x, ..., value) {
   # value goes in back to front. A scalar value broadcasts either way.
   reversed_axes <- subset_reversed_axes(subsets)
   if (length(reversed_axes) && naxes(value)) {
-    value <- prim_reverse(value, axes = reversed_axes)
+    value <- prim_rev(value, axes = reversed_axes)
   }
 
   subset_scatter_core(

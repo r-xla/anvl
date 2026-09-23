@@ -29,8 +29,8 @@ Each \code{AnvlArray} therefore has an associated device, queryable via
 \code{\link[=device]{device()}}. A device is a \code{\link[pjrt:as_pjrt_device]{pjrt::as_pjrt_device()}} object (e.g. the
 platform \code{"cpu"} or \code{"cuda"}, optionally with an index such as \code{"cuda:1"}).
 When \code{device} is \code{NULL} in \code{\link[=nv_array]{nv_array()}} or the \code{\link[=jit]{jit()}} wrapper, the
-device defaults to the \code{PJRT_PLATFORM} environment variable (falling back
-to \code{"cpu"}), or is inferred from the existing inputs of a jitted call.
+device defaults to \code{\link[=default_device]{default_device()}}, or is inferred from the existing
+inputs of a jitted call.
 Operations require all inputs to live on the same device.
 }
 

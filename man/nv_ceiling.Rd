@@ -30,5 +30,5 @@ ceiling(nv_array(1:3)) # an integer array is already whole
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_ceil]{prim_ceil()}} for the underlying primitive.
+\code{\link[=prim_ceiling]{prim_ceiling()}} for the underlying primitive.
 }

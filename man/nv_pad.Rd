@@ -4,19 +4,13 @@
 \alias{nv_pad}
 \title{Pad}
 \usage{
-nv_pad(
-  x,
-  padding_value,
-  edge_padding_low,
-  edge_padding_high,
-  interior_padding = NULL
-)
+nv_pad(x, value, low, high, interior = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-The array to pad. Can be any data type; \code{padding_value} is brought to it.}
+The array to pad. Can be any data type; \code{value} is brought to it.}
 
-\item{padding_value}{(\code{\link{arrayish}})\cr
+\item{value}{(\code{\link{arrayish}})\cr
 Scalar value to use for padding. It is
 brought to \code{x}'s data type: an R value is built at it when its category can
 reach it (\code{0L} serves an integer and a float \code{x} alike, \code{0} only a float
@@ -24,20 +18,20 @@ one), and a value that already has a data type is converted unless that
 would narrow it -- an \code{f64} padding value for an \code{f32} \code{x} is an error rather than
 a silent narrowing.}
 
-\item{edge_padding_low}{(\code{integer()})\cr
+\item{low}{(\code{integer()})\cr
 Amount of padding to add at the start of each axis.}
 
-\item{edge_padding_high}{(\code{integer()})\cr
+\item{high}{(\code{integer()})\cr
 Amount of padding to add at the end of each axis.}
 
-\item{interior_padding}{(\code{integer()} | \code{NULL})\cr
+\item{interior}{(\code{integer()} | \code{NULL})\cr
 Amount of padding to add between elements in each axis.
 If \code{NULL} (default), no interior padding is applied.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has \code{x}'s data type. Each axis grows by
-\code{edge_padding_low + edge_padding_high}, plus \code{interior_padding} between
+\code{low + high}, plus \code{interior} between
 every pair of elements; negative edge padding trims.
 }
 \description{
@@ -47,7 +41,7 @@ Pads an array with a given value at the edges and optionally between elements.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # two zeros in front, one behind
 x <- nv_array(c(1, 2, 3))
-nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
+nv_pad(x, nv_scalar(0), low = 2L, high = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

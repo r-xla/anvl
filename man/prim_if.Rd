@@ -25,8 +25,10 @@ the structure, data types and shapes both branches share.
 }
 \description{
 Conditional execution of one of two branches based on a scalar boolean
-predicate. Unlike \code{\link[=prim_ifelse]{prim_ifelse()}} which operates element-wise, this
-evaluates only the selected branch.
+predicate, mirroring R's \code{if} construct: it branches between two
+\emph{functions} and evaluates only the selected one. Its arguments are named
+after that construct, where \code{\link[=prim_ifelse]{prim_ifelse()}} -- which selects
+element-wise between two \emph{arrays} -- is named after \code{\link[=ifelse]{ifelse()}}.
 }
 \section{Implemented Rules}{
 

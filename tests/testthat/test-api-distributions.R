@@ -314,19 +314,19 @@ describe("nv_qnorm", {
 
   it("gradient matches 1 / dnorm(qnorm(p))", {
     p <- c(0.001, 0.025, 0.1, 0.5, 0.9)
-    f <- function(p) nv_reduce_sum(nv_qnorm(p))
+    f <- function(p) nv_sum(nv_qnorm(p))
     g <- as.vector(jit(gradient(f, wrt = "p"))(nv_array(p, dtype = "f64"))[[1L]])
     expect_equal(g, 1 / dnorm(qnorm(p)), tolerance = 1e-6)
   })
 
   it("gradient is not halved at the central/tail threshold", {
-    f <- function(p) nv_reduce_sum(nv_qnorm(p))
+    f <- function(p) nv_sum(nv_qnorm(p))
     g <- as.vector(jit(gradient(f, wrt = "p"))(
       nv_array(exp(-2), dtype = "f64")
     )[[1L]])
     expect_equal(g, 1 / dnorm(qnorm(exp(-2))), tolerance = 1e-6)
 
-    flog <- function(p) nv_reduce_sum(nv_qnorm(p, log_p = TRUE))
+    flog <- function(p) nv_sum(nv_qnorm(p, log_p = TRUE))
     glog <- as.vector(jit(gradient(flog, wrt = "p"))(
       nv_array(-2, dtype = "f64")
     )[[1L]])
@@ -338,7 +338,7 @@ describe("nv_qnorm", {
   })
 
   it("gradient stays finite deep in the log tail", {
-    f <- function(p) nv_reduce_sum(nv_qnorm(p, log_p = TRUE))
+    f <- function(p) nv_sum(nv_qnorm(p, log_p = TRUE))
     g <- as.vector(jit(gradient(f, wrt = "p"))(
       nv_array(c(-1e4, -1e5), dtype = "f64")
     )[[1L]])
@@ -347,7 +347,7 @@ describe("nv_qnorm", {
 
   it("gradients wrt mean/sd are exact", {
     p <- c(0.025, 0.9)
-    f <- function(p, mean, sd) nv_reduce_sum(nv_qnorm(p, mean, sd))
+    f <- function(p, mean, sd) nv_sum(nv_qnorm(p, mean, sd))
     g <- jit(gradient(f, wrt = c("mean", "sd")))(
       nv_array(p, dtype = "f64"),
       nv_array(c(1, 1), dtype = "f64"),
@@ -575,7 +575,7 @@ describe("nv_punif", {
     # 0 * Inf = NaN unless the interior is fed a clamped stand-in.
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
     f <- function(q, min, max, lower_tail = TRUE, log_p = FALSE) {
-      nv_reduce_sum(nv_punif(q, min, max, lower_tail = lower_tail, log_p = log_p))
+      nv_sum(nv_punif(q, min, max, lower_tail = lower_tail, log_p = log_p))
     }
     grad <- jit(gradient(f, wrt = c("q", "min", "max")), static = c("lower_tail", "log_p"))
     for (k in seq_len(nrow(flags))) {
@@ -593,12 +593,12 @@ describe("nv_punif", {
   })
 
   it("gradient is the density, either side of the log/log1p branch", {
-    f <- function(q) nv_reduce_sum(nv_punif(q, log_p = TRUE))
+    f <- function(q) nv_sum(nv_punif(q, log_p = TRUE))
     q <- c(0.4, 0.6, 1 - 1e-7)
     g <- as.vector(jit(gradient(f, wrt = "q"))(nv_array(q, dtype = "f64"))[[1L]])
     expect_equal(g, 1 / q, tolerance = 1e-9)
 
-    fp <- function(q) nv_reduce_sum(nv_punif(q, min = -1, max = 2))
+    fp <- function(q) nv_sum(nv_punif(q, min = -1, max = 2))
     gp <- as.vector(jit(gradient(fp, wrt = "q"))(
       nv_array(c(-2, 0.5, 3), dtype = "f64")
     )[[1L]])
@@ -752,7 +752,7 @@ describe("nv_qunif", {
   })
 
   it("gradient wrt p is the width of the interval", {
-    f <- function(p) nv_reduce_sum(nv_qunif(p, min = -1, max = 2))
+    f <- function(p) nv_sum(nv_qunif(p, min = -1, max = 2))
     g <- as.vector(jit(gradient(f, wrt = "p"))(
       nv_array(c(0.1, 0.5, 0.9), dtype = "f64")
     )[[1L]])
@@ -761,7 +761,7 @@ describe("nv_qunif", {
 
   it("gradients wrt min/max are exact", {
     p <- c(0.25, 0.75)
-    f <- function(p, min, max) nv_reduce_sum(nv_qunif(p, min, max))
+    f <- function(p, min, max) nv_sum(nv_qunif(p, min, max))
     g <- jit(gradient(f, wrt = c("min", "max")))(
       nv_array(p, dtype = "f64"),
       nv_array(c(0, 0), dtype = "f64"),
@@ -779,7 +779,7 @@ describe("nv_qunif", {
     # replaced by an in-range stand-in first.
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
     f <- function(p, min, max, lower_tail = TRUE, log_p = FALSE) {
-      nv_reduce_sum(nv_qunif(p, min, max, lower_tail = lower_tail, log_p = log_p))
+      nv_sum(nv_qunif(p, min, max, lower_tail = lower_tail, log_p = log_p))
     }
     grad <- jit(gradient(f, wrt = c("p", "min", "max")), static = c("lower_tail", "log_p"))
     for (k in seq_len(nrow(flags))) {
