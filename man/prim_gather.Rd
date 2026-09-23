@@ -23,7 +23,7 @@ prim_gather(
 One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
-\item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
+\item{start_indices}{(\code{\link{arrayish}})\cr
 Array of starting indices, of an integer data type, which it keeps -- the
 indices take no part in \code{x}'s. Contains index vectors that map to
 positions in \code{x} via \code{start_index_map}. The axis specified by

@@ -26,7 +26,7 @@ The base array to scatter into. Can be any data type.
 assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
 of them has one.}
 
-\item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
+\item{scatter_indices}{(\code{\link{arrayish}})\cr
 Array of indices, of an integer data type, which it keeps -- the indices
 take no part in \code{x}'s. Contains index vectors that map to positions in
 \code{x} via \code{scatter_axes_to_x_axes}. The axis specified

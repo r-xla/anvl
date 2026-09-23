@@ -18,9 +18,9 @@ The values to write at the specified position. Must have the same
 number of axes as \code{x}, with \code{shape(update) <= shape(x)} per axis.
 Shares \code{x}'s data type.}
 
-\item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per axis of \code{x}. They are brought to one
-integer data type among themselves, never \code{x}'s.}
+\item{...}{(\code{\link{arrayish}})\cr
+Scalar start indices of an integer data type, one per axis of \code{x}. They
+are brought to one data type among themselves, never \code{x}'s.}
 }
 \value{
 (\code{\link{arrayish}})\cr

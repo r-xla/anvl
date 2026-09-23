@@ -496,9 +496,9 @@ prim_static_slice <- new_primitive(
 #' time and you need stride support.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
-#' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per axis of `x`. They are brought to one
-#'   integer data type among themselves, never `x`'s.
+#' @param ... ([`arrayish`])\cr
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= shape(x)`
@@ -558,9 +558,9 @@ prim_dynamic_slice <- new_primitive(
 #'   The values to write at the specified position. Must have the same
 #'   number of axes as `x`, with `shape(update) <= shape(x)` per axis.
 #'   Shares `x`'s data type.
-#' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per axis of `x`. They are brought to one
-#'   integer data type among themselves, never `x`'s.
+#' @param ... ([`arrayish`])\cr
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @section Out of Bounds Behavior:
 #' Start indices are clamped before the update is written:
 #' `adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)`.
@@ -3091,7 +3091,7 @@ prim_rng_bit_generator <- new_primitive(
 #' @param x ([`arrayish`])\cr
 #'   The base array to scatter into. Can be any data type.
 #'   `r roxy_agree("x", "update")`
-#' @param scatter_indices ([`arrayish`] of integer type)\cr
+#' @param scatter_indices ([`arrayish`])\cr
 #'   Array of indices, of an integer data type, which it keeps -- the indices
 #'   take no part in `x`'s. Contains index vectors that map to positions in
 #'   `x` via `scatter_axes_to_x_axes`. The axis specified
@@ -3253,7 +3253,7 @@ prim_scatter <- new_primitive(
 #' given indices.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
-#' @param start_indices ([`arrayish`] of integer type)\cr
+#' @param start_indices ([`arrayish`])\cr
 #'   Array of starting indices, of an integer data type, which it keeps -- the
 #'   indices take no part in `x`'s. Contains index vectors that map to
 #'   positions in `x` via `start_index_map`. The axis specified by
