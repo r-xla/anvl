@@ -73,27 +73,25 @@ nv_unif_rand <- function(
 #' result$values
 #' @export
 nv_runif <- jit(
-  function(
-    shape,
-    initial_state,
-    dtype = NULL,
-    min = 0,
-    max = 1
-  ) {
-    dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
-    checkmate::assertNumeric(min, len = 1L, any.missing = FALSE, upper = max)
-    checkmate::assertNumeric(max, len = 1L, any.missing = FALSE, lower = min)
+  function(shape, initial_state, dtype = NULL, min = 0, max = 1) {
     shape <- assert_shapevec(shape)
-    # TODO: Support max and min to be arrayish
 
-    if (max == min) {
-      return(list(
-        state = initial_state,
-        values = nv_fill_like(initial_state, max, shape = shape, dtype = dtype)
-      ))
+    rule <- if (is.null(dtype)) {
+      promotion_common(fallback = default_float())
+    } else {
+      promotion_dtype(assert_rng_float_dtype(dtype))
     }
-
-    .range <- max - min
+    args <- as_anvl_arrays(min = min, max = max, .promote = rule)
+    min <- args$min
+    max <- args$max
+    dtype <- assert_rng_float_dtype(
+      dtype(min),
+      arg = "min/max",
+      hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
+    )
+    # a non-scalar `min`/`max` must have the sample's shape
+    assert_sample_param_shape(min, shape)
+    assert_sample_param_shape(max, shape)
 
     # generate samples in [0, 1)
     Unif <- nv_unif_rand(initial_state = initial_state, shape = shape, dtype = dtype)
@@ -116,15 +114,28 @@ nv_runif <- jit(
     # Replace values <= 0 with smallest_step
     U <- nv_ifelse(le_zero, smallest_step, U)
 
-    # expand to range
-    U <- nv_mul(U, .range)
-    # shift to interval
-    Y <- U + min
+    # expand to range and shift to interval (consistent if `min == max`)
+    Y <- U * (max - min) + min
 
-    return(list(state = Unif$state, values = Y))
+    # a reversed or non-finite interval is NaN to match base R
+    valid <- nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+
+    list(state = Unif$state, values = nv_ifelse(valid, Y, NaN))
   },
-  static = c(1L, 3L, 4L, 5L)
+  static = c(1L, 3L)
 )
+
+# Error unless the sampler parameter `x` is a scalar or has the sample's shape.
+assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
+  x_shape <- as.integer(shape(x))
+  if (length(x_shape) > 0L && !identical(x_shape, shape)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a scalar or have the shape of the sample.",
+      x = "Got shape {shapes_repr(list(x_shape))}, but the sample has shape {shapes_repr(list(shape))}."
+    ))
+  }
+  invisible(x)
+}
 
 #' @rdname nv_normal
 #' @template param_shape
