@@ -622,14 +622,15 @@ res_files <- list.files("benchmarks/results", pattern = "\\.csv$", full.names = 
 have_results <- length(res_files) > 0L
 ```
 
-In this section, we compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath].
+In this section, we compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath], and to the same sampler written with \CRANpkg{torch}.
 We ask how the sampler compares on a single CPU core, how well it uses multiple cores and a GPU, both within one chain and across many chains, and how large the compilation overhead is.
 
 ## Setup
 
 We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40, with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that both samplers perform the same number of gradient evaluations.
-The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficient implementation of the logistic regression likelihood.
-Stan can also evaluate this likelihood on a GPU via OpenCL, which we did not use.
+The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficient implementation of the logistic regression likelihood, which Stan can also evaluate on a GPU via OpenCL.
+The \CRANpkg{torch} sampler mirrors the \pkg{anvl} code: it obtains the gradient from \CRANpkg{torch}'s reverse-mode AD and runs the leapfrog and sampling loops as R loops, as \CRANpkg{torch} executes each operation eagerly.
+The number of threads \CRANpkg{torch} uses on the CPU is set via `torch_set_num_threads()`.
 Both samplers work in double precision and start at $\beta = 0$, and the data are simulated with standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
 Each configuration is repeated three times after a first call that includes compilation, and we report the median.
@@ -660,12 +661,16 @@ On one core, \pkg{anvl} draws the samples 3.1, 2.7, and 1.6 times faster than Cm
 A plausible reason is that XLA compiles the whole sampler, including the leapfrog loop and the gradient, into a single optimized program, whereas Stan evaluates the gradient with its operator-overloading AD library.
 The GPU does not pay off for small data, as its per-step overhead makes it slower than a CPU core for $n = 10^3$.
 For $n = 10^5$, however, it draws the samples in 0.31 seconds, which is about 100 times faster than \pkg{anvl} on one core and 160 times faster than CmdStan.
+The \CRANpkg{torch} sampler needs about 28 seconds for $n = 10^3$ on one core, 200 times as long as \pkg{anvl}, and still 2.5 times as long for $n = 10^5$.
+Its runtime is dominated by the overhead of dispatching each of the operations of a gradient evaluation from R, which is also why additional threads and the GPU do not help: on 16 threads it is slightly slower than on one, and on the GPU it takes about 36 seconds for every $n$, 120 to 220 times as long as \pkg{anvl} on the GPU.
+This is the per-operation overhead of eager execution discussed in the introduction.
 
 Figure \@ref(fig:results-single-scaling) (right) shows how a single chain scales with the number of cores.
 Without any change to the code, \pkg{anvl} becomes 1.8, 2.9, 4.1, and 4.7 times faster on 2, 4, 8, and 16 cores.
 With `reduce_sum()`, Stan scales further at 16 cores (11 times faster than on one thread), but this requires rewriting the model, and the parallelized model is slower than the original on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
 Up to 8 cores, both scale similarly; beyond that, profiling suggests that \pkg{anvl} is limited by the fixed cost of distributing each operation of the gradient over the cores, as the individual operations are too small at this problem size to keep 16 cores busy.
-The GPU completes the same run in `r if (file.exists("benchmarks/results/scaling-gpu.csv")) round(median(read.csv("benchmarks/results/scaling-gpu.csv")$time), 2) else "--"` seconds.
+\CRANpkg{torch} is as fast as \pkg{anvl} on one core (37 seconds), as the operations are large enough at this problem size to hide its overhead, but it becomes only 1.7 times faster on 16 threads (22 seconds).
+The GPU completes the same run with \pkg{anvl} in `r if (file.exists("benchmarks/results/scaling-gpu.csv")) round(median(read.csv("benchmarks/results/scaling-gpu.csv")$time), 2) else "--"` seconds.
 
 ```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 2.6, fig.pos = "tbp"}
 plot_chains(res_files)
