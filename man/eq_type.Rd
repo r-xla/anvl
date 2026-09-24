@@ -5,46 +5,39 @@
 \alias{neq_type}
 \title{Compare AbstractArray Types}
 \usage{
-eq_type(e1, e2, ambiguity)
+eq_type(e1, e2)
 
-neq_type(e1, e2, ambiguity)
+neq_type(e1, e2)
 }
 \arguments{
 \item{e1}{(\code{\link{AbstractArray}})\cr
-First array to compare.}
+First array to compare. Must not be an \code{\link{RData}}.}
 
 \item{e2}{(\code{\link{AbstractArray}})\cr
-Second array to compare.}
-
-\item{ambiguity}{(\code{logical(1)})\cr
-Whether to consider the ambiguous field when comparing.
-If \code{TRUE}, arrays with different ambiguity are not equal.
-If \code{FALSE}, only dtype and shape are compared.}
+Second array to compare. Must not be an \code{\link{RData}}.}
 }
 \value{
-\code{logical(1)} - \code{TRUE} if the arrays are equal, \code{FALSE} otherwise.
+(\code{logical(1)})
 }
 \description{
 Compare two abstract arrays for type equality.
+
+An \code{\link{RData}} has no data type to compare, so it is an error here, just as
+\code{\link[tengen:dtype]{dtype()}} is. Commit it first, e.g. with \code{\link[=nv_convert]{nv_convert()}}.
 }
 \examples{
 a <- nv_aval("f32", c(2L, 3L))
 b <- nv_aval("f32", c(2L, 3L))
 
-# Same dtype and shape
-eq_type(a, b, ambiguity = FALSE)
+# same dtype and shape
+eq_type(a, b)
 
-# Different dtype
-eq_type(a, nv_aval("i32", c(2L, 3L)), ambiguity = FALSE)
+# different dtype
+eq_type(a, nv_aval("i32", c(2L, 3L)))
 
-# Different shape
-eq_type(a, nv_aval("f32", c(3L, 2L)), ambiguity = FALSE)
-
-# ambiguity parameter controls whether ambiguous field is compared
-c <- nv_aval("f32", c(2L, 3L), ambiguous = TRUE)
-eq_type(a, c, ambiguity = FALSE)
-eq_type(a, c, ambiguity = TRUE)
+# different shape
+eq_type(a, nv_aval("f32", c(3L, 2L)))
 
 # neq_type is the negation of eq_type
-neq_type(a, b, ambiguity = FALSE)
+neq_type(a, b)
 }

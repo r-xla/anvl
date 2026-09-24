@@ -2,21 +2,22 @@
 % Please edit documentation in R/primitives.R
 \name{prim_not}
 \alias{prim_not}
-\title{Primitive Not}
+\title{Primitive Bitwise Not}
 \usage{
 prim_not(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type boolean, integer, or unsigned integer.}
+One input. Can be any integerish data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
-Element-wise logical NOT.
+Element-wise bitwise NOT -- a logical NOT on a boolean input, and a
+bit-by-bit one on an integer.
 }
 \section{Implemented Rules}{
 
@@ -29,13 +30,18 @@ Element-wise logical NOT.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_not]{hlo_not()}}.
+Lowers to \code{\link[stablehlo:hlo_not]{hlo_not()}}, specified under
+\href{https://openxla.org/stablehlo/spec#not}{not}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# on a boolean this is a logical negation
 x <- nv_array(c(TRUE, FALSE, TRUE))
 prim_not(x)
+
+# on an integer it complements every bit, so `12L` becomes `-13`
+prim_not(nv_array(12L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

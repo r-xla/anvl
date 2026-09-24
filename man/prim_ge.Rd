@@ -2,19 +2,20 @@
 % Please edit documentation in R/primitives.R
 \name{prim_ge}
 \alias{prim_ge}
-\title{Primitive Greater Equal}
+\title{Primitive Greater Than or Equal}
 \usage{
 prim_ge(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of any data type.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the inputs and boolean data type.
-It is ambiguous if both inputs are ambiguous.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and boolean data type.
 }
 \description{
 Element-wise greater than or equal comparison.
@@ -30,14 +31,18 @@ Element-wise greater than or equal comparison.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparison_direction = "GE"}.
+Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}}, specified under
+\href{https://openxla.org/stablehlo/spec#compare}{compare}.
+The comparison direction is \code{GE}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(3, 2, 1))
-prim_ge(x, y)
+# two R values: both take an R double's default data type
+prim_ge(2, 1)
+
+# the R value is built at the array's data type instead
+prim_ge(2, nv_scalar(1, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

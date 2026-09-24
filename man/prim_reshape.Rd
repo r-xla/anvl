@@ -8,7 +8,8 @@ prim_reshape(x, shape)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. Must have the same number of elements as \code{x}.
@@ -16,13 +17,13 @@ At most one entry may be \code{-1}, in which case its extent is inferred from
 the remaining entries and the number of elements of \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as the input and the given \code{shape}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Reshapes an array to a new shape without changing the underlying data.
-Note that row-major order is used, which differs from R's column-major order.
+The elements keep their column-major order, exactly as base R's \verb{dim<-}
+does.
 }
 \section{Implemented Rules}{
 
@@ -35,11 +36,16 @@ Note that row-major order is used, which differs from R's column-major order.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}.
+Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reshape}{reshape}.
+The lowering wraps it in two \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}} calls that reverse every
+axis, which is what turns stablehlo's row-major reshape into a column-major
+one; each is skipped where that side has at most one axis.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the elements keep their column-major order; the data type is untouched
 x <- nv_array(1:6)
 prim_reshape(x, shape = c(2, 3))
 \dontshow{\}) # examplesIf}

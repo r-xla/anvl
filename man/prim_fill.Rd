@@ -4,22 +4,19 @@
 \alias{prim_fill}
 \title{Primitive Fill}
 \usage{
-prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
+prim_fill(value, shape, dtype, device = NULL)
 }
 \arguments{
 \item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+Scalar value to fill the array with. It has to be something \code{dtype} can
+hold: a whole number in its range for an integer data type, a non-negative
+one for an unsigned integer, and a logical or \code{0} / \code{1} for \code{bool}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
+Data type of the result.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -32,11 +29,10 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and \code{dtype}.
 }
 \description{
@@ -56,11 +52,13 @@ efficiently represented in the compiled program, while the latter uses
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
+Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}, stablehlo's constant builder, specified under
+\href{https://openxla.org/stablehlo/spec#constant}{constant}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R double is built at the requested data type
 prim_fill(3.14, shape = c(2, 3), dtype = "f32")
 \dontshow{\}) # examplesIf}
 }

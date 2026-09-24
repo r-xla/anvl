@@ -23,7 +23,10 @@ remove_unused_constants <- function(graph) {
     outputs = graph$outputs,
     constants = graph$constants,
     is_static_flat = graph$is_static_flat,
-    static_args_flat = graph$static_args_flat
+    static_args_flat = graph$static_args_flat,
+    # Positional, one entry per input: a pass may replace an input in place but
+    # must not reorder or drop one, so this carries over as it is.
+    rdata_types = graph$rdata_types
   )
 
   is_used <- hashtab()
@@ -31,7 +34,7 @@ remove_unused_constants <- function(graph) {
   # lexical scoping and don't have constants of their own
   # this means, the main graph contains all the constants that are used
   traverse_gnodes(new_graph, function(gval) {
-    if (is_graph_value(gval) && is_concrete_tensor(gval$aval)) {
+    if (is_graph_value(gval) && is_concrete_array(gval$aval)) {
       is_used[[gval]] <- TRUE
     }
   })
@@ -45,15 +48,14 @@ remove_unused_constants <- function(graph) {
 
 inline_scalarish_constants <- function(graph, map = NULL) {
   is_scalarish <- function(gval) {
-    is_graph_value(gval) && is_concrete_tensor(gval$aval) && (prod(gval$aval$shape$dims) == 1L)
+    is_graph_value(gval) && is_concrete_array(gval$aval) && (nelts(gval$aval) == 1L)
   }
 
   scalarish_to_lit <- function(gval) {
     GraphLiteral(LiteralArray(
       gval$aval$data,
       shape = shape(gval$aval),
-      dtype = dtype(gval$aval),
-      ambiguous = gval$aval$ambiguous
+      dtype = dtype(gval$aval)
     ))
   }
 
@@ -66,13 +68,17 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     outputs = graph$outputs,
     constants = graph$constants,
     is_static_flat = graph$is_static_flat,
-    static_args_flat = graph$static_args_flat
+    static_args_flat = graph$static_args_flat,
+    # Positional, one entry per input: a pass may replace an input in place but
+    # must not reorder or drop one, so this carries over as it is.
+    rdata_types = graph$rdata_types
   )
 
-  is_top_level <- is.null(map)
+  # `map` answers "what did this node become", shared with the sub-graphs so a
+  # constant captured by several of them becomes the same literal.
   map <- map %||% hashtab()
   for (const in new_graph$constants) {
-    if (is_scalarish(const)) {
+    if (is_scalarish(const) && is.null(map[[const]])) {
       map[[const]] <- scalarish_to_lit(const)
     }
   }
@@ -106,22 +112,6 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     if (!is.null(replacement)) {
       new_graph$outputs[[i]] <- replacement
     }
-  }
-  # TODO: We could ensure that each constant is only added once to the graph (currently, two
-  # nv_scalar(1) will create to fill calls)
-  if (is_top_level) {
-    consts <- hashvalues(map)
-    new_graph$calls <- c(
-      new_graph$calls,
-      lapply(consts, function(const) {
-        PrimitiveCall(
-          primitive = prim_fill,
-          inputs = list(),
-          params = list(value = const$aval$data, dtype = dtype(const$aval), shape = shape(const$aval)),
-          outputs = list(const)
-        )
-      })
-    )
   }
   new_graph$constants <- new_graph$constants[vapply(
     new_graph$constants,

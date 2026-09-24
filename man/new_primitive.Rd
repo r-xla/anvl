@@ -9,7 +9,6 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
-  device = NULL,
   register = TRUE
 )
 }
@@ -29,22 +28,16 @@ Names of parameters that are subgraphs (for higher-order primitives).}
 \item{static}{(\code{character()} | \code{integer()})\cr
 Passed to \code{\link[=jit]{jit()}}.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{device_arg()})\cr
-Passed to \code{\link[=jit]{jit()}}. Useful for primitives with no array inputs
-(e.g. \code{prim_fill}) where the device must come from an explicit argument.}
-
 \item{register}{(\code{logical(1)})\cr
 If \code{TRUE} (default), register the result under \code{name} in the primitive
 registry.}
 }
 \value{
+(\code{JitPrimitive})\cr
 A callable of class \code{c("JitPrimitive", "JitFunction")}.
 }
 \description{
-Builds an \code{\link{AnvlPrimitive}} metadata object, wraps \code{fn} with \code{\link[=jit]{jit()}},
-attaches the metadata via \code{attr(., "primitive")}, prepends class
-\code{"JitPrimitive"}, and (by default) registers the result under \code{name} in
-the primitive registry.
-
-The backend is always \code{"auto"} and cannot be configured.
+Create a new primitive.
+For details on how to do this, see the article on \emph{Adding a Primitive}.
+Like every jitted function it runs on the active backend when called.
 }

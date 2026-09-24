@@ -2,28 +2,38 @@
 % Please edit documentation in R/api.R
 \name{nv_xor}
 \alias{nv_xor}
-\title{Logical Xor}
+\title{Bitwise XOR}
 \usage{
-nv_xor(lhs, rhs)
+nv_xor(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+\item{x, y}{(\code{\link{arrayish}})\cr
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any integerish data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise logical XOR.
+Element-wise bitwise XOR -- a logical XOR on a boolean input, and a
+bit-by-bit one on an integer.
+For \emph{logical} inputs, you can also use \code{xor}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(TRUE, FALSE, TRUE))
 y <- nv_array(c(TRUE, TRUE, FALSE))
 nv_xor(x, y)
+
+# different data types are promoted to their common one
+nv_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
+
+# a scalar is broadcast
+nv_xor(x, TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
