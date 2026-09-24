@@ -305,3 +305,27 @@ train_while(X, beta, alpha, y, nv_scalar(100L), lr = 0.1)
 ```
 
 The same approach works analogously for `if`-statements, where the {anvl} primitive `nv_if()` is available.
+For a loop with a fixed number of steps there is also `nv_scan()`, which threads a carry through `body` like `nv_while()` and additionally stacks what each step returns.
+
+The difference matters for automatic differentiation: `gradient()` differentiates through `nv_if()` and `nv_scan()`, but not through `nv_while()`.
+A while loop's number of iterations is only known at run time, so there is no static size for the per-iteration states the backward pass needs.
+Below, the loss is that of a model trained for three steps, differentiated with respect to the learning rate:
+
+```{r}
+loss_after_training <- function(lr, X, beta, alpha, y) {
+  trained <- nv_scan(
+    list(beta = beta, alpha = alpha),
+    body = \(carry, x) {
+      grads <- model_loss_grad(X, carry$beta, carry$alpha, y)
+      list(
+        carry = list(beta = carry$beta - lr * grads$beta, alpha = carry$alpha - lr * grads$alpha),
+        out = NULL
+      )
+    },
+    steps = 3L
+  )$carry
+  model_loss(X, trained$beta, trained$alpha, y)
+}
+
+jit(gradient(loss_after_training, wrt = "lr"))(nv_scalar(0.1), X, beta, alpha, y)
+```

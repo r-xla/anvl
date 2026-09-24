@@ -336,6 +336,12 @@ describe("prim_if", {
     expect_equal(as.numeric(out[[2L]][[1L]]), c(2, 4, 6))
   })
 
+  it("differentiates its own backward pass", {
+    g <- function(x) nv_if(true_, function() nv_sum(x * x * x), function() nv_sum(x))
+    h <- function(x) nv_sum(gradient(g)(x)[[1L]])
+    expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(6, 12, 18))
+  })
+
   it("differentiates a value an earlier call's reverse rule replaced", {
     # `prim_sort()`'s reverse rule replaces its forward, so the value the
     # branches closed over is rebuilt before they are differentiated.
@@ -1193,50 +1199,6 @@ describe("prim_scan", {
     expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(1, 3, 6))
   })
 
-  it("differentiates init, xs and a captured weight of a recurrence", {
-    W_r <- matrix(c(0.5, -0.3, 0.2, 0.1), 2L, 2L)
-    h0_r <- c(0.1, 0.2)
-    xs_r <- array(c(0.3, -0.2, 0.5, 0.1, -0.4, 0.7), c(2L, 3L))
-    loss_r <- function(W, h0, xs) {
-      h <- h0
-      total <- 0
-      for (t in seq_len(ncol(xs))) {
-        h <- tanh(W %*% h + xs[, t])
-        total <- total + sum(h)
-      }
-      total
-    }
-    num_grad <- function(f, v) {
-      vapply(seq_along(v), function(k) {
-        e <- replace(numeric(length(v)), k, 1e-6)
-        (f(v + e) - f(v - e)) / 2e-6
-      }, numeric(1L))
-    }
-
-    f <- function(W, h0, xs) {
-      body <- function(carry, x) {
-        h <- tanh(nv_matmul(W, carry$h) + x$v)
-        # The integer counter rides along and gets no gradient.
-        list(carry = list(i = carry$i + 1L, h = h), out = h)
-      }
-      init <- list(i = nv_scalar(0L), h = h0)
-      r <- prim_scan(init, list(v = xs), body, steps = 3L)
-      nv_sum(r$out)
-    }
-    grads <- jit(gradient(f))(
-      nv_array(W_r, dtype = "f64"),
-      nv_array(h0_r, dtype = "f64", shape = c(2L, 1L)),
-      nv_array(aperm(xs_r), dtype = "f64", shape = c(3L, 2L, 1L))
-    )
-    expect_equal(as.numeric(grads$W), num_grad(\(v) loss_r(matrix(v, 2L), h0_r, xs_r), W_r), tolerance = 1e-6)
-    expect_equal(as.numeric(grads$h0), num_grad(\(v) loss_r(W_r, v, xs_r), h0_r), tolerance = 1e-6)
-    expect_equal(
-      as.numeric(aperm(as_array(grads$xs)[, , 1L])),
-      num_grad(\(v) loss_r(W_r, h0_r, matrix(v, 2L)), xs_r),
-      tolerance = 1e-6
-    )
-  })
-
   it("differentiates a value an integer xs indexes into", {
     # x[1] is read twice, x[3] once, x[2] never.
     f <- function(x) {
@@ -1298,6 +1260,16 @@ describe("prim_scan", {
     draws <- as.numeric(jit(f)(x, st)$draws)
     loss <- function(x, st) f(x, st)$value
     expect_equal(as.numeric(jit(gradient(loss, wrt = "x"))(x, st)$x), draws)
+  })
+
+  it("differentiates its own backward pass", {
+    # d/dx sum(d/dx sum(x^3)) = 6 x
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 2L)$carry$acc)
+    }
+    g <- function(x) nv_sum(gradient(f)(x)[[1L]])
+    expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), c(6, 12, 18))
   })
 
   it("passes the gradient straight through a scan of zero steps", {

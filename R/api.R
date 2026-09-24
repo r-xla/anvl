@@ -3380,11 +3380,19 @@ nv_cummin <- jit(
 #'   Result of the executed branch: an array, or a tree of them in the sense
 #'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
 #'   the structure, data types and shapes both branches share.
+#' @section Gradients:
+#' [gradient()] differentiates through the branch the predicate selects, including
+#' the values the branches close over; a value only the other branch uses gets a
+#' zero. See [prim_if()].
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # both branches must return the same structure, data types and shapes
 #' nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
+#'
+#' # the gradient flows through the branch that is taken
+#' f <- function(p, x) nv_if(p, \() sum(x * x), \() sum(x))
+#' jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), nv_array(c(1, 2, 3)))
 #' @export
 nv_if <- prim_if
 
@@ -3483,6 +3491,10 @@ nv_while <- prim_while
 #'   xs = x,
 #'   body = function(carry, x) list(carry = carry + x, out = carry + x)
 #' )$out
+#'
+#' # a scan is differentiable: the gradient of a cumulative product
+#' f <- function(x) nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+#' jit(gradient(f))(nv_array(c(1, 2, 3)))
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
   init <- map_tree(init, as_anvl_array)

@@ -75,6 +75,10 @@ nv_scan(
   xs = x,
   body = function(carry, x) list(carry = carry + x, out = carry + x)
 )$out
+
+# a scan is differentiable: the gradient of a cumulative product
+f <- function(x) nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+jit(gradient(f))(nv_array(c(1, 2, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
