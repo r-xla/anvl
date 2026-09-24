@@ -18,7 +18,11 @@ An R object is materialized at its \link[=default_dtypes]{default data type}.}
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
-The value is converted to the data type of \code{x}.}
+It is brought to \code{x}'s data type: an R value is built at it when its
+category can reach it (\code{0L} serves an integer and a float \code{x} alike, while
+\code{1.5} into an \code{i32} \code{x} is an error), and an array is converted unless that
+would narrow it or leave its category (an \code{f64} value for an \code{f32} \code{x} is
+an error).}
 }
 \value{
 (\code{\link{arrayish}})\cr

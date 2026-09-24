@@ -48,7 +48,8 @@ graph <- trace_fn(function(x) {
 print(graph)
 # the actual inputs to the compiled program
 graph$inputs
-# the data types of the R values; AnvlArrays get NA here
+# the R storage types of the inputs passed as R values; NA for inputs passed
+# as arrays
 graph$rdata_types
 \dontshow{\}) # examplesIf}
 }

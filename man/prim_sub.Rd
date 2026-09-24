@@ -9,9 +9,11 @@ prim_sub(lhs, rhs)
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
 Two inputs of the same data type and shape. Can be any numeric data type. R
-values assume the other operand's data type when it is in their
+values take the other operand's data type when it is in their
 \link[=dtypes]{data type category}, and their
-\link[=default_dtypes]{default data type} when neither operand has one.}
+\link[=default_dtypes]{default data type} when neither operand has one. An R
+value outside the other operand's category is an error, as are two R
+values of different storage types.}
 }
 \value{
 (\code{\link{arrayish}})\cr

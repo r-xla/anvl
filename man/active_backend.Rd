@@ -14,6 +14,9 @@ The backend name (e.g. \code{"pjrt"}, \code{"quickr"}).
 Retrieves the active backend (option \code{anvl.backend}), falling back to the default \code{"pjrt"}
 backend.
 }
+\examples{
+active_backend()
+}
 \seealso{
 \code{\link[=local_backend]{local_backend()}}, \code{\link[=with_backend]{with_backend()}}, \code{\link[=default_dtypes]{default_dtypes()}}
 }

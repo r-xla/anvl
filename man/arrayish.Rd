@@ -19,7 +19,7 @@ Whether to accept \code{numeric(1)} and \code{logical(1)} and R arrays of type \
 Whether \code{x} is arrayish.
 }
 \description{
-A \code{arrayish} value is anything that represents an \code{\link{AnvlArray}}
+An \code{arrayish} value is anything that represents an \code{\link{AnvlArray}}
 or can be converted to one.
 
 Specifically, these values are \code{arrayish}:
@@ -63,12 +63,7 @@ and the floats.
 # AnvlArray objects are arrayish
 is_arrayish(nv_array(1:4))
 
-# scalar R literals are arrayish by default
-is_arrayish(1.5)
-# R arrays are arrayish by default
-is_arrayish(array(1.5))
-
-# R arrays
+# R arrays and literals are arrayish by default
 is_arrayish(array(1:4), convert_ok = TRUE)
 is_arrayish(array(1:4), convert_ok = FALSE)
 

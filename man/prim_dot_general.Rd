@@ -15,9 +15,11 @@ prim_dot_general(
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
 Two inputs of the same data type whose shapes are constrained by \code{contracting_axes} and \code{batching_axes} rather than having to match. Can be any data type. R
-values assume the other operand's data type when it is in their
+values take the other operand's data type when it is in their
 \link[=dtypes]{data type category}, and their
-\link[=default_dtypes]{default data type} when neither operand has one.}
+\link[=default_dtypes]{default data type} when neither operand has one. An R
+value outside the other operand's category is an error, as are two R
+values of different storage types.}
 
 \item{contracting_axes}{(\code{list(integer(), integer())})\cr
 A list of two integer vectors specifying which axes of \code{lhs} and

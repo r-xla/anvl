@@ -10,10 +10,11 @@ nv_add(lhs, rhs)
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
 Two inputs with a \link[=common_dtype]{common data type}. Can be
-any data type. Scalars are broadcast, and R values assume the other
-operand's data type within their \link[=dtypes]{data type category},
-otherwise falling back to their \link[=default_dtypes]{default data type} and
-being converted to the common data type.}
+any data type. Scalars are broadcast. An R value takes the other
+operand's data type when that is in its own or a higher
+\link[=dtypes]{category} (an R integer meeting \code{f64} becomes \code{f64}); otherwise it
+settles on its \link[=default_dtypes]{default data type}, and the operands meet
+at their common data type.}
 }
 \value{
 (\code{\link{arrayish}})\cr

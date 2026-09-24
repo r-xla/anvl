@@ -21,8 +21,11 @@ Has the given \code{dtype} and the input's shape.
 }
 \description{
 Converts the elements of an array to a different data type.
-Bare R inputs are directly materialized at the requested data type
-and are checked for out-of-range or missing values.
+An R value in the target's category (an R integer at \code{i8}, say) is
+materialized at the target directly and checked for out-of-range or missing
+values. Any other R value (e.g. an R double at an integer data type) is built
+at \code{f64}, \code{i32} or \code{bool} according to its storage type and converted like an
+array, without that check.
 }
 \section{Implemented Rules}{
 

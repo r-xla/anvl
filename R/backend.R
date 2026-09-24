@@ -3,28 +3,37 @@ NULL
 
 #' Create a backend
 #'
-#' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
-#' This should be a `structure()` with at least a `$data` field that contains the actual
-#' underlying data (`PJRTBuffer` for `"pjrt"` backend, `array()` for `"quickr"` backend).
-#' Receives `row_major` (`logical(1)`, default `FALSE`), which gives the
-#' element order of raw byte payloads; backends that do not support raw
-#' `data` should abort on it.
-#' @param new_empty (`function`)\cr Constructs an AnvlArray of the given
-#' `dtype` and `shape` with unspecified contents. Called by [`nv_empty()`].
-#' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
-#' @param shape (`function`)\cr Extracts the shape from an AnvlArray.
+#' @param new_data (`function(data, dtype, shape, device, row_major = FALSE)`)\cr
+#'   Constructs an AnvlArray from R data. Must return
+#'   `structure(list(data = , backend = <name>, ...), class = "AnvlArray")`, where
+#'   `data` holds the underlying data (a `PJRTBuffer` for the `"pjrt"` backend, an
+#'   R `array()` for the `"quickr"` backend) and `backend` is the name the
+#'   backend is registered under. `row_major` gives the element order of raw
+#'   byte payloads; a backend that does not support raw `data` should abort on
+#'   it.
+#' @param new_empty (`function(dtype, shape, device)`)\cr
+#'   Constructs an AnvlArray of the given `dtype` and `shape` with unspecified
+#'   contents. Called by [`nv_empty()`].
+#' @param dtype (`function(x)`)\cr Extracts the dtype from an AnvlArray.
+#' @param shape (`function(x)`)\cr Extracts the shape from an AnvlArray.
 #' @param as_array (`function(x, check)`)\cr Converts an AnvlArray to an R
 #'   array. The `check` level is forwarded from [`as_array()`]; backends may use
 #'   it to abort when materialization would lose information (e.g. ui64 values
 #'   wrapping through `bit64::integer64`). See [`pjrt::as_array.PJRTBuffer()`].
-#' @param as_raw (`function`)\cr Converts an AnvlArray to raw bytes.
-#' @param platform (`function`)\cr Returns the platform name (e.g. `"cpu"`).
-#' @param device (`function`)\cr Returns the device object for an AnvlArray.
-#' @param new_device (`function`)\cr Constructs a backend-specific device
-#'   object from a device type string (e.g. `"cpu"`). Called by [`nv_device()`].
-#' @param print_data (`function`)\cr Prints the array data with a footer.
-#' @param jit (`function`)\cr Creates a JIT-compiled function implementation.
-#' @param await_data (`function`)\cr Blocks until the array's underlying data
+#' @param as_raw (`function(x, row_major)`)\cr Converts an AnvlArray to raw
+#'   bytes.
+#' @param platform (`function(x)`)\cr Returns the platform name (e.g. `"cpu"`).
+#' @param device (`function(x)`)\cr Returns the device object for an AnvlArray.
+#' @param new_device (`function(x)`)\cr Constructs a backend-specific device
+#'   object from a device identifier (e.g. `"cpu"` or `"cuda:1"`). Called by
+#'   [`nv_device()`].
+#' @param print_data (`function(x, footer)`)\cr Prints the array data with a
+#'   footer.
+#' @param jit (`function(f, static, cache_size, <options>, device = NULL)`)\cr
+#'   Creates the backend's implementation of a JIT-compiled function and returns
+#'   it as a `function`. The formals in place of `<options>` are the
+#'   backend-specific options [`jit()`] accepts through `...`.
+#' @param await_data (`function(x)`)\cr Blocks until the array's underlying data
 #'   is ready. Called by [`await()`] for `AnvlArray`s; a no-op for backends
 #'   without async execution.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
@@ -220,6 +229,8 @@ register_backend(
 #' @return (`character(1)`)\cr
 #'   The backend name (e.g. `"pjrt"`, `"quickr"`).
 #' @seealso [local_backend()], [with_backend()], [default_dtypes()]
+#' @examples
+#' active_backend()
 #' @export
 active_backend <- function() {
   getOption("anvl.backend", "pjrt")
@@ -237,9 +248,18 @@ assert_backend <- function(backend) {
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
-#' @param envir The environment to scope the change to.
-#' @return (`character(1)`)\cr
-#'   The previous value of the option, invisibly.
+#' @param envir (`environment`)\cr
+#'   The environment to scope the change to.
+#' @return (named `list`)\cr
+#'   The previous value of the option, as `list(anvl.backend = )`, invisibly.
+#' @seealso [active_backend()], [with_backend()]
+#' @examplesIf requireNamespace("quickr", quietly = TRUE)
+#' f <- function() {
+#'   local_backend("quickr")
+#'   active_backend()
+#' }
+#' f()
+#' active_backend()
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
@@ -254,9 +274,13 @@ local_backend <- function(backend, envir = parent.frame()) {
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
-#' @param code An expression to evaluate with the given backend.
-#' @return (`any`)\cr
+#' @param code (any)\cr
+#'   An expression to evaluate with the given backend.
+#' @return (any)\cr
 #'   The result of evaluating `code`.
+#' @seealso [active_backend()], [local_backend()]
+#' @examplesIf requireNamespace("quickr", quietly = TRUE)
+#' with_backend("quickr", active_backend())
 #' @export
 with_backend <- function(backend, code) {
   backend <- assert_backend(backend)

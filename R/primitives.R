@@ -178,6 +178,7 @@ prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Power
+#' @description
 #' Raises `x` to the power of `y` element-wise.
 #' @templateVar dtypes any numeric data type
 #' @template params_prim_x_y
@@ -420,7 +421,8 @@ prim_concatenate <- new_primitive(
 #' @template param_unary_x
 #' @param start_indices (`integer()`)\cr
 #'   Start indices (inclusive), one per axis. Must satisfy
-#'   `1 <= start_indices <= end_indices` per axis.
+#'   `1 <= start_indices <= end_indices + 1` per axis, where
+#'   `start_indices == end_indices + 1` selects an empty axis.
 #' @param end_indices (`integer()`)\cr
 #'   End indices (inclusive), one per axis. Must satisfy
 #'   `end_indices <= shape(x)` per axis. Unlike StableHLO's exclusive
@@ -2373,8 +2375,11 @@ prim_round <- new_primitive(
 #' @title Primitive Convert Data Type
 #' @description
 #' Converts the elements of an array to a different data type.
-#' Bare R inputs are directly materialized at the requested data type
-#' and are checked for out-of-range or missing values.
+#' An R value in the target's category (an R integer at `i8`, say) is
+#' materialized at the target directly and checked for out-of-range or missing
+#' values. Any other R value (e.g. an R double at an integer data type) is built
+#' at `f64`, `i32` or `bool` according to its storage type and converted like an
+#' array, without that check.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr

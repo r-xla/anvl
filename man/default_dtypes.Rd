@@ -13,16 +13,16 @@ default_float()
 default_int()
 }
 \value{
-\code{default_dtypes()} returns a named \code{list} with elements \code{float} and
-\code{int}, each a \code{\link[tengen:DataType]{DataType}}
+\code{default_dtypes()}: (named \code{list})\cr
+Elements \code{float} and \code{int}, each a \code{\link[tengen:DataType]{DataType}}.
+
+\code{default_float()}, \code{default_int()}: (\code{\link[tengen:DataType]{DataType}})\cr
+The default of one category.
 }
 \description{
 The default data types for the \link[=active_backend]{active backend}.
-They decide the data type an R value is materialized at when it cannot be
-inferred from another operand.
-
-This includes array creation via (\code{nv_array(1)}) or passing R values to unary functions
-(\code{prim_exp(1)}).
+They are the data types an R value settles on when it meets no typed array,
+e.g. \code{nv_array(1)} or \code{prim_exp(1)}.
 
 \code{default_dtypes()} reports both categories at once; \code{default_float()} and
 \code{default_int()} report one each.
@@ -32,7 +32,7 @@ for \code{"quickr"} -- and the \code{anvl.default_dtypes} option overrides them.
 \code{\link[=local_default_dtypes]{local_default_dtypes()}} and \code{\link[=with_default_dtypes]{with_default_dtypes()}} set the option for
 a scope.
 
-Below, we configure any backend to use the default \code{f64} for floats and \code{i64} for integers:
+Below, we configure every backend to use the default \code{f64} for floats and \code{i64} for integers:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = c(float = "f64", int = "i64"))
 }\if{html}{\out{</div>}}
@@ -43,11 +43,12 @@ the backend's default integer dtype unchanged:
 \if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = c(float = "f64"))
 }\if{html}{\out{</div>}}
 
-It is also possible to specify the defaults per-backend:
+It is also possible to specify the defaults per backend. Below, every
+backend uses \code{f64} for floats, and \code{"pjrt"} also uses \code{i64} for integers:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = list(
-  pjrt = list(float = "f64", int = "i64"),
-  quickr = list(int = "i32")
+  float = "f64",
+  pjrt = list(int = "i64")
 ))
 }\if{html}{\out{</div>}}
 

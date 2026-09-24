@@ -39,7 +39,9 @@ Alternatively a \code{raw()} vector holding the native little-endian byte
 payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \code{shape}
 are then required (only supported on the \code{"pjrt"} backend).
 Raw payloads are read in column-major element order, or row-major
-with \code{byrow = TRUE}.}
+with \code{byrow = TRUE}. An existing \code{\link{AnvlArray}} is returned unchanged if
+the \code{shape}, \code{dtype} and \code{device} given agree with it, and is an error
+otherwise.}
 
 \item{shape}{(\code{NULL} | \code{integer()})\cr
 The output shape of the array.
@@ -54,7 +56,7 @@ The data type at which to create the array: a \code{\link[tengen:DataType]{tenge
 of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. \code{data} is built at it rather than converted to it,
 and a value it cannot hold at all is an error (\code{nv_array(3e9, dtype = "i32")} overflows); a \code{double} at an integer data type is truncated.
 The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} of
-\code{data}'s category.}
+\code{data}'s category. \code{\link[=nv_empty]{nv_empty()}}, which has no \code{data}, requires it.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -63,8 +65,9 @@ The device the data lives on, given either as:
 \code{"cuda:<n>"}), which is resolved against the backend in use, or
 \item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
 \code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
-\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
-is backend-specific, it also determines the backend.
+\code{\link{quickr_device}} for the \code{"quickr"} backend. It must belong to the
+active backend (\code{\link[=active_backend]{active_backend()}}); a device of another backend is an
+error.
 }
 
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
@@ -84,8 +87,9 @@ Defaults to \code{1} when \code{data} is a scalar.}
 Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
 
-\item{like}{(\code{\link{AnvlArray}})\cr
-An existing array. Any of \code{shape}, \code{dtype} and \code{device} that are \code{NULL}
+\item{like}{(\code{\link{AnvlArray}} | \code{\link{GraphBox}})\cr
+An existing array; an R value is an error. Any of \code{shape} (which
+\code{nv_scalar_like()} does not take), \code{dtype} and \code{device} that are \code{NULL}
 (the default) are taken from \code{like}.}
 }
 \value{
@@ -150,7 +154,7 @@ presence of such values.
 \item Creating \code{float} arrays where we convert the \code{NA} to \code{NaN}.
 \item When creating an \code{i32} from an R \code{integer()}.
 There, we throw a warning, but the resulting \code{AnvlArray} gets the bit
-representation of \code{NAinteger_}, which is \code{-INT_MIN}.
+representation of \code{NA_integer_}, which is \code{INT_MIN} (\code{-2147483648}).
 Disallowing this would prevent round-trips between the data types.
 }
 
@@ -198,7 +202,7 @@ device(x)
 platform(x)
 
 # --- Transforming arrays with jit ---
-add_one <- jit(function(x) x + 1)
+add_one <- jit(function(x) x + 1L)
 add_one(nv_array(1:4))
 
 # --- Eager mode (calling operations directly) ---

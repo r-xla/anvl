@@ -130,8 +130,9 @@ nv_runif <- jit(
 #' @template param_shape
 #' @template param_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Floating point data type.
-#'   The default (`NULL`) uses the [default float type][default_dtypes].
+#'   Floating point data type of the sample. The default (`NULL`) uses the
+#'   common data type of `mean` and `sd`, and the
+#'   [default float type][default_dtypes] when both are R values.
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.

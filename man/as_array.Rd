@@ -24,7 +24,7 @@ values \verb{>= 2^63} wrapping through \code{bit64::integer64}. See
 \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for the full list, and the "Gotchas"
 vignette.}
 
-\item{...}{Additional arguments passed to methods (unused).}
+\item{...}{Passed on to methods.}
 }
 \value{
 (\code{\link[base:array]{array}} | \code{vector(1)})\cr

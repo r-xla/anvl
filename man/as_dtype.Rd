@@ -20,10 +20,8 @@ Coerces a value to a \code{DataType}. Accepts data type strings
 This is implemented via the generic \code{\link[tengen:as_dtype]{tengen::as_dtype()}}.
 }
 \examples{
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_dtype("f32")
 as_dtype("i32")
-\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=is_dtype]{is_dtype()}}, \code{\link[tengen:as_dtype]{tengen::as_dtype()}}, \code{\link[tengen:DataType]{tengen::DataType}}

@@ -18,8 +18,10 @@ graph_desc_add(
 The primitive the call is for. A \code{JitPrimitive} is accepted and unwrapped
 to its underlying \code{AnvlPrimitive} metadata.}
 
-\item{args}{(\code{list} of \code{\link{GraphNode}})\cr
-The arguments to the primitive.}
+\item{args}{(\code{list} of \code{\link{arrayish}})\cr
+The arguments to the primitive: \code{\link{GraphBox}}es, \code{\link{AnvlArray}}s (registered
+as constants of the graph) or R values (materialized at their default data
+type).}
 
 \item{params}{(\code{list})\cr
 The parameters to the primitive.}

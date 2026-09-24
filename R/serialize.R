@@ -1,24 +1,32 @@
-#' @title Save Arrays to a File
+#' @title Save and Read Arrays in a File
 #'
 #' @description
-#' Saves a named list of arrays to a file in the
-#' [safetensors](https://huggingface.co/docs/safetensors/index) format.
+#' `nv_save()` saves a named list of arrays to a file in the
+#' [safetensors](https://huggingface.co/docs/safetensors/index) format, and
+#' `nv_read()` loads them back. The data type and shape of each array are
+#' restored.
 #'
 #' @details
-#' This is a convenience wrapper around [`nv_serialize()`] that opens and closes
-#' a file connection.
+#' These are convenience wrappers around [`nv_serialize()`] and
+#' [`nv_unserialize()`] that open and close a file connection.
 #'
 #' @param arrays (named `list` of [`AnvlArray`])\cr
 #'   Named list of arrays. Names must be unique.
 #' @param path (`character(1)`)\cr
-#'   File path to write to.
+#'   File path to write to or read from.
+#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
+#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
+#'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
+#'   Under another backend the arrays are placed on that backend's default
+#'   device; leave `device` as `NULL` there.
 #'
-#' @returns (`NULL`)\cr
+#' @returns `nv_save()`: (`NULL`)\cr
 #'   Invisibly.
-#' @seealso [nv_read()], [nv_serialize()], [nv_unserialize()]
+#'
+#'   `nv_read()`: (named `list` of [`AnvlArray`])
+#' @seealso [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
-#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' path <- tempfile(fileext = ".safetensors")
@@ -37,33 +45,8 @@ nv_save <- function(arrays, path) {
   invisible(NULL)
 }
 
-#' @title Read Arrays from a File
-#'
-#' @description
-#' Loads arrays from a file in the
-#' [safetensors](https://huggingface.co/docs/safetensors/index) format.
-#'
-#' @details
-#' This is a convenience wrapper around [`nv_unserialize()`] that opens and
-#' closes a file connection.
-#'
-#' @param path (`character(1)`)\cr
-#'   Path to the safetensors file.
-#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
-#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
-#'   Defaults to [`default_device()`] of the `"pjrt"` backend, which the loader
-#'   goes through whatever the active backend is.
-#'
-#' @returns (named `list` of [`AnvlArray`])
-#' @seealso [nv_save()], [nv_serialize()], [nv_unserialize()]
+#' @rdname nv_save
 #' @export
-#' @examplesIf pjrt::plugins_downloaded("cpu")
-#' # data types and shapes round-trip unchanged
-#' x <- nv_matrix(1:6, nrow = 2)
-#' x
-#' path <- tempfile(fileext = ".safetensors")
-#' nv_save(list(x = x), path)
-#' nv_read(path)
 nv_read <- function(path, device = NULL) {
   checkmate::assert_string(path)
   checkmate::assert_file_exists(path)
@@ -75,21 +58,30 @@ nv_read <- function(path, device = NULL) {
 #' @title Serialize Arrays to Raw Bytes
 #'
 #' @description
-#' Serializes a named list of arrays into the
-#' [safetensors](https://huggingface.co/docs/safetensors/index) format.
+#' `nv_serialize()` serializes a named list of arrays into the
+#' [safetensors](https://huggingface.co/docs/safetensors/index) format, and
+#' `nv_unserialize()` deserializes them. The data type and shape of each array
+#' are restored.
 #'
 #' @param arrays (named `list` of [`AnvlArray`])\cr
 #'   Named list of arrays to serialize. Names must be unique.
-#' @param con (`NULL` | connection)\cr
-#'   An optional connection to write to.
-#'   If `NULL` (default), a raw vector is returned.
+#' @param con (`NULL` | connection | [`raw`])\cr
+#'   For `nv_serialize()`, an optional connection to write to; if `NULL`
+#'   (default), a raw vector is returned. For `nv_unserialize()`, a connection
+#'   or raw vector to read from.
+#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
+#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
+#'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
+#'   Under another backend the arrays are placed on that backend's default
+#'   device; leave `device` as `NULL` there.
 #'
-#' @returns ([`raw`] | `NULL`)\cr
+#' @returns `nv_serialize()`: ([`raw`] | `NULL`)\cr
 #'   A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
-#' @seealso [nv_unserialize()], [nv_save()], [nv_read()]
+#'
+#'   `nv_unserialize()`: (named `list` of [`AnvlArray`])
+#' @seealso [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
-#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' raw_data <- nv_serialize(list(x = x))
@@ -123,33 +115,8 @@ nv_serialize <- function(arrays, con = NULL) {
   invisible(NULL)
 }
 
-#' @title Deserialize Arrays from Raw Bytes
-#'
-#' @description
-#' Deserializes arrays from the
-#' [safetensors](https://huggingface.co/docs/safetensors/index) format.
-#'
-#' @details
-#' The data type and shape of each array are
-#' restored from the serialized data.
-#'
-#' @param con (connection | [`raw`])\cr
-#'   A connection or raw vector to read from.
-#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
-#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
-#'   Defaults to [`default_device()`] of the `"pjrt"` backend, which the loader
-#'   goes through whatever the active backend is.
-#'
-#' @returns (named `list` of [`AnvlArray`])
-#' @seealso [nv_serialize()], [nv_save()], [nv_read()]
+#' @rdname nv_serialize
 #' @export
-#' @examplesIf pjrt::plugins_downloaded("cpu")
-#' # data types and shapes round-trip unchanged
-#' x <- nv_matrix(1:6, nrow = 2)
-#' x
-#' raw_data <- nv_serialize(list(x = x))
-#' raw_data
-#' nv_unserialize(raw_data)
 nv_unserialize <- function(con, device = NULL) {
   # TODO: don't convert to pjrt first
   device <- device %||% default_device("pjrt")

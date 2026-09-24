@@ -42,7 +42,8 @@ NULL
 #' print(graph)
 #' # the actual inputs to the compiled program
 #' graph$inputs
-#' # the data types of the R values; AnvlArrays get NA here
+#' # the R storage types of the inputs passed as R values; NA for inputs passed
+#' # as arrays
 #' graph$rdata_types
 #' @export
 RData <- function(shape, r_type) {
@@ -276,7 +277,7 @@ r_const_at <- function(x, dtype, desc) {
 
 #' @title Peek at a Data Type
 #' @description
-#' The data type `x` would take if it was converted to an `AnvlArray`.
+#' The data type `x` would take if it materialized.
 #' Relevant for R objects and their [`RData`] trace-time analogon: for those it
 #' is the default of the active backend (see [`default_dtypes()`]), which the
 #' value has not materialized at yet.

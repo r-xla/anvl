@@ -112,9 +112,7 @@ reference:
     desc: Functions for serializing and deserializing arrays
     contents:
       - nv_save
-      - nv_read
       - nv_serialize
-      - nv_unserialize
 
   - subtitle: Base R Generics
     desc: >

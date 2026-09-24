@@ -52,25 +52,32 @@ prepare_gradient_args <- function(args, wrt) {
 
 #' @title Reverse Rule
 #' @description
-#' Construct a reverse-mode autodiff rule for a primitive.
-#' The `backward` argument should be provided if the `forward` call for
-#' the primitive should run un-modified.
-#' This covers most use-cases.
-#' The `backward` argument should have this signature:
-#' `function(inputs, outputs, grads, params, required) -> list(input_grads)`.
+#' Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
+#' of `backward` and `forward`.
 #'
-#' In some scenarios, it can be beneficial to perform a slightly different forward pass
-#' to enable a more efficient backward pass.
-#' In this case, pass the `forward` argument.
-#' It should return a list containing the results from the forward pass, as well as
-#' closure that has the same signature as the one above.
-#' It can make use of intermediate values computed in the forward pass via lexical scoping.
+#' Pass `backward` when the primitive's forward call can run unmodified, which
+#' covers most use cases. It has the signature
+#' `function(inputs, outputs, grads, params, required)` and returns a `list`
+#' with one entry per input: that input's gradient, or `NULL` where
+#' `required` says it is not needed.
 #'
-#' @param backward (`function`)\cr
-#'   Backward hook for default case.
-#' @param forward (`function`)\cr
-#'   Alternative-forward hook that returns both primals and backward closure.
+#' Pass `forward` when a slightly different forward pass enables a more
+#' efficient backward pass. It has the signature `function(inputs, params)`
+#' and returns `list(outputs = , backward = )`: the forward results and a
+#' closure with the signature of `backward` above, which can use intermediate
+#' values of the forward pass via lexical scoping.
+#'
+#' @param backward (`NULL` | `function`)\cr
+#'   Backward hook for the default case.
+#' @param forward (`NULL` | `function`)\cr
+#'   Alternative forward hook that returns both the outputs and a backward
+#'   closure.
 #' @return (`anvl_rule_reverse`)
+#' @examples
+#' # the rule of prim_negate()
+#' rule_reverse(function(inputs, outputs, grads, params, required) {
+#'   list(if (required[[1L]]) prim_negate(grads[[1L]]))
+#' })
 #' @seealso [`transform_gradient()`]
 #' @export
 rule_reverse <- function(backward = NULL, forward = NULL) {
@@ -106,14 +113,15 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #' those higher-level wrappers unless you need to operate on graphs directly.
 #' @param graph ([`AnvlGraph`])\cr
 #'   The graph to transform. Must produce a single scalar float output.
-#' @param wrt (`character`)\cr
-#'   Names of the graph inputs to differentiate with respect to.
+#' @param wrt (`NULL` | `character()`)\cr
+#'   Names of the graph inputs to differentiate with respect to. `NULL` or an
+#'   empty vector differentiates with respect to all inputs.
 #' @return ([`AnvlGraph`])\cr
 #'   Its outputs are the requested gradients.
 #' @seealso [`gradient()`], [`value_and_gradient()`], [`rule_reverse()`]
 #' @export
 #' @examples
-#' graph <- trace_fn(prim_mul, list(nv_aval("f32", c()), nv_aval("f32", c())))
+#' graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
 #' graph
 #' transform_gradient(graph, "lhs")
 transform_gradient <- function(graph, wrt) {
@@ -429,7 +437,10 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #'   must not appear in `wrt`.
 #'   If `NULL` (the default), the gradient is computed with respect to all
 #'   arguments (which must all be arrayish in that case).
-#' @return (`function`)
+#' @return (`function`)\cr
+#'   Has the same formals as `f` and must be called inside [`jit()`]. Returns a
+#'   named `list` of gradients, one per argument of `f` (or per `wrt` entry),
+#'   each structured like that argument.
 #' @seealso [`value_and_gradient()`] to get both the output and gradients,
 #'   [`transform_gradient()`] for the low-level graph transformation.
 #' @export
@@ -486,8 +497,9 @@ gradient <- function(f, wrt = NULL) {
 #' the `wrt` subset).
 #' @inheritParams gradient
 #' @return (`function`)\cr
-#'   Has the same formals as `f` and returns
-#'   `list(value = ..., grad = ...)`.
+#'   Has the same formals as `f` and must be called inside [`jit()`]. Returns
+#'   `list(value = , grad = )`: the return value of `f`, and the named `list` of
+#'   gradients that [`gradient()`] returns.
 #' @seealso [`gradient()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()

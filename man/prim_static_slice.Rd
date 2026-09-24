@@ -13,7 +13,8 @@ One input. Can be any data type. An R value materializes at its
 
 \item{start_indices}{(\code{integer()})\cr
 Start indices (inclusive), one per axis. Must satisfy
-\verb{1 <= start_indices <= end_indices} per axis.}
+\verb{1 <= start_indices <= end_indices + 1} per axis, where
+\code{start_indices == end_indices + 1} selects an empty axis.}
 
 \item{end_indices}{(\code{integer()})\cr
 End indices (inclusive), one per axis. Must satisfy

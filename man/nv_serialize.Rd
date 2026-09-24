@@ -2,29 +2,42 @@
 % Please edit documentation in R/serialize.R
 \name{nv_serialize}
 \alias{nv_serialize}
+\alias{nv_unserialize}
 \title{Serialize Arrays to Raw Bytes}
 \usage{
 nv_serialize(arrays, con = NULL)
+
+nv_unserialize(con, device = NULL)
 }
 \arguments{
 \item{arrays}{(named \code{list} of \code{\link{AnvlArray}})\cr
 Named list of arrays to serialize. Names must be unique.}
 
-\item{con}{(\code{NULL} | connection)\cr
-An optional connection to write to.
-If \code{NULL} (default), a raw vector is returned.}
+\item{con}{(\code{NULL} | connection | \code{\link{raw}})\cr
+For \code{nv_serialize()}, an optional connection to write to; if \code{NULL}
+(default), a raw vector is returned. For \code{nv_unserialize()}, a connection
+or raw vector to read from.}
+
+\item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
+The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...)
+when the active backend is \code{"pjrt"}, defaulting to \code{\link[=default_device]{default_device()}}.
+Under another backend the arrays are placed on that backend's default
+device; leave \code{device} as \code{NULL} there.}
 }
 \value{
-(\code{\link{raw}} | \code{NULL})\cr
+\code{nv_serialize()}: (\code{\link{raw}} | \code{NULL})\cr
 A raw vector if \code{con} is \code{NULL}, otherwise \code{NULL} invisibly.
+
+\code{nv_unserialize()}: (named \code{list} of \code{\link{AnvlArray}})
 }
 \description{
-Serializes a named list of arrays into the
-\href{https://huggingface.co/docs/safetensors/index}{safetensors} format.
+\code{nv_serialize()} serializes a named list of arrays into the
+\href{https://huggingface.co/docs/safetensors/index}{safetensors} format, and
+\code{nv_unserialize()} deserializes them. The data type and shape of each array
+are restored.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
-# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 raw_data <- nv_serialize(list(x = x))
@@ -33,5 +46,5 @@ nv_unserialize(raw_data)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_unserialize]{nv_unserialize()}}, \code{\link[=nv_save]{nv_save()}}, \code{\link[=nv_read]{nv_read()}}
+\code{\link[=nv_save]{nv_save()}}, \code{\link[=nv_read]{nv_read()}}
 }

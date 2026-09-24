@@ -62,7 +62,7 @@ env_get <- function(env, gval) {
 #' be serialized to MLIR text via `stablehlo::repr()` and subsequently compiled to an
 #' XLA executable with `pjrt::pjrt_compile()`.
 #'
-#' The rules for translating to stablehlo are stored in `$rules[["stablehlo"]]` of the primitives.
+#' The rule for translating a primitive to stablehlo is `prim_<name>[["stablehlo"]]`.
 #'
 #' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
@@ -100,7 +100,9 @@ env_get <- function(env, gval) {
 #' @return (`list`)\cr
 #'   Of length 3:
 #'   - the [`stablehlo::Func`]
-#'   - The list of [`GraphValue`]s holding [`ConcreteArray`]s.
+#'   - The graph's constants: the [`GraphValue`]s holding [`ConcreteArray`]s,
+#'     whose data must be passed as the leading inputs at execution time when
+#'     `constants_as_inputs = TRUE`.
 #'   - A list of phantom-output specs, one per phantom donated input
 #'     appended when `donate_unaliased_outputs = TRUE`. Each entry is a
 #'     `list(dtype, shape)` describing the buffer the executor must
@@ -312,6 +314,13 @@ lower_graph_calls <- function(graph, env, func) {
 #'   The current platform.
 #'   `local_platform()` invisibly returns the previous platform.
 #' @seealso [`stablehlo()`]
+#' @examples
+#' current_platform()
+#' f <- function() {
+#'   local_platform("cuda")
+#'   current_platform()
+#' }
+#' f()
 #' @export
 current_platform <- function() {
   globals[["LOWERING_PLATFORM"]]

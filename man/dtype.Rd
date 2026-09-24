@@ -7,8 +7,9 @@
 dtype(x, ...)
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr
-An array-like object.}
+\item{x}{(\code{\link{AnvlArray}} | \code{\link{GraphBox}} | \code{\link{AbstractArray}})\cr
+An array. An R value has no data type of its own, so it is an error here;
+use \code{\link[=peek_dtype]{peek_dtype()}} for the data type it would take.}
 
 \item{...}{Additional arguments passed to methods (unused).}
 }
@@ -28,5 +29,5 @@ dtype(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[tengen:dtype]{tengen::dtype()}}
+\code{\link[tengen:dtype]{tengen::dtype()}}, \code{\link[=peek_dtype]{peek_dtype()}}
 }

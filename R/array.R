@@ -44,7 +44,9 @@
 #'   payload of `prod(shape)` elements of `dtype`; both `dtype` and `shape`
 #'   are then required (only supported on the `"pjrt"` backend).
 #'   Raw payloads are read in column-major element order, or row-major
-#'   with `byrow = TRUE`.
+#'   with `byrow = TRUE`. An existing [`AnvlArray`] is returned unchanged if
+#'   the `shape`, `dtype` and `device` given agree with it, and is an error
+#'   otherwise.
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
@@ -58,7 +60,7 @@
 #'   and a value it cannot hold at all is an error (`nv_array(3e9, dtype =
 #'   "i32")` overflows); a `double` at an integer data type is truncated.
 #'   The default (`NULL`) uses the [default data type][default_dtypes] of
-#'   `data`'s category.
+#'   `data`'s category. [`nv_empty()`], which has no `data`, requires it.
 #' @template param_device
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
@@ -76,7 +78,7 @@
 #' 1. Creating `float` arrays where we convert the `NA` to `NaN`.
 #' 2. When creating an `i32` from an R `integer()`.
 #'    There, we throw a warning, but the resulting `AnvlArray` gets the bit
-#'    representation of `NAinteger_`, which is `-INT_MIN`.
+#'    representation of `NA_integer_`, which is `INT_MIN` (`-2147483648`).
 #'    Disallowing this would prevent round-trips between the data types.
 #'
 #' See the "Gotchas" vignette for more information.
@@ -120,7 +122,7 @@
 #' platform(x)
 #'
 #' # --- Transforming arrays with jit ---
-#' add_one <- jit(function(x) x + 1)
+#' add_one <- jit(function(x) x + 1L)
 #' add_one(nv_array(1:4))
 #'
 #' # --- Eager mode (calling operations directly) ---
@@ -239,7 +241,11 @@ nv_array <- function(
 #'   Which data type every input is brought to. See [`promotion_rule`] for more
 #'   information. A rule materializes an R value *at* its answer rather than
 #'   converting it afterwards, so it keeps every digit.
-#' @return (One or more [`arrayish`] values).
+#' @return `as_anvl_array()`: ([`AnvlArray`] | [`GraphBox`])\cr
+#'   An [`AnvlArray`] in eager code and a [`GraphBox`] inside a trace.
+#'
+#'   `as_anvl_arrays()`: (`list`)\cr
+#'   One such value per input, named like `...`.
 #' @seealso [peek_dtype()], [nv_promote_to_common()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_array(1L)
@@ -625,7 +631,8 @@ await.AnvlArray <- function(x, ...) {
 #' @param check (`character(1)` | `FALSE`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
-#' @return (`vector`)
+#' @return (`double()` | `integer()` | `logical()` | [`bit64::integer64`])\cr
+#'   The elements of `x` in column-major order, without a shape.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
 #' as.numeric(x)
@@ -714,10 +721,16 @@ device.AnvlArray <- function(x, ...) {
 }
 
 #' @title Get Backend of an Array
-#' @param x An array object
-#' @param ... Additional arguments (unused)
+#' @description
+#' Returns the name of the backend an array or device belongs to.
+#' @param x ([`AnvlArray`] | device object)\cr
+#'   An array or a device (see [`nv_device()`]).
+#' @param ... Unused.
 #' @return (`character(1)`)\cr
 #'   The backend name.
+#' @examplesIf pjrt::plugins_downloaded()
+#' backend(nv_array(1:3))
+#' backend(nv_device("cpu"))
 #' @export
 backend <- function(x, ...) {
   UseMethod("backend")
@@ -750,7 +763,7 @@ backend.QuickrDevice <- function(x, ...) {
 #' * sequence patterns: [`IotaArray`]
 #' * R values [`RData`]. They are special because they do not have a data type.
 #'
-#' To convert a [`arrayish`] value to an abstract array, use [`to_abstract()`].
+#' To convert an [`arrayish`] value to an abstract array, use [`to_abstract()`].
 #'
 #' @section Extractors:
 #' The following extractors are available on `AbstractArray` objects:
@@ -759,10 +772,14 @@ backend.QuickrDevice <- function(x, ...) {
 #' - [`naxes()`][tengen::naxes]: Get the number of axes.
 #'
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
-#'   The data type of the array.
-#'   To create an [`RData`] object, specify `"double"`, `"integer"`, or `"logical"`.
+#'   The data type of the array. For `nv_aval()` only, `"double"`,
+#'   `"integer"` or `"logical"` create an [`RData`] instead.
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array. Can be provided as an integer vector.
+#' @return `AbstractArray()`: ([`AbstractArray`])
+#'
+#'   `nv_aval()`: ([`AbstractArray`] | [`RData`])\cr
+#'   An [`RData`] when `dtype` names an R storage type.
 #' @seealso [LiteralArray], [ConcreteArray], [IotaArray], [RData], [GraphValue], [to_abstract()], [GraphBox]
 #'
 #' @examplesIf pjrt::plugins_downloaded()
@@ -779,7 +796,7 @@ backend.QuickrDevice <- function(x, ...) {
 #' nv_aval("double", c(2L, 3L))
 #'
 #' # how AbstractArrays appear in an AnvlGraph
-#' graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
+#' graph <- trace_fn(function(x) x + 1L, list(x = nv_aval("i32", 4L)))
 #' graph
 #' graph$inputs[[1]]$aval
 #'
@@ -827,6 +844,7 @@ shape.AbstractArray <- function(x, ...) {
 #'
 #' @param data ([`AnvlArray`])\cr
 #'   The actual array data.
+#' @return ([`ConcreteArray`])
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' y <- nv_array(c(0.5, 0.6))
@@ -873,7 +891,8 @@ ConcreteArray <- function(data) {
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array.
 #' @param dtype ([`tengen::DataType`])\cr
-#'   The data type. For the default, see [`default_dtypes()`]).
+#'   The data type. For the default, see [`default_dtypes()`].
+#' @return ([`LiteralArray`])
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- LiteralArray(1L, shape = integer())
@@ -914,7 +933,8 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 
 #' @title Iota Array Class
 #' @description
-#' An [`AbstractArray`] representing an integer sequence.
+#' An [`AbstractArray`] representing an arithmetic sequence with step 1 along
+#' one axis.
 #' Usually created by [`nv_iota()`] / [`nv_seq()`], which both call [`prim_iota()`] internally.
 #' Inherits from [`AbstractArray`].
 #'
@@ -932,6 +952,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #'   The axis along which values increase.
 #' @param start (`integer(1)`)\cr
 #'   The starting value.
+#' @return ([`IotaArray`])
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- IotaArray(shape = 4L, dtype = "i32", axis = 1L)
@@ -987,7 +1008,8 @@ print.IotaArray <- function(x, ...) {
 #' Compare two abstract arrays for type equality.
 #'
 #' An [`RData`] has no data type to compare, so it is an error here, just as
-#' [`dtype()`][tengen::dtype] is. Commit it first, e.g. with [`nv_convert()`].
+#' [`dtype()`][tengen::dtype] is. Give it a data type first, e.g. with
+#' [`nv_convert()`].
 #' @param e1 ([`AbstractArray`])\cr
 #'   First array to compare. Must not be an [`RData`].
 #' @param e2 ([`AbstractArray`])\cr
@@ -1109,11 +1131,15 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #' @title Convert to Abstract Array
 #' @description
 #' Convert an object to its abstract array representation ([`AbstractArray`]).
-#' @param x (`any`)\cr
+#' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   Object to convert.
 #' @param pure (`logical(1)`)\cr
 #'   Whether to convert to a pure `AbstractArray` and not e.g. `RData` or `ConcreteArray`.
-#' @return ([`AbstractArray`])
+#' @return ([`AbstractArray`])\cr
+#'   A [`ConcreteArray`] for an [`AnvlArray`], an [`RData`] for an R value,
+#'   the abstract array of a [`GraphBox`], and `x` itself for an
+#'   [`AbstractArray`]. With `pure = TRUE`, a plain `AbstractArray` of the same
+#'   shape and data type.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # an R value becomes `RData`: it has no data type of its own yet
 #' to_abstract(1.5)
@@ -1166,7 +1192,7 @@ is_shape <- function(x) {
 
 #' @title Array-like Objects
 #' @description
-#' A `arrayish` value is anything that represents an [`AnvlArray`]
+#' An `arrayish` value is anything that represents an [`AnvlArray`]
 #' or can be converted to one.
 #'
 #' Specifically, these values are `arrayish`:
@@ -1197,12 +1223,7 @@ is_shape <- function(x) {
 #' # AnvlArray objects are arrayish
 #' is_arrayish(nv_array(1:4))
 #'
-#' # scalar R literals are arrayish by default
-#' is_arrayish(1.5)
-#' # R arrays are arrayish by default
-#' is_arrayish(array(1.5))
-#'
-#' # R arrays
+#' # R arrays and literals are arrayish by default
 #' is_arrayish(array(1:4), convert_ok = TRUE)
 #' is_arrayish(array(1:4), convert_ok = FALSE)
 #'
@@ -1235,6 +1256,7 @@ is_arrayish <- function(x, convert_ok = TRUE) {
 #'   Values of new array.
 #' @param shape (`NULL` | `integer()`)\cr
 #'   Shape of new array. If `NULL` (default), uses length of elements to create a 1D array.
+#' @return (`array`)
 #' @export
 #' @examples
 #' arr(1, 2, 3)

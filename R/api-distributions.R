@@ -27,20 +27,21 @@ promote_distribution_args <- function(...) {
 #' standard deviation `sd`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
-#'   function (`q`). `x` can be any float data type; `q` must be `f32` or `f64`
-#'   (see "Details"). An R `double` is materialized at its [default data type][default_dtypes].
+#'   function (`q`). `x` can be any float data type; `q` must be `f32` or
+#'   `f64`. An R `double` is materialized at its [default data type][default_dtypes].
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
-#'   \eqn{[0, 1]} give `NaN`. Must be `f32` or `f64` (see "Details"); `mean`
-#'   and `sd` are converted to it. An R value materializes at its
-#'   [default data type][default_dtypes].
+#'   \eqn{[0, 1]} give `NaN`. Must be `f32` or `f64`. An R value materializes
+#'   at its [default data type][default_dtypes].
 #' @param mean ([`arrayish`])\cr
-#'   Mean of the distribution, scalar or the same shape as `x`/`q`/`p`.
-#'   Converted to the argument's data type.
+#'   Mean of the distribution, scalar or of the shape of `x`/`q`/`p` (of
+#'   `shape` for `nv_rnorm()`). For `nv_dnorm()`, `nv_pnorm()` and
+#'   `nv_qnorm()`, an R value takes the data type of `x`/`q`/`p`, and an array
+#'   must be promotable to it (a wider one is an error).
 #' @param sd ([`arrayish`])\cr
-#'   Standard deviation of the distribution, scalar or the same shape as
-#'   `x`/`q`/`p`. Converted to the argument's data type.
-#'   Must be positive, otherwise results are invalid.
+#'   Standard deviation of the distribution, scalar or of the shape of
+#'   `x`/`q`/`p` (of `shape` for `nv_rnorm()`). Brought to a data type like
+#'   `mean`. Must be positive, otherwise results are invalid.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms. For
 #'   `nv_qnorm` this describes the input `p`.
@@ -447,7 +448,8 @@ nv_qnorm <- jit(
 #' The Uniform distribution has probability density function:
 #' \deqn{f(x) = \frac{1}{b - a}, \quad a \le x \le b}
 #' and zero elsewhere, where \eqn{a} is `min` and \eqn{b} is `max`.
-#' The `min` and `max` are converted to the data type of `x`/`q`/`p`.
+#' An R value for `min` or `max` takes the data type of `x`/`q`/`p`, and an
+#' array must be promotable to it (a wider one is an error).
 #'
 #' All three are univariate functions evaluated elementwise, returning one
 #' value per element of `x`/`q`/`p`. Non-scalar `min`/`max` therefore give a

@@ -14,7 +14,7 @@ An array-like object.}
 (\code{integer(1)})
 }
 \description{
-Returns the number of axes (sometimes also refered to as rank) of an array.
+Returns the number of axes (sometimes also referred to as rank) of an array.
 Equivalent to \code{length(shape(x))}.
 }
 \examples{
