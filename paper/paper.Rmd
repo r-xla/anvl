@@ -606,10 +606,13 @@ We are interested in three questions: how the sampler compares on a single CPU c
 
 We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40, with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that both samplers perform the same number of gradient evaluations.
 The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficient implementation of the logistic regression likelihood.
+Stan can also evaluate this likelihood on a GPU via OpenCL, which we did not use; it accelerates the likelihood of individual chains, whereas \pkg{anvl} runs the entire sampler on the GPU.
 Both samplers work in double precision, start at $\beta = 0$, and draw 1000 samples per chain.
 The data are simulated with $p = 20$ standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
-Static HMC in CmdStan runs one chain per process, so for $K$ chains, we start $K$ processes, of which at most as many run at the same time as cores are available, while \pkg{anvl} runs all chains as a single batched program.
+Static HMC in CmdStan runs one chain per process, so for $K$ chains, we start $K$ processes, of which at most as many run at the same time as cores are available.
+On one core and on the GPU, \pkg{anvl} runs all chains as a single batched program.
+On 16 cores, we split the chains into 16 groups and run each group on its own PJRT CPU device (via the environment variable `PJRT_CPU_DEVICE_COUNT`), so that, as for CmdStan, each core works on its own chains; for comparison, we also report the time of a single program for all chains.
 Each configuration is repeated three times after a first call that includes compilation, and we report the median.
 All experiments ran on the LRZ AI Systems.
 The CPU experiments used a node with two Intel Xeon Gold 6336Y processors, restricted by Slurm to 16 cores, where the single-core configurations were additionally pinned to one core, and the GPU experiments used an NVIDIA A100 80GB GPU.

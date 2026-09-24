@@ -6,8 +6,9 @@ read_results <- function(files) {
   res <- do.call(rbind, lapply(files, utils::read.csv))
   res$config <- factor(
     paste(res$framework, res$label),
-    levels = c("anvl cpu1", "anvl cpu16", "anvl gpu", "stan cpu1", "stan cpu16"),
-    labels = c("anvl, 1 core", "anvl, 16 cores", "anvl, GPU", "Stan, 1 core", "Stan, 16 cores")
+    levels = c("anvl cpu1", "anvl cpu16", "anvl cpu16prog", "anvl gpu", "stan cpu1", "stan cpu16"),
+    labels = c("anvl, 1 core", "anvl, 16 cores", "anvl, 16 cores (one program)", "anvl, GPU",
+      "Stan, 1 core", "Stan, 16 cores")
   )
   res
 }
@@ -23,20 +24,27 @@ bench_theme <- function() {
 }
 
 bench_colors <- c(
-  "anvl, 1 core" = "#1b9e77", "anvl, 16 cores" = "#66a61e", "anvl, GPU" = "#7570b3",
+  "anvl, 1 core" = "#1b9e77", "anvl, 16 cores" = "#66a61e", "anvl, 16 cores (one program)" = "#66a61e",
+  "anvl, GPU" = "#7570b3",
   "Stan, 1 core" = "#d95f02", "Stan, 16 cores" = "#e6ab02"
+)
+
+bench_linetypes <- c(
+  "anvl, 1 core" = "solid", "anvl, 16 cores" = "solid", "anvl, 16 cores (one program)" = "dashed",
+  "anvl, GPU" = "solid", "Stan, 1 core" = "solid", "Stan, 16 cores" = "solid"
 )
 
 plot_bench <- function(files, exp, x) {
   s <- summarize_results(read_results(files))
   s <- s[s$experiment == exp, ]
-  s <- data.frame(s[c("config", "n", "K")], as.data.frame(s$time))
-  ggplot(s, aes(.data[[x]], median, color = config)) +
+  s <- droplevels(data.frame(s[c("config", "n", "K")], as.data.frame(s$time)))
+  ggplot(s, aes(.data[[x]], median, color = config, linetype = config)) +
     geom_line() +
     geom_point(size = 1) +
     scale_x_log10() +
     scale_y_log10() +
     scale_color_manual(values = bench_colors) +
+    scale_linetype_manual(values = bench_linetypes) +
     labs(x = if (x == "n") "Number of observations n" else "Number of chains K",
       y = "Time (seconds)") +
     bench_theme()

@@ -1,6 +1,8 @@
 #!/bin/bash
 # CPU runtime benchmark. Runs inside the paper image with a 16-core allocation;
 # the single-core configurations are pinned to the first allowed core.
+# "cpu16" splits the chains over 16 PJRT CPU devices (one program per device),
+# "cpu16prog" runs all chains as one program on 16 cores.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 cd "$(dirname "$0")/.."
@@ -13,9 +15,10 @@ lscpu > results/lscpu.txt
 Rscript bench-stan.R compile
 taskset -c "$CORE" Rscript bench-anvl.R cpu1 "$OUT" single
 taskset -c "$CORE" Rscript bench-stan.R cpu1 "$OUT" single 1
-Rscript bench-anvl.R cpu16 "$OUT" single
+Rscript bench-anvl.R cpu16prog "$OUT" single
 taskset -c "$CORE" Rscript bench-anvl.R cpu1 "$OUT" chains 64
 taskset -c "$CORE" Rscript bench-stan.R cpu1 "$OUT" chains 1 64
-Rscript bench-anvl.R cpu16 "$OUT" chains 256
-Rscript bench-stan.R cpu16 "$OUT" chains 16 256
+Rscript bench-anvl.R cpu16prog "$OUT" chains 256
+PJRT_CPU_DEVICE_COUNT=16 Rscript bench-anvl.R cpu16 "$OUT" chains 1024
+Rscript bench-stan.R cpu16 "$OUT" chains 16 1024
 Rscript overhead.R results/overhead.csv

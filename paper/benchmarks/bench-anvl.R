@@ -12,19 +12,31 @@ options(anvl.default_dtypes = c(float = "f64", int = "i32"))
 here <- dirname(sub("--file=", "", grep("--file=", commandArgs(FALSE), value = TRUE)))
 for (f in c("common.R", "grid.R", "hmc-anvl.R")) source(file.path(here, f))
 
+# With PJRT_CPU_DEVICE_COUNT > 1, the chains are split into one group per device
+# and each group runs as a separate program; like CmdStan's one process per chain,
+# this lets every core work on its own chains.
+n_devices <- as.integer(Sys.getenv("PJRT_CPU_DEVICE_COUNT", "1"))
+
 run <- function(n, K) {
   d <- sim_data(n, p)
-  X <- nv_array(d$X)
-  y <- nv_array(as.double(d$y))
   eps <- step_size(n)
+  G <- min(K, n_devices)
+  devices <- if (G > 1L) lapply(seq_len(G) - 1L, function(i) nv_device(sprintf("cpu:%d", i)))
+  sizes <- diff(round(seq(0, K, length.out = G + 1L)))
+  data <- lapply(seq_len(G), function(g) {
+    list(X = nv_array(d$X, device = devices[[g]]), y = nv_array(as.double(d$y), device = devices[[g]]))
+  })
   sample <- function(seed) {
-    res <- hmc(nv_array(matrix(0, K, p)), nv_rng_state(seed), X, y,
-      eps = eps, L = L, n_draws = n_draws)
-    await(res$draws)
-    res
+    res <- lapply(seq_len(G), function(g) {
+      hmc(nv_array(matrix(0, sizes[[g]], p), device = devices[[g]]),
+        nv_rng_state(seed * 1000L + g, device = devices[[g]]), data[[g]]$X, data[[g]]$y,
+        eps = eps, L = L, n_draws = n_draws)
+    })
+    lapply(res, function(r) await(r$draws))
   }
   t_first <- system.time(res <- sample(1L))[["elapsed"]]
-  acc <- acceptance(as_array(res$draws))
+  draws <- lapply(res, as_array)
+  acc <- sum(vapply(seq_len(G), function(g) acceptance(draws[[g]]) * sizes[[g]], numeric(1L))) / K
   times <- vapply(seq_len(n_reps), function(i) {
     system.time(sample(i + 1L))[["elapsed"]]
   }, numeric(1L))
