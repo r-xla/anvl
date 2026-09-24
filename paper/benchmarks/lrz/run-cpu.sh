@@ -21,4 +21,8 @@ taskset -c "$CORE" Rscript bench-stan.R cpu1 "$OUT" chains 1 64
 Rscript bench-anvl.R cpu16prog "$OUT" chains 256
 PJRT_CPU_DEVICE_COUNT=16 Rscript bench-anvl.R cpu16 "$OUT" chains 1024
 Rscript bench-stan.R cpu16 "$OUT" chains 16 1024
+TORCH_THREADS=1 taskset -c "$CORE" Rscript bench-torch.R cpu1 "$OUT" single
+TORCH_THREADS=1 taskset -c "$CORE" Rscript bench-torch.R cpu1 "$OUT" chains 64
+TORCH_THREADS=16 Rscript bench-torch.R cpu16 "$OUT" single
+TORCH_THREADS=16 Rscript bench-torch.R cpu16 "$OUT" chains 1024
 Rscript overhead.R results/overhead.csv

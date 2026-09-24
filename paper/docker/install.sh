@@ -6,7 +6,12 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y --no-install-recommends gfortran libcurl4-openssl-dev pandoc
+apt-get install -y --no-install-recommends gfortran libcurl4-openssl-dev pandoc \
+  ocl-icd-opencl-dev opencl-headers clinfo
+# OpenCL for Stan: register NVIDIA's OpenCL implementation, which the container
+# runtime injects together with the driver.
+mkdir -p /etc/OpenCL/vendors
+echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd
 rm -rf /var/lib/apt/lists/*
 
 # Pinned versions of the r-xla packages and quickr.
@@ -20,6 +25,9 @@ R -q -e "remotes::install_github(c(
 ), upgrade = 'never', force = TRUE)"
 
 R -q -e "install.packages(c('withr', 'ggplot2', 'rmarkdown', 'rjtools', 'knitr', 'safetensors'))"
+# torch with the CUDA build of LibTorch (which also runs on the CPU).
+R -q -e "install.packages('torch')"
+CUDA=12.8 R -q -e "options(timeout = 1800); torch::install_torch()"
 R -q -e "install.packages('cmdstanr', repos = c('https://stan-dev.r-universe.dev', getOption('repos')))"
 mkdir -p /opt/cmdstan
 R -q -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', version = '2.40.0', cores = 8, quiet = TRUE)"

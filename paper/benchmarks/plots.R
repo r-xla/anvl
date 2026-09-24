@@ -2,13 +2,15 @@
 library(ggplot2)
 
 read_results <- function(files) {
-  files <- files[basename(files) %in% c("cpu.csv", "gpu.csv")]
+  files <- files[basename(files) %in% c("cpu.csv", "gpu.csv", "gpu-stan.csv", "gpu-torch.csv")]
   res <- do.call(rbind, lapply(files, utils::read.csv))
   res$config <- factor(
     paste(res$framework, res$label),
-    levels = c("anvl cpu1", "anvl cpu16", "anvl cpu16prog", "anvl gpu", "stan cpu1", "stan cpu16"),
+    levels = c("anvl cpu1", "anvl cpu16", "anvl cpu16prog", "anvl gpu", "stan cpu1", "stan cpu16",
+      "stan opencl", "torch cpu1", "torch cpu16", "torch gpu"),
     labels = c("anvl, 1 core", "anvl, 16 cores", "anvl, 16 cores (one program)", "anvl, GPU",
-      "Stan, 1 core", "Stan, 16 cores")
+      "Stan, 1 core", "Stan, 16 cores", "Stan, GPU (OpenCL)", "torch, 1 core", "torch, 16 threads",
+      "torch, GPU")
   )
   res
 }
@@ -25,13 +27,16 @@ bench_theme <- function() {
 
 bench_colors <- c(
   "anvl, 1 core" = "#1b9e77", "anvl, 16 cores" = "#66a61e", "anvl, 16 cores (one program)" = "#66a61e",
-  "anvl, GPU" = "#7570b3",
+  "anvl, GPU" = "#7570b3", "Stan, GPU (OpenCL)" = "#a6761d",
+  "torch, 1 core" = "#e7298a", "torch, 16 threads" = "#f781bf", "torch, GPU" = "#666666",
   "Stan, 1 core" = "#d95f02", "Stan, 16 cores" = "#e6ab02"
 )
 
 bench_linetypes <- c(
   "anvl, 1 core" = "solid", "anvl, 16 cores" = "solid", "anvl, 16 cores (one program)" = "dashed",
-  "anvl, GPU" = "solid", "Stan, 1 core" = "solid", "Stan, 16 cores" = "solid"
+  "anvl, GPU" = "solid", "Stan, 1 core" = "solid", "Stan, 16 cores" = "solid",
+  "Stan, GPU (OpenCL)" = "solid", "torch, 1 core" = "dotted", "torch, 16 threads" = "dotted",
+  "torch, GPU" = "dotted"
 )
 
 plot_bench <- function(files, exp, x) {
@@ -67,21 +72,23 @@ plot_scaling <- function(files) {
   res$cores <- as.integer(sub(".*-", "", res$label))
   res$method <- sub("-.*", "", res$label)
   s <- stats::aggregate(time ~ method + cores, data = res, FUN = stats::median)
-  s$method <- factor(s$method, levels = c("anvl", "stan_threads", "stan"),
-    labels = c("anvl", "Stan (reduce_sum)", "Stan"))
+  s$method <- factor(s$method, levels = c("anvl", "stan_threads", "stan", "torch"),
+    labels = c("anvl", "Stan (reduce_sum)", "Stan", "torch"))
+  colors <- c("anvl" = "#1b9e77", "Stan (reduce_sum)" = "#e6ab02", "Stan" = "#d95f02", "torch" = "#e7298a",
+    "anvl, GPU" = "#7570b3", "Stan, GPU (OpenCL)" = "#a6761d", "torch, GPU" = "#666666")
   p <- ggplot(s, aes(cores, time, color = method)) +
     geom_line(data = s[s$method != "Stan", ]) +
     geom_point(size = 1.5) +
     scale_x_continuous(trans = "log2", breaks = c(1, 2, 4, 8, 16)) +
     scale_y_log10() +
-    scale_color_manual(values = c("anvl" = "#1b9e77", "Stan (reduce_sum)" = "#e6ab02", "Stan" = "#d95f02",
-      "anvl, GPU" = "#7570b3")) +
     labs(x = "Number of CPU cores", y = "Time (seconds)") +
     bench_theme()
-  gpu_file <- files[basename(files) == "scaling-gpu.csv"]
+  gpu_file <- files[basename(files) %in% c("scaling-gpu.csv", "scaling-gpu-stan.csv", "scaling-gpu-torch.csv")]
   if (length(gpu_file)) {
-    g <- stats::median(utils::read.csv(gpu_file)$time)
-    p <- p + geom_hline(aes(yintercept = g, color = "anvl, GPU"), data = data.frame(g = g), linetype = "dashed")
+    g <- do.call(rbind, lapply(gpu_file, utils::read.csv))
+    g <- stats::aggregate(time ~ framework, data = g, FUN = stats::median)
+    g$method <- c(anvl = "anvl, GPU", stan = "Stan, GPU (OpenCL)", torch = "torch, GPU")[g$framework]
+    p <- p + geom_hline(aes(yintercept = time, color = method), data = g, linetype = "dashed")
   }
-  p
+  p + scale_color_manual(values = colors)
 }

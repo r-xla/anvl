@@ -1,9 +1,9 @@
 #!/bin/bash
-# GPU runtime benchmark. Runs inside the paper image with one GPU.
+# GPU runtime benchmark for anvl. Runs inside the paper image with one GPU.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 cd "$(dirname "$0")/.."
-export ANVL_DEFAULT_DEVICE=cuda
+export ANVL_DEFAULT_DEVICE=cuda TORCH_DEVICE=cuda
 # pjrt.cuda keeps the CUDA libraries in its R_user_dir() cache, which the base
 # image populated under root's default cache directory.
 if [ ! -e "$R_USER_CACHE_DIR/R/pjrt.cuda" ]; then
@@ -13,8 +13,8 @@ if [ ! -e "$R_USER_CACHE_DIR/R/pjrt.cuda" ]; then
 fi
 mkdir -p results
 OUT=results/gpu.csv
-rm -f "$OUT"
+rm -f "$OUT" results/scaling-gpu.csv
 nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv > results/gpu.txt
 Rscript bench-anvl.R gpu "$OUT" single
 Rscript bench-anvl.R gpu "$OUT" chains
-Rscript bench-anvl.R gpu-16 results/scaling-gpu.csv scaling
+Rscript bench-anvl.R gpu results/scaling-gpu.csv scaling
