@@ -25,9 +25,17 @@ R -q -e "remotes::install_github(c(
 ), upgrade = 'never', force = TRUE)"
 
 R -q -e "install.packages(c('withr', 'ggplot2', 'rmarkdown', 'rjtools', 'knitr', 'safetensors'))"
-# torch 0.17.0 as the pre-built binary for CUDA 12.8, which bundles LibTorch and
-# the CUDA libraries it needs (it also runs on the CPU).
-R -q -e "options(timeout = 3600); install.packages('torch', repos = c('https://torch-cdn.mlverse.org/packages/cu128/0.17.0/', getOption('repos')))"
+# torch 0.17.0: the R package is built from source (for this R version), and its
+# lib/ directory is replaced by the one of the pre-built binary for CUDA 12.8,
+# which contains LibTorch, Lantern and the CUDA libraries they need.
+R -q -e "install.packages('torch')"
+TORCH_DIR=$(Rscript -e 'cat(system.file(package = "torch"))')
+curl -fsSL --retry 3 -o /tmp/torch-bin.tar.gz \
+  https://torch-cdn.mlverse.org/packages/cu128/0.17.0/src/contrib/torch_0.17.0_R_x86_64-pc-linux-gnu.tar.gz
+mkdir -p /tmp/torch-bin && tar -xzf /tmp/torch-bin.tar.gz -C /tmp/torch-bin torch/lib
+rm -rf "$TORCH_DIR/lib" && mv /tmp/torch-bin/torch/lib "$TORCH_DIR/lib"
+rm -rf /tmp/torch-bin /tmp/torch-bin.tar.gz
+R -q -e "library(torch); print(torch_randn(2))"
 R -q -e "install.packages('cmdstanr', repos = c('https://stan-dev.r-universe.dev', getOption('repos')))"
 mkdir -p /opt/cmdstan
 R -q -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', version = '2.40.0', cores = 8, quiet = TRUE)"
