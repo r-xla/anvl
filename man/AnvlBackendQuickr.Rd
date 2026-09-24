@@ -15,8 +15,6 @@ Constructs the quickr backend, which stores array data as plain R arrays and
 compiles jitted functions to R code via the \CRANpkg{quickr} package.
 }
 \details{
-To use it, the \code{"quickr"} package needs to be installed.
-
 Registered automatically under the name \code{"quickr"} when the package is
 loaded; call \code{\link[=local_backend]{local_backend("quickr")}} or
 \code{\link[=with_backend]{with_backend("quickr", ...)}} to use it. Requires the
@@ -30,7 +28,7 @@ field. \code{\link[=as_array]{as_array()}} returns the underlying vector/array d
 copying, and \code{\link[=nv_array]{nv_array()}} simply wraps an R vector/array. Data always lives
 in R's memory and computation always runs on the CPU, so the only device is
 \code{\link[=quickr_device]{quickr_device("cpu")}}; every array still carries it in
-\verb{$device}, as arrays of every backend do.
+\verb{$device}.
 }
 
 \section{Status}{

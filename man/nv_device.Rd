@@ -20,8 +20,8 @@ Backend-specific (e.g. \code{PJRTDevice} for \code{"pjrt"},
 Constructs a backend-specific device object for the active backend
 (\code{\link[=active_backend]{active_backend()}}).
 
-A device identifies a compute resources, such as CPU, or a specific GPU.
-It is relevant for data allocation (e.g. via \code{\link[=nv_array]{nv_array()}}) but also compilation (\link{jit}).
+A device identifies a compute resource, such as a CPU, or a specific GPU.
+It is relevant for data allocation (e.g. via \code{\link[=nv_array]{nv_array()}}) but also compilation (\code{\link[=jit]{jit()}}).
 A device belongs to the active backend (\code{\link[=active_backend]{active_backend()}}); a device
 object of another backend is an error.
 }

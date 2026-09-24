@@ -20,8 +20,9 @@ arguments (which must all be arrayish in that case).}
 }
 \value{
 (\code{function})\cr
-Has the same formals as \code{f} and returns
-\code{list(value = ..., grad = ...)}.
+Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}. Returns
+\code{list(value = , grad = )}: the return value of \code{f}, and the named \code{list} of
+gradients that \code{\link[=gradient]{gradient()}} returns.
 }
 \description{
 Returns a new function that computes both the output of \code{f} and its gradient in a

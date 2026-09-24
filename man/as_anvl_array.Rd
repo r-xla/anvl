@@ -26,7 +26,11 @@ converting it afterwards, so it keeps every digit.}
 Inputs to align. Name them to be able to point \code{.promote} at one of them.}
 }
 \value{
-(One or more \code{\link{arrayish}} values).
+\code{as_anvl_array()}: (\code{\link{AnvlArray}} | \code{\link{GraphBox}})\cr
+An \code{\link{AnvlArray}} in eager code and a \code{\link{GraphBox}} inside a trace.
+
+\code{as_anvl_arrays()}: (\code{list})\cr
+One such value per input, named like \code{...}.
 }
 \description{
 Use this to canonicalize inputs at the start of a function so it works

@@ -23,7 +23,10 @@ promotion_rule(fn, kind, on = NULL, ...)
 }
 \arguments{
 \item{on}{(\code{NULL} | \code{character()} | \code{numeric()})\cr
-Subset of arguments to apply a rule to. Indicated either via position or argument name.}
+Subset of arguments to apply a rule to. Indicated either via position or
+argument name. For \code{promotion_rule()}, \code{on} only declares which arguments
+the rule covers (which \code{\link[=promotion_grouped]{promotion_grouped()}} needs to check that its
+rules are disjoint); \code{fn} itself must restrict itself to them.}
 
 \item{fallback}{(\code{NULL} | \code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
 The data type to settle on when \emph{every} input is a bare R value, in place
@@ -45,8 +48,12 @@ hold (an \code{f64} array at \code{f32}). The default is \code{FALSE}.}
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
 The data type to bring the inputs to.}
 
-\item{...}{(\code{\link[=promotion_rule]{PromotionRule}})\cr
-The rules to apply to disjoint argument subsets.}
+\item{...}{For \code{promotion_grouped()}: (\code{\link[=promotion_rule]{PromotionRule}})\cr
+The rules to apply to disjoint argument subsets.
+
+For \code{promotion_rule()}: (any)\cr
+Further fields stored in the rule's \code{spec} attribute next to \code{on}, e.g. for
+\code{\link[=format]{format()}} to show.}
 
 \item{fn}{(\code{function})\cr
 The rule.}
@@ -56,9 +63,9 @@ What the rule is, for printing: it shows as \verb{<\{kind\}>}, so give it the
 name of the function that builds it.}
 }
 \value{
-(\verb{function(args) -> list()})
-A function returning data types for those inputs to be converted and \code{NULL} for those
-to be left unchanged.
+(\code{PromotionRule})\cr
+A \verb{function(args)} returning a \code{list} with one entry per input: the data
+type to bring it to, or \code{NULL} to leave it unchanged.
 }
 \description{
 Functions for materializing R values as arrays and promoting inputs.
@@ -66,20 +73,20 @@ Most commonly used via the \code{.promote} argument of \code{\link[=as_anvl_arra
 
 \code{promotion_common()} brings every input to their common data type
 (\code{\link[=common_dtype]{common_dtype()}}).
-R values always yield within the type category (such as float) and otherwise
-contribute their default data type.
+An R value takes the data type the arrays meet at when that is in its own or
+a higher category, and otherwise contributes its default data type.
 
 \code{promotion_like()} brings the inputs to the data type of a selected input.
 If the selected input is an R value, its default data type is used.
 
 \code{promotion_dtype()} brings the inputs to the specified data type.
 
-\code{promotion_rdata_common()} brings the \emph{R values} to the common data type, as
-long as it is within their category (a \code{double} can e.g. \emph{not} become an
-integer).
-\code{AnvlArray} inputs are left as they are and the function throws an error
-if not all of them have exactly the same data type.
-This rule is commonly used in primitives expecting homogenous inputs
+\code{promotion_rdata_common()} brings the \emph{R values} to the data type of the
+arrays among the inputs, which must all have the same one. An R value must
+be in that data type's category (a \code{double} can e.g. \emph{not} become an
+integer). When all inputs are R values, they settle on their shared default
+data type; R values of different storage types are an error.
+This rule is commonly used in primitives expecting homogeneous inputs
 for one or more argument subsets.
 
 \code{promotion_grouped()} applies several rules to disjoint subsets.
@@ -98,6 +105,21 @@ promotion_common(c(1, 2))(list(-3, 4, 1))
 promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 # without `coerce`, a target the input cannot hold is refused
 try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+promotion_dtype("f64")(list(1, nv_scalar(2, "f32")))
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+promotion_rdata_common()(list(nv_scalar(1, "f64"), 2))
+try(promotion_rdata_common()(list(nv_scalar(1L, "i32"), 2.5)))
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+rule <- promotion_grouped(
+  promotion_dtype("f64", on = "x"),
+  promotion_like("x", on = "y")
+)
+rule
+rule(list(x = 1, y = nv_scalar(2L, "i32"), z = 3L))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # every input at the widest float in the call, and never below f32.

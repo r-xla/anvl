@@ -9,22 +9,22 @@
 #' skip recompilation.
 #'
 #' @param f (`function`)\cr
-#'   Function to compile. Must accept and return [`AnvlArray`]s (and/or
-#'   static arguments).
+#'   Function to compile. Its non-static arguments are arrays or R values, and it
+#'   returns an array or a (nested) `list` of arrays.
 #' @param static (`character()` | `integer()`)\cr
 #'   Names or positions of parameters of `f` that are *not* arrays. Static values are
 #'   embedded as constants in the compiled program; a new compilation is triggered whenever
 #'   a static value changes. For example useful when you want R control flow in your function.
 #'
-#'   Note that the values that are passed to static arguments must not have reference semantics.
-#'   Such a value can be mutated in place while the cache key stays equal, which
-#'   would silently reuse a program compiled from its old contents.
-#'   One exception are closures, but there you need to ensure that their
-#'   enclosing environment does not change in a way that modifies their behavior.
+#'   A static value must not have reference semantics: an environment or an
+#'   external pointer, also inside a `list`, is an error, since it could be
+#'   mutated in place while the cache key stays equal. Closures are allowed, but
+#'   their enclosing environment must not change in a way that modifies their
+#'   behavior.
 #'
 #' @param cache_size (`integer(1)`)\cr
 #'   Maximum number of compiled executables to keep in the LRU cache.
-#' @param device (`NULL` | `character(1)` | [`nv_device`])\cr
+#' @param device (`NULL` | `character(1)` | [device][nv_device])\cr
 #'   Target device, of the active backend. When a device is specified, all
 #'   arrays are moved to it.
 #'
@@ -52,14 +52,12 @@
 #' array input to it. With `device = NULL` (default) the device is inferred from
 #' the input arrays and the constants within the program; conflicting devices
 #' are an error, and with no array to read a device from the default device is
-#' used. A constructor that has no array to name a device declares the one it
-#' was asked for itself, see [`graph_desc_add()`]'s `device` argument.
+#' used.
 #'
 #' @section Default Data Types:
 #' It is possible to configure the default data types for `float`s and `int`s
 #' via the `anvl.default_dtypes` option, see [`default_dtypes()`].
-#' Note that the defaults will be read at *call-time** and not when
-#' `jit()` is called.
+#' The defaults are read at *call time*, not when `jit()` is called.
 #'
 #' To pin a jitted function to a pair of data types instead of letting it
 #' follow the configured defaults, wrap it in [`with_dtypes()`]: the wrapper
@@ -69,9 +67,10 @@
 #' changes the default data types.
 #'
 #' @return (`JitFunction`)\cr
-#'   A `function` with the same formals as `f`.
-#'   The returned wrapper expects [`AnvlArray`] inputs and returns
-#'   [`AnvlArray`] values.
+#'   A `function` with the same formals as `f`. Its non-static arguments take
+#'   [`AnvlArray`]s or R values -- an R value materializes at the data type the
+#'   program needs -- and it returns what `f` returns, with [`AnvlArray`]s in
+#'   place of the traced arrays.
 #' @seealso
 #'   [`jit_cache_size()`] for how many programs a jitted function has cached.
 #' @export

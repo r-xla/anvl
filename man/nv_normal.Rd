@@ -19,17 +19,19 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
-function (\code{q}). \code{x} can be any float data type; \code{q} must be \code{f32} or \code{f64}
-(see "Details"). An R \code{double} is materialized at its \link[=default_dtypes]{default data type}.}
+function (\code{q}). \code{x} can be any float data type; \code{q} must be \code{f32} or
+\code{f64}. An R \code{double} is materialized at its \link[=default_dtypes]{default data type}.}
 
 \item{mean}{(\code{\link{arrayish}})\cr
-Mean of the distribution, scalar or the same shape as \code{x}/\code{q}/\code{p}.
-Converted to the argument's data type.}
+Mean of the distribution, scalar or of the shape of \code{x}/\code{q}/\code{p} (of
+\code{shape} for \code{nv_rnorm()}). For \code{nv_dnorm()}, \code{nv_pnorm()} and
+\code{nv_qnorm()}, an R value takes the data type of \code{x}/\code{q}/\code{p}, and an array
+must be promotable to it (a wider one is an error).}
 
 \item{sd}{(\code{\link{arrayish}})\cr
-Standard deviation of the distribution, scalar or the same shape as
-\code{x}/\code{q}/\code{p}. Converted to the argument's data type.
-Must be positive, otherwise results are invalid.}
+Standard deviation of the distribution, scalar or of the shape of
+\code{x}/\code{q}/\code{p} (of \code{shape} for \code{nv_rnorm()}). Brought to a data type like
+\code{mean}. Must be positive, otherwise results are invalid.}
 
 \item{log, log_p}{(\code{logical(1)})\cr
 If \code{TRUE}, the densities/probabilities are given as logarithms. For
@@ -41,9 +43,8 @@ If \code{TRUE} (default), probabilities are \eqn{P(X \le x)}; otherwise,
 
 \item{p}{(\code{\link{arrayish}})\cr
 Probabilities at which to evaluate the quantile function. Values outside
-\eqn{[0, 1]} give \code{NaN}. Must be \code{f32} or \code{f64} (see "Details"); \code{mean}
-and \code{sd} are converted to it. An R value materializes at its
-\link[=default_dtypes]{default data type}.}
+\eqn{[0, 1]} give \code{NaN}. Must be \code{f32} or \code{f64}. An R value materializes
+at its \link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
@@ -54,8 +55,9 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Floating point data type.
-The default (\code{NULL}) uses the \link[=default_dtypes]{default float type}.}
+Floating point data type of the sample. The default (\code{NULL}) uses the
+common data type of \code{mean} and \code{sd}, and the
+\link[=default_dtypes]{default float type} when both are R values.}
 }
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr

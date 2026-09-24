@@ -10,8 +10,9 @@ transform_gradient(graph, wrt)
 \item{graph}{(\code{\link{AnvlGraph}})\cr
 The graph to transform. Must produce a single scalar float output.}
 
-\item{wrt}{(\code{character})\cr
-Names of the graph inputs to differentiate with respect to.}
+\item{wrt}{(\code{NULL} | \code{character()})\cr
+Names of the graph inputs to differentiate with respect to. \code{NULL} or an
+empty vector differentiates with respect to all inputs.}
 }
 \value{
 (\code{\link{AnvlGraph}})\cr
@@ -34,7 +35,7 @@ This is the building block used by \code{\link[=gradient]{gradient()}} and \code
 those higher-level wrappers unless you need to operate on graphs directly.
 }
 \examples{
-graph <- trace_fn(prim_mul, list(nv_aval("f32", c()), nv_aval("f32", c())))
+graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
 graph
 transform_gradient(graph, "lhs")
 }

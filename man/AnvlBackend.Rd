@@ -21,39 +21,48 @@ AnvlBackend(
 )
 }
 \arguments{
-\item{new_data}{(\code{function})\cr Constructs an AnvlArray from R data.
-This should be a \code{structure()} with at least a \verb{$data} field that contains the actual
-underlying data (\code{PJRTBuffer} for \code{"pjrt"} backend, \code{array()} for \code{"quickr"} backend).
-Receives \code{row_major} (\code{logical(1)}, default \code{FALSE}), which gives the
-element order of raw byte payloads; backends that do not support raw
-\code{data} should abort on it.}
+\item{new_data}{(\verb{function(data, dtype, shape, device, row_major = FALSE)})\cr
+Constructs an AnvlArray from R data. Must return
+\verb{structure(list(data = , backend = <name>, ...), class = "AnvlArray")}, where
+\code{data} holds the underlying data (a \code{PJRTBuffer} for the \code{"pjrt"} backend, an
+R \code{array()} for the \code{"quickr"} backend) and \code{backend} is the name the
+backend is registered under. \code{row_major} gives the element order of raw
+byte payloads; a backend that does not support raw \code{data} should abort on
+it.}
 
-\item{new_empty}{(\code{function})\cr Constructs an AnvlArray of the given
-\code{dtype} and \code{shape} with unspecified contents. Called by \code{\link[=nv_empty]{nv_empty()}}.}
+\item{new_empty}{(\verb{function(dtype, shape, device)})\cr
+Constructs an AnvlArray of the given \code{dtype} and \code{shape} with unspecified
+contents. Called by \code{\link[=nv_empty]{nv_empty()}}.}
 
-\item{dtype}{(\code{function})\cr Extracts the dtype from an AnvlArray.}
+\item{dtype}{(\verb{function(x)})\cr Extracts the dtype from an AnvlArray.}
 
-\item{shape}{(\code{function})\cr Extracts the shape from an AnvlArray.}
+\item{shape}{(\verb{function(x)})\cr Extracts the shape from an AnvlArray.}
 
 \item{as_array}{(\verb{function(x, check)})\cr Converts an AnvlArray to an R
 array. The \code{check} level is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
 it to abort when materialization would lose information (e.g. ui64 values
 wrapping through \code{bit64::integer64}). See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}}.}
 
-\item{as_raw}{(\code{function})\cr Converts an AnvlArray to raw bytes.}
+\item{as_raw}{(\verb{function(x, row_major)})\cr Converts an AnvlArray to raw
+bytes.}
 
-\item{platform}{(\code{function})\cr Returns the platform name (e.g. \code{"cpu"}).}
+\item{platform}{(\verb{function(x)})\cr Returns the platform name (e.g. \code{"cpu"}).}
 
-\item{device}{(\code{function})\cr Returns the device object for an AnvlArray.}
+\item{device}{(\verb{function(x)})\cr Returns the device object for an AnvlArray.}
 
-\item{new_device}{(\code{function})\cr Constructs a backend-specific device
-object from a device type string (e.g. \code{"cpu"}). Called by \code{\link[=nv_device]{nv_device()}}.}
+\item{new_device}{(\verb{function(x)})\cr Constructs a backend-specific device
+object from a device identifier (e.g. \code{"cpu"} or \code{"cuda:1"}). Called by
+\code{\link[=nv_device]{nv_device()}}.}
 
-\item{print_data}{(\code{function})\cr Prints the array data with a footer.}
+\item{print_data}{(\verb{function(x, footer)})\cr Prints the array data with a
+footer.}
 
-\item{jit}{(\code{function})\cr Creates a JIT-compiled function implementation.}
+\item{jit}{(\verb{function(f, static, cache_size, <options>, device = NULL)})\cr
+Creates the backend's implementation of a JIT-compiled function and returns
+it as a \code{function}. The formals in place of \verb{<options>} are the
+backend-specific options \code{\link[=jit]{jit()}} accepts through \code{...}.}
 
-\item{await_data}{(\code{function})\cr Blocks until the array's underlying data
+\item{await_data}{(\verb{function(x)})\cr Blocks until the array's underlying data
 is ready. Called by \code{\link[=await]{await()}} for \code{AnvlArray}s; a no-op for backends
 without async execution.}
 

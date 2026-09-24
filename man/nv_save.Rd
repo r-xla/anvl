@@ -2,32 +2,44 @@
 % Please edit documentation in R/serialize.R
 \name{nv_save}
 \alias{nv_save}
-\title{Save Arrays to a File}
+\alias{nv_read}
+\title{Save and Read Arrays in a File}
 \usage{
 nv_save(arrays, path)
+
+nv_read(path, device = NULL)
 }
 \arguments{
 \item{arrays}{(named \code{list} of \code{\link{AnvlArray}})\cr
 Named list of arrays. Names must be unique.}
 
 \item{path}{(\code{character(1)})\cr
-File path to write to.}
+File path to write to or read from.}
+
+\item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
+The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...)
+when the active backend is \code{"pjrt"}, defaulting to \code{\link[=default_device]{default_device()}}.
+Under another backend the arrays are placed on that backend's default
+device; leave \code{device} as \code{NULL} there.}
 }
 \value{
-(\code{NULL})\cr
+\code{nv_save()}: (\code{NULL})\cr
 Invisibly.
+
+\code{nv_read()}: (named \code{list} of \code{\link{AnvlArray}})
 }
 \description{
-Saves a named list of arrays to a file in the
-\href{https://huggingface.co/docs/safetensors/index}{safetensors} format.
+\code{nv_save()} saves a named list of arrays to a file in the
+\href{https://huggingface.co/docs/safetensors/index}{safetensors} format, and
+\code{nv_read()} loads them back. The data type and shape of each array are
+restored.
 }
 \details{
-This is a convenience wrapper around \code{\link[=nv_serialize]{nv_serialize()}} that opens and closes
-a file connection.
+These are convenience wrappers around \code{\link[=nv_serialize]{nv_serialize()}} and
+\code{\link[=nv_unserialize]{nv_unserialize()}} that open and close a file connection.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
-# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 path <- tempfile(fileext = ".safetensors")
@@ -36,5 +48,5 @@ nv_read(path)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_read]{nv_read()}}, \code{\link[=nv_serialize]{nv_serialize()}}, \code{\link[=nv_unserialize]{nv_unserialize()}}
+\code{\link[=nv_serialize]{nv_serialize()}}, \code{\link[=nv_unserialize]{nv_unserialize()}}
 }

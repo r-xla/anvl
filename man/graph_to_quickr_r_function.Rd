@@ -11,7 +11,8 @@ graph_to_quickr_r_function(graph)
 Graph to convert.}
 }
 \value{
-(\code{function})
+(\code{function})\cr
+Takes one plain R value per graph input and returns plain R values.
 }
 \description{
 Lowers a supported subset of \code{AnvlGraph} objects to a plain R function (no
@@ -21,6 +22,16 @@ plain R scalars/vectors/arrays and returns plain R values/arrays.
 \details{
 Most users will prefer \code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)}.
 This function is the lower-level graph API.
+}
+\examples{
+\dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+graph <- trace_fn(
+  function(x, y) x * y + 1,
+  list(nv_aval("f64", 3L), nv_aval("f64", 3L))
+)
+f <- graph_to_quickr_r_function(graph)
+f(c(1, 2, 3), c(4, 5, 6))
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)} for tracing and compiling a

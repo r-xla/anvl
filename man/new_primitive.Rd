@@ -14,7 +14,7 @@ new_primitive(
 }
 \arguments{
 \item{name}{(\code{character(1)})\cr
-Primitive name.}
+Primitive name, without the \code{prim_} prefix (\code{"add"} for \code{prim_add()}).}
 
 \item{fn}{(\code{function})\cr
 Body of the primitive. Its formals become the formals of the returned

@@ -49,7 +49,8 @@ function (\code{nv_qunif}) for the Uniform distribution on the interval from
 The Uniform distribution has probability density function:
 \deqn{f(x) = \frac{1}{b - a}, \quad a \le x \le b}
 and zero elsewhere, where \eqn{a} is \code{min} and \eqn{b} is \code{max}.
-The \code{min} and \code{max} are converted to the data type of \code{x}/\code{q}/\code{p}.
+An R value for \code{min} or \code{max} takes the data type of \code{x}/\code{q}/\code{p}, and an
+array must be promotable to it (a wider one is an error).
 
 All three are univariate functions evaluated elementwise, returning one
 value per element of \code{x}/\code{q}/\code{p}. Non-scalar \code{min}/\code{max} therefore give a
