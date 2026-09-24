@@ -46,7 +46,14 @@ The benchmark compares the HMC sampler to CmdStan's static HMC sampler. It consi
 
 - `run-cpu.sh`: one core and 16 cores, single chain for n = 10^3, 10^4, 10^5 and
   1 to 256 chains for n = 10^4 (1 to 64 on one core), plus `overhead.R`;
-- `run-gpu.sh`: the same configurations for {anvl} on one GPU, with up to 4096 chains.
+- `run-gpu.sh`: the same configurations for {anvl} on one GPU, with up to 4096 chains, and the
+  strong-scaling configuration on the GPU;
+- `run-scaling.sh`: strong scaling of a single chain (n = 10^5, p = 100) on 1 to 16 physical
+  cores, for {anvl} and for Stan with `reduce_sum()` (`logistic-threads.stan`), plus 64 chains
+  as a single {anvl} program versus one Stan process per chain.
+
+On 16 cores, the multi-chain runs of {anvl} split the chains over 16 PJRT CPU devices
+(`PJRT_CPU_DEVICE_COUNT=16`); `cpu16prog` is the same experiment as a single program.
 
 Locally, with Docker:
 
@@ -63,7 +70,12 @@ export IMAGE_DIR=<directory for the squashfs image> PAPER_DIR=<checkout>/paper
 sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/build-image.sbatch
 sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-cpu.sbatch
 sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-gpu.sbatch
+sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-scaling.sbatch
 ```
+
+The `lrz-cpu` partition was congested when we ran the benchmark, so we submitted the image
+build and the CPU jobs to `mcml-hgx-a100-80x4-mig` instead (overriding `-p`, `-q` and adding
+`--gres=gpu:1` on the `sbatch` command line); the CPU benchmarks do not use the GPU slice.
 
 `build-image.sbatch` runs the steps of the Dockerfile (`docker/install.sh`) inside an
 Enroot container of the base image. Results are written to `benchmarks/results/`, together
