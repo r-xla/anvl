@@ -1,1 +1,1 @@
-pid 1030917's current affinity list: 16-20,32-35,40-46,64-68,80-83,88-94
+pid 3398020's current affinity list: 8,32-46,56,80-94
