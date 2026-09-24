@@ -17,3 +17,4 @@ rm -f "$OUT"
 nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv > results/gpu.txt
 Rscript bench-anvl.R gpu "$OUT" single
 Rscript bench-anvl.R gpu "$OUT" chains
+Rscript bench-anvl.R gpu-16 results/scaling-gpu.csv scaling

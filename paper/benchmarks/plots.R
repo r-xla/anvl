@@ -63,21 +63,25 @@ overhead_table <- function(files) {
 
 plot_scaling <- function(files) {
   res <- utils::read.csv(files[basename(files) == "scaling.csv"])
+  res <- res[res$experiment == "scaling", ]
   res$cores <- as.integer(sub(".*-", "", res$label))
   res$method <- sub("-.*", "", res$label)
-  s <- stats::aggregate(time ~ method + experiment + cores, data = res, FUN = stats::median)
+  s <- stats::aggregate(time ~ method + cores, data = res, FUN = stats::median)
   s$method <- factor(s$method, levels = c("anvl", "stan_threads", "stan"),
-    labels = c("anvl (one program)", "Stan (reduce_sum)", "Stan"))
-  s$panel <- factor(s$experiment, levels = c("scaling", "scaling_chains"),
-    labels = c("1 chain, n = 100,000, p = 100", "64 chains, n = 10,000, p = 20"))
-  ggplot(s, aes(cores, time, color = method)) +
-    geom_line(data = s[!(s$method == "Stan" & s$experiment == "scaling"), ]) +
-    geom_point(size = 1) +
-    facet_wrap(~panel, scales = "free_y") +
+    labels = c("anvl", "Stan (reduce_sum)", "Stan"))
+  p <- ggplot(s, aes(cores, time, color = method)) +
+    geom_line(data = s[s$method != "Stan", ]) +
+    geom_point(size = 1.5) +
     scale_x_continuous(trans = "log2", breaks = c(1, 2, 4, 8, 16)) +
     scale_y_log10() +
-    scale_color_manual(values = c("anvl (one program)" = "#1b9e77", "Stan (reduce_sum)" = "#e6ab02",
-      "Stan" = "#d95f02")) +
+    scale_color_manual(values = c("anvl" = "#1b9e77", "Stan (reduce_sum)" = "#e6ab02", "Stan" = "#d95f02",
+      "anvl, GPU" = "#7570b3")) +
     labs(x = "Number of CPU cores", y = "Time (seconds)") +
-    bench_theme() + theme(legend.position = "bottom")
+    bench_theme()
+  gpu_file <- files[basename(files) == "scaling-gpu.csv"]
+  if (length(gpu_file)) {
+    g <- stats::median(utils::read.csv(gpu_file)$time)
+    p <- p + geom_hline(aes(yintercept = g, color = "anvl, GPU"), data = data.frame(g = g), linetype = "dashed")
+  }
+  p
 }

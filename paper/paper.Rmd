@@ -600,58 +600,66 @@ have_results <- length(res_files) > 0L
 ```
 
 In this section, we compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath].
-We are interested in three questions: how the sampler compares on a single CPU core, how it scales with the number of chains on CPU and GPU, and how large the compilation overhead is.
+We ask how the sampler compares on a single CPU core, how well it uses multiple cores and a GPU, both within one chain and across many chains, and how large the compilation overhead is.
 
 ## Setup
 
 We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40, with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that both samplers perform the same number of gradient evaluations.
 The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficient implementation of the logistic regression likelihood.
-Stan can also evaluate this likelihood on a GPU via OpenCL, which we did not use; it accelerates the likelihood of individual chains, whereas \pkg{anvl} runs the entire sampler on the GPU.
-Both samplers work in double precision, start at $\beta = 0$, and draw 1000 samples per chain.
-The data are simulated with $p = 20$ standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
+Stan can also evaluate this likelihood on a GPU via OpenCL, which we did not use.
+Both samplers work in double precision and start at $\beta = 0$, and the data are simulated with standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
-Static HMC in CmdStan runs one chain per process, so for $K$ chains, we start $K$ processes, of which at most as many run at the same time as cores are available.
-On one core and on the GPU, \pkg{anvl} runs all chains as a single batched program.
-On 16 cores, we split the chains into 16 groups and run each group on its own PJRT CPU device (via the environment variable `PJRT_CPU_DEVICE_COUNT`), so that, as for CmdStan, each core works on its own chains; for comparison, we also report the time of a single program for all chains.
 Each configuration is repeated three times after a first call that includes compilation, and we report the median.
-All experiments ran on the LRZ AI Systems.
-The CPU experiments used a node with two Intel Xeon Gold 6336Y processors, restricted by Slurm to 16 cores, where the single-core configurations were additionally pinned to one core, and the GPU experiments used an NVIDIA A100 80GB GPU.
-All experiments were run in the Docker image described in Appendix A.
+
+We run three experiments.
+First, we draw 1000 samples from a single chain for $p = 20$ and $n \in \{10^3, 10^4, 10^5\}$.
+Second, we measure strong scaling: we draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 cores.
+\pkg{anvl} runs the unchanged sampler, which XLA parallelizes within operations.
+Stan needs a modified model for this, in which `reduce_sum()` splits the likelihood into slices that are evaluated by several threads.
+Third, we draw 1000 samples from each of $K$ chains for $n = 10^4$ and $p = 20$.
+Static HMC in CmdStan runs one chain per process, so for $K$ chains we start $K$ processes, of which at most as many run at the same time as cores are available.
+On one core and on the GPU, \pkg{anvl} runs all chains as one batched program.
+On 16 cores, we split the chains into 16 groups and run each group on its own PJRT CPU device (via the environment variable `PJRT_CPU_DEVICE_COUNT`), so that, as for CmdStan, each core works on its own chains; we also report the time of a single program for all chains.
+
+All experiments ran on the LRZ AI Systems in the Docker image described in Appendix A.
+The CPU experiments used a node with two Intel Xeon Gold 6336Y processors, restricted to 16 physical cores, where configurations with fewer cores were pinned to a subset of them, and the GPU experiments used an NVIDIA A100 80GB GPU.
 
 ## Results
 
-```{r results-single, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from a single chain as a function of the number of observations $n$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 3.2}
+```{r results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed line is \\pkg{anvl} on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 3.1, out.width = "49%", fig.show = "hold", fig.pos = "tbp"}
 source("benchmarks/plots.R")
-plot_single(res_files)
+plot_single(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2), linetype = ggplot2::guide_legend(ncol = 2))
+plot_scaling(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2))
 ```
 
-```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 3.2}
+Figure \@ref(fig:results-single-scaling) (left) shows the results for a single chain.
+On one core, \pkg{anvl} draws the samples 3.1, 2.7, and 1.6 times faster than CmdStan for $n = 10^3$, $10^4$, and $10^5$, respectively.
+A plausible reason is that XLA compiles the whole sampler, including the leapfrog loop and the gradient, into a single optimized program, whereas Stan evaluates the gradient with its operator-overloading AD library.
+The GPU does not pay off for small data, as its per-step overhead makes it slower than a CPU core for $n = 10^3$.
+For $n = 10^5$, however, it draws the samples in 0.31 seconds, which is about 100 times faster than \pkg{anvl} on one core and 160 times faster than CmdStan.
+
+Figure \@ref(fig:results-single-scaling) (right) shows how a single chain scales with the number of cores.
+Without any change to the code, \pkg{anvl} becomes 1.8, 2.9, 4.1, and 4.7 times faster on 2, 4, 8, and 16 cores.
+With `reduce_sum()`, Stan scales further at 16 cores (11 times faster than on one thread), but this requires rewriting the model, and the parallelized model is slower than the original on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
+Up to 8 cores, both scale similarly; beyond that, profiling suggests that \pkg{anvl} is limited by the fixed cost of distributing each operation of the gradient over the cores, as the individual operations are too small at this problem size to keep 16 cores busy.
+The GPU completes the same run in `r if (file.exists("benchmarks/results/scaling-gpu.csv")) round(median(read.csv("benchmarks/results/scaling-gpu.csv")$time), 2) else "--"` seconds.
+
+```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 2.6, fig.pos = "tbp"}
 plot_chains(res_files)
 ```
 
-```{r results-overhead, echo = FALSE, eval = have_results}
-overhead_table(res_files)
-```
-
-Figure \@ref(fig:results-single) shows the time for a single chain.
-On one core, \pkg{anvl} draws the samples 2.7 to 3.1 times faster than CmdStan for $n = 10^3$ and $n = 10^4$, and 1.6 times faster for $n = 10^5$ (31 versus 50 seconds).
-A plausible reason is that XLA compiles the whole sampler, including the leapfrog loop and the gradient, into a single optimized program, whereas Stan evaluates the gradient with its operator-overloading AD library.
-Using 16 cores instead of one helps \pkg{anvl} only for $n = 10^5$ (21 seconds), as XLA can parallelize only within individual operations, which are too small for smaller $n$.
-The GPU does not pay off for small data: for $n = 10^3$, its per-step overhead makes it slower than a single CPU core.
-For $n = 10^5$, however, it draws the samples in 0.31 seconds, which is about 100 times faster than \pkg{anvl} on one core and 160 times faster than CmdStan.
-
-Figure \@ref(fig:results-chains) shows how the runtime scales with the number of chains for $n = 10^4$.
-On one core, both samplers scale approximately linearly in the number of chains, with \pkg{anvl} being 2.7 (one chain) to 5.9 (64 chains) times faster.
-On 16 cores, however, CmdStan runs the chains as independent processes, so 16 chains take only 7.1 seconds compared to 4.1 seconds for one, while \pkg{anvl}'s batched program benefits little from additional cores, so that CmdStan is faster for many chains (113 versus 157 seconds for 256 chains).
-Running the batched program on multiple CPU devices, one per core, is a possible remedy that we have not yet explored.
-On the GPU, the time is almost constant up to 64 chains and grows sublinearly beyond that: 4096 chains with 1000 draws each take 10.8 seconds, which corresponds to about 380,000 draws per second, compared to about 2,300 draws per second for CmdStan on 16 cores.
+Figure \@ref(fig:results-chains) shows the results for multiple chains.
+On one core, both samplers scale approximately linearly in the number of chains, with \pkg{anvl} being 2.7 (one chain) to 5.9 (64 chains) times faster, as batching the chains turns the matrix-vector products of the individual chains into matrix-matrix products.
+On 16 cores, both run the chains in parallel, and \pkg{anvl} is 2.7 times faster than CmdStan for 64 chains and 4.5 times faster for 1024 chains (102 versus 458 seconds).
+Running all chains as a single program on 16 cores is considerably slower than splitting them over devices, because each operation is again too small to be distributed efficiently.
+On the GPU, the time is almost constant up to 64 chains and grows sublinearly beyond that: 4096 chains with 1000 draws each take 10.8 seconds, which corresponds to about 380,000 draws per second, compared to about 2,200 draws per second for CmdStan on 16 cores.
 This is exactly the regime in which the many-chain MCMC methods discussed in the introduction operate.
 All configurations of both samplers had an average acceptance rate between 0.98 and 0.99.
 
-Table \ref{tab:overhead} shows the one-off costs.
-Tracing the sampler, lowering it to StableHLO, and compiling it with XLA each take a fraction of a second, so the first call is about half a second slower than later calls.
-Compiling the Stan model takes about 11 seconds, and \CRANpkg{quickr} compiles the gradient in about one second, compared to 0.1 seconds for XLA.
-Although compilation must be repeated for every new combination of input shapes and static arguments, its cost is therefore small compared to the runtime of expensive methods, and it is quickly amortized as the size of the data grows.
+Finally, we measured the one-off costs for $n = 10^4$ on 16 cores.
+Tracing the sampler, lowering it to StableHLO, and compiling it with XLA take 0.28, 0.21, and 0.24 seconds, respectively, so the first call is about half a second slower than later calls (2.1 versus 1.5 seconds).
+Compiling the Stan model takes about 11 seconds, and \CRANpkg{quickr} compiles the gradient in 1.2 seconds, compared to 0.11 seconds for XLA.
+Although compilation must be repeated for every new combination of input shapes and static arguments, its cost is small compared to the runtime of expensive methods and quickly amortized as the size of the data grows.
 
 # Discussion {#discussion}
 

@@ -1,11 +1,11 @@
 "what","time"
-"hmc: trace",0.273
-"hmc: lower to StableHLO",0.208
-"hmc: XLA compile",0.217
-"hmc: first call",2.06
-"hmc: cached call",1.573
-"gradient (pjrt): first call",0.125
-"gradient (pjrt): cached call",0.000999999999999446
-"gradient (quickr): first call",1.171
-"gradient (quickr): cached call",0.00100000000000033
-"CmdStan: compile",10.745
+"hmc: trace",0.277
+"hmc: lower to StableHLO",0.21
+"hmc: XLA compile",0.236
+"hmc: first call",2.081
+"hmc: cached call",1.504
+"gradient (pjrt): first call",0.107
+"gradient (pjrt): cached call",0
+"gradient (quickr): first call",1.22
+"gradient (quickr): cached call",0.000999999999999446
+"CmdStan: compile",10.804
