@@ -1562,6 +1562,16 @@ quickr_lower_graph_calls <- function(graph, ctx) {
   list(stmts = stmts, out_exprs = out_exprs)
 }
 
+# The quickr counterpart of `bind_captures()`: points each capture of `graphs`
+# at the expression of the operand the call lists for it.
+quickr_bind_captures <- function(ctx, graphs, capture_exprs) {
+  captures <- subgraph_captures(graphs)
+  for (i in seq_along(captures)) {
+    ctx$node_expr[[captures[[i]]]] <- capture_exprs[[i]]
+  }
+  invisible(ctx)
+}
+
 quickr_lower_inline_graph <- function(graph, input_exprs, ctx) {
   if (!is_graph(graph)) {
     cli_abort("{.arg graph} must be a {.cls AnvlGraph}")
@@ -1764,6 +1774,7 @@ local({
       }
       true_graph <- params$true
       false_graph <- params$false
+      quickr_bind_captures(ctx, list(true_graph, false_graph), inputs[-1L])
 
       lowered_true <- quickr_lower_inline_graph(true_graph, list(), ctx)
       lowered_false <- quickr_lower_inline_graph(false_graph, list(), ctx)
@@ -1791,6 +1802,9 @@ local({
       }
       cond_graph <- params$cond
       body_graph <- params$body
+      state_idx <- seq_along(body_graph$inputs)
+      quickr_bind_captures(ctx, list(cond_graph, body_graph), inputs[-state_idx])
+      inputs <- inputs[state_idx]
 
       if (length(out_syms) != length(inputs)) {
         cli_abort("while: state arity mismatch between inputs and outputs")

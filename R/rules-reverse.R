@@ -558,16 +558,19 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
 # branch's backward runs, as only the taken branch's forward did, and a value
 # used by one branch alone gets a zero from the other.
 #
-# `pred` is a bool and carries no gradient.
+# `pred` is a bool and carries no gradient; the other operands are the
+# branches' captures.
 prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   grads_in <- vector("list", length(inputs))
   needed <- which(unlist(required[-1L]))
   if (!length(needed)) {
     return(grads_in)
   }
-  targets <- lapply(inputs[needed + 1L], function(box) box$gnode)
+  graphs <- list(params$true, params$false)
+  bindings <- capture_bindings(graphs, inputs[-1L])
+  targets <- subgraph_captures(graphs)[needed]
   branch_vjp <- function(graph) {
-    function() graph_vjp(graph, targets, grads)
+    function() graph_vjp(graph, targets, grads, bindings = bindings)
   }
   grads_in[needed + 1L] <- prim_if(
     inputs[[1L]],
@@ -594,13 +597,16 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   n_xs <- params$n_xs
   carry_idx <- seq_len(n_carry)
   xs_idx <- n_carry + seq_len(n_xs)
+  cap_idx <- setdiff(seq_along(inputs), c(carry_idx, xs_idx))
   n_out <- length(body$outputs) - n_carry
+  captures <- subgraph_captures(list(body))
+  bindings <- capture_bindings(list(body), inputs[cap_idx])
 
   taped <- prim_scan(
     init = inputs[carry_idx],
     xs = inputs[xs_idx],
     body = function(carry, x) {
-      outs <- graph_apply(body, c(carry, x))
+      outs <- graph_apply(body, c(carry, x), bindings)
       list(carry = outs[carry_idx], out = c(outs[-carry_idx], carry))
     },
     steps = steps,
@@ -611,39 +617,42 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   list(
     outputs = c(taped$carry, taped$out[seq_len(n_out)]),
     backward = function(inputs, outputs, grads, params, required) {
-      # The carry's cotangent is threaded through every step whatever is
-      # required, since the carry of one step is the input of the next; the
-      # `xs` slices and the captures are only differentiated where required.
       required <- unlist(required)
       xs_needed <- xs_idx[required[xs_idx]]
-      cap_idx <- setdiff(seq_along(inputs), c(carry_idx, xs_idx))
-      cap_needed <- cap_idx[required[cap_idx]]
+      cap_needed <- which(required[cap_idx])
+      carry_needed <- which(scan_carry_requires(body, required, carry_idx, xs_idx, cap_idx, captures))
       n_xs_needed <- length(xs_needed)
       n_cap <- length(cap_needed)
-      targets <- c(
-        body$inputs[c(carry_idx, xs_needed)],
-        lapply(inputs[cap_needed], function(box) box$gnode)
-      )
+      n_carry_needed <- length(carry_needed)
+      targets <- c(body$inputs[c(carry_needed, xs_needed)], captures[cap_needed])
 
+      # A scan needs a carry; where only `xs` is differentiated there is none
+      # to thread, so a placeholder rides along.
+      placeholder <- if (!n_carry_needed && !n_cap) list(nv_scalar(0L, dtype = "i32"))
       pulled <- prim_scan(
         init = list(
-          carry = grads[carry_idx],
-          caps = lapply(inputs[cap_needed], zeros_like)
+          carry = grads[carry_needed],
+          caps = lapply(inputs[cap_idx][cap_needed], zeros_like),
+          placeholder = placeholder
         ),
         xs = list(tape = tape, xs = inputs[xs_idx], out = grads[n_carry + seq_len(n_out)]),
         body = function(carry, x) {
+          out_grads <- vector("list", n_carry)
+          out_grads[carry_needed] <- carry$carry
           ct <- graph_vjp(
             body,
             targets,
-            c(carry$carry, x$out),
-            inputs = c(x$tape, x$xs)
+            c(out_grads, x$out),
+            inputs = c(x$tape, x$xs),
+            bindings = bindings
           )
           list(
             carry = list(
-              carry = ct[carry_idx],
-              caps = Map(prim_add, carry$caps, ct[n_carry + n_xs_needed + seq_len(n_cap)])
+              carry = ct[seq_len(n_carry_needed)],
+              caps = Map(prim_add, carry$caps, ct[n_carry_needed + n_xs_needed + seq_len(n_cap)]),
+              placeholder = carry$placeholder
             ),
-            out = ct[n_carry + seq_len(n_xs_needed)]
+            out = ct[n_carry_needed + seq_len(n_xs_needed)]
           )
         },
         steps = steps,
@@ -651,13 +660,46 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
       )
 
       grads_in <- vector("list", length(inputs))
-      grads_in[carry_idx] <- pulled$carry$carry
+      grads_in[carry_needed] <- pulled$carry$carry
       grads_in[xs_needed] <- pulled$out
-      grads_in[cap_needed] <- pulled$carry$caps
+      grads_in[cap_idx[cap_needed]] <- pulled$carry$caps
       grads_in
     }
   )
 })
+
+# Which carry slots of a scan carry a gradient: a slot does if its `init`
+# requires one, or if the body makes it depend on something that does -- a
+# required `xs` or capture, or another such slot. The set only grows, so this
+# reaches its fixed point within `n_carry` rounds. A slot outside it, such as
+# an RNG state or a counter, is neither differentiated nor has to be.
+scan_carry_requires <- function(body, required, carry_idx, xs_idx, cap_idx, captures) {
+  carry_req <- required[carry_idx]
+  repeat {
+    seed <- hashtab()
+    for (g in body$constants) {
+      seed[[g]] <- FALSE
+    }
+    for (k in seq_along(captures)) {
+      seed[[captures[[k]]]] <- required[[cap_idx[[k]]]]
+    }
+    seeds_in <- c(carry_req, required[xs_idx])
+    for (k in seq_along(body$inputs)) {
+      seed[[body$inputs[[k]]]] <- seeds_in[[k]]
+    }
+    env <- propagate_requirements(body, seed)
+    out_req <- vapply(
+      body$outputs[carry_idx],
+      function(out) !is_graph_literal(out) && isTRUE(env[[out]]),
+      logical(1L)
+    )
+    grown <- carry_req | out_req
+    if (identical(grown, carry_req)) {
+      return(carry_req)
+    }
+    carry_req <- grown
+  }
+}
 
 # convert reverse -----------------
 

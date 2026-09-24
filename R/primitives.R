@@ -2643,10 +2643,15 @@ prim_while <- new_primitive(
 
     # now we register the constants of both sub-graphs (body includes cond's constants) into the graph
     register_consts(current_desc, body_graph$constants)
+    # As in `prim_if()`: what the sub-graphs close over is listed after the
+    # state. The lowerings take the first `length(body$inputs)` operands as the
+    # state and bind the rest to the captures.
+    captures <- subgraph_captures(list(cond_graph, body_graph))
+    capture_boxes <- lapply(captures, function(gval) get_box_or_register_const(current_desc, gval))
 
     out <- graph_desc_add(
       self,
-      args = flatten(init),
+      args = c(flatten(init), capture_boxes),
       params = list(cond = cond_graph, body = body_graph),
       infer_fn = infer_while,
       desc = current_desc

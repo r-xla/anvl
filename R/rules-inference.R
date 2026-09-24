@@ -2290,7 +2290,8 @@ infer_cond <- function(pred, ..., true, false) {
 }
 
 infer_while <- function(..., cond, body) {
-  outs <- list(...)
+  # The operands past the state are the sub-graphs' captures.
+  outs <- list(...)[seq_along(body$inputs)]
   outs_body <- lapply(body$outputs, function(out) out$aval)
   inputs_body <- lapply(body$inputs, function(inp) inp$aval)
   # `init` is a named list, so the loop state's names are the body's input

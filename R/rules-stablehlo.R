@@ -731,19 +731,24 @@ prim_print[["stablehlo"]] <- function(x, header, footer) {
 
 # higher order primitives --------------------------------------------------------
 
-# The captured values arrive as operands so the graph records what the branches
-# read (see `prim_if()`); the regions still reference them through `.env`, the
-# way MLIR regions capture, so there is nothing to do with them here.
+# The operands after `pred` are what the branches capture (see `prim_if()`);
+# the regions read them implicitly, the way MLIR regions capture.
 prim_if[["stablehlo"]] <- function(pred, ..., true, false, .env) {
-  true_func <- stablehlo(true, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
-  false_func <- stablehlo(false, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
+  env <- bind_captures(.env, list(true, false), list(...))
+  true_func <- stablehlo(true, id = "", constants_as_inputs = FALSE, env = env)[[1L]]
+  false_func <- stablehlo(false, id = "", constants_as_inputs = FALSE, env = env)[[1L]]
   hlo_if(pred, true_func, false_func, simplify = FALSE)
 }
 
+# The operands past the state are what `cond` and `body` capture (see
+# `prim_while()`).
 prim_while[["stablehlo"]] <- function(..., cond, body, .env) {
-  body_func <- stablehlo(body, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
-  cond_func <- stablehlo(cond, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
-  hlo_while(..., cond = cond_func, body = body_func, simplify = FALSE)
+  args <- list(...)
+  state_idx <- seq_along(body$inputs)
+  env <- bind_captures(.env, list(cond, body), args[-state_idx])
+  body_func <- stablehlo(body, id = "", constants_as_inputs = FALSE, env = env)[[1L]]
+  cond_func <- stablehlo(cond, id = "", constants_as_inputs = FALSE, env = env)[[1L]]
+  rlang::exec(hlo_while, !!!args[state_idx], cond = cond_func, body = body_func, simplify = FALSE)
 }
 
 # A while loop over the state (i, carry..., out buffers..., xs...). Each
@@ -818,7 +823,7 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, .
     hlo_reshape(sl, as.integer(shp[-1L]))
   })
 
-  env <- HloEnv(parent = .env)
+  env <- bind_captures(.env, list(body), args[-seq_len(n_carry + n_xs)])
   ins <- c(carry_in, slices)
   for (k in seq_along(body$inputs)) {
     env_add(env, body$inputs[[k]], ins[[k]])

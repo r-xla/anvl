@@ -55,6 +55,25 @@ env_get <- function(env, gval) {
   cli_abort("GraphValue not found in environment")
 }
 
+# A higher-order call lists what its sub-graphs capture among its operands
+# (see `subgraph_captures()`), and the sub-graphs name those values by the
+# GraphValues they captured. A transform may rewire the call's operands -- a
+# reverse pass that replaces an earlier call, or one that replays a loop body
+# on new inputs -- without touching the sub-graphs, so the operands are what
+# counts: each capture is bound to its operand in a child of `env`, which is
+# what the sub-graphs are then lowered against.
+bind_captures <- function(env, graphs, fvals) {
+  captures <- subgraph_captures(graphs)
+  if (length(captures) != length(fvals)) {
+    cli_abort("Internal error: {length(fvals)} capture operand{?s} for {length(captures)} capture{?s}.")
+  }
+  child <- HloEnv(parent = env)
+  for (i in seq_along(captures)) {
+    env_add(child, captures[[i]], fvals[[i]])
+  }
+  child
+}
+
 #' @title Lower a graph to StableHLO
 #' @description
 #' Converts a traced [`AnvlGraph`] into the StableHLO intermediate representation (IR).

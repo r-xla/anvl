@@ -175,7 +175,7 @@
     Code
       cat(format(call))
     Output
-      while(f32[]) [cond = (f32[]) -> bool[], body = (f32[]) -> f32[]] -> f32[]
+      while(f32[], f32[], f32[]) [cond = (f32[]) -> bool[], body = (f32[]) -> f32[]] -> f32[]
 
 # format.AnvlGraph() / shows literals, constants, params, captures and nested sub-graphs
 
@@ -204,7 +204,7 @@
             ] (%6, %x3, %2)
             return %7
           }
-        ] (%c2)
+        ] (%c2, %x1, %2)
         %4: f32[2,1] = broadcast_in_axes [
           shape = c(2, 1), broadcast_axes = integer(0)
         ] (%3)

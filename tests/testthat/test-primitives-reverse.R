@@ -233,17 +233,119 @@ test_that("broadcasting", {
   expect_equal(out[[2L]], nv_array(0.5, shape = c(1, 2)))
 })
 
-test_that("prim_if", {
-  # TODO:
-  #f <- jit(gradient(
-  #  function(pred, x) {
-  #    prim_if(pred, \() x * nv_scalar(1), \() x * nv_scalar(2))
-  #  },
-  #  wrt = "x"
-  #))
-  #out <- f(nv_scalar(TRUE), nv_scalar(2))
-  #expect_equal(out[[1L]], nv_scalar(2))
-  #expect_equal(out[[2L]], nv_scalar(1))
+describe("prim_if", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  y <- nv_array(c(4, 5, 6), dtype = "f64")
+  true_ <- nv_scalar(TRUE)
+  false_ <- nv_scalar(FALSE)
+
+  it("differentiates a value the branches close over", {
+    # `prim_if()`'s branches take no arguments; the values they use reach them
+    # by capture, and are listed as operands so the backward pass can see them.
+    f <- function(p, x) {
+      prim_if(p, function() prim_sum(x, axes = 1L), function() nv_scalar(0, "f64"))
+    }
+    expect_equal(as.numeric(jit(f)(true_, x)), 6)
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(true_, x)[[1L]]), c(1, 1, 1))
+    expect_equal(as.numeric(jit(f)(false_, x)), 0)
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(0, 0, 0))
+  })
+
+  it("takes the gradient of the branch the predicate selects", {
+    g <- function(p, x) nv_if(p, function() nv_sum(x * x), function() nv_sum(x))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(2, 4, 6))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
+  })
+
+  it("differentiates several captured values", {
+    g <- function(p, x, y) nv_if(p, function() nv_sum(x * y), function() nv_sum(x + y))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(true_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(4, 5, 6))
+    expect_equal(as.numeric(grads[[2L]]), c(1, 2, 3))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(false_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(1, 1, 1))
+    expect_equal(as.numeric(grads[[2L]]), c(1, 1, 1))
+  })
+
+  it("differentiates only the captured values it is asked for", {
+    g <- function(p, x, y) nv_if(p, function() nv_sum(x * y), function() nv_sum(x))
+    grads <- jit(gradient(g, wrt = "x"))(true_, x, y)
+    expect_equal(names(grads), "x")
+    expect_equal(as.numeric(grads$x), c(4, 5, 6))
+  })
+
+  it("gives a zero to a value the taken branch does not use", {
+    g <- function(p, x, y) nv_if(p, function() nv_sum(x * x), function() nv_sum(y * y))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(true_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(2, 4, 6))
+    expect_equal(as.numeric(grads[[2L]]), c(0, 0, 0))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(false_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(0, 0, 0))
+    expect_equal(as.numeric(grads[[2L]]), c(8, 10, 12))
+  })
+
+  it("carries the gradient on into what uses the result", {
+    g <- function(p, x) {
+      nv_sum(nv_if(p, function() x * x, function() x) * nv_array(c(2, 2, 2), dtype = "f64"))
+    }
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(4, 8, 12))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(2, 2, 2))
+  })
+
+  it("differentiates branches that return several values", {
+    g <- function(p, x) {
+      r <- nv_if(p, function() list(a = x * x, b = x), function() list(a = x, b = x * x))
+      nv_sum(r$a) + nv_sum(r$b)
+    }
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(3, 5, 7))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(3, 5, 7))
+  })
+
+  it("differentiates a nested if", {
+    g <- function(p, q, x) {
+      nv_if(
+        p,
+        function() nv_if(q, function() nv_sum(x * x), function() nv_sum(x)),
+        function() nv_scalar(0, "f64")
+      )
+    }
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, true_, x)[[1L]]), c(2, 4, 6))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, false_, x)[[1L]]), c(1, 1, 1))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, true_, x)[[1L]]), c(0, 0, 0))
+  })
+
+  it("differentiates an if whose branches capture nothing", {
+    g <- function(p, x) {
+      nv_sum(x) * nv_if(p, function() nv_scalar(2, "f64"), function() nv_scalar(3, "f64"))
+    }
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(2, 2, 2))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(3, 3, 3))
+  })
+
+  it("keeps the operand's data type", {
+    g <- function(p, x) nv_if(p, function() nv_sum(x * x), function() nv_sum(x))
+    grad <- jit(gradient(g, wrt = "x"))(true_, nv_array(c(1, 2, 3), dtype = "f32"))[[1L]]
+    expect_equal(dtype(grad), as_dtype("f32"))
+    expect_equal(as.numeric(grad), c(2, 4, 6))
+  })
+
+  it("works through value_and_gradient()", {
+    g <- function(p, x) nv_if(p, function() nv_sum(x * x), function() nv_sum(x))
+    out <- jit(value_and_gradient(g, wrt = "x"))(true_, x)
+    expect_equal(as.numeric(out[[1L]]), 14)
+    expect_equal(as.numeric(out[[2L]][[1L]]), c(2, 4, 6))
+  })
+
+  it("differentiates a value an earlier call's reverse rule replaced", {
+    # `prim_sort()`'s reverse rule replaces its forward, so the value the
+    # branches closed over is rebuilt before they are differentiated.
+    g <- function(p, x) {
+      y <- nv_sort(x)
+      nv_if(p, function() nv_sum(y * y), function() nv_sum(y))
+    }
+    grad <- jit(gradient(g, wrt = "x"))(true_, nv_array(c(3, 1, 2), dtype = "f64"))[[1L]]
+    expect_equal(as.numeric(grad), c(6, 2, 4))
+  })
 })
 
 test_that("prim_log reverse", {
@@ -1160,6 +1262,42 @@ describe("prim_scan", {
     }
     grads <- jit(gradient(f, wrt = "w"))(x, nv_scalar(2, "f64"))
     expect_equal(as.numeric(grads$w), 6)
+  })
+
+  it("differentiates an if in the body that reads the carry and a slice", {
+    f <- function(p, x) {
+      body <- function(carry, xs) {
+        a <- nv_if(p, function() carry$a + xs$v * xs$v, function() carry$a)
+        list(carry = list(a = a), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x)$x), c(2, 4, 6))
+  })
+
+  it("differentiates a value an earlier call's reverse rule replaced", {
+    f <- function(x) {
+      y <- nv_sort(x)
+      body <- function(carry, xs) list(carry = list(a = carry$a + nv_sum(y * y)), out = NULL)
+      prim_scan(list(a = nv_scalar(0, "f64")), list(), body, steps = 2L)$carry$a
+    }
+    expect_equal(as.numeric(jit(gradient(f))(nv_array(c(3, 1, 2), dtype = "f64"))[[1L]]), c(12, 4, 8))
+  })
+
+  it("leaves a carry that does not depend on wrt undifferentiated", {
+    # The RNG state has no reverse rule, and needs none: it does not depend on x.
+    f <- function(x, st) {
+      body <- function(carry, xs) {
+        r <- nv_rnorm(integer(), carry$st, dtype = "f64")
+        list(carry = list(st = r$state, a = carry$a + xs$v * r$values), out = r$values)
+      }
+      r <- prim_scan(list(st = st, a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      list(value = r$carry$a, draws = r$out)
+    }
+    st <- nv_rng_state(1L)
+    draws <- as.numeric(jit(f)(x, st)$draws)
+    loss <- function(x, st) f(x, st)$value
+    expect_equal(as.numeric(jit(gradient(loss, wrt = "x"))(x, st)$x), draws)
   })
 
   it("passes the gradient straight through a scan of zero steps", {

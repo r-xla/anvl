@@ -258,8 +258,8 @@
 ## Bug fixes
 
 * `gradient()` no longer returns a zero gradient for a value that a
-  higher-order primitive's sub-graph closes over: `prim_if()` lists its
-  captures among its operands, and `prim_while()` refuses such a capture.
+  `prim_if()`, `prim_while()` or `prim_scan()` sub-graph closes over: they now
+  list their captures among their operands.
 * Whatever a `prim_*()` refuses now reports that primitive as the call, rather
   than the helper that checked the argument or the anonymous function `jit()`
   wraps.
