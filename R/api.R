@@ -3404,6 +3404,11 @@ nv_if <- prim_if
 #'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- in its
 #'   final state after the loop terminates, with `init`'s structure, data
 #'   types and shapes.
+#' @section Gradients:
+#' [gradient()] cannot differentiate a while loop: its trip count is only known
+#' at run time, so there is no static size for the per-iteration states the
+#' backward pass needs. [nv_scan()] with a static number of steps is
+#' differentiable.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the loop state is a named list, and each member keeps its data type
@@ -3466,6 +3471,9 @@ nv_while <- prim_while
 #' @return `list(carry = , out = )`: the final carry (same structure as
 #'   `init`) and the stacked outputs (structure of `body`'s `out`, each
 #'   leaf gaining a leading axis of size `steps`).
+#' @section Gradients:
+#' Unlike [nv_while()], a scan is differentiable with [gradient()]; see
+#' [prim_scan()].
 #' @seealso [prim_scan()], [nv_while()], [nv_cumsum()] for fixed associative scans.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # cumulative sum along axis 1

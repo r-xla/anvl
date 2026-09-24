@@ -667,6 +667,20 @@ describe("gradients through prim_if", {
   })
 })
 
+describe("gradients through prim_while", {
+  it("points to nv_scan()", {
+    f <- function(x) {
+      r <- prim_while(
+        init = list(i = nv_scalar(0L), y = x),
+        cond = function(i, y) i < nv_scalar(2L),
+        body = function(i, y) list(i = i + 1L, y = y * 2)
+      )
+      nv_sum(r$y)
+    }
+    expect_error(jit(gradient(f))(nv_array(c(1, 2), dtype = "f64")), "nv_scan")
+  })
+})
+
 describe("gradients through a sub-graph that still captures implicitly", {
   it("refuses rather than returning a zero gradient", {
     # `prim_while()` does not hoist what its body closes over, so a captured

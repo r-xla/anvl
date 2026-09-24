@@ -1051,3 +1051,107 @@ describe("prim_reshape reverse", {
     expect_equal(as_array(grads[[1L]]), array(w, c(2L, 3L, 4L)))
   })
 })
+
+describe("prim_scan", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+
+  it("differentiates the carry and a value the body closes over", {
+    # acc -> acc * x twice: x^3, d/dx sum(x^3) = 3 x^2
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 2L)$carry$acc)
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(3, 12, 27))
+  })
+
+  it("differentiates xs through the stacked outputs and the final carry", {
+    # s_t = x_1 + ... + x_t; loss = sum(s_t^2) + s_3, so
+    # d/dx_k = 2 * sum(s_t for t >= k) + 1
+    f <- function(x) {
+      body <- function(carry, xs) {
+        s <- carry$s + xs$v
+        list(carry = list(s = s), out = s * s)
+      }
+      r <- prim_scan(list(s = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      nv_sum(r$out) + r$carry$s
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(21, 19, 13))
+  })
+
+  it("runs the backward pass in the opposite direction for reverse = TRUE", {
+    # out_t = x_t + ... + x_3, weighted by t
+    f <- function(x) {
+      body <- function(carry, xs) {
+        s <- carry$s + xs$v
+        list(carry = list(s = s), out = s)
+      }
+      r <- prim_scan(list(s = nv_scalar(0, "f64")), list(v = x), body, steps = 3L, reverse = TRUE)
+      nv_sum(r$out * nv_array(c(1, 2, 3), dtype = "f64"))
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(1, 3, 6))
+  })
+
+  it("differentiates init, xs and a captured weight of a recurrence", {
+    W_r <- matrix(c(0.5, -0.3, 0.2, 0.1), 2L, 2L)
+    h0_r <- c(0.1, 0.2)
+    xs_r <- array(c(0.3, -0.2, 0.5, 0.1, -0.4, 0.7), c(2L, 3L))
+    loss_r <- function(W, h0, xs) {
+      h <- h0
+      total <- 0
+      for (t in seq_len(ncol(xs))) {
+        h <- tanh(W %*% h + xs[, t])
+        total <- total + sum(h)
+      }
+      total
+    }
+    num_grad <- function(f, v) {
+      vapply(seq_along(v), function(k) {
+        e <- replace(numeric(length(v)), k, 1e-6)
+        (f(v + e) - f(v - e)) / 2e-6
+      }, numeric(1L))
+    }
+
+    f <- function(W, h0, xs) {
+      body <- function(carry, x) {
+        h <- tanh(nv_matmul(W, carry$h) + x$v)
+        # The integer counter rides along and gets no gradient.
+        list(carry = list(i = carry$i + 1L, h = h), out = h)
+      }
+      init <- list(i = nv_scalar(0L), h = h0)
+      r <- prim_scan(init, list(v = xs), body, steps = 3L)
+      nv_sum(r$out)
+    }
+    grads <- jit(gradient(f))(
+      nv_array(W_r, dtype = "f64"),
+      nv_array(h0_r, dtype = "f64", shape = c(2L, 1L)),
+      nv_array(aperm(xs_r), dtype = "f64", shape = c(3L, 2L, 1L))
+    )
+    expect_equal(as.numeric(grads$W), num_grad(\(v) loss_r(matrix(v, 2L), h0_r, xs_r), W_r), tolerance = 1e-6)
+    expect_equal(as.numeric(grads$h0), num_grad(\(v) loss_r(W_r, v, xs_r), h0_r), tolerance = 1e-6)
+    expect_equal(
+      as.numeric(aperm(as_array(grads$xs)[, , 1L])),
+      num_grad(\(v) loss_r(W_r, h0_r, matrix(v, 2L)), xs_r),
+      tolerance = 1e-6
+    )
+  })
+
+  it("passes the gradient straight through a scan of zero steps", {
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 0L)$carry$acc)
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(1, 1, 1))
+  })
+
+  it("differentiates a scan nested in another scan", {
+    inner <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 2L)$carry$acc)
+    }
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(a = carry$a + inner(x)), out = NULL)
+      prim_scan(list(a = nv_scalar(0, "f64")), list(), body, steps = 2L)$carry$a
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(6, 24, 54))
+  })
+})

@@ -60,6 +60,12 @@ for (t in order) \{
 list(carry = carry, out = out)
 }\if{html}{\out{</div>}}
 }
+\section{Gradients}{
+
+Unlike \code{\link[=nv_while]{nv_while()}}, a scan is differentiable with \code{\link[=gradient]{gradient()}}; see
+\code{\link[=prim_scan]{prim_scan()}}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # cumulative sum along axis 1

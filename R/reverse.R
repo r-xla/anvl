@@ -250,9 +250,13 @@ compute_requirements <- function(graph, wrt) {
 # output. Both the replay and the cotangents land in the current descriptor, so
 # calling this inside a branch of `prim_if()` puts a branch's backward pass
 # inside that branch, where only the taken one runs.
-graph_vjp <- function(graph, targets, out_grads) {
+#
+# `inputs` binds the graph's own inputs to boxes of the current descriptor,
+# for a sub-graph that takes arguments (a loop body); a target may then be one
+# of `graph$inputs`.
+graph_vjp <- function(graph, targets, out_grads, inputs = NULL) {
   desc <- .current_descriptor()
-  rebuilt <- rebuild_forward_into(graph, desc)
+  rebuilt <- rebuild_forward_into(graph, desc, inputs)
   required_env <- requirements_from(graph, targets)
   # A higher-order call inside the sub-graph can hide a capture just as one in
   # the top-level graph can.
@@ -329,8 +333,8 @@ assert_no_captured_grads <- function(graph, required_env) {
       c(
         "Cannot compute a gradient through {.fn prim_{name}}.",
         x = "Its {.arg {call$primitive$subgraphs}} {?closes/close} over a value the gradient is taken with respect to, and no reverse rule accounts for such a capture.", # nolint
-        i = if (name == "if") {
-          "Where both branches can be evaluated, {.fn nv_ifelse} selects element-wise and is differentiable."
+        i = if (name == "while") {
+          "{.fn prim_while} has no reverse rule; {.fn nv_scan} with a static number of {.arg steps} is differentiable."
         } else {
           "Pass the value into {.fn prim_{name}} as an operand instead of closing over it."
         }
@@ -384,10 +388,13 @@ rebuild_forward_pass <- function(graph, envir = parent.frame()) {
 # The body of `rebuild_forward_pass()`, against a descriptor the caller already
 # has. `graph_vjp()` uses it to replay a sub-graph into the descriptor a branch
 # of the backward pass is being traced into, rather than into one of its own.
-rebuild_forward_into <- function(graph, desc) {
+rebuild_forward_into <- function(graph, desc, inputs = NULL) {
   # consts and inputs keep their identity, only GraphValues created by PrimitiveCalls
-  # get new identifier
-  register_inputs(desc, graph$inputs)
+  # get new identifier -- unless `inputs` binds the inputs to boxes of `desc`,
+  # in which case the graph is replayed as a function of them.
+  if (is.null(inputs)) {
+    register_inputs(desc, graph$inputs)
+  }
   register_consts(desc, graph$constants)
 
   # Existing GraphValues are reused where possible to minimize cloning.
@@ -400,6 +407,9 @@ rebuild_forward_into <- function(graph, desc) {
       return(g)
     }
     trans[[g]] %||% g
+  }
+  for (i in seq_along(inputs)) {
+    trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
   }
   # Get/create the box for a translated gval. Literals reach this branch
   # only when used as a call input; mint a box on demand (GraphBox has value semantics)
@@ -466,6 +476,18 @@ rebuild_forward_into <- function(graph, desc) {
   list(trans = trans, backwards = backwards)
 }
 
+# Replays `graph` into the current descriptor as a function of `inputs`
+# (boxes, one per graph input) and returns the boxes of its outputs. The
+# forward-only counterpart of `graph_vjp()`, for re-running a loop body.
+graph_apply <- function(graph, inputs) {
+  desc <- .current_descriptor()
+  rebuilt <- rebuild_forward_into(graph, desc, inputs)
+  lapply(graph$outputs, function(out) {
+    g <- if (is_graph_literal(out)) out else rebuilt$trans[[out]] %||% out
+    desc$gval_to_box[[g]] %||% GraphBox(g, desc)
+  })
+}
+
 # Walk calls in reverse, invoking each call's backward to accumulate
 # gradients keyed by the *original* graph's gvals.
 run_backward_pass <- function(graph, backwards, required_env, grad_env) {
@@ -497,7 +519,10 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     if (is.null(bwd)) {
       cli_abort(c(
         "No reverse rule for primitive {.field {call$primitive$name}}.",
-        i = "Cannot compute gradient through this primitive."
+        i = "Cannot compute gradient through this primitive.",
+        i = if (call$primitive$name == "while") {
+          "{.fn nv_scan} with a static number of {.arg steps} is differentiable."
+        }
       ))
     }
 

@@ -152,6 +152,8 @@
 
 * `prim_if()` / `nv_if()` are now differentiable; only the taken branch's
   gradient is computed.
+* `prim_scan()` / `nv_scan()` are now differentiable, in time and memory
+  linear in `steps`.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.

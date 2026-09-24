@@ -38,10 +38,18 @@ and stacking each step's outputs along a new leading axis. Step \code{t}
 receives the carry and, for every array in \code{xs}, its slice at position \code{t}
 along axis 1 with that axis dropped.
 }
+\section{Gradients}{
+
+The forward pass keeps the carry each step starts from, and the backward pass
+is a scan in the opposite direction over them, so a gradient costs time and
+memory linear in \code{steps}. Values \code{body} closes over are differentiated too.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
+\item \code{reverse}
 }
 }
 

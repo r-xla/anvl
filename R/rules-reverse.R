@@ -577,6 +577,80 @@ prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, re
   grads_in
 })
 
+# The forward is rerun with the carry each step starts from stacked as extra
+# outputs: that is the tape, `steps` copies of the carry. The backward pass is
+# a scan in the opposite direction over the tape, `xs` and the cotangents of the
+# stacked outputs, which pulls the carry's cotangent back through one step at a
+# time. Each step also yields the cotangent of its `xs` slice, stacked into the
+# gradient of `xs`, and one for every value the body captures, summed over the
+# steps. Linear in `steps` in time and in memory.
+#
+# Operands are the carry, then `xs`, then what the body captures.
+prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+  body <- params$body
+  steps <- params$steps
+  reverse <- params$reverse
+  n_carry <- params$n_carry
+  n_xs <- params$n_xs
+  carry_idx <- seq_len(n_carry)
+  xs_idx <- n_carry + seq_len(n_xs)
+  n_out <- length(body$outputs) - n_carry
+
+  taped <- prim_scan(
+    init = inputs[carry_idx],
+    xs = inputs[xs_idx],
+    body = function(carry, x) {
+      outs <- graph_apply(body, c(carry, x))
+      list(carry = outs[carry_idx], out = c(outs[-carry_idx], carry))
+    },
+    steps = steps,
+    reverse = reverse
+  )
+  tape <- taped$out[n_out + carry_idx]
+
+  list(
+    outputs = c(taped$carry, taped$out[seq_len(n_out)]),
+    backward = function(inputs, outputs, grads, params, required) {
+      cap_idx <- setdiff(seq_along(inputs), c(carry_idx, xs_idx))
+      cap_needed <- cap_idx[unlist(required[cap_idx])]
+      cap_targets <- lapply(inputs[cap_needed], function(box) box$gnode)
+      n_cap <- length(cap_needed)
+      targets <- c(body$inputs, cap_targets)
+
+      pulled <- prim_scan(
+        init = list(
+          carry = grads[carry_idx],
+          caps = lapply(inputs[cap_needed], zeros_like)
+        ),
+        xs = list(tape = tape, xs = inputs[xs_idx], out = grads[n_carry + seq_len(n_out)]),
+        body = function(carry, x) {
+          ct <- graph_vjp(
+            body,
+            targets,
+            c(carry$carry, x$out),
+            inputs = c(x$tape, x$xs)
+          )
+          list(
+            carry = list(
+              carry = ct[carry_idx],
+              caps = Map(prim_add, carry$caps, ct[n_carry + n_xs + seq_len(n_cap)])
+            ),
+            out = ct[xs_idx]
+          )
+        },
+        steps = steps,
+        reverse = !reverse
+      )
+
+      grads_in <- vector("list", length(inputs))
+      grads_in[carry_idx] <- pulled$carry$carry
+      grads_in[xs_idx] <- pulled$out
+      grads_in[cap_needed] <- pulled$carry$caps
+      grads_in
+    }
+  )
+})
+
 # convert reverse -----------------
 
 # A conversion is the identity, and so passes the cotangent through, only

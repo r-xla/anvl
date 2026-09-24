@@ -2685,6 +2685,10 @@ prim_while <- new_primitive(
 #'   `xs` at its own position and writes its output there.
 #' @return `list(carry = , out = )`: the final carry and the stacked
 #'   outputs, each leaf of `out` gaining a leading axis of size `steps`.
+#' @section Gradients:
+#' The forward pass keeps the carry each step starts from, and the backward pass
+#' is a scan in the opposite direction over them, so a gradient costs time and
+#' memory linear in `steps`. Values `body` closes over are differentiated too.
 #' @templateVar primitive_id scan
 #' @template section_rules
 #' @section StableHLO:
@@ -2775,6 +2779,11 @@ prim_scan <- new_primitive(
     # closed over has to be a constant of the parent graph too -- the same
     # reason `prim_while()` and `prim_if()` register theirs.
     register_consts(current_desc, body_graph$constants)
+    # As in `prim_if()`: what the body closes over is listed after the carry
+    # and `xs`, so that the backward pass sees it. The lowering reads the
+    # first `n_carry + n_xs` operands and ignores the rest.
+    captures <- subgraph_captures(list(body_graph))
+    capture_boxes <- lapply(captures, function(gval) get_box_or_register_const(current_desc, gval))
 
     infer_fn <- function(..., body, steps, reverse, n_carry, n_xs) {
       ins <- list(...)
@@ -2806,7 +2815,7 @@ prim_scan <- new_primitive(
 
     out <- graph_desc_add(
       self,
-      args = c(init_flat, xs_flat),
+      args = c(init_flat, xs_flat, capture_boxes),
       params = list(
         body = body_graph,
         steps = steps,
