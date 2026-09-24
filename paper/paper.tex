@@ -32,7 +32,14 @@ While it can trace code into TorchScript, TorchScript is primarily designed for 
 For large neural networks, where the runtime is dominated by individually expensive operations, eager execution is rarely a bottleneck.
 For the comparatively small models that are common in statistics, however, the per-operation overhead of eager execution can dominate, which makes whole-program compilation attractive.
 The packages \CRANpkg{tensorflow}, \CRANpkg{keras3}, and \CRANpkg{greta} \citep{ref-greta} give access to XLA-compiled programs, and JAX itself can be used via \CRANpkg{reticulate}.
-They do so by wrapping Python libraries, which requires managing a Python installation and converting objects between the two languages.
+They do so by wrapping Python libraries via \CRANpkg{reticulate} \citep{ref-reticulate}, and thereby inherit both the maturity of these libraries and the costs of the language boundary.
+First, every session requires a Python installation whose packages match the versions expected by the R wrapper; \CRANpkg{reticulate} can create such environments on demand via \texttt{py\_require()}, but only one Python interpreter can be initialized per R session, and neither its version nor its set of installed packages, apart from additions, can be changed without restarting R \citep{ref-reticulate-pyrequire}.
+Second, values are converted between two type systems whose semantics differ.
+In \CRANpkg{reticulate} 1.47.0, a numeric \texttt{NA} and \texttt{NaN} both become \texttt{nan}, a logical \texttt{NA} becomes \texttt{True} in a vector but \texttt{False} in a NumPy array, an integer \texttt{NA} becomes the plain integer \(-2^{31}\), and Python integers outside the 32-bit range can silently turn into wrong values when returned to R, e.g., \texttt{2**40} into \texttt{0} \citep{ref-reticulate-issue197, ref-reticulate-issue1647}.
+Arrays are passed to NumPy in column-major order, but reshaping follows NumPy's row-major semantics unless \texttt{array\_reshape()} is used, and arrays are copied on the way back \citep{ref-reticulate-arrays}.
+Third, memory is managed by two runtimes: a Python object referenced from R is only released when R's garbage collector runs, which is unaware of how much memory the object holds.
+In our experiments, repeatedly assigning an 800 MB NumPy array to the same R variable increased memory usage by about 760 MB per iteration until \texttt{gc()} was called.
+Finally, indices and axes follow Python's 0-based convention whenever the Python modules are called directly, so that wrappers such as \CRANpkg{keras3} have to translate them function by function \citep{ref-tf-slicing}, and errors are reported as Python exceptions in terms of Python objects.
 
 The lack of native GPU support in R has consequences beyond runtime.
 Methodological research on how to use accelerators for expensive statistical methods can hardly be carried out in R today.
@@ -399,8 +406,8 @@ X <- nv_array(matrix(rnorm(20), 10, 2))
 y <- X %*% matrix(c(1, 2))
 as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
 #>           [,1]
-#> [1,] 0.1506272
-#> [2,] 0.5901170
+#> [1,] 0.2433866
+#> [2,] 0.4486408
 \end{verbatim}
 
 When \texttt{update()} is traced, the call to the gradient function traces \texttt{loss()} into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of \texttt{update()}.

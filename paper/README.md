@@ -14,6 +14,7 @@ Source of the R Journal article on {anvl}.
 | `benchmarks/lrz/` | Slurm scripts used to run the benchmark on the LRZ AI Systems |
 | `benchmarks/results/` | Raw benchmark results used in the article |
 | `benchmarks/plots.R` | Figures and tables of the runtime evaluation |
+| `reticulate/conversions.R`, `.out` | The {reticulate} conversions and memory measurements cited in the introduction (reticulate 1.47.0, NumPy via `py_require()`) |
 
 ## Software environment
 
