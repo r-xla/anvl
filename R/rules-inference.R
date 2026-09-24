@@ -2364,3 +2364,63 @@ infer_while <- function(..., cond, body) {
   # The body's outputs are what the loop carries, so those are the result.
   outs_body
 }
+
+# ---------------------------------------------------------------------------
+# Custom calls
+#
+# The one primitive whose result types cannot be derived from its inputs: the
+# handler decides them, so the call declares them (`result_types`) and the
+# rule checks that the rest of the call is consistent with them.
+# ---------------------------------------------------------------------------
+
+infer_custom_call <- function(
+  ...,
+  target,
+  result_types,
+  attrs,
+  has_side_effect,
+  operand_layouts,
+  result_layouts,
+  aliases
+) {
+  operands <- list(...)
+  n_operands <- length(operands)
+  assert_custom_call_target(target)
+  assert_flag(has_side_effect)
+  assert_list(result_types, types = "ValueType", null.ok = TRUE, .var.name = "output_types")
+  assert_list(attrs, names = "unique")
+  if (is.null(result_types) && !n_operands) {
+    cli_abort(c(
+      "A side-effect only {.fn prim_custom_call} returns its operands, so it needs at least one.",
+      i = "Declare {.arg output_types} for a call that produces results."
+    ))
+  }
+  n_results <- length(result_types)
+  assert_layouts(operand_layouts, n_operands, "operand_layouts", "operand")
+  assert_layouts(result_layouts, n_results, "result_layouts", "result")
+
+  if (!is.null(aliases)) {
+    if (!is.integer(aliases)) {
+      cli_abort(c(
+        "{.arg aliases} must be an integer vector of operand indices.",
+        x = "Got {.obj_type_friendly {aliases}}."
+      ))
+    }
+    if (length(aliases) != n_results) {
+      cli_abort(c(
+        "{.arg aliases} must have one entry per result.",
+        x = "Got {length(aliases)} for {n_results} result{?s}."
+      ))
+    }
+    bad <- !is.na(aliases) & (aliases < 1L | aliases > n_operands)
+    if (any(bad)) {
+      cli_abort(c(
+        "{.arg aliases} must index an operand between 1 and {n_operands}, or be {.val NA}.",
+        x = "Got {aliases[bad]}."
+      ))
+    }
+  }
+
+  # for a side-effect only call the operands pass straight through
+  if (is.null(result_types)) operands else lapply(result_types, vt2at)
+}

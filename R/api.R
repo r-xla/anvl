@@ -4958,8 +4958,6 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 #' The call is also opaque to XLA and therefore to [`gradient()`]: to
 #' differentiate through a handler, wrap it in a primitive of your own with
 #' a reverse rule -- see `vignette("extending_primitive")`.
-#' @param target_name (`character(1)`)\cr
-#'   The name the handler was registered under.
 #' @param ... ([`arrayish`])\cr
 #'   The operands, in the order the handler binds them.
 #' @inheritParams prim_custom_call
@@ -4980,7 +4978,7 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 #' )
 #' @export
 nv_custom_call <- function(
-  target_name,
+  target,
   ...,
   output_types = NULL,
   attrs = list(),
@@ -4994,7 +4992,7 @@ nv_custom_call <- function(
   operands <- list(...)
   out <- prim_custom_call(
     operands,
-    target_name = target_name,
+    target = target,
     output_types = output_types,
     attrs = attrs,
     has_side_effect = has_side_effect,
@@ -5004,4 +5002,83 @@ nv_custom_call <- function(
     device = device
   )
   if (single || length(out) == 1L) out[[1L]] else out
+}
+
+#' @title CUDA Kernel Launch
+#' @description
+#' Describes a launch of a CUDA kernel, for use as the `target` of
+#' [`nv_custom_call()`]. This is the way to run a hand-written kernel
+#' without writing an XLA FFI handler: the kernel is compiled from source
+#' the first time it runs (see [`pjrt::pjrt_cuda_module()`]), and {pjrt}'s
+#' built-in `pjrt_cuda_kernel` handler launches it.
+#'
+#' The kernel receives the call's operands and then its results as device
+#' pointers, followed by `scalars`:
+#'
+#' ```
+#' __global__ void kernel(const T *in_1, ..., T *out_1, ..., <scalars>)
+#' ```
+#'
+#' The launch configuration is fixed when the call is traced, which is
+#' possible because shapes are static: derive `grid` from the operands'
+#' [`shape()`] rather than from their values.
+#' @param module (`PJRTCudaModule`)\cr
+#'   The module containing the kernel, from [`pjrt::pjrt_cuda_module()`].
+#' @param kernel (`character(1)`)\cr
+#'   The kernel's name, or for a template one of the module's `kernels`
+#'   expressions, e.g. `"scale<float>"`.
+#' @param grid,block (`integer()`)\cr
+#'   Number of blocks, and threads per block, in up to three dimensions. A
+#'   grid with a zero dimension launches nothing.
+#' @param scalars (`list()`)\cr
+#'   Scalar arguments passed after the buffers. An R integer is passed as a
+#'   C `int`, a double as a `double` and a logical as a `bool`; use
+#'   [`pjrt::pjrt_cuda_scalar()`] for other C types.
+#' @param shared_mem (`integer(1)`)\cr
+#'   Bytes of dynamic shared memory per block.
+#' @return `AnvlCudaKernel`
+#' @seealso [nv_custom_call()]
+#' @examples
+#' scale <- pjrt::pjrt_cuda_module(r"(
+#' extern "C" __global__ void scale(const float *x, float *out, float a, int n) {
+#'   int i = blockIdx.x * blockDim.x + threadIdx.x;
+#'   if (i < n) out[i] = a * x[i];
+#' })")
+#' cuda_kernel(
+#'   scale, "scale",
+#'   grid = 4L, block = 256L,
+#'   scalars = list(pjrt::pjrt_cuda_scalar(2, "f32"), 1000L)
+#' )
+#' @export
+cuda_kernel <- function(module, kernel, grid, block, scalars = list(), shared_mem = 0L) {
+  structure(
+    list(
+      kernel = kernel,
+      attrs = pjrt::pjrt_cuda_launch_attrs(
+        module,
+        kernel,
+        grid = grid,
+        block = block,
+        shared_mem = shared_mem,
+        scalars = scalars
+      )
+    ),
+    class = "AnvlCudaKernel"
+  )
+}
+
+#' @export
+print.AnvlCudaKernel <- function(x, ...) {
+  a <- x$attrs
+  cat(sprintf(
+    "<AnvlCudaKernel> %s, grid (%d, %d, %d), block (%d, %d, %d)\n",
+    x$kernel,
+    a$grid_x,
+    a$grid_y,
+    a$grid_z,
+    a$block_x,
+    a$block_y,
+    a$block_z
+  ))
+  invisible(x)
 }

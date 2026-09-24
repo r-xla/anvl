@@ -270,7 +270,7 @@ bitcast_lane <- function(dtype_in, dtype_out) {
 }
 
 row_major_layout <- function(naxes) {
-  rev(as.integer(seq.int(0L, naxes - 1L)))
+  rev(seq_len(naxes) - 1L)
 }
 
 # Turn a named list of R values into a stablehlo `backend_config`. Values that
@@ -309,6 +309,67 @@ custom_call_backend_config <- function(attrs) {
     attrs
   )
   stablehlo::CustomOpBackendConfig(unname(items))
+}
+
+# A custom call target is a handler name or a cuda_kernel(), or a list of
+# those named by platform.
+is_custom_call_target <- function(x) {
+  checkmate::test_string(x) || inherits(x, "AnvlCudaKernel")
+}
+
+assert_custom_call_target <- function(target) {
+  if (is_custom_call_target(target)) {
+    return(invisible(NULL))
+  }
+  ok <- is.list(target) &&
+    length(target) &&
+    !is.null(names(target)) &&
+    all(nzchar(names(target))) &&
+    !anyDuplicated(names(target)) &&
+    all(vapply(target, is_custom_call_target, logical(1L)))
+  if (!ok) {
+    cli_abort(c(
+      "{.arg target} must be a handler name, a {.fn cuda_kernel}, or a list of those named by platform.",
+      x = "Got {.obj_type_friendly {target}}.",
+      i = "For example {.code list(cpu = \"my_handler\", cuda = cuda_kernel(...))}."
+    ))
+  }
+  invisible(NULL)
+}
+
+# Resolved during lowering, like the layouts below.
+custom_call_target <- function(target) {
+  platform <- current_platform()
+  if (is_custom_call_target(target)) {
+    if (inherits(target, "AnvlCudaKernel") && !is.null(platform) && platform != "cuda") {
+      cli_abort(c(
+        "A {.fn cuda_kernel} runs only on CUDA, but the program is compiled for {.val {platform}}.",
+        i = "Pass {.arg target} as a list with an entry per platform, e.g. {.code list(cpu = ..., cuda = cuda_kernel(...))}."
+      ))
+    }
+    return(target)
+  }
+  chosen <- if (!is.null(platform)) target[[platform]]
+  if (is.null(chosen)) {
+    cli_abort(c(
+      "{.arg target} has no entry for platform {.val {platform %||% 'unknown'}}.",
+      i = "It lists {.val {names(target)}}."
+    ))
+  }
+  chosen
+}
+
+# pjrt's launcher reads the launch configuration as i32 whatever the default
+# data types are, so the integers are pinned to it.
+cuda_kernel_backend_config <- function(attrs) {
+  attrs <- Map(
+    function(nm, value) {
+      if (is.character(value)) value else stablehlo::ScalarAttr(name = nm, value = value, dtype = as_dtype("i32"))
+    },
+    names(attrs),
+    attrs
+  )
+  custom_call_backend_config(attrs)
 }
 
 # Layouts are either one spec used everywhere (a list of integer vectors) or

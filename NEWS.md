@@ -158,6 +158,9 @@
   in-place handler avoids a copy. Layouts may also be given per platform
   (`list(cpu = ..., cuda = ...)`), resolved when the program is lowered, for
   handlers whose CPU and CUDA implementations disagree.
+* New `cuda_kernel()` launches a hand-written CUDA kernel as the `target` of
+  `nv_custom_call()`, with no FFI handler or build setup. `target` can list one
+  target per platform, e.g. `list(cpu = "my_handler", cuda = cuda_kernel(...))`.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.

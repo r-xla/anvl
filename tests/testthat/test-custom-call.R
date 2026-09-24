@@ -163,9 +163,98 @@ describe("nv_custom_call", {
       "between 1 and 1"
     )
     expect_error(nv_custom_call("t"), "needs at least one")
+    expect_error(nv_custom_call(list("a"), x, output_types = vt("f64", 2)), "named by platform")
+    expect_error(nv_custom_call(list(cpu = 1), x, output_types = vt("f64", 2)), "named by platform")
     expect_error(
       nv_custom_call("t", x, attrs = list(bad = list(1))),
       "non-empty atomic vector"
     )
+  })
+})
+
+scale_module <- pjrt::pjrt_cuda_module(
+  r"(
+template <typename T>
+__global__ void scale(const T *x, T *out, T a, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) out[i] = a * x[i];
+}
+)",
+  kernels = c("scale<float>", "scale<double>")
+)
+
+nv_scale <- function(x, a) {
+  n <- as.integer(prod(shape(x)))
+  ctype <- switch(as.character(dtype(x)), f32 = "float", f64 = "double")
+  a <- if (ctype == "float") pjrt::pjrt_cuda_scalar(a, "f32") else a
+  nv_custom_call(
+    cuda_kernel(
+      scale_module,
+      sprintf("scale<%s>", ctype),
+      grid = ceiling(n / 128),
+      block = 128L,
+      scalars = list(a, n)
+    ),
+    x,
+    output_types = vt(dtype(x), shape(x))
+  )
+}
+
+describe("cuda_kernel", {
+  it("describes a launch", {
+    k <- cuda_kernel(scale_module, "scale<float>", grid = c(2, 3), block = 64L, scalars = list(1L))
+    expect_s3_class(k, "AnvlCudaKernel")
+    expect_identical(k$attrs$kernel, "scale<float>")
+    expect_identical(k$attrs$grid_y, 3L)
+    expect_output(print(k), "grid \\(2, 3, 1\\), block \\(64, 1, 1\\)")
+  })
+
+  it("lowers to the pjrt_cuda_kernel custom call", {
+    k <- cuda_kernel(scale_module, "scale<float>", grid = 1L, block = 32L, scalars = list(4L))
+    local_platform("cuda")
+    expect_identical(custom_call_target(k), k)
+    expect_identical(custom_call_target(list(cpu = "a", cuda = k)), k)
+    local_platform("cpu")
+    expect_identical(custom_call_target(list(cpu = "a", cuda = k)), "a")
+    expect_error(custom_call_target(k), "runs only on CUDA")
+    expect_error(custom_call_target(list(cuda = k)), "no entry for platform \"cpu\"")
+  })
+
+  it("picks the target of the platform the program is compiled for", {
+    skip_if(is_cuda())
+    k <- cuda_kernel(scale_module, "scale<float>", grid = 1L, block = 32L, scalars = list(1, 1L))
+    x <- nv_array(c(1, 2, 3), dtype = "f32")
+    expect_output(
+      nv_custom_call(list(cpu = "print_tensor", cuda = k), x, attrs = list(print_header = "on the cpu")),
+      "on the cpu"
+    )
+    expect_error(nv_scale(x, 2), "runs only on CUDA")
+  })
+
+  it("runs a kernel, eagerly and under jit()", {
+    skip_if(!is_cuda())
+    x <- nv_array(c(1, 2, 3), dtype = "f32")
+    expect_equal(as.vector(as_array(nv_scale(x, 2))), c(2, 4, 6))
+    f <- jit(function(x) nv_sum(nv_scale(x, 0.5)))
+    expect_equal(as_array(f(nv_array(c(2, 4), dtype = "f64"))), 3)
+    expect_equal(as_array(f(nv_array(c(2, 4), dtype = "f32"))), 3)
+  })
+
+  it("takes no attrs, unless they are for the handlers of other platforms", {
+    skip_if(!is_cuda())
+    k <- cuda_kernel(
+      scale_module,
+      "scale<float>",
+      grid = 1L,
+      block = 32L,
+      scalars = list(pjrt::pjrt_cuda_scalar(3, "f32"), 1L)
+    )
+    x <- nv_array(2, dtype = "f32")
+    expect_error(
+      nv_custom_call(k, x, output_types = vt("f32", 1L), attrs = list(a = 1L)),
+      "not to CUDA kernels"
+    )
+    out <- nv_custom_call(list(cpu = "some_handler", cuda = k), x, output_types = vt("f32", 1L), attrs = list(a = 1L))
+    expect_equal(as.vector(as_array(out)), 6)
   })
 })

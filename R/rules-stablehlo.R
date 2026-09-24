@@ -1356,7 +1356,7 @@ prim_convolution[["stablehlo"]] <- function(
 # the lowering pass inject a second, colliding argument.
 prim_custom_call[["stablehlo"]] <- function(
   ...,
-  target_name,
+  target,
   result_types,
   attrs,
   has_side_effect,
@@ -1367,13 +1367,30 @@ prim_custom_call[["stablehlo"]] <- function(
   ops <- list(...)
   n_results <- length(result_types)
 
+  per_platform <- !is_custom_call_target(target)
+  target <- custom_call_target(target)
+  if (inherits(target, "AnvlCudaKernel")) {
+    # `attrs` are for the handlers among per-platform targets
+    if (length(attrs) && !per_platform) {
+      cli_abort(c(
+        "{.arg attrs} are passed to FFI handlers, not to CUDA kernels.",
+        i = "Give a kernel's arguments as {.arg scalars} of {.fn cuda_kernel}."
+      ))
+    }
+    call_target_name <- "pjrt_cuda_kernel"
+    backend_config <- cuda_kernel_backend_config(target$attrs)
+  } else {
+    call_target_name <- target
+    backend_config <- if (length(attrs)) custom_call_backend_config(attrs)
+  }
+
   out <- rlang::exec(
     hlo_custom_call,
     !!!ops,
-    call_target_name = target_name,
+    call_target_name = call_target_name,
     api_version = 4L,
     has_side_effect = has_side_effect,
-    backend_config = if (length(attrs)) custom_call_backend_config(attrs) else NULL,
+    backend_config = backend_config,
     output_types = result_types,
     operand_layouts = custom_call_layouts(operand_layouts, "operand_layouts"),
     result_layouts = custom_call_layouts(result_layouts, "result_layouts"),

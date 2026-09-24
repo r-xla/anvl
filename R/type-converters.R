@@ -9,6 +9,12 @@ at2vt <- function(x) {
   stablehlo::ValueType(stablehlo::TensorType(x$dtype, x$shape))
 }
 
+# The inverse of at2vt(), for the output types a custom call declares.
+vt2at <- function(x) {
+  stopifnot(inherits(x, "ValueType"), inherits(x$type, "TensorType"))
+  AbstractArray(x$type$dtype, x$type$shape)
+}
+
 #' Construct a stablehlo ValueType
 #' @description
 #' Shorthand for building a tensor [`stablehlo::ValueType`] from a dtype

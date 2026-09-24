@@ -4,6 +4,8 @@
 # reverse rule. integrations/run.R has compiled and registered "anvl_hypot"
 # before these run.
 
+values <- function(x) as.vector(as_array(x))
+
 # the wrapper the article builds around the raw call
 nv_hypot <- function(x, y) {
   operands <- nv_promote_to_common(x, y)
@@ -16,12 +18,15 @@ nv_hypot <- function(x, y) {
 }
 
 describe("a compiled custom call", {
+  # the handler is registered for the CPU only
+  local_default_device("cpu")
+
   it("computes hypot in f64, where the naive composition underflows", {
     x <- nv_array(c(3, 1e-200), dtype = "f64")
     y <- nv_array(c(4, 1e-200), dtype = "f64")
     # the motivation from the article: x^2 is 0 before the square root runs
-    expect_equal(as_array(nv_sqrt(x^2 + y^2)), c(5, 0))
-    expect_equal(as_array(nv_hypot(x, y)), c(5, sqrt(2) * 1e-200))
+    expect_equal(values(nv_sqrt(x^2 + y^2)), c(5, 0))
+    expect_equal(values(nv_hypot(x, y)), c(5, sqrt(2) * 1e-200))
   })
 
   it("computes hypot in f32 with the same handler", {
@@ -29,19 +34,19 @@ describe("a compiled custom call", {
     y <- nv_array(c(4, 1e-30), dtype = "f32")
     out <- nv_hypot(x, y)
     expect_equal(dtype(out), dtype(x))
-    expect_equal(as_array(nv_sqrt(x^2 + y^2)), c(5, 0), tolerance = 1e-6)
-    expect_equal(as_array(out), c(5, sqrt(2) * 1e-30), tolerance = 1e-6)
+    expect_equal(values(nv_sqrt(x^2 + y^2)), c(5, 0), tolerance = 1e-6)
+    expect_equal(values(out), c(5, sqrt(2) * 1e-30), tolerance = 1e-6)
   })
 
   it("promotes mixed dtypes to a common one", {
     out <- nv_hypot(nv_array(c(3, 5), dtype = "f32"), nv_array(c(4, 12), dtype = "f64"))
     expect_equal(dtype(out), as_dtype("f64"))
-    expect_equal(as_array(out), c(5, 13))
+    expect_equal(values(out), c(5, 13))
   })
 
   it("works inside jit(), for either dtype", {
-    f <- jit(function(x, y) nv_reduce_sum(nv_hypot(x, y)))
-    expect_equal(as_array(f(nv_array(c(3, 5), dtype = "f64"), nv_array(c(4, 12), dtype = "f64"))), 18)
+    f <- jit(function(x, y) nv_sum(nv_hypot(x, y)))
+    expect_equal(values(f(nv_array(c(3, 5), dtype = "f64"), nv_array(c(4, 12), dtype = "f64"))), 18)
     expect_equal(
       as_array(f(nv_array(c(3, 5), dtype = "f32"), nv_array(c(4, 12), dtype = "f32"))),
       18,
@@ -72,6 +77,8 @@ describe("a compiled custom call", {
 })
 
 describe("a primitive wrapping a custom call", {
+  local_default_device("cpu")
+
   prim_hypot <- new_primitive("hypot", function(x, y) {
     graph_desc_add(self, list(x = x, y = y), infer_fn = function(x, y) {
       list(AbstractArray(dtype = dtype(x), shape = shape(x)))
@@ -109,13 +116,13 @@ describe("a primitive wrapping a custom call", {
     )
   })
 
-  g <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
+  g <- function(x, y) nv_sum(prim_hypot(x, y))
 
   it("computes the same values as the raw call", {
     x <- nv_array(c(3, 5), dtype = "f64")
     y <- nv_array(c(4, 12), dtype = "f64")
-    expect_equal(as_array(prim_hypot(x, y)), c(5, 13))
-    expect_equal(as_array(jit(g)(x, y)), 18)
+    expect_equal(values(prim_hypot(x, y)), c(5, 13))
+    expect_equal(values(jit(g)(x, y)), 18)
   })
 
   it("differentiates, in either dtype", {
@@ -123,11 +130,91 @@ describe("a primitive wrapping a custom call", {
     y <- nv_array(c(4, 8), dtype = "f64")
     grads <- jit(gradient(g))(x, y)
     # d/dx hypot(x, y) = x / hypot(x, y)
-    expect_equal(as_array(grads[[1L]]), c(3 / 5, 6 / 10))
-    expect_equal(as_array(grads[[2L]]), c(4 / 5, 8 / 10))
+    expect_equal(values(grads[[1L]]), c(3 / 5, 6 / 10))
+    expect_equal(values(grads[[2L]]), c(4 / 5, 8 / 10))
 
     grads32 <- jit(gradient(g))(nv_convert(x, "f32"), nv_convert(y, "f32"))
     expect_equal(dtype(grads32[[1L]]), as_dtype("f32"))
-    expect_equal(as_array(grads32[[1L]]), c(3 / 5, 6 / 10), tolerance = 1e-6)
+    expect_equal(values(grads32[[1L]]), c(3 / 5, 6 / 10), tolerance = 1e-6)
+  })
+})
+
+# The "Going to CUDA" section: the same op, with a CUDA kernel next to the
+# CPU handler. Runs its CUDA half only with PJRT_PLATFORM=cuda.
+hypot_cuda <- pjrt::pjrt_cuda_module(
+  r"(
+template <typename T>
+__global__ void hypot_kernel(const T *x, const T *y, T *out, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) out[i] = hypot(x[i], y[i]);
+}
+)",
+  kernels = c("hypot_kernel<float>", "hypot_kernel<double>")
+)
+
+nv_hypot_any <- function(x, y) {
+  operands <- nv_promote_to_common(x, y)
+  x <- operands[[1L]]
+  y <- operands[[2L]]
+  n <- as.integer(prod(shape(x)))
+  ctype <- switch(as.character(dtype(x)), f32 = "float", f64 = "double")
+  nv_custom_call(
+    list(
+      cpu = "anvl_hypot",
+      cuda = cuda_kernel(
+        hypot_cuda,
+        sprintf("hypot_kernel<%s>", ctype),
+        grid = ceiling(n / 256),
+        block = 256L,
+        scalars = list(n)
+      )
+    ),
+    x,
+    y,
+    output_types = vt(dtype(x), shape(x))
+  )
+}
+
+describe("a custom call with a CUDA kernel next to the CPU handler", {
+  on_cuda <- Sys.getenv("PJRT_PLATFORM") == "cuda"
+
+  it("runs the CPU handler on the CPU", {
+    x <- nv_array(c(3, 1e-200), dtype = "f64", device = "cpu")
+    y <- nv_array(c(4, 1e-200), dtype = "f64", device = "cpu")
+    expect_equal(values(nv_hypot_any(x, y)), c(5, sqrt(2) * 1e-200))
+  })
+
+  it("runs the kernel on a GPU, in both precisions and under jit()", {
+    skip_if(!on_cuda)
+    x <- nv_array(c(3, 1e-200), dtype = "f64", device = "cuda")
+    y <- nv_array(c(4, 1e-200), dtype = "f64", device = "cuda")
+    expect_equal(values(nv_hypot_any(x, y)), c(5, sqrt(2) * 1e-200))
+
+    xf <- nv_array(c(3, 1e-30), dtype = "f32", device = "cuda")
+    yf <- nv_array(c(4, 1e-30), dtype = "f32", device = "cuda")
+    expect_equal(values(nv_hypot_any(xf, yf)), c(5, sqrt(2) * 1e-30), tolerance = 1e-6)
+
+    f <- jit(function(x, y) nv_sum(nv_hypot_any(x, y)))
+    expect_equal(values(f(x, y)), 5)
+  })
+
+  it("covers more than one block", {
+    skip_if(!on_cuda)
+    withr::local_seed(1L)
+    a <- runif(1000L)
+    b <- runif(1000L)
+    out <- nv_hypot_any(nv_array(a, dtype = "f64", device = "cuda"), nv_array(b, dtype = "f64", device = "cuda"))
+    expect_equal(values(out), sqrt(a^2 + b^2))
+  })
+
+  it("reports a scalar of the wrong C type", {
+    skip_if(!on_cuda)
+    x <- nv_array(c(3, 4), dtype = "f64", device = "cuda")
+    k <- cuda_kernel(hypot_cuda, "hypot_kernel<double>", grid = 1L, block = 32L, scalars = list(2))
+    # execution is asynchronous on a GPU: the error surfaces with the result
+    expect_error(
+      as_array(nv_custom_call(k, x, x, output_types = vt("f64", 2L))),
+      "Parameter 4 of CUDA kernel 'hypot_kernel<double>' is 4 bytes, but a scalar of 8 bytes was passed"
+    )
   })
 })

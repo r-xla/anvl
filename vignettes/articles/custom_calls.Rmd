@@ -21,7 +21,9 @@ For those, XLA offers *custom calls*: you write a C++ function, register it
 with the PJRT runtime under a name, and XLA invokes it at exactly that point
 in the compiled program.
 
-This article walks the whole path on CPU.
+This article walks the whole path on CPU, and then runs the same operation
+on a GPU with a hand-written CUDA kernel -- which needs no C++ handler and
+no build setup at all.
 {pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
 article covers the C++ side in much more depth, including CUDA, LAPACK,
 buffer aliasing and the full binding API.
@@ -184,8 +186,8 @@ the package is unloaded.
 
 ## Step 3: Call it
 
-[`nv_custom_call()`] takes the target name, the operands, and the shape and
-dtype of each result.
+[`nv_custom_call()`] takes the target -- here the name the handler was
+registered under -- the operands, and the shape and dtype of each result.
 anvl cannot infer the result types -- the handler decides them -- but
 nothing forces you to write them out as literals: [`dtype()`] and [`shape()`]
 of the operands are available at trace time, so a generic call reads
@@ -229,7 +231,7 @@ becomes one op among the others -- and since the output types are derived
 from the traced operands, one `jit()`ed function serves both dtypes:
 
 ```{r}
-f <- jit(function(x, y) nv_reduce_sum(nv_hypot(x, y)))
+f <- jit(function(x, y) nv_sum(nv_hypot(x, y)))
 f(x, y)
 f(xf, yf)
 ```
@@ -315,7 +317,7 @@ prim_hypot[["reverse"]] <- rule_reverse(function(
 Now the call differentiates, in either precision:
 
 ```{r}
-g <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
+g <- function(x, y) nv_sum(prim_hypot(x, y))
 a <- nv_array(c(3, 6), dtype = "f64")
 b <- nv_array(c(4, 8), dtype = "f64")
 jit(gradient(g))(a, b)
@@ -349,182 +351,133 @@ would:
 
 ## Going to CUDA
 
-Nothing on the R side changes for a GPU.
-A `stablehlo.custom_call` names a *target*, not an implementation, and
-`pjrt_register_custom_call()` already takes one handler per platform, so the
-same `nv_hypot(x, y)` runs the CUDA handler as soon as its operands live on
-a CUDA device:
+On a GPU you do not need an FFI handler at all.
+{pjrt} ships one generic handler, `pjrt_cuda_kernel`, that launches any CUDA
+kernel you hand it -- the same design as jaxlib's `triton_kernel_call` and
+CuPy's `RawKernel`.
+So the CUDA version of `hypot` is only the kernel itself:
 
-```{r, eval = FALSE}
-x <- nv_array(c(3, 1e-200), dtype = "f64", device = "cuda")
-y <- nv_array(c(4, 1e-200), dtype = "f64", device = "cuda")
+```{r}
+hypot_cuda <- pjrt::pjrt_cuda_module(
+  r"(
+template <typename T>
+__global__ void hypot_kernel(const T *x, const T *y, T *out, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) out[i] = hypot(x[i], y[i]);
+}
+)",
+  kernels = c("hypot_kernel<float>", "hypot_kernel<double>")
+)
+hypot_cuda
+```
+
+[`pjrt::pjrt_cuda_module()`] only records the source; it needs neither a GPU
+nor a compiler.
+The first time one of its kernels runs, {pjrt} compiles the module with
+NVRTC -- CUDA's runtime compiler, which the CUDA plugin's `pjrt.cuda`
+package already ships, so there is no CUDA toolkit to install and no `nvcc`
+to call -- for exactly the GPU it runs on, and caches the result on disk.
+`kernels` lists the template instantiations to compile; a kernel declared
+`extern "C"` needs no entry.
+
+The kernel receives the call's operands, then its results, as device
+pointers, followed by any scalar arguments -- here the element count `n`.
+[`cuda_kernel()`] says how to launch it, and goes where the handler name went
+before.
+Because the platform is only known when the program is lowered, `target`
+can also list one target per platform, and the same `nv_hypot()` then runs
+the C++ handler on the CPU and the kernel on a GPU:
+
+```{r}
+nv_hypot <- function(x, y) {
+  operands <- nv_promote_to_common(x, y)
+  x <- operands[[1L]]
+  y <- operands[[2L]]
+  n <- as.integer(prod(shape(x)))
+  ctype <- switch(as.character(dtype(x)), f32 = "float", f64 = "double")
+  nv_custom_call(
+    list(
+      cpu = "anvl_hypot",
+      cuda = cuda_kernel(
+        hypot_cuda,
+        sprintf("hypot_kernel<%s>", ctype),
+        grid = ceiling(n / 256),
+        block = 256L,
+        scalars = list(n)
+      )
+    ),
+    x,
+    y,
+    output_types = vt(dtype(x), shape(x))
+  )
+}
+
 nv_hypot(x, y)
 ```
 
-What changes is the handler, and above all how it is built: R's build system
-knows how to compile `.cpp`, not `.cu`.
+That ran on the CPU. With the operands on a GPU, the kernel runs instead:
 
-### Keep the kernel and the handler in separate files
-
-Put the kernel in a `.cu` compiled by `nvcc`, and the FFI handler in a
-`.cpp` compiled by R's ordinary C++ toolchain, with one `extern "C"`
-launcher bridging them.
-Typing the stream as `void *` at that boundary means the `.cpp` never
-includes a CUDA header and the `.cu` never includes an XLA one -- which
-matters, because `nvcc`'s C++ support trails the host compiler's.
-This is the same split {pjrt} uses for its own CUDA handlers.
-
-The kernel itself is a template, but `extern "C"` cannot be, so the `.cu`
-exposes one launcher per supported dtype:
-
-```c++
-// src/hypot_kernel.cu -- compiled by nvcc
-#include <cuda_runtime.h>
-
-template <typename T>
-__global__ void hypot_kernel(const T *x, const T *y, T *out, size_t n) {
-  size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) out[i] = hypot(x[i], y[i]);
-}
-
-template <typename T>
-static void launch(void *stream, const T *x, const T *y, T *out, size_t n) {
-  const int threads = 256;
-  const int blocks = static_cast<int>((n + threads - 1) / threads);
-  hypot_kernel<T><<<blocks, threads, 0, static_cast<cudaStream_t>(stream)>>>(
-      x, y, out, n);
-}
-
-// The only symbols the rest of the package sees.
-extern "C" void anvl_launch_hypot_f32(void *stream, const float *x,
-                                      const float *y, float *out, size_t n) {
-  launch<float>(stream, x, y, out, n);
-}
-
-extern "C" void anvl_launch_hypot_f64(void *stream, const double *x,
-                                      const double *y, double *out, size_t n) {
-  launch<double>(stream, x, y, out, n);
-}
+```{r, eval = FALSE}
+xc <- nv_array(c(3, 1e-200), dtype = "f64", device = "cuda")
+yc <- nv_array(c(4, 1e-200), dtype = "f64", device = "cuda")
+nv_hypot(xc, yc)
+jit(function(x, y) nv_sum(nv_hypot(x, y)))(xc, yc)
 ```
 
-```c++
-// src/hypot_cuda.cpp -- compiled by R's C++ toolchain, no CUDA headers
-#include "xla/ffi/api/ffi.h"
+A few things to know about the kernel's side:
 
-using namespace xla::ffi;
+- **Scalars** map from R to C as in R's `.C()` interface: an integer is an
+  `int`, a double a `double`, a logical a `bool`. That is why `n` is passed
+  through `as.integer()`. Anything else is written with
+  [`pjrt::pjrt_cuda_scalar()`], e.g. `pjrt_cuda_scalar(n, "i64")` for a
+  `long long`.
+- **Mismatches are caught.** Before launching, {pjrt} compares the call with
+  the kernel's compiled signature, so passing `prod(shape(x))` (a double)
+  for the `int n` fails with *Parameter 4 of CUDA kernel 'hypot_kernel<double>'
+  is 4 bytes, but a scalar of 8 bytes was passed* instead of reading garbage.
+  Compilation errors come back with NVRTC's log.
+- **The launch configuration is static**: `grid` and `block` are fixed when
+  the call is traced. That is always possible, because shapes are static,
+  but `grid` has to be computed from `shape()`, never from values.
+- **Layouts** are row-major by default, as for any custom call.
 
-extern "C" void anvl_launch_hypot_f32(void *stream, const float *x,
-                                      const float *y, float *out, size_t n);
-extern "C" void anvl_launch_hypot_f64(void *stream, const double *x,
-                                      const double *y, double *out, size_t n);
+### Shipping kernels in a package
 
-static Error do_hypot_cuda(void *stream, AnyBuffer x, AnyBuffer y,
-                           Result<AnyBuffer> out) {
-  size_t n = out->element_count();
-  if (x.element_count() != n || y.element_count() != n) {
-    return Error::InvalidArgument("hypot: operands must have the same size");
-  }
-  DataType dt = x.element_type();
-  if (y.element_type() != dt || out->element_type() != dt) {
-    return Error::InvalidArgument("hypot: operands and result must have the "
-                                  "same dtype");
-  }
-  // these are *device* pointers; only the kernel may dereference them
-  switch (dt) {
-    case DataType::F32:
-      anvl_launch_hypot_f32(stream, x.typed_data<float>(),
-                            y.typed_data<float>(), out->typed_data<float>(), n);
-      return Error::Success();
-    case DataType::F64:
-      anvl_launch_hypot_f64(stream, x.typed_data<double>(),
-                            y.typed_data<double>(), out->typed_data<double>(),
-                            n);
-      return Error::Success();
-    default:
-      return Error::InvalidArgument("hypot: only f32 and f64 are supported");
-  }
-}
-
-XLA_FFI_DEFINE_HANDLER_SYMBOL(HypotHandlerCuda, do_hypot_cuda,
-                              Ffi::Bind()
-                                  .Ctx<PlatformStream<void *>>()
-                                  .Arg<AnyBuffer>()
-                                  .Arg<AnyBuffer>()
-                                  .Ret<AnyBuffer>());
-```
-
-The binding gains one entry: `.Ctx<PlatformStream<void *>>()` puts the CUDA
-stream XLA dispatched the op on in front of the buffers.
-Everything the handler enqueues must go on *that* stream.
-
-### You do not need a system CUDA toolkit
-
-Installing {pjrt}'s CUDA plugin also installs the
-[`cuda12.8`](https://mlverse.r-universe.dev/cuda12.8) R package, which
-downloads the CUDA redistributables from PyPI at install time -- and it keeps
-the `include/` directory of every component it unpacks, plus `nvcc` itself:
+The CUDA side of a package needs no build system changes at all: nothing is
+compiled at install time, and the package installs and loads on machines
+without a GPU.
+Keep the kernel in `inst/cuda/hypot.cu` and create the module when the
+package loads:
 
 ```r
-cuda12.8::bin_path("nvcc")           # nvcc, ptxas, cicc
-cuda12.8::include_path("runtime")    # cuda_runtime.h and friends
-cuda12.8::include_path("cublas")     # likewise for cublas, cusolver, cudnn, ...
-cuda12.8::lib_path()                 # all the .so files, libcudart.so included
-```
-
-So everything the kernel above needs to compile and link is already on the
-machine that runs the plugin, and a package can find it from R instead of
-guessing at `/usr/local/cuda`.
-Two caveats: the package is Linux and Windows only (no macOS), and its
-version is pinned -- {pjrt} defaults to `cuda12.8` and only that version is
-known to match the plugin, though `PJRT_CUDA_R_PACKAGE` can point at another
-one.
-
-### Teaching `R CMD INSTALL` about `.cu`
-
-R has no rule for `.cu`, so `src/Makevars` supplies one and lists every
-object explicitly:
-
-```make
-CUDA_BIN = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::bin_path("nvcc"))')
-CUDA_INC = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::include_path("runtime"))')
-CUDA_LIB = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::lib_path())')
-
-NVCC = $(CUDA_BIN)/nvcc
-
-OBJECTS = hypot.o hypot_cuda.o hypot_kernel.o
-PKG_LIBS = -L$(CUDA_LIB) -lcudart -Wl,-rpath,$(CUDA_LIB)
-
-%.o: %.cu
-	$(NVCC) -std=c++17 -O2 -I$(CUDA_INC) -Xcompiler "$(CXXPICFLAGS)" -c $< -o $@
-```
-
-`nvcc` finds its own CRT headers next to its `bin/`, so only the runtime
-headers have to be named explicitly.
-A package meant to install on machines without a GPU wants a `configure` that
-checks whether `cuda12.8` (or a system `nvcc`) is there at all, and generates
-a `Makevars` without the CUDA objects when it is not.
-
-### Registering both
-
-`.onLoad()` then offers whichever handlers were actually built:
-
-```r
-symbol <- function(name, pkgname) {
-  tryCatch(getNativeSymbolInfo(name, PACKAGE = pkgname)$address, error = function(e) NULL)
-}
+the <- new.env()
 
 .onLoad <- function(libname, pkgname) {
-  handlers <- list(
-    cpu = symbol("HypotHandler", pkgname),
-    cuda = symbol("HypotHandlerCuda", pkgname)
-  )
-  pjrt::pjrt_register_custom_call(
-    "anvl_hypot",
-    Filter(Negate(is.null), handlers),
-    .package = pkgname
+  the$hypot <- pjrt::pjrt_cuda_module(
+    file = system.file("cuda", "hypot.cu", package = pkgname),
+    kernels = c("hypot_kernel<float>", "hypot_kernel<double>")
   )
 }
 ```
 
-Registering only `cpu` is not an error; a program that needs the missing
-platform is what fails, with *No FFI handler registered for `anvl_hypot`*.
+or, for a short kernel, inline the source in the R code as above.
+Each user's machine compiles a module once, on first use, for its own GPU;
+later sessions load it from the cache ([`pjrt::pjrt_cuda_cache_dir()`]).
+
+A module can also be a prebuilt image instead of source --
+`pjrt_cuda_module(file = "hypot.fatbin")`, likewise `.cubin` and `.ptx` --
+for kernels compiled ahead of time with `nvcc -fatbin`, e.g. in a binary
+build.
+Source is the better default: a CRAN source package cannot contain
+binaries, and PTX needs a driver at least as new as the compiler that
+produced it.
+
+### When you need a handler after all
+
+`pjrt_cuda_kernel` launches one kernel on XLA's stream.
+Work that needs more than that -- calling a CUDA library such as cuBLAS or
+cuSOLVER, scratch memory, several dependent launches -- still takes an FFI
+handler bound with `.Ctx<PlatformStream<void *>>()` and registered under
+`cuda` in `pjrt_register_custom_call()`.
+{pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
+article covers how, using its built-in cuSOLVER handlers as the example.

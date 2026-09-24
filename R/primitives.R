@@ -3746,8 +3746,12 @@ prim_convolution <- new_primitive(
 #' Use [`nv_custom_call()`] unless you need the exact primitive signature.
 #' @param operands (`list` of [`arrayish`])\cr
 #'   The values passed to the handler, in the order it binds them.
-#' @param target_name (`character(1)`)\cr
-#'   The name the handler was registered under.
+#' @param target (`character(1)` | [`cuda_kernel()`] | `list`)\cr
+#'   What to call: the name an FFI handler was registered under, or a CUDA
+#'   kernel launch described by [`cuda_kernel()`]. A list of these named by
+#'   platform, e.g. `list(cpu = "my_handler", cuda = cuda_kernel(...))`,
+#'   picks one when the program is lowered, which is the first point at
+#'   which the target platform is known.
 #' @param output_types ([`stablehlo::ValueType`] | `list` of them | `NULL`)\cr
 #'   Shape and dtype of each result, most easily built with [`vt()`]. The
 #'   handler, not the inputs, decides these, so anvl cannot infer them.
@@ -3756,8 +3760,8 @@ prim_convolution <- new_primitive(
 #' @param attrs (`list`)\cr
 #'   Named attributes the handler reads via `.Attr<T>("name")` or
 #'   `.Attrs<Dictionary>()`. Scalars, strings and vectors are converted
-#'   using anvl's usual dtype defaults (`f32` for doubles, `i32` for
-#'   integers, `bool` for logicals); pass a `stablehlo` attribute object
+#'   at the current default data types (see [`default_dtypes()`]); pass a
+#'   `stablehlo` attribute object
 #'   such as [`stablehlo::ScalarAttr()`] to pin a different dtype.
 #' @param has_side_effect (`logical(1)`)\cr
 #'   Whether XLA must keep the call even when its results are unused.
@@ -3794,7 +3798,7 @@ prim_custom_call <- new_primitive(
   "custom_call",
   function(
     operands,
-    target_name,
+    target,
     output_types = NULL,
     attrs = list(),
     has_side_effect = is.null(output_types),
@@ -3803,65 +3807,34 @@ prim_custom_call <- new_primitive(
     aliases = NULL,
     device = NULL
   ) {
-    assert_string(target_name)
-    assert_flag(has_side_effect)
     if (!is.list(operands)) {
       cli_abort("{.arg operands} must be a list of arrayish values.")
     }
     if (inherits(output_types, "ValueType")) {
       output_types <- list(output_types)
     }
-    assert_list(output_types, types = "ValueType", null.ok = TRUE)
-    assert_list(attrs, names = "unique")
-    if (is.null(output_types) && !length(operands)) {
-      cli_abort(c(
-        "A side-effect only {.fn prim_custom_call} returns its operands, so it needs at least one.",
-        i = "Declare {.arg output_types} for a call that produces results."
-      ))
+    # Fill in row-major layouts, so the stored call names the layouts it uses;
+    # infer_custom_call() checks them, as it checks everything else.
+    if (is.null(operand_layouts)) {
+      operand_layouts <- lapply(operands, function(op) row_major_layout(length(shape(op))))
     }
-
-    n_results <- length(output_types)
-    operand_layouts <- operand_layouts %||%
-      lapply(operands, function(op) row_major_layout(naxes_abstract(op)))
-    result_layouts <- result_layouts %||%
-      lapply(output_types %||% list(), function(t) row_major_layout(length(shape(vt2at(t)))))
-    assert_layouts(operand_layouts, length(operands), "operand_layouts", "operand")
-    assert_layouts(result_layouts, n_results, "result_layouts", "result")
-
-    if (!is.null(aliases)) {
+    if (is.null(result_layouts) && is.list(output_types %||% list())) {
+      result_layouts <- lapply(output_types %||% list(), function(t) {
+        row_major_layout(if (inherits(t, "ValueType")) length(shape(vt2at(t))) else 0L)
+      })
+    }
+    if (is.numeric(aliases)) {
       aliases <- as.integer(aliases)
-      if (length(aliases) != n_results) {
-        cli_abort("{.arg aliases} must have one entry per result.")
-      }
-      bad <- !is.na(aliases) & (aliases < 1L | aliases > length(operands))
-      if (any(bad)) {
-        cli_abort("{.arg aliases} must index an operand between 1 and {length(operands)}, or be {.val NA}.")
-      }
     }
 
     # Carried under `result_types` rather than `output_types`: anvl injects an
     # `output_types` argument into any lowering rule that declares one, and the
     # two would collide.
-    infer_fn <- function(
-      ...,
-      target_name,
-      result_types,
-      attrs,
-      has_side_effect,
-      operand_layouts,
-      result_layouts,
-      aliases
-    ) {
-      # The handler, not the inputs, determines the result types; for a
-      # side-effect only call the operands pass straight through.
-      if (is.null(result_types)) list(...) else lapply(result_types, vt2at)
-    }
-
     graph_desc_add(
       self,
       args = operands,
       params = list(
-        target_name = target_name,
+        target = target,
         result_types = output_types,
         attrs = attrs,
         has_side_effect = has_side_effect,
@@ -3869,17 +3842,18 @@ prim_custom_call <- new_primitive(
         result_layouts = result_layouts,
         aliases = aliases
       ),
-      infer_fn = infer_fn
+      infer_fn = infer_custom_call,
+      device = device
     )
   },
   static = c(
-    "target_name",
+    "target",
     "output_types",
     "attrs",
     "has_side_effect",
     "operand_layouts",
     "result_layouts",
-    "aliases"
-  ),
-  device = device_arg("device")
+    "aliases",
+    "device"
+  )
 )

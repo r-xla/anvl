@@ -349,6 +349,7 @@ reference:
     desc: Calling hand-written XLA FFI handlers
     contents:
       - nv_custom_call
+      - cuda_kernel
 
   - title: Transformations
     desc: Code transformations

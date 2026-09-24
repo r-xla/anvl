@@ -5,7 +5,7 @@
 \title{Call an XLA FFI Handler}
 \usage{
 nv_custom_call(
-  target_name,
+  target,
   ...,
   output_types = NULL,
   attrs = list(),
@@ -17,8 +17,12 @@ nv_custom_call(
 )
 }
 \arguments{
-\item{target_name}{(\code{character(1)})\cr
-The name the handler was registered under.}
+\item{target}{(\code{character(1)} | \code{\link[=cuda_kernel]{cuda_kernel()}} | \code{list})\cr
+What to call: the name an FFI handler was registered under, or a CUDA
+kernel launch described by \code{\link[=cuda_kernel]{cuda_kernel()}}. A list of these named by
+platform, e.g. \code{list(cpu = "my_handler", cuda = cuda_kernel(...))},
+picks one when the program is lowered, which is the first point at
+which the target platform is known.}
 
 \item{...}{(\code{\link{arrayish}})\cr
 The operands, in the order the handler binds them.}
@@ -32,8 +36,8 @@ are then returned unchanged, so at least one is required.}
 \item{attrs}{(\code{list})\cr
 Named attributes the handler reads via \verb{.Attr<T>("name")} or
 \verb{.Attrs<Dictionary>()}. Scalars, strings and vectors are converted
-using anvl's usual dtype defaults (\code{f32} for doubles, \code{i32} for
-integers, \code{bool} for logicals); pass a \code{stablehlo} attribute object
+at the current default data types (see \code{\link[=default_dtypes]{default_dtypes()}}); pass a
+\code{stablehlo} attribute object
 such as \code{\link[stablehlo:ScalarAttr]{stablehlo::ScalarAttr()}} to pin a different dtype.}
 
 \item{has_side_effect}{(\code{logical(1)})\cr
