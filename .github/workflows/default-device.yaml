@@ -1,0 +1,56 @@
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * 1'
+  push:
+    branches: [main, master]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+name: default-device
+
+permissions: read-all
+
+# Runs the test suite with the default device set to the *second* CPU device.
+# This is partly a proxy for running the CUDA tests, because it also checks
+# device placement.
+jobs:
+  default-device:
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
+
+    runs-on: ubuntu-latest
+    name: default-device (${{ matrix.device }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ["cpu:1"]
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      ANVL_TEST: "1"
+      PJRT_INSTALL: "1"
+      ANVL_DEFAULT_DEVICE: ${{ matrix.device }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+          extra-repositories: https://r-xla.r-universe.dev https://t-kalinowski.r-universe.dev
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::devtools
+          needs: check
+
+      - name: Install dev versions
+        run: pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))
+        shell: Rscript {0}
+
+      - name: Run the test suite
+        run: devtools::test(stop_on_failure = TRUE)
+        shell: Rscript {0}

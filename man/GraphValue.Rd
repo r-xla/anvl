@@ -14,5 +14,5 @@ The abstract value of the variable.}
 (\code{GraphValue})
 }
 \description{
-Value in an \code{\link{AnvilGraph}}. This is a mutable class.
+Value in an \code{\link{AnvlGraph}}. This is a mutable class.
 }

@@ -2,28 +2,38 @@
 % Please edit documentation in R/api.R
 \name{nv_squeeze}
 \alias{nv_squeeze}
+\alias{nv_drop}
 \title{Squeeze}
 \usage{
-nv_squeeze(operand, dims = NULL)
+nv_squeeze(x, axes = NULL)
+
+nv_drop(x, axes = NULL)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
-\item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to squeeze. If \code{NULL} (default), all dimensions of size 1 are removed.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to squeeze. Negative values count from the end, i.e. \code{-1}
+refers to the last axis.
+If \code{NULL} (default), all axes of size 1 are removed.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{operand} with the specified dimensions removed.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type, with the specified axes removed from its shape.
 }
 \description{
-Removes dimensions of size 1 from an array.
+Removes axes of size 1 from an array. \code{nv_drop()} is another spelling of
+the same function; with the default \code{axes = NULL} it drops every size-1
+axis, like \code{\link[base:drop]{base::drop()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the two size-1 axes are dropped
 x <- nv_array(1:6, shape = c(1, 6, 1))
 nv_squeeze(x)
+nv_drop(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

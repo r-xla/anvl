@@ -4,29 +4,34 @@
 \alias{nv_broadcast_to}
 \title{Broadcast to Shape}
 \usage{
-nv_broadcast_to(operand, shape)
+nv_broadcast_to(x, shape)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Each existing dimension must either match or be 1.}
+Target shape. The input's axes are matched against its leading axes, and
+each must either match or be 1; trailing axes are added.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{shape} and the same data type as \code{operand}.
+(\code{\link{arrayish}})\cr
+Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
-Broadcasts an array to a target shape using NumPy-style broadcasting rules.
+Broadcasts an array to a target shape, aligning the array's axes with the
+leading axes of \code{shape}, so that a vector fills a column.
+See \code{\link{nv_broadcast_arrays}} for more information.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the vector fills a column and is repeated along the new trailing axis
 x <- nv_array(c(1, 2, 3))
-nv_broadcast_to(x, shape = c(2, 3))
+nv_broadcast_to(x, shape = c(3, 2))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_broadcast_arrays]{nv_broadcast_arrays()}}, \code{\link[=nv_broadcast_scalars]{nv_broadcast_scalars()}},
-\code{\link[=nvl_broadcast_in_dim]{nvl_broadcast_in_dim()}} for the underlying primitive.
+\code{\link[=prim_broadcast_in_axes]{prim_broadcast_in_axes()}} for the underlying primitive.
 }

@@ -1,30 +1,30 @@
-# p_eq, p_ne, p_gt, p_ge, p_lt, p_le
+# prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le
 
     x gradient can only be computed for functions that return float scalar
-    i Got dtype=i1
+    i Got dtype=bool
 
 ---
 
     x gradient can only be computed for functions that return float scalar
-    i Got dtype=i1
+    i Got dtype=bool
 
 ---
 
     x gradient can only be computed for functions that return float scalar
-    i Got dtype=i1
+    i Got dtype=bool
 
 ---
 
     x gradient can only be computed for functions that return float scalar
-    i Got dtype=i1
+    i Got dtype=bool
 
 ---
 
     x gradient can only be computed for functions that return float scalar
-    i Got dtype=i1
+    i Got dtype=bool
 
 ---
 
     x gradient can only be computed for functions that return float scalar
-    i Got dtype=i1
+    i Got dtype=bool
 

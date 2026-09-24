@@ -2,30 +2,33 @@
 % Please edit documentation in R/api.R, R/api-generics.R
 \name{nv_is_nan}
 \alias{nv_is_nan}
-\alias{is.nan.AnvilBox}
+\alias{is.nan.AnvlArray}
 \title{Is NaN}
 \usage{
-nv_is_nan(operand)
-
-\method{is.nan}{AnvilBox}(x)
+nv_is_nan(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
-
-\item{x}{(\code{\link{arrayish}})\cr Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the input and boolean data type.
+(\code{\link{arrayish}})\cr
+Has the input's shape and boolean data type.
 }
 \description{
 Element-wise check if values are NaN. You can also use \code{is.nan()}.
+Only a float holds a NaN, so the answer for any other data type is all
+\code{FALSE} and is built as a constant rather than computed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a boolean result, whatever the input's data type
 x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 nv_is_nan(x)
+
+# all FALSE for an integer input, which has no NaN to find
+nv_is_nan(nv_array(1:3))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

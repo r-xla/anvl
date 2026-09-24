@@ -8,7 +8,7 @@ vignette: >
 bibliography: references.bib
 ---
 
-In this vignette, we show how to implement a random-walk Metropolis-Hastings sampler using {anvil} [@hastings1970monte].
+In this vignette, we show how to implement a random-walk Metropolis-Hastings sampler using {anvl} [@hastings1970monte].
 Metropolis-Hastings is a well known MCMC algorithm that generates samples from a target distribution by proposing moves and accepting or rejecting them based on the density ratio.
 
 ## The Banana Distribution
@@ -25,7 +25,7 @@ We set the hyperparameter $b$ to 0.01.
 
 
 ```{r}
-library(anvil)
+library(anvl)
 b_param <- 0.01
 ```
 
@@ -64,7 +64,7 @@ The log-density of the banana distribution (up to a constant) is:
 
 $$\log p(\theta_1, \theta_2) = -\frac{\theta_1^2}{200} - \frac{\bigl(\theta_2 - b\theta_1^2 + 100b\bigr)^2}{2}$$
 
-We implement this in {anvil} and convert the parameter to an `f64` array for maximal precision.
+We implement this in {anvl} and convert the parameter to an `f64` array for maximal precision.
 
 ```{r}
 b_t <- nv_scalar(b_param, dtype = "f64")
@@ -151,7 +151,7 @@ for (i in seq_len(n_samples)) {
   thetas[[i]] <- theta
 }
 
-samples <- do.call(rbind, lapply(thetas, function(x) as.vector(as_array(x))))
+samples <- do.call(rbind, lapply(thetas, function(x) as.vector(x)))
 colnames(samples) <- c("theta1", "theta2")
 ```
 

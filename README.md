@@ -1,137 +1,147 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# anvil <img src="man/figures/logo.png" align="right" width = "120" />
+# anvl <img src="man/figures/logo.png" align="right" width = "120" />
 
-Package website: [release](https://r-xla.github.io/anvil/) \|
-[dev](https://r-xla.github.io/anvil/dev/)
+Package website: [release](https://r-xla.github.io/anvl/) \|
+[dev](https://r-xla.github.io/anvl/dev/)
 
 <!-- badges: start -->
 
-[![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-![R-CMD-check](https://github.com/r-xla/anvil/actions/workflows/R-CMD-check.yaml/badge.svg)
+![R-CMD-check](https://github.com/r-xla/anvl/actions/workflows/R-CMD-check.yaml/badge.svg)
 [![CRAN
-status](https://www.r-pkg.org/badges/version/anvil)](https://CRAN.R-project.org/package=anvil)
-[![codecov](https://codecov.io/gh/r-xla/anvil/branch/main/graph/badge.svg)](https://codecov.io/gh/r-xla/anvil)
-[![r-universe](https://r-xla.r-universe.dev/badges/anvil)](https://r-xla.r-universe.dev/anvil)
-![CUDA 12.8](https://img.shields.io/badge/CUDA-12.8-green.svg)
+status](https://www.r-pkg.org/badges/version/anvl)](https://CRAN.R-project.org/package=anvl)
+[![codecov](https://codecov.io/gh/r-xla/anvl/branch/main/graph/badge.svg)](https://codecov.io/gh/r-xla/anvl)
+[![r-universe](https://r-xla.r-universe.dev/badges/anvl)](https://r-xla.r-universe.dev/anvl)
+![CUDA 13.3](https://img.shields.io/badge/CUDA-13.3-green.svg)
 <!-- badges: end -->
 
-Composable code transformation framework for R, allowing you to run
-numerical programs at the speed of light. It currently implements JIT
-compilation for very fast execution and reverse-mode automatic
-differentiation. Programs can run on various hardware backends,
-including CPU and GPU.
+Accelerated array computing and code transformations for R, allowing you
+to run numerical programs at the speed of light. The package supports
+just-in-time (JIT) compilation for very fast execution and reverse-mode
+automatic differentiation. Programs can run on CPU and NVIDIA GPU.
 
 ## Installation
 
-{anvil} can be installed from GitHub or
-[r-universe](https://r-xla.r-universe.dev/builds). During runtime, we
-require `libprotobuf`. Source installation requires a `C++20` compiler
-and `protoc` (protobuf compiler).
-
 ``` r
-# Install release
-# from r-universe (prebuilt binary)
-install.packages("anvil", repos = c("https://cloud.r-project.org", "https://r-xla.r-universe.dev"))
-# from GitHub (installation from source)
-pak::pak("r-xla/anvil@*release")
-# Install dev version
-pak::pak("r-xla/anvil")
-# Install CUDA support (linux x86_64): only requires a compatible driver
-install.packages("cuda12.8", repos = "https://mlverse.r-universe.dev")
+install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-Prebuilt [Docker images](https://github.com/r-xla/docker) are also
-available. See the *Installation* vignette on the package website for
-more details.
-
-## Quick Start
-
-Below, we create an R function and `jit()` it. Then, we call the
-resulting function on `AnvilArray`s, which will compile and subsequently
-execute it.
+Afterwards, install the additional dependencies:
 
 ``` r
-library(anvil)
+anvl::install_anvl()
+```
+
+See the [installation
+guide](https://r-xla.github.io/anvl/articles/installation.html) for more
+details, including prebuilt Docker images.
+
+## Why anvl
+
+{anvl} makes numerical R code run fast on CPUs and GPUs, and computes
+gradients of your functions automatically. It aspires to be for R what
+JAX is for Python.
+
+There are three core ideas:
+
+- **Compilation.** {anvl} converts R functions into an optimized program
+  via XLA – the same compiler that powers JAX and TensorFlow. Due to the
+  compilation step, resulting programs can be faster compared to
+  implementing them in [{torch}](https://torch.mlverse.org).
+- **Function transformation.** Programmatically derive new functions
+  from existing ones. Currently the only available transformation is
+  reverse-mode automatic differentiation via `gradient()`, which returns
+  the derivative of a function as another R function.
+- **Hardware portability.** The same code runs on CPU or GPU.
+
+Moreover, the package is designed to be extensible. As the package is
+written in R, new primitives and transformations can be added without
+needing a lower-level language.
+
+## Usage
+
+We define an R function operating on `AnvlArray`s, which is the primary
+data type of {anvl}. It can be executed in either *eager* mode (each
+operation is performed immediately) or *jit* mode (the whole function is
+compiled into a single executable via `jit()`).
+
+``` r
+library(anvl)
 f <- function(a, b, x) {
-  a * x + b
+  nv_mul(a, x) + b
 }
+
+a <- nv_scalar(1)
+b <- nv_scalar(2)
+x <- nv_scalar(3)
+
+# Eager mode
+f(a, b, x)
+#> AnvlArray
+#>  5
+#> [ CPUf32{} ]
+
+# JIT mode
 f_jit <- jit(f)
-
-a <- nv_scalar(1.0, "f32")
-b <- nv_scalar(-2.0, "f32")
-x <- nv_scalar(3.0, "f32")
-
 f_jit(a, b, x)
-#> AnvilArray
-#>  1
+#> AnvlArray
+#>  5
 #> [ CPUf32{} ]
 ```
 
-Through automatic differentiation, we can also obtain the gradient of
-the above function.
+Through function transformation, we can also obtain the gradient of the
+above function.
 
 ``` r
 g_jit <- jit(gradient(f, wrt = c("a", "b")))
 g_jit(a, b, x)
 #> $a
-#> AnvilArray
+#> AnvlArray
 #>  3
 #> [ CPUf32{} ] 
 #> 
 #> $b
-#> AnvilArray
+#> AnvlArray
 #>  1
 #> [ CPUf32{} ]
+```
+
+By default, floats use `f32` precision in {anvl} because of its speed
+advantage on GPUs. Changing this default to double-precision is possible
+via the `anvl.default_dtypes` option:
+
+``` r
+with_default_dtypes(c(float = "f64"), {
+  nv_add(pi, 1)
+})
+#> AnvlArray
+#>  4.1416
+#> [ CPUf64{} ]
 ```
 
 For more complex examples, such as implementing a Gaussian Process, see
 the package website.
 
-## Main Features
-
-- Automatic Differentiation:
-  - Gradients for functions with scalar outputs are supported.
-- Fast:
-  - Code is JIT compiled into a single kernel.
-  - Runs on different hardware backends, including CPU and GPU.
-  - Asyncronous allocation and execution, allowing the accelerator to do
-    it’s job while R interpretes.
-- Extendable:
-  - It is possible to add new primitives, transformations, and (with
-    some effort) new backends.
-  - The package is written almost entirely in R.
-- Multi-backend:
-  - The backend supports execution via XLA as well as an experimental
-    {quickr}-based Fortran backend (CPU only).
-
 ## Platform Support
 
-- **Linux (x86_64)**
-  - :white_check_mark: CPU backend is fully supported.
-  - :white_check_mark: CUDA (NVIDIA GPU) backend is fully supported.
-- **Linux (ARM)**
-  - :white_check_mark: CPU backend is fully supported.
-  - :x: GPU is not supported.
-- **Windows**
-  - :white_check_mark: CPU backend is fully supported.
-  - :warning: GPU is only supported via Windows Subsystem for Linux
-    (WSL2).
-- **macOS (ARM)**
-  - :white_check_mark: CPU backend is supported.
-  - :warning: Metal (Apple GPU) backend is available but not fully
-    functional.
-- **macOS (x86_64)**
-  - :x: Not supported.
+| OS      | Architecture | CPU | CUDA |
+|---------|--------------|:---:|:----:|
+| Linux   | x86_64       |  ✓  |  ✓   |
+| Linux   | arm64        |  ✓  |  ✓   |
+| Windows | x86_64       |  ✓  | WSL2 |
+| Windows | arm64        |  ✗  |  ✗   |
+| macOS   | x86_64       |  ✓  |  ✗   |
+| macOS   | arm64        |  ✓  |  ✗   |
+
+✓ fully supported  ·  ✗ not supported
 
 ## Acknowledgments
 
 - This work is supported by [MaRDI](https://www.mardi4nfdi.de).
-- The design of this package was inspired by and borrows from:
-  - JAX, especially the [autodidax
-    tutorial](https://docs.jax.dev/en/latest/autodidax.html).
-  - The [microjax](https://github.com/joey00072/microjax) project.
-- For JIT compilation, we leverage the [OpenXLA](https://openxla.org/)
+- The design of this package is inspired by
+  [JAX](https://github.com/jax-ml/jax).
+- For JIT compilation, we build on the [OpenXLA](https://openxla.org/)
   project.
+- Most of the compiler binaries are downloaded from
+  [zml](https://github.com/zml/pjrt-artifacts/).

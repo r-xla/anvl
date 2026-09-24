@@ -4,24 +4,27 @@
 \alias{nv_static_slice}
 \title{Static Slice}
 \usage{
-nv_static_slice(operand, start_indices, limit_indices, strides)
+nv_static_slice(x, start_indices, end_indices, strides)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{start_indices}{(\code{integer()})\cr
-Start indices (inclusive), one per dimension.}
+Start indices (inclusive), one per axis.}
 
-\item{limit_indices}{(\code{integer()})\cr
-End indices (inclusive), one per dimension.}
+\item{end_indices}{(\code{integer()})\cr
+End indices (inclusive), one per axis: the element at \code{end_indices}
+is part of the slice.}
 
 \item{strides}{(\code{integer()})\cr
-Step sizes, one per dimension. A stride of 1 selects every element.}
+Step sizes, one per axis. A stride of 1 selects every element.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{operand}.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type and shape
+\code{ceiling((end_indices - start_indices + 1) / strides)} per axis.
 }
 \description{
 Extracts a slice from an array using static (compile-time) indices.
@@ -29,10 +32,11 @@ For dynamic indexing, use \code{\link[=nv_subset]{nv_subset()}} instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# elements 2 through 5, the end being inclusive
 x <- nv_array(1:10)
-nv_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
+nv_static_slice(x, start_indices = 2L, end_indices = 5L, strides = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset]{nv_subset()}}, \code{\link[=nvl_static_slice]{nvl_static_slice()}} for the underlying primitive.
+\code{\link[=nv_subset]{nv_subset()}}, \code{\link[=prim_static_slice]{prim_static_slice()}} for the underlying primitive.
 }

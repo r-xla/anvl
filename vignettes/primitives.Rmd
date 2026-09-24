@@ -15,18 +15,22 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, echo = FALSE}
-library(anvil)
+library(anvl)
 
-prims <- prim()
+ns <- asNamespace("anvl")
+prim_names <- grep("^prim_", ls(ns), value = TRUE)
+prims <- mget(prim_names, envir = ns)
+prims <- Filter(function(x) inherits(x, "JitPrimitive"), prims)
 
 # Extract primitive info
 primitives_list <- lapply(prims, function(p) {
-  has_stablehlo <- !is.null(p$rules[["stablehlo"]])
-  has_quickr <- !is.null(p$rules[["quickr"]])
-  has_reverse <- !is.null(p$rules[["reverse"]])
+  p_meta <- attr(p, "primitive")
+  has_stablehlo <- !is.null(p_meta$rules[["stablehlo"]])
+  has_quickr <- !is.null(p_meta$rules[["quickr"]])
+  has_reverse <- !is.null(p_meta$rules[["reverse"]])
 
   data.frame(
-    Name = p$name,
+    Name = p_meta$name,
     StableHLO = if (has_stablehlo) "\u2713" else "\u2717",
     Quickr = if (has_quickr) "\u2713" else "\u2717",
     Reverse = if (has_reverse) "\u2713" else "\u2717"

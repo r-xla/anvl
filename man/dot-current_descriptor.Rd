@@ -11,7 +11,7 @@
 Whether to return \code{NULL} if no graph is currently being built (as opposed to aborting).}
 }
 \value{
-A \code{\link{GraphDescriptor}} object.
+(\code{\link{GraphDescriptor}})
 }
 \description{
 Get the current graph being built (via \code{\link{local_descriptor}}).

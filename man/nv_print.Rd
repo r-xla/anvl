@@ -4,26 +4,32 @@
 \alias{nv_print}
 \title{Print Array}
 \usage{
-nv_print(operand)
+nv_print(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Returns \code{operand} unchanged.
+(\code{\link{arrayish}})\cr
+Returns the input unchanged, data type and shape included.
 }
 \description{
 Prints an array value to the console during JIT execution and returns the
 input unchanged. Useful for debugging.
+For \code{\link{RData}} inputs, that do not have an actual data type, the \link[=default_dtypes]{default data type}
+is used for printing.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the value is printed and handed back unchanged
 x <- nv_array(c(1, 2, 3))
 nv_print(x)
+# RData is printed at the default dtype
+nv_print(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nvl_print]{nvl_print()}} for the underlying primitive.
+\code{\link[=prim_print]{prim_print()}} for the underlying primitive.
 }

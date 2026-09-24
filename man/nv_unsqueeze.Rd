@@ -4,26 +4,35 @@
 \alias{nv_unsqueeze}
 \title{Unsqueeze}
 \usage{
-nv_unsqueeze(operand, dim)
+nv_unsqueeze(x, axes)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
-\item{dim}{(\code{integer(1)})\cr
-Position at which to insert the new dimension.}
+\item{axes}{(\code{integer()})\cr
+Positions of the new axes in the \emph{result}, which has
+\code{naxes(x) + length(axes)} axes. Negative values count from the end of the
+result, i.e. \code{-1} appends a new axis at the end.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{operand} with an extra dimension of size 1.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type, with an extra axis of size 1 in its shape for each of
+\code{axes}.
 }
 \description{
-Inserts a dimension of size 1 at the specified position.
+Inserts axes of size 1 at the specified positions.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a size-1 axis is inserted, at the front or at the back
 x <- nv_array(c(1, 2, 3))
-nv_unsqueeze(x, dim = 1L)
+nv_unsqueeze(x, axes = 1L)
+nv_unsqueeze(x, axes = -1L)
+
+# several at once
+nv_unsqueeze(x, axes = c(1L, 3L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

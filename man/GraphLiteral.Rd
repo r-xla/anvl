@@ -14,5 +14,5 @@ The value of the literal.}
 (\code{GraphLiteral})
 }
 \description{
-Literal in an \code{\link{AnvilGraph}}. This is a mutable class.
+Literal in an \code{\link{AnvlGraph}}. This is a mutable class.
 }

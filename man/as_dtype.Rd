@@ -10,7 +10,7 @@ as_dtype(x)
 \item{x}{A character string or \code{DataType} to convert.}
 }
 \value{
-A \code{DataType} object.
+(\code{DataType})
 }
 \description{
 Coerces a value to a \code{DataType}. Accepts data type strings

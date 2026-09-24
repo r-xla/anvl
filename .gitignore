@@ -36,9 +36,6 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 
-# R Environment Variables
-.Renviron
-
 # pkgdown site
 docs/
 
@@ -57,3 +54,9 @@ TODO.md
 
 # Local coverage snapshots
 covr-*.rds
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/worktrees/
+.worktrees/
+tests/testthat/_snaps/*.new.md

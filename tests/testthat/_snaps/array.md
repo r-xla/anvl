@@ -3,7 +3,7 @@
     Code
       x
     Output
-      AnvilArray
+      AnvlArray
        1
        2
        3
@@ -15,7 +15,7 @@
     Code
       x
     Output
-      AnvilArray
+      AnvlArray
        1
       [ CPUf32{} ] 
 
@@ -41,7 +41,7 @@
     Code
       nv_array(TRUE)
     Output
-      AnvilArray
+      AnvlArray
        1
       [ CPUbool{1} ] 
 

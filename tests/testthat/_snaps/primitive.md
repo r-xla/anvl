@@ -1,7 +1,7 @@
-# prim
+# AnvlPrimitive basics
 
     Code
       p
     Output
-      <AnvilPrimitive:abc>
+      <AnvlPrimitive:abc>
 

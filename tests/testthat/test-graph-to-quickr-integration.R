@@ -23,7 +23,7 @@ test_that("integration: MNIST-shaped classifier training from rank-5 image batch
 
   loss_fn <- function(X, Y, W, b) {
     X2 <- nv_reshape(X, shape = c(n, d))
-    logits <- nv_matmul(X2, W) + nv_broadcast_to(b, shape = c(n, k))
+    logits <- nv_matmul(X2, W) + prim_broadcast_in_axes(b, shape = c(n, k), broadcast_axes = 2L)
     resid <- logits - Y
     sum(resid * resid) * scale
   }
@@ -48,7 +48,7 @@ test_that("integration: MNIST-shaped classifier training from rank-5 image batch
 
   f_quick <- graph_to_quickr_function(graph, unwrap = TRUE)
   f_r <- graph_to_quickr_r_function(graph)
-  run_pjrt <- compile_graph_pjrt(graph)
+  run_pjrt <- graph_runner_pjrt(graph)
 
   out_r0 <- f_r(X, Y, W, b)
   out_quick0 <- f_quick(X, Y, W, b)
@@ -110,7 +110,7 @@ test_that("integration: tfp/greta-like log_prob + grad workflow via quickr", {
 
   f_quick <- graph_to_quickr_function(graph, unwrap = TRUE)
   f_r <- graph_to_quickr_r_function(graph)
-  run_pjrt <- compile_graph_pjrt(graph)
+  run_pjrt <- graph_runner_pjrt(graph)
 
   out_r0 <- f_r(0.1, -0.2)
   out_pjrt0 <- run_pjrt(0.1, -0.2)

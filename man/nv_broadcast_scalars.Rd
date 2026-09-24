@@ -8,11 +8,11 @@ nv_broadcast_scalars(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to broadcast. Scalars will be broadcast to the common non-scalar shape.}
+Arrays to broadcast.}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr
-List of broadcasted arrays.
+The inputs, each with its own data type and the common shape.
 }
 \description{
 Broadcast scalar arrays to match the shape of non-scalar arrays.

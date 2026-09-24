@@ -1,4 +1,4 @@
-devtools::load_all("~/r-xla/anvil")
+devtools::load_all("~/r-xla/anvl")
 library(pjrt)
 
 f <- function() {

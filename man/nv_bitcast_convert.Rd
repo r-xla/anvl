@@ -4,31 +4,39 @@
 \alias{nv_bitcast_convert}
 \title{Bitcast Conversion}
 \usage{
-nv_bitcast_convert(operand, dtype)
+nv_bitcast_convert(x, dtype)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type except \code{bool}.
+An R value materializes at its \link[=default_dtypes]{default data type}.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
-Target data type.}
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Any target data type except \code{bool}.
+One of the same bit width as the input's leaves the shape unchanged; a
+narrower one adds a \emph{leading} axis holding the pieces; a wider one consumes
+the first axis, whose size must equal the ratio of the two widths. The
+pieces of one element are therefore adjacent in the column-major element
+order \code{\link[=nv_flatten]{nv_flatten()}} reads, and a narrowing conversion lays the bytes out
+the way \code{\link[=as_raw]{as_raw()}} writes them.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{dtype}.
+(\code{\link{arrayish}})\cr
+Has the given \code{dtype}, and the shape described under \code{dtype}.
 }
 \description{
 Reinterprets the bits of an array as a different data type without modifying
 the underlying data. If the target type is narrower, an extra trailing
-dimension is added; if wider, the last dimension is consumed.
+axis is added; if wider, the last axis is consumed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(1L)
-nvl_bitcast_convert(x, dtype = "i8")
+# the bits of one i32 reread as four i8, in a new trailing axis
+x <- nv_array(1L, dtype = "i32")
+nv_bitcast_convert(x, dtype = "i8")
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nvl_bitcast_convert]{nvl_bitcast_convert()}} for the underlying primitive, \code{\link[=nv_convert]{nv_convert()}}
-for value-preserving type conversion.
+\code{\link[=prim_bitcast_convert]{prim_bitcast_convert()}}, which this is an alias of, and
+\code{\link[=nv_convert]{nv_convert()}} for value-preserving type conversion.
 }

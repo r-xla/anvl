@@ -1,5 +1,5 @@
 test_that("stablehlo: basic test", {
-  graph <- trace_fn(nvl_add, list(lhs = nv_array(1), rhs = nv_array(2)))
+  graph <- trace_fn(prim_add, list(lhs = nv_array(1), rhs = nv_array(2)))
   # expect_identical() is buggy ...
   expect_true(identical(graph$outputs, graph$calls[[1]]$outputs))
   out <- stablehlo(graph)
@@ -29,8 +29,8 @@ test_that("donate: multiple inputs, only some donated", {
   graph <- trace_fn(
     f,
     list(
-      x = nv_array(array(1:4, c(2, 2))),
-      y = nv_array(array(5:8, c(2, 2)))
+      x = nv_matrix(1:4, nrow = 2),
+      y = nv_matrix(5:8, nrow = 2)
     )
   )
   out <- stablehlo(graph, donate = "x")

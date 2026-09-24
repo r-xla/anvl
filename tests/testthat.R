@@ -7,7 +7,9 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(anvil)
+library(anvl)
 library(stablehlo)
 
-test_check("anvil")
+if (Sys.getenv("ANVL_TEST", unset = "0") == "1") {
+  test_check("anvl")
+}

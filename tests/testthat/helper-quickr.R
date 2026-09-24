@@ -1,5 +1,12 @@
-skip_if_no_quickr_or_pjrt <- function() {
+skip_if_no_quickr <- function() {
   testthat::skip_if_not_installed("quickr")
+  if (nzchar(Sys.getenv("ANVL_TEST_SKIP_QUICKR", ""))) {
+    testthat::skip("ANVL_TEST_SKIP_QUICKR is set")
+  }
+}
+
+skip_if_no_quickr_or_pjrt <- function() {
+  skip_if_no_quickr()
   testthat::skip_if_not_installed("pjrt")
   testthat::skip_if_not_installed("stablehlo")
 }
@@ -39,7 +46,7 @@ expect_quickr_matches_pjrt_fn <- function(
   graph <- trace_fn(fn, templates)
   f_r <- graph_to_quickr_r_function(graph)
   f_quick <- graph_to_quickr_function(graph, unwrap = TRUE)
-  run_pjrt <- compile_graph_pjrt(graph) # nolint
+  run_pjrt <- graph_runner_pjrt(graph) # nolint
   arg_names <- names(templates)
 
   for (run in runs) {

@@ -7,7 +7,7 @@
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `integer()`
+#' @returns (`integer()`)
 #' @name shape
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
@@ -28,7 +28,10 @@ tengen::shape
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns [`PJRTDevice`][pjrt::pjrt_device]
+#' @returns (device object)\cr
+#' Backend-dependent device object. One of:
+#'   - [`PJRTDevice`][pjrt::pjrt_device]
+#'   - [`quickr_device`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' device(x)
@@ -43,8 +46,8 @@ tengen::device
 #' @title Convert to an R array
 #'
 #' @description
-#' Transfers array data to R and returns it as an R [`array`].
-#' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 dimensions.
+#' Transfers array data to R and returns it as an R [`array`][base::array].
+#' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 axes.
 #'
 #' @details
 #' This is implemented via the generic [`tengen::as_array()`].
@@ -52,12 +55,14 @@ tengen::device
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns An R [`array`] or `vector` of length 1.
+#' @returns ([`array`][base::array] | `vector(1)`)\cr
+#'   An R array with the input's shape, or -- for a scalar, which R cannot
+#'   represent as an array -- a vector of length 1.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' as_array(x)
 #' y <- nv_scalar(1L)
-#' # R arrays can't have 0 dimensions:
+#' # R arrays can't have 0 axes:
 #' as_array(y)
 #' @name as_array
 NULL
@@ -78,7 +83,7 @@ tengen::as_array
 #' @param ... Additional arguments passed to method:
 #'   - `row_major` (`logical(1)`)\cr
 #'     Whether to write the bytes in row-major order.
-#' @returns A [`raw`] vector.
+#' @returns ([`raw`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, shape = c(2, 2), dtype = "f32")
 #' as_raw(x, row_major = TRUE)
@@ -101,7 +106,7 @@ tengen::as_raw
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns A [`DataType`][tengen::DataType].
+#' @returns ([`DataType`][tengen::DataType])
 #' @seealso [tengen::dtype()]
 #' @name dtype
 #' @examplesIf pjrt::plugins_downloaded()
@@ -114,32 +119,32 @@ NULL
 #' @export
 tengen::dtype
 
-#' @title Get the number of dimensions of an array
+#' @title Get the number of axes of an array
 #'
-#' @description Returns the number of dimensions (sometimes also refered to as rank) of an array.
+#' @description Returns the number of axes (sometimes also refered to as rank) of an array.
 #' Equivalent to `length(shape(x))`.
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
-#' @returns `integer(1)`
-#' @seealso [tengen::ndims()]
-#' @name ndims
+#' @returns (`integer(1)`)
+#' @seealso [tengen::naxes()]
+#' @name naxes
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
-#' ndims(x)
+#' naxes(x)
 NULL
 
-#' @rdname ndims
-#' @importFrom tengen ndims
+#' @rdname naxes
+#' @importFrom tengen naxes
 #' @export
-tengen::ndims
+tengen::naxes
 
 #' @title Check if an object is a DataType
 #'
 #' @description Tests whether `x` is a `DataType` object.
 #'
 #' @param x An object to test.
-#' @returns `TRUE` or `FALSE`.
+#' @returns (`logical(1)`)
 #' @seealso [as_dtype()], [tengen::is_dtype()]
 #' @name is_dtype
 #' @examples
@@ -161,7 +166,7 @@ tengen::is_dtype
 #' This is implemented via the generic [`tengen::as_dtype()`].
 #'
 #' @param x A character string or `DataType` to convert.
-#' @returns A `DataType` object.
+#' @returns (`DataType`)
 #' @seealso [is_dtype()], [tengen::as_dtype()], [`tengen::DataType`]
 #' @name as_dtype
 #'
@@ -177,10 +182,14 @@ tengen::as_dtype
 
 #' @title Create a Shape object
 #'
-#' @description Constructs a `Shape` representing array dimensions.
+#' @description
+#' Constructs a `Shape`, the axis sizes of an array. A `Shape` *is* its integer
+#' vector, with a class attached, so `length()` is the number of axes and
+#' `shape[i]` is the size of axis `i`.
 #'
-#' @param dims An `integer()` vector of dimension sizes (>= 0).
-#' @returns A `Shape` object.
+#' @param dims An `integer()` vector of axis sizes (>= 0). `NA` marks an axis
+#'   whose size is only known at run time.
+#' @returns (`Shape`)
 #' @seealso [shape()], [stablehlo::Shape()]
 #' @name Shape
 #' @rdname Shape-constructor
@@ -205,7 +214,7 @@ stablehlo::Shape
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `character(1)`
+#' @returns (`character(1)`)
 #' @seealso [pjrt::platform()]
 #' @name platform
 #' @examplesIf pjrt::plugins_downloaded()
@@ -217,3 +226,62 @@ NULL
 #' @importFrom pjrt platform
 #' @export
 pjrt::platform
+
+#' @title Block until an async operation completes
+#'
+#' @description
+#' Block until the array's underlying computation has finished, and return the
+#' object invisibly. Useful for benchmarking, where the dispatch of an
+#' asynchronous operation should not be confused with its execution.
+#'
+#' @details
+#' Implemented via the generic [`pjrt::await()`]. For backends without
+#' asynchronous execution (e.g. `"quickr"`), this is a no-op.
+#'
+#' @param x ([`AnvlArray`] or other awaitable)\cr
+#'   An object with an [`await()`] method.
+#' @param ... Additional arguments passed to methods (unused).
+#' @returns (`any`)\cr
+#'   `x`, invisibly.
+#' @seealso [pjrt::await()], [map_tree()] (to await a tree of outputs)
+#' @name await
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(1:4, dtype = "f32")
+#' await(x)
+#'
+#' # await all leaves of a (possibly nested) list of arrays
+#' map_tree(list(x, list(y = x)), await)
+NULL
+
+#' @rdname await
+#' @importFrom pjrt await
+#' @export
+pjrt::await
+
+#' @importFrom pjrt flatten
+#' @export
+pjrt::flatten
+
+#' @importFrom pjrt build_tree
+#' @export
+pjrt::build_tree
+
+#' @importFrom pjrt unflatten
+#' @export
+pjrt::unflatten
+
+#' @importFrom pjrt tree_size
+#' @export
+pjrt::tree_size
+
+#' @importFrom pjrt tree_path
+#' @export
+pjrt::tree_path
+
+#' @importFrom pjrt map_tree
+#' @export
+pjrt::map_tree
+
+#' @importFrom pjrt pmap_tree
+#' @export
+pjrt::pmap_tree

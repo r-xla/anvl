@@ -4,25 +4,27 @@
 \alias{nv_popcnt}
 \title{Population Count}
 \usage{
-nv_popcnt(operand)
+nv_popcnt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any integer data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise population count (number of set bits).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the set bits are counted, at the input's own integer data type
 x <- nv_array(c(7L, 3L, 15L))
 nv_popcnt(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nvl_popcnt]{nvl_popcnt()}} for the underlying primitive.
+\code{\link[=prim_popcnt]{prim_popcnt()}} for the underlying primitive.
 }

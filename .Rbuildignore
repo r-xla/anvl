@@ -1,5 +1,6 @@
 ^stablehlo\.Rproj$
 ^\.Rproj\.user$
+^\.Renviron$
 ^compile_commands\.json$
 ^\.cache$
 ^stablehlo.*$
@@ -22,7 +23,7 @@ SPEC.md
 ^Makefile$
 ^air.toml$
 ^TODO.md$
-anvil.Rproj
+anvl.Rproj
 ^benchmarks/
 ^\.claude$
 ^primitives\.md$
@@ -30,3 +31,4 @@ anvil.Rproj
 ^jarl\.toml$
 ^specs$
 ^paper$
+^assets$

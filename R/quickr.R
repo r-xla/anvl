@@ -20,7 +20,7 @@ quickr_eager_compile <- function(fun) {
   assert_quickr_installed("{.fn graph_to_quickr_function}")
 
   # quickr::quick() behaves differently when called from a package namespace
-  # (it can create a closure expecting precompiled artifacts). For anvil's use-case
+  # (it can create a closure expecting precompiled artifacts). For anvl's use-case
   # we want eager compilation at runtime, so we evaluate quickr::quick() from a
   # non-namespace environment.
   tmp <- new.env(parent = globalenv())

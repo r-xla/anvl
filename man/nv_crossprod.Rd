@@ -2,31 +2,37 @@
 % Please edit documentation in R/api.R, R/api-generics.R
 \name{nv_crossprod}
 \alias{nv_crossprod}
-\alias{crossprod.AnvilBox}
+\alias{crossprod.AnvlArray}
 \title{Cross Product (Matrix)}
 \usage{
 nv_crossprod(x, y = NULL)
 
-\method{crossprod}{AnvilBox}(x, y = NULL, ...)
+\method{crossprod}{AnvlArray}(x, y = NULL, ...)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-An array with at least 2 dimensions.}
+An array with at least 2 axes, as for \code{\link[base:crossprod]{base::crossprod()}}. Can be any numeric
+data type; \code{x} and \code{y} are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 
 \item{y}{(\code{\link{arrayish}} | \code{NULL})\cr
 Optional second array. If \code{NULL}, uses \code{x}.}
 
-\item{...}{Unused.}
+\item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the operands' common data type, and the shape of \code{t(x) \%*\% y}.
 }
 \description{
 Computes \code{t(x) \%*\% y}. If \code{y} is missing, computes \code{t(x) \%*\% x}.
+Above rank 2 the last two axes are the matrix and the leading ones are batch
+axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(matrix(1:6, nrow = 3), dtype = "f32")
+# `t(x) \%*\% x`, so a 3x2 gives a 2x2
+x <- nv_matrix(1:6, nrow = 3, dtype = "f32")
 nv_crossprod(x)
 \dontshow{\}) # examplesIf}
 }

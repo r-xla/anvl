@@ -4,19 +4,22 @@
 \alias{nv_triu}
 \title{Upper Triangular Matrix}
 \usage{
-nv_triu(operand, diagonal = 0L)
+nv_triu(x, diagonal = 0L)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input, with exactly 2 axes. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{diagonal}{(\code{integer(1)})\cr
-Diagonal offset. \code{0} (default) is the main diagonal, positive values
-exclude diagonals above, negative values include diagonals below.}
+Diagonal offset: the kept region is \code{col - row >= diagonal}. \code{0} (default)
+keeps the main diagonal and everything above it, a negative value keeps
+that many diagonals below it as well, and a positive one drops the main
+diagonal and \code{diagonal - 1} above it.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as \code{operand}.
+(\code{\link{arrayish}})\cr
+Has the same shape and data type as \code{x}.
 }
 \description{
 Returns the upper triangular part of a 2-D array, setting elements below
@@ -24,10 +27,11 @@ the specified diagonal to zero.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# elements below the main diagonal become zero
 x <- nv_fill(1, c(3, 3))
 nv_triu(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_tril]{nv_tril()}}
+\code{\link[=nv_tril]{nv_tril()}}, \code{\link[=nv_upper_tri]{nv_upper_tri()}}
 }

@@ -7,31 +7,37 @@
 transform_gradient(graph, wrt)
 }
 \arguments{
-\item{graph}{(\code{\link{AnvilGraph}})\cr
+\item{graph}{(\code{\link{AnvlGraph}})\cr
 The graph to transform. Must produce a single scalar float output.}
 
 \item{wrt}{(\code{character})\cr
 Names of the graph inputs to differentiate with respect to.}
 }
 \value{
-An \code{\link{AnvilGraph}} whose outputs are the requested gradients.
+(\code{\link{AnvlGraph}})\cr
+Its outputs are the requested gradients.
 }
 \description{
-Low-level graph transformation that appends the reverse pass to a
-traced \code{\link{AnvilGraph}}. The function \code{f} represented by \code{graph} must return a single
+Low-level graph transformation that transforms a graph into its gradient.
+The function \code{f} represented by \code{graph} must return a single
 float scalar. The resulting graph computes the gradients of that scalar with respect
 to the inputs specified by \code{wrt}.
+}
+\details{
+To support alternative forward passes for more efficient backward passes, we
+replay and possibly rewrite the graph into a new descriptor.
+Afterwards, we traverse it backwards and call the gradient rules where necessary.
 
-The reverse rules are stored in \verb{$rules[["reverse"]]} of the primitives.
+See \code{\link[=rule_reverse]{rule_reverse()}} for more information.
 
 This is the building block used by \code{\link[=gradient]{gradient()}} and \code{\link[=value_and_gradient]{value_and_gradient()}}; prefer
 those higher-level wrappers unless you need to operate on graphs directly.
 }
 \examples{
-graph <- trace_fn(nvl_mul, list(nv_aval("f32", c()), nv_aval("f32", c())))
+graph <- trace_fn(prim_mul, list(nv_aval("f32", c()), nv_aval("f32", c())))
 graph
 transform_gradient(graph, "lhs")
 }
 \seealso{
-\code{\link[=gradient]{gradient()}}, \code{\link[=value_and_gradient]{value_and_gradient()}}
+\code{\link[=gradient]{gradient()}}, \code{\link[=value_and_gradient]{value_and_gradient()}}, \code{\link[=rule_reverse]{rule_reverse()}}
 }

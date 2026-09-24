@@ -4,32 +4,39 @@
 \alias{nv_reshape}
 \title{Reshape}
 \usage{
-nv_reshape(operand, shape)
+nv_reshape(x, shape)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Must have the same number of elements as \code{operand}.}
+Target shape. Must have the same number of elements as \code{x}.
+At most one entry may be \code{-1}, in which case its extent is inferred from
+the remaining entries and the number of elements of \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{shape} and the same data type as \code{operand}.
+(\code{\link{arrayish}})\cr
+Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
-Reshapes an array to a new shape without changing the underlying data.
-Returns the input unchanged if it already has the target shape.
-}
-\details{
-Note that row-major order is used, which differs from R's column-major order.
+Reshapes an array to a new shape using col-major semantics.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(1:6)
-nv_reshape(x, c(2, 3))
+# the elements keep their column-major order; the data type is untouched
+x <- array(1:6, dim = c(3, 2))
+nv_reshape(x, 6L)
+# the order base R reads them in, too
+c(x)
+
+# infer the size of the second axis
+nv_reshape(x, c(2, -1))
+# flatten
+nv_reshape(x, -1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nvl_reshape]{nvl_reshape()}} for the underlying primitive.
+\code{\link[=prim_reshape]{prim_reshape()}} for the underlying primitive.
 }

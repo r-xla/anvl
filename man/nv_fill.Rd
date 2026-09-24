@@ -5,57 +5,62 @@
 \alias{nv_fill_like}
 \title{Fill Constant}
 \usage{
-nv_fill(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL)
+nv_fill(value, shape, dtype = NULL, device = NULL)
 
-nv_fill_like(
-  like,
-  value,
-  shape = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
 \item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+Scalar value to fill the array with. It has to be something \code{dtype} can
+hold: a whole number in its range for an integer data type, a non-negative
+one for an unsigned integer, and a logical or \code{0} / \code{1} for \code{bool}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{character(1)} | \code{NULL})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result.
+The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} for \code{nv_fill} and
+\code{dtype(like)} for \code{nv_fill_like}.}
 
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
 
-\item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr
-Device for data to live on.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
-\item{like}{(\code{\link{AnvilArray}})\cr
+\item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_fill_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and \code{dtype}.
 }
 \description{
 Creates an array filled with a scalar value. More memory-efficient than
 \code{nv_array(value, shape = shape)} for large arrays.
 
-\code{nv_fill_like()} is a variant where \code{dtype}, \code{shape}, \code{ambiguous}, and
+\code{nv_fill_like()} is a variant where \code{dtype}, \code{shape}, and
 \code{device} default to those of \code{like}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R double settles the data type, the shape is given
 nv_fill(0, shape = c(2, 3))
-x <- nv_array(matrix(1:6, nrow = 2))
+
+# `_like` takes shape, data type and device from an existing array
+x <- nv_matrix(1:6, nrow = 2)
 nv_fill_like(x, 0)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nvl_fill]{nvl_fill()}} for the underlying primitive.
+\code{\link[=prim_fill]{prim_fill()}} for the underlying primitive.
 }
