@@ -447,7 +447,7 @@ The CUDA side of a package needs no build system changes at all: nothing is
 compiled at install time, and the package installs and loads on machines
 without a GPU.
 Keep the kernel in `inst/cuda/hypot.cu` and create the module when the
-package loads:
+package loads, naming the package as its owner:
 
 ```r
 the <- new.env()
@@ -455,22 +455,32 @@ the <- new.env()
 .onLoad <- function(libname, pkgname) {
   the$hypot <- pjrt::pjrt_cuda_module(
     file = system.file("cuda", "hypot.cu", package = pkgname),
-    kernels = c("hypot_kernel<float>", "hypot_kernel<double>")
+    kernels = c("hypot_kernel<float>", "hypot_kernel<double>"),
+    package = pkgname
   )
 }
 ```
 
-or, for a short kernel, inline the source in the R code as above.
-Each user's machine compiles a module once, on first use, for its own GPU;
-later sessions load it from the cache ([`pjrt::pjrt_cuda_cache_dir()`]).
+That alone works: each user's machine compiles the module once, on first
+use, for its own GPU, and later sessions load it from the cache
+([`pjrt::pjrt_cuda_cache_dir()`]).
 
-A module can also be a prebuilt image instead of source --
-`pjrt_cuda_module(file = "hypot.fatbin")`, likewise `.cubin` and `.ptx` --
-for kernels compiled ahead of time with `nvcc -fatbin`, e.g. in a binary
-build.
-Source is the better default: a CRAN source package cannot contain
-binaries, and PTX needs a driver at least as new as the compiler that
-produced it.
+To spare users even that, ship the kernels precompiled, as {pjrt} does for
+its own.
+[`pjrt::pjrt_cuda_build_kernels()`] compiles the package's modules -- a
+cubin per GPU architecture, plus PTX for later ones -- into a tarball, which
+you attach to each release (it needs NVRTC, but no GPU, so an ordinary CI
+runner does; {pjrt}'s `cuda-kernels` workflow is one to copy).
+Name its URL in DESCRIPTION:
+
+```
+Config/pjrt/cuda-kernels: https://github.com/org/pkg/releases/download/v{version}/pkg-cuda-kernels-{version}.tar.gz
+```
+
+When the CUDA plugin loads, {pjrt} downloads the tarball once, verifies it,
+and loads the kernels from it. Whatever it does not cover -- a development
+version, a GPU it was not built for, a machine without network -- is
+compiled locally instead, so nothing breaks without it.
 
 ### When you need a handler after all
 
