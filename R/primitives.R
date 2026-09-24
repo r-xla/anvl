@@ -1492,7 +1492,7 @@ prim_bitcast_convert <- new_primitive(
 #' # an R value materializes at its default data type
 #' prim_abs(-1)
 #' @export
-prim_abs <- new_primitive("abs", make_unary_op(infer_abs))
+prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni))
 
 #' @title Primitive Square Root
 #' @description
@@ -1702,7 +1702,7 @@ prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sign(-3)
 #' @export
-prim_sign <- new_primitive("sign", make_unary_op(infer_sign))
+prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni))
 
 #' @title Primitive Exponential
 #' @description
