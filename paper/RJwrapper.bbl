@@ -1,17 +1,32 @@
-\begin{thebibliography}{28}
+\begin{thebibliography}{42}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
+\bibitem[Abril-Pla et~al.(2023)Abril-Pla, Andreani, Carroll, Dong, Fonnesbeck,
+  Kochurov, Kumar, Lao, Luhmann, Martin, Osthege, Vieira, Wiecki, and
+  Zinkov]{ref-pymc}
+O.~Abril-Pla, V.~Andreani, C.~Carroll, L.~Dong, C.~J. Fonnesbeck, M.~Kochurov,
+  R.~Kumar, J.~Lao, C.~C. Luhmann, O.~A. Martin, M.~Osthege, R.~Vieira,
+  T.~Wiecki, and R.~Zinkov.
+\newblock {PyMC}: A modern, and comprehensive probabilistic programming
+  framework in {Python}.
+\newblock \emph{PeerJ Computer Science}, 9:\penalty0 e1516, 2023.
+\newblock \doi{10.7717/peerj-cs.1516}.
+
 \bibitem[Bell(2012)]{ref-cppad}
 B.~M. Bell.
 \newblock Cppad: a package for c++ algorithmic differentiation.
-\newblock \emph{Computational Infrastructure for Operations Research}, 57\penalty0 (10):\penalty0 3, 2012.
+\newblock \emph{Computational Infrastructure for Operations Research},
+  57\penalty0 (10):\penalty0 3, 2012.
 
-\bibitem[Bradbury et~al.(2018)Bradbury, Frostig, Hawkins, Johnson, Leary, Maclaurin, Necula, Paszke, Vander{P}las, Wanderman-{M}ilne, and Zhang]{ref-jax}
-J.~Bradbury, R.~Frostig, P.~Hawkins, M.~J. Johnson, C.~Leary, D.~Maclaurin, G.~Necula, A.~Paszke, J.~Vander{P}las, S.~Wanderman-{M}ilne, and Q.~Zhang.
+\bibitem[Bradbury et~al.(2018)Bradbury, Frostig, Hawkins, Johnson, Leary,
+  Maclaurin, Necula, Paszke, Vander{P}las, Wanderman-{M}ilne, and
+  Zhang]{ref-jax}
+J.~Bradbury, R.~Frostig, P.~Hawkins, M.~J. Johnson, C.~Leary, D.~Maclaurin,
+  G.~Necula, A.~Paszke, J.~Vander{P}las, S.~Wanderman-{M}ilne, and Q.~Zhang.
 \newblock Jax: Composable transformations of python+numpy programs.
 \newblock Github repository. URL \url{https://github.com/jax-ml/jax}, 2018.
 
@@ -20,15 +35,58 @@ P.-C. B{\"u}rkner.
 \newblock brms: An r package for bayesian multilevel models using stan.
 \newblock \emph{Journal of statistical software}, 80:\penalty0 1--28, 2017.
 
-\bibitem[Carpenter et~al.(2017)Carpenter, Gelman, Hoffman, Lee, Goodrich, Betancourt, Brubaker, Guo, Li, and Riddell]{ref-stan}
-B.~Carpenter, A.~Gelman, M.~D. Hoffman, D.~Lee, B.~Goodrich, M.~Betancourt, M.~Brubaker, J.~Guo, P.~Li, and A.~Riddell.
+\bibitem[Cabezas et~al.(2024)Cabezas, Corenflos, Lao, Lou{\"a}f,
+  et~al.]{ref-blackjax}
+A.~Cabezas, A.~Corenflos, J.~Lao, R.~Lou{\"a}f, et~al.
+\newblock {BlackJAX}: Composable {B}ayesian inference in {JAX}.
+\newblock \emph{arXiv preprint arXiv:2402.10797}, 2024.
+
+\bibitem[Carpenter et~al.(2015)Carpenter, Hoffman, Brubaker, Lee, Li, and
+  Betancourt]{ref-stanmath}
+B.~Carpenter, M.~D. Hoffman, M.~Brubaker, D.~Lee, P.~Li, and M.~Betancourt.
+\newblock The {Stan} math library: Reverse-mode automatic differentiation in
+  {C++}.
+\newblock \emph{arXiv preprint arXiv:1509.07164}, 2015.
+
+\bibitem[Carpenter et~al.(2017)Carpenter, Gelman, Hoffman, Lee, Goodrich,
+  Betancourt, Brubaker, Guo, Li, and Riddell]{ref-stan}
+B.~Carpenter, A.~Gelman, M.~D. Hoffman, D.~Lee, B.~Goodrich, M.~Betancourt,
+  M.~Brubaker, J.~Guo, P.~Li, and A.~Riddell.
 \newblock Stan: A probabilistic programming language.
 \newblock \emph{Journal of statistical software}, 76:\penalty0 1--32, 2017.
 
-\bibitem[Eddelbuettel(2013)]{ref-rcpp}
-D.~Eddelbuettel.
-\newblock Seamless r and c++ integration with rcpp.
-\newblock 2013.
+\bibitem[Chen et~al.(2025)Chen, He, Benesty, Khotilovich, Tang, Cho, Chen,
+  Mitchell, Cano, Zhou, Li, Xie, Lin, Geng, Li, Yuan, and Cortes]{ref-xgboost}
+T.~Chen, T.~He, M.~Benesty, V.~Khotilovich, Y.~Tang, H.~Cho, K.~Chen,
+  R.~Mitchell, I.~Cano, T.~Zhou, M.~Li, J.~Xie, M.~Lin, Y.~Geng, Y.~Li,
+  J.~Yuan, and D.~Cortes.
+\newblock \emph{xgboost: Extreme Gradient Boosting}, 2025.
+\newblock URL \url{https://CRAN.R-project.org/package=xgboost}.
+\newblock R package version 3.1.2.1.
+
+\bibitem[de~Valpine et~al.(2017)de~Valpine, Turek, Paciorek, Anderson-Bergman,
+  Lang, and Bodik]{ref-nimble}
+P.~de~Valpine, D.~Turek, C.~J. Paciorek, C.~Anderson-Bergman, D.~T. Lang, and
+  R.~Bodik.
+\newblock Programming with models: Writing statistical algorithms for general
+  model structures with {NIMBLE}.
+\newblock \emph{Journal of Computational and Graphical Statistics}, 26\penalty0
+  (2):\penalty0 403--413, 2017.
+\newblock \doi{10.1080/10618600.2016.1172487}.
+
+\bibitem[Dillon et~al.(2017)Dillon, Langmore, Tran, Brevdo, Vasudevan, Moore,
+  Patton, Alemi, Hoffman, and Saurous]{ref-tfp}
+J.~V. Dillon, I.~Langmore, D.~Tran, E.~Brevdo, S.~Vasudevan, D.~Moore,
+  B.~Patton, A.~Alemi, M.~Hoffman, and R.~A. Saurous.
+\newblock {TensorFlow} distributions.
+\newblock \emph{arXiv preprint arXiv:1711.10604}, 2017.
+
+\bibitem[Eddelbuettel and Fran\c{c}ois(2011)]{ref-rcpp}
+D.~Eddelbuettel and R.~Fran\c{c}ois.
+\newblock {Rcpp}: Seamless {R} and {C++} integration.
+\newblock \emph{Journal of Statistical Software}, 40\penalty0 (8):\penalty0
+  1--18, 2011.
+\newblock \doi{10.18637/jss.v040.i08}.
 
 \bibitem[Falbel(2025)]{ref-safetensors}
 D.~Falbel.
@@ -38,33 +96,92 @@ D.~Falbel.
 
 \bibitem[Falbel and Luraschi(2025)]{ref-rtorch}
 D.~Falbel and J.~Luraschi.
-\newblock \emph{torch: Tensors and Neural Networks with 'GPU' Acceleration}, 2025.
+\newblock \emph{torch: Tensors and Neural Networks with 'GPU' Acceleration},
+  2025.
 \newblock URL \url{https://CRAN.R-project.org/package=torch}.
 \newblock R package version 0.16.3.
 
+\bibitem[Fidler et~al.(2025)Fidler, Hallow, Wilkins, and Wang]{ref-rxode2}
+M.~Fidler, M.~Hallow, J.~Wilkins, and W.~Wang.
+\newblock \emph{rxode2: Facilities for Simulating from {ODE}-Based Models},
+  2025.
+\newblock URL \url{https://CRAN.R-project.org/package=rxode2}.
+\newblock R package version 5.0.1.
+
+\bibitem[FitzJohn(2025)]{ref-odin}
+R.~FitzJohn.
+\newblock \emph{odin: ODE Generation and Integration}, 2025.
+\newblock URL \url{https://CRAN.R-project.org/package=odin}.
+\newblock R package version 1.2.7.
+
+\bibitem[Frostig et~al.(2018)Frostig, Johnson, and
+  Leary]{ref-frostig2018compiling}
+R.~Frostig, M.~J. Johnson, and C.~Leary.
+\newblock Compiling machine learning programs via high-level tracing.
+\newblock In \emph{Proceedings of the Conference on Systems and Machine
+  Learning (SysML)}, 2018.
+
+\bibitem[Gabry et~al.(2025)Gabry, \v{C}e\v{s}novar, Johnson, and
+  Bronder]{ref-cmdstanr}
+J.~Gabry, R.~\v{C}e\v{s}novar, A.~Johnson, and S.~Bronder.
+\newblock \emph{cmdstanr: {R} Interface to 'CmdStan'}, 2025.
+\newblock URL \url{https://mc-stan.org/cmdstanr/}.
+\newblock R package version 0.9.0.
+
+\bibitem[Golding(2019)]{ref-greta}
+N.~Golding.
+\newblock {greta}: Simple and scalable statistical modelling in {R}.
+\newblock \emph{Journal of Open Source Software}, 4\penalty0 (40):\penalty0
+  1601, 2019.
+\newblock \doi{10.21105/joss.01601}.
+
 \bibitem[Griewank and Walther(2008)]{ref-griewank2008evaluating}
 A.~Griewank and A.~Walther.
-\newblock \emph{Evaluating derivatives: principles and techniques of algorithmic differentiation}.
+\newblock \emph{Evaluating derivatives: principles and techniques of
+  algorithmic differentiation}.
 \newblock SIAM, 2nd edition, 2008.
 \newblock \doi{10.1137/1.9780898717761}.
 
-\bibitem[Harris et~al.(2020)Harris, Millman, Van Der~Walt, Gommers, Virtanen, Cournapeau, Wieser, Taylor, Berg, Smith, et~al.]{ref-harris2020array}
-C.~R. Harris, K.~J. Millman, S.~J. Van Der~Walt, R.~Gommers, P.~Virtanen, D.~Cournapeau, E.~Wieser, J.~Taylor, S.~Berg, N.~J. Smith, et~al.
+\bibitem[Harris et~al.(2020)Harris, Millman, Van Der~Walt, Gommers, Virtanen,
+  Cournapeau, Wieser, Taylor, Berg, Smith, et~al.]{ref-harris2020array}
+C.~R. Harris, K.~J. Millman, S.~J. Van Der~Walt, R.~Gommers, P.~Virtanen,
+  D.~Cournapeau, E.~Wieser, J.~Taylor, S.~Berg, N.~J. Smith, et~al.
 \newblock Array programming with numpy.
 \newblock \emph{Nature}, 585\penalty0 (7825):\penalty0 357--362, 2020.
+
+\bibitem[Hoffman and Sountsov(2022)]{ref-meads}
+M.~D. Hoffman and P.~Sountsov.
+\newblock Tuning-free generalized {H}amiltonian {M}onte {C}arlo.
+\newblock In \emph{Proceedings of the 25th International Conference on
+  Artificial Intelligence and Statistics}, volume 151 of \emph{Proceedings of
+  Machine Learning Research}, pages 7799--7813, 2022.
+
+\bibitem[Hoffman et~al.(2021)Hoffman, Radul, and Sountsov]{ref-chees}
+M.~D. Hoffman, A.~Radul, and P.~Sountsov.
+\newblock An adaptive-{MCMC} scheme for setting trajectory lengths in
+  {H}amiltonian {M}onte {C}arlo.
+\newblock In \emph{Proceedings of the 24th International Conference on
+  Artificial Intelligence and Statistics}, volume 130 of \emph{Proceedings of
+  Machine Learning Research}, pages 3907--3915, 2021.
 
 \bibitem[Kalinowski(2026)]{ref-quickr}
 T.~Kalinowski.
 \newblock \emph{quickr: Compiler for R}, 2026.
 \newblock URL \url{https://github.com/t-kalinowski/quickr}.
-\newblock R package version 0.2.1.9000, commit d38a27377e3c1b43ddaa22ba234ffdabface2454.
+\newblock R package version 0.3.0.9000.
 
-\bibitem[Konrad~Krämer(2026)]{ref-ast2ast}
-F.~X. Konrad~Krämer.
+\bibitem[Kr{\"a}mer and Xie(2026)]{ref-ast2ast}
+K.~Kr{\"a}mer and F.~Xie.
 \newblock \emph{ast2ast}, 2026.
 \newblock URL \url{https://github.com/Konrad1991/ast2ast/}.
 
-\bibitem[Kristensen et~al.(2016)Kristensen, Nielsen, Berg, Skaug, and Bell]{ref-tmb}
+\bibitem[Kristensen(2025)]{ref-rtmb}
+K.~Kristensen.
+\newblock \emph{{RTMB}: {R} Bindings for {TMB}}, 2025.
+\newblock URL \url{https://CRAN.R-project.org/package=RTMB}.
+
+\bibitem[Kristensen et~al.(2016)Kristensen, Nielsen, Berg, Skaug, and
+  Bell]{ref-tmb}
 K.~Kristensen, A.~Nielsen, C.~W. Berg, H.~Skaug, and B.~M. Bell.
 \newblock Tmb: Automatic differentiation and laplace approximation.
 \newblock \emph{Journal of Statistical Software}, 70\penalty0 (5), 2016.
@@ -72,29 +189,45 @@ K.~Kristensen, A.~Nielsen, C.~W. Berg, H.~Skaug, and B.~M. Bell.
 \newblock \doi{10.18637/jss.v070.i05}.
 \newblock URL \url{http://dx.doi.org/10.18637/jss.v070.i05}.
 
-\bibitem[Morandat et~al.(2012)Morandat, Hill, Osvald, and Vitek]{ref-evaluating-r}
-F.~Morandat, B.~Hill, L.~Osvald, and J.~Vitek.
-\newblock Evaluating the design of the r language: Objects and functions for data analysis.
-\newblock In \emph{European conference on object-oriented programming}, pages 104--131. Springer, 2012.
+\bibitem[Margossian et~al.(2024)Margossian, Hoffman, Sountsov, Riou-Durand,
+  Vehtari, and Gelman]{ref-nested-rhat}
+C.~C. Margossian, M.~D. Hoffman, P.~Sountsov, L.~Riou-Durand, A.~Vehtari, and
+  A.~Gelman.
+\newblock Nested $\hat{R}$: Assessing the convergence of {M}arkov chain {M}onte
+  {C}arlo when running many short chains.
+\newblock \emph{Bayesian Analysis}, 2024.
 
-\bibitem[Munshi(2009)]{ref-opencl}
-A.~Munshi.
-\newblock The opencl specification.
-\newblock In \emph{2009 IEEE Hot Chips 21 Symposium (HCS)}, pages 1--314. IEEE, 2009.
+\bibitem[Morandat et~al.(2012)Morandat, Hill, Osvald, and
+  Vitek]{ref-evaluating-r}
+F.~Morandat, B.~Hill, L.~Osvald, and J.~Vitek.
+\newblock Evaluating the design of the r language: Objects and functions for
+  data analysis.
+\newblock In \emph{European conference on object-oriented programming}, pages
+  104--131. Springer, 2012.
+
+\bibitem[Neal(2011)]{ref-neal2011mcmc}
+R.~M. Neal.
+\newblock {MCMC} using {H}amiltonian dynamics.
+\newblock In S.~Brooks, A.~Gelman, G.~L. Jones, and X.-L. Meng, editors,
+  \emph{Handbook of Markov Chain Monte Carlo}, pages 113--162. Chapman and
+  Hall/CRC, 2011.
 
 \bibitem[{OpenXLA Team}(2026)]{ref-openxla}
 {OpenXLA Team}.
 \newblock \emph{OpenXLA}, 2026.
 \newblock URL \url{https://openxla.org/}.
 
-\bibitem[Paszke et~al.(2019)Paszke, Gross, Massa, Lerer, Bradbury, Chanan, Killeen, Lin, Gimelshein, Antiga, et~al.]{ref-pytorch}
-A.~Paszke, S.~Gross, F.~Massa, A.~Lerer, J.~Bradbury, G.~Chanan, T.~Killeen, Z.~Lin, N.~Gimelshein, L.~Antiga, et~al.
+\bibitem[Paszke et~al.(2019)Paszke, Gross, Massa, Lerer, Bradbury, Chanan,
+  Killeen, Lin, Gimelshein, Antiga, et~al.]{ref-pytorch}
+A.~Paszke, S.~Gross, F.~Massa, A.~Lerer, J.~Bradbury, G.~Chanan, T.~Killeen,
+  Z.~Lin, N.~Gimelshein, L.~Antiga, et~al.
 \newblock Pytorch: An imperative style, high-performance deep learning library.
 \newblock \emph{Advances in neural information processing systems}, 32, 2019.
 
 \bibitem[Pav(2023)]{ref-madness}
 S.~E. Pav.
-\newblock \emph{{madness}: Automatic Differentiation of Multivariate Operations}, 2023.
+\newblock \emph{{madness}: Automatic Differentiation of Multivariate
+  Operations}, 2023.
 \newblock URL \url{https://github.com/shabbychef/madness}.
 \newblock R package version 0.2.8.
 
@@ -106,8 +239,14 @@ H.~Perdry.
 
 \bibitem[Pfeifer(2026)]{ref-gopjrt}
 J.~Pfeifer.
-\newblock \emph{gpjrt: Go Wrappers for OpenXLA PJRT}, 2026.
-\newblock URL \url{https://github.com/gomlx/gpjrt}.
+\newblock \emph{gopjrt: Go Wrappers for {OpenXLA} {PJRT}}, 2026.
+\newblock URL \url{https://github.com/gomlx/gopjrt}.
+
+\bibitem[Phan et~al.(2019)Phan, Pradhan, and Jankowiak]{ref-numpyro}
+D.~Phan, N.~Pradhan, and M.~Jankowiak.
+\newblock Composable effects for flexible and accelerated probabilistic
+  programming in {NumPyro}.
+\newblock \emph{arXiv preprint arXiv:1912.11554}, 2019.
 
 \bibitem[{PJRT Team}(2026)]{ref-pjrt}
 {PJRT Team}.
@@ -131,31 +270,20 @@ L.~Sartore.
 \newblock \emph{StableHLO}, 2026.
 \newblock URL \url{https://openxla.org/stablehlo/spec}.
 
-\bibitem[Team(2025)]{ref-go}
-G.~Team.
-\newblock \emph{{Go} Software, Version~1.25}, 2025.
-\newblock URL \url{https://go.dev/}.
+\bibitem[{The IREE Authors}(2019)]{ref-iree}
+{The IREE Authors}.
+\newblock {IREE}, Sept. 2019.
+\newblock URL \url{https://github.com/iree-org/iree}.
 
 \bibitem[{The JAX Authors}(2024)]{ref-autodidax}
 {The JAX Authors}.
 \newblock Autodidax: {JAX} core from scratch, 2024.
 \newblock URL \url{https://docs.jax.dev/en/latest/autodidax.html}.
 
-\bibitem[{The MicroJAX Authors}(2024)]{ref-microjax}
-{The MicroJAX Authors}.
-\newblock \emph{MicroJAX}, 2024.
-\newblock URL \url{https://github.com/joey00072/microjax}.
-
 \bibitem[Towell(2026)]{ref-nabla}
 A.~Towell.
 \newblock \emph{nabla: Exact Derivatives via Automatic Differentiation}, 2026.
 \newblock URL \url{https://github.com/queelius/nabla}.
 \newblock R package version 0.7.1.
-
-\bibitem[Vaughan et~al.(2025)Vaughan, Hester, Kalinowski, Landau, Lawrence, Maechler, Tierney, and Wickham]{wickham2024s7}
-D.~Vaughan, J.~Hester, T.~Kalinowski, W.~Landau, M.~Lawrence, M.~Maechler, L.~Tierney, and H.~Wickham.
-\newblock \emph{S7: An Object Oriented System Meant to Become a Successor to S3 and S4}, 2025.
-\newblock URL \url{https://CRAN.R-project.org/package=S7}.
-\newblock R package version 0.2.1.
 
 \end{thebibliography}

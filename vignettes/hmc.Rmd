@@ -8,28 +8,18 @@ vignette: >
 bibliography: references.bib
 ---
 
-In this vignette, we implement Hamiltonian Monte Carlo (HMC) [@neal2011mcmc] using {anvil}.
+In this vignette, we implement Hamiltonian Monte Carlo (HMC) [@neal2011mcmc] using {anvl}.
 HMC augments a random-walk Metropolis-Hastings sampler with gradient information to propose large, well-informed moves across the target distribution, achieving much lower autocorrelation than plain MH.
-Because HMC needs gradients of the log-density, it is a natural showcase for {anvil}'s three core code transformations working together: `jit()`, `gradient()`, and `nv_while()`.
+Because HMC needs gradients of the log-density, it is a natural showcase for {anvl}'s three core code transformations working together: `jit()`, `gradient()`, and `nv_while()`.
 
 We target the same "banana" distribution as the [Metropolis-Hastings vignette](metropolis-hastings.html) so the two samplers can be compared directly.
 
 We write the sampler in a *batched* form from the start: every array carries a leading chain axis of size $K$, and the $K$ chains evolve independently.
-A single chain is simply the $K = 1$ special case, while running many chains in parallel requires no additional code --- we just pass a $(K, 2)$ starting tensor with $K > 1$.
-This mirrors how JAX / NumPyro use `vmap(grad(U))` internally; {anvil} does not yet expose `vmap`, but for HMC writing the kernel batched by hand is straightforward and pays off once we want to saturate a GPU.
-
-For the Stan runtime comparison later in this vignette we want both samplers to run under matched conditions, so we pin every parallelism knob we can reach from R to a single thread *before* loading either framework.
-For XLA this means `PJRT_NPROC=1` (which caps the PjRt CPU client's intra-op thread pool, [read on startup from the environment](https://github.com/openxla/xla/blob/main/xla/pjrt/utils.cc) and immutable afterwards) plus the debug flag `--xla_cpu_multi_thread_eigen=false` (which disables Eigen's within-op parallelism in generated code).
-`OMP_NUM_THREADS=1` is already R's default for Rscript, so OpenMP-backed numerical libraries are single-threaded regardless.
-For Stan we set `STAN_NUM_THREADS=1`; this only matters if the model uses `reduce_sum(...)` (ours does not), but we set it for symmetry.
+A single chain is simply the $K = 1$ special case, while running many chains in parallel requires no additional code --- we just pass a $(K, 2)$ starting array with $K > 1$.
+This mirrors how JAX / NumPyro use `vmap(grad(U))` internally; {anvl} does not yet expose `vmap`, but for HMC writing the kernel batched by hand is straightforward and pays off once we want to saturate a GPU.
 
 ```{r}
-Sys.setenv(
-  PJRT_NPROC = "1",
-  XLA_FLAGS = "--xla_cpu_multi_thread_eigen=false",
-  STAN_NUM_THREADS = "1"
-)
-library(anvil)
+library(anvl)
 b_param <- 0.01
 b_t <- nv_scalar(b_param, dtype = "f64")
 ```
@@ -43,7 +33,7 @@ For the banana, dropping additive constants,
 
 $$U(\theta_1, \theta_2) = \frac{\theta_1^2}{200} + \frac{(\theta_2 - b\theta_1^2 + 100b)^2}{2}.$$
 
-We implement the potential as a function that takes a $(K, 2)$ parameter tensor --- one row per chain --- and returns a $K$-vector of per-chain energies.
+We implement the potential as a function that takes a $(K, 2)$ parameter array --- one row per chain --- and returns a $K$-vector of per-chain energies.
 For $K = 1$ this is just a length-1 vector.
 
 ```{r}
@@ -116,24 +106,24 @@ One HMC transition consists of:
 The accept/reject step corrects for the discretisation error introduced by leapfrog; in the limit $\varepsilon \to 0$ the Hamiltonian is preserved exactly and acceptance goes to 1.
 As in the MH vignette, the accept/reject decision uses `nv_ifelse()` (not an R `if`), and the RNG state is threaded through explicitly.
 
-We sum the squared momentum only along the parameter dimension (`dims = 2L`) so the kinetic energy is a $K$-vector, and we make the accept/reject decision per chain.
+We sum the squared momentum only along the parameter axis (`axes = 2L`) so the kinetic energy is a $K$-vector, and we make the accept/reject decision per chain.
 `nv_ifelse()` requires its predicate to have the same shape as the selected arrays, so we broadcast the length-$K$ accept vector up to $(K, 2)$:
 
 ```{r}
 hmc_step <- function(theta, rng_state, b, eps, L) {
   rng_out <- nv_rnorm(shape(theta), rng_state, dtype = "f64")
-  rng_state <- rng_out[[1L]]
-  p <- rng_out[[2L]]
+  rng_state <- rng_out$state
+  p <- rng_out$values
 
-  H_current <- U(theta, b) + nv_reduce_sum(p^2, dims = 2L) / 2
+  H_current <- U(theta, b) + nv_sum(p^2, axes = 2L) / 2
   lf <- leapfrog(theta, p, b, eps, L)
-  H_proposed <- U(lf$theta, b) + nv_reduce_sum(lf$p^2, dims = 2L) / 2
+  H_proposed <- U(lf$theta, b) + nv_sum(lf$p^2, axes = 2L) / 2
   log_accept <- H_current - H_proposed
 
   n_chains <- shape(theta)[1L]
   rng_out <- nv_runif(n_chains, rng_state, dtype = "f64")
-  rng_state <- rng_out[[1L]]
-  u <- rng_out[[2L]]
+  rng_state <- rng_out$state
+  u <- rng_out$values
 
   accept <- log(u) < log_accept
   accept_2d <- nv_broadcast_to(nv_reshape(accept, c(n_chains, 1L)), shape(theta))
@@ -158,7 +148,7 @@ A trajectory that is too long will "U-turn" and land close to the starting point
 A reasonable target is roughly a quarter-period of oscillation in the widest direction, i.e. $L \cdot \varepsilon \approx \tfrac{\pi}{2}\,\sigma_{\max} \approx 16$.
 We pick $\varepsilon = 0.2$ (safely stable in the tight $\theta_2$ direction) and $L = 80$.
 
-We start with a single chain --- the $K = 1$ special case of the batched kernel --- represented as a $(1, 2)$ tensor.
+We start with a single chain --- the $K = 1$ special case of the batched kernel --- represented as a $(1, 2)$ array.
 
 ```{r}
 n_samples <- 5000L
@@ -247,10 +237,10 @@ When the target distribution is large (e.g. a deep neural network's log-posterio
 
 We can eliminate the per-iteration overhead entirely by lifting the outer sampling loop into the graph as well --- so that a single JIT-compiled function produces *all* samples in one executable call.
 The main ingredient is an `nv_while` whose state carries, in addition to $\theta$ and the RNG, a pre-allocated output buffer into which successive samples are written.
-{anvil}'s subset-assignment syntax (`samples[i, , ] <- value`) works inside traced functions, returning a new tensor with the slice updated, so this looks essentially like writing to a pre-allocated R array.
+{anvl}'s subset-assignment syntax (`samples[i, , ] <- value`) works inside traced functions, returning a new array with the slice updated, so this looks essentially like writing to a pre-allocated R array.
 
 The buffer has shape $(n, K, 2)$ --- one slice per sample, per chain.
-Because the shape must be known at compile time, we pass the number of samples `n` as a static argument; the chain count $K$ is read from the starting tensor's shape.
+Because the shape must be known at compile time, we pass the number of samples `n` as a static argument; the chain count $K$ is read from the starting array's shape.
 
 ```{r}
 hmc_sample_many <- jit(function(theta, rng_state, b, eps, L, n) {
@@ -282,152 +272,12 @@ discard <- hmc_sample_many(theta, rng_state, b_t, eps, L, n = n_samples)
 theta <- discard$theta
 rng_state <- discard$rng_state
 
-t_anvil <- system.time({
+t_anvl <- system.time({
   out <- hmc_sample_many(theta, rng_state, b_t, eps, L, n = n_samples)
   as_array(out$samples)  # force XLA to finish computing before stopping the clock
 })[["elapsed"]]
-t_anvil
+t_anvl
 ```
-
-## Runtime Comparison with Stan
-
-As a sanity check, we compare the runtime of our single-chain {anvil} sampler against Stan via the \CRANpkg{rstan} package.
-Stan's default sampler is NUTS, an adaptive variant of HMC that also tunes the step size and mass matrix during warmup.
-To get an apples-to-apples comparison against our fixed-trajectory sampler, we switch Stan into static-HMC mode (`algorithm = "HMC"`), disable step-size and metric adaptation, and match the step size, integration time, and identity mass matrix we use in {anvil}.
-Stan's static HMC then takes exactly the same number of leapfrog steps per iteration as ours (`int_time / stepsize = 16 / 0.2 = 80`).
-
-Both frameworks pay a one-off compile cost before any sampling happens: Stan translates the model to C++ and compiles it with the system C++ compiler (tens of seconds), while {anvil} lowers the graph to StableHLO and hands it to the XLA JIT (a few seconds, paid once per unique static argument --- here, per choice of $n$).
-To show how this overhead *amortises* as chains get longer, we vary $n$ over several orders of magnitude and measure the total wall-clock cost, both with a cold compilation cache and with the compiled executable already in hand.
-
-```{r, stan-setup, message = FALSE, warning = FALSE}
-stan_code <- "
-data { real b; }
-parameters { vector[2] theta; }
-model {
-  target += -square(theta[1]) / 200
-            - square(theta[2] - b * square(theta[1]) + 100 * b) / 2;
-}
-"
-
-stan_available <- tryCatch(
-  {
-    suppressMessages(library(rstan))
-    rstan::rstan_options(auto_write = TRUE)
-    t_stan_compile <- system.time(
-      stan_model_banana <- rstan::stan_model(model_code = stan_code)
-    )[["elapsed"]]
-    # One warm-up sampling call so the first benchmarked call is not
-    # paying for any additional first-time setup.
-    suppressWarnings(rstan::sampling(
-      stan_model_banana, data = list(b = b_param),
-      chains = 1, iter = 100, warmup = 50,
-      algorithm = "HMC",
-      control = list(adapt_engaged = FALSE, stepsize = 0.2,
-                     int_time = 16, metric = "unit_e"),
-      refresh = 0, seed = 42L,
-      save_warmup = FALSE, pars = "theta", include = TRUE
-    ))
-    TRUE
-  },
-  error = function(e) FALSE
-)
-```
-
-```{r, bench-sweep, message = FALSE, warning = FALSE}
-library(bench)
-n_values <- c(100L, 1000L, 10000L, 50000L)
-
-run_stan <- function(n) {
-  suppressWarnings(rstan::sampling(
-    stan_model_banana, data = list(b = b_param),
-    chains = 1, iter = n + n_warmup, warmup = n_warmup,
-    algorithm = "HMC",
-    control = list(adapt_engaged = FALSE, stepsize = 0.2,
-                   int_time = 16, metric = "unit_e"),
-    refresh = 0, seed = 42L,
-    save_warmup = FALSE, pars = "theta", include = TRUE
-  ))
-}
-
-run_anvil <- function(n) {
-  theta <- nv_array(matrix(0, nrow = 1L, ncol = 2L), dtype = "f64")
-  rng_state <- nv_rng_state(42L)
-  w <- hmc_sample_many(theta, rng_state, b_t, eps, L, n = n_warmup)
-  out <- hmc_sample_many(w$theta, w$rng_state, b_t, eps, L, n = n)
-  invisible(as_array(out$samples))  # force XLA synchronisation
-}
-
-# Pre-warm the JIT cache for n_warmup (used inside every run).
-.dummy <- hmc_sample_many(
-  nv_array(matrix(0, nrow = 1L, ncol = 2L), dtype = "f64"),
-  nv_rng_state(1L), b_t, eps, L, n = n_warmup
-)
-
-# For each n we use bench::mark with four iterations: the first pays the
-# XLA JIT compile for that n (reported as "cold"); the best of the remaining
-# three is the steady-state cost (reported as "warm"). Stan is measured
-# with the same best-of-three, against a model that was already compiled.
-bench_row <- function(n) {
-  anvil_times <- as.numeric(bench::mark(
-    run_anvil(n),
-    iterations = 4,
-    check = FALSE, memory = FALSE, filter_gc = FALSE
-  )$time[[1L]])
-  stan_s <- if (stan_available) {
-    min(as.numeric(bench::mark(
-      run_stan(n),
-      iterations = 3,
-      check = FALSE, memory = FALSE, filter_gc = FALSE
-    )$time[[1L]]))
-  } else NA_real_
-  data.frame(
-    n = n,
-    anvil_cold_s  = anvil_times[[1L]],
-    anvil_warm_s  = min(anvil_times[-1L]),
-    stan_sample_s = stan_s
-  )
-}
-bench <- do.call(rbind, lapply(n_values, bench_row))
-```
-
-```{r, bench-table, echo = FALSE}
-if (stan_available) {
-  tab <- data.frame(
-    n = bench$n,
-    `anvil (with JIT compile)` = round(bench$anvil_cold_s, 3),
-    `anvil (compiled)` = round(bench$anvil_warm_s, 3),
-    `Stan sampling` = round(bench$stan_sample_s, 3),
-    `Stan + model compile` = round(t_stan_compile + bench$stan_sample_s, 1),
-    check.names = FALSE
-  )
-} else {
-  tab <- data.frame(
-    n = bench$n,
-    `anvil (with JIT compile)` = round(bench$anvil_cold_s, 3),
-    `anvil (compiled)` = round(bench$anvil_warm_s, 3),
-    check.names = FALSE
-  )
-}
-tab
-```
-
-A few observations:
-
-- **Stan's model compile dominates short runs.** Translating and compiling the Stan model takes `r if (exists("t_stan_compile")) round(t_stan_compile, 1) else "~50"` seconds in our setup.
-  Users only pay this once per R session (or never, if the compiled model is cached on disk via `auto_write = TRUE`), but for a fresh run it swamps any per-sample difference until chains are very long.
-- **{anvil}'s JIT compile is much cheaper.** The graph-to-StableHLO translation and XLA compilation take roughly a second for this target, and the cost is paid once per unique value of the static argument `n`.
-  In practice, scripts choose a single $n$ and amortise even this small cost.
-- **After both compiles are paid, per-sample rates are in the same order of magnitude.**
-  Stan and {anvil} each perform 80 leapfrog steps plus 81 gradient evaluations per iteration, and for this tiny two-dimensional target the work per step is small enough that both samplers are throughput-bound on similar things.
-- **Stan still computes more per iteration than {anvil} does.**
-  Even with `save_warmup = FALSE` and `pars = "theta"` telling Stan not to *return* the extra output, the sampler still computes per-iteration diagnostics (acceptance probability, energy, divergent-transition flag, tree statistics) and feeds them through its logging / output pipeline as a first-class part of each transition.
-  Our {anvil} sampler does only the leapfrog and writes $\theta$. This inherent asymmetry means the comparison measures "total wall-clock to produce $n$ usable $\theta$ draws", not the pure leapfrog cost, and mildly favours {anvil}; stripping Stan's diagnostics would require modifying Stan itself.
-
-Both samplers run **single-threaded** in this comparison, pinned explicitly via the environment variables we set at the top of the vignette.
-For Stan, `chains = 1` already implies one sampling thread; the banana model contains no `reduce_sum(...)`, so within-chain parallelism cannot be used either.
-For {anvil}, `PJRT_NPROC=1` caps XLA's intra-op thread pool and `--xla_cpu_multi_thread_eigen=false` disables Eigen's within-op threading in generated code.
-The script `inst/verify-single-thread.R` confirms this by spawning a child R process with these flags, running a parallelism-hungry XLA-CPU workload, and sampling its CPU usage directly from `ps`; it can be re-run on any host to verify that the flags actually take effect on that machine.
-Multi-core benefits for either framework appear only with many independent chains (run in parallel threads in Stan, or run as batched tensor operations in {anvil}, as we do next).
 
 ## Running Many Chains in Parallel
 
@@ -435,7 +285,7 @@ Even with the whole sampling loop inside a single JIT call, a chain of a two-dim
 On a GPU this is far below the level of parallelism the hardware can exploit.
 The natural way to drive more work through the device is to run $K$ chains simultaneously, stacked as a $(K, 2)$ array.
 
-Because our sampler was already batched, nothing about the kernel needs to change: we just hand it a $(K, 2)$ starting tensor.
+Because our sampler was already batched, nothing about the kernel needs to change: we just hand it a $(K, 2)$ starting array.
 The same `hmc_sample` and `hmc_sample_many` functions from above take it as-is --- no recompilation of source, only a recompilation of the XLA executable for the new input shape.
 
 ```{r}
@@ -482,16 +332,16 @@ t_batch_graph <- system.time({
 ```{r, echo = FALSE}
 data.frame(
   sampler = c(
-    "anvil 1 chain (R-loop)",
-    "anvil 1 chain (graph loop)",
-    "anvil 64 chains (R-loop)",
-    "anvil 64 chains (graph loop)"
+    "anvl 1 chain (R-loop)",
+    "anvl 1 chain (graph loop)",
+    "anvl 64 chains (R-loop)",
+    "anvl 64 chains (graph loop)"
   ),
   total_samples = c(n_samples, n_samples, K_chains * n_samples_b, K_chains * n_samples_b),
-  seconds = round(c(NA_real_, t_anvil, t_batch, t_batch_graph), 3),
+  seconds = round(c(NA_real_, t_anvl, t_batch, t_batch_graph), 3),
   samples_per_second = c(
     NA_integer_,
-    round(n_samples / t_anvil),
+    round(n_samples / t_anvl),
     round(K_chains * n_samples_b / t_batch),
     round(K_chains * n_samples_b / t_batch_graph)
   ),
@@ -503,8 +353,8 @@ Each time we push more of the work inside a single JIT-compiled call, the sample
 
 1. **R loop with a per-iteration `jit` call**: every iteration pays the R $\to$ XLA dispatch cost, and that cost dominates for a small target.
 2. **Sampling loop lifted into the graph**: a single call produces all samples; dispatch overhead is amortised across the full chain.
-3. **Parallel chains**: the leapfrog integrator now operates on $(K, 2)$ tensors, so each gradient and update does $K$ times more arithmetic for the same dispatch cost.
-4. **Both combined**: a single JIT call produces $n \cdot K$ samples, running the leapfrog as batched tensor operations, with no R round-trips and no dispatch overhead on the inner loop.
+3. **Parallel chains**: the leapfrog integrator now operates on $(K, 2)$ arrays, so each gradient and update does $K$ times more arithmetic for the same dispatch cost.
+4. **Both combined**: a single JIT call produces $n \cdot K$ samples, running the leapfrog as batched array operations, with no R round-trips and no dispatch overhead on the inner loop.
 
 On a GPU the benefit of (3) and (4) grows further: the leapfrog integrator becomes a sequence of dense matrix operations of shape $(K, 2)$, which is exactly the regime for which XLA's GPU backend is designed.
 The same compiled function runs on CPU or GPU without code changes --- only the backend chosen at jit-time differs.

@@ -1,0 +1,10 @@
+*.aux
+*.blg
+*.brf
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.knit.md
+paper_files/
