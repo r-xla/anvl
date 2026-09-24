@@ -1,4 +1,4 @@
-\begin{thebibliography}{42}
+\begin{thebibliography}{47}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -29,6 +29,13 @@ J.~Bradbury, R.~Frostig, P.~Hawkins, M.~J. Johnson, C.~Leary, D.~Maclaurin,
   G.~Necula, A.~Paszke, J.~Vander{P}las, S.~Wanderman-{M}ilne, and Q.~Zhang.
 \newblock Jax: Composable transformations of python+numpy programs.
 \newblock Github repository. URL \url{https://github.com/jax-ml/jax}, 2018.
+
+\bibitem[Buckner et~al.(2010)Buckner, Wilson, Seligman, Athey, Watson, and
+  Meng]{ref-gputools}
+J.~Buckner, J.~Wilson, M.~Seligman, B.~Athey, S.~Watson, and F.~Meng.
+\newblock The {gputools} package enables {GPU} computing in {R}.
+\newblock \emph{Bioinformatics}, 26\penalty0 (1):\penalty0 134--135, 2010.
+\newblock \doi{10.1093/bioinformatics/btp608}.
 
 \bibitem[B{\"u}rkner(2017)]{ref-brms}
 P.-C. B{\"u}rkner.
@@ -74,6 +81,12 @@ P.~de~Valpine, D.~Turek, C.~J. Paciorek, C.~Anderson-Bergman, D.~T. Lang, and
   (2):\penalty0 403--413, 2017.
 \newblock \doi{10.1080/10618600.2016.1172487}.
 
+\bibitem[Determan(2019)]{ref-gpur}
+C.~Determan.
+\newblock \emph{{gpuR}: {GPU} Functions for {R} Objects}, 2019.
+\newblock URL \url{https://CRAN.R-project.org/package=gpuR}.
+\newblock R package, archived on CRAN in November 2025.
+
 \bibitem[Dillon et~al.(2017)Dillon, Langmore, Tran, Brevdo, Vasudevan, Moore,
   Patton, Alemi, Hoffman, and Saurous]{ref-tfp}
 J.~V. Dillon, I.~Langmore, D.~Tran, E.~Brevdo, S.~Vasudevan, D.~Moore,
@@ -99,7 +112,7 @@ D.~Falbel and J.~Luraschi.
 \newblock \emph{torch: Tensors and Neural Networks with 'GPU' Acceleration},
   2025.
 \newblock URL \url{https://CRAN.R-project.org/package=torch}.
-\newblock R package version 0.16.3.
+\newblock R package version 0.17.0.
 
 \bibitem[Fidler et~al.(2025)Fidler, Hallow, Wilkins, and Wang]{ref-rxode2}
 M.~Fidler, M.~Hallow, J.~Wilkins, and W.~Wang.
@@ -188,6 +201,13 @@ K.~Kristensen, A.~Nielsen, C.~W. Berg, H.~Skaug, and B.~M. Bell.
 \newblock ISSN 1548-7660.
 \newblock \doi{10.18637/jss.v070.i05}.
 \newblock URL \url{http://dx.doi.org/10.18637/jss.v070.i05}.
+
+\bibitem[Lobato-Fern\'{a}ndez et~al.(2025)Lobato-Fern\'{a}ndez, Ferrer-Bonsoms,
+  and Rubio]{ref-gpumatrix}
+C.~Lobato-Fern\'{a}ndez, J.~A. Ferrer-Bonsoms, and A.~Rubio.
+\newblock \emph{{GPUmatrix}: Basic Linear Algebra with {GPU}}, 2025.
+\newblock URL \url{https://CRAN.R-project.org/package=GPUmatrix}.
+\newblock R package version 1.0.3.
 
 \bibitem[Margossian et~al.(2024)Margossian, Hoffman, Sountsov, Riou-Durand,
   Vehtari, and Gelman]{ref-nested-rhat}
@@ -285,5 +305,18 @@ A.~Towell.
 \newblock \emph{nabla: Exact Derivatives via Automatic Differentiation}, 2026.
 \newblock URL \url{https://github.com/queelius/nabla}.
 \newblock R package version 0.7.1.
+
+\bibitem[Urbanek(2026)]{ref-opencl-r}
+S.~Urbanek.
+\newblock \emph{{OpenCL}: Interface Allowing {R} to Use {OpenCL}}, 2026.
+\newblock URL \url{https://CRAN.R-project.org/package=OpenCL}.
+\newblock R package version 0.2-11.
+
+\bibitem[Wang and Morgan(2025)]{ref-gpumagic}
+J.~Wang and M.~Morgan.
+\newblock \emph{{gpuMagic}: An {OpenCL} Compiler with the Capacity to Compile
+  {R} Functions and Run the Code on {GPU}}, 2025.
+\newblock URL \url{https://bioconductor.org/packages/gpuMagic}.
+\newblock Bioconductor package, removed with Bioconductor 3.23.
 
 \end{thebibliography}

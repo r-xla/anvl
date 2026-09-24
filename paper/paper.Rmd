@@ -98,20 +98,29 @@ Statistical modeling languages form another group: Stan [@ref-stan] compiles its
 Some Stan functions can run on GPUs via OpenCL.
 \CRANpkg{nimble} [@ref-nimble] generates C++ from a BUGS-like language and from a subset of R, and supports AD via CppAD [@ref-cppad], as do \CRANpkg{TMB} [@ref-tmb] and \CRANpkg{RTMB} [@ref-rtmb], where the latter records the AD tape by evaluating R code with overloaded operators.
 Forward-mode AD via dual numbers is available in \pkg{nabla}, \CRANpkg{salad}, \CRANpkg{dual}, and \CRANpkg{madness} [@ref-nabla; @ref-salad; @ref-dual; @ref-madness].
-Finally, some packages offer GPU acceleration for specific methods, such as \CRANpkg{xgboost} [@ref-xgboost], while \CRANpkg{OpenCL} provides a low-level interface for writing kernels by hand.
+
+Packages that give R users direct access to GPUs have had a difficult history on CRAN.
+Several early packages built on CUDA, such as \pkg{gputools} [@ref-gputools], \pkg{rpud}, \pkg{WideLM}, \pkg{magma}, \pkg{HiPLARM}, and \pkg{cudaBayesreg}, were archived between 2015 and 2018, and \pkg{permGPU} followed in 2021.
+In November 2025, \pkg{gpuR} [@ref-gpur], which provided OpenCL-backed matrix classes via the ViennaCL library, and \pkg{clrng}, which builds on it, were archived as well, and \pkg{gpuMagic} [@ref-gpumagic], which compiled a subset of R to OpenCL, was removed from Bioconductor with release 3.23.
+Of the packages that remain, \CRANpkg{OpenCL} [@ref-opencl-r] provides a low-level interface for which users write kernels in OpenCL C, and \CRANpkg{GPUmatrix} [@ref-gpumatrix] implements GPU matrices on top of \CRANpkg{torch} or \CRANpkg{tensorflow}.
+Other packages use GPUs internally for specific methods, such as \CRANpkg{xgboost} [@ref-xgboost].
+This history illustrates the cost of maintaining GPU support for a single package, which is one reason why \pkg{anvl} delegates hardware support to OpenXLA's PJRT plugins.
 Table \ref{tab:related} summarizes the most closely related packages.
 To the best of our knowledge, no native R package offers JIT compilation of R code, reverse-mode AD, and GPU execution at the same time.
 
 ```{r related, echo = FALSE}
 related <- data.frame(
   Package = c("anvl", "torch", "tensorflow, keras3, greta", "quickr", "compiler",
-    "rstan, cmdstanr", "nimble", "TMB, RTMB", "nabla, salad, dual"),
+    "rstan, cmdstanr", "nimble", "TMB, RTMB", "nabla, salad, dual", "OpenCL",
+    "gpuMagic (removed)", "gpuR, gputools (archived)"),
   Input = c("R (array API)", "R (array API)", "R via Python", "R (subset)", "R",
-    "Stan language", "BUGS-like, R (subset)", "C++ / R", "R"),
+    "Stan language", "BUGS-like, R (subset)", "C++ / R", "R", "OpenCL C", "R (subset)",
+    "R (matrix classes)"),
   Compilation = c("JIT (XLA, Fortran)", "eager", "XLA (Python)", "Fortran", "byte code",
-    "C++", "C++", "C++ / tape", "none"),
-  `Reverse AD` = c("yes", "yes", "yes", "no", "no", "yes", "yes", "yes", "no"),
-  GPU = c("CUDA", "CUDA", "CUDA", "no", "no", "partly (OpenCL)", "no", "no", "no"),
+    "C++", "C++", "C++ / tape", "none", "OpenCL", "OpenCL", "none"),
+  `Reverse AD` = c("yes", "yes", "yes", "no", "no", "yes", "yes", "yes", "no", "no", "no", "no"),
+  GPU = c("CUDA", "CUDA", "CUDA", "no", "no", "partly (OpenCL)", "no", "no", "no", "OpenCL",
+    "OpenCL", "OpenCL / CUDA"),
   check.names = FALSE
 )
 knitr::kable(related, format = "latex", booktabs = TRUE, label = "related",
@@ -142,7 +151,7 @@ In contrast to \CRANpkg{quickr}, which compiles a subset of existing R code, \pk
 
 The remainder of this paper is structured as follows.
 Section \@ref(background) introduces the OpenXLA components and the \CRANpkg{quickr} package, as well as the basics of reverse-mode AD.
-Section \@ref(design) describes the design of \pkg{anvl}, Section \@ref(precision) its treatment of data types and precision, and Section \@ref(extending) shows how to extend it.
+Section \@ref(design) describes the design of \pkg{anvl}, including its R-like array interface, Section \@ref(precision) its treatment of data types and precision, and Section \@ref(extending) shows how to extend it.
 In Section \@ref(hmc), we implement a Hamiltonian Monte Carlo sampler for Bayesian logistic regression, whose runtime we evaluate against Stan in Section \@ref(runtime).
 Finally, we discuss limitations and future work in Section \@ref(discussion).
 
@@ -264,6 +273,24 @@ Execution is asynchronous: calling a compiled program returns as soon as the com
 Metadata such as `shape()` and `dtype()` is available immediately.
 This allows R to prepare the next call while the device is still busy, which is especially important for GPUs.
 
+## An R-like array interface {#rapi}
+
+Array libraries such as NumPy, and with it JAX and PyTorch, follow Python's conventions: 0-based indexing, row-major memory layout, and broadcasting that aligns shapes from the last axis.
+\pkg{anvl} instead aims to feel familiar to R users, so that numerical code written for base R carries over with few changes.
+Arrays have methods for many base R generics, including the arithmetic, comparison, and logical operators, `%*%`, `t()`, `aperm()`, `crossprod()`, `solve()`, `chol()`, the math functions (e.g., `log(x, base)`, `sinpi()`, `lgamma()`), the reductions `sum()`, `mean()`, `prod()`, `max()`, and `range()`, as well as `cumsum()`, `rev()`, `sort()`, `quantile()`, `median()`, `c()`, `cbind()`, and `rbind()`.
+Their semantics follow base R: indexing is 1-based, arrays are laid out in column-major order, so reshaping fills an array column by column as `dim<-` does, and subsetting and subset assignment use R's bracket syntax, including ranges such as `x[, 2:3]`.
+
+```{r rapi}
+m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))
+m[, 2:3] <- 0
+as_array(crossprod(m))
+as_array(rev(cumsum(m[1, ])))
+```
+
+Where \pkg{anvl} needs functions of its own, their names and arguments follow the corresponding base R functions, e.g., `nv_pmax()`, `nv_which_max()`, `nv_order()`, `nv_ifelse(test, yes, no)`, `nv_seq(from, to, by)`, `nv_rnorm(shape, state, mean, sd)`, `nv_sample_int()`, and `nv_quantile(x, probs, method)`.
+The distinction between R's integers and doubles is kept as well (see Section \@ref(precision)).
+Deviations from base R are deliberate and follow from the static shapes of compiled programs or from functional purity: only scalars are broadcast automatically, logical masks and negative indices are not supported in subsetting, whether an axis is dropped is decided by the index (a scalar drops it, a length-one array keeps it) instead of a `drop` argument, and random number generators take and return an explicit state.
+
 ## Tracing R code into a graph
 
 There are two ways to translate code into another representation: statically analyzing its source code, as done by \CRANpkg{quickr}, or executing it with special values that record the operations applied to them, which is called tracing.
@@ -312,13 +339,7 @@ The transformation is defined for functions with a scalar output, which is the c
 ## Transforming a graph into an executable
 
 A backend lowers an `AnvlGraph` into an executable.
-For the `"pjrt"` backend, which uses XLA, `stablehlo()` translates the graph into a StableHLO function by applying each primitive's `"stablehlo"` rule, which maps it to one or more \pkg{stablehlo} operations.
-
-```{r lower}
-stablehlo(graph)[[1L]]
-```
-
-Note that StableHLO uses 0-based indexing, which the rules convert from R's 1-based indexing.
+For the `"pjrt"` backend, which uses XLA, `stablehlo()` translates the graph into a StableHLO function like the one in Section \@ref(background) by applying each primitive's `"stablehlo"` rule, which maps it to one or more \pkg{stablehlo} operations and converts R's 1-based indices to StableHLO's 0-based ones.
 R literals are embedded into the program as constants, while arrays that the traced function closes over become additional inputs, which avoids copying their data into the program.
 The resulting program is then compiled via \pkg{pjrt}.
 The \CRANpkg{quickr} backend instead translates the graph into an R function with type declarations and compiles it with \CRANpkg{quickr}.
@@ -349,7 +370,7 @@ Their values become part of the cache key, and the function is traced again for 
 
 ```{r static}
 g <- jit(f, static = "op")
-as_array(g(x, x, op = "add"))
+y3 <- g(x, x, op = "add")
 ```
 
 A jitted function called from within another jitted function is not executed separately, but traced as part of the outer function, so that both are compiled into a single executable.
@@ -380,14 +401,9 @@ For example, `nv_scan()` runs a loop for a fixed number of steps, threads a stat
 
 ## Restrictions
 
-The XLA compiler requires all shapes to be known when a program is compiled.
-This allows for aggressive optimizations, but it means that operations whose output shape depends on the values of their inputs, such as `unique()` or subsetting with a logical mask, cannot be expressed directly.
-A common workaround is to pad inputs to a fixed size and mask irrelevant entries, e.g., via `nv_ifelse()`, at the cost of some wasted computation.
-Moreover, each new combination of input shapes triggers a new compilation, which can be mitigated by padding inputs to a few fixed sizes.
-
-A related restriction is that StableHLO programs cannot raise errors at runtime.
-For example, a dynamic slice clamps out-of-bounds indices to the valid range instead of failing.
-\pkg{anvl} therefore performs all checks during tracing, and values that must be validated, such as subsetting indices whose range matters, need to be static arguments.
+The XLA compiler requires all shapes to be known when a program is compiled, so operations whose output shape depends on data, such as `unique()`, cannot be expressed directly, and each new combination of input shapes triggers a new compilation.
+Common workarounds are masking irrelevant entries, e.g., via `nv_ifelse()`, and padding inputs to a few fixed sizes.
+Moreover, StableHLO programs cannot raise errors at runtime (a dynamic slice, for example, clamps out-of-bounds indices), so \pkg{anvl} performs all checks during tracing, and values that must be validated need to be static arguments.
 
 # Data types and precision {#precision}
 

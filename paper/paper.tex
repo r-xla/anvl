@@ -47,7 +47,13 @@ Statistical modeling languages form another group: Stan \citep{ref-stan} compile
 Some Stan functions can run on GPUs via OpenCL.
 \CRANpkg{nimble} \citep{ref-nimble} generates C++ from a BUGS-like language and from a subset of R, and supports AD via CppAD \citep{ref-cppad}, as do \CRANpkg{TMB} \citep{ref-tmb} and \CRANpkg{RTMB} \citep{ref-rtmb}, where the latter records the AD tape by evaluating R code with overloaded operators.
 Forward-mode AD via dual numbers is available in \pkg{nabla}, \CRANpkg{salad}, \CRANpkg{dual}, and \CRANpkg{madness} \citep{ref-nabla, ref-salad, ref-dual, ref-madness}.
-Finally, some packages offer GPU acceleration for specific methods, such as \CRANpkg{xgboost} \citep{ref-xgboost}, while \CRANpkg{OpenCL} provides a low-level interface for writing kernels by hand.
+
+Packages that give R users direct access to GPUs have had a difficult history on CRAN.
+Several early packages built on CUDA, such as \pkg{gputools} \citep{ref-gputools}, \pkg{rpud}, \pkg{WideLM}, \pkg{magma}, \pkg{HiPLARM}, and \pkg{cudaBayesreg}, were archived between 2015 and 2018, and \pkg{permGPU} followed in 2021.
+In November 2025, \pkg{gpuR} \citep{ref-gpur}, which provided OpenCL-backed matrix classes via the ViennaCL library, and \pkg{clrng}, which builds on it, were archived as well, and \pkg{gpuMagic} \citep{ref-gpumagic}, which compiled a subset of R to OpenCL, was removed from Bioconductor with release 3.23.
+Of the packages that remain, \CRANpkg{OpenCL} \citep{ref-opencl-r} provides a low-level interface for which users write kernels in OpenCL C, and \CRANpkg{GPUmatrix} \citep{ref-gpumatrix} implements GPU matrices on top of \CRANpkg{torch} or \CRANpkg{tensorflow}.
+Other packages use GPUs internally for specific methods, such as \CRANpkg{xgboost} \citep{ref-xgboost}.
+This history illustrates the cost of maintaining GPU support for a single package, which is one reason why \pkg{anvl} delegates hardware support to OpenXLA's PJRT plugins.
 Table \ref{tab:related} summarizes the most closely related packages.
 To the best of our knowledge, no native R package offers JIT compilation of R code, reverse-mode AD, and GPU execution at the same time.
 
@@ -69,6 +75,10 @@ rstan, cmdstanr & Stan language & C++ & yes & partly (OpenCL)\\
 nimble & BUGS-like, R (subset) & C++ & yes & no\\
 TMB, RTMB & C++ / R & C++ / tape & yes & no\\
 nabla, salad, dual & R & none & no & no\\
+OpenCL & OpenCL C & OpenCL & no & OpenCL\\
+\addlinespace
+gpuMagic (removed) & R (subset) & OpenCL & no & OpenCL\\
+gpuR, gputools (archived) & R (matrix classes) & none & no & OpenCL / CUDA\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -98,7 +108,7 @@ In contrast to \CRANpkg{quickr}, which compiles a subset of existing R code, \pk
 
 The remainder of this paper is structured as follows.
 Section \ref{background} introduces the OpenXLA components and the \CRANpkg{quickr} package, as well as the basics of reverse-mode AD.
-Section \ref{design} describes the design of \pkg{anvl}, Section \ref{precision} its treatment of data types and precision, and Section \ref{extending} shows how to extend it.
+Section \ref{design} describes the design of \pkg{anvl}, including its R-like array interface, Section \ref{precision} its treatment of data types and precision, and Section \ref{extending} shows how to extend it.
 In Section \ref{hmc}, we implement a Hamiltonian Monte Carlo sampler for Bayesian logistic regression, whose runtime we evaluate against Stan in Section \ref{runtime}.
 Finally, we discuss limitations and future work in Section \ref{discussion}.
 
@@ -255,6 +265,30 @@ Execution is asynchronous: calling a compiled program returns as soon as the com
 Metadata such as \texttt{shape()} and \texttt{dtype()} is available immediately.
 This allows R to prepare the next call while the device is still busy, which is especially important for GPUs.
 
+\hypertarget{rapi}{%
+\subsection{An R-like array interface}\label{rapi}}
+
+Array libraries such as NumPy, and with it JAX and PyTorch, follow Python's conventions: 0-based indexing, row-major memory layout, and broadcasting that aligns shapes from the last axis.
+\pkg{anvl} instead aims to feel familiar to R users, so that numerical code written for base R carries over with few changes.
+Arrays have methods for many base R generics, including the arithmetic, comparison, and logical operators, \texttt{\%*\%}, \texttt{t()}, \texttt{aperm()}, \texttt{crossprod()}, \texttt{solve()}, \texttt{chol()}, the math functions (e.g., \texttt{log(x,\ base)}, \texttt{sinpi()}, \texttt{lgamma()}), the reductions \texttt{sum()}, \texttt{mean()}, \texttt{prod()}, \texttt{max()}, and \texttt{range()}, as well as \texttt{cumsum()}, \texttt{rev()}, \texttt{sort()}, \texttt{quantile()}, \texttt{median()}, \texttt{c()}, \texttt{cbind()}, and \texttt{rbind()}.
+Their semantics follow base R: indexing is 1-based, arrays are laid out in column-major order, so reshaping fills an array column by column as \texttt{dim\textless{}-} does, and subsetting and subset assignment use R's bracket syntax, including ranges such as \texttt{x{[},\ 2:3{]}}.
+
+\begin{verbatim}
+m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))
+m[, 2:3] <- 0
+as_array(crossprod(m))
+#>      [,1] [,2] [,3]
+#> [1,]   10    0    0
+#> [2,]    0    0    0
+#> [3,]    0    0    0
+as_array(rev(cumsum(m[1, ])))
+#> [1] 3 3 3
+\end{verbatim}
+
+Where \pkg{anvl} needs functions of its own, their names and arguments follow the corresponding base R functions, e.g., \texttt{nv\_pmax()}, \texttt{nv\_which\_max()}, \texttt{nv\_order()}, \texttt{nv\_ifelse(test,\ yes,\ no)}, \texttt{nv\_seq(from,\ to,\ by)}, \texttt{nv\_rnorm(shape,\ state,\ mean,\ sd)}, \texttt{nv\_sample\_int()}, and \texttt{nv\_quantile(x,\ probs,\ method)}.
+The distinction between R's integers and doubles is kept as well (see Section \ref{precision}).
+Deviations from base R are deliberate and follow from the static shapes of compiled programs or from functional purity: only scalars are broadcast automatically, logical masks and negative indices are not supported in subsetting, whether an axis is dropped is decided by the index (a scalar drops it, a length-one array keeps it) instead of a \texttt{drop} argument, and random number generators take and return an explicit state.
+
 \hypertarget{tracing-r-code-into-a-graph}{%
 \subsection{Tracing R code into a graph}\label{tracing-r-code-into-a-graph}}
 
@@ -310,17 +344,7 @@ The transformation is defined for functions with a scalar output, which is the c
 \subsection{Transforming a graph into an executable}\label{transforming-a-graph-into-an-executable}}
 
 A backend lowers an \texttt{AnvlGraph} into an executable.
-For the \texttt{"pjrt"} backend, which uses XLA, \texttt{stablehlo()} translates the graph into a StableHLO function by applying each primitive's \texttt{"stablehlo"} rule, which maps it to one or more \pkg{stablehlo} operations.
-
-\begin{verbatim}
-stablehlo(graph)[[1L]]
-#> func.func @main (%0: tensor<f32>, %1: tensor<f32>) -> tensor<f32> {
-#> %2 = stablehlo.multiply %0, %1 : tensor<f32>
-#> return %2 : tensor<f32>
-#> }
-\end{verbatim}
-
-Note that StableHLO uses 0-based indexing, which the rules convert from R's 1-based indexing.
+For the \texttt{"pjrt"} backend, which uses XLA, \texttt{stablehlo()} translates the graph into a StableHLO function like the one in Section \ref{background} by applying each primitive's \texttt{"stablehlo"} rule, which maps it to one or more \pkg{stablehlo} operations and converts R's 1-based indices to StableHLO's 0-based ones.
 R literals are embedded into the program as constants, while arrays that the traced function closes over become additional inputs, which avoids copying their data into the program.
 The resulting program is then compiled via \pkg{pjrt}.
 The \CRANpkg{quickr} backend instead translates the graph into an R function with type declarations and compiles it with \CRANpkg{quickr}.
@@ -354,10 +378,7 @@ Their values become part of the cache key, and the function is traced again for 
 
 \begin{verbatim}
 g <- jit(f, static = "op")
-as_array(g(x, x, op = "add"))
-#>      [,1] [,2] [,3]
-#> [1,]    2    6   10
-#> [2,]    4    8   12
+y3 <- g(x, x, op = "add")
 \end{verbatim}
 
 A jitted function called from within another jitted function is not executed separately, but traced as part of the outer function, so that both are compiled into a single executable.
@@ -377,9 +398,9 @@ update <- jit(function(beta, X, y, lr) {
 X <- nv_array(matrix(rnorm(20), 10, 2))
 y <- X %*% matrix(c(1, 2))
 as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
-#>            [,1]
-#> [1,] 0.04324131
-#> [2,] 0.37689808
+#>           [,1]
+#> [1,] 0.1506272
+#> [2,] 0.5901170
 \end{verbatim}
 
 When \texttt{update()} is traced, the call to the gradient function traces \texttt{loss()} into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of \texttt{update()}.
@@ -394,14 +415,9 @@ For example, \texttt{nv\_scan()} runs a loop for a fixed number of steps, thread
 \hypertarget{restrictions}{%
 \subsection{Restrictions}\label{restrictions}}
 
-The XLA compiler requires all shapes to be known when a program is compiled.
-This allows for aggressive optimizations, but it means that operations whose output shape depends on the values of their inputs, such as \texttt{unique()} or subsetting with a logical mask, cannot be expressed directly.
-A common workaround is to pad inputs to a fixed size and mask irrelevant entries, e.g., via \texttt{nv\_ifelse()}, at the cost of some wasted computation.
-Moreover, each new combination of input shapes triggers a new compilation, which can be mitigated by padding inputs to a few fixed sizes.
-
-A related restriction is that StableHLO programs cannot raise errors at runtime.
-For example, a dynamic slice clamps out-of-bounds indices to the valid range instead of failing.
-\pkg{anvl} therefore performs all checks during tracing, and values that must be validated, such as subsetting indices whose range matters, need to be static arguments.
+The XLA compiler requires all shapes to be known when a program is compiled, so operations whose output shape depends on data, such as \texttt{unique()}, cannot be expressed directly, and each new combination of input shapes triggers a new compilation.
+Common workarounds are masking irrelevant entries, e.g., via \texttt{nv\_ifelse()}, and padding inputs to a few fixed sizes.
+Moreover, StableHLO programs cannot raise errors at runtime (a dynamic slice, for example, clamps out-of-bounds indices), so \pkg{anvl} performs all checks during tracing, and values that must be validated need to be static arguments.
 
 \hypertarget{precision}{%
 \section{Data types and precision}\label{precision}}

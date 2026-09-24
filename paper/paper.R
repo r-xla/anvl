@@ -10,13 +10,16 @@ options(width = 80)
 ## ----related, echo = FALSE----------------------------------------------------
 related <- data.frame(
   Package = c("anvl", "torch", "tensorflow, keras3, greta", "quickr", "compiler",
-    "rstan, cmdstanr", "nimble", "TMB, RTMB", "nabla, salad, dual"),
+    "rstan, cmdstanr", "nimble", "TMB, RTMB", "nabla, salad, dual", "OpenCL",
+    "gpuMagic (removed)", "gpuR, gputools (archived)"),
   Input = c("R (array API)", "R (array API)", "R via Python", "R (subset)", "R",
-    "Stan language", "BUGS-like, R (subset)", "C++ / R", "R"),
+    "Stan language", "BUGS-like, R (subset)", "C++ / R", "R", "OpenCL C", "R (subset)",
+    "R (matrix classes)"),
   Compilation = c("JIT (XLA, Fortran)", "eager", "XLA (Python)", "Fortran", "byte code",
-    "C++", "C++", "C++ / tape", "none"),
-  `Reverse AD` = c("yes", "yes", "yes", "no", "no", "yes", "yes", "yes", "no"),
-  GPU = c("CUDA", "CUDA", "CUDA", "no", "no", "partly (OpenCL)", "no", "no", "no"),
+    "C++", "C++", "C++ / tape", "none", "OpenCL", "OpenCL", "none"),
+  `Reverse AD` = c("yes", "yes", "yes", "no", "no", "yes", "yes", "yes", "no", "no", "no", "no"),
+  GPU = c("CUDA", "CUDA", "CUDA", "no", "no", "partly (OpenCL)", "no", "no", "no", "OpenCL",
+    "OpenCL", "OpenCL / CUDA"),
   check.names = FALSE
 )
 knitr::kable(related, format = "latex", booktabs = TRUE, label = "related",
@@ -51,6 +54,13 @@ x
 sum(x * 2)
 
 
+## ----rapi---------------------------------------------------------------------
+m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))
+m[, 2:3] <- 0
+as_array(crossprod(m))
+as_array(rev(cumsum(m[1, ])))
+
+
 ## ----trace--------------------------------------------------------------------
 f <- function(x, y, op) {
   if (op == "add") x + y else x * y
@@ -64,10 +74,6 @@ graph
 grad_graph <- transform_gradient(graph, wrt = c("x", "y"))
 
 
-## ----lower--------------------------------------------------------------------
-stablehlo(graph)[[1L]]
-
-
 ## ----jit----------------------------------------------------------------------
 f_jit <- jit(function(x, y) {
   cat("tracing\n")
@@ -79,7 +85,7 @@ y2 <- f_jit(x, x + 1)
 
 ## ----static-------------------------------------------------------------------
 g <- jit(f, static = "op")
-as_array(g(x, x, op = "add"))
+y3 <- g(x, x, op = "add")
 
 
 ## ----gradient-ui--------------------------------------------------------------
