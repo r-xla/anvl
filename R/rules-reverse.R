@@ -611,11 +611,19 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   list(
     outputs = c(taped$carry, taped$out[seq_len(n_out)]),
     backward = function(inputs, outputs, grads, params, required) {
+      # The carry's cotangent is threaded through every step whatever is
+      # required, since the carry of one step is the input of the next; the
+      # `xs` slices and the captures are only differentiated where required.
+      required <- unlist(required)
+      xs_needed <- xs_idx[required[xs_idx]]
       cap_idx <- setdiff(seq_along(inputs), c(carry_idx, xs_idx))
-      cap_needed <- cap_idx[unlist(required[cap_idx])]
-      cap_targets <- lapply(inputs[cap_needed], function(box) box$gnode)
+      cap_needed <- cap_idx[required[cap_idx]]
+      n_xs_needed <- length(xs_needed)
       n_cap <- length(cap_needed)
-      targets <- c(body$inputs, cap_targets)
+      targets <- c(
+        body$inputs[c(carry_idx, xs_needed)],
+        lapply(inputs[cap_needed], function(box) box$gnode)
+      )
 
       pulled <- prim_scan(
         init = list(
@@ -633,9 +641,9 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
           list(
             carry = list(
               carry = ct[carry_idx],
-              caps = Map(prim_add, carry$caps, ct[n_carry + n_xs + seq_len(n_cap)])
+              caps = Map(prim_add, carry$caps, ct[n_carry + n_xs_needed + seq_len(n_cap)])
             ),
-            out = ct[xs_idx]
+            out = ct[n_carry + seq_len(n_xs_needed)]
           )
         },
         steps = steps,
@@ -644,7 +652,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 
       grads_in <- vector("list", length(inputs))
       grads_in[carry_idx] <- pulled$carry$carry
-      grads_in[xs_idx] <- pulled$out
+      grads_in[xs_needed] <- pulled$out
       grads_in[cap_needed] <- pulled$carry$caps
       grads_in
     }

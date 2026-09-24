@@ -133,7 +133,7 @@ transform_gradient_impl <- function(graph, wrt) {
   # Phase 1 -- rebuild the forward into a fresh descriptor. For each call
   # either clone it verbatim (default-reverse / no rule) or hand off to the
   # general-form rule so it can emit its own forward primitives.
-  rebuilt <- rebuild_forward_pass(graph)
+  rebuilt <- rebuild_forward_pass(graph, reqs$required_env)
   desc <- rebuilt$desc
 
   # Phase 2 -- run backwards in reverse call order, seeded with d(out)/d(out).
@@ -256,8 +256,8 @@ compute_requirements <- function(graph, wrt) {
 # of `graph$inputs`.
 graph_vjp <- function(graph, targets, out_grads, inputs = NULL) {
   desc <- .current_descriptor()
-  rebuilt <- rebuild_forward_into(graph, desc, inputs)
   required_env <- requirements_from(graph, targets)
+  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env)
   # A higher-order call inside the sub-graph can hide a capture just as one in
   # the top-level graph can.
   assert_no_captured_grads(graph, required_env)
@@ -380,15 +380,20 @@ subgraph_refs <- function(call) {
 #   - trans: hashtab(original gval -> new gval) for every replaced output.
 #     Inputs, constants, and literals are not added (they fall through).
 #   - backwards: ordered list that needs to be traversed in reverse for the backward pass.
-rebuild_forward_pass <- function(graph, envir = parent.frame()) {
+rebuild_forward_pass <- function(graph, required_env = NULL, envir = parent.frame()) {
   desc <- local_descriptor(envir = envir)
-  c(list(desc = desc), rebuild_forward_into(graph, desc))
+  c(list(desc = desc), rebuild_forward_into(graph, desc, required_env = required_env))
 }
 
 # The body of `rebuild_forward_pass()`, against a descriptor the caller already
 # has. `graph_vjp()` uses it to replay a sub-graph into the descriptor a branch
 # of the backward pass is being traced into, rather than into one of its own.
-rebuild_forward_into <- function(graph, desc, inputs = NULL) {
+#
+# With `required_env`, a call none of whose operands requires a gradient keeps
+# its plain forward even where its rule has a replacement: the backward pass
+# skips it, so what the replacement keeps for it -- a scan's tape -- would be
+# computed for nothing.
+rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL) {
   # consts and inputs keep their identity, only GraphValues created by PrimitiveCalls
   # get new identifier -- unless `inputs` binds the inputs to boxes of `desc`,
   # in which case the graph is replayed as a function of them.
@@ -432,8 +437,12 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL) {
     call <- graph$calls[[i]]
     rule <- call$primitive[["reverse"]]
 
-    if (is.null(rule) || is.null(rule$forward)) {
-      # No rule, or backward-only rule: the forward computation is unchanged,
+    needs_grad <- is.null(required_env) ||
+      any(vapply(call$inputs, \(x) !is_graph_literal(x) && isTRUE(required_env[[x]]), logical(1L)))
+
+    if (is.null(rule) || is.null(rule$forward) || !needs_grad) {
+      # No rule, a backward-only rule, or a call the backward pass skips: the
+      # forward computation is unchanged,
       # so we can reuse the original output gvals directly. Only mint a new
       # PrimitiveCall if an upstream alt-forward replaced one of our inputs;
       # otherwise share the original call object verbatim.
@@ -443,11 +452,12 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL) {
       desc$calls$add(new_call)
       register_gvals(desc, call$outputs)
 
-      # If `rule` is NULL `backwards[[i]]` stays NULL. `run_backward_pass`
+      # Without a backward rule `backwards[[i]]` stays NULL. `run_backward_pass`
       # treats that as "skip if no input requires grad, otherwise abort":
       # primitives like `prim_fill` whose inputs are all static parameters
-      # never reach the abort branch, so they don't need a reverse rule.
-      if (!is.null(rule)) {
+      # never reach the abort branch, so they don't need a reverse rule, and
+      # neither does a skipped call whose rule only has a replacement forward.
+      if (!is.null(rule$backward)) {
         backwards[[i]] <- list(
           fn = rule$backward,
           inputs = lapply(new_call$inputs, GraphBox, desc = desc),

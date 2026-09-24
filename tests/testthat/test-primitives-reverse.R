@@ -1135,6 +1135,33 @@ describe("prim_scan", {
     )
   })
 
+  it("differentiates a value an integer xs indexes into", {
+    # x[1] is read twice, x[3] once, x[2] never.
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(s = carry$s + x[xs$i]), out = NULL)
+      prim_scan(list(s = nv_scalar(0, "f64")), list(i = nv_array(c(1L, 3L, 1L))), body, steps = 3L)$carry$s
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(2, 0, 1))
+  })
+
+  it("leaves a scan that does not depend on wrt alone", {
+    f <- function(x, y) {
+      body <- function(carry, xs) list(carry = list(s = carry$s + xs$v), out = NULL)
+      prim_scan(list(s = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$s * y
+    }
+    grads <- jit(gradient(f, wrt = "y"))(x, nv_scalar(2, "f64"))
+    expect_equal(as.numeric(grads$y), 6)
+  })
+
+  it("differentiates a captured value without differentiating xs", {
+    f <- function(xs, w) {
+      body <- function(carry, x) list(carry = list(s = carry$s + x$v * w), out = NULL)
+      prim_scan(list(s = nv_scalar(0, "f64")), list(v = xs), body, steps = 3L)$carry$s
+    }
+    grads <- jit(gradient(f, wrt = "w"))(x, nv_scalar(2, "f64"))
+    expect_equal(as.numeric(grads$w), 6)
+  })
+
   it("passes the gradient straight through a scan of zero steps", {
     f <- function(x) {
       body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
