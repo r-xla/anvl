@@ -3516,8 +3516,8 @@ prim_qr <- new_primitive(
 #' @section StableHLO:
 #' Lowers to a `"lu"` [hlo_custom_call()] (backed by LAPACK on
 #' CPU and cuSOLVER on CUDA) for `LU` and `pivots`, followed by a
-#' [hlo_while()] loop that converts `pivots` to `permutation`
-#' in-graph.
+#' `"lu_pivots_to_permutation"` [hlo_custom_call()] (a loop on CPU, a
+#' prebuilt kernel on CUDA) that converts `pivots` to `permutation`.
 #' @seealso [nv_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # `LU` keeps the input's data type; the pivots are the default integer

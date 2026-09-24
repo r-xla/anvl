@@ -259,6 +259,9 @@
 
 ## Performance
 
+* `nv_lu()` computes the permutation from the pivots with {pjrt}'s
+  `lu_pivots_to_permutation` custom call instead of a `while` loop, which was
+  slow on CUDA.
 * `nv_quantile()` and `nv_median()` select the needed order statistics with
   `top_k` instead of a full sort when every requested quantile lies in the
   same half of the axis. Results are unchanged: the interpolation index is

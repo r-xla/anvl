@@ -1130,59 +1130,20 @@ prim_qr[["stablehlo"]] <- function(x) {
 }
 
 # Convert a LAPACK pivot vector (length `k`, 1-based sequential row swaps
-# from getrf) into a length-`n` 1-based permutation vector, using
-# `hlo_while` + dynamic slice / update_slice. The body Func closes over the
-# outer `pivots` Value the same way an anvl-traced `prim_while` body would.
-pivots_to_permutation <- function(pivots, n) {
-  func <- pivots$func
-  k <- shape(pivots$value_type)[[1L]]
-
-  iota0 <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = n, func = func)
-  one_n <- hlo_tensor(1L, dtype = "i32", shape = n, func = func)
-  init_perm <- hlo_add(iota0, one_n)
-  init_i <- hlo_scalar(0L, dtype = "i32", func = func)
-
-  cond_func <- stablehlo::local_func("")
-  i <- region_input("i32")
-  region_input("i32", n) # unused in cond; declared to match state shape
-  cond_func <- hlo_return(hlo_compare(
-    i,
-    hlo_scalar(k, dtype = "i32"),
-    comparison_direction = "LT",
-    compare_type = "SIGNED"
-  ))
-
-  # Body of one loop iteration (i in 0..k-1): LAPACK getrf swapped row i
-  # with row pivots[i]; we mirror that on `perm` by exchanging perm[i] and
-  # perm[j], where j = pivots[i] - 1 converts pivots' 1-based value to a
-  # 0-based index.
-  body_func <- stablehlo::local_func("")
-  i <- region_input("i32")
-  perm <- region_input("i32", n)
-  # constant in the region
-  pivots_in_body <- stablehlo::FuncValue(
-    pivots$value_id,
-    pivots$value_type,
-    stablehlo::.current_func()
+# from getrf) into a length-`m` 1-based permutation vector. {pjrt}'s
+# `lu_pivots_to_permutation` does it in one call: a loop on the CPU, and a
+# single CUDA kernel on a GPU, where an `hlo_while` over the swaps would cost
+# a kernel launch and a device-to-host copy per iteration.
+pivots_to_permutation <- function(pivots, m) {
+  hlo_custom_call(
+    pivots,
+    call_target_name = "lu_pivots_to_permutation",
+    api_version = 4L,
+    has_side_effect = FALSE,
+    output_types = list(vt(dtype = "i32", shape = m)),
+    operand_layouts = list(0L),
+    result_layouts = list(0L)
   )
-  one <- hlo_scalar(1L, dtype = "i32")
-  pivots_i <- hlo_reshape(hlo_dynamic_slice(pivots_in_body, i, slice_sizes = 1L), integer())
-  # pjrt custom call returns pivots 1-based (cuSolve matches LAPACK), so we have to convert
-  # because stablehlo is 0-based
-  j <- hlo_subtract(pivots_i, one) # 0-based swap target
-  val_i <- hlo_dynamic_slice(perm, i, slice_sizes = 1L) # perm[i]
-  val_j <- hlo_dynamic_slice(perm, j, slice_sizes = 1L) # perm[j]
-  new_perm <- hlo_dynamic_update_slice(perm, val_j, i) # perm[i] <- val_j
-  new_perm <- hlo_dynamic_update_slice(new_perm, val_i, j) # perm[j] <- val_i
-  body_func <- hlo_return(hlo_add(i, one), new_perm)
-
-  hlo_while(
-    init_i,
-    init_perm,
-    cond = cond_func,
-    body = body_func,
-    simplify = FALSE
-  )[[2L]]
 }
 
 prim_lu[["stablehlo"]] <- function(x, output_types) {
