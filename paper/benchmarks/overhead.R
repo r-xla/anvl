@@ -15,6 +15,8 @@ source(file.path(here, "common.R"))
 source(file.path(here, "hmc-anvl.R"))
 
 n <- 1e4
+p <- 20L
+n_draws <- 1000L
 d <- sim_data(n, p)
 X <- nv_array(d$X)
 y <- nv_array(as.double(d$y))

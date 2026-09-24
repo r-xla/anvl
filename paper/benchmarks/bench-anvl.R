@@ -17,7 +17,7 @@ for (f in c("common.R", "grid.R", "hmc-anvl.R")) source(file.path(here, f))
 # this lets every core work on its own chains.
 n_devices <- as.integer(Sys.getenv("PJRT_CPU_DEVICE_COUNT", "1"))
 
-run <- function(n, K) {
+run <- function(n, K, p, n_draws) {
   d <- sim_data(n, p)
   eps <- step_size(n)
   G <- min(K, n_devices)
@@ -49,5 +49,5 @@ run <- function(n, K) {
 
 grid <- bench_grid(experiment, max_K)
 for (i in seq_len(nrow(grid))) {
-  run(grid$n[[i]], grid$K[[i]])
+  run(grid$n[[i]], grid$K[[i]], grid$p[[i]], grid$n_draws[[i]])
 }
