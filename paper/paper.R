@@ -236,7 +236,7 @@ res_files <- list.files("benchmarks/results", pattern = "\\.csv$", full.names = 
 have_results <- length(res_files) > 0L
 
 
-## ----results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed line is \\pkg{anvl} on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 3.1, out.width = "49%", fig.show = "hold", fig.pos = "tbp"----
+## ----results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed lines are \\pkg{anvl} and \\CRANpkg{torch} on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 3.1, out.width = "49%", fig.show = "hold", fig.pos = "tbp"----
 source("benchmarks/plots.R")
 plot_single(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2), linetype = ggplot2::guide_legend(ncol = 2))
 plot_scaling(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2))

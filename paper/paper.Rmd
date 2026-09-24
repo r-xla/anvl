@@ -629,6 +629,8 @@ We ask how the sampler compares on a single CPU core, how well it uses multiple 
 
 We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40, with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that both samplers perform the same number of gradient evaluations.
 The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficient implementation of the logistic regression likelihood, which Stan can also evaluate on a GPU via OpenCL.
+We attempted to include this OpenCL backend, but could not run it on the GPU nodes we used: OpenCL contexts could be created, but compiling any OpenCL kernel failed, presumably because the nodes' driver installation lacks a version of NVIDIA's OpenCL compiler library that matches the installed driver.
+We therefore report no GPU results for Stan.
 The \CRANpkg{torch} sampler mirrors the \pkg{anvl} code: it obtains the gradient from \CRANpkg{torch}'s reverse-mode AD and runs the leapfrog and sampling loops as R loops, as \CRANpkg{torch} executes each operation eagerly.
 The number of threads \CRANpkg{torch} uses on the CPU is set via `torch_set_num_threads()`.
 Both samplers work in double precision and start at $\beta = 0$, and the data are simulated with standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
@@ -650,7 +652,7 @@ The CPU experiments used a node with two Intel Xeon Gold 6336Y processors, restr
 
 ## Results
 
-```{r results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed line is \\pkg{anvl} on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 3.1, out.width = "49%", fig.show = "hold", fig.pos = "tbp"}
+```{r results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed lines are \\pkg{anvl} and \\CRANpkg{torch} on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 3.1, out.width = "49%", fig.show = "hold", fig.pos = "tbp"}
 source("benchmarks/plots.R")
 plot_single(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2), linetype = ggplot2::guide_legend(ncol = 2))
 plot_scaling(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2))
@@ -670,7 +672,7 @@ Without any change to the code, \pkg{anvl} becomes 1.7, 2.8, and 4.6 times faste
 With `reduce_sum()`, Stan scales further at 16 cores (11 times faster than on one thread), but this requires rewriting the model, and the parallelized model is slower than the original on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
 Up to 8 cores, both scale similarly; beyond that, profiling suggests that \pkg{anvl} is limited by the fixed cost of distributing each operation of the gradient over the cores, as the individual operations are too small at this problem size to keep 16 cores busy.
 \CRANpkg{torch} is as fast as \pkg{anvl} on one core (37 seconds), as the operations are large enough at this problem size to hide its overhead, but it becomes only 1.7 times faster on 16 threads (22 seconds).
-The GPU completes the same run with \pkg{anvl} in `r if (file.exists("benchmarks/results/scaling-gpu.csv")) round(median(read.csv("benchmarks/results/scaling-gpu.csv")$time), 2) else "--"` seconds.
+On the GPU, the same run takes `r round(median(read.csv("benchmarks/results/scaling-gpu.csv")$time), 2)` seconds with \pkg{anvl} and `r round(median(read.csv("benchmarks/results/scaling-gpu-torch.csv")$time), 1)` seconds with \CRANpkg{torch}.
 
 ```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 2.6, fig.pos = "tbp"}
 plot_chains(res_files)

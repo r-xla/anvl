@@ -52,8 +52,10 @@ It consists of
 - `run-cpu.sh`: one core and 16 cores, single chain for n = 10^3, 10^4, 10^5 and
   1 to 256 chains for n = 10^4 (1 to 64 on one core), plus `overhead.R`;
 - `run-gpu.sh`, `run-gpu-torch.sh`, `run-gpu-stan.sh`: the same configurations on one GPU for
-  {anvl}, torch, and Stan with OpenCL (up to 4096, 4096, and 64 chains), including the
-  strong-scaling configuration;
+  {anvl}, torch, and Stan with OpenCL, including the strong-scaling configuration. On the LRZ
+  nodes, torch did not finish 1024 chains within the one-hour limit, and Stan's OpenCL backend
+  could not compile OpenCL kernels (the nodes lack a `libnvidia-gpucomp` matching their
+  driver), so the paper reports no Stan GPU results;
 - `run-scaling.sh`: strong scaling of a single chain (n = 10^5, p = 100) on 1 to 16 physical
   cores, for {anvl} and for Stan with `reduce_sum()` (`logistic-threads.stan`), plus 64 chains
   as a single {anvl} program versus one Stan process per chain.
