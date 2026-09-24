@@ -11,15 +11,16 @@ if [ ! -e "$R_USER_CACHE_DIR/R/pjrt.cuda" ]; then
   mkdir -p "$R_USER_CACHE_DIR/R"
   ln -s "$src" "$R_USER_CACHE_DIR/R/pjrt.cuda"
 fi
-# The CUDA base image ships NVIDIA's forward-compatibility libraries (libcuda and
-# the PTX JIT compiler of a newer driver), while the container runtime injects the
-# host driver's OpenCL library. OpenCL crashes when it loads the newer JIT
-# compiler, so the Stan runs use the host driver's own libraries.
+# The CUDA base image ships NVIDIA's forward-compatibility libraries (libcuda, the
+# PTX JIT compiler and NVVM of a newer driver), while the container runtime injects
+# the host driver's OpenCL library. OpenCL crashes or fails to build kernels with
+# the newer libraries, so the Stan runs use the host driver's own ones.
 HOSTV=$(readlink /lib/x86_64-linux-gnu/libnvidia-opencl.so.1 | sed 's/libnvidia-opencl.so.//')
 mkdir -p /tmp/host-driver
 for l in libcuda libnvidia-ptxjitcompiler; do
   ln -sf "/lib/x86_64-linux-gnu/$l.so.$HOSTV" "/tmp/host-driver/$l.so.1"
 done
+ln -sf "/lib/x86_64-linux-gnu/libnvidia-nvvm.so.$HOSTV" /tmp/host-driver/libnvidia-nvvm.so.4
 export LD_LIBRARY_PATH="/tmp/host-driver:${LD_LIBRARY_PATH:-}"
 mkdir -p results
 OUT=results/gpu-stan.csv
