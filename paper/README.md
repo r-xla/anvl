@@ -8,7 +8,8 @@ Source of the R Journal article on {anvl}.
 | `references.bib`, `preamble.tex`, `RJournal.sty` | Bibliography, LaTeX macros, journal style |
 | `docker/` | `Dockerfile` and `install.sh` of the image in which all results were produced |
 | `benchmarks/hmc-anvl.R` | HMC sampler; its sections are read into the article via `knitr::read_chunk()` |
-| `benchmarks/logistic.stan` | The same model in Stan |
+| `benchmarks/hmc-torch.R` | The same sampler with torch (autograd, eager execution) |
+| `benchmarks/logistic.stan`, `logistic-threads.stan` | The model in Stan, and with `reduce_sum()` for multithreading |
 | `benchmarks/bench-*.R`, `overhead.R` | Runtime benchmark and compilation overhead |
 | `benchmarks/lrz/` | Slurm scripts used to run the benchmark on the LRZ AI Systems |
 | `benchmarks/results/` | Raw benchmark results used in the article |
@@ -17,7 +18,8 @@ Source of the R Journal article on {anvl}.
 ## Software environment
 
 The image is based on `sebffischer/anvl-cuda`, pinned by digest, and `docker/install.sh`
-installs the r-xla packages and {quickr} at fixed commits, CmdStan 2.40.0, and the R
+installs the r-xla packages and {quickr} at fixed commits, CmdStan 2.40.0, torch with the CUDA build of LibTorch,
+the OpenCL loader for Stan's GPU support, and the R
 packages needed to render the article. It contains both the CPU and the CUDA PJRT plugin,
 so the same image is used for all experiments.
 
@@ -42,12 +44,15 @@ benchmark results from `benchmarks/results/`, and then compiles `RJwrapper.tex` 
 
 ## Runtime benchmark
 
-The benchmark compares the HMC sampler to CmdStan's static HMC sampler. It consists of
+The benchmark compares the HMC sampler to CmdStan's static HMC sampler (on the CPU, with
+`reduce_sum()` threads, and with OpenCL on the GPU) and to the same sampler written with torch.
+It consists of
 
 - `run-cpu.sh`: one core and 16 cores, single chain for n = 10^3, 10^4, 10^5 and
   1 to 256 chains for n = 10^4 (1 to 64 on one core), plus `overhead.R`;
-- `run-gpu.sh`: the same configurations for {anvl} on one GPU, with up to 4096 chains, and the
-  strong-scaling configuration on the GPU;
+- `run-gpu.sh`, `run-gpu-torch.sh`, `run-gpu-stan.sh`: the same configurations on one GPU for
+  {anvl}, torch, and Stan with OpenCL (up to 4096, 4096, and 64 chains), including the
+  strong-scaling configuration;
 - `run-scaling.sh`: strong scaling of a single chain (n = 10^5, p = 100) on 1 to 16 physical
   cores, for {anvl} and for Stan with `reduce_sum()` (`logistic-threads.stan`), plus 64 chains
   as a single {anvl} program versus one Stan process per chain.
@@ -70,6 +75,8 @@ export IMAGE_DIR=<directory for the squashfs image> PAPER_DIR=<checkout>/paper
 sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/build-image.sbatch
 sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-cpu.sbatch
 sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-gpu.sbatch
+sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-gpu-torch.sbatch
+sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-gpu-stan.sbatch
 sbatch --export=ALL,IMAGE_DIR,PAPER_DIR benchmarks/lrz/bench-scaling.sbatch
 ```
 
