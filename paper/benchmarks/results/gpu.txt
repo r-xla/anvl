@@ -1,0 +1,2 @@
+name, driver_version, memory.total [MiB]
+NVIDIA A100-SXM4-80GB, 580.173.02, 81920 MiB

@@ -62,7 +62,7 @@ knitr::read_chunk("benchmarks/hmc-anvl.R")
 options(width = 80)
 ```
 
-## Introduction and related work {#intro}
+# Introduction and related work {#intro}
 
 Most statistical and machine learning methods are, at their core, sequences of operations on vectors and arrays.
 In R, such methods can often be implemented efficiently by relying on vectorized operations and optimized linear algebra routines.
@@ -118,7 +118,7 @@ knitr::kable(related, format = "latex", booktabs = TRUE, label = "related",
   caption = "Overview of related R packages. Input is the language in which a program is written, Compilation the way it is executed.")
 ```
 
-### Contributions
+## Contributions
 
 We introduce \pkg{anvl}, a code transformation framework for array programs in R.
 Users write numerical algorithms in R against a set of array operations, and \pkg{anvl} transforms them: into an executable via JIT compilation, into their gradient via reverse-mode AD, or both.
@@ -146,9 +146,9 @@ Section \@ref(design) describes the design of \pkg{anvl}, Section \@ref(precisio
 In Section \@ref(hmc), we implement a Hamiltonian Monte Carlo sampler for Bayesian logistic regression, whose runtime we evaluate against Stan in Section \@ref(runtime).
 Finally, we discuss limitations and future work in Section \@ref(discussion).
 
-## Background {#background}
+# Background {#background}
 
-### The OpenXLA compiler ecosystem
+## The OpenXLA compiler ecosystem
 
 OpenXLA [@ref-openxla] is an open-source compiler ecosystem for machine learning that originated in TensorFlow.
 One of its goals is to decouple array computing frameworks (the frontends) from hardware-specific compilers and runtimes (the backends) through two standardized interfaces:
@@ -160,7 +160,7 @@ A framework that emits StableHLO and executes it via PJRT can run on any hardwar
 This turns an $n \times m$ problem ($n$ frontends targeting $m$ types of hardware) into an $n + m$ problem.
 The main compiler consuming StableHLO is XLA, which, among other things, fuses operations to reduce memory traffic, but alternatives such as IREE [@ref-iree] exist.
 
-#### StableHLO
+### StableHLO
 
 StableHLO is a dialect of MLIR, the Multi-Level Intermediate Representation that is part of the LLVM compiler infrastructure.
 It is a strongly typed, functional language in static single assignment form: every value is assigned exactly once, and the type of each value, i.e., its data type and shape, is known when the program is compiled.
@@ -183,7 +183,7 @@ Finally, `hlo_return()` sets the outputs and returns the finished `Func`.
 The package is written in R rather than wrapping the C++ implementation, which keeps it easy to install.
 It does not implement the full specification; for example, complex numbers and dynamic shapes are not supported.
 
-#### PJRT
+### PJRT
 
 The PJRT interface defines, among other things, how to allocate buffers on a device, compile a program for it, and execute the compiled program.
 Its implementations are shared libraries (plugins) that are loaded at runtime, and the \pkg{pjrt} package wraps the C API.
@@ -207,7 +207,7 @@ The NVIDIA libraries required by the CUDA plugin are installed by a companion R 
 XLA and StableHLO are licensed under Apache 2.0, the NVIDIA libraries under NVIDIA's license terms, and \pkg{anvl}, \pkg{stablehlo}, and \pkg{pjrt} under the MIT license.
 Because of the downloads, the packages are currently distributed via R-universe rather than CRAN.
 
-### The quickr package
+## The quickr package
 
 The \CRANpkg{quickr} package [@ref-quickr] compiles R functions to Fortran.
 Unlike \pkg{stablehlo}, it does not offer a builder API, but statically analyzes the code of an R function whose argument types are declared via `declare()`.
@@ -215,14 +215,14 @@ In contrast to XLA, a compiled \CRANpkg{quickr} function can be reused for input
 On the other hand, it only runs on the CPU, supports fewer data types, and has no AD.
 \pkg{anvl}'s \CRANpkg{quickr} backend is at an early, experimental stage: it covers only part of \pkg{anvl}'s operations and does not yet exploit the support for dynamic shapes.
 
-### Reverse-mode automatic differentiation
+## Reverse-mode automatic differentiation
 
 AD exploits that a program evaluating $F : \R^n \to \R^m$ executes a sequence of elementary operations $v_i = \varphi_i(v_j)_{j \prec i}$ with known derivatives, where $j \prec i$ denotes that $v_j$ is an argument of $\varphi_i$ [@ref-griewank2008evaluating].
 Forward mode applies the chain rule along this evaluation procedure and computes a Jacobian-vector product $F'(x)\dot{x}$ per sweep.
 Reverse mode instead propagates *adjoints* $\bar{v}_j = \sum_{i \succ j} \bar{v}_i \fp{v_i}{v_j}$ backward from the outputs and computes a vector-Jacobian product $\bar{y}^\top F'(x)$ per sweep.
 For a scalar function, a single reverse sweep therefore yields the whole gradient at a small constant multiple of the cost of evaluating $F$, which makes reverse mode the method of choice for optimization and sampling, at the price of storing intermediate values for the backward sweep.
 
-## Package design {#design}
+# Package design {#design}
 
 The central idea of \pkg{anvl}, which is adopted from JAX, is to view compilation and differentiation as *code transformations*.
 There are three kinds of them:
@@ -233,7 +233,7 @@ There are three kinds of them:
 
 In this section, we first introduce the array type and eager execution, then describe the three kinds of transformations, and finally how they are exposed to users through `jit()` and `gradient()`.
 
-### Arrays and eager execution
+## Arrays and eager execution
 
 The main data structure is the `AnvlArray`.
 Compared to an R array, it supports more data types (e.g., single and double precision floats and signed and unsigned integers of different widths), lives on a specific device, such as a CPU or a GPU, and represents scalars as arrays without axes.
@@ -264,7 +264,7 @@ Execution is asynchronous: calling a compiled program returns as soon as the com
 Metadata such as `shape()` and `dtype()` is available immediately.
 This allows R to prepare the next call while the device is still busy, which is especially important for GPUs.
 
-### Tracing R code into a graph
+## Tracing R code into a graph
 
 There are two ways to translate code into another representation: statically analyzing its source code, as done by \CRANpkg{quickr}, or executing it with special values that record the operations applied to them, which is called tracing.
 \pkg{anvl} follows the latter approach.
@@ -294,7 +294,7 @@ The downside is that tracing only works for functions that can be intercepted.
 For example, `sum()` and `%*%` are generics with methods for \pkg{anvl}'s arrays, whereas `rowSums()` is not generic and therefore cannot be traced; a static compiler such as \CRANpkg{quickr} can translate such functions directly.
 Furthermore, programs must be pure: side effects, such as printing or modifying global variables, only happen once during tracing, and R control flow can only depend on values that are known during tracing, such as static arguments and shapes.
 
-### Transforming a graph into another graph
+## Transforming a graph into another graph
 
 Once a program is represented as an `AnvlGraph`, it can be transformed into another graph.
 Currently, the main such transformation is reverse-mode AD, implemented in `transform_gradient()`.
@@ -309,7 +309,7 @@ Because the reverse rules themselves call primitives, the backward pass is recor
 The transformation is defined for functions with a scalar output, which is the case for the objective functions of optimization and sampling algorithms.
 \pkg{anvl} does not prescribe how a transformation is implemented; the rules attached to primitives are simply a convenient place to store per-operation information.
 
-### Transforming a graph into an executable
+## Transforming a graph into an executable
 
 A backend lowers an `AnvlGraph` into an executable.
 For the `"pjrt"` backend, which uses XLA, `stablehlo()` translates the graph into a StableHLO function by applying each primitive's `"stablehlo"` rule, which maps it to one or more \pkg{stablehlo} operations.
@@ -323,11 +323,11 @@ R literals are embedded into the program as constants, while arrays that the tra
 The resulting program is then compiled via \pkg{pjrt}.
 The \CRANpkg{quickr} backend instead translates the graph into an R function with type declarations and compiles it with \CRANpkg{quickr}.
 
-### The user interface
+## The user interface
 
 In practice, users rarely call the transformations above themselves, but use `jit()`, `gradient()`, and `value_and_gradient()`, which return functions that apply the transformations lazily, once the types of the inputs are known.
 
-#### `jit()`
+### `jit()`
 
 `jit()` returns a function with the same arguments that traces, lowers, and compiles its input when it is called.
 The compiled executable is cached, and a later call with inputs of the same data types and shapes reuses it.
@@ -355,7 +355,7 @@ as_array(g(x, x, op = "add"))
 A jitted function called from within another jitted function is not executed separately, but traced as part of the outer function, so that both are compiled into a single executable.
 Because every primitive is a jitted function, the same function can therefore be used both eagerly and as a building block of larger programs.
 
-#### `gradient()`
+### `gradient()`
 
 `gradient()` takes a function with scalar output and returns a function that computes the gradient with respect to the arguments given in `wrt`, returning a named list.
 Like any other function built from \pkg{anvl} operations, it can be jitted or called from within another jitted function.
@@ -372,13 +372,13 @@ as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
 
 When `update()` is traced, the call to the gradient function traces `loss()` into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of `update()`.
 
-#### Control flow
+### Control flow
 
 R's control flow can be used within jitted functions, but as we have seen, an `if` statement only retains the branch that was taken and a loop is unrolled during tracing.
 For control flow that depends on array values, or for loops that should not be unrolled, \pkg{anvl} provides the higher-order primitives `nv_if()`, `nv_while()`, and `nv_scan()`, which trace the functions passed to them into sub-graphs.
 For example, `nv_scan()` runs a loop for a fixed number of steps, threads a state (the carry) through a body function, and stacks the outputs of all steps; we use it in Section \@ref(hmc).
 
-### Restrictions
+## Restrictions
 
 The XLA compiler requires all shapes to be known when a program is compiled.
 This allows for aggressive optimizations, but it means that operations whose output shape depends on the values of their inputs, such as `unique()` or subsetting with a logical mask, cannot be expressed directly.
@@ -389,7 +389,7 @@ A related restriction is that StableHLO programs cannot raise errors at runtime.
 For example, a dynamic slice clamps out-of-bounds indices to the valid range instead of failing.
 \pkg{anvl} therefore performs all checks during tracing, and values that must be validated, such as subsetting indices whose range matters, need to be static arguments.
 
-## Data types and precision {#precision}
+# Data types and precision {#precision}
 
 Numerical precision is a recurring concern in statistics.
 Log-likelihoods sum many terms, linear systems can be ill-conditioned, and Markov chain Monte Carlo methods compare densities whose difference is small relative to their size, all of which can require double precision.
@@ -397,7 +397,7 @@ Accelerators, on the other hand, are designed for single precision: consumer GPU
 A framework for statistical computing should therefore make it easy to choose the precision of a computation, and it should not lose precision without being asked to.
 In this section, we describe how \pkg{anvl} achieves this, and how its approach differs from JAX, from which much of \pkg{anvl}'s design is otherwise adopted.
 
-### R values have no data type
+## R values have no data type
 
 In JAX, Python scalars are *weakly typed*: they take the data type of the array they are combined with, so adding `2.0` to a single-precision array does not promote it [@ref-jax].
 NumPy arrays, however, have a data type.
@@ -433,7 +433,7 @@ An R value is built at the data type it takes, rather than first materialized at
 The distinction between R's integers and doubles is preserved, so, as in R, `x - 1L` keeps an integer array `x` an integer, while `x - 1` gives a float.
 Finally, integers never become floats on their own: an unsigned and a signed 64-bit integer have no common data type in \pkg{anvl} and must be converted explicitly, whereas JAX and NumPy silently promote them to a float.
 
-### Choosing the precision
+## Choosing the precision
 
 The default data types for R doubles and integers are a property of the backend (`f32` and `i32` for XLA) and can be changed for a scope via `with_default_dtypes()` or the option `anvl.default_dtypes`.
 `with_dtypes()` goes one step further and turns a function into one that runs at the given data types, converting its array arguments and results and setting the defaults for its body.
@@ -449,7 +449,7 @@ dtype(loss_f64(nv_array(matrix(0, 2, 1), dtype = "f32"), B, B[, 1, drop = FALSE]
 Compiled programs are cached per default data types, so both variants can be used side by side.
 In contrast to JAX's 64-bit mode, which decides whether 64-bit types are available at all, the defaults in \pkg{anvl} only decide what an R value settles on when nothing else determines its data type; double precision is always available.
 
-### Promotion rules
+## Promotion rules
 
 When a function receives arrays of different data types, it has to decide on the data type of the computation.
 In \pkg{anvl}, this is not a global rule, but each `nv_*()` function states it explicitly, by passing a *promotion rule* to `as_anvl_arrays()`, which converts its arguments to arrays (materializing R values) at the beginning of the function.
@@ -469,11 +469,11 @@ axpy(2, nv_array(c(1, 2), dtype = "f64"), y32)
 
 The same mechanism is available to developers of packages built on \pkg{anvl}, who can decide for each function which argument determines the precision of the computation, e.g., that a likelihood is always accumulated in double precision while the data stays in single precision.
 
-## Extending the package {#extending}
+# Extending the package {#extending}
 
 One of our design goals is that \pkg{anvl} can be extended with new primitives, transformations, and backends.
 
-### New primitives
+## New primitives
 
 Most operations can be expressed in terms of existing primitives and are best added as `nv_*()` functions.
 A new primitive is needed if an operation cannot be expressed otherwise, or if it benefits from a dedicated implementation, e.g., of its derivative.
@@ -516,19 +516,19 @@ This mechanism covers every operation that can be expressed in StableHLO.
 For operations that cannot, such as calls into LAPACK or cuSOLVER for some linear algebra primitives, the XLA backend supports PJRT's custom call mechanism: a handler written in C or C++ against XLA's foreign function interface is registered from R via \pkg{pjrt} and referenced from the StableHLO program.
 Because handlers are registered per platform, a primitive can dispatch to separate CPU and CUDA implementations.
 
-### New transformations and backends
+## New transformations and backends
 
 Since an `AnvlGraph` is a simple data structure consisting of inputs, outputs, and a list of primitive calls, new graph-to-graph transformations can be implemented in R by iterating over the calls and emitting new ones, usually guided by a rule stored in each primitive.
 For example, forward-mode AD would propagate Jacobian-vector products, and a vectorizing transformation similar to JAX's `vmap()` would rewrite each call to operate on an additional batch axis.
 A backend is represented by an `AnvlBackend` object, a collection of functions that define how arrays are stored, converted to R, and placed on devices, and how a graph is compiled, together with a lowering rule for each supported primitive.
 Two backends are available, `"pjrt"` and `"quickr"`; exactly one of them is active at a time, which can be changed via `local_backend()` or `with_backend()`.
 
-### Testing
+## Testing
 
 We test the primitives against \CRANpkg{torch} as a reference implementation wherever possible: the outputs of jitted primitives and their gradients are compared to those of \CRANpkg{torch} and its autograd engine on random inputs.
 Operations without a counterpart in \CRANpkg{torch} are tested against manually computed results.
 
-## Use case: Hamiltonian Monte Carlo {#hmc}
+# Use case: Hamiltonian Monte Carlo {#hmc}
 
 In this section, we implement Hamiltonian Monte Carlo (HMC) [@ref-neal2011mcmc] for Bayesian logistic regression.
 HMC is a Markov chain Monte Carlo method that uses the gradient of the log posterior density to propose distant states that are still accepted with high probability.
@@ -592,7 +592,7 @@ rbind(
 The whole sampler, including the $2000 \times 11$ gradient evaluations per chain, runs as a single compiled program without returning to R.
 The same code runs on a GPU when the arrays are allocated there, e.g., via `nv_array(X, device = "cuda")`.
 
-## Runtime evaluation {#runtime}
+# Runtime evaluation {#runtime}
 
 ```{r results-load, include = FALSE}
 res_files <- list.files("benchmarks/results", pattern = "\\.csv$", full.names = TRUE)
@@ -602,7 +602,7 @@ have_results <- length(res_files) > 0L
 In this section, we compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath].
 We are interested in three questions: how the sampler compares on a single CPU core, how it scales with the number of chains on CPU and GPU, and how large the compilation overhead is.
 
-### Setup
+## Setup
 
 We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40, with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that both samplers perform the same number of gradient evaluations.
 The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficient implementation of the logistic regression likelihood.
@@ -611,17 +611,18 @@ The data are simulated with $p = 20$ standard normal features and $\beta \sim \m
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
 Static HMC in CmdStan runs one chain per process, so for $K$ chains, we start $K$ processes, of which at most as many run at the same time as cores are available, while \pkg{anvl} runs all chains as a single batched program.
 Each configuration is repeated three times after a first call that includes compilation, and we report the median.
-The CPU experiments ran on nodes of the `lrz-cpu` partition of the LRZ AI Systems, restricted to either one or 16 cores, and the GPU experiments on an NVIDIA A100 80GB GPU.
-All experiments were run in the Docker image described in Appendix \@ref(reproducibility).
+All experiments ran on the LRZ AI Systems.
+The CPU experiments used a node with two Intel Xeon Gold 6336Y processors, restricted by Slurm to 16 cores, where the single-core configurations were additionally pinned to one core, and the GPU experiments used an NVIDIA A100 80GB GPU.
+All experiments were run in the Docker image described in Appendix A.
 
-### Results
+## Results
 
-```{r results-single, echo = FALSE, eval = have_results, fig.cap = "Median time to draw 1000 samples from a single chain as a function of the number of observations $n$ (log-log scale).", fig.width = 6, fig.height = 3.2}
+```{r results-single, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from a single chain as a function of the number of observations $n$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 3.2}
 source("benchmarks/plots.R")
 plot_single(res_files)
 ```
 
-```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Median time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (log-log scale).", fig.width = 6, fig.height = 3.2}
+```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 3.2}
 plot_chains(res_files)
 ```
 
@@ -629,9 +630,27 @@ plot_chains(res_files)
 overhead_table(res_files)
 ```
 
-`r if (!have_results) "\\textbf{Results pending.}"`
+Figure \@ref(fig:results-single) shows the time for a single chain.
+On one core, \pkg{anvl} draws the samples 2.7 to 3.1 times faster than CmdStan for $n = 10^3$ and $n = 10^4$, and 1.6 times faster for $n = 10^5$ (31 versus 50 seconds).
+A plausible reason is that XLA compiles the whole sampler, including the leapfrog loop and the gradient, into a single optimized program, whereas Stan evaluates the gradient with its operator-overloading AD library.
+Using 16 cores instead of one helps \pkg{anvl} only for $n = 10^5$ (21 seconds), as XLA can parallelize only within individual operations, which are too small for smaller $n$.
+The GPU does not pay off for small data: for $n = 10^3$, its per-step overhead makes it slower than a single CPU core.
+For $n = 10^5$, however, it draws the samples in 0.31 seconds, which is about 100 times faster than \pkg{anvl} on one core and 160 times faster than CmdStan.
 
-## Discussion {#discussion}
+Figure \@ref(fig:results-chains) shows how the runtime scales with the number of chains for $n = 10^4$.
+On one core, both samplers scale approximately linearly in the number of chains, with \pkg{anvl} being 2.7 (one chain) to 5.9 (64 chains) times faster.
+On 16 cores, however, CmdStan runs the chains as independent processes, so 16 chains take only 7.1 seconds compared to 4.1 seconds for one, while \pkg{anvl}'s batched program benefits little from additional cores, so that CmdStan is faster for many chains (113 versus 157 seconds for 256 chains).
+Running the batched program on multiple CPU devices, one per core, is a possible remedy that we have not yet explored.
+On the GPU, the time is almost constant up to 64 chains and grows sublinearly beyond that: 4096 chains with 1000 draws each take 10.8 seconds, which corresponds to about 380,000 draws per second, compared to about 2,300 draws per second for CmdStan on 16 cores.
+This is exactly the regime in which the many-chain MCMC methods discussed in the introduction operate.
+All configurations of both samplers had an average acceptance rate between 0.98 and 0.99.
+
+Table \ref{tab:overhead} shows the one-off costs.
+Tracing the sampler, lowering it to StableHLO, and compiling it with XLA each take a fraction of a second, so the first call is about half a second slower than later calls.
+Compiling the Stan model takes about 11 seconds, and \CRANpkg{quickr} compiles the gradient in about one second, compared to 0.1 seconds for XLA.
+Although compilation must be repeated for every new combination of input shapes and static arguments, its cost is therefore small compared to the runtime of expensive methods, and it is quickly amortized as the size of the data grows.
+
+# Discussion {#discussion}
 
 In this paper, we introduced \pkg{anvl}, a code transformation framework for array programs in R.
 Programs are traced into a computational graph, which can be transformed into another graph, as done for reverse-mode AD, and into an executable, either via the OpenXLA ecosystem using \pkg{stablehlo} and \pkg{pjrt}, or via \CRANpkg{quickr}.
@@ -650,22 +669,22 @@ A vectorizing transformation similar to JAX's `vmap()` would remove the need to 
 To lift the static shape restriction, the intermediate representation needs to support dynamic shapes; the \CRANpkg{quickr} backend, which already compiles shape-polymorphic code, and the IREE compiler [@ref-iree], which also consumes StableHLO, are two possible routes.
 Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages that implement statistical and machine learning algorithms on top of it.
 
-## Acknowledgments
+# Acknowledgments {-}
 
 Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) -- 460135501 (NFDI project MaRDI).
 We thank the developers of JAX, whose design and documentation, in particular the Autodidax tutorial [@ref-autodidax], inspired many aspects of \pkg{anvl}, as well as the authors of the Go library gopjrt [@ref-gopjrt], which informed the design of \pkg{pjrt}.
 We gratefully acknowledge the computational resources provided by the Leibniz Supercomputing Centre (LRZ).
 
-## Appendix {.appendix}
+# Appendix {-}
 
-### A Reproducibility {#reproducibility}
+## A Reproducibility {-}
 
 All files required to reproduce the results are in the `paper/` directory of the GitHub repository <https://github.com/r-xla/anvl>, which contains a README with instructions.
 The Dockerfile in `paper/docker/` builds the image in which all results were produced.
 It is based on the `anvl-cuda` image, pinned by digest, and installs the r-xla packages, \CRANpkg{quickr}, and CmdStan at fixed versions.
 The benchmark scripts are in `paper/benchmarks/`, including the Slurm scripts used to run them on the LRZ AI Systems via Enroot, which imports the Docker image.
 
-### B AI usage
+## B AI usage {-}
 
 AI coding agents were used in the development of the software and the preparation of the manuscript.
 All AI-generated content was reviewed by the authors.

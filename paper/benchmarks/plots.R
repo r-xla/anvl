@@ -34,7 +34,6 @@ plot_bench <- function(files, exp, x) {
   ggplot(s, aes(.data[[x]], median, color = config)) +
     geom_line() +
     geom_point(size = 1) +
-    geom_errorbar(aes(ymin = lo, ymax = hi), width = 0.05) +
     scale_x_log10() +
     scale_y_log10() +
     scale_color_manual(values = bench_colors) +

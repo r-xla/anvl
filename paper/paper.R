@@ -230,15 +230,15 @@ res_files <- list.files("benchmarks/results", pattern = "\\.csv$", full.names = 
 have_results <- length(res_files) > 0L
 
 
-## ----results-single, echo = FALSE, eval = have_results, fig.cap = "Median time to draw 1000 samples from a single chain as a function of the number of observations $n$ (log-log scale).", fig.width = 6, fig.height = 3.2----
-# source("benchmarks/plots.R")
-# plot_single(res_files)
+## ----results-single, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from a single chain as a function of the number of observations $n$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 3.2----
+source("benchmarks/plots.R")
+plot_single(res_files)
 
 
-## ----results-chains, echo = FALSE, eval = have_results, fig.cap = "Median time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (log-log scale).", fig.width = 6, fig.height = 3.2----
-# plot_chains(res_files)
+## ----results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 3.2----
+plot_chains(res_files)
 
 
 ## ----results-overhead, echo = FALSE, eval = have_results----------------------
-# overhead_table(res_files)
+overhead_table(res_files)
 
