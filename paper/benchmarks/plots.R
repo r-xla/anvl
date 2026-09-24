@@ -2,7 +2,7 @@
 library(ggplot2)
 
 read_results <- function(files) {
-  files <- files[basename(files) %in% c("cpu.csv", "gpu.csv", "gpu-stan.csv", "gpu-torch.csv")]
+  files <- files[basename(files) %in% c("cpu.csv", "cpu-torch.csv", "gpu.csv", "gpu-stan.csv", "gpu-torch.csv")]
   res <- do.call(rbind, lapply(files, utils::read.csv))
   res$config <- factor(
     paste(res$framework, res$label),
