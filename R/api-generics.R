@@ -486,10 +486,11 @@ ceiling.AnvlArray <- nv_ceiling
 ceiling.AnvlBox <- ceiling.AnvlArray
 
 #' @rdname nv_trunc
-#' @param ... Further arguments of [nv_trunc()].
+#' @param ... Not used; must be empty.
 #' @export
 trunc.AnvlArray <- function(x, ...) {
-  nv_trunc(x, ...)
+  rlang::check_dots_empty()
+  nv_trunc(x)
 }
 
 #' @export

@@ -356,6 +356,16 @@
 * Improved the documentation and various error messages.
 * `nv_runif()` with `min == max` returns the `state` / `values` pair every
   other sampler returns, instead of the filled array on its own.
+* `nv_concatenate()` broadcasts a scalar against arrays with two or more axes
+  instead of failing.
+* `nv_mod()` matches base R's `%%` for an infinite divisor: `-5 %% Inf` is
+  `Inf`, not `0`.
+* `local_default_dtypes()` / `with_default_dtypes()` reject a category other
+  than `float` and `int`.
+* `value_and_gradient()` rejects an `f` that is not a function, as
+  `gradient()` does.
+* `local_backend()` / `with_backend()` reject the internal `"plain"` backend.
+* `trunc()` on an array rejects further arguments with a clear error.
 
 ## Tests
 
