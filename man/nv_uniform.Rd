@@ -14,7 +14,7 @@ nv_punif(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
+nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -42,7 +42,7 @@ Probabilities at which to evaluate the quantile function. Values outside
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
@@ -58,7 +58,7 @@ The default (\code{NULL}) takes it from \code{min} and \code{max}, and uses the
 same shape and data type as \code{x}/\code{q}/\code{p}.
 
 \code{nv_runif()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
-RNG state with \code{initial_state}'s data type and shape, and \code{values}, the
+RNG state with the input \code{state}'s data type and shape, and \code{values}, the
 sample of shape \code{shape} and the data type described under \code{dtype}.
 }
 \description{
@@ -77,8 +77,8 @@ All four are univariate functions evaluated elementwise, returning one
 value per element of \code{x}/\code{q}/\code{p} (or of the sample). Non-scalar \code{min}/\code{max} therefore give a
 separate univariate Uniform per element, \emph{not} a multivariate Uniform over
 the hyper-rectangle \eqn{\prod_i [a_i, b_i]}. For that, reduce over the
-result: \code{nv_reduce_prod(nv_dunif(x, min, max))}, or
-\code{nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))} on the log scale.
+result: \code{nv_prod(nv_dunif(x, min, max))}, or
+\code{nv_sum(nv_dunif(x, min, max, log = TRUE))} on the log scale.
 }
 \section{Random generation}{
 

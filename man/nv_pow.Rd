@@ -5,10 +5,10 @@
 \alias{^.AnvlArray}
 \title{Power}
 \usage{
-nv_pow(lhs, rhs)
+nv_pow(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Two inputs with a \link[=common_dtype]{common data type}. Can be
 any numeric data type. Scalars are broadcast, and R values assume the other
 operand's data type within their \link[=dtypes]{data type category},
@@ -20,7 +20,7 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Raises \code{lhs} to the power of \code{rhs} element-wise. You can also use the \code{^} operator.
+Raises \code{x} to the power of \code{y} element-wise. You can also use the \code{^} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

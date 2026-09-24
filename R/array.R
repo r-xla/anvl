@@ -45,6 +45,13 @@
 #'   are then required (only supported on the `"pjrt"` backend).
 #'   Raw payloads are read in column-major element order, or row-major
 #'   with `byrow = TRUE`.
+#' @param shape (`NULL` | `integer()`)\cr
+#'   The output shape of the array.
+#'   The default (`NULL`) is to infer it from the data if possible.
+#'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
+#'   Empty data has no shape to infer -- `0`, `c(2, 0)` and `c(0, 3)` all hold
+#'   no elements -- so `shape` is required there.
+#'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   The data type at which to create the array: a [`tengen::DataType`] or one
 #'   of `r roxy_dtypes()`. `data` is built at it rather than converted to it,
@@ -53,13 +60,6 @@
 #'   The default (`NULL`) uses the [default data type][default_dtypes] of
 #'   `data`'s category.
 #' @template param_device
-#' @param shape (`NULL` | `integer()`)\cr
-#'   The output shape of the array.
-#'   The default (`NULL`) is to infer it from the data if possible.
-#'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
-#'   Empty data has no shape to infer -- `0`, `c(2, 0)` and `c(0, 3)` all hold
-#'   no elements -- so `shape` is required there.
-#'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
 #'   axes, fill the array in row-major order rather than the
@@ -109,7 +109,7 @@
 #' nv_scalar(3.14)
 #'
 #' # an uninitialized 2x3 array (contents are unspecified)
-#' nv_empty("f32", shape = c(2L, 3L))
+#' nv_empty(shape = c(2L, 3L), dtype = "f32")
 #'
 #' # --- Extractors ---
 #' x <- nv_array(1:6, shape = c(2L, 3L))
@@ -133,9 +133,9 @@ NULL
 #' @export
 nv_array <- function(
   data,
+  shape = NULL,
   dtype = NULL,
   device = NULL,
-  shape = NULL,
   byrow = FALSE
 ) {
   assert_flag(byrow)
@@ -143,7 +143,7 @@ nv_array <- function(
     if (byrow) {
       cli_abort(c(
         "{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.",
-        i = "Use {.fn nv_transpose} instead."
+        i = "Use {.fn nv_aperm} instead."
       ))
     }
     if (!is.null(device) && !eq_device(device(data), nv_device(device))) {
@@ -455,9 +455,9 @@ nv_matrix <- function(
     }
     return(nv_array(
       data,
+      shape = c(nrow, ncol),
       dtype = dtype,
-      device = device,
-      shape = c(nrow, ncol)
+      device = device
     ))
   }
   if (is.null(nrow) && is.null(ncol)) {
@@ -473,16 +473,16 @@ nv_matrix <- function(
   }
   nv_array(
     data,
+    shape = c(nrow, ncol),
     dtype = dtype,
     device = device,
-    shape = c(nrow, ncol),
     byrow = byrow
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-nv_empty <- function(dtype, shape, device = NULL) {
+nv_empty <- function(shape, dtype, device = NULL) {
   shape <- as.integer(shape)
   if (currently_tracing() && is.null(device)) {
     # A constant of the trace, as in `nv_array()`: allocating one here would
@@ -940,7 +940,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' naxes(x)
 #' dtype(x)
 #' # how it appears during tracing:
-#' graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
+#' graph <- trace_fn(function() nv_iota(axis = 1L, shape = 4L, dtype = "i32"), list())
 #' graph
 #' graph$outputs[[1]]$aval
 #' @export

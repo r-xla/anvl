@@ -61,7 +61,7 @@ NULL
 #' @importFrom rlang %||%
 #' @importFrom methods formalArgs is
 #' @importFrom utils capture.output
-#' @importFrom stats median setNames
+#' @importFrom stats median quantile setNames
 ## usethis namespace: end
 NULL
 

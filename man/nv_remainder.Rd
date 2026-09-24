@@ -4,10 +4,10 @@
 \alias{nv_remainder}
 \title{Remainder (Truncating)}
 \usage{
-nv_remainder(lhs, rhs)
+nv_remainder(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Two inputs with a \link[=common_dtype]{common data type}. Can be
 any numeric data type. Scalars are broadcast, and R values assume the other
 operand's data type within their \link[=dtypes]{data type category},

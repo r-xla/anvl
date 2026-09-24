@@ -4,28 +4,30 @@
 \alias{prim_ifelse}
 \title{Primitive Ifelse}
 \usage{
-prim_ifelse(pred, true_value, false_value)
+prim_ifelse(test, yes, no)
 }
 \arguments{
-\item{pred}{(\code{\link{arrayish}})\cr
+\item{test}{(\code{\link{arrayish}})\cr
 Predicate array. Must be a boolean or an R logical, and scalar or the same
-shape as \code{true_value}.}
+shape as \code{yes}.}
 
-\item{true_value, false_value}{(\code{\link{arrayish}})\cr
+\item{yes, no}{(\code{\link{arrayish}})\cr
 Values to select from, of the same shape. Can be any data type.
-\code{true_value} and \code{false_value} must have the same data type. An R value
-among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when
-none of them has one.}
+\code{yes} and \code{no} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the shape of \code{true_value} and \code{false_value}, and the data type they
-agreed on.
+Has the shape of \code{yes} and \code{no}, and the data type they agreed on.
 }
 \description{
-Element-wise selection based on a boolean predicate, like R's \code{\link[=ifelse]{ifelse()}}.
-For each element, returns the corresponding element from \code{true_value} where
-\code{pred} is \code{TRUE} and from \code{false_value} where \code{pred} is \code{FALSE}.
+Element-wise selection based on a boolean predicate, mirroring R's
+\code{\link[=ifelse]{ifelse()}}. For each element, returns the corresponding element from
+\code{yes} where \code{test} is \code{TRUE} and from \code{no} where \code{test} is \code{FALSE}.
+
+\code{\link[=prim_if]{prim_if()}} is the other conditional: it mirrors R's \code{if} construct and
+branches between two \emph{functions}, evaluating only the selected one.
 }
 \section{Implemented Rules}{
 
@@ -44,11 +46,11 @@ Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}, specified under
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the result takes the branches' data type; `pred` only selects
-pred <- nv_array(c(TRUE, FALSE, TRUE))
-prim_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+# the result takes the branches' data type; `test` only selects
+test <- nv_array(c(TRUE, FALSE, TRUE))
+prim_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_ifelse]{nv_ifelse()}}
+\code{\link[=nv_ifelse]{nv_ifelse()}}, \code{\link[=prim_if]{prim_if()}}
 }

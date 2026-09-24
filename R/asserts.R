@@ -1,3 +1,16 @@
+# `assert_int_param()` reads `NULL` as the empty set of axes, which is how a
+# caller spells `c()`. A shape is not that, so the helpers that resolve one say
+# so first.
+assert_shape_not_null <- function(x, arg) {
+  if (is.null(x)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a whole number vector.",
+      x = "Got {value_repr(x)}."
+    ))
+  }
+  invisible(NULL)
+}
+
 #' @title Assert Shape Vector
 #' @description
 #' Check whether an input is a valid shape vector: whole, non-negative axis
@@ -11,35 +24,28 @@
 #'   `x` as an integer vector.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
-  ok <- test_integerish(x, lower = 0L, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
-  fmt <- function(x) {
-    sprintf("(%s)", paste0(x, collapse = ", "))
-  }
-  if (!isTRUE(ok)) {
-    if (is.null(x) || !is.numeric(x)) {
-      cli_abort("{.arg {var_name}} must be an integer vector, not {.cls {class(x)}}")
-    }
-    if (anyNA(x)) {
-      cli_abort(c(
-        "{.arg {var_name}} must not contain missing values",
-        x = "Got {fmt(x)}."
-      ))
-    }
-    if (length(x) < min_len) {
-      cli_abort(c(
-        "{.arg {var_name}} must have at least {min_len} element{?s}",
-        x = "Got {fmt(x)}."
-      ))
-    }
-    if (any(x < 0L)) {
-      cli_abort(c(
-        "{.arg {var_name}} must not contain a negative axis size.",
-        x = "Got {fmt(x)}."
-      ))
-    }
+  # Before `x` is rebound below: `caller_arg()` deparses whatever `x` holds
+  # when it is first forced, so an unforced default would name the value
+  # (`-2L`) rather than the argument (`shape`).
+  force(var_name)
+  # `NULL` is refused rather than read as the empty shape `assert_int_param()`
+  # takes it for: a shape is not a set of axes a caller spells with `c()`, and
+  # silently building a scalar out of a forgotten argument hides the mistake.
+  assert_shape_not_null(x, var_name)
+  x <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL)
+  if (any(x < 0L)) {
     cli_abort(c(
-      "{.arg {var_name}} must contain whole numbers in the integer range",
-      x = "Got {fmt(x)}."
+      "{.arg {var_name}} must not contain a negative axis size.",
+      x = "Got {value_repr(x)}."
+    ))
+  }
+  # XLA counts an array's elements in an int64. A shape past that -- easy to
+  # type, `1:1000` is one -- is otherwise refused at compile time with a raw
+  # "overflow in static extent product" listing every axis size.
+  if (prod(as.double(x)) >= 2^63) {
+    cli_abort(c(
+      "{.arg {var_name}} must describe an array with fewer than 2^63 elements.",
+      x = "Got {value_repr(x)}."
     ))
   }
   as.integer(x)
@@ -53,10 +59,12 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
 # new axis (e.g. `nv_unsqueeze()`).
 # Returns the resolved (positive) axes as an integer vector.
 resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique = FALSE) {
-  if (!test_integerish(axes, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(axes)}}")
-  }
-  original <- as.integer(axes)
+  # The whole-number check is `assert_int_param()`'s, so that one mistake has
+  # one wording wherever it is made -- in a `prim_*()` wrapper here, or in an
+  # inference rule. `NULL` is refused rather than read as the empty set: an
+  # `axes = NULL` that means "every axis" is resolved before this is reached.
+  assert_shape_not_null(axes, arg)
+  original <- assert_int_param(axes, arg)
   resolved <- original
   negative <- original < 0L
   resolved[negative] <- max_axis + 1L + resolved[negative]
@@ -65,18 +73,18 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
     if (max_axis < 1L) {
       cli_abort(c(
         "{.arg {arg}} cannot be used, there is no axis to select.",
-        x = "Got {.val {original[invalid]}}."
+        x = "Got {value_repr(original[invalid])}."
       ))
     }
     cli_abort(c(
       "{.arg {arg}} must be between 1 and {max_axis}, or between {-max_axis} and -1 to count from the end.",
-      x = "Got {.val {original[invalid]}}."
+      x = "Got {value_repr(original[invalid])}."
     ))
   }
   if (unique && anyDuplicated(resolved)) {
     cli_abort(c(
       "{.arg {arg}} must not contain duplicate axes.",
-      x = "Got {.val {original}}."
+      x = "Got {value_repr(original)}."
     ))
   }
   resolved
@@ -85,7 +93,10 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
 # Like `resolve_axes()`, but for a single axis.
 resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
   if (length(axis) != 1L) {
-    cli_abort("{.arg {arg}} must have length 1, not {length(axis)}")
+    cli_abort(c(
+      "{.arg {arg}} must have length 1.",
+      x = "Got {value_repr(axis)}."
+    ))
   }
   resolve_axes(axis, max_axis, arg = arg)
 }
@@ -94,15 +105,14 @@ resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
 # corresponding extent from the total number of elements `nelts`.
 # Returns the resolved shape as an integer vector.
 resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
-  if (!test_integerish(shape, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(shape)}}")
-  }
-  shape <- as.integer(shape)
+  force(arg)
+  assert_shape_not_null(shape, arg)
+  shape <- assert_int_param(shape, arg)
   invalid <- shape < -1L
   if (any(invalid)) {
     cli_abort(c(
       "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
-      x = "Got {.val {shape[invalid]}}."
+      x = "Got {value_repr(shape[invalid])}."
     ))
   }
   inferred <- which(shape == -1L)
@@ -112,7 +122,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   if (length(inferred) > 1L) {
     cli_abort(c(
       "{.arg {arg}} must contain at most one {.val {-1L}}.",
-      x = "Got {length(inferred)} at positions {.val {inferred}}."
+      x = "Got {length(inferred)} at {cli::qty(length(inferred))}position{?s} {value_repr(inferred)}."
     ))
   }
   known <- prod(shape[-inferred])
@@ -194,17 +204,17 @@ assert_r_fits_dtype <- function(x, dtype) {
 }
 
 assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
-  dt <- as_dtype(dtype)
+  dt <- assert_dtype_param(dtype, "dtype")
   is_int64 <- inherits(value, "integer64")
   is_number <- is.numeric(value) || is_int64
 
   if (length(value) != 1L) {
     cli_abort(c(
       "{.arg {arg}} must be a scalar.",
-      "x" = "Got {.obj_type_friendly {value}} of length {length(value)}."
+      "x" = "Got {value_repr(value)}."
     ))
   }
-  if (is.na(value) && !is.nan(value)) {
+  if (is.atomic(value) && is.na(value) && !is.nan(value)) {
     cli_abort(c(
       "{.arg {arg}} must not be {.val {NA}}.",
       "i" = "There is no missing value at the XLA level; {.val {NaN}} is the closest a float comes."
@@ -254,9 +264,20 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   } else {
     "a number"
   }
+  # `NaN` is the one value `{.obj_type_friendly}` describes unhelpfully -- it
+  # calls it "a numeric `NA`", which beside the value itself reads as three
+  # things ("a numeric `NA` NaN").
+  got <- if (is.numeric(value) && is.nan(value)) {
+    cli::format_inline("{.val {NaN}}")
+  } else {
+    paste0(
+      cli::format_inline("{.obj_type_friendly {value}}"),
+      if (is_number) cli::format_inline(" {.val {value}}") else ""
+    )
+  }
   cli_abort(c(
     "{.arg {arg}} must be {wanted} to be built at data type {.val {as.character(dt)}}.",
-    "x" = "Got {.obj_type_friendly {value}}{if (is_number) cli::format_inline(' {.val {value}}') else ''}."
+    "x" = "Got {got}."
   ))
 }
 
@@ -335,7 +356,7 @@ assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   if (!is_dtype_float(peek_dtype(x))) {
     cli_abort(c(
       "{.arg {arg}} must have a float data type.",
-      "x" = "Got dtype {.val {as.character(peek_dtype(x))}}."
+      "x" = "Got {.val {as.character(peek_dtype(x))}}."
     ))
   }
   invisible(NULL)

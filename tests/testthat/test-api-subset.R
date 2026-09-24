@@ -407,7 +407,7 @@ describe("nv_subset and nv_subset_assign", {
   it("differentiates through a range that counts down", {
     m <- array(as.double(1:12), dim = c(3, 4))
     y <- nv_array(m)
-    f <- function(y) nv_reduce_sum(y[3:1, ] * nv_array(m))
+    f <- function(y) nv_sum(y[3:1, ] * nv_array(m))
     expect_equal(as_array(jit(gradient(f))(y)[[1L]]), m[3:1, ])
   })
 

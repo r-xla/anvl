@@ -14,7 +14,7 @@ test_that("quickr pipeline matches PJRT: core math + comparisons + reductions", 
     ex <- nv_exp(x_f64)
     em1 <- nv_expm1(x_f64)
     l1p <- nv_log1p(ax * 0.1)
-    lo <- nv_logistic(x_f64)
+    lo <- nv_plogis(x_f64)
     si <- nv_sin(x_f64)
     co <- nv_cos(x_f64)
     ta <- nv_tan(x_f64 * 0.1)
@@ -22,8 +22,8 @@ test_that("quickr pipeline matches PJRT: core math + comparisons + reductions", 
     fl <- nv_floor(x_f64)
     ce <- nv_ceiling(x_f64)
 
-    mx <- nv_max(x_f64, y_f64)
-    mn <- nv_min(x_f64, y_f64)
+    mx <- nv_pmax(x_f64, y_f64)
+    mn <- nv_pmin(x_f64, y_f64)
     pw <- nv_pow(ax + 0.1, nv_abs(y_f64) + 0.1)
 
     eq <- nv_eq(x_i32, y_i32)
@@ -41,14 +41,14 @@ test_that("quickr pipeline matches PJRT: core math + comparisons + reductions", 
     sel <- nv_ifelse(eq, x_f64, y_f64)
 
     sm <- sum(x_f64)
-    rs1 <- nv_reduce_sum(x_f64, axes = 1L, drop = TRUE)
-    rs2 <- nv_reduce_sum(x_f64, axes = 2L, drop = FALSE)
-    rp <- nv_reduce_prod(ax + 1.0, axes = 2L, drop = TRUE)
-    ra <- nv_reduce_any(eq, axes = 1L, drop = TRUE)
-    rall <- nv_reduce_all(eq, axes = c(1L, 2L), drop = TRUE)
+    rs1 <- nv_sum(x_f64, axes = 1L, drop = TRUE)
+    rs2 <- nv_sum(x_f64, axes = 2L, drop = FALSE)
+    rp <- nv_prod(ax + 1.0, axes = 2L, drop = TRUE)
+    ra <- nv_any(eq, axes = 1L, drop = TRUE)
+    rall <- nv_all(eq, axes = c(1L, 2L), drop = TRUE)
 
-    rmax <- nv_reduce_max(x_f64, axes = 2L, drop = TRUE)
-    rmin <- nv_reduce_min(x_f64, axes = 1L, drop = TRUE)
+    rmax <- nv_max(x_f64, axes = 2L, drop = TRUE)
+    rmin <- nv_min(x_f64, axes = 1L, drop = TRUE)
 
     list(
       add = a,
@@ -358,13 +358,13 @@ test_that("quickr pipeline matches PJRT: maximum/minimum preserve empty f64 dtyp
   cases <- list(
     list(
       fn = function(x, y) {
-        nv_max(x, y)
+        nv_pmax(x, y)
       },
       info = "maximum"
     ),
     list(
       fn = function(x, y) {
-        nv_min(x, y)
+        nv_pmin(x, y)
       },
       info = "minimum"
     )
@@ -397,9 +397,9 @@ test_that("quickr pipeline matches PJRT: pad supports negative edge padding crop
     nv_pad(
       x,
       nv_scalar(0L, dtype = "i32"),
-      edge_padding_low = c(-1L, 1L),
-      edge_padding_high = c(0L, 0L),
-      interior_padding = c(0L, 0L)
+      low = c(-1L, 1L),
+      high = c(0L, 0L),
+      interior = c(0L, 0L)
     )
   }
 
@@ -437,7 +437,7 @@ test_that("quickr pipeline matches PJRT: i32 reduce_prod preserves dtype in fast
 
   check_case(
     function(v) {
-      nv_reduce_prod(v, axes = 1L, drop = TRUE)
+      nv_prod(v, axes = 1L, drop = TRUE)
     },
     list(v = nv_array(c(0L, 0L, 0L), dtype = "i32", shape = 3L)),
     list(v = c(2L, 3L, 4L)),
@@ -446,7 +446,7 @@ test_that("quickr pipeline matches PJRT: i32 reduce_prod preserves dtype in fast
 
   check_case(
     function(x2) {
-      nv_reduce_prod(x2, axes = c(1L, 2L), drop = TRUE)
+      nv_prod(x2, axes = c(1L, 2L), drop = TRUE)
     },
     list(x2 = nv_fill(0L, shape = c(2L, 2L), dtype = "i32")),
     list(x2 = matrix(c(2L, 3L, 4L, 5L), nrow = 2L, byrow = TRUE)),
@@ -455,7 +455,7 @@ test_that("quickr pipeline matches PJRT: i32 reduce_prod preserves dtype in fast
 
   check_case(
     function(x3) {
-      nv_reduce_prod(x3, axes = 1:3, drop = FALSE)
+      nv_prod(x3, axes = 1:3, drop = FALSE)
     },
     list(x3 = nv_array(rep(0L, prod(c(1L, 2L, 2L))), shape = c(1L, 2L, 2L), dtype = "i32")),
     list(x3 = array(c(1L, 2L, 3L, 4L), dim = c(1L, 2L, 2L))),
@@ -499,14 +499,14 @@ test_that("quickr pipeline matches PJRT: fill/iota/reverse/concatenate/convert/b
     f1 <- nv_fill(2L, shape = 4L, dtype = "i32")
     f2 <- nv_fill(TRUE, shape = c(2L, 3L), dtype = "pred")
 
-    i1 <- nv_iota(axis = 1L, dtype = "i32", shape = 5L, start = 1L)
-    i2 <- nv_iota(axis = 2L, dtype = "f64", shape = c(2L, 3L), start = 0L)
-    i3_empty <- nv_iota(axis = 2L, dtype = "i32", shape = c(0L, 3L), start = 0L)
-    i4_noloop <- nv_iota(axis = 2L, dtype = "i32", shape = c(1L, 4L, 1L), start = 0L)
+    i1 <- nv_iota(axis = 1L, shape = 5L, dtype = "i32", start = 1L)
+    i2 <- nv_iota(axis = 2L, shape = c(2L, 3L), dtype = "f64", start = 0L)
+    i3_empty <- nv_iota(axis = 2L, shape = c(0L, 3L), dtype = "i32", start = 0L)
+    i4_noloop <- nv_iota(axis = 2L, shape = c(1L, 4L, 1L), dtype = "i32", start = 0L)
 
-    r1 <- nv_reverse(i1, axes = 1L)
-    r2 <- nv_reverse(x_i32, axes = 2L)
-    r3 <- nv_reverse(x3, axes = c(1L, 3L))
+    r1 <- nv_rev(i1, axes = 1L)
+    r2 <- nv_rev(x_i32, axes = 2L)
+    r3 <- nv_rev(x3, axes = c(1L, 3L))
 
     c1 <- nv_concatenate(v1, v2, axis = 1L)
     c2 <- nv_concatenate(x_i32, x_i32, axis = 1L)
@@ -526,8 +526,8 @@ test_that("quickr pipeline matches PJRT: fill/iota/reverse/concatenate/convert/b
     b2 <- nv_broadcast_to(x21_i32, shape = c(2L, 3L))
     b3 <- prim_broadcast_in_axes(x_i32, shape = c(2L, 3L, 1L), broadcast_axes = c(1L, 2L))
 
-    t0 <- nv_transpose(x_i32, permutation = c(2L, 1L))
-    t1 <- nv_transpose(x_i32, permutation = c(1L, 2L))
+    t0 <- nv_aperm(x_i32, perm = c(2L, 1L))
+    t1 <- nv_aperm(x_i32, perm = c(1L, 2L))
 
     rs <- nv_reshape(s, shape = c(1L, 1L))
     r2a <- nv_reshape(x_i32, shape = c(3L, 2L))
@@ -605,7 +605,7 @@ test_that("quickr pipeline matches PJRT: broadcast + iota slice assignments comp
 
   fn <- function(x21) {
     bx <- nv_broadcast_to(x21, shape = c(b, n, m))
-    ii <- nv_iota(axis = 2L, dtype = "i32", shape = c(b, n, m), start = 0L)
+    ii <- nv_iota(axis = 2L, shape = c(b, n, m), dtype = "i32", start = 0L)
     bx + nv_convert(ii, dtype = "f64")
   }
 
@@ -631,17 +631,17 @@ test_that("quickr pipeline matches PJRT: zero-length axes (reverse/concatenate/b
     ds_empty_cols <- prim_dynamic_slice(X, one, one, slice_sizes = c(2L, 0L))
     ds_empty_rows <- prim_dynamic_slice(X, one, one, slice_sizes = c(0L, 3L))
 
-    prim_cols <- nv_reverse(empty_cols, axes = 2L) > 0L
+    prim_cols <- nv_rev(empty_cols, axes = 2L) > 0L
 
     list(
       ds_empty_cols = ds_empty_cols,
       ds_empty_rows = ds_empty_rows,
       cat_rows = nv_concatenate(empty_rows, X, axis = 1L),
       cat_cols = nv_concatenate(X, empty_cols, axis = 2L),
-      any_cols = nv_reduce_any(prim_cols, axes = 2L, drop = TRUE),
-      all_cols = nv_reduce_all(prim_cols, axes = 2L, drop = TRUE),
-      any_rows = nv_reduce_any(empty_rows > 0L, axes = 1L, drop = TRUE),
-      all_rows = nv_reduce_all(empty_rows > 0L, axes = 1L, drop = TRUE)
+      any_cols = nv_any(prim_cols, axes = 2L, drop = TRUE),
+      all_cols = nv_all(prim_cols, axes = 2L, drop = TRUE),
+      any_rows = nv_any(empty_rows > 0L, axes = 1L, drop = TRUE),
+      all_rows = nv_all(empty_rows > 0L, axes = 1L, drop = TRUE)
     )
   }
 
@@ -673,14 +673,14 @@ test_that("quickr pipeline matches PJRT: zero-length axes for numeric sum/prod r
 
   reduce_empty_numeric <- function(v_empty, empty_cols, empty_rows) {
     list(
-      sum_v = nv_reduce_sum(v_empty, axes = 1L, drop = TRUE),
-      prod_v_keep = nv_reduce_prod(v_empty, axes = 1L, drop = FALSE),
-      sum_cols = nv_reduce_sum(empty_cols, axes = 2L, drop = TRUE),
-      prod_cols = nv_reduce_prod(empty_cols, axes = 2L, drop = TRUE),
-      sum_rows = nv_reduce_sum(empty_rows, axes = 1L, drop = TRUE),
-      prod_rows = nv_reduce_prod(empty_rows, axes = 1L, drop = TRUE),
-      sum_full = nv_reduce_sum(empty_cols, axes = c(1L, 2L), drop = TRUE),
-      prod_full = nv_reduce_prod(empty_cols, axes = c(1L, 2L), drop = TRUE)
+      sum_v = nv_sum(v_empty, axes = 1L, drop = TRUE),
+      prod_v_keep = nv_prod(v_empty, axes = 1L, drop = FALSE),
+      sum_cols = nv_sum(empty_cols, axes = 2L, drop = TRUE),
+      prod_cols = nv_prod(empty_cols, axes = 2L, drop = TRUE),
+      sum_rows = nv_sum(empty_rows, axes = 1L, drop = TRUE),
+      prod_rows = nv_prod(empty_rows, axes = 1L, drop = TRUE),
+      sum_full = nv_sum(empty_cols, axes = c(1L, 2L), drop = TRUE),
+      prod_full = nv_prod(empty_cols, axes = c(1L, 2L), drop = TRUE)
     )
   }
 
@@ -713,24 +713,24 @@ test_that("quickr pipeline matches PJRT: reduction branch coverage", {
   skip_if_no_quickr_or_pjrt()
 
   reduce_ops <- function(v_i32, v_pred, x_i32, x_pred, x3_i32, x3_pred, v_f64, x_f64, x3_f64) {
-    sum_noop <- nv_reduce_sum(v_i32, axes = integer(), drop = FALSE)
-    sum_rank1_keepaxis <- nv_reduce_sum(v_i32, axes = 1L, drop = FALSE)
-    sum_rank2_full_drop <- nv_reduce_sum(x_i32, axes = c(1L, 2L), drop = TRUE)
-    sum_rank2_full_keep <- nv_reduce_sum(x_i32, axes = c(1L, 2L), drop = FALSE)
+    sum_noop <- nv_sum(v_i32, axes = integer(), drop = FALSE)
+    sum_rank1_keepaxis <- nv_sum(v_i32, axes = 1L, drop = FALSE)
+    sum_rank2_full_drop <- nv_sum(x_i32, axes = c(1L, 2L), drop = TRUE)
+    sum_rank2_full_keep <- nv_sum(x_i32, axes = c(1L, 2L), drop = FALSE)
 
-    prod_i32 <- nv_reduce_prod(x_i32, axes = 2L, drop = TRUE)
-    prod_rank3_full_keep <- nv_reduce_prod(x3_i32, axes = 1:3, drop = FALSE)
+    prod_i32 <- nv_prod(x_i32, axes = 2L, drop = TRUE)
+    prod_rank3_full_keep <- nv_prod(x3_i32, axes = 1:3, drop = FALSE)
 
-    any_rank1_keepaxis <- nv_reduce_any(v_pred, axes = 1L, drop = FALSE)
-    any_rank2_keepaxis <- nv_reduce_any(x_pred, axes = 2L, drop = FALSE)
-    all_rank2_drop <- nv_reduce_all(x_pred, axes = 1L, drop = TRUE)
-    all_rank3_full_keepaxis <- nv_reduce_all(x3_pred, axes = 1:3, drop = FALSE)
+    any_rank1_keepaxis <- nv_any(v_pred, axes = 1L, drop = FALSE)
+    any_rank2_keepaxis <- nv_any(x_pred, axes = 2L, drop = FALSE)
+    all_rank2_drop <- nv_all(x_pred, axes = 1L, drop = TRUE)
+    all_rank3_full_keepaxis <- nv_all(x3_pred, axes = 1:3, drop = FALSE)
 
-    max_rank1_drop <- nv_reduce_max(v_f64, axes = 1L, drop = TRUE)
-    min_rank1_keepaxis <- nv_reduce_min(v_f64, axes = 1L, drop = FALSE)
-    max_rank2_keepaxis <- nv_reduce_max(x_f64, axes = 2L, drop = FALSE)
-    max_rank3_full_drop <- nv_reduce_max(x3_f64, axes = 1:3, drop = TRUE)
-    min_rank3_full_keep <- nv_reduce_min(x3_f64, axes = 1:3, drop = FALSE)
+    max_rank1_drop <- nv_max(v_f64, axes = 1L, drop = TRUE)
+    min_rank1_keepaxis <- nv_min(v_f64, axes = 1L, drop = FALSE)
+    max_rank2_keepaxis <- nv_max(x_f64, axes = 2L, drop = FALSE)
+    max_rank3_full_drop <- nv_max(x3_f64, axes = 1:3, drop = TRUE)
+    min_rank3_full_keep <- nv_min(x3_f64, axes = 1:3, drop = FALSE)
 
     list(
       sum_noop = sum_noop,
@@ -785,13 +785,13 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
   skip_if_no_quickr_or_pjrt()
 
   idx_ops <- function(x, X, X3, s, r, c, a, b, d, upd_s, upd, upd2, padv, idx_vec, sc_idx_vec) {
-    ss0 <- nv_static_slice(s, start_indices = integer(), limit_indices = integer(), strides = integer())
-    ss1 <- nv_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 2L)
-    ss2 <- nv_static_slice(X, start_indices = c(1L, 2L), limit_indices = c(2L, 3L), strides = c(1L, 1L))
+    ss0 <- nv_static_slice(s, start_indices = integer(), end_indices = integer(), strides = integer())
+    ss1 <- nv_static_slice(x, start_indices = 2L, end_indices = 5L, strides = 2L)
+    ss2 <- nv_static_slice(X, start_indices = c(1L, 2L), end_indices = c(2L, 3L), strides = c(1L, 1L))
     ss3 <- nv_static_slice(
       X3,
       start_indices = c(2L, 1L, 1L),
-      limit_indices = c(3L, 3L, 2L),
+      end_indices = c(3L, 3L, 2L),
       strides = c(1L, 1L, 1L)
     )
 
@@ -804,21 +804,21 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
     dus1 <- prim_dynamic_update_slice(x, upd, s)
     dus2 <- prim_dynamic_update_slice(X, upd2, r, c)
 
-    p0 <- nv_pad(s, padv, edge_padding_low = integer(), edge_padding_high = integer())
-    p1 <- nv_pad(x, padv, edge_padding_low = 2L, edge_padding_high = 1L, interior_padding = 0L)
-    p2 <- nv_pad(X, padv, edge_padding_low = c(1L, 2L), edge_padding_high = c(0L, 1L))
+    p0 <- nv_pad(s, padv, low = integer(), high = integer())
+    p1 <- nv_pad(x, padv, low = 2L, high = 1L, interior = 0L)
+    p2 <- nv_pad(X, padv, low = c(1L, 2L), high = c(0L, 1L))
     p3 <- nv_pad(
       X3,
       padv,
-      edge_padding_low = c(1L, 0L, 1L),
-      edge_padding_high = c(0L, 1L, 0L),
-      interior_padding = c(0L, 1L, 0L)
+      low = c(1L, 0L, 1L),
+      high = c(0L, 1L, 0L),
+      interior = c(0L, 1L, 0L)
     )
 
     # Gather/scatter via user-facing subsetting APIs.
     g <- X3[idx_vec, , ]
 
-    base <- nv_iota(axis = 1L, dtype = "i32", shape = 6L, start = 0L)
+    base <- nv_iota(axis = 1L, shape = 6L, dtype = "i32", start = 0L)
     scattered_overwrite <- nv_subset_assign(base, sc_idx_vec, value = upd)
 
     sc_idx <- nv_reshape(sc_idx_vec, c(2L, 1L))
@@ -832,7 +832,7 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
       scatter_indices_batching_axes = integer(),
       scatter_axes_to_x_axes = 1L,
       index_vector_axis = 2L,
-      update_computation = function(old, new) old + new
+      update_fn = function(old, new) old + new
     )
 
     list(
@@ -1013,7 +1013,7 @@ test_that("quickr pipeline matches PJRT: control flow (if/while)", {
     )
 
     w2 <- nv_while(
-      init = list(i = 0L, v = nv_iota(axis = 1L, dtype = "i32", shape = 5L, start = 0L)),
+      init = list(i = 0L, v = nv_iota(axis = 1L, shape = 5L, dtype = "i32", start = 0L)),
       cond = function(i, v) i < 3L,
       body = function(i, v) list(i = i + 1L, v = v + 2L)
     )

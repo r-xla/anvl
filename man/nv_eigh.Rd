@@ -27,7 +27,8 @@ shape \verb{(n, n)}:
 Only the lower triangle of \code{x} is read. The columns of \code{vectors}
 are the (orthonormal) eigenvectors and \code{values} is the length-\code{n}
 vector of (real) eigenvalues in ascending order. Output names and
-order match \code{\link[base:eigen]{base::eigen()}}.
+order match \code{\link[base:eigen]{base::eigen()}}, which unlike this primitive also handles
+non-symmetric matrices.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

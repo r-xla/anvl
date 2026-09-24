@@ -4,13 +4,13 @@
 \alias{nv_sample_int}
 \title{Sample Integers}
 \usage{
-nv_sample_int(shape, initial_state, n, dtype = NULL)
+nv_sample_int(shape, state, n, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}

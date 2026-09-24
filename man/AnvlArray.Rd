@@ -11,7 +11,7 @@
 \alias{nv_empty_like}
 \title{AnvlArray}
 \usage{
-nv_array(data, dtype = NULL, device = NULL, shape = NULL, byrow = FALSE)
+nv_array(data, shape = NULL, dtype = NULL, device = NULL, byrow = FALSE)
 
 nv_scalar(data, dtype = NULL, device = NULL)
 
@@ -24,13 +24,13 @@ nv_matrix(
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL)
+nv_empty(shape, dtype, device = NULL)
 
-nv_array_like(like, data, dtype = NULL, device = NULL, shape = NULL)
+nv_array_like(like, data, shape = NULL, dtype = NULL, device = NULL)
 
 nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
-nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
+nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
 \item{data}{(any)\cr
@@ -40,6 +40,14 @@ payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \c
 are then required (only supported on the \code{"pjrt"} backend).
 Raw payloads are read in column-major element order, or row-major
 with \code{byrow = TRUE}.}
+
+\item{shape}{(\code{NULL} | \code{integer()})\cr
+The output shape of the array.
+The default (\code{NULL}) is to infer it from the data if possible.
+Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
+Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
+no elements -- so \code{shape} is required there.
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 The data type at which to create the array: a \code{\link[tengen:DataType]{tengen::DataType}} or one
@@ -61,14 +69,6 @@ is backend-specific, it also determines the backend.
 
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
-\item{shape}{(\code{NULL} | \code{integer()})\cr
-The output shape of the array.
-The default (\code{NULL}) is to infer it from the data if possible.
-Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
-no elements -- so \code{shape} is required there.
-To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
-
 \item{byrow}{(\code{logical(1)})\cr
 When constructing from an R object and the result has at least two
 axes, fill the array in row-major order rather than the
@@ -85,7 +85,7 @@ Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
-An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are \code{NULL}
+An existing array. Any of \code{shape}, \code{dtype} and \code{device} that are \code{NULL}
 (the default) are taken from \code{like}.}
 }
 \value{
@@ -187,7 +187,7 @@ nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 nv_scalar(3.14)
 
 # an uninitialized 2x3 array (contents are unspecified)
-nv_empty("f32", shape = c(2L, 3L))
+nv_empty(shape = c(2L, 3L), dtype = "f32")
 
 # --- Extractors ---
 x <- nv_array(1:6, shape = c(2L, 3L))

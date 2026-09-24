@@ -95,8 +95,16 @@ shape2string <- function(x, parenthesize = TRUE) {
 # `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
 # `RData(double, (2,3))` are built from and stays as it is -- so everything a
 # caller reads in an error or warning goes through these two instead.
+#
+# A shape can also be one a caller typed (`shape = 1:1000`), so past
+# `repr_max_entries` axes it is cut short, with the rank stated. That is enough
+# for an array's real shape to print whole.
 shape_repr <- function(shape) {
-  sprintf("(%s)", paste0(shape, collapse = "x"))
+  n <- length(shape)
+  if (n <= repr_max_entries) {
+    return(sprintf("(%s)", paste0(shape, collapse = "x")))
+  }
+  sprintf("(%sx...) with %d axes", paste0(shape[seq_len(repr_max_entries)], collapse = "x"), n)
 }
 
 shapes_repr <- function(shapes) {
@@ -191,12 +199,12 @@ gather_clamp_indices <- function(
     )
     max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-    prim_clamp(min_bound, start_indices, max_bound)
+    prim_clamp(start_indices, min_bound, max_bound)
   } else {
     # Implicit index vector (single coordinate)
     min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
     max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_bound, start_indices, max_bound)
+    prim_clamp(start_indices, min_bound, max_bound)
   }
 }
 
@@ -235,7 +243,7 @@ col_major_layouts <- function(...) {
 
 # Transpose the matrix an array's last two axes form, leaving any leading batch
 # axes in place -- what `t()` means for the batched operands `nv_matmul()`
-# takes. `nv_transpose()` reverses *every* axis, which would put a batch axis
+# takes. `nv_aperm()` reverses *every* axis, which would put a batch axis
 # into the contraction slot. An array with fewer than two axes is handed on
 # unchanged, for `nv_matmul()` to report.
 transpose_matrix_axes <- function(x) {
@@ -243,7 +251,7 @@ transpose_matrix_axes <- function(x) {
   if (n < 2L) {
     return(x)
   }
-  nv_transpose(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
+  nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
 }
 
 # Where `prim_bitcast_convert()` puts the axis holding an element's pieces when

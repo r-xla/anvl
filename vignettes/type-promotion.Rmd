@@ -103,9 +103,9 @@ It fails if the the boundary values cannot be promoted to `x` without loss of pr
 
 ```{r, error = TRUE}
 nv_clamp(
-  min_val = nv_scalar(0, "f64"),
   x = nv_scalar(0, "f32"),
-  max_val = nv_scalar(0, "f64")
+  min = nv_scalar(0, "f64"),
+  max = nv_scalar(0, "f64")
 )
 ```
 

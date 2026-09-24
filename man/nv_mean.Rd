@@ -61,5 +61,5 @@ nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_reduce_sum]{nv_reduce_sum()}}
+\code{\link[=nv_sum]{nv_sum()}}
 }

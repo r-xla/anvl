@@ -16,7 +16,7 @@ prim_scatter(
   index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
-  update_computation = NULL
+  update_fn = NULL
 )
 }
 \arguments{
@@ -54,9 +54,10 @@ Axes of \code{scatter_indices} that correspond to batch
 axes. Must have the same length as \code{x_batching_axes}.}
 
 \item{scatter_axes_to_x_axes}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{x} axis.
-For example, \code{scatter_axes_to_x_axes = c(1L)} means each
-index vector indexes into the first axis of \code{x}.}
+Maps each component of an index vector in \code{scatter_indices} to an axis
+of \code{x}. For example, \code{scatter_axes_to_x_axes = 1L} means each index
+vector indexes into the first axis of \code{x}. This is \code{\link[=prim_gather]{prim_gather()}}'s
+\code{start_index_map}.}
 
 \item{index_vector_axis}{(\code{integer(1)})\cr
 Axis of \code{scatter_indices} that contains the index vectors.
@@ -73,7 +74,7 @@ Whether indices are guaranteed to be unique (no duplicates).
 Setting to \code{TRUE} may improve performance but produces undefined
 behavior if the indices are not actually unique. Default \code{FALSE}.}
 
-\item{update_computation}{(\code{function})\cr
+\item{update_fn}{(\code{function})\cr
 Binary function \code{f(old, new)} that combines the existing value in
 \code{x} with the value from \code{update}. The default (\code{NULL}) uses
 \code{function(old, new) new}, which replaces the old value.}
@@ -86,7 +87,7 @@ Has the same data type and shape as \code{x}.
 Produces a result array identical to \code{x} except that slices at
 positions specified by \code{scatter_indices} are updated with values from
 the \code{update} array. When multiple indices point to the same location,
-the \code{update_computation} function determines how to combine the values
+the \code{update_fn} function determines how to combine the values
 (by default the new value replaces the old one).
 
 This is the inverse of \code{\link[=prim_gather]{prim_gather()}}: gather reads slices from an array
@@ -102,7 +103,7 @@ update for that index is silently ignored.
 \section{Update Order}{
 
 When multiple indices in \code{scatter_indices} map to the same element
-of \code{x}, the order in which \code{update_computation} is applied is
+of \code{x}, the order in which \code{update_fn} is applied is
 implementation-defined and may vary between plugins ("cpu", "cuda").
 }
 

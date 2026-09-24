@@ -5,10 +5,10 @@
 \alias{\%*\%.AnvlArray}
 \title{Matrix Multiplication}
 \usage{
-nv_matmul(lhs, rhs, precision = "highest")
+nv_matmul(x, y, precision = "highest")
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
+\item{x, y}{(\code{\link{arrayish}})\cr
 Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
 \link[=nv_promote_to_common]{promoted to a common data type}. An R value
 assumes the data type of the other operand, and materializes at its
@@ -30,8 +30,8 @@ Supports batched matrix multiplication when inputs have more than 2 axes.
 \section{Shapes}{
 
 \itemize{
-\item \code{lhs}: \verb{(b1, ..., bk, m, n)}
-\item \code{rhs}: \verb{(b1, ..., bk, n, p)}
+\item \code{x}: \verb{(b1, ..., bk, m, n)}
+\item \code{y}: \verb{(b1, ..., bk, n, p)}
 \item output: \verb{(b1, ..., bk, m, p)}
 }
 }

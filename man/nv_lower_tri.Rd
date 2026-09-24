@@ -7,7 +7,7 @@
 \usage{
 nv_lower_tri(shape, diagonal = -1L, device = NULL)
 
-nv_lower_tri_like(like, diagonal = -1L, shape = NULL, device = NULL)
+nv_lower_tri_like(like, shape = NULL, diagonal = -1L, device = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr

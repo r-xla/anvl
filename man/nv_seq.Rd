@@ -5,18 +5,18 @@
 \alias{nv_seq_like}
 \title{Sequence}
 \usage{
-nv_seq(start, end, by = NULL, dtype = NULL, device = NULL)
+nv_seq(from, to, by = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
+nv_seq_like(like, from, to, by = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{start, end}{(\code{integer(1)})\cr
+\item{from, to}{(\code{integer(1)})\cr
 First value and upper (or, when counting down, lower) limit of the
 sequence.}
 
 \item{by}{(\code{NULL} | \code{integer(1)})\cr
-Step size, which must be a non-zero whole number pointing from \code{start}
-towards \code{end}. \code{NULL} (default) uses \code{-1} if \code{start > end} and \code{1}
+Step size, which must be a non-zero whole number pointing from \code{from}
+towards \code{to}. \code{NULL} (default) uses \code{-1} if \code{from > to} and \code{1}
 otherwise.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
@@ -44,13 +44,13 @@ Existing array whose attributes are used as defaults
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{dtype} and shape \code{(end - start) \%/\% by + 1}.
+Has \code{dtype} and shape \code{(to - from) \%/\% by + 1}.
 }
 \description{
-Creates a 1-D array with the values from \code{start} to \code{end} in steps of \code{by},
-like R's \code{seq(start, end, by)}. The sequence counts down when \code{end} lies
-below \code{start}, and stops before \code{end} when \code{end} is not reachable in whole
-steps: \code{nv_seq(0, 9, by = 2)} ends at \code{8}.
+Creates a 1-D array with the values from \code{from} to \code{to} in steps of \code{by},
+like R's \code{\link[=seq]{seq()}}. The sequence counts down when \code{to} lies below \code{from},
+and stops before \code{to} when \code{to} is not reachable in whole steps:
+\code{nv_seq(0, 9, by = 2)} ends at \code{8}.
 
 \code{nv_seq_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.
@@ -62,7 +62,7 @@ nv_seq(3, 7)
 # a range that counts down needs no `by`
 nv_seq(7, 3)
 
-# `end` is only reached where a whole number of steps lands on it
+# `to` is only reached where a whole number of steps lands on it
 nv_seq(0, 9, by = 2)
 
 # a float data type gives the same values as floats
