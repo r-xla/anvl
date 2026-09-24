@@ -24,6 +24,11 @@ R -q -e "install.packages('cmdstanr', repos = c('https://stan-dev.r-universe.dev
 mkdir -p /opt/cmdstan
 R -q -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', version = '2.40.0', cores = 8, quiet = TRUE)"
 
-# Download the PJRT plugins at build time, into a cache that does not depend on $HOME.
+# Download the PJRT plugins at build time, into a cache that does not depend on $HOME,
+# and make the CUDA libraries that pjrt.cuda installed into root's cache available there.
 export R_USER_CACHE_DIR=/opt/r-cache
+mkdir -p /opt/r-cache/R
+if [ -d /root/.cache/R/pjrt.cuda ] && [ ! -e /opt/r-cache/R/pjrt.cuda ]; then
+  ln -s /root/.cache/R/pjrt.cuda /opt/r-cache/R/pjrt.cuda
+fi
 PJRT_INSTALL=1 R -q -e "options(timeout = 600); pjrt:::plugin_path('cpu'); pjrt:::plugin_path('cuda')"

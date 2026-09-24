@@ -79,7 +79,7 @@ For example, much of the Bayesian inference ecosystem in Python is built on top 
 
 In R, \CRANpkg{torch} [@ref-rtorch] brings the \pkg{LibTorch} library that underpins PyTorch to R without a Python dependency.
 Like PyTorch, it is primarily designed for eager execution.
-While it can trace code into TorchScript, TorchScript is designed for deployment, does not support differentiation of the traced program from R, and is no longer actively developed upstream.
+While it can trace code into TorchScript, TorchScript is primarily designed for deployment and is no longer actively developed upstream.
 For large neural networks, where the runtime is dominated by individually expensive operations, eager execution is rarely a bottleneck.
 For the comparatively small models that are common in statistics, however, the per-operation overhead of eager execution can dominate, which makes whole-program compilation attractive.
 The packages \CRANpkg{tensorflow}, \CRANpkg{keras3}, and \CRANpkg{greta} [@ref-greta] give access to XLA-compiled programs, and JAX itself can be used via \CRANpkg{reticulate}.
@@ -125,7 +125,7 @@ Users write numerical algorithms in R against a set of array operations, and \pk
 The same program runs on CPUs and NVIDIA GPUs.
 Transformations are higher-order functions that take an R function and return another R function, similar in spirit to base R's `Vectorize()`, and they compose: the gradient of a function can be called from within a jitted function, which can in turn be called from another one.
 
-The primary backend targets the OpenXLA compiler ecosystem [@ref-openxla], which also powers JAX and TensorFlow.
+The primary backend, `"pjrt"`, targets the OpenXLA compiler ecosystem [@ref-openxla], which also powers JAX and TensorFlow.
 Part of our contribution are the \pkg{stablehlo} package, which allows creating programs in the StableHLO language from R, and the \pkg{pjrt} package, which compiles and executes them via the PJRT runtime interface.
 A second, experimental backend translates programs to Fortran via \CRANpkg{quickr}.
 
@@ -236,7 +236,7 @@ In this section, we first introduce the array type and eager execution, then des
 ### Arrays and eager execution
 
 The main data structure is the `AnvlArray`.
-Compared to an R array, it supports more data types (e.g., single and double precision floats and signed and unsigned integers of different widths), lives on a specific device, such as a CPU or a GPU, and uses 0-dimensional arrays to represent scalars.
+Compared to an R array, it supports more data types (e.g., single and double precision floats and signed and unsigned integers of different widths), lives on a specific device, such as a CPU or a GPU, and represents scalars as arrays without axes.
 Arrays have value semantics.
 
 ```{r array}
@@ -292,7 +292,7 @@ Arguments that are not arrays, such as `op` above, are ordinary R values during 
 Second, the approach only requires that the array operations are known, and not the semantics of the R language as a whole.
 The downside is that tracing only works for functions that can be intercepted.
 For example, `sum()` and `%*%` are generics with methods for \pkg{anvl}'s arrays, whereas `rowSums()` is not generic and therefore cannot be traced; a static compiler such as \CRANpkg{quickr} can translate such functions directly.
-Furthermore, programs must be pure: side effects, such as printing or modifying global variables, only happen once during tracing, and R control flow depends only on values that are known during tracing.
+Furthermore, programs must be pure: side effects, such as printing or modifying global variables, only happen once during tracing, and R control flow can only depend on values that are known during tracing, such as static arguments and shapes.
 
 ### Transforming a graph into another graph
 
@@ -312,7 +312,7 @@ The transformation is defined for functions with a scalar output, which is the c
 ### Transforming a graph into an executable
 
 A backend lowers an `AnvlGraph` into an executable.
-For the XLA backend, `stablehlo()` translates the graph into a StableHLO function by applying each primitive's `"stablehlo"` rule, which maps it to one or more \pkg{stablehlo} operations.
+For the `"pjrt"` backend, which uses XLA, `stablehlo()` translates the graph into a StableHLO function by applying each primitive's `"stablehlo"` rule, which maps it to one or more \pkg{stablehlo} operations.
 
 ```{r lower}
 stablehlo(graph)[[1L]]
@@ -404,7 +404,7 @@ NumPy arrays, however, have a data type.
 By default, JAX represents values in 32 bits, so double-precision NumPy data is truncated to single precision when it enters a program; with 64-bit mode enabled, it is kept in double precision and promotes every single-precision array it meets.
 Transferred to R, where every real-valued vector and array is stored in double precision, both options are unsatisfactory: either all data loses precision when it enters a program, or it pulls every computation into double precision.
 
-\pkg{anvl} therefore extends weak typing to all R values, including vectors and arrays.
+\pkg{anvl} therefore extends weak typing to R values that enter a program, i.e., length-one vectors as well as matrices and arrays.
 An R value has no data type, and only *materializes* as an array when it meets one, taking its data type.
 Below, the same R matrix `B` is multiplied with a single- and a double-precision array.
 
@@ -416,7 +416,7 @@ dtype(matmul(nv_array(diag(2), dtype = "f64"), B))
 ```
 
 In the second call, `B` enters the program in double precision and the product is exactly `B`, whereas a representation of `B` at a fixed default precision would either have lost precision or turned the first result into `f64`.
-Only a value that meets no array, such as the output of `nv_exp(1)`, settles on a default data type.
+Only a value that meets no array, such as the argument of `nv_exp(1)`, settles on a default data type.
 
 When an R value is passed to a jitted function as a non-static argument, as `b` above, its data type is not decided at the call boundary.
 It enters the trace as an `RData` object, which has a shape but no data type, and each operation that uses it decides at which data type it materializes.
@@ -609,8 +609,8 @@ The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficie
 Both samplers work in double precision, start at $\beta = 0$, and draw 1000 samples per chain.
 The data are simulated with $p = 20$ standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
-For multiple chains, Stan runs the chains in one process using up to the given number of threads, while \pkg{anvl} runs them as a single batched program.
-Each configuration is repeated five times, and we report the median.
+Static HMC in CmdStan runs one chain per process, so for $K$ chains, we start $K$ processes, of which at most as many run at the same time as cores are available, while \pkg{anvl} runs all chains as a single batched program.
+Each configuration is repeated three times after a first call that includes compilation, and we report the median.
 The CPU experiments ran on nodes of the `lrz-cpu` partition of the LRZ AI Systems, restricted to either one or 16 cores, and the GPU experiments on an NVIDIA A100 80GB GPU.
 All experiments were run in the Docker image described in Appendix \@ref(reproducibility).
 
