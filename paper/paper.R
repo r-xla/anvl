@@ -61,6 +61,13 @@ as_array(crossprod(m))
 as_array(rev(cumsum(m[1, ])))
 
 
+## ----drop---------------------------------------------------------------------
+x <- nv_array(matrix(1:6, 2))
+shape(x[1, ])
+shape(x[array(1), ])
+shape(x[array(c(1, 2)), ])
+
+
 ## ----trace--------------------------------------------------------------------
 f <- function(x, y, op) {
   if (op == "add") x + y else x * y

@@ -296,7 +296,25 @@ as_array(rev(cumsum(m[1, ])))
 
 Where \pkg{anvl} needs functions of its own, their names and arguments follow the corresponding base R functions, e.g., \texttt{nv\_pmax()}, \texttt{nv\_which\_max()}, \texttt{nv\_order()}, \texttt{nv\_ifelse(test,\ yes,\ no)}, \texttt{nv\_seq(from,\ to,\ by)}, \texttt{nv\_rnorm(shape,\ state,\ mean,\ sd)}, \texttt{nv\_sample\_int()}, and \texttt{nv\_quantile(x,\ probs,\ method)}.
 The distinction between R's integers and doubles is kept as well (see Section \ref{precision}).
-Deviations from base R are deliberate and follow from the static shapes of compiled programs or from functional purity: only scalars are broadcast automatically, logical masks and negative indices are not supported in subsetting, whether an axis is dropped is decided by the index (a scalar drops it, a length-one array keeps it) instead of a \texttt{drop} argument, and random number generators take and return an explicit state.
+One deliberate departure concerns how R values correspond to arrays.
+In \pkg{anvl}, a length-one R vector is a scalar, i.e., an array without axes, and every other value must be an R array, whose \texttt{dim} becomes the shape; plain vectors of other lengths are rejected instead of converted.
+Each R value therefore corresponds to exactly one shape.
+The same principle applies to subsetting, where the type of an index, not its length, determines whether an axis is dropped.
+In base R, \texttt{m{[}c(1,\ 2),\ {]}} returns a matrix and \texttt{m{[}1,\ {]}} a vector unless \texttt{drop\ =\ FALSE} is given, so the type of the result changes when the number of selected rows happens to be one.
+In \pkg{anvl}, a scalar index drops the axis and an array index keeps it, whatever its length:
+
+\begin{verbatim}
+x <- nv_array(matrix(1:6, 2))
+shape(x[1, ])
+#> [1] 3
+shape(x[array(1), ])
+#> [1] 1 3
+shape(x[array(c(1, 2)), ])
+#> [1] 2 3
+\end{verbatim}
+
+This removes a discontinuity that is a common source of errors in R code and that would be particularly harmful in compiled programs, whose shapes are fixed when they are compiled.
+The remaining deviations from base R follow from static shapes or from functional purity: only scalars are broadcast automatically, logical masks and negative indices are not supported in subsetting, and random number generators take and return an explicit state.
 
 \hypertarget{tracing-r-code-into-a-graph}{%
 \subsection{Tracing R code into a graph}\label{tracing-r-code-into-a-graph}}
@@ -378,6 +396,7 @@ f_jit <- jit(function(x, y) {
 y1 <- f_jit(x, x)
 #> tracing
 y2 <- f_jit(x, x + 1)
+#> tracing
 \end{verbatim}
 
 The second call does not print, because it executes the cached executable without tracing the function again.
@@ -407,9 +426,9 @@ update <- jit(function(beta, X, y, lr) {
 X <- nv_array(matrix(rnorm(20), 10, 2))
 y <- X %*% matrix(c(1, 2))
 as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
-#>           [,1]
-#> [1,] 0.2331436
-#> [2,] 0.5424244
+#>             [,1]
+#> [1,] -0.08614526
+#> [2,]  0.80005324
 \end{verbatim}
 
 When \texttt{update()} is traced, the call to the gradient function traces \texttt{loss()} into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of \texttt{update()}.

@@ -298,7 +298,22 @@ as_array(rev(cumsum(m[1, ])))
 
 Where \pkg{anvl} needs functions of its own, their names and arguments follow the corresponding base R functions, e.g., `nv_pmax()`, `nv_which_max()`, `nv_order()`, `nv_ifelse(test, yes, no)`, `nv_seq(from, to, by)`, `nv_rnorm(shape, state, mean, sd)`, `nv_sample_int()`, and `nv_quantile(x, probs, method)`.
 The distinction between R's integers and doubles is kept as well (see Section \@ref(precision)).
-Deviations from base R are deliberate and follow from the static shapes of compiled programs or from functional purity: only scalars are broadcast automatically, logical masks and negative indices are not supported in subsetting, whether an axis is dropped is decided by the index (a scalar drops it, a length-one array keeps it) instead of a `drop` argument, and random number generators take and return an explicit state.
+One deliberate departure concerns how R values correspond to arrays.
+In \pkg{anvl}, a length-one R vector is a scalar, i.e., an array without axes, and every other value must be an R array, whose `dim` becomes the shape; plain vectors of other lengths are rejected instead of converted.
+Each R value therefore corresponds to exactly one shape.
+The same principle applies to subsetting, where the type of an index, not its length, determines whether an axis is dropped.
+In base R, `m[c(1, 2), ]` returns a matrix and `m[1, ]` a vector unless `drop = FALSE` is given, so the type of the result changes when the number of selected rows happens to be one.
+In \pkg{anvl}, a scalar index drops the axis and an array index keeps it, whatever its length:
+
+```{r drop}
+x <- nv_array(matrix(1:6, 2))
+shape(x[1, ])
+shape(x[array(1), ])
+shape(x[array(c(1, 2)), ])
+```
+
+This removes a discontinuity that is a common source of errors in R code and that would be particularly harmful in compiled programs, whose shapes are fixed when they are compiled.
+The remaining deviations from base R follow from static shapes or from functional purity: only scalars are broadcast automatically, logical masks and negative indices are not supported in subsetting, and random number generators take and return an explicit state.
 
 ## Tracing R code into a graph
 
