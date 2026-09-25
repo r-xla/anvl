@@ -12,8 +12,8 @@ nv_subset_assign(x, ..., value, inplace = FALSE)
 The array to update. Can be any data type.
 An R object is materialized at its \link[=default_dtypes]{default data type}.}
 
-\item{...}{Subset specifications, one per axis. See the
-\href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
+\item{...}{Subset specifications, one per axis. See
+the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape and non-scalar

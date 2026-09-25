@@ -27,6 +27,45 @@ roxy_wrap <- function(x, width = 74L) {
   paste(strwrap(x, width = width), collapse = "\n")
 }
 
+# Titles of the pkgdown articles in `vignettes/articles/`, by file name.
+# test-roxygen.R checks that they match the articles' own titles.
+article_titles <- c(
+  anvl = "Get Started",
+  autodiff = "Automatic Differentiation",
+  efficiency = "Efficiency",
+  extending_api = "Extending the API",
+  extending_primitive = "Adding a Primitive",
+  faq = "FAQ",
+  `gaussian-process` = "Gaussian Process",
+  gotchas = "Gotchas",
+  installation = "Installation",
+  internals = "Internals",
+  jit = "JIT Deep Dive",
+  `metropolis-hastings` = "Metropolis-Hastings",
+  next_steps = "Next Steps",
+  primitives = "Primitives Reference",
+  `random-numbers` = "Random Number Generation",
+  static_shapes = "Static Shape Restriction",
+  subsetting = "Subsetting",
+  `type-promotion` = "Type Promotion"
+)
+
+# URL of a pkgdown article, e.g. `article_url("subsetting")`. The articles are
+# not installed with the package, so documentation and messages link to the
+# website instead of calling `vignette()`.
+article_url <- function(name) {
+  if (!name %in% names(article_titles)) {
+    cli_abort("Unknown article {.val {name}}.")
+  }
+  sprintf("https://r-xla.github.io/anvl/articles/%s.html", name)
+}
+
+# A link to a pkgdown article, reading "the <title> article", for inline use in
+# roxygen blocks as `r roxy_article("subsetting")`.
+roxy_article <- function(name) {
+  sprintf("the [%s](%s) article", article_titles[[name]], article_url(name))
+}
+
 # The data type rule of a primitive whose operands must reach one data type, for
 # inline use in roxygen blocks as `r roxy_agree("x", "update")`. Name every
 # argument the primitive's `apply_promotion()` call covers, in the order the

@@ -21,8 +21,8 @@ levels of strictness it does not say which one is meant. Forwarded
 to the backend; for the \code{pjrt} backend the cases scanned for are
 \code{i32}/\code{i64} values colliding with the \code{NA} bit pattern and \code{ui64}
 values \verb{>= 2^63} wrapping through \code{bit64::integer64}. See
-\code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for the full list, and the
-\href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article.}
+\code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for the full list, and
+the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article.}
 
 \item{...}{Additional arguments passed to methods (unused).}
 }

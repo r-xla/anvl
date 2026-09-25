@@ -147,8 +147,8 @@ compile_quickr <- function(
 #'   suited to long-running or repeatedly-called functions where the one-time
 #'   compilation cost is amortized.
 #' * Only a subset of the primitives that the PJRT backend supports are currently
-#'   lowered to quickr code. See the
-#'   [Primitives Reference](https://r-xla.github.io/anvl/articles/primitives.html) article for an overview.
+#'   lowered to quickr code. See
+#'   `r roxy_article("primitives")` for an overview.
 #' * Only CPU execution is supported.
 #' * Only three data types are supported; see the section below.
 #'

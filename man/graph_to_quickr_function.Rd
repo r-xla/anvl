@@ -36,8 +36,8 @@ values when \code{unwrap = TRUE}.
 If the graph returns multiple outputs (e.g. a nested list), the compiled
 function returns the same structure by rebuilding the output tree in R.
 
-For a list of supported primitives see the
-\href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article.
+For a list of supported primitives see
+the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article.
 
 Supported data types are \code{f64}, \code{i32} and \code{bool}.
 The code generator currently supports arrays up to rank 5. Some primitives

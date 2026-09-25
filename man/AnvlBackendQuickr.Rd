@@ -41,8 +41,8 @@ This backend is \strong{experimental} and has a number of limitations:
 suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.
 \item Only a subset of the primitives that the PJRT backend supports are currently
-lowered to quickr code. See the
-\href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article for an overview.
+lowered to quickr code. See
+the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article for an overview.
 \item Only CPU execution is supported.
 \item Only three data types are supported; see the section below.
 }

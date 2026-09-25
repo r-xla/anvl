@@ -80,7 +80,7 @@
 #'    representation of `NAinteger_`, which is `-INT_MIN`.
 #'    Disallowing this would prevent round-trips between the data types.
 #'
-#' See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html) article for more information.
+#' See `r roxy_article("gotchas")` for more information.
 #'
 #' @section Out of Range values:
 #' Because base R has fewer data types than anvl, creating `AnvlArray`s from R often involves
@@ -559,8 +559,8 @@ axes <- function(x) {
 #'   to the backend; for the `pjrt` backend the cases scanned for are
 #'   `i32`/`i64` values colliding with the `NA` bit pattern and `ui64`
 #'   values `>= 2^63` wrapping through `bit64::integer64`. See
-#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and the
-#'   [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html) article.
+#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and
+#'   `r roxy_article("gotchas")`.
 #' @export
 as_array.AnvlArray <- function(x, check = "warn", ...) {
   assert_check_level(check)
