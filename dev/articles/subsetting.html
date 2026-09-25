@@ -484,29 +484,43 @@ between backends (CPU vs. GPU).</p>
 <span><span class="co">## [ CPUi32{5} ]</span></span></code></pre>
 </div>
 <div class="section level3">
-<h3 id="copying-behavior">Copying Behavior<a class="anchor" aria-label="anchor" href="#copying-behavior"></a>
+<h3 id="in-place-updates">In-place Updates<a class="anchor" aria-label="anchor" href="#in-place-updates"></a>
 </h3>
-<p>In eager mode, <code>x[i] &lt;- val</code> always allocates a fresh
-array, regardless of whether <code>x</code> has any other R references.
-This differs from plain R, which can perform the update in place when
-its reference count for <code>x</code> is 1.</p>
+<p>In eager mode, <code>x[i] &lt;- val</code> creates a new array by
+default, even when R could update <code>x</code> in place. This is
+because {anvl} cannot know whether another R variable still refers to
+the same array, which would otherwise be modified as well. To avoid the
+copy, pass <code>inplace = TRUE</code> among the subscripts, which
+writes the update into the memory of <code>x</code>:</p>
 <div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
-<span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">1L</span>  <span class="co"># allocates a new length-5 buffer, even though x has only one reference</span></span>
+<span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
 <span><span class="va">x</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  -1</span></span>
-<span><span class="co">##   2</span></span>
-<span><span class="co">##   3</span></span>
-<span><span class="co">##   4</span></span>
-<span><span class="co">##   5</span></span>
+<span><span class="co">##  1</span></span>
+<span><span class="co">##  0</span></span>
+<span><span class="co">##  0</span></span>
+<span><span class="co">##  4</span></span>
+<span><span class="co">##  5</span></span>
 <span><span class="co">## [ CPUi32{5} ]</span></span></code></pre>
-<p>This is unnecessarily expensive. To avoid it, move the update into a
-<code><a href="../reference/jit.html">jit()</a></code>ed function so XLA can fuse it into the surrounding
-computation, and optionally use <code>donate</code> to let the input
-buffer be reused for the output. See the <a href="efficiency.html#eager-mode-subset-assignment-always-copies">Eager-mode
-subset-assignment always copies</a> section of the efficiency vignette
-for details.</p>
+<p><code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> takes the same argument:
+<code>nv_subset_assign(x, 2:3, value = 0L, inplace = TRUE)</code>.</p>
+<p>This consumes the original array: its memory is <a href="efficiency.html#donation">donated</a> to the result, so every
+other R variable that referred to it can no longer be used
+afterwards.</p>
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">x</span></span>
+<span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">1L</span></span>
+<span><span class="va">y</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span></code></pre>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> called on deleted or donated buffer</span></span></code></pre>
+<p>Inside a jitted function, <code>inplace = TRUE</code> is an error.
+There, <code>y</code> would stay valid, so the same code would behave
+differently in eager and in jit mode. The compiler avoids unnecessary
+copies inside <code><a href="../reference/jit.html">jit()</a></code> anyway, so <code>inplace</code> is not
+needed there.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

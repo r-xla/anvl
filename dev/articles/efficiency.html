@@ -410,15 +410,16 @@ for the output:</p>
 loops.</p>
 </div>
 <div class="section level3">
-<h3 id="eager-mode-subset-assignment-always-copies">Eager-mode subset-assignment always copies<a class="anchor" aria-label="anchor" href="#eager-mode-subset-assignment-always-copies"></a>
+<h3 id="subset-assignment-in-eager-mode">Subset assignment in eager mode<a class="anchor" aria-label="anchor" href="#subset-assignment-in-eager-mode"></a>
 </h3>
 <p>In plain R, <code>y[i] &lt;- val</code> may happen in place when
-<code>y</code> has only one reference. Unfortunately, this is not
-possible in {anvl} and evaluating such calls in eager mode (outside of
-<code><a href="../reference/jit.html">jit()</a></code>) will always produce a copy. This is because we are
-essentially calling into a <code><a href="../reference/jit.html">jit()</a></code>ted function and we can’t
-always assume it’s okay to donate. In the future, we might add an option
-to do this in place.</p>
+<code>y</code> has only one reference. {anvl} cannot track references to
+an array, so outside of <code><a href="../reference/jit.html">jit()</a></code>, such a call produces a copy
+by default: modifying the array in place would also modify it for every
+other variable referring to it. If the original array is not needed
+anymore, <code>y[i, inplace = TRUE] &lt;- val</code> instead donates
+<code>y</code>’s memory to the result and avoids the copy. See the <a href="subsetting.html#in-place-updates">In-place Updates</a> section of
+the Subsetting vignette for details.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

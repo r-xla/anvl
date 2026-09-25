@@ -327,6 +327,9 @@
 
 ### Features
 
+- [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
+  and `[<-` gain `inplace`, which writes into the memory of `x` instead
+  of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
 - New
   [`local_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
   and

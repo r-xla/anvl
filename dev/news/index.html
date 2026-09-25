@@ -178,7 +178,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
-<ul><li>New <code><a href="../reference/local_default_device.html">local_default_device()</a></code> and <code><a href="../reference/local_default_device.html">with_default_device()</a></code> set the <code>anvl.default_device</code> option, which names the device a call that names none allocates on in place of the first CPU device.</li>
+<ul><li>
+<code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> and <code>[&lt;-</code> gain <code>inplace</code>, which writes into the memory of <code>x</code> instead of copying it, e.g. <code>x[1, inplace = TRUE] &lt;- 0</code>; <code>x</code> is donated.</li>
+<li>New <code><a href="../reference/local_default_device.html">local_default_device()</a></code> and <code><a href="../reference/local_default_device.html">with_default_device()</a></code> set the <code>anvl.default_device</code> option, which names the device a call that names none allocates on in place of the first CPU device.</li>
 <li>The environment variables <code>ANVL_DEFAULT_DEVICE</code> and <code>ANVL_DEFAULT_DTYPES</code>, read when anvl is loaded, are used when the <code>anvl.default_device</code> and <code>anvl.default_dtypes</code> options are not set.</li>
 <li>
 <code><a href="../reference/nv_rng_state.html">nv_rng_state()</a></code> accepts a seed of any signed or unsigned integer data type, bringing it to <code>i32</code>, where it took an <code>i32</code> only. The state stays <code>ui64[2]</code> whatever the seed and the default integer data type are.</li>
