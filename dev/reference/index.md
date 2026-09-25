@@ -488,9 +488,8 @@ distributions
 - [`nv_dunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   [`nv_punif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   [`nv_qunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
+  [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   : The Uniform Distribution
-- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
-  : Sample from a Uniform Distribution
 - [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)
   : Sample from a Binomial Distribution
 - [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md)

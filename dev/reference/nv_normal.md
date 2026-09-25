@@ -139,9 +139,9 @@ Ellis Horwood. ISBN 0-7458-0289-3.
 Other rng:
 [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
 [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md),
-[`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
 [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md),
-[`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
+[`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
+[`nv_uniform`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
 
 ## Examples
 

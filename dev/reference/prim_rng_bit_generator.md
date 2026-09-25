@@ -57,7 +57,7 @@ specified under
 
 ## See also
 
-[`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
+[`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
 [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
 
 ## Examples

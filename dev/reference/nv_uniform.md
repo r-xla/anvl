@@ -1,8 +1,8 @@
 # The Uniform Distribution
 
-Density (`nv_dunif`), distribution function (`nv_punif`), and quantile
-function (`nv_qunif`) for the Uniform distribution on the interval from
-`min` to `max`.
+Density (`nv_dunif`), distribution function (`nv_punif`), quantile
+function (`nv_qunif`), and random generation (`nv_runif`) for the
+Uniform distribution on the interval from `min` to `max`.
 
 ## Usage
 
@@ -12,6 +12,8 @@ nv_dunif(x, min = 0, max = 1, log = FALSE)
 nv_punif(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
+
+nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
 ```
 
 ## Arguments
@@ -26,9 +28,10 @@ nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Lower and upper limits of the distribution. Either scalars, or arrays
-  of exactly the same shape as `x`/`q`/`p`, in which case the interval
-  varies elementwise and each element of `x`/`q`/`p` is evaluated
-  against its own `min`/`max`.
+  of exactly the same shape as `x`/`q`/`p` (or the sample, for
+  `nv_runif`), in which case the interval varies elementwise and each
+  element of `x`/`q`/`p` is evaluated against, or each draw made from,
+  its own `min`/`max`.
 
 - log, log_p:
 
@@ -48,30 +51,80 @@ nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
   Probabilities at which to evaluate the quantile function. Values
   outside \\\[0, 1\]\\ give `NaN`.
 
+- shape:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Shape of the result.
+
+- state:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  RNG state: a 1-D array of two `ui64` elements, as
+  [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
+  returns. The data type and length are fixed by the generator, not by
+  the default data types, and the returned `state` has them too.
+
+- dtype:
+
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  Floating point data type of the sample. The default (`NULL`) takes it
+  from `min` and `max`, and uses the [default float
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  where both are R values.
+
 ## Value
 
+([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) \|
+named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 with the same shape and data type as `x`/`q`/`p`.
+
+`nv_runif()` returns a named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md):
+`state`, the updated RNG state with the input `state`'s data type and
+shape, and `values`, the sample of shape `shape` and the data type
+described under `dtype`.
 
 ## Details
 
 The Uniform distribution has probability density function: \$\$f(x) =
 \frac{1}{b - a}, \quad a \le x \le b\$\$ and zero elsewhere, where \\a\\
-is `min` and \\b\\ is `max`. The `min` and `max` are converted to the
-data type of `x`/`q`/`p`.
+is `min` and \\b\\ is `max`. For `nv_dunif`, `nv_punif`, and `nv_qunif`,
+the `min` and `max` are converted to the data type of `x`/`q`/`p`.
 
-All three are univariate functions evaluated elementwise, returning one
-value per element of `x`/`q`/`p`. Non-scalar `min`/`max` therefore give
-a separate univariate Uniform per element, *not* a multivariate Uniform
-over the hyper-rectangle \\\prod_i \[a_i, b_i\]\\. For that, reduce over
-the result: `nv_prod(nv_dunif(x, min, max))`, or
+All four are univariate functions evaluated elementwise, returning one
+value per element of `x`/`q`/`p` (or of the sample). Non-scalar
+`min`/`max` therefore give a separate univariate Uniform per element,
+*not* a multivariate Uniform over the hyper-rectangle \\\prod_i \[a_i,
+b_i\]\\. For that, reduce over the result:
+`nv_prod(nv_dunif(x, min, max))`, or
 `nv_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
+
+## Random generation
+
+`nv_runif` samples from the open interval \\(a, b)\\.
+
+`min` and `max` are
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md), so
+they may vary across the sample: they are applied to the draws after
+they have been reshaped to `shape`, and so may either be scalars or have
+exactly that shape. As in base R's
+[`runif()`](https://rdrr.io/r/stats/Uniform.html), an element whose
+`min` equals its `max` is that value, and one whose `min` or `max` is
+not finite, or whose `max` is less than its `min`, is `NaN`. The RNG
+state is advanced regardless.
 
 ## See also
 
-[`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
-for sampling from a uniform distribution.
+Other rng:
+[`nv_normal`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
+[`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
+[`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md),
+[`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md),
+[`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
 
 ## Examples
 
@@ -173,4 +226,21 @@ nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 #>   1.3534e-01
 #>   9.0484e-01
 #> [ CPUf64{3} ] 
+
+# `state` is the updated RNG state, `values` the sample
+state <- nv_rng_state(42L)
+result <- nv_runif(c(2, 3), state)
+result$values
+#> AnvlArray
+#>  0.8690 0.1506 0.5203
+#>  0.3103 0.9928 0.1065
+#> [ CPUf32{2,3} ] 
+
+# `min`/`max` may also be arrays of the same shape as the sample
+lower <- nv_array(matrix(c(0, 10, 20, 30, 40, 50), nrow = 2))
+nv_runif(c(2, 3), state, min = lower, max = lower + 1)$values
+#> AnvlArray
+#>   0.8690 20.1506 40.5203
+#>  10.3103 30.9928 50.1065
+#> [ CPUf32{2,3} ] 
 ```

@@ -120,7 +120,7 @@
 <li>
 <code><a href="../reference/nv_linspace.html">nv_linspace()</a></code> / <code><a href="../reference/nv_linspace.html">nv_linspace_like()</a></code> take <code>(from, to, length_out)</code> instead of <code>(start, end, steps)</code>, like <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">base::seq()</a></code>.</li>
 <li>
-<code><a href="../reference/nv_runif.html">nv_runif()</a></code> and <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> take <code>dtype</code> after the distribution parameters, as <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code> and <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> do.</li>
+<code><a href="../reference/nv_uniform.html">nv_runif()</a></code> and <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> take <code>dtype</code> after the distribution parameters, as <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code> and <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> do.</li>
 <li>
 <code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> calls its input axes <code>x_batch_axis</code>, <code>x_feature_axis</code> and <code>x_spatial_axes</code> instead of <code>input_*</code>, and <code><a href="../reference/nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="../reference/nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="../reference/nv_conv3d.html">nv_conv3d()</a></code> call their second operand <code>kernel</code> instead of <code>weight</code>, as <code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> does.</li>
 <li>
@@ -140,7 +140,7 @@
 <li>The array constructors spell their trailing arguments <code>shape</code>, <code>dtype</code>, <code>device</code> in that order: <code>nv_array(data, shape, dtype, device, byrow)</code>, <code>nv_empty(shape, dtype, device)</code>, <code><a href="../reference/nv_iota.html">nv_iota()</a></code> / <code><a href="../reference/prim_iota.html">prim_iota()</a></code> <code>(axis, shape, dtype, start, device)</code>, and likewise <code><a href="../reference/AnvlArray.html">nv_array_like()</a></code>, <code><a href="../reference/AnvlArray.html">nv_empty_like()</a></code> and <code><a href="../reference/nv_iota.html">nv_iota_like()</a></code>.</li>
 <li>
 <code><a href="../reference/nv_shift_left.html">nv_shift_left()</a></code>, <code><a href="../reference/nv_shift_right_logical.html">nv_shift_right_logical()</a></code>, <code><a href="../reference/nv_shift_right_arithmetic.html">nv_shift_right_arithmetic()</a></code> and their primitives take <code>(x, shift)</code> instead of <code>(lhs, rhs)</code>. The result keeps <code>x</code>’s data type, which <code>shift</code> is brought to, instead of promoting both.</li>
-<li>The RNG functions (<code><a href="../reference/nv_runif.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>, <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample.html">nv_sample()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, <code><a href="../reference/prim_rng_bit_generator.html">prim_rng_bit_generator()</a></code>) call their state argument <code>state</code> instead of <code>initial_state</code>, matching the <code>state</code> element they return.</li>
+<li>The RNG functions (<code><a href="../reference/nv_uniform.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>, <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample.html">nv_sample()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, <code><a href="../reference/prim_rng_bit_generator.html">prim_rng_bit_generator()</a></code>) call their state argument <code>state</code> instead of <code>initial_state</code>, matching the <code>state</code> element they return.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code> takes <code>axes</code> instead of <code>axis</code>, ranking the elements of several axes together, and <code>axes = NULL</code> (the default) now ranks over every axis where it used to take the last one. Write <code>axes = -1</code> for the old default.</li>
 <li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
@@ -200,7 +200,7 @@
 <li>
 <code><a href="../reference/nv_seq.html">nv_seq()</a></code> / <code><a href="../reference/nv_seq.html">nv_seq_like()</a></code> gained a <code>by</code> argument and now count down when <code>from &gt; to</code>, like <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq()</a></code>.</li>
 <li>New <code><a href="../reference/jit_cache_size.html">jit_cache_size()</a></code> reports how many compiled programs a jitted function currently holds for a backend.</li>
-<li>The random number generators (<code><a href="../reference/nv_runif.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>, <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, <code><a href="../reference/nv_sample.html">nv_sample()</a></code>) and <code><a href="../reference/prim_rng_bit_generator.html">prim_rng_bit_generator()</a></code> return a named list with elements <code>state</code> and <code>values</code> instead of an unnamed pair, and <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_cummax.html">prim_cummax()</a></code> and <code><a href="../reference/prim_cummin.html">prim_cummin()</a></code> name theirs <code>values</code> and <code>indices</code>.</li>
+<li>The random number generators (<code><a href="../reference/nv_uniform.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>, <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, <code><a href="../reference/nv_sample.html">nv_sample()</a></code>) and <code><a href="../reference/prim_rng_bit_generator.html">prim_rng_bit_generator()</a></code> return a named list with elements <code>state</code> and <code>values</code> instead of an unnamed pair, and <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_cummax.html">prim_cummax()</a></code> and <code><a href="../reference/prim_cummin.html">prim_cummin()</a></code> name theirs <code>values</code> and <code>indices</code>.</li>
 <li>
 <code><a href="../reference/AnvlArray.html">nv_array()</a></code> accepts a <code><a href="https://rdrr.io/r/base/raw.html" class="external-link">raw()</a></code> vector holding the native byte payload of <code>prod(shape)</code> elements of <code>dtype</code> (both then required); <code>byrow</code> selects row-major element order for the payload. Only supported on the <code>"pjrt"</code> backend; the inverse direction is the existing <code><a href="../reference/as_raw.html">as_raw()</a></code>.</li>
 <li>New <code><a href="../reference/nv_scan.html">nv_scan()</a></code>: a fixed-length loop in the style of JAX’s <code>lax.scan</code> that threads a carry through a body function and stacks each step’s outputs along a new leading axis. Supports nested carries, multiple <code>xs</code> and <code>out</code> leaves, reverse scans, <code>xs = NULL</code> counted loops, carry-only loops and zero-length scans. Backed by the new <code><a href="../reference/prim_scan.html">prim_scan()</a></code> primitive, which lowers to a <code>while</code> loop on the pjrt backend.</li>
@@ -225,7 +225,9 @@
 <code><a href="../reference/nv_floor.html">nv_floor()</a></code>, <code><a href="../reference/nv_ceiling.html">nv_ceiling()</a></code>, <code><a href="../reference/nv_trunc.html">nv_trunc()</a></code> and <code><a href="../reference/nv_round.html">nv_round()</a></code> return an integer array unchanged, like base R does.</li>
 <li>Improved documentation of API functions and primitives.</li>
 <li>Printed graphs read as <code>[captures] (inputs) { ... return ... }</code>, show sub-graphs in full, and wrap long lines to the console width; <code><a href="https://rdrr.io/r/base/format.html" class="external-link">format()</a></code> takes <code>width</code> and <code>digits</code> arguments.</li>
-<li>New functions for the uniform distribution: <code><a href="../reference/nv_uniform.html">nv_dunif()</a></code>, <code><a href="../reference/nv_uniform.html">nv_punif()</a></code>, and <code><a href="../reference/nv_uniform.html">nv_qunif()</a></code>.</li>
+<li>New functions for the uniform distribution: <code><a href="../reference/nv_uniform.html">nv_dunif()</a></code>, <code><a href="../reference/nv_uniform.html">nv_punif()</a></code>, and <code><a href="../reference/nv_uniform.html">nv_qunif()</a></code>, documented together with <code><a href="../reference/nv_uniform.html">nv_runif()</a></code> on <code><a href="../reference/nv_uniform.html">?nv_uniform</a></code>.</li>
+<li>
+<code><a href="../reference/nv_uniform.html">nv_runif()</a></code>’s <code>min</code> and <code>max</code> now accept arrayish inputs, scalar or of the sample’s shape. Like base R’s <code><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif()</a></code>, an invalid interval (<code>max &lt; min</code>, or a bound that is not finite) now gives <code>NaN</code> instead of an error. Note that the RNG state now advances even on samples where <code>min == max</code>.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>
@@ -236,7 +238,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>Whatever a <code>prim_*()</code> refuses now reports that primitive as the call, rather than the helper that checked the argument or the anonymous function <code><a href="../reference/jit.html">jit()</a></code> wraps.</li>
+<ul><li>
+<code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> with a scalar <code>shape</code> and a non-scalar <code>mean</code> or <code>sd</code> returned one draw shifted/scaled to the shape of <code>mean</code>/<code>sd</code>; it is now an error, as any shape other than a scalar or <code>shape</code> already was.</li>
+<li>Whatever a <code>prim_*()</code> refuses now reports that primitive as the call, rather than the helper that checked the argument or the anonymous function <code><a href="../reference/jit.html">jit()</a></code> wraps.</li>
 <li>
 <code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> (and so <code><a href="../reference/nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="../reference/nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="../reference/nv_conv3d.html">nv_conv3d()</a></code>) refuses a negative <code>padding</code> that takes away more than a spatial axis holds, which made XLA’s own inference abort the R process, and a zero-sized kernel spatial axis. Negative padding that only empties an axis stays legal.</li>
 <li>
@@ -295,7 +299,7 @@
 <li>Printed graphs, arrays and error messages now spell a data type the way anvl does, so <code>bool</code> no longer shows up as its MLIR spelling <code>i1</code>.</li>
 <li>Improved the documentation and various error messages.</li>
 <li>
-<code><a href="../reference/nv_runif.html">nv_runif()</a></code> with <code>min == max</code> returns the <code>state</code> / <code>values</code> pair every other sampler returns, instead of the filled array on its own.</li>
+<code><a href="../reference/nv_uniform.html">nv_runif()</a></code> with <code>min == max</code> returns the <code>state</code> / <code>values</code> pair every other sampler returns, instead of the filled array on its own.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="tests-development-version">Tests<a class="anchor" aria-label="anchor" href="#tests-development-version"></a></h3>
@@ -316,7 +320,7 @@
 <li>
 <code>nv_rdunif()</code> has been renamed to <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, mirroring R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int()</a></code>.</li>
 <li>
-<code><a href="../reference/nv_runif.html">nv_runif()</a></code>’s <code>lower</code>/<code>upper</code> arguments are now <code>min</code>/<code>max</code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>’s <code>mu</code>/<code>sigma</code> are now <code>mean</code>/<code>sd</code>, and <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>’s <code>n</code> is now <code>size</code>, matching the corresponding R functions.</li>
+<code><a href="../reference/nv_uniform.html">nv_runif()</a></code>’s <code>lower</code>/<code>upper</code> arguments are now <code>min</code>/<code>max</code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>’s <code>mu</code>/<code>sigma</code> are now <code>mean</code>/<code>sd</code>, and <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>’s <code>n</code> is now <code>size</code>, matching the corresponding R functions.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-0-4-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-4-0"></a></h3>
@@ -449,7 +453,7 @@
 <li>The reverse rule for <code>prim_reduce_prod()</code> no longer produces <code>NaN</code> / <code>Inf</code> gradients when the input contains zeros.</li>
 <li>The CI now actually runs the torch-comparison tests.</li>
 <li>
-<code><a href="../reference/nv_runif.html">nv_runif()</a></code> not properly respects the <code>lower</code> argument.</li>
+<code><a href="../reference/nv_uniform.html">nv_runif()</a></code> not properly respects the <code>lower</code> argument.</li>
 </ul></div>
 </div>
     <div class="section level2">

@@ -148,7 +148,7 @@
   [`nv_linspace_like()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
   take `(from, to, length_out)` instead of `(start, end, steps)`, like
   [`base::seq()`](https://rdrr.io/r/base/seq.html).
-- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
+- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   and
   [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   take `dtype` after the distribution parameters, as
@@ -217,7 +217,7 @@
   result keeps `x`’s data type, which `shift` is brought to, instead of
   promoting both.
 - The RNG functions
-  ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
+  ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
   [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
   [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
   [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md),
@@ -407,7 +407,7 @@
   reports how many compiled programs a jitted function currently holds
   for a backend.
 - The random number generators
-  ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
+  ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
   [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
   [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
   [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
@@ -500,7 +500,18 @@
   [`nv_dunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
   [`nv_punif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
   and
-  [`nv_qunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md).
+  [`nv_qunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
+  documented together with
+  [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
+  on
+  [`?nv_uniform`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md).
+- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)’s
+  `min` and `max` now accept arrayish inputs, scalar or of the sample’s
+  shape. Like base R’s
+  [`runif()`](https://rdrr.io/r/stats/Uniform.html), an invalid interval
+  (`max < min`, or a bound that is not finite) now gives `NaN` instead
+  of an error. Note that the RNG state now advances even on samples
+  where `min == max`.
 
 ### Performance
 
@@ -519,6 +530,10 @@
 
 ### Bug fixes
 
+- [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  with a scalar `shape` and a non-scalar `mean` or `sd` returned one
+  draw shifted/scaled to the shape of `mean`/`sd`; it is now an error,
+  as any shape other than a scalar or `shape` already was.
 - Whatever a `prim_*()` refuses now reports that primitive as the call,
   rather than the helper that checked the argument or the anonymous
   function [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)
@@ -725,7 +740,7 @@
 - Printed graphs, arrays and error messages now spell a data type the
   way anvl does, so `bool` no longer shows up as its MLIR spelling `i1`.
 - Improved the documentation and various error messages.
-- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
+- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   with `min == max` returns the `state` / `values` pair every other
   sampler returns, instead of the filled array on its own.
 
@@ -756,7 +771,7 @@
 - `nv_rdunif()` has been renamed to
   [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
   mirroring R’s [`sample.int()`](https://rdrr.io/r/base/sample.html).
-- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)’s
+- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)’s
   `lower`/`upper` arguments are now `min`/`max`,
   [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)’s
   `mu`/`sigma` are now `mean`/`sd`, and
@@ -1019,7 +1034,7 @@
 - The reverse rule for `prim_reduce_prod()` no longer produces `NaN` /
   `Inf` gradients when the input contains zeros.
 - The CI now actually runs the torch-comparison tests.
-- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
+- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   not properly respects the `lower` argument.
 
 ## anvl 0.2.0
