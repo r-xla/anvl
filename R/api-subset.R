@@ -221,45 +221,57 @@ resolve_flat_mask <- function(quos, x_shape) {
   list(mask = mask, quos = quos)
 }
 
-#' Convert a whole-array mask to gather parameters
+#' Linear indices of a whole-array mask
 #'
-#' Every selected element is addressed individually, so all axes of `x` are
-#' collapsed and the result is 1-D. `which(arr.ind = TRUE)` enumerates the
-#' index tuples in column-major order, which is the order R uses for `x[mask]`.
+#' A whole-array mask is applied to the column-major flattening of `x`, so each
+#' selected element is addressed by one linear index rather than by a tuple of
+#' `rank` indices. `which()` enumerates them in column-major order -- the order
+#' R uses for `x[mask]` -- and is much cheaper than `which(arr.ind = TRUE)`,
+#' which would dominate the cost of the whole subset.
+#' @return An `(n, 1)` index array.
 #' @noRd
-flat_mask_to_gather <- function(mask, like = NULL) {
-  rank <- length(dim(mask))
-  indices <- which(mask, arr.ind = TRUE, useNames = FALSE)
-
-  list(
-    start_indices = new_index_array(indices, c(nrow(indices), rank), like = like),
-    slice_sizes = rep(1L, rank),
-    offset_axes = integer(),
-    collapsed_slice_axes = seq_len(rank),
-    start_index_map = seq_len(rank),
-    index_vector_axis = 2L,
-    # the index tuples are in column-major order, which is not the lexicographic
-    # order that `indices_are_sorted` refers to
-    indices_are_sorted = FALSE,
-    unique_indices = TRUE
-  )
+flat_mask_indices <- function(mask, like = NULL) {
+  indices <- which(mask, useNames = FALSE)
+  new_index_array(indices, c(length(indices), 1L), like = like)
 }
 
+# Gathers the linear `indices` from the flattened `x`. Jitted so that the
+# flatten and the gather run as one program.
+flat_mask_gather_core <- jit(function(x, indices) {
+  prim_gather(
+    x = nv_flatten(x),
+    start_indices = indices,
+    slice_sizes = 1L,
+    offset_axes = integer(),
+    collapsed_slice_axes = 1L,
+    x_batching_axes = integer(),
+    start_indices_batching_axes = integer(),
+    start_index_map = 1L,
+    index_vector_axis = 2L,
+    # `which()` returns the linear indices in increasing order
+    indices_are_sorted = TRUE,
+    unique_indices = TRUE
+  )
+})
+
 #' Convert a whole-array mask to scatter parameters
+#'
+#' The parameters address the column-major flattening of `x`, which is what
+#' `flatten = TRUE` tells [subset_scatter_core()] to scatter into.
 #' @noRd
 flat_mask_to_scatter <- function(mask, like = NULL) {
-  rank <- length(dim(mask))
-  indices <- which(mask, arr.ind = TRUE, useNames = FALSE)
+  indices <- flat_mask_indices(mask, like = like)
 
   list(
-    scatter_indices = new_index_array(indices, c(nrow(indices), rank), like = like),
+    scatter_indices = indices,
     update_window_axes = integer(),
-    inserted_window_axes = seq_len(rank),
-    scatter_axes_to_x_axes = seq_len(rank),
+    inserted_window_axes = 1L,
+    scatter_axes_to_x_axes = 1L,
     index_vector_axis = 2L,
-    indices_are_sorted = FALSE,
+    indices_are_sorted = TRUE,
     unique_indices = TRUE,
-    update_shape = nrow(indices)
+    update_shape = shape(indices)[[1L]],
+    flatten = TRUE
   )
 }
 
@@ -728,13 +740,11 @@ nv_subset <- function(x, ...) {
   quos <- rlang::enquos(...)
 
   flat <- resolve_flat_mask(quos, x_shape)
-  if (is.null(flat$mask)) {
-    subsets <- parse_subset_specs(flat$quos, x_shape)
-    params <- subset_specs_to_gather(subsets, like = x)
-  } else {
-    subsets <- list()
-    params <- flat_mask_to_gather(flat$mask, like = x)
+  if (!is.null(flat$mask)) {
+    return(flat_mask_gather_core(x, flat_mask_indices(flat$mask, like = x)))
   }
+  subsets <- parse_subset_specs(flat$quos, x_shape)
+  params <- subset_specs_to_gather(subsets, like = x)
 
   out <- prim_gather(
     x = x,
@@ -774,7 +784,8 @@ subset_scatter_body <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
-  update_shape
+  update_shape,
+  flatten = FALSE
 ) {
   # `x` and `value` arrive at one data type: nv_subset_assign() brought them
   # there, which is also where a value `x`'s data type cannot hold is refused.
@@ -790,7 +801,13 @@ subset_scatter_body <- function(
     }
   }
 
-  prim_scatter(
+  # a whole-array mask addresses the column-major flattening of `x`
+  x_shape <- shape(x)
+  if (flatten) {
+    x <- nv_flatten(x)
+  }
+
+  out <- prim_scatter(
     x = x,
     scatter_indices = scatter_indices,
     update = value,
@@ -803,6 +820,10 @@ subset_scatter_body <- function(
     indices_are_sorted = indices_are_sorted,
     unique_indices = unique_indices
   )
+  if (flatten) {
+    out <- nv_reshape(out, x_shape)
+  }
+  out
 }
 
 subset_scatter_static <- c(
@@ -812,7 +833,8 @@ subset_scatter_static <- c(
   "index_vector_axis",
   "indices_are_sorted",
   "unique_indices",
-  "update_shape"
+  "update_shape",
+  "flatten"
 )
 
 subset_scatter_core <- jit(subset_scatter_body, static = subset_scatter_static)
@@ -927,6 +949,7 @@ nv_subset_assign <- function(x, ..., value, inplace = FALSE) {
     index_vector_axis = params$index_vector_axis,
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices,
-    update_shape = params$update_shape
+    update_shape = params$update_shape,
+    flatten = params$flatten %||% FALSE
   )
 }
