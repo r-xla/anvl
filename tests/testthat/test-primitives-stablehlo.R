@@ -1651,6 +1651,24 @@ test_that("prim_fill() takes a whole number at an integer data type", {
   expect_equal(as.integer(nv_fill(1, shape = 2L, dtype = "i32")), c(1L, 1L))
 })
 
+describe("prim_dynamic_slice", {
+  it("brings a bare R integer start index to the other indices' data type", {
+    m <- nv_array(1:6, shape = c(2, 3))
+    expect_equal(
+      as.integer(prim_dynamic_slice(m, nv_scalar(1L, "i64"), 2L, slice_sizes = c(1L, 2L))),
+      c(3L, 5L)
+    )
+  })
+})
+
+describe("prim_dynamic_update_slice", {
+  it("brings a bare R integer start index to the other indices' data type", {
+    m <- nv_array(1:6, shape = c(2, 3))
+    out <- prim_dynamic_update_slice(m, nv_array(9L, shape = c(1, 1)), nv_scalar(2L, "i64"), 1L)
+    expect_equal(as.integer(out), c(1L, 9L, 3L, 4L, 5L, 6L))
+  })
+})
+
 test_that("the dynamic slicing primitives check their arguments", {
   v <- nv_array(c(10, 20, 30))
   # These built their output aval by hand, so none of the constraints below was

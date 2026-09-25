@@ -419,8 +419,9 @@ nv_concatenate <- jit(
     size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
 
     out_shape <- if (length(non_scalar_shapes)) {
-      x <- non_scalar_shapes[[1L]]
-      x[axis] <- size_out_axis
+      shape <- non_scalar_shapes[[1L]]
+      shape[axis] <- size_out_axis
+      shape
     } else {
       n_scalars
     }
@@ -983,7 +984,9 @@ nv_mod <- jit(function(lhs, rhs) {
     return(rest)
   }
   shifted <- nv_ifelse((rest != 0L) & ((rest < 0L) != (rhs < 0L)), rest + rhs, rest)
-  nv_ifelse(nv_abs(shifted) >= nv_abs(rhs), 0L, shifted)
+  # A shift that rounds up to the divisor itself is a remainder of 0. An
+  # infinite divisor is exempt: there the shift is exact, `-5 %% Inf` is `Inf`.
+  nv_ifelse((nv_abs(shifted) >= nv_abs(rhs)) & nv_is_finite(rhs), 0L, shifted)
 })
 
 #' @title Flooring Division

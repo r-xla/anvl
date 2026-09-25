@@ -497,6 +497,7 @@ gradient <- function(f, wrt = NULL) {
 #' result$value
 #' result$grad
 value_and_gradient <- function(f, wrt = NULL) {
+  assert_function(f)
   wrt <- resolve_arg_names(f, wrt, "wrt")
   if (!is.null(wrt) && !all(wrt %in% formalArgs(f))) {
     cli_abort("wrt must be a subset of the formal arguments of f")

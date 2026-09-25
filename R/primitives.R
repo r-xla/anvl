@@ -30,6 +30,20 @@ make_unary_op <- function(infer_fn) {
 }
 
 
+# The start indices of a dynamic slice must share one data type, so a bare R
+# integer among them takes the data type of the index arrays it meets instead
+# of settling on the default. Index arrays that disagree among themselves are
+# left for `assert_start_indices()` to refuse, so that mistake has one wording.
+promote_start_indices <- function(indices) {
+  arrays <- Filter(function(idx) !is_rdata(to_abstract(idx)), indices)
+  if (length(unique(lapply(arrays, peek_dtype))) > 1L) {
+    return(indices)
+  }
+  # Named only for the messages; the graph keeps them positional.
+  names(indices) <- sprintf("..%d", seq_along(indices))
+  unname(apply_promotion(indices, promotion_rdata_common()))
+}
+
 #' @title Primitive Fill
 #' @description
 #' Creates an array of a given shape and data type, filled with a scalar value.
@@ -483,8 +497,8 @@ prim_static_slice <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
-#'   the same integer data type.
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= shape(x)`
@@ -517,7 +531,7 @@ prim_static_slice <- new_primitive(
 prim_dynamic_slice <- new_primitive(
   "dynamic_slice",
   function(x, ..., slice_sizes) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     graph_desc_add(
       self,
       args = c(list(x = x), start_indices),
@@ -525,8 +539,9 @@ prim_dynamic_slice <- new_primitive(
       infer_fn = infer_dynamic_slice
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` needs no promotion: it is the only operand of its kind. The start
+  # indices are promoted among themselves by `promote_start_indices()`, which
+  # is a group of their own -- they never take `x`'s data type.
   static = "slice_sizes"
 )
 
@@ -544,8 +559,8 @@ prim_dynamic_slice <- new_primitive(
 #'   number of axes as `x`, with `shape(update) <= shape(x)` per axis.
 #'   Shares `x`'s data type.
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
-#'   the same integer data type.
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @section Out of Bounds Behavior:
 #' Start indices are clamped before the update is written:
 #' `adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)`.
@@ -576,7 +591,7 @@ prim_dynamic_slice <- new_primitive(
 prim_dynamic_update_slice <- new_primitive(
   "dynamic_update_slice",
   function(x, update, ...) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     graph_desc_add(
       self,
@@ -3239,10 +3254,10 @@ prim_scatter <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param start_indices ([`arrayish`])\cr
-#'   Array of starting indices, of the same integer data type.
-#'   Contains index vectors that map to
-#'   positions in `x` via `start_index_map`. The axis
-#'   specified by `index_vector_axis` holds the index vectors.
+#'   Array of starting indices, of an integer data type, which it keeps -- the
+#'   indices take no part in `x`'s. Contains index vectors that map to
+#'   positions in `x` via `start_index_map`. The axis specified by
+#'   `index_vector_axis` holds the index vectors.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice to gather from `x` in each axis.
 #'   Must have length equal to `naxes(x)`.
@@ -3342,8 +3357,8 @@ prim_gather <- new_primitive(
       infer_fn = infer_gather
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` and `start_indices` are operands of different kinds and never meet at
+  # one data type, so there is nothing for a promotion rule to do.
   static = 3:11
 )
 

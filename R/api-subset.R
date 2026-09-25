@@ -587,57 +587,71 @@ nv_subset <- function(x, ...) {
 # fused into a single program here. `scatter_indices` is passed in as a traced
 # input (never reconstructed from the static params), so distinct index *values*
 # reuse one compiled program; only distinct subset *patterns* recompile.
-subset_scatter_core <- jit(
-  function(
-    x,
-    value,
-    scatter_indices,
-    update_window_axes,
-    inserted_window_axes,
-    scatter_axes_to_x_axes,
-    index_vector_axis,
-    indices_are_sorted,
-    unique_indices,
-    update_shape
-  ) {
-    # `x` and `value` arrive at one data type: nv_subset_assign() brought them
-    # there, which is also where a value `x`'s data type cannot hold is refused.
-    if (!naxes(value)) {
-      value <- nv_broadcast_to(value, update_shape)
-    } else {
-      value_shape <- shape(value)
-      if (!identical(value_shape, update_shape)) {
-        cli_abort(c(
-          "Update shape does not match subset shape.",
-          x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
-        ))
-      }
+subset_scatter_body <- function(
+  x,
+  value,
+  scatter_indices,
+  update_window_axes,
+  inserted_window_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis,
+  indices_are_sorted,
+  unique_indices,
+  update_shape
+) {
+  # `x` and `value` arrive at one data type: nv_subset_assign() brought them
+  # there, which is also where a value `x`'s data type cannot hold is refused.
+  if (!naxes(value)) {
+    value <- nv_broadcast_to(value, update_shape)
+  } else {
+    value_shape <- shape(value)
+    if (!identical(value_shape, update_shape)) {
+      cli_abort(c(
+        "Update shape does not match subset shape.",
+        x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
+      ))
     }
+  }
 
-    prim_scatter(
-      x = x,
-      scatter_indices = scatter_indices,
-      update = value,
-      update_window_axes = update_window_axes,
-      inserted_window_axes = inserted_window_axes,
-      x_batching_axes = integer(),
-      scatter_indices_batching_axes = integer(),
-      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
-      index_vector_axis = index_vector_axis,
-      indices_are_sorted = indices_are_sorted,
-      unique_indices = unique_indices
-    )
-  },
-  static = c(
-    "update_window_axes",
-    "inserted_window_axes",
-    "scatter_axes_to_x_axes",
-    "index_vector_axis",
-    "indices_are_sorted",
-    "unique_indices",
-    "update_shape"
+  prim_scatter(
+    x = x,
+    scatter_indices = scatter_indices,
+    update = value,
+    update_window_axes = update_window_axes,
+    inserted_window_axes = inserted_window_axes,
+    x_batching_axes = integer(),
+    scatter_indices_batching_axes = integer(),
+    scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+    index_vector_axis = index_vector_axis,
+    indices_are_sorted = indices_are_sorted,
+    unique_indices = unique_indices
   )
+}
+
+subset_scatter_static <- c(
+  "update_window_axes",
+  "inserted_window_axes",
+  "scatter_axes_to_x_axes",
+  "index_vector_axis",
+  "indices_are_sorted",
+  "unique_indices",
+  "update_shape"
 )
+
+subset_scatter_core <- jit(subset_scatter_body, static = subset_scatter_static)
+
+# The same program, but `x`'s buffer is donated, so the scatter writes into it
+# instead of allocating a new array (`nv_subset_assign(inplace = TRUE)`).
+# `donate` is a backend option, which `jit()` can only check once the backends
+# are registered in `.onLoad()`, so the function is created on first use.
+subset_scatter_core_inplace <- local({
+  core <- NULL
+  function() {
+    core <<- core %||%
+      jit(subset_scatter_body, static = subset_scatter_static, donate = "x")
+    core
+  }
+})
 
 #' @title Update Subset
 #' @description
@@ -652,6 +666,17 @@ subset_scatter_core <- jit(
 #'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
 #'   values must match it.
 #'   The value is converted to the data type of `x`.
+#' @param inplace (`logical(1)`)\cr
+#'   Whether to write into the memory of `x` instead of allocating a new array.
+#'   This avoids the copy of `x` that an eager subset assignment otherwise
+#'   makes, but it consumes `x`: its buffer is [donated][jit], so `x` -- and
+#'   any other R variable referring to the same array -- can no longer be used
+#'   afterwards. With `[<-`, pass it among the subscripts, e.g.
+#'   `x[1, inplace = TRUE] <- 0`, which rebinds `x` to the result.
+#'   It is an error inside a jitted function: there, other references to `x`
+#'   would stay valid, so the same code would behave differently in eager and
+#'   in jit mode. Inside `jit()`, the compiler already avoids the copy anyway.
+#'   Default is `FALSE`.
 #' @return ([`arrayish`])\cr
 #'   Has `x`'s data type and shape, with the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
@@ -661,11 +686,23 @@ subset_scatter_core <- jit(
 #' nv_subset_assign(x, 1, value = nv_scalar(0L))
 #' x[1, ] <- nv_scalar(0L)
 #' x
+#'
+#' # write into the memory of `x` instead of copying it
+#' x[2, inplace = TRUE] <- nv_scalar(1L)
+#' x
 #' @export
 # Not wrapped in `jit()`: the `...` subscripts are captured via NSE (`enquos()`),
 # which jit's argument handling cannot trace. The parsing stays here (eager) and
 # the array work is delegated to the jitted [subset_scatter_core()].
-nv_subset_assign <- function(x, ..., value) {
+nv_subset_assign <- function(x, ..., value, inplace = FALSE) {
+  assert_flag(inplace)
+  if (inplace && currently_tracing()) {
+    cli_abort(c(
+      "{.arg inplace} cannot be used inside {.fn jit}.",
+      i = "Eagerly, it invalidates every other reference to {.arg x}; inside {.fn jit}, other references stay valid.",
+      i = "Remove {.code inplace = TRUE}: the compiler already avoids unnecessary copies of {.arg x}."
+    ))
+  }
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish `x`, but got {.cls {class(x)[1]}}")
   }
@@ -693,7 +730,8 @@ nv_subset_assign <- function(x, ..., value) {
     value <- prim_rev(value, axes = reversed_axes)
   }
 
-  subset_scatter_core(
+  core <- if (inplace) subset_scatter_core_inplace() else subset_scatter_core
+  core(
     x = x,
     value = value,
     scatter_indices = params$scatter_indices,

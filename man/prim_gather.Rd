@@ -24,10 +24,10 @@ One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
 \item{start_indices}{(\code{\link{arrayish}})\cr
-Array of starting indices, of the same integer data type.
-Contains index vectors that map to
-positions in \code{x} via \code{start_index_map}. The axis
-specified by \code{index_vector_axis} holds the index vectors.}
+Array of starting indices, of an integer data type, which it keeps -- the
+indices take no part in \code{x}'s. Contains index vectors that map to
+positions in \code{x} via \code{start_index_map}. The axis specified by
+\code{index_vector_axis} holds the index vectors.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice to gather from \code{x} in each axis.

@@ -29,6 +29,14 @@ test_that("with_backend restores backend on error", {
   expect_equal(active_backend(), "pjrt")
 })
 
+describe("with_backend", {
+  it("rejects the internal plain backend", {
+    expect_error(with_backend("plain", 1), "plain")
+    expect_error(local_backend("plain"), "plain")
+    expect_equal(active_backend(), "pjrt")
+  })
+})
+
 test_that("backend() returns the backend name", {
   expect_equal(backend(nv_array(1)), "pjrt")
 })
