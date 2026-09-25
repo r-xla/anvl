@@ -289,7 +289,8 @@ graph_to_quickr_r_function <- function(graph) {
 #' If the graph returns multiple outputs (e.g. a nested list), the compiled
 #' function returns the same structure by rebuilding the output tree in R.
 #'
-#' For a list of supported primitives see `vignette("primitives")`.
+#' For a list of supported primitives see
+#' `r roxy_article("primitives")`.
 #'
 #' Supported data types are `f64`, `i32` and `bool`.
 #' The code generator currently supports arrays up to rank 5. Some primitives

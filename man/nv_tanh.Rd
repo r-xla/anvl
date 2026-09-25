@@ -6,6 +6,8 @@
 \title{Hyperbolic Tangent}
 \usage{
 nv_tanh(x)
+
+\method{tanh}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

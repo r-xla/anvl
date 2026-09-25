@@ -10,7 +10,7 @@
 #' data type and the pair is an error. Convert one side with [`nv_convert()`]
 #' to decide what they meet at.
 #'
-#' See the *Type Promotion* article for more information.
+#' See `r roxy_article("type-promotion")` for more information.
 #' @param lhs_dtype,rhs_dtype ([`tengen::DataType`])\cr
 #'   The two data types.
 #' @return ([`tengen::DataType`])\cr
@@ -388,7 +388,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   The rule to apply; see [promotion_rule].
 #' @return (`list()`)\cr
 #'   `operands`, each materialized at the data type the rule named for it.
-#' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
+#' @seealso [promotion_rule], [new_primitive()], `r roxy_article("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # an R value takes the data type of the operand it meets
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
@@ -663,7 +663,7 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' common one.
 #' @seealso [`default_dtypes()`], [`common_dtype()`],
 #'   [`nv_promote_to_common()`], [`nv_convert()`],
-#'   `vignette("type-promotion")`
+#'   `r roxy_article("type-promotion")`
 NULL
 
 dtype_category <- function(dtype) {

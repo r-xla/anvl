@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+* `nv_div()` and `/` convert integer and boolean operands to the default float,
+  like base R: `7L / 2L` is `3.5`. Use `%/%` for integer division.
 * The element-wise `nv_max()` / `nv_min()` and `prim_max()` / `prim_min()` are
   now `nv_pmax()` / `nv_pmin()` and `prim_pmax()` / `prim_pmin()`, following
   `base::pmax()` / `base::pmin()`.
@@ -152,6 +154,7 @@
 
 * `nv_subset_assign()` and `[<-` gain `inplace`, which writes into the memory of
   `x` instead of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
+* New `axes()` returns the axis indices of an array, `seq_len(naxes(x))`.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.

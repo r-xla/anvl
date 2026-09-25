@@ -89,8 +89,8 @@ The data types and the words the docs use for groups of them are in `?dtypes`
 ## Type Promotion
 
 An R value entering a program is not converted at the boundary -- it is built into the program at the
-dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
-is the reference for how this works and for the `.promote` rules (`promotion_common()`,
+dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. The Data Types and Promotion Rules article
+(`vignettes/articles/type-promotion.Rmd`) is the reference for how this works and for the `.promote` rules (`promotion_common()`,
 `promotion_like()`, `promotion_dtype()`, `promotion_rdata_common()`) that `nv_*` functions pass to
 `as_anvl_arrays()`. Two rules that bite while writing code:
 

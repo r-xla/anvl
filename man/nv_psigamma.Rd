@@ -6,6 +6,8 @@
 \title{Psigamma}
 \usage{
 nv_psigamma(x, deriv = 0L)
+
+\method{trigamma}{AnvlArray}(x)
 }
 \arguments{
 \item{x, deriv}{(\code{\link{arrayish}})\cr

@@ -6,6 +6,8 @@
 \title{Sine of a Multiple of Pi}
 \usage{
 nv_sinpi(x)
+
+\method{sinpi}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

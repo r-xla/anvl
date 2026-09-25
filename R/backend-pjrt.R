@@ -265,8 +265,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' @section Data representation:
 #' An [`AnvlArray`] with `backend = "pjrt"` wraps a [`pjrt::pjrt_buffer()`]
 #' stored in the `$data` field. The buffer owns the memory holding the array
-#' values and may live on any device supported by PJRT (CPU, CUDA, Metal,
-#' ...). Calling [`as_array()`] transfers the buffer contents back to an R
+#' values and may live on any device supported by PJRT (CPU, CUDA, ...).
+#' Calling [`as_array()`] transfers the buffer contents back to an R
 #' array; calling [`nv_array()`] on an R object uploads it to the requested
 #' device.
 #'
@@ -290,7 +290,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' a mode that replaces subnormal inputs and results with zero. The exact
 #' behavior depends on the platform, backend, and operation.
 #'
-#' See `vignette("gotchas", package = "anvl")` for an explanation and examples.
+#' See `r roxy_article("gotchas")` for an explanation and examples.
 #'
 #' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose

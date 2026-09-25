@@ -103,8 +103,8 @@ An array's \strong{axes} are the indices that identify its directions, numbered
 along that axis, and the \strong{shape} is the vector of all axis sizes. For
 example, \code{nv_array(1:6, shape = c(2, 3))} has two axes; the size of axis \code{1}
 is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2, 3)}. Use
-\code{\link[tengen:naxes]{naxes()}} for the number of axes and
-\code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
+\code{\link[tengen:naxes]{naxes()}} for the number of axes, \code{\link[=axes]{axes()}} for the axis
+indices, and \code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
 axis} rather than an array's "dimensions", as the latter is generally
 overloaded as it is used to refer to both the axis and its size.
 }
@@ -116,6 +116,7 @@ The following generic functions can be used to extract information from an \code
 \item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
 \item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
 \item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
+\item \code{\link[=axes]{axes()}}: Get the axis indices.
 \item \code{\link[tengen:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
 }
@@ -154,7 +155,7 @@ representation of \code{NAinteger_}, which is \code{-INT_MIN}.
 Disallowing this would prevent round-trips between the data types.
 }
 
-See the "Gotchas" vignette for more information.
+See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for more information.
 }
 
 \section{Out of Range values}{

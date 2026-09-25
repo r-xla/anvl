@@ -21,8 +21,8 @@ levels of strictness it does not say which one is meant. Forwarded
 to the backend; for the \code{pjrt} backend the cases scanned for are
 \code{i32}/\code{i64} values colliding with the \code{NA} bit pattern and \code{ui64}
 values \verb{>= 2^63} wrapping through \code{bit64::integer64}. See
-\code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for the full list, and the "Gotchas"
-vignette.}
+\code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for the full list, and
+the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article.}
 
 \item{...}{Additional arguments passed to methods (unused).}
 }
@@ -38,6 +38,32 @@ Only in the case of scalars is the result a vector of length 1, as R \code{array
 \details{
 This is implemented via the generic \code{\link[tengen:as_array]{tengen::as_array()}}.
 }
+\section{Data types}{
+
+R has fewer data types than anvl, so the values are converted to the R
+type that can represent them:\tabular{ll}{
+   Data type \tab R type \cr
+   \code{f32}, \code{f64} \tab \code{double} \cr
+   \code{i8}, \code{i16}, \code{i32}, \code{ui8}, \code{ui16} \tab \code{integer} \cr
+   \code{i64}, \code{ui32}, \code{ui64} \tab \code{\link[bit64:integer64]{bit64::integer64}} \cr
+   \code{bool} \tab \code{logical} \cr
+}
+
+
+This has two consequences:
+\itemize{
+\item An \code{f32} value is widened to a \code{double} and keeps the rounding error of
+the 32-bit float, e.g. \code{as_array(nv_scalar(0.1))} is not exactly \code{0.1}.
+\item Some integer values cannot be represented in R: an \code{i32} or \code{i64} value
+equal to the smallest representable integer is read as \code{NA}, and a
+\code{ui64} value \verb{>= 2^63} wraps to a negative number. The \code{check} argument
+decides whether this is reported.
+}
+
+To obtain a different R type, convert the array with \code{\link[=nv_convert]{nv_convert()}}
+first, or use the coercion functions described in \code{\link[=as-AnvlArray]{as.double()}}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:4, dtype = "f32")

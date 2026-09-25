@@ -6,6 +6,8 @@
 \title{Log Plus One}
 \usage{
 nv_log1p(x)
+
+\method{log1p}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

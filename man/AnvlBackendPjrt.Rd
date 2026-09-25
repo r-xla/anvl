@@ -20,8 +20,7 @@ backend.
 
 An \code{\link{AnvlArray}} with \code{backend = "pjrt"} wraps a \code{\link[pjrt:pjrt_buffer]{pjrt::pjrt_buffer()}}
 stored in the \verb{$data} field. The buffer owns the memory holding the array
-values and may live on any device supported by PJRT (CPU, CUDA, Metal,
-...). Calling \code{\link[=as_array]{as_array()}} transfers the buffer contents back to an R
+values and may live on any device supported by PJRT (CPU, CUDA, ...). Calling \code{\link[=as_array]{as_array()}} transfers the buffer contents back to an R
 array; calling \code{\link[=nv_array]{nv_array()}} on an R object uploads it to the requested
 device.
 
@@ -49,7 +48,7 @@ read back into R, yet treated as zero in calculations. On CPUs, XLA enables
 a mode that replaces subnormal inputs and results with zero. The exact
 behavior depends on the platform, backend, and operation.
 
-See \code{vignette("gotchas", package = "anvl")} for an explanation and examples.
+See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for an explanation and examples.
 }
 
 \section{PJRT JIT arguments}{

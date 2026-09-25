@@ -6,6 +6,8 @@
 \title{Gamma Function}
 \usage{
 nv_gamma(x)
+
+\method{gamma}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

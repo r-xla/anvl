@@ -2,7 +2,7 @@
 # decides one are registered per backend (`default_dtypes()`) and overridden by
 # the `anvl.default_dtypes` option, for every backend or per backend. They
 # decide only what a value becomes
-# when nothing else does: the yielding rule of `vignette("type-promotion")` is
+# when nothing else does: the yielding rule of the Type Promotion article is
 # untouched.
 
 describe("default_dtypes()", {

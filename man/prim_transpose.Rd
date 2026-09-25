@@ -13,7 +13,7 @@ One input. Can be any data type. An R value materializes at its
 
 \item{perm}{(\code{integer()})\cr
 Specifies the new ordering of axes. Must be a permutation of
-\code{seq_len(naxes(x))}, the axis indices of \code{x}.
+\code{\link[=axes]{axes(x)}}, the axis indices of \code{x}.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{

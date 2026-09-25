@@ -10,8 +10,8 @@
 #' along that axis, and the **shape** is the vector of all axis sizes. For
 #' example, `nv_array(1:6, shape = c(2, 3))` has two axes; the size of axis `1`
 #' is `2` and the size of axis `2` is `3`, so its shape is `c(2, 3)`. Use
-#' [`naxes()`][tengen::naxes] for the number of axes and
-#' [`shape()`][tengen::shape] for the axis sizes. We speak of the *size of an
+#' [`naxes()`][tengen::naxes] for the number of axes, [`axes()`] for the axis
+#' indices, and [`shape()`][tengen::shape] for the axis sizes. We speak of the *size of an
 #' axis* rather than an array's "dimensions", as the latter is generally
 #' overloaded as it is used to refer to both the axis and its size.
 #'
@@ -21,6 +21,7 @@
 #' - [`dtype()`][tengen::dtype]: Get the data type of the array.
 #' - [`shape()`][tengen::shape]: Get the shape (axis sizes) of the array.
 #' - [`naxes()`][tengen::naxes]: Get the number of axes.
+#' - [`axes()`]: Get the axis indices.
 #' - [`device()`][tengen::device]: Get the device of the array.
 #' - [`platform()`]: Get the platform (e.g. `"cpu"`, `"cuda"`).
 #'
@@ -79,7 +80,7 @@
 #'    representation of `NAinteger_`, which is `-INT_MIN`.
 #'    Disallowing this would prevent round-trips between the data types.
 #'
-#' See the "Gotchas" vignette for more information.
+#' See `r roxy_article("gotchas")` for more information.
 #'
 #' @section Out of Range values:
 #' Because base R has fewer data types than anvl, creating `AnvlArray`s from R often involves
@@ -533,6 +534,22 @@ shape.AnvlArray <- function(x, ...) {
   globals$backends[[x$backend]]$shape(x)
 }
 
+#' @title Get the axes of an array
+#'
+#' @description Returns the axis indices of an array, i.e. `seq_len(naxes(x))`.
+#'
+#' @param x ([`arrayish`])\cr
+#'   An array-like object.
+#' @returns (`integer()`)
+#' @seealso [naxes()], [shape()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(1:6, shape = c(2, 3))
+#' axes(x)
+#' @export
+axes <- function(x) {
+  seq_len(naxes(x))
+}
+
 #' @rdname as_array
 #' @param check (`character(1)` | `FALSE`)\cr
 #'   How to report a materialized value that the R type cannot hold:
@@ -542,8 +559,8 @@ shape.AnvlArray <- function(x, ...) {
 #'   to the backend; for the `pjrt` backend the cases scanned for are
 #'   `i32`/`i64` values colliding with the `NA` bit pattern and `ui64`
 #'   values `>= 2^63` wrapping through `bit64::integer64`. See
-#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and the "Gotchas"
-#'   vignette.
+#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and
+#'   `r roxy_article("gotchas")`.
 #' @export
 as_array.AnvlArray <- function(x, check = "warn", ...) {
   assert_check_level(check)

@@ -280,8 +280,8 @@ with_backend <- function(backend, code) {
 #' asking, `"0"` never downloads.
 #'
 #' Which plugins you get -- and whether CUDA is available at all -- is decided
-#' by the repository anvl was installed from, not by this call. See the
-#' installation vignette: `vignette("installation", package = "anvl")`.
+#' by the repository anvl was installed from, not by this call. See
+#' `r roxy_article("installation")`.
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to install for. Defaults to [active_backend()]. The `"plain"`

@@ -34,6 +34,6 @@ environment variable overrides the prompt: \code{"1"} always downloads without
 asking, \code{"0"} never downloads.
 
 Which plugins you get -- and whether CUDA is available at all -- is decided
-by the repository anvl was installed from, not by this call. See the
-installation vignette: \code{vignette("installation", package = "anvl")}.
+by the repository anvl was installed from, not by this call. See
+the \href{https://r-xla.github.io/anvl/articles/installation.html}{Installation} article.
 }

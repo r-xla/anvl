@@ -6,6 +6,8 @@
 \title{Log-Gamma}
 \usage{
 nv_lgamma(x)
+
+\method{lgamma}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

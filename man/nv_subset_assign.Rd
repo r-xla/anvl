@@ -5,6 +5,8 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
+\method{[}{AnvlArray}(x, ...) <- value
+
 nv_subset_assign(x, ..., value, inplace = FALSE)
 }
 \arguments{
@@ -13,7 +15,7 @@ The array to update. Can be any data type.
 An R object is materialized at its \link[=default_dtypes]{default data type}.}
 
 \item{...}{Subset specifications, one per axis. See
-\code{vignette("subsetting")} for details.}
+the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
@@ -54,5 +56,6 @@ x
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset]{nv_subset()}}, \code{vignette("subsetting")} for a comprehensive guide.
+\code{\link[=nv_subset]{nv_subset()}}, the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for a
+comprehensive guide.
 }

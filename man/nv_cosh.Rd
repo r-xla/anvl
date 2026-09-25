@@ -6,6 +6,8 @@
 \title{Hyperbolic Cosine}
 \usage{
 nv_cosh(x)
+
+\method{cosh}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

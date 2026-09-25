@@ -6,6 +6,8 @@
 \title{Bitwise Not}
 \usage{
 nv_not(x)
+
+\method{!}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

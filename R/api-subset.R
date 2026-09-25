@@ -516,7 +516,7 @@ parse_subset_spec <- function(quo, axis_size, axis) {
   cli_abort(c(
     "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
     x = detail,
-    i = "See {.code vignette(\"subsetting\")}."
+    i = "See {.url {article_url(\"subsetting\")}}."
   ))
 }
 
@@ -529,11 +529,13 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
-#'   axes select all elements. See `vignette("subsetting")` for details.
+#'   axes select all elements. See
+#'   `r roxy_article("subsetting")` for details.
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type, and the shape the specifications select --
 #'   a scalar index drops its axis, a range or an index array keeps it.
-#' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
+#' @seealso [nv_subset_assign()] for updating subsets,
+#'   `r roxy_article("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
@@ -661,7 +663,7 @@ subset_scatter_core_inplace <- local({
 #'   The array to update. Can be any data type.
 #'   An R object is materialized at its [default data type][default_dtypes].
 #' @param ... Subset specifications, one per axis. See
-#'   `vignette("subsetting")` for details.
+#'   `r roxy_article("subsetting")` for details.
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
 #'   values must match it.
@@ -679,7 +681,8 @@ subset_scatter_core_inplace <- local({
 #'   Default is `FALSE`.
 #' @return ([`arrayish`])\cr
 #'   Has `x`'s data type and shape, with the subset replaced.
-#' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
+#' @seealso [nv_subset()], `r roxy_article("subsetting")` for a
+#'   comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
 #' # set row 1 to zeros
