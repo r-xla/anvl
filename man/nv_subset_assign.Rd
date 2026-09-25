@@ -12,8 +12,18 @@ nv_subset_assign(x, ..., value, inplace = FALSE)
 The array to update. Can be any data type.
 An R object is materialized at its \link[=default_dtypes]{default data type}.}
 
-\item{...}{Subset specifications, one per axis. See
-\code{vignette("subsetting")} for details.}
+\item{...}{Subset specifications, one per axis. Omitted trailing
+axes select all elements.
+
+A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
+arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+\code{x} selects across the whole array, yielding a 1-D result. Masks whose
+values come from an array only work in eager mode, because the number of
+selected elements determines the output shape.
+
+See \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
@@ -46,6 +56,10 @@ x <- nv_matrix(1:12, nrow = 3)
 # set row 1 to zeros
 nv_subset_assign(x, 1, value = nv_scalar(0L))
 x[1, ] <- nv_scalar(0L)
+x
+
+# Zero out every element greater than 6 (eager mode only)
+x[x > 6] <- 0L
 x
 
 # write into the memory of `x` instead of copying it
