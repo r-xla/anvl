@@ -59,7 +59,7 @@ backend, e.g. \code{ANVL_DEFAULT_DTYPES="float=f64,int=i64"}.
 
 The defaults decide only what a value becomes when \emph{nothing else does}: an R
 value that meets a typed array of its own category still takes that array's
-data type, whatever the default (\code{vignette("type-promotion")}). The data
+data type, whatever the default (see the \href{https://r-xla.github.io/anvl/articles/type-promotion.html}{Type Promotion} article). The data
 type you name is taken on trust, so one that does not fit is an error where
 the data is allocated or the program compiled rather than where it is set.
 Which ones fit is the backend's own business -- see the \emph{Supported data

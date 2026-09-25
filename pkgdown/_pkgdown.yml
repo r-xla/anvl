@@ -26,11 +26,15 @@ navbar:
         href: articles/installation.html
       - text: Get Started
         href: articles/anvl.html
+      - text: Next Steps
+        href: articles/next_steps.html
     user_guide:
       text: User guide
       menu:
       - text: JIT Deep Dive
         href: articles/jit.html
+      - text: Automatic Differentiation
+        href: articles/autodiff.html
       - text: Static Shape Restriction
         href: articles/static_shapes.html
       - text: Subsetting
@@ -48,8 +52,6 @@ navbar:
     examples:
       text: Examples
       menu:
-      - text: Logistic Regression
-        href: articles/logistic-regression.html
       - text: Metropolis Hastings
         href: articles/metropolis-hastings.html
       - text: Gaussian Process
@@ -95,6 +97,7 @@ reference:
       - dtype
       - shape
       - naxes
+      - axes
       - device
       - starts_with("platform")
 

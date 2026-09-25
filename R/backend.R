@@ -280,7 +280,7 @@ with_backend <- function(backend, code) {
 #'
 #' Which plugins you get -- and whether CUDA is available at all -- is decided
 #' by the repository anvl was installed from, not by this call. See the
-#' installation vignette: `vignette("installation", package = "anvl")`.
+#' [Installation](https://r-xla.github.io/anvl/articles/installation.html) article.
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to install for. Defaults to [active_backend()]. The `"plain"`

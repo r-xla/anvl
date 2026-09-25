@@ -953,13 +953,19 @@ sort.AnvlBox <- sort.AnvlArray
 #' @method [<- AnvlArray
 #' @export
 `[<-.AnvlArray` <- function(x, ..., value) {
-  n_args <- nargs() - 2L
+  quos <- rlang::enquos(...)
+  has_inplace <- "inplace" %in% names(quos)
+  inplace <- FALSE
+  if (has_inplace) {
+    inplace <- rlang::eval_tidy(quos$inplace)
+    quos$inplace <- NULL
+  }
+  n_args <- nargs() - 2L - has_inplace
   rank <- naxes(x)
   if (n_args > rank) {
     abort_too_many_subsets(n_args, shape(x))
   }
-  quos <- rlang::enquos(...)
-  rlang::inject(nv_subset_assign(x, !!!quos, value = value))
+  rlang::inject(nv_subset_assign(x, !!!quos, value = value, inplace = inplace))
 }
 
 #' @method [<- AnvlBox

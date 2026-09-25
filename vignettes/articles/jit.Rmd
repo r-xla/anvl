@@ -1,10 +1,5 @@
 ---
 title: "JIT Deep Dive"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{JIT Deep Dive}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -14,9 +9,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette explains what actually happens when you wrap a function with `jit()`.
-Understanding this is what lets you avoid common pitfals on tracing-based compilers.
-If you haven't yet, read the [Get Started](anvl.html) vignette first.
+This article explains what actually happens when you wrap a function with `jit()`.
+Understanding this is what lets you avoid common pitfalls of tracing-based compilers.
+If you haven't yet, read the [Get Started](anvl.html) article first.
 
 We will use the simple `linear` function as the running example.
 
@@ -110,16 +105,16 @@ The cache key also includes information about the input structure (if `AnvlArray
 
 Two important notes to be aware of:
 
-- Call `jit()` once on a function and reuse the result; calling `jit()` inside a loop creates a fresh cache on every iteration and defeats the point:
+- Call `jit()` once on a function and reuse the result; calling `jit()` inside a loop creates a fresh cache on every iteration and defeats the point.
 - For functions that will be called many times with consistent shapes, compilation is a one-time cost.
-  For computations on shapes that won't recur, the compile time may dominate -- see [Padding Inputs to Avoid Recompilation](efficiency.html#padding-inputs-to-avoid-recompilation) in the efficiency vignette for one way to keep the cache small.
+  For computations on shapes that won't recur, the compile time may dominate -- see [Padding Inputs to Avoid Recompilation](efficiency.html#padding-inputs-to-avoid-recompilation) in the efficiency article for one way to keep the cache small.
 
 ## Tracing
 
 *Tracing* is how the R code is translated into a form that the XLA compiler can understand.
-It works by replacing the dynamic inputs with special (`GraphBox`) values and runnig it.
+It works by replacing the dynamic inputs with special (`GraphBox`) values and running it.
 Instead of doing the array computations, this will instead record every primitive operation in an `AnvlGraph`, which represents the *evaluation trace*.
-For the purposes of this vignette you can think of tracing and the subsequent XLA compilation as a single phase that runs once per cache miss.
+For the purposes of this article you can think of tracing and the subsequent XLA compilation as a single phase that runs once per cache miss.
 Note that this is different from R's `trace()` function, which lets you insert code into functions.
 In {anvl}, this tracing machinery is available via `trace_fn()`.
 Although you will probably never need to use this function directly, we will use it to show what's happening under the hood.
@@ -138,7 +133,7 @@ However, the content is more structured:
 
 - There are only calls into primitives and not closures; i.e., function calls are inlined.
 - Types are fully specified.
-- Every variable is assigned to once, i.e. the program is in SSA (Single Static Assignment) form.
+- Every variable is assigned to once, i.e. the program is in SSA (Static Single Assignment) form.
 
 Crucially, only `prim_*` calls (and the `nv_*` API functions or overloaded operators that delegate to them) get recorded.
 Any other R code in the body might influence what the evaluation trace is, but is not present in the traced graph itself.
@@ -146,7 +141,7 @@ Any other R code in the body might influence what the evaluation trace is, but i
 ### The Tracing Contract
 
 Tracing only produces correct results for *pure* functions -- functions whose output depends on their arguments and nothing else, and that have no R-level side effects.
-This contract is a consequence of both how the caching works and that the compiled program runs outside of R and only communicates back to the R interpreter via it's return values.
+This contract is a consequence of both how the caching works and that the compiled program runs outside of R and only communicates back to the R interpreter via its return values.
 Concretely, the function's execution path -- the specific sequence of primitive calls it performs -- must depend only on:
 
 1. The *abstract* representation (shape and dtype) of each dynamic input, and
@@ -204,7 +199,7 @@ trace_fn(h, args = list(x = f32_scalar))
 ```
 
 The trace itself runs correctly, but it becomes a problem in combination with `jit()`'s caching mechanism.
-The closed-over `threshold` does not influence the cache key, so subsequent calls with the same dynamic input type would reuse the executable produced when `threshold` was `0.5`, no matter how `threshold` is at call time.
+The closed-over `threshold` does not influence the cache key, so subsequent calls with the same dynamic input type would reuse the executable produced when `threshold` was `0.5`, whatever value `threshold` has at call time.
 The only fix is to not let the graph depend on values outside the function's signature -- in this case, make `threshold` an explicit static argument.
 
 ### Closed-over values become constants
@@ -280,29 +275,9 @@ beta
 
 ### Donating inputs
 
-By default, a compiled executable treats its inputs as read-only: the R-visible input arrays remain valid after the call, and XLA has to allocate fresh memory for any output of matching shape.
-For long training loops over large parameters, this means every step allocates a new parameter buffer and leaves the previous one for the garbage collector.
-
-Via the `donate` argument of `jit()`, you can tell XLA that an input will not be used after the call, so it is free to reuse the input array's memory for an output.
-
-```{r}
-step <- jit(function(w, g) w - 0.1 * g, donate = "w")
-
-w <- nv_array(c(1, 2, 3), dtype = "f32")
-g <- nv_array(c(0.1, 0.1, 0.1), dtype = "f32")
-
-w <- step(w, g)
-w
-```
-
-The compiled executable now consumes `w`'s buffer as part of the call.
-The caller must not reuse an array that was donated to a function, otherwise an error is thrown:
-
-```{r, error = TRUE, eval = startsWith(Sys.getenv("ANVL_DEFAULT_DEVICE", "cpu"), "cpu")}
-w_old <- nv_array(c(1, 2, 3), dtype = "f32")
-w_new <- step(w_old, g)
-w_old     # the old buffer has been donated
-```
+By default, a compiled executable treats its inputs as read-only, so it has to allocate new memory for its outputs.
+The `donate` argument of `jit()` marks inputs that will not be used after the call, which allows XLA to reuse their memory for the outputs.
+See the [Donation](efficiency.html#donation) section of the efficiency article for an example.
 
 ### Device placement
 

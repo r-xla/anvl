@@ -1,13 +1,8 @@
 ---
 title: "Gaussian Process"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Gaussian Process}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
-In this vignette, we implement a Gaussian Process (GP) regression model from scratch.
+In this article, we implement a Gaussian Process (GP) regression model from scratch.
 
 A Gaussian Process is a collection of random variables, any finite subset of which follows a
 joint Gaussian distribution.
@@ -24,7 +19,7 @@ $$\mathbf{f} \sim \mathcal{N}\bigl(\mathbf{m},\; \mathbf{K}\bigr)$$
 
 where $\mathbf{m}_i = m(\mathbf{x}^{(i)})$ and
 $\mathbf{K}_{ij} = k(\mathbf{x}^{(i)}, \mathbf{x}^{(j)})$.
-We assume a zero mean function $m(\mathbf{x}) = 0$ throughout this vignette (which is standard
+We assume a zero mean function $m(\mathbf{x}) = 0$ throughout this article (which is standard
 practice, since the kernel already provides enough flexibility).
 
 ## Kernel
@@ -56,7 +51,8 @@ rbf_kernel_matrix <- function(X1, X2, lengthscale, signal_var) {
 }
 ```
 
-Because `anvl` jit-compiles the code, there is no performance penalty for custom kernels, other than if we would use a C++ library that has a number of hard-coded kernels available.
+Because {anvl} compiles the whole computation, a custom kernel like this one runs as fast as a built-in one would.
+This is different from libraries that ship a fixed set of kernels implemented in C++, where a custom kernel written in R would be considerably slower.
 
 ## Joint Distribution
 
@@ -217,7 +213,7 @@ Next, we will focus on learning these parameters by maximizing the marginal like
 
 ## Marginal Likelihood
 
-With $\pmb{\theta} = (\ell, \sigma_f^2, \sigma^2)$, we can write down the log marginal likelihood as follows:
+With $\pmb{\theta} = (\ell, \sigma_f^2, \sigma^2)$, we can write down the marginal likelihood as follows:
 
 $$p(\mathbf{y} \mid \mathbf{X}, \pmb{\theta}) = \int p(\mathbf{y} \mid \mathbf{f}, \mathbf{X}) \, p(\mathbf{f} \mid \mathbf{X}, \pmb{\theta}) \, d\mathbf{f}$$
 

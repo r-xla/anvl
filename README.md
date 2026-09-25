@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# anvl <img src="man/figures/logo.png" align="right" width = "120" />
+# anvl <img src="man/figures/logo.svg" align="right" width = "120" />
 
 Package website: [release](https://r-xla.github.io/anvl/) \|
 [dev](https://r-xla.github.io/anvl/dev/)

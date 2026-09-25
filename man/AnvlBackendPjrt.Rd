@@ -49,7 +49,7 @@ read back into R, yet treated as zero in calculations. On CPUs, XLA enables
 a mode that replaces subnormal inputs and results with zero. The exact
 behavior depends on the platform, backend, and operation.
 
-See \code{vignette("gotchas", package = "anvl")} for an explanation and examples.
+See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for an explanation and examples.
 }
 
 \section{PJRT JIT arguments}{

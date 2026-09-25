@@ -1,10 +1,5 @@
 ---
 title: "Extending the API"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Extending the API}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -15,7 +10,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this vignette we will cover some general guidelines that ensure your anvl functions come without surprises.
+In this article we will cover some general guidelines that ensure your anvl functions come without surprises.
 This is primarily intended for extending the API -- either in your own package or contributing to {anvl} itself -- but is also helpful when writing your own scripts.
 
 The general guidelines are:
@@ -47,9 +42,9 @@ They do four things, and three of them are decisions *across* the whole argument
 2. the type promotion rules of the `.promote` argument are applied, which handle both placement of R values, as well as conversions between
    `AnvlArray`s, e.g., to make `nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))` work.
 3. afterwards, `dtype()` is well defined and the remaining body does not have to distinguish between R value inputs and `AnvlArray` inputs.
-4. it reduces differences between eager and jit mode, see the `vignette("gotchas")` for a discussion.
+4. it reduces differences between eager and jit mode, see *Canonicalization and Eager Mode* below.
 
-Below, we add a function that performs the addition after coercing all inputs to `f32`;
+Below, we add a function that performs the addition after coercing all inputs to `f32`:
 
 ```{r}
 nv_add_f32 <- function(x, y) {
@@ -57,6 +52,38 @@ nv_add_f32 <- function(x, y) {
   do.call(prim_add, args)
 }
 nv_add_f32(1, nv_scalar(1, "f64"))
+```
+
+### Canonicalization and Eager Mode
+
+A function that does not canonicalize its inputs can behave differently in eager and in jit mode.
+Below, the untyped `1` materializes at the default float when the function is jitted, so under the default `f32` the jitted result is rounded, while the eager one computes `1 + pi` in R, at double precision.
+At an `f64` default the two would agree, which is exactly the problem: the answer depends on a default rather than on the code.
+
+```{r}
+add_pi <- function(x) {
+  x + pi
+}
+as.numeric(jit(add_pi)(1)) == add_pi(1)
+```
+
+Canonicalizing the input fixes this:
+
+```{r}
+add_pi2 <- function(x) {
+  x <- as_anvl_array(x)
+  x + pi
+}
+jit(add_pi2)(1) == add_pi2(1)
+```
+
+Not canonicalizing inputs can also be a problem for device placement.
+If the function below is called as `threeway_add(1, 2, nv_scalar(3, device = "cuda"))`, the inner addition places `1` and `2` on the default device (the CPU by default), and the outer addition then fails, because it combines arrays on different devices.
+
+```{r}
+threeway_add <- function(x, y, z) {
+  nv_add(nv_add(x, y), z)
+}
 ```
 
 ## Arbitrary Devices

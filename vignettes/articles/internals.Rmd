@@ -1,10 +1,5 @@
 ---
 title: "Internals"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Internals}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 
@@ -301,7 +296,7 @@ R values can appear in two forms in compiled programs:
 1. As constants
 2. As non-static R inputs (`RData`).
 
-The `RData` object can be though of as the dynamic version of an R value within the program and they behave similarly.
+The `RData` object can be thought of as the dynamic version of an R value within the program and they behave similarly.
 
 Both have a shape, but no data type.
 
@@ -405,6 +400,51 @@ One idea would be to let a single R argument enter the compiled program at sever
 
 This is why API functions and primitives should always canonicalize the inputs right at the beginning, so this problem rarely happens.
 
+### Nested Inputs and Outputs
+
+The inputs and outputs of a jitted function do not have to be single arrays: they can be arbitrarily nested lists of arrays, such as the parameters of a model.
+The compiled program, however, only knows a flat sequence of inputs and outputs.
+To bridge the two, {anvl} uses the `RTree` data structure from the {pjrt} package, which is the R analog of [JAX's pytrees](https://docs.jax.dev/en/latest/pytrees.html).
+
+An `RTree` describes the nesting structure of an R object, without its contents.
+Unclassed lists are the inner nodes of the tree, `NULL` is an empty node, and everything else -- such as an `AnvlArray` -- is a leaf.
+`pjrt::build_tree()` captures the structure, `pjrt::flatten()` extracts the leaves as a flat list, and `pjrt::unflatten()` puts a flat list of leaves back into the structure:
+
+```{r}
+x <- list(a = 1, b = list(c = 2, d = NULL, e = 3))
+tree <- pjrt::build_tree(x)
+tree
+pjrt::flatten(x)
+pjrt::unflatten(tree, list(10, 20, 30))
+```
+
+When tracing a function, its arguments are flattened, each leaf becomes one input of the `AnvlGraph`, and the structure of the arguments is stored in the graph's `in_tree` field.
+Likewise, the outputs are flattened into the graph's outputs, and their structure is stored in `out_tree`:
+
+```{r}
+graph <- trace_fn(
+  function(params, x) list(pred = params$w * x + params$b, w = params$w),
+  list(params = list(w = aten, b = aten), x = aten)
+)
+graph
+graph$in_tree
+graph$out_tree
+```
+
+When the compiled program is called, the arguments are flattened in the same way, and the flat outputs of the program are unflattened with `out_tree`, so the caller receives the nested structure that the function returned.
+
+Because the compiled program depends on the structure of the inputs, the input tree is also part of the cache key of `jit()`.
+Passing the same arrays in a list with a different order of elements therefore triggers a new compilation, while changing only their values does not:
+
+```{r}
+f <- jit(function(params, x) params$w * x + params$b)
+f(list(w = nv_scalar(2), b = nv_scalar(1)), nv_scalar(3))
+f(list(b = nv_scalar(1), w = nv_scalar(2)), nv_scalar(3))
+jit_cache_size(f)
+f(list(w = nv_scalar(2), b = nv_scalar(5)), nv_scalar(3))
+jit_cache_size(f)
+```
+
 ## Backend and Device in `jit()`
 
 There is exactly one active backend at any time (`active_backend()`, the option `anvl.backend`).
@@ -427,14 +467,10 @@ Device handling within a backend has two things to be aware of:
    f(nv_device("cpu"))
    ```
 
-### Nested Inputs and Outputs
-
-TODO
-
 ## Dichotomy of anvl functions
 
 Here, we will dig deeper into the dichotomy of {anvl} functions such as `prim_add`.
-In the *Get Started* vignette, we have learned that these functions can either be called directly on `AnvlArray`s to transform data, or used within `jit()` blocks to build up programs.
+In the *Get Started* article, we have learned that these functions can either be called directly on `AnvlArray`s to transform data, or used within `jit()` blocks to build up programs.
 Here, we will explain what this actually does and why this is possible.
 
 The core problem this dichotomy solves is that it is a mental burden to always keep two versions of an {anvl} function:

@@ -1,10 +1,5 @@
 ---
 title: "Adding a Primitive"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Adding a Primitive}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -16,7 +11,7 @@ knitr::opts_chunk$set(
 
 This guide explains how to implement a new primitive.
 It will primarily focus on *how* to do this.
-See the [internals vignette](internals.html) for more information on how primitives work.
+See the [internals article](internals.html) for more information on how primitives work.
 
 In general, there are two main reasons to add a new primitive:
 
@@ -39,7 +34,7 @@ There are various scenarios:
 
       $\rightarrow$ This is currently not possible, but we hope we can add support for this in the future, e.g. via a second, dynamic Fortran backend.
 
-   2. It cannot be expressed or can only expressed inefficiently:
+   2. It cannot be expressed or can only be expressed inefficiently:
 
       $\rightarrow$ You can implement a StableHLO custom call, see the custom print operation in [pjrt](https://github.com/r-xla/pjrt).
       The {pjrt} package has a dedicated ["Adding Custom Calls"](https://r-xla.github.io/pjrt/dev/articles/ffi.html) tutorial.
@@ -67,10 +62,10 @@ prim_repeat_along <- new_primitive(
     # type of `x` is checked by graph_desc_add()
     infer_fn <- function(x, times, axis) {
       if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(x), len = 1L)) {
-        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val axis}")
+        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val {axis}}.")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
-        cli_abort("times must be a positive integer, but is {times}")
+        cli::cli_abort("{.arg times} must be a positive integer, but is {.val {times}}.")
       }
       new_shape <- shape(x)
       new_shape[axis] <- new_shape[axis] * times
@@ -128,7 +123,7 @@ Materializing each at its own default would make `prim_add(1, nv_scalar(2, "f64"
 In such cases, you should call `apply_promotion()` in the primitive and pass the rules you want to apply.
 This needs to be done before calling `graph_desc_add()`.
 These should *not* change the data type of any `AnvlArray` inputs, which is what the `promotion_rdata_common()` rule is for.
-See `vignette("type-promotion")` for more information on these rules.
+See the [Type Promotion](type-promotion.html) article for more information on these rules.
 
 #### Special case: primitives with 0 dynamic inputs
 
@@ -196,7 +191,7 @@ Also note that in `graph_desc_add()` we are converting the error messages from s
 ### Step 3: Add the Reverse Rule
 
 If the operation should support automatic differentiation, attach a reverse rule built with `rule_reverse()`.
-The idea here is the following, where we assume the input `x` has shape `(s_1, ..., s_n)`, which means that the output (and therefore it's gradient) has shape `(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
+The idea here is the following, where we assume the input `x` has shape `(s_1, ..., s_n)`, which means that the output (and therefore its gradient) has shape `(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
 
 1. Reshape the gradient to `(s_1, ..., s_{axis-1}, s_axis, times, s_{axis+1}, ..., s_n)`.
 2. Sum over the `times` axis and drop the `times` axis.
@@ -330,6 +325,7 @@ If you want to contribute your primitive to {anvl}, there are some additional th
 ### File Organization
 
 - **`R/primitives.R`**: Define the `prim_*` primitive via `new_primitive()`
+- **`R/rules-inference.R`**: Add the inference rule `infer_<primitive>()` (unless an existing one can be reused)
 - **`R/rules-stablehlo.R`**: Add the StableHLO lowering rule
 - **`R/rules-reverse.R`**: Add the reverse rule (if differentiable)
 - **`R/rules-quickr.R`**: Add the quickr lowering rule (optional; only if the primitive should run on the quickr backend)
@@ -355,7 +351,7 @@ Also, ensure that no linter errors are present, `devtools::check()` passes, and 
 
 ## Higher-Order Primitives
 
-Higher-Order Primitives are primitives that parameterized by an R function or expression.
+Higher-Order Primitives are primitives that are parameterized by an R function or expression.
 Examples include `prim_if` and `prim_while`.
 These are generally much more complex to handle, so we don't cover them here in detail (for now).
 The general idea, however, is that the primitive `prim_*` function needs to trace the provided function using `trace_fn()` and then forward this graph to the stablehlo lowering rule and reverse rule.

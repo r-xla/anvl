@@ -1160,3 +1160,19 @@ test_that("raw payloads require dtype and shape and are pjrt-only", {
   local_backend("quickr")
   expect_error(nv_array(as.raw(1:4), dtype = "ui8", shape = 4L), "quickr")
 })
+
+describe("axes", {
+  it("returns the axis indices of an array", {
+    expect_identical(axes(nv_array(1:6, shape = c(2, 3))), 1:2)
+  })
+  it("is empty for a scalar", {
+    expect_identical(axes(nv_scalar(1)), integer())
+  })
+  it("works on traced values", {
+    f <- jit(function(x) {
+      expect_identical(axes(x), 1:3)
+      x
+    })
+    f(nv_fill(1, c(2L, 3L, 4L)))
+  })
+})

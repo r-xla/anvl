@@ -290,7 +290,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' a mode that replaces subnormal inputs and results with zero. The exact
 #' behavior depends on the platform, backend, and operation.
 #'
-#' See `vignette("gotchas", package = "anvl")` for an explanation and examples.
+#' See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html) article for an explanation and examples.
 #'
 #' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose

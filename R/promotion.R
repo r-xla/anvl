@@ -388,7 +388,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   The rule to apply; see [promotion_rule].
 #' @return (`list()`)\cr
 #'   `operands`, each materialized at the data type the rule named for it.
-#' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
+#' @seealso [promotion_rule], [new_primitive()], the [Adding a Primitive](https://r-xla.github.io/anvl/articles/extending_primitive.html) article
 #' @examplesIf pjrt::plugins_downloaded()
 #' # an R value takes the data type of the operand it meets
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
@@ -663,7 +663,7 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' common one.
 #' @seealso [`default_dtypes()`], [`common_dtype()`],
 #'   [`nv_promote_to_common()`], [`nv_convert()`],
-#'   `vignette("type-promotion")`
+#'   the [Type Promotion](https://r-xla.github.io/anvl/articles/type-promotion.html) article
 NULL
 
 dtype_category <- function(dtype) {

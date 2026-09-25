@@ -17,10 +17,15 @@ being converted to the common data type.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the inputs' broadcast shape and common data type.
+Has the inputs' broadcast shape and their common data type, or the default
+float when that is not a float type.
 }
 \description{
 Divides two arrays element-wise. You can also use the \code{/} operator.
+
+Like base R's \code{/}, this is a true division: integer and boolean operands are converted
+to the \link[=default_dtypes]{default float} before dividing, so \code{7L / 2L} is
+\code{3.5}. Use \code{\link[=nv_floor_div]{nv_floor_div()}} (\code{\%/\%}) for integer division.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -34,8 +39,12 @@ nv_div(nv_scalar(10, "f32"), nv_scalar(4, "f64"))
 
 # a scalar is broadcast and an R integer is converted to a float
 x / 2L
+
+# integers are divided as floats
+nv_array(c(7L, -7L)) / 2L
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_div]{prim_div()}} for the underlying primitive.
+\code{\link[=prim_div]{prim_div()}} for the underlying primitive, which divides integers
+with truncation.
 }

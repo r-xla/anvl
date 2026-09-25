@@ -5,20 +5,30 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
-nv_subset_assign(x, ..., value)
+nv_subset_assign(x, ..., value, inplace = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 The array to update. Can be any data type.
 An R object is materialized at its \link[=default_dtypes]{default data type}.}
 
-\item{...}{Subset specifications, one per axis. See
-\code{vignette("subsetting")} for details.}
+\item{...}{Subset specifications, one per axis. See the
+\href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
 The value is converted to the data type of \code{x}.}
+
+\item{inplace}{(\code{logical(1)})\cr
+Whether to write into the memory of \code{x} instead of allocating a new array.
+This avoids the copy of \code{x} that an eager subset assignment otherwise
+makes, but it consumes \code{x}: its buffer is \link[=jit]{donated}, so \code{x} -- and
+any other R variable referring to the same array -- can no longer be used
+afterwards. With \verb{[<-}, pass it among the subscripts, e.g.
+\code{x[1, inplace = TRUE] <- 0}, which rebinds \code{x} to the result.
+Inside a jitted function it has no effect, as the compiler already avoids
+the copy there. Default is \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -35,8 +45,13 @@ x <- nv_matrix(1:12, nrow = 3)
 nv_subset_assign(x, 1, value = nv_scalar(0L))
 x[1, ] <- nv_scalar(0L)
 x
+
+# write into the memory of `x` instead of copying it
+x[2, inplace = TRUE] <- nv_scalar(1L)
+x
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset]{nv_subset()}}, \code{vignette("subsetting")} for a comprehensive guide.
+\code{\link[=nv_subset]{nv_subset()}}, the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for a
+comprehensive guide.
 }

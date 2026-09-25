@@ -648,6 +648,28 @@ describe("nv_sign", {
   })
 })
 
+describe("nv_div", {
+  it("divides integers as floats, like base R", {
+    x <- nv_array(c(7L, -7L))
+    expect_dtype(nv_div(x, 2L), default_float())
+    expect_equal(as.vector(nv_div(x, 2L)), c(7L, -7L) / 2L, tolerance = 1e-6)
+    expect_equal(as.vector(x / nv_array(c(2L, 2L), dtype = "ui8")), c(3.5, -3.5), tolerance = 1e-6)
+  })
+
+  it("divides booleans as floats", {
+    expect_equal(as.vector(nv_div(nv_array(c(TRUE, FALSE)), 2L)), c(0.5, 0), tolerance = 1e-6)
+  })
+
+  it("keeps the data type of float operands", {
+    expect_dtype(nv_div(nv_array(c(1, 2), dtype = "f64"), 2L), "f64")
+  })
+
+  it("divides integers as floats under jit()", {
+    f <- jit(function(x, y) x / y)
+    expect_equal(as.vector(f(nv_array(c(1L, 3L)), nv_scalar(2L))), c(0.5, 1.5), tolerance = 1e-6)
+  })
+})
+
 describe("nv_floor_div", {
   it("floors like base R, at both signs and both categories", {
     for (lhs in c(7L, -7L)) {

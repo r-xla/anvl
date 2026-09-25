@@ -13,7 +13,8 @@ One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
 \item{...}{Subset specifications, one per axis. Omitted trailing
-axes select all elements. See \code{vignette("subsetting")} for details.}
+axes select all elements. See the
+\href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -40,6 +41,7 @@ x[1:2, ]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset_assign]{nv_subset_assign()}} for updating subsets, \code{vignette("subsetting")}
+\code{\link[=nv_subset_assign]{nv_subset_assign()}} for updating subsets, the
+\href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article
 for a comprehensive guide.
 }

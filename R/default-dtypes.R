@@ -98,7 +98,7 @@ effective_default_dtypes <- function(backend) {
 #'
 #' The defaults decide only what a value becomes when *nothing else does*: an R
 #' value that meets a typed array of its own category still takes that array's
-#' data type, whatever the default (`vignette("type-promotion")`). The data
+#' data type, whatever the default (see the [Type Promotion](https://r-xla.github.io/anvl/articles/type-promotion.html) article). The data
 #' type you name is taken on trust, so one that does not fit is an error where
 #' the data is allocated or the program compiled rather than where it is set.
 #' Which ones fit is the backend's own business -- see the *Supported data

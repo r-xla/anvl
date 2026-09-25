@@ -1,14 +1,9 @@
 ---
 title: "Metropolis-Hastings"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Metropolis-Hastings}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 bibliography: references.bib
 ---
 
-In this vignette, we show how to implement a random-walk Metropolis-Hastings sampler using {anvl} [@hastings1970monte].
+In this article, we show how to implement a random-walk Metropolis-Hastings sampler using {anvl} [@hastings1970monte].
 Metropolis-Hastings is a well known MCMC algorithm that generates samples from a target distribution by proposing moves and accepting or rejecting them based on the density ratio.
 
 ## The Banana Distribution
@@ -78,7 +73,7 @@ log_density <- function(theta, b) {
 
 There are a few things to note in the code below:
 
-a) the accept/reject decision uses the primitive `nv_if()` and not a native R conditional.
+a) the accept/reject decision uses `nv_if()` and not a native R conditional.
 b) we sample a scalar uniform random number by setting `shape = integer()`
 c) the RNG state is passed around explicitly.
 

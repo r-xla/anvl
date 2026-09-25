@@ -1,10 +1,5 @@
 ---
 title: "Type Promotion"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Type Promotion}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, echo = FALSE}
@@ -36,7 +31,6 @@ common_dtype("i64", "f32")
 A table with the promotion rules is below.
 
 ```{r, echo = FALSE}
-library(stablehlo)
 dtypes <- c("bool", "i8", "i16", "i32", "i64", "ui8", "ui16", "ui32", "ui64", "f32", "f64")
 tbl <- matrix(NA_character_, length(dtypes), length(dtypes))
 for (i in seq_along(dtypes)) {
@@ -99,7 +93,7 @@ nv_convert(nv_scalar(-2L, "i32"), "ui8")
 
 Note that these rules are not universal and exceptions exist.
 Some functions, such as `nv_clamp`, prioritize the data type of a specific argument, in this case `x`, the value that is being clamped.
-It fails if the the boundary values cannot be promoted to `x` without loss of precision:
+It fails if the boundary values cannot be promoted to `x` without loss of precision:
 
 ```{r, error = TRUE}
 nv_clamp(
@@ -111,7 +105,7 @@ nv_clamp(
 
 Functions document their behavior, so consult their respective help page for more information.
 
-You can canonicalize and promote inputs to a function via the `.promote` field of `as_anvl_arrays()`.
+You can canonicalize and promote inputs to a function via the `.promote` argument of `as_anvl_arrays()`.
 It takes a `PromotionRule`, which is a special function that takes in the arguments and outputs a data type for each one.
 
 ```{r}
@@ -137,14 +131,13 @@ with_default_dtypes(c(float = "f64"), {
 
 Below, we compute the common data type of the arguments.
 
-
 ```{r}
 promotion_fn <- promotion_common()
 args <- list(1, 2, nv_scalar(1L, "i8"))
 promotion_fn(args)
 ```
 
-And when used in `as_anvl_arrays()` it moves the inputs there:
+When used in `as_anvl_arrays()`, it converts the inputs to that data type:
 
 ```{r}
 do.call(as_anvl_arrays, c(args, list(.promote = promotion_fn)))

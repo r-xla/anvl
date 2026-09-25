@@ -1,10 +1,5 @@
 ---
 title: "Efficiency"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Efficiency}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -15,7 +10,7 @@ knitr::opts_chunk$set(
 library(anvl)
 ```
 
-This vignette summarizes various important considerations in order to write efficient programs using {anvl}.
+This article summarizes various important considerations in order to write efficient programs using {anvl}.
 Some of the topics are covered in more depth elsewhere, but here we gather everything in one place, albeit sometimes only briefly.
 
 - [**Eager vs. JIT**](#eager-vs-jit) -- comparison of the two execution modes.
@@ -45,7 +40,7 @@ There might be some exceptions, as compiling one large function can sometimes be
 Provided your computation is large enough to be worth shipping over to the GPU, running on a CUDA GPU is the single biggest speed-up {anvl} offers -- typically 10x to 100x over CPU on linear algebra and large elementwise work.
 
 GPU support currently only works on Linux (amd64/x86-64) or via WSL2 on Windows.
-See the [GPU Installation](installation.html#gpu-installation) section of the installation vignette for setup; once that's done, any `AnvlArray` constructor and `jit()` accept `device = "cuda"`:
+See the [CUDA Setup](installation.html#cuda-setup) section of the installation article for setup; once that's done, any `AnvlArray` constructor and `jit()` accept `device = "cuda"`:
 
 ```{r, eval = FALSE}
 library(anvl)
@@ -136,7 +131,7 @@ Here, we only compile once for input size 32 and then reuse the compiled executa
 One common strategy is to split up the varying lengths into buckets of size `2^n` to balance recompilation with wasted computation.
 The example above only works because the padded zeros are the *neutral value* of the performed computation (addition).
 For computations where the pad value is not neutral -- e.g. the mean, where the padded positions would skew the average -- the padded entries have to be masked out explicitly.
-See the [Static Shape Restriction](static_shapes.html) vignette for the masking patterns and a table of neutral values for common reductions.
+See the [Static Shape Restriction](static_shapes.html) article for the masking patterns and a table of neutral values for common reductions.
 
 ## Asynchronous execution
 
@@ -185,7 +180,7 @@ Solutions include logging less often, or printing the loss from the previous ite
 
 ## Memory
 
-Value semantics and the fact that subset-assignment always copies were introduced in the [Get Started vignette](anvl.html#the-anvlarray).
+Value semantics and the fact that subset-assignment always copies were introduced in the [Next Steps article](next_steps.html#modifying-arrays).
 This section covers the one extra lever `jit()` gives you: telling XLA it can reuse an input buffer for the output.
 
 ### Donation
@@ -202,11 +197,19 @@ x <- update(x, nv_array(c(0.1, 0.1, 0.1), dtype = "f32"))
 x
 ```
 
-One common scenario for this pattern is weight updates in training loops.
+One common scenario for this pattern is weight updates in training loops, where every step would otherwise allocate a new buffer for the parameters and leave the previous one for the garbage collector.
 
-### Eager-mode subset-assignment always copies
+The donated input is consumed by the call, so it must not be used afterwards, otherwise an error is thrown:
+
+```{r, error = TRUE, eval = startsWith(Sys.getenv("ANVL_DEFAULT_DEVICE", "cpu"), "cpu")}
+x_old <- nv_array(c(1, 2, 3), dtype = "f32")
+x_new <- update(x_old, nv_array(c(0.1, 0.1, 0.1), dtype = "f32"))
+x_old
+```
+
+### Subset assignment in eager mode
 
 In plain R, `y[i] <- val` may happen in place when `y` has only one reference.
-Unfortunately, this is not possible in {anvl} and evaluating such calls in eager mode (outside of `jit()`) will always produce a copy.
-This is because we are essentially calling into a `jit()`ted function and we can't always assume it's okay to donate.
-In the future, we might add an option to do this in place.
+{anvl} cannot track references to an array, so outside of `jit()`, such a call produces a copy by default: modifying the array in place would also modify it for every other variable referring to it.
+If the original array is not needed anymore, `y[i, inplace = TRUE] <- val` instead donates `y`'s memory to the result and avoids the copy.
+See the [In-place Updates](subsetting.html#in-place-updates) section of the Subsetting article for details.

@@ -1,10 +1,5 @@
 ---
 title: "Random Number Generation"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Random Number Generation}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -14,7 +9,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this vignette, you will learn how to generate random numbers in {anvl}, which is different from base R, where random number generation uses a global state (`.Random.seed`) that is automatically updated after each call:
+In this article, you will learn how to generate random numbers in {anvl}, which is different from base R, where random number generation uses a global state (`.Random.seed`) that is automatically updated after each call:
 
 ```{r}
 set.seed(42)
