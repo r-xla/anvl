@@ -5,7 +5,7 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
-nv_subset_assign(x, ..., value)
+nv_subset_assign(x, ..., value, inplace = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -29,6 +29,18 @@ See \code{vignette("subsetting")} for details.}
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
 The value is converted to the data type of \code{x}.}
+
+\item{inplace}{(\code{logical(1)})\cr
+Whether to write into the memory of \code{x} instead of allocating a new array.
+This avoids the copy of \code{x} that an eager subset assignment otherwise
+makes, but it consumes \code{x}: its buffer is \link[=jit]{donated}, so \code{x} -- and
+any other R variable referring to the same array -- can no longer be used
+afterwards. With \verb{[<-}, pass it among the subscripts, e.g.
+\code{x[1, inplace = TRUE] <- 0}, which rebinds \code{x} to the result.
+It is an error inside a jitted function: there, other references to \code{x}
+would stay valid, so the same code would behave differently in eager and
+in jit mode. Inside \code{jit()}, the compiler already avoids the copy anyway.
+Default is \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -48,6 +60,10 @@ x
 
 # Zero out every element greater than 6 (eager mode only)
 x[x > 6] <- 0L
+x
+
+# write into the memory of `x` instead of copying it
+x[2, inplace = TRUE] <- nv_scalar(1L)
 x
 \dontshow{\}) # examplesIf}
 }

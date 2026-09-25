@@ -51,6 +51,17 @@ test_that("nv_rnorm accepts arrayish mean and sd", {
   odd_means <- nv_array(matrix(rep(c(-1000, 0, 1000), each = 3), nrow = 3))
   odd <- as_array(nv_rnorm(c(3, 3), state, dtype = "f64", mean = odd_means)[[2]])
   expect_true(all(odd[, 1] < -900) && all(abs(odd[, 2]) < 100) && all(odd[, 3] > 900))
+
+  # Anything else than a scalar or the sample's shape is refused, including for
+  # a scalar sample, which would otherwise take the shape of `mean`/`sd`
+  expect_error(
+    nv_rnorm(c(2, 3), state, mean = nv_array(matrix(0, 2, 1))),
+    "must be a scalar or have the shape of the sample"
+  )
+  expect_error(
+    nv_rnorm(integer(), state, sd = nv_array(c(1, 2, 3))),
+    "must be a scalar or have the shape of the sample"
+  )
 })
 
 test_that("rng rejects non-f32/f64 dtypes", {
@@ -104,14 +115,66 @@ test_that("nv_rbinom", {
   expect_shape(out3[[2]], c(3L, 3L))
 })
 
-test_that("nv_runif with min == max returns the pair, state unchanged", {
+test_that("nv_runif with min == max returns the pair, state advanced", {
   state <- nv_array(c(1, 2), dtype = "ui64")
   out <- nv_runif(c(2, 3), state, min = 5, max = 5)
   expect_named(out, c("state", "values"))
-  # No draw is made, so the state comes back as it went in.
-  expect_equal(as.vector(out$state), as.vector(state))
+  # `min`/`max` may be traced, so the draw is made and the state advanced as
+  # for any other interval.
+  expect_equal(as.vector(out$state), as.vector(nv_runif(c(2, 3), state)$state))
   expect_shape(out$values, c(2L, 3L))
   expect_true(all(as.vector(out$values) == 5))
+})
+
+test_that("nv_runif accepts arrayish min and max", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+
+  # An elementwise interval of the same shape as the sample
+  lower <- nv_array(matrix(c(0, 10, 100, 1000, 10000, 100000), nrow = 2), dtype = "f64")
+  out <- nv_runif(c(2, 3), state, min = lower, max = lower + 1)
+  values <- as_array(out$values)
+  expect_shape(out$values, c(2L, 3L))
+  expect_dtype(out$values, "f64")
+  expect_true(all(values > as_array(lower) & values < as_array(lower) + 1))
+
+  # A scalar bound combines with an array one, and the draws are those of the
+  # standard uniform, scaled and shifted elementwise
+  upper <- nv_array(matrix(1:6, nrow = 2), dtype = "f64")
+  u <- as_array(nv_runif(c(2, 3), state, dtype = "f64")$values)
+  expect_equal(as_array(nv_runif(c(2, 3), state, min = 0, max = upper)$values), u * 1:6)
+
+  # min/max may be traced under jit
+  f <- jit(function(s, a, b) nv_runif(c(2, 3), s, min = a, max = b))
+  traced <- as_array(f(state, nv_scalar(1000, dtype = "f64"), nv_scalar(1001, dtype = "f64"))$values)
+  expect_true(all(traced > 1000 & traced < 1001))
+
+  # Anything else than a scalar or the sample's shape is refused
+  expect_error(
+    nv_runif(c(2, 3), state, max = nv_array(matrix(1, 2, 1))),
+    "must be a scalar or have the shape of the sample"
+  )
+  expect_error(
+    nv_runif(integer(), state, min = nv_array(c(0, 1))),
+    "must be a scalar or have the shape of the sample"
+  )
+})
+
+test_that("nv_runif gives NaN for an invalid interval, like runif()", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  lower <- c(0, 5, 1, -Inf, NaN, 10)
+  upper <- c(1, 5, 0, 1, 1, Inf)
+  out <- nv_runif(6L, state, dtype = "f64", min = nv_array(lower), max = nv_array(upper))
+  expect_equal(is.nan(as.vector(out$values)), suppressWarnings(is.nan(runif(6L, lower, upper))))
+  expect_equal(as.vector(out$values)[2L], 5)
+})
+
+test_that("nv_runif differentiates with respect to min and max", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  u <- as.vector(nv_runif(c(2, 3), state, dtype = "f64")$values)
+  g <- jit(gradient(function(a, b) sum(nv_runif(c(2, 3), state, min = a, max = b)$values)))
+  grads <- g(nv_array(matrix(-2, 2, 3), dtype = "f64"), nv_array(matrix(3, 2, 3), dtype = "f64"))
+  expect_equal(as.vector(grads[[1L]]), 1 - u)
+  expect_equal(as.vector(grads[[2L]]), u)
 })
 
 test_that("nv_rbinom and nv_sample_int reject a boolean data type", {

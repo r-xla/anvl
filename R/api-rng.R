@@ -52,48 +52,44 @@ nv_unif_rand <- function(
 # Random Number Generation API
 # This file contains user-facing RNG sampling functions
 
-#' @title Sample from a Uniform Distribution
-#' @description
-#' Samples from a uniform distribution in the open interval `(min, max)`.
+#' @rdname nv_uniform
 #' @template param_shape
 #' @template param_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Floating point data type.
-#'   The default (`NULL`) uses the [default float type][default_dtypes].
-#' @param min,max (`numeric(1)`)\cr
-#'   Lower and upper bound.
-#' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state, and `values`, the sample of shape
-#'   `shape` and data type `dtype`.
+#'   Floating point data type of the sample.
+#'   The default (`NULL`) takes it from `min` and `max`, and uses the
+#'   [default float type][default_dtypes] where both are R values.
+#' @section Random generation:
+#' `nv_runif` samples from the open interval \eqn{(a, b)}.
+#'
+#' `min` and `max` are [`arrayish`], so they may vary across the sample: they
+#' are applied to the draws after they have been reshaped to `shape`, and so
+#' may either be scalars or have exactly that shape. As in base R's `runif()`,
+#' an element whose `min` equals its `max` is that value, and one whose `min` or
+#' `max` is not finite, or whose `max` is less than its `min`, is `NaN`. The RNG
+#' state is advanced regardless.
 #' @family rng
-#' @examplesIf pjrt::plugins_downloaded()
-#' # `state` is the updated RNG state, `values` the sample
-#' state <- nv_rng_state(42L)
-#' result <- nv_runif(c(2, 3), state)
-#' result$values
 #' @export
 nv_runif <- jit(
-  function(
-    shape,
-    state,
-    min = 0,
-    max = 1,
-    dtype = NULL
-  ) {
-    dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
-    checkmate::assertNumeric(min, len = 1L, any.missing = FALSE, upper = max)
-    checkmate::assertNumeric(max, len = 1L, any.missing = FALSE, lower = min)
+  function(shape, state, min = 0, max = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
-    # TODO: Support max and min to be arrayish
 
-    if (max == min) {
-      return(list(
-        state = state,
-        values = nv_fill_like(state, max, shape = shape, dtype = dtype)
-      ))
+    rule <- if (is.null(dtype)) {
+      promotion_common(fallback = default_float())
+    } else {
+      promotion_dtype(assert_rng_float_dtype(dtype))
     }
-
-    .range <- max - min
+    args <- as_anvl_arrays(min = min, max = max, .promote = rule)
+    min <- args$min
+    max <- args$max
+    dtype <- assert_rng_float_dtype(
+      dtype(min),
+      arg = "min/max",
+      hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
+    )
+    # a non-scalar `min`/`max` must have the sample's shape
+    assert_sample_param_shape(min, shape)
+    assert_sample_param_shape(max, shape)
 
     # generate samples in [0, 1)
     Unif <- nv_unif_rand(state = state, shape = shape, dtype = dtype)
@@ -116,15 +112,28 @@ nv_runif <- jit(
     # Replace values <= 0 with smallest_step
     U <- nv_ifelse(le_zero, smallest_step, U)
 
-    # expand to range
-    U <- nv_mul(U, .range)
-    # shift to interval
-    Y <- U + min
+    # expand to range and shift to interval (consistent if `min == max`)
+    Y <- U * (max - min) + min
 
-    return(list(state = Unif$state, values = Y))
+    # a reversed or non-finite interval is NaN to match base R
+    valid <- nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+
+    list(state = Unif$state, values = nv_ifelse(valid, Y, NaN))
   },
-  static = c(1L, 3L, 4L, 5L)
+  static = c(1L, 5L)
 )
+
+# Error unless the sampler parameter `x` is a scalar or has the sample's shape.
+assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
+  x_shape <- as.integer(shape(x))
+  if (length(x_shape) > 0L && !identical(x_shape, shape)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a scalar or have the shape of the sample.",
+      x = "Got shape {shapes_repr(list(x_shape))}, but the sample has shape {shapes_repr(list(shape))}."
+    ))
+  }
+  invisible(x)
+}
 
 #' @rdname nv_normal
 #' @template param_shape
@@ -167,6 +176,10 @@ nv_rnorm <- jit(
       arg = "mean/sd",
       hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
     )
+    # a non-scalar `mean`/`sd` must have the sample's shape
+    assert_sample_param_shape(mean, shape)
+    assert_sample_param_shape(sd, shape)
+
     # n: amount of rvs needed
     n <- prod(shape)
 
