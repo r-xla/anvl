@@ -32,7 +32,7 @@ There are various scenarios:
 2. The operation is not available/cannot be efficiently expressed in StableHLO, because:
    1. It requires shape dynamism (output shape depends on data, such as using boolean values for subsetting):
 
-      $\rightarrow$ This is currently not possible, but we hope we can add support for this in the future, e.g. via a second, dynamic Fortran backend.
+      $\rightarrow$ This is currently not possible, but we hope we can add support for this in the future.
 
    2. It cannot be expressed or can only be expressed inefficiently:
 
@@ -52,14 +52,13 @@ This primitive has a *dynamic* input (an array) and two *static* parameters (how
 
 ### Step 1: Define the Primitive
 
-Primitives are created with `new_primitive()`: it builds the `AnvlPrimitive` metadata object that holds the rules, wraps the body with `jit()`, attaches the metadata, and registers the result in the internal primitive registry. The returned callable becomes the primitive and is bound to a `prim_<name>` R symbol. The name passed to `new_primitive()` is that same `<name>`, not the StableHLO op the primitive lowers to, so an error or a printed graph naming a primitive names a function the reader can look up.
+Primitives are created with `new_primitive()`: it builds the `AnvlPrimitive` metadata object that holds the rules, wraps the body with `jit()`, and attaches the metadata. The returned callable becomes the primitive and is bound to a `prim_<name>` R symbol. The name passed to `new_primitive()` is that same `<name>`, not the StableHLO op the primitive lowers to, so an error or a printed graph naming a primitive names a function the reader can look up.
 
 ```{r}
 library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
   function(x, times, axis) {
-    # type of `x` is checked by graph_desc_add()
     infer_fn <- function(x, times, axis) {
       if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(x), len = 1L)) {
         cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val {axis}}.")
@@ -99,11 +98,12 @@ Key points:
 
 Every argument that is *not* a dynamic array must be listed in `static`. `new_primitive` calls `jit()` internally, so the primitive runs on whichever backend is active when it is called.
 
-Inference rules live together in `R/rules-inference.R`, one per primitive, named `infer_<primitive>()`.
-A rule's formals are the primitive's own -- every operand and *every* static parameter, including ones the rule has no use for -- because `graph_desc_add()` calls it as `do.call(infer_fn, c(avals_in, params))`.
+Here we define the inference function inline to keep the example self-contained.
+Inside {anvl}, inference rules live together in `R/rules-inference.R`, named `infer_<primitive>()`.
+Its formals are the primitive's own -- every operand and *every* static parameter, including ones the rule has no use for -- because `graph_desc_add()` calls it as `do.call(infer_fn, c(avals_in, params))`.
 It returns a plain `list()` of abstract arrays, named when the primitive has named outputs.
 
-If your primitive lowers to a StableHLO operation, implement the constraints from the [StableHLO specification](https://openxla.org/stablehlo/spec) directly, in anvl's vocabulary: arrays rather than tensors, axes rather than dimensions, and axis numbers 1-based.
+If your primitive lowers to a StableHLO operation, implement the constraints from the [StableHLO specification](https://openxla.org/stablehlo/spec) directly, in {anvl}'s vocabulary: arrays rather than tensors, axes rather than dimensions, and axis numbers 1-based.
 Many rules need nothing of their own -- an elementwise operation reuses `infer_generic_biv()`, `infer_float_uni()` and the like.
 
 #### Handling of R inputs
@@ -123,7 +123,7 @@ Materializing each at its own default would make `prim_add(1, nv_scalar(2, "f64"
 In such cases, you should call `apply_promotion()` in the primitive and pass the rules you want to apply.
 This needs to be done before calling `graph_desc_add()`.
 These should *not* change the data type of any `AnvlArray` inputs, which is what the `promotion_rdata_common()` rule is for.
-See the [Type Promotion](type-promotion.html) article for more information on these rules.
+See the [Data Types and Promotion Rules](type-promotion.html) article for more information on these rules.
 
 #### Special case: primitives with 0 dynamic inputs
 
@@ -186,7 +186,8 @@ It must return a list of `stablehlo::FuncValue`s, even if there is only one outp
 
 **Important**: StableHLO uses 0-based indexing, while {anvl} uses R's 1-based indexing.
 Always convert axis indices by subtracting 1.
-Also note that in `graph_desc_add()` we are converting the error messages from stablehlo to our 1-based indexing, so you do not have to worry about that here.
+Nothing translates StableHLO's error messages back into {anvl}'s terms: an input that only StableHLO rejects surfaces as an MLIR error in its own vocabulary, with 0-based axes.
+This is why the inference function has to check every constraint the StableHLO operation imposes, so that the lowering rule only ever sees valid inputs.
 
 ### Step 3: Add the Reverse Rule
 
@@ -266,15 +267,7 @@ The forward must return one output box per original call output, with matching s
 A primitive can optionally also carry a `quickr` rule, which lowers it to plain R code for the quickr backend (see `R/rules-quickr.R`).
 The quickr rule is only required if you want the primitive to run under `local_backend("quickr")`; if you skip it, the primitive will still work on the pjrt backend.
 
-### Step 4: Verify the Registration
-
-`new_primitive()` returns the callable directly and also registers the primitive in the internal registry used by the graph machinery, so no separate registration step is needed:
-
-```{r}
-prim_repeat_along
-```
-
-### Step 5: Add an `nv_` API Function
+### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives.
 An example is `prim_add` vs `nv_add`, where the latter calls into the former after optionally broadcasting (scalar) inputs:
@@ -339,7 +332,7 @@ Tests can go in two places:
    These live in `inst/` to avoid listing torch as a dependency.
 2. **`tests/testthat/`**: For tests without a torch counterpart.
 
-**Important**: the `describe()` / `test_that()` label must contain the full primitive name, e.g. `describe("prim_repeat_along", { ... })`.
+**Important**: the `describe()` / `test_that()` label must start with the full primitive name, e.g. `describe("prim_repeat_along", { ... })`.
 The meta tests in `tests/testthat/test-primitives-meta.R` verify that every primitive has corresponding stablehlo and reverse tests, and flag any that are missing.
 
 Since no torch counterpart exists for `prim_repeat_along`, we would add manual tests in:

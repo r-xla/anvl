@@ -1108,7 +1108,7 @@ describe("the default float", {
     expect_dtype(nv_rnorm(3, state)[[2L]], "f64")
     expect_dtype(nv_runif(3, state)[[2L]], "f64")
     expect_equal(peek_dtype(1.5), as_dtype("f64"))
-    expect_error(dtype(1.5), "f64")
+    expect_error(dtype(1.5), "no data type of its own")
     # An explicit dtype still wins, and the other categories are untouched.
     expect_dtype(nv_array(1.5, dtype = "f32"), "f32")
     expect_dtype(nv_array(1L), default_int())

@@ -6,6 +6,8 @@
 \title{Hyperbolic Sine}
 \usage{
 nv_sinh(x)
+
+\method{sinh}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

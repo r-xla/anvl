@@ -40,7 +40,7 @@ This is implemented via the generic \code{\link[tengen:as_array]{tengen::as_arra
 }
 \section{Data types}{
 
-R has fewer data types than {anvl}, so the values are converted to the R
+R has fewer data types than anvl, so the values are converted to the R
 type that can represent them:\tabular{ll}{
    Data type \tab R type \cr
    \code{f32}, \code{f64} \tab \code{double} \cr

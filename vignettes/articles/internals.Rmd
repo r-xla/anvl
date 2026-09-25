@@ -45,12 +45,12 @@ f <- function(x, y, op) {
 }
 ```
 
-To do this, we use `anvl::trace_fn()`, which takes in an `R` function and a list of `AbstractArray` inputs that specify the input types.
+To do this, we use `trace_fn()`, which takes in an `R` function and a list of `AbstractArray` inputs that specify the input types.
 
 ```{r}
-aten <- nv_aval("f32", c())
-aten
-graph <- trace_fn(f, list(x = aten, y = aten, op = "mul"))
+aval <- nv_aval("f32", c())
+aval
+graph <- trace_fn(f, list(x = aval, y = aval, op = "mul"))
 graph
 ```
 
@@ -60,7 +60,7 @@ The fields of the `AnvlGraph` are:
 * `inputs`, which are `GraphValue`s that represent the inputs to the function.
 * `outputs`, which are `GraphValue`s that represent the outputs of the function.
 * `calls`, which are `PrimitiveCall`s that take in `GraphNode`s (and parameters) and produce output `GraphValue`s.
-* `constants`, which are the `GraphValue`s for values closed over by the traced function (see *Constant Handling*).
+* `constants`, which are the `GraphValue`s for values closed over by the traced function (see [constant handling](#constant-handling)).
 * `in_tree`, `out_tree`, which record the nesting structure of the function's inputs and outputs.
 
 What happens during `trace_fn()` is that a new `GraphDescriptor` is created and the inputs `x` and `y` are converted into `GraphBox` objects.
@@ -69,7 +69,7 @@ During this evaluation, we need to distinguish between two cases:
 
 1. A "standard" `R` function is called:
    Here, nothing special happens and the function is simply evaluated.
-2. An `anvl` function is called:
+2. An {anvl} function is called:
    Here, the operation that underlies the function is recorded in the `GraphDescriptor`.
 
 The evaluation of the `if` statement is an example for the first category.
@@ -150,7 +150,7 @@ nv_array(out)
 
 ## The User Interface
 
-In the previous section, we have shown how the transformations are implemented under the hood.
+In the [previous section](#transforming-code), we have shown how the transformations are implemented under the hood.
 The actual user interface is a little more convenient and follows JAX's interface.
 
 ### `jit()`
@@ -169,8 +169,9 @@ This is, however, not what is happening, as this requires the input types to be 
 Instead, `f_jit` is a "lazy" function that will only perform these steps once the inputs are provided.
 However, if those steps were applied every time the `f_jit` function is called, this would be very inefficient, because tracing and compiling take some time.
 Therefore, `f_jit` also holds a cache of compiled executables, which will check whether there is already one for the given inputs.
-The cache is an LRU cache of `jit()`'s `cache_size` entries, owned by the backend's dispatcher (`pjrt::dispatcher()`), so a function that has run on more than one backend holds one cache per backend (see *Backend and Device in `jit()`* below).
+The cache is an LRU cache of `jit()`'s `cache_size` entries, owned by the backend's dispatcher (`pjrt::dispatcher()`), so a function that has run on more than one backend holds one cache per backend (see [backend and device in `jit()`](#backend-and-device-in-jit) below).
 For a hit, the types of all `AnvlArray`s need to match exactly (data type and shape) and all static arguments need to be identical.
+The structure of nested inputs, the device and the default data types are part of the key as well (see [nested inputs and outputs](#nested-inputs-and-outputs) and [backend and device in `jit()`](#backend-and-device-in-jit)).
 For example, if we run the function with `AnvlArray`s of the same type, but different values, the function won't be recompiled, which we can see with `jit_cache_size()`, which is already 1, because we have called it on `x` and `y` above.
 
 ```{r}
@@ -253,7 +254,7 @@ Consider the program below:
 y <- nv_array(rnorm(1000000L))
 graph <- trace_fn(function(x) {
   x + y + 1
-}, list(x = nv_scalar(1L)))
+}, list(x = nv_scalar(1)))
 graph
 ```
 
@@ -277,9 +278,9 @@ Captured constants can become unused when we apply code transformations like bel
 
 ```r
 f <- function(x) {
-x + y
+  x + y
 }
-transform_gradient(trace_fn(f, list(x = nv_scalar(1))))
+transform_gradient(trace_fn(f, list(x = nv_scalar(1))), wrt = "x")
 ```
 
 In principle, the compiler is able to do this itself, but because we pass constants as inputs to the program, we need to handle it ourselves.
@@ -324,9 +325,9 @@ Generally, there are two situations:
 1. An `RData` object is combined with an object that has a concrete data type
 2. None of the inputs to a primitive has a concrete data type.
 
-In the first case, the `RData` object yields (`promotion_rdata_common()`) to the concrete data type.
+In the first case, the `RData` object takes the concrete data type (`promotion_rdata_common()`).
 Below, `nv_aval("integer", c())` is equivalent to `RData(c(), "integer")`.
-In the resulting graph, the `%x1` input has the data type it yielded to, and the `<- integer` records that the caller supplies it as an R integer, which the runtime uploads at that data type.
+In the resulting graph, the `%x1` input has the data type it took, and the `<- integer` records that the caller supplies it as an R integer, which the runtime uploads at that data type.
 
 ```{r}
 trace_fn(\(x) {
@@ -334,9 +335,9 @@ trace_fn(\(x) {
 }, list(nv_aval("integer", c())))
 ```
 
-Yielding stays within the value's own category, so an R integer meeting an `f32` is an error rather than a promotion -- crossing a category is the job of the `nv_*` layer.
+Taking a data type stays within the value's own category, so an R integer meeting an `f32` is an error rather than a promotion -- crossing a category is the job of the `nv_*` layer.
 
-In the second case, it assumes its default data type:
+In the second case, it settles on its default data type:
 
 ```{r}
 trace_fn(\(x) {
@@ -345,7 +346,7 @@ trace_fn(\(x) {
 ```
 
 When the same `RData` input is used at several data types, it is supplied at the narrowest one that holds them all, and each use site converts down from it.
-Below the input is uploaded as `i64`; the `i8` and `i16` uses convert from it, via `i32` because an R integer is not built below 32 bits.
+Below the input is uploaded as `i64`; the `i8` and `i16` uses convert down from it.
 
 ```{r}
 trace_fn(\(x) {
@@ -360,7 +361,7 @@ Another approach would be to always represent R doubles as `f64`, which is their
 The problem with this approach is that:
 
 1. modern accelerators run much faster in `f32` than `f64`, and
-2. some accelerators (such as Metal) do not support `f64` at all.
+2. some accelerators do not support `f64` at all.
 
 Therefore, one of the underlying ideas is to only introduce `f64` values when someone actually requested
 this data type -- which is why `f32` is the default float on pjrt, and why that default is configurable
@@ -398,7 +399,7 @@ We accept this for now, because such an `f64` is only ever an intermediate for a
 In the future, we might also implement a better solution to this problem.
 One idea would be to let a single R argument enter the compiled program at several data types, so that the `double` input is converted to an `i32` on the host before the program runs.
 
-This is why API functions and primitives should always canonicalize the inputs right at the beginning, so this problem rarely happens.
+`nv_convert()` behaves the same way: unlike other API functions, it deliberately does not canonicalize its input, so that the R value is built at the target data type instead of being rounded through the default float first.
 
 ### Nested Inputs and Outputs
 
@@ -424,7 +425,7 @@ Likewise, the outputs are flattened into the graph's outputs, and their structur
 ```{r}
 graph <- trace_fn(
   function(params, x) list(pred = params$w * x + params$b, w = params$w),
-  list(params = list(w = aten, b = aten), x = aten)
+  list(params = list(w = aval, b = aval), x = aval)
 )
 graph
 graph$in_tree
@@ -447,30 +448,61 @@ jit_cache_size(f)
 
 ## Backend and Device in `jit()`
 
-There is exactly one active backend at any time (`active_backend()`, the option `anvl.backend`).
-A `JitFunction` reads it on every call and keeps one implementation -- the backend's `jit` method's result, with its own compilation cache -- per backend it has been called on.
-`jit_cache_size()` reports one of those caches, the active backend's unless its `backend` argument names another.
-Nothing infers a backend from the arguments: an array of another backend is rejected by the dispatcher.
-This is what makes the default data types (`default_dtypes()`) unambiguous in eager code, where a bare R value has nothing but the active backend to take its default from.
+A compiled program runs on one backend and on one device of that backend.
+`jit()` decides the two in different ways: the backend comes from a global setting, while the device comes from the function's inputs and body.
 
-Device handling within a backend has two things to be aware of:
+### Backend
 
-1. We don't know the inferred device just from looking at the input, as we might have something like:
-  `jit(\(x) x + nv_scalar(1, device = "cuda"))` where we might only learn about the device during tracing.
-  This means the data is only converted at the end.
-2. A function without array inputs (a constructor) has no device to infer from.
-   The constructor primitives (`prim_fill()`, `prim_iota()`) therefore pass the device they were asked for to `graph_desc_add()`, which declares it into the trace, where it counts like the device of an array input.
-   A caller steers such a program by passing the device on to the constructor, in a static argument:
+`jit()` does not tie a function to a backend when the function is created.
+Instead, the `JitFunction` reads the active backend (`active_backend()`, the option `anvl.backend`) every time it is called.
+The first call on a backend builds that backend's implementation of the function, with its own compilation cache, so calling the same function under `with_backend("quickr", ...)` and then under pjrt compiles once for each.
+`jit_cache_size()` reports the cache of the active backend, or of the one its `backend` argument names.
 
-   ```r
-   f <- jit(\(dev) nv_fill(1, 2L, dtype = "f32", device = dev), static = "dev")
-   f(nv_device("cpu"))
-   ```
+The backend is never inferred from the arguments: an array that belongs to another backend is an error.
+This is what makes the default data types (`default_dtypes()`) unambiguous. It's always the ones for the active backend.
 
-## Dichotomy of anvl functions
+### Device
+
+With `jit(f, device = "cuda")`, the device is fixed: every array input is copied to it before the program runs, and the program is compiled for it.
+
+With the default `device = NULL`, `jit()` infers the device from everything in the program that names one:
+
+1. The array inputs.
+2. `AnvlArray`s the function captures from its environment, or creates on an explicit device, e.g. `nv_scalar(1, device = "cuda")`.
+3. The `device` argument of a constructor primitive, see below.
+
+If they all name the same device, the program runs there.
+If they name different devices, `jit()` throws an error.
+If nothing names a device, the program runs on `default_device()`.
+
+The inputs alone are therefore not enough to know the device: the body can name one that `jit()` only sees while tracing.
+The function below has no inputs, but it still runs on the GPU:
+
+```r
+f <- jit(\() nv_scalar(1, device = "cuda") + 1)
+f()
+```
+
+An array the function creates *without* naming a device, such as `nv_array(1:3)` in the body, does not count towards this decision.
+While tracing it is a device-free constant, and its data is only copied to a device once the program's device has been decided.
+
+The device is also part of the cache key: calling the same function on arrays from two different devices compiles two programs.
+
+#### Constructors
+
+A primitive without array inputs, such as `prim_fill()` or `prim_iota()`, has no input to take a device from.
+It therefore has a `device` argument of its own, which it passes to `graph_desc_add()`; that call records the device in the trace, where it counts exactly like the device of an array input.
+To choose the device of such a program from the outside, pass it to the constructor through a static argument:
+
+```{r}
+f <- jit(\(dev) nv_fill(1, 2L, dtype = "f32", device = dev), static = "dev")
+f("cpu")
+```
+
+## Dichotomy of {anvl} functions
 
 Here, we will dig deeper into the dichotomy of {anvl} functions such as `prim_add`.
-In the *Get Started* article, we have learned that these functions can either be called directly on `AnvlArray`s to transform data, or used within `jit()` blocks to build up programs.
+In the [Get Started](anvl.html) article, we have learned that these functions can either be called directly on `AnvlArray`s to transform data, or used within `jit()` blocks to build up programs.
 Here, we will explain what this actually does and why this is possible.
 
 The core problem this dichotomy solves is that it is a mental burden to always keep two versions of an {anvl} function:

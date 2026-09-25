@@ -6,6 +6,8 @@
 \title{Concatenate}
 \usage{
 nv_concatenate(..., axis = NULL)
+
+\method{c}{AnvlArray}(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr

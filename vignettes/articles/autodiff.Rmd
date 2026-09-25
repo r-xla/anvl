@@ -50,6 +50,15 @@ Gradients can only be computed with respect to float arrays, because the derivat
 jit(gradient(f))(nv_array(1:3))
 ```
 
+Bare R values cannot be differentiated with respect to either, even if they are doubles.
+They only take their data type from how the function uses them, so the data type of the gradient would not be determined by the caller.
+Convert them to an `AnvlArray` first:
+
+```{r, error = TRUE}
+jit(gradient(f))(arr(1, 2, 3))
+jit(gradient(f))(nv_array(c(1, 2, 3)))
+```
+
 ## Selecting Arguments with `wrt`
 
 By default, the gradient is computed with respect to all arguments.
@@ -82,16 +91,16 @@ y <- nv_array(c(2, 4, 6))
 loss_grad(params, x, y)
 ```
 
-This makes it easy to update all parameters at once, e.g. via `Map()`:
+This makes it easy to update all parameters at once with `pmap_tree()`, which applies a function to the corresponding `AnvlArray`s of several lists with the same structure.
 
 ```{r}
 grads <- loss_grad(params, x, y)$params
-Map(\(p, g) p - 0.1 * g, params, grads)
+pmap_tree(list(params, grads), \(p, g) p - 0.1 * g)
 ```
 
 ## Value and Gradient
 
-During training, one usually needs both the value of the loss and its gradient.
+When fitting a model, one usually needs both the value of the loss and its gradient.
 Instead of calling the function and its gradient separately, `value_and_gradient()` computes both in a single pass:
 
 ```{r}
@@ -103,34 +112,22 @@ loss_vg(params, x, y)
 
 `gradient()` works on any function that can be traced, including jitted ones, and the gradient function can itself be called within other jitted functions.
 Because nested jitted functions are compiled together, it does not matter whether you jit `f`, its gradient, or the function that calls the gradient.
-Typically, you jit the outermost function, e.g. a complete training step:
+Typically, you jit the outermost function, e.g. a complete step of the model fitting:
 
 ```{r}
-train_step <- jit(function(params, x, y, lr) {
+fit_step <- jit(function(params, x, y, lr) {
   out <- value_and_gradient(loss, wrt = "params")(params, x, y)
   list(
     loss = out$value,
-    params = Map(\(p, g) p - lr * g, params, out$grad$params)
+    params = pmap_tree(list(params, out$grad$params), \(p, g) p - lr * g)
   )
 })
 
 for (i in 1:3) {
-  step <- train_step(params, x, y, lr = 0.05)
+  step <- fit_step(params, x, y, lr = 0.05)
   params <- step$params
   print(as_array(step$loss))
 }
-```
-
-## Higher-Order Derivatives
-
-Because a gradient function is itself an ordinary function, it can be differentiated again.
-Below, we compute the second derivative of $x^3$, which is $6x$:
-
-```{r}
-cube_grad <- gradient(function(x) sum(x^3))
-second_deriv <- jit(gradient(function(x) sum(cube_grad(x)$x)))
-
-second_deriv(nv_array(c(1, 2)))
 ```
 
 ## Non-Differentiable Operations
@@ -144,16 +141,18 @@ relu_sum <- function(x) sum(nv_ifelse(x > 0, x, 0))
 jit(gradient(relu_sum))(nv_array(c(-1, 2)))
 ```
 
+Other functions, such as `max()` or `abs()`, are differentiable everywhere except at a few points.
+At these points, {anvl} follows the conventions of other frameworks such as PyTorch.
+
 ## Limitations
 
 - {anvl} only implements *reverse-mode* differentiation, which is efficient for functions with many inputs and a single scalar output, such as losses.
-  Forward-mode differentiation is not available yet.
-- The control-flow primitives `nv_while()` and `nv_if()` cannot be differentiated yet.
-  If you need gradients through a loop, use an R loop inside the jitted function instead, which is unrolled during tracing (see the [R loops are unrolled](jit.html#r-loops-are-unrolled) section of the JIT deep dive).
+  Forward mode differentiation is currently not supported.
+- Higher-order derivatives, such as Hessians, are currently not really supported.
+- Not every primitive has a derivative yet, so some functions cannot be differentiated.
+  The *Reverse* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
+  If a derivative is missing and you need it, you can add a reverse rule to the primitive yourself, as shown in the [add the reverse rule](extending_primitive.html#step-3-add-the-reverse-rule) step of the Adding a Primitive article.
 
 ## How It Works
 
-When `gradient(f)` is called within `jit()`, {anvl} first traces `f` into a graph of primitive operations, as described in the [JIT Deep Dive](jit.html) article.
-Every primitive comes with a *reverse rule* that, given the gradient of the primitive's output, computes the gradients of its inputs.
-{anvl} then walks the graph backwards from the output and applies these rules, which yields a new graph that computes the gradients.
-To learn how to write a reverse rule for a new primitive, see the [Adding a Primitive](extending_primitive.html) article.
+See the [transforming graphs into other graphs](internals.html#transforming-graphs-into-other-graphs) and [`gradient()`](internals.html#gradient) sections of the internals article for how {anvl} computes gradients, and the [Adding a Primitive](extending_primitive.html) article for how to write a reverse rule.

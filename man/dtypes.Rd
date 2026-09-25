@@ -59,5 +59,5 @@ common one.
 \seealso{
 \code{\link[=default_dtypes]{default_dtypes()}}, \code{\link[=common_dtype]{common_dtype()}},
 \code{\link[=nv_promote_to_common]{nv_promote_to_common()}}, \code{\link[=nv_convert]{nv_convert()}},
-the \href{https://r-xla.github.io/anvl/articles/type-promotion.html}{Type Promotion} article
+the \href{https://r-xla.github.io/anvl/articles/type-promotion.html}{Data Types and Promotion Rules} article
 }

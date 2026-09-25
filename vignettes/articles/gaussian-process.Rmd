@@ -277,7 +277,7 @@ neg_log_marginal_likelihood <- function(kernel, X, y, lengthscale, signal_var, n
 
 We optimize the hyperparameters using gradient descent. Since $\ell$, $\sigma_f^2$, and
 $\sigma^2$ must be positive, we optimize on the log scale to allow unconstrained updates.
-`anvl` computes the gradients via `gradient()` and the entire training loop is
+`anvl` computes the gradients via `gradient()` and the entire fitting loop is
 JIT-compiled with `nv_while`.
 
 ```{r}
@@ -289,7 +289,7 @@ nll_grad <- gradient(\(X, y, log_lengthscale, log_signal_var, log_noise_var) {
   )
 }, wrt = params)
 
-train_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
+fit_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
   n_steps, learning_rate) {
   result <- nv_while(
     list(
@@ -318,7 +318,7 @@ train_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
 ```
 
 ```{r}
-result <- train_gp(
+result <- fit_gp(
   X_t, y_t,
   lengthscale = nv_scalar(1),
   signal_var = nv_scalar(1),
@@ -382,7 +382,7 @@ for (n in n_values) {
   X_dense_t <- nv_matrix(X_dense, ncol = 1)
   y_dense_t <- nv_matrix(y_dense, ncol = 1)
 
-  res_dense <- train_gp(
+  res_dense <- fit_gp(
     X_dense_t, y_dense_t,
     lengthscale = nv_scalar(1),
     signal_var = nv_scalar(1),

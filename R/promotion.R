@@ -10,7 +10,7 @@
 #' data type and the pair is an error. Convert one side with [`nv_convert()`]
 #' to decide what they meet at.
 #'
-#' See the *Type Promotion* article for more information.
+#' See `r roxy_article("type-promotion")` for more information.
 #' @param lhs_dtype,rhs_dtype ([`tengen::DataType`])\cr
 #'   The two data types.
 #' @return ([`tengen::DataType`])\cr

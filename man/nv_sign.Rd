@@ -6,6 +6,8 @@
 \title{Sign}
 \usage{
 nv_sign(x)
+
+\method{sign}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

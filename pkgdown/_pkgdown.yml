@@ -31,6 +31,8 @@ navbar:
     user_guide:
       text: User guide
       menu:
+      - text: Data Types and Promotion Rules
+        href: articles/type-promotion.html
       - text: JIT Deep Dive
         href: articles/jit.html
       - text: Automatic Differentiation
@@ -41,8 +43,6 @@ navbar:
         href: articles/subsetting.html
       - text: Random Number Generation
         href: articles/random-numbers.html
-      - text: Type Promotion
-        href: articles/type-promotion.html
       - text: Gotchas
         href: articles/gotchas.html
       - text: Efficiency
@@ -106,8 +106,6 @@ reference:
     contents:
       - as_array
       - as_raw
-      - as_dtype
-      - is_dtype
       - as-AnvlArray
       - await
 
@@ -131,23 +129,13 @@ reference:
     desc: User-facing `nv_*` functions for array operations
 
   - subtitle: Type Conversion and Broadcasting
-    desc: Functions for type conversion, promotion, and broadcasting
+    desc: Functions for converting data types and broadcasting shapes
     contents:
       - nv_convert
       - nv_bitcast_convert
-      - nv_promote_to_common
       - nv_broadcast_scalars
       - nv_broadcast_arrays
       - nv_broadcast_to
-      - dtypes
-      - common_dtype
-      - promotion_common
-      - promotion_like
-      - promotion_dtype
-      - promotion_rdata_common
-      - promotion_grouped
-      - promotion_rule
-      - apply_promotion
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
@@ -344,6 +332,37 @@ reference:
     desc: Helpers supporting the API functions
     contents:
       - nv_rng_state
+      - nv_print
+
+  - title: Data Types and Promotion
+    desc: Data types, their defaults, and the rules for promoting inputs to a common one
+
+  - subtitle: Data Types
+    contents:
+      - dtypes
+      - as_dtype
+      - is_dtype
+      - common_dtype
+      - peek_dtype
+      - default_dtypes
+      - default_float
+      - default_int
+      - local_default_dtypes
+      - with_dtypes
+
+  - subtitle: Promotion Rules
+    desc: >
+      How `nv_*` functions promote their inputs; see the
+      [Data Types and Promotion Rules](../articles/type-promotion.html) article for how they are used.
+    contents:
+      - nv_promote_to_common
+      - apply_promotion
+      - promotion_rule
+      - promotion_common
+      - promotion_like
+      - promotion_dtype
+      - promotion_rdata_common
+      - promotion_grouped
 
   - title: Transformations
     desc: Code transformations
@@ -353,11 +372,6 @@ reference:
       - gradient
       - value_and_gradient
 
-  - title: Debugging
-    desc: Debugging utilities and tools
-    contents:
-      - nv_print
-
   - title: Backend
     desc: Backend-related functionality and implementations
     contents:
@@ -365,11 +379,6 @@ reference:
       - active_backend
       - local_backend
       - with_backend
-      - default_dtypes
-      - default_float
-      - default_int
-      - local_default_dtypes
-      - with_dtypes
       - install_anvl
       - nv_device
       - default_device
@@ -418,7 +427,6 @@ reference:
       - LiteralArray
       - RData
       - IotaArray
-      - peek_dtype
       - to_abstract
       - arrayish
 

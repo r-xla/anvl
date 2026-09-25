@@ -61,7 +61,7 @@ is_rdata <- function(x) {
 #' @method dtype RData
 #' @export
 dtype.RData <- function(x, ...) {
-  abort_no_dtype(default_dtype_r(x$r_type))
+  abort_no_dtype()
 }
 
 
@@ -87,20 +87,20 @@ shape.logical <- shape.numeric
 #' @method dtype numeric
 #' @export
 dtype.numeric <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
+  abort_no_dtype()
 }
 
 #' @method dtype logical
 #' @export
 dtype.logical <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
+  abort_no_dtype()
 }
 
-abort_no_dtype <- function(default_dtype) {
+abort_no_dtype <- function() {
   cli_abort(
     c(
       "An R value has no data type of its own until it is used.",
-      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it materializes at the default ({.val {as.character(default_dtype)}}).", # nolint
+      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it materializes at the default.", # nolint
       i = "Give it one explicitly with {.fn nv_convert}."
     ),
     call = NULL

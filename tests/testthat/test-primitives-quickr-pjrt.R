@@ -134,7 +134,7 @@ test_that("quickr pipeline matches PJRT: i32 divide truncates toward zero", {
   skip_if_no_quickr_or_pjrt()
 
   divide_i32 <- function(x, y) {
-    x / y
+    prim_div(x, y)
   }
 
   graph <- trace_fn(

@@ -24,7 +24,7 @@ linear <- function(x, w, b) nv_add(nv_mul(x, w), b)
 
 ## How `jit()` works
 
-In pseudo-R, `jit(f)` returns roughly this closure:
+In pseudo-R, `jit` is roughly defined as:
 
 ```r
 jit <- function(f, static = character()) {
@@ -46,7 +46,7 @@ jit <- function(f, static = character()) {
 
 Three things happen:
 
-1. **Trace** the R code once with placeholder values (except for `static` arguments covered below), recording the sequence of primitive operations into an intermediate representation called an `AnvlGraph`.
+1. **Trace** the R code once with placeholder values (except for `static` arguments, covered in [the compilation cache](#the-compilation-cache) below), recording the sequence of primitive operations into an intermediate representation called an `AnvlGraph`.
 1. **Compile** that graph to an XLA executable and cache it under a key derived from the inputs, which uses abstract types for `AnvlArray`s and the actual values for static inputs.
 1. On subsequent calls with a cache hit, **skip tracing and compilation** and run the cached executable directly.
 
@@ -107,7 +107,7 @@ Two important notes to be aware of:
 
 - Call `jit()` once on a function and reuse the result; calling `jit()` inside a loop creates a fresh cache on every iteration and defeats the point.
 - For functions that will be called many times with consistent shapes, compilation is a one-time cost.
-  For computations on shapes that won't recur, the compile time may dominate -- see [Padding Inputs to Avoid Recompilation](efficiency.html#padding-inputs-to-avoid-recompilation) in the efficiency article for one way to keep the cache small.
+  For computations on shapes that won't recur, the compile time may dominate -- see [padding inputs to avoid recompilation](efficiency.html#padding-inputs-to-avoid-recompilation) in the efficiency article for one way to keep the cache small.
 
 ## Tracing
 
@@ -152,7 +152,7 @@ The next subsections each show what tracing does to particular R code and where 
 ### R loops are unrolled
 
 Tracing runs your R code and records primitive operations in the graph.
-Because `for` is not an anvl primitive, it will be executed as usual and all the primitive calls encountered will be recorded in the graph.
+Because `for` is not an {anvl} primitive, it will be executed as usual and all the primitive calls encountered will be recorded in the graph.
 Here we apply the `linear` function `n` times.
 
 ```{r}
@@ -204,7 +204,7 @@ The only fix is to not let the graph depend on values outside the function's sig
 
 ### Closed-over values become constants
 
-We just saw an extreme version of this in the `if` section: a closed-over R variable picked the *branch* that ended up in the graph.
+We just saw an extreme version of this in the [R `if` statements pick one branch](#r-if-statements-pick-one-branch) section: a closed-over R variable picked the *branch* that ended up in the graph.
 The same dynamic applies to closed-over values used as plain operands -- their value at trace time is read once and baked into the graph.
 
 Here we close over a default bias instead of taking it as an argument:
@@ -220,7 +220,7 @@ Changing `default_b` afterwards has no effect on the graph (and, once the graph 
 
 ### Side effects only fire during tracing
 
-The *Tracing Contract* above already noted that a jitted function must be pure. This subsection makes the consequence concrete: **R-level side effects only have an effect while the graph is being built**, not on subsequent calls.
+The [tracing contract](#the-tracing-contract) above already noted that a jitted function must be pure. This subsection makes the consequence concrete: **R-level side effects only have an effect while the graph is being built**, not on subsequent calls.
 
 A common R pattern for stateful objects is to wrap them in an environment, since environments give you reference semantics:
 
@@ -254,10 +254,10 @@ class(model$beta)       # not even an AnvlArray any more
 Two things went wrong, both for the same reason: the only thing `jit()` records into the graph is `prim_*` calls.
 
 - The mutation `e$beta <- ...` is a plain R assignment, not a `prim_*` call, so it doesn't get recorded into the `AnvlGraph`.
-  It runs once, during tracing -- but the value being assigned is anvl's internal trace placeholder (a `GraphBox`), not a real array.
+  It runs once, during tracing -- but the value being assigned is {anvl}'s internal trace placeholder (a `GraphBox`), not a real array.
   So after the first call, `model$beta` is *broken*: it holds a leaked tracer instead of the array you expected.
 - On every subsequent call only the cached XLA executable runs -- never the R body, so the `e$beta <- ...` line will not be executed again.
-  And because `e$beta` was a closed-over R value at trace time, its initial value (`c(0, 0, 0)`) is baked into the graph as a literal (per *Closed-over values become constants* above), so every call returns the same `-0.1`.
+  And because `e$beta` was a closed-over R value at trace time, its initial value (`c(0, 0, 0)`) is baked into the graph as a literal (per [closed-over values become constants](#closed-over-values-become-constants) above), so every call returns the same `-0.1`.
 
 This is why `jit()`-compiled functions must be *pure*: their output depends only on their arguments, and any state updates have to happen at the call site, not inside the function:
 
@@ -285,7 +285,7 @@ Every `AnvlArray` lives on a concrete device (CPU, a specific GPU, etc.), and a 
 How the device is chosen for a `jit()`-compiled call depends on how you called `jit()`.
 The two most relevant options are:
 
-- **Inferred from inputs (default).** If you don't pass `device =`, anvl looks at the devices of the array inputs at call time, requires them to agree, and compiles for that device.
+- **Inferred from inputs (default).** If you don't pass `device =`, {anvl} looks at the devices of the array inputs at call time, requires them to agree, and compiles for that device.
   If there are no array inputs, it falls back to the `default_device()`.
 - **Pinned at `jit()` time.** Passing a concrete device -- e.g. `jit(f, device = "cpu:0")` or `jit(f, device = nv_device("cuda:0"))` -- forces every call to run on that device.
   Inputs living on a different device are copied over automatically.
@@ -303,4 +303,4 @@ device(add(a, b))                            # inferred from inputs
 device(add_cpu(a, b))                        # pinned
 ```
 
-Because the device is part of the cache key (see *The compilation cache* above), a single `jit()`ted function can hold compiled binaries for several devices at once, unless `device` was specified explicitly during `jit()`.
+Because the device is part of the cache key (see [the compilation cache](#the-compilation-cache) above), a single `jit()`ted function can hold compiled binaries for several devices at once, unless `device` was specified explicitly during `jit()`.

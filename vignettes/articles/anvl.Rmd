@@ -43,7 +43,7 @@ nv_array(1L, dtype = "i16", device = "cpu", shape = integer())
 
 For scalars, `nv_scalar()` is a shorthand that does not require specifying the shape.
 The device can also be omitted, in which case the default device is used.
-This is the CPU, unless configured otherwise via the `anvl.default_device` option (e.g. `options(anvl.default_device = "cuda")`) or the `ANVL_DEFAULT_DEVICE` environment variable.
+This is the CPU, unless configured otherwise via the `anvl.default_device` option.
 `with_default_device()` and `local_default_device()` change it temporarily, and `default_device()` reports the current one.
 
 ```{r}
@@ -58,13 +58,13 @@ y <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(2, 3))
 y
 ```
 
-> **Terminological remark:** In {anvl}, we do not speak of the "dimensions" of an array, because the term is ambiguous: it can refer to the directions along which an array extends, to how many of them there are, or to how far it extends along each of them.
+> **Terminological remark:** In {anvl}, we do not speak of the "dimensions" of an array, because the term is ambiguous.
 > Instead, we say that `y` has two *axes*, where axis `1` has *size* 2 and axis `2` has size 3.
 > The vector of axis sizes, here `c(2, 3)`, is the *shape* of the array.
 
 Without a specified data type, R `double`s become `f32` (32-bit floats) and R `integer`s become `i32`.
 Base R, in contrast, always computes with 64-bit doubles, so results are less precise.
-In exchange, computations are faster and use half the memory, especially on GPUs.
+In exchange, computations use half the memory and are faster, especially on GPUs.
 Where double precision is needed, the default can be changed via the `anvl.default_dtypes` option.
 Below, `with_default_dtypes()` changes it temporarily:
 
@@ -86,7 +86,6 @@ device(y)
 To continue working with the results in R, e.g. to plot them, `as_array()` converts an array back to an R object.
 For scalars, the result is an R vector of length 1.
 Because R has fewer data types than {anvl}, the values are converted to the closest R type: floats become `double`s, most integers become `integer`s, and integers that do not fit into an R `integer`, such as 64-bit integers, become `bit64::integer64`.
-Note that an `f32` value converted to a `double` keeps the rounding error of the 32-bit float.
 See `?as_array` for the full list of conversions.
 
 ```{r}
@@ -96,7 +95,7 @@ as_array(y)
 ## Computing with Arrays
 
 Arrays are transformed with the `nv_<op>` functions, such as `nv_add()` or `nv_matmul()`, or through the usual R operators and functions like `+`, `%*%`, or `sum()`.
-An overview of all of them is in the [API Functions](https://r-xla.github.io/anvl/dev/reference/index.html#api-functions) section of the reference.
+An overview of all of them is in the [API Functions reference](https://r-xla.github.io/anvl/dev/reference/index.html#api-functions).
 
 ```{r}
 nv_add(y, x)
@@ -151,13 +150,13 @@ y_hat1 <- linear_model(X[1:2, ], beta, alpha)
 all(y_hat0 == y_hat1)
 ```
 
-The jitted function takes the same arguments and returns the same results, so wrapping a function in `jit()` is usually all it takes to make it faster.
+The jitted function takes the same arguments and returns the same results[^gotchas], so wrapping a function in `jit()` is usually all it takes to make it faster.
 The compiler behind this is [XLA](https://openxla.org/xla), which also powers TensorFlow and JAX.
 
+[^gotchas]: There are some differences to base R, such as the handling of `NA`s or recycling; see the [Gotchas](gotchas.html) article.
+
 There is one rule to follow: the function should only compute its result from its inputs, and not have side effects.
-When {anvl} compiles the function, it runs the R code once to record which array operations it performs.
-Everything else, such as printing, modifying global variables, or drawing R random numbers, happens only during that single run and not on later calls.
-See the [Tracing Contract](jit.html#the-tracing-contract) section of the JIT deep dive for details.
+See the [tracing contract](jit.html#the-tracing-contract) section of the JIT deep dive for details on how to avoid unpleasent surprises with `jit()`.
 
 We also define a jitted function that computes the mean squared error of the predictions:
 
@@ -170,7 +169,7 @@ mse(linear_model(X, beta, alpha), y)
 ```
 
 Jitted functions can be freely built out of other jitted functions.
-{anvl} then compiles them together into one program, so splitting code into small functions comes at no cost:
+{anvl} then compiles them together into one program.
 
 ```{r}
 model_loss <- jit(function(X, beta, alpha, y) {

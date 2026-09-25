@@ -19,10 +19,10 @@ Other examples are `which(x > 0)` or `x[x > 0]`.
 While this restriction is less ergonomic, it means the compiler knows more about your program and your compiled executable will run faster.
 The cost is that some operations require rethinking, and a few cannot currently be expressed inside `jit()` at all.
 
-For many operations, you can work around the restriction by keeping shapes fixed and using a logical mask -- the same idea presented in the *Padding* section of the efficiency article.
+For many operations, you can work around the restriction by keeping shapes fixed and using a logical mask -- the same idea presented in the [padding inputs to avoid recompilation](efficiency.html#padding-inputs-to-avoid-recompilation) section of the efficiency article.
 We cover some common patterns below.
 For operations we cannot yet handle in-graph (such as `which()` or `unique()`), you currently need to convert the `AnvlArray` back to R, apply the operation there, and then convert the result back to an `AnvlArray` to resume the computation.
-We hope to lift the static-shape restriction in the long term and add functions like `which()` and `unique()` to {anvl}'s eager API to make this more ergonomic.
+We hope to lift the static-shape restriction in the long term.
 
 ## The masking pattern
 

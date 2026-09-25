@@ -6,6 +6,8 @@
 \title{Sine}
 \usage{
 nv_sin(x)
+
+\method{sin}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

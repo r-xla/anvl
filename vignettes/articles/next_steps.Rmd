@@ -2,41 +2,222 @@
 title: "Next Steps"
 ---
 
-This article picks up where the [Get Started](anvl.html) article left off.
-When writing more than a few lines of {anvl} code, some things work differently than in base R.
-Most of these differences come from the fact that {anvl} compiles the code, which is what makes it fast.
-Here, we go through what they mean in practice: what can be relied on, what is not possible, and how to work around it.
+Here, we pick up where the [Get Started](anvl.html) introduction left off.
+It gives a short overview of what is good to know when writing {anvl} code, and points to the articles that cover each topic in detail.
 
 ```{r}
 library(anvl)
-set.seed(42)
+```
+
+## Passing R Values
+
+R values can be passed to jitted functions in two ways.
+R `numeric(1)`, `logical(1)` and `array`s are automatically converted when being passed as arguments that expect `AnvlArray`s.
+We also refer do such inputs as being *dynamic*.
+When doing this conversion, the R object takes the data type of the `AnvlArray` it is combined with, so `x / 3` keeps the precision of `x`:
+
+```{r}
+nv_array(c(1, 2), dtype = "f64") / 3
+```
+
+Note that vectors of length greater than one are not accepted, as otherwise `c(1)` would have 0 axes but `c(1, 2)` would have one axis, which would lead to surprising results and unpredictable behavior.
+Instead, use R arrays with a single axis to represent vectors.
+Wrap them in `array()`, or use `anvl::arr()`, which saves the `c()`.
+
+```{r}
+nv_add(nv_scalar(1, dtype = "f64"), arr(2, 3))
+```
+
+When there is no other operand to infer the data type from, the default data type is used, which can also be configured via the `anvl.default_dtypes` option.
+
+```{r}
+nv_add(1, 2)
+```
+
+See the [Data Types and Promotion Rules](type-promotion.html) article for the full promotion rules.
+
+When you write your jitted function, you might also want to take in R values without auto-converting them to `AnvlArray`s.
+This is what the `static` argument of `jit()` is for.
+It names function parameters that stay regular R values and this can, for example, be used for `if`-statements within compiled functions.
+
+```{r}
+loss <- function(y_hat, y, average) {
+  se <- (y_hat - y)^2
+  if (average) mean(se) else sum(se)
+}
+y_hat <- nv_array(c(1, 2, 3))
+y <- nv_array(c(1, 2, 5))
+
+mse <- jit(loss, static = "average")
+mse(y_hat, y, average = TRUE)
+```
+
+Without `static`, `average` would be converted to an `AnvlArray` like any other logical and could thus not be used in the if-conditional:
+
+```{r, error = TRUE}
+mse_dynamic <- jit(loss)
+mse_dynamic(y_hat, y, average = TRUE)
+```
+
+The value of a static argument is fixed in the compiled program, so every new value compiles a new version of the function.
+Static arguments should therefore only take few different values.
+See the [compilation cache](jit.html#the-compilation-cache) section of the JIT deep dive for details.
+
+## Nested Lists of `AnvlArray`s
+
+Jitted functions can take and return (nested) lists of `AnvlArray`s, e.g. the parameters of a model.
+`map_tree()` and `pmap_tree()` apply a function to every `AnvlArray` in such lists, like `lapply()` and `Map()`, but keeping the nesting:
+
+```{r}
+params <- list(w = nv_array(c(1, 2)), layer = list(b = nv_scalar(0.5)))
+scale_params <- jit(function(params) map_tree(params, \(p) p * 2))
+scale_params(params)
+```
+
+See the [nested inputs and outputs](internals.html#nested-inputs-and-outputs) section of the internals article for more.
+
+## Subsetting
+
+`AnvlArray`s are subset with `[`, like in R:
+
+```{r}
+y <- nv_array(1:12, shape = c(3, 4))
+y[arr(1L, 3L), 2:3]
+```
+
+Logical masks cannot be used for subsetting (see [shapes must be known in advance](#shapes-must-be-known-in-advance) below), and indices outside of the `AnvlArray` are moved to the nearest valid index instead of raising an error (see [compiled code cannot throw errors](#compiled-code-cannot-throw-errors) below).
+See the [Subsetting](subsetting.html) article for the details.
+
+## Value Semantics
+
+Like R objects, `AnvlArray`s have value semantics: modifying an `AnvlArray`, e.g. via subset assignment with `[<-`, never affects other variables holding the same `AnvlArray`.
+
+```{r}
+y2 <- y
+y2[1, ] <- 0L
+y[1, ]
+y2[1, ]
+```
+
+Outside of a jitted function, this means that every subset assignment copies the whole `AnvlArray`, while inside a jitted function, the compiler avoids unnecessary copies.
+
+For the same reason, a jitted function does not modify its inputs, so it needs new memory for its outputs.
+If an input is not needed after the call, e.g. the parameters in a model fitting loop, marking it via `donate` allows the compiled program to reuse its memory for the outputs:
+
+```{r}
+update <- jit(function(x, delta) x + delta, donate = "x")
+x <- nv_array(c(1, 2, 3))
+x <- update(x, 0.1)
+x
+```
+
+The donated `AnvlArray` cannot be used anymore after the call.
+See the [donation](efficiency.html#donation) section of the efficiency article for more.
+
+The copy of an eager subset assignment can be avoided in the same way: `x[i, inplace = TRUE] <- value` donates `x` to the update, which then writes into its memory (see [in-place updates](subsetting.html#in-place-updates)).
+
+## When Functions Are Compiled
+
+When {anvl} compiles a function, it runs the R code once with placeholders that only know their shape and data type, and records the operations on `AnvlArray`s that are performed.
+Everything else in the R code is resolved during that single run, which has consequences that the following sections go through.
+See the [tracing](jit.html#tracing) section of the JIT deep dive for the details.
+
+A jitted function is compiled again for every new combination of input shapes, data types, and static argument values.
+Keep the shapes fixed where possible, and only make arguments static that take few different values.
+See [the compilation cache](jit.html#the-compilation-cache) and [padding inputs to avoid recompilation](efficiency.html#padding-inputs-to-avoid-recompilation) for more.
+
+## Control Flow
+
+An R `if` picks one branch while the function is traced, so its condition cannot depend on the values of `AnvlArray`s, as we have already seen for the non-static `average` argument in [passing R values](#passing-r-values).
+An R loop is unrolled into one copy of its body per iteration, which slows down compilation for many iterations.
+See [R loops are unrolled](jit.html#r-loops-are-unrolled) and [R `if` statements pick one branch](jit.html#r-if-statements-pick-one-branch) for examples.
+
+It might be tempting to convert the condition to an R value first, e.g. with `as.logical()`, as one would do outside of `jit()`:
+
+```{r, error = TRUE}
+abs_value <- jit(function(x) {
+  if (as.logical(x < 0)) -x else x
+})
+abs_value(nv_scalar(-2))
+```
+
+This fails, because while the function is traced, `x` is only a placeholder that describes the shape and data type of an `AnvlArray`.
+Its values only exist once the compiled program runs, so there is nothing that could be converted to an R value.
+
+`nv_while()` and `nv_if()` instead run the loop or branch within the compiled program, where it can depend on the values of `AnvlArray`s:
+
+```{r}
+double_until <- jit(function(x, limit) {
+  nv_while(list(x = x), \(x) x < limit, \(x) list(x = x * 2))
+})
+double_until(nv_scalar(1), 100)
+```
+
+Alternatively, an R loop around a jitted function, as in the [Get Started](anvl.html) article, can also be an option.
+
+## Shapes Must Be Known in Advance
+
+The shape of every intermediate result must be known when compiling, so operations such as `x[x > 0]`, `which()`, or `unique()` cannot be used.
+Often, one can instead keep all values and ignore the unwanted ones, e.g. `sum(nv_ifelse(x > 0, x, 0))` instead of `sum(x[x > 0])`.
+See the [Static Shape Restriction](static_shapes.html) article for more such patterns.
+
+## Compiled Code Cannot Throw Errors
+
+Once a program is compiled, it cannot throw errors.
+Errors and assertions can therefore only depend on the values of static arguments, or on the shapes and data types of the other inputs, and are raised while the function is compiled.
+This also applies to eager code, which runs each operation as a small compiled program.
+
+Where R would raise an error depending on the values of the inputs, {anvl} therefore returns some value instead.
+For example, an index outside of the `AnvlArray` is moved to the nearest valid index, and the Cholesky decomposition of a matrix that is not positive definite contains `NaN`s:
+
+```{r}
+x <- nv_array(c(1, 2, 3))
+x[nv_scalar(10L)]
+
+m <- matrix(c(1, 2, 2, 1), nrow = 2)
+chol(nv_array(m))
+```
+
+## Random Numbers
+
+R's `rnorm()` and friends are only called once, while tracing, so their result is fixed in the compiled function.
+Use {anvl}'s own generators instead, which take the random state as an explicit input and return a new one:
+
+```{r}
+draw <- jit(function(state) nv_rnorm(state, shape = 2L))
+res <- draw(nv_rng_state(42L))
+res$values
+```
+
+See the [Random Number Generation](random-numbers.html) article for more.
+
+## Debugging
+
+For the same reason, `print()` inside a jitted function only shows a placeholder, once.
+`nv_print()` prints the actual values on every call, and returns its input so it can be placed anywhere.
+To step through the code, e.g. with `browser()`, call the function without `jit()`.
+See [side effects only fire during tracing](jit.html#side-effects-only-fire-during-tracing) for more.
+
+## Differences from Base R
+
+While {anvl} aims to offer an interface that is familiar to R users, there are various differences to be aware of.
+For an overview, see the [Gotchas](gotchas.html) article.
+
+## Saving `AnvlArray`s
+
+An `AnvlArray` only holds a pointer to its data, so `saveRDS()` does not work for it.
+Use `nv_save()` and `nv_read()` instead, which use the [safetensors](https://huggingface.co/docs/safetensors/index) format.
+
+```{r}
+path <- tempfile(fileext = ".safetensors")
+nv_save(list(w = nv_array(c(1, 2)), b = nv_scalar(0.5)), path)
+nv_read(path)$w
 ```
 
 ## `nv_*` Functions and Primitives
 
-The reference contains two kinds of functions:
-
-1. The `nv_<op>` functions and the R operators such as `+` and `%*%`, which we have used so far.
-   They are convenient to use: for example, they combine arrays of different data types, and they have R-like defaults.
-1. The *primitives*, named `prim_<op>`.
-   They are the basic building blocks that all `nv_*` functions are built from, and everything that {anvl} can compile and differentiate is ultimately expressed in terms of them.
-   An overview is in the [list of primitives](https://r-xla.github.io/anvl/dev/reference/index.html#primitives-1).
-
-The primitives are harder to use, as they are deliberately strict.
-For example, they do not combine arrays of different data types:
-
-```{r, error = TRUE}
-x <- nv_scalar(1L, dtype = "i16")
-y <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(2, 3))
-
-prim_add(y, x)
-
-nv_add(y, x)
-```
-
-In exchange, they are more general and can express things for which there is no `nv_*` function.
-For example, `prim_reduce()` reduces an array with an arbitrary function.
-Below, we use it to compute $\log \sum_i \exp(x_i)$ in a numerically stable way, by combining the values pairwise via $\log(e^a + e^b) = \max(a, b) + \log(1 + e^{-|a - b|})$:
+The `nv_*` functions and R operators are built from *primitives*, named `prim_*`.
+The primitives are deliberately strict -- for example, they do not combine `AnvlArray`s of different data types -- but can express things for which there is no `nv_*` function, such as reducing an `AnvlArray` with an arbitrary function:
 
 ```{r}
 logsumexp <- jit(function(x) {
@@ -44,294 +225,8 @@ logsumexp <- jit(function(x) {
     nv_pmax(a, b) + log1p(exp(-abs(a - b)))
   })
 })
-
 logsumexp(nv_array(c(1, 2, 3)))
 ```
 
-This is what makes {anvl} powerful: anything that can be expressed in terms of primitives is compiled into a single optimized program, and therefore runs fast.
-This is different from frameworks such as {torch}, where only the predefined operations are fast.
-There, an algorithm that is not available as a built-in operation has to be composed from many small operations, each of which is run separately, which is considerably slower.
-
-The primitives are also what {anvl} can be extended with, see the [Adding a Primitive](extending_primitive.html) article.
-
-## Modifying Arrays
-
-Changing an array never affects other variables holding the same array, just like in R:
-
-```{r}
-y2 <- y
-y2[1, 1] <- 99L
-y2[1, 1]
-y[1, 1]
-```
-
-Unlike R, however, {anvl} copies the whole array every time it is modified outside of a jitted function, even if nothing else refers to it.
-Modifying large arrays element by element in a loop should therefore be avoided in eager code, while inside a jitted function the compiler avoids unnecessary copies.
-When the original array is not needed anymore, `x[i, inplace = TRUE] <- value` avoids the copy (see [In-place Updates](subsetting.html#in-place-updates)).
-See the [Memory](efficiency.html#memory) section of the efficiency article for details, including how a jitted function can reuse the memory of its inputs.
-
-## Passing R Values
-
-Inputs do not need to be converted to `AnvlArray`s manually: `nv_*` functions and jitted functions also accept R numbers, logicals, arrays, and matrices.
-
-```{r}
-nv_add(1, array(2:3))
-```
-
-A plain R number adapts to the data type of the array it is combined with.
-This means that `x / 3` keeps the precision of `x`, regardless of whether it holds 32-bit or 64-bit floats:
-
-```{r}
-nv_array(c(1, 2), dtype = "f64") / 3
-```
-
-Only when it is not combined with any array does it take the default data type.
-See the [Type Promotion](type-promotion.html) article for the full rules.
-
-R vectors of length greater than one are not converted, because it would be ambiguous whether they should be treated as 1D arrays.
-Wrap them in `nv_array()` or `array()` instead:
-
-```{r, error = TRUE}
-nv_add(1, c(2, 3))
-nv_add(1, array(c(2, 3)))
-```
-
-## Nested Lists of Arrays
-
-Jitted functions can take and return (nested) lists of arrays, which is convenient e.g. for the parameters of a model.
-To apply an operation to every array in such a list, {anvl} provides `map_tree()`, which works like `lapply()` but recurses into nested lists and keeps their structure:
-
-```{r}
-params <- list(w = nv_array(c(1, 2)), layer = list(b = nv_scalar(0.5)))
-map_tree(params, \(p) p * 2)
-```
-
-`pmap_tree()` does the same for several lists with the same structure, which makes it easy to write, e.g., a gradient descent step for arbitrary parameters:
-
-```{r}
-grads <- map_tree(params, \(p) p / 10)
-
-step <- jit(function(params, grads, lr) {
-  pmap_tree(list(params, grads), \(p, g) p - lr * g)
-})
-step(params, grads, 0.1)
-```
-
-See the [Nested Inputs and Outputs](internals.html#nested-inputs-and-outputs) section of the internals article for how {anvl} handles such lists.
-
-## Saving Arrays
-
-The data of an `AnvlArray` is not stored in R itself: the R object only holds an *external pointer* to it.
-R cannot serialize the data behind an external pointer, so `saveRDS()` only stores the pointer, which is invalid when the file is read again with `readRDS()`.
-Instead, arrays can be saved to disk and loaded back via `nv_save()` / `nv_read()`.
-The [safetensors](https://huggingface.co/docs/safetensors/index) format they use can also be read by PyTorch and JAX, which makes it easy to exchange data such as model weights with Python:
-
-```{r}
-weights <- list(w = nv_array(c(1, 2, 3)), b = nv_scalar(0.5))
-path <- tempfile(fileext = ".safetensors")
-nv_save(weights, path)
-
-loaded <- nv_read(path)
-loaded$w
-```
-
-## Differences from Base R
-
-A few more things work differently than in base R.
-{anvl} does not recycle vectors: only scalars are combined with arrays of any shape, while combining two arrays of different shapes is an error rather than silently repeating the shorter one.
-If two arrays only differ by axes of size 1, `nv_broadcast_arrays()` expands them to a common shape.
-
-```{r, error = TRUE}
-nv_array(1:4) + 10L
-nv_array(1:4) + nv_array(1:2)
-```
-
-There are also no missing values.
-At a float data type, an `NA` becomes a `NaN`, so missing data needs to be handled before it is passed to {anvl}.
-
-```{r}
-nv_array(c(1, NA, 3))
-```
-
-See the [Gotchas](gotchas.html) article for these and other differences.
-
-## Static Arguments
-
-So far, all arguments of jitted functions were arrays, or R values that are converted to arrays.
-Sometimes, however, a function needs arguments that are not arrays, such as options that change what the function does.
-Such arguments are marked as `static`: they stay regular R values while the function is compiled, so the R code can use them, e.g. in an `if`-statement.
-Below, `reduction` decides whether the loss is averaged or summed:
-
-```{r}
-mse <- jit(function(y_hat, y, reduction) {
-  se <- (y_hat - y)^2
-  if (reduction == "mean") {
-    mean(se)
-  } else {
-    sum(se)
-  }
-}, static = "reduction")
-
-y_hat <- nv_array(c(1, 2, 3))
-y_true <- nv_array(c(1, 2, 5))
-mse(y_hat, y_true, reduction = "mean")
-mse(y_hat, y_true, reduction = "sum")
-```
-
-The value of a static argument is fixed in the compiled function, which is why every new value compiles a new version of it, as the next section shows.
-
-## When Functions Are Compiled
-
-A jitted function is compiled the first time it is called and reused afterwards, but only as long as the inputs have the same shapes and data types.
-Each new combination triggers a new compilation, which takes time.
-Static arguments are part of this too: every new value of a static argument compiles a new version of the function.
-
-```{r}
-scale <- jit(function(x, factor) x * factor, static = "factor")
-
-scale(nv_array(1:3), factor = 2) # compiles
-scale(nv_array(4:6), factor = 2) # reuses the compiled function
-scale(nv_array(1:3), factor = 3) # compiles again: new static value
-scale(nv_array(1:4), factor = 3) # compiles again: new shape
-```
-
-In practice, this means:
-
-- Keep the shapes of the inputs fixed where possible, e.g. by using batches of equal size.
-  If they vary, they can be padded to a few fixed sizes (see [Padding inputs to avoid recompilation](efficiency.html#padding-inputs-to-avoid-recompilation)).
-- Only make arguments static that take few different values, such as options.
-  A number that changes on every call, such as a learning rate that decays, should be a regular argument instead -- a plain R number is fine, as only its data type, not its value, is part of the compiled function.
-
-See the [JIT Deep Dive](jit.html) article for more on how `jit()` works.
-
-## Shapes Must Be Known in Advance
-
-When {anvl} compiles a function, it needs to know the shape of every intermediate result.
-This means that operations whose result size depends on the data cannot be used inside a jitted function, such as `x[x > 0]`, `which()`, or `unique()`.
-Often, it is possible to instead keep all values and ignore the unwanted ones, e.g. to compute `sum(x[x > 0])`:
-
-```{r}
-sum_positive <- jit(function(x) {
-  sum(nv_ifelse(x > 0, x, 0))
-})
-
-sum_positive(nv_array(c(-2, 1, 3, -4)))
-```
-
-See the [Static Shape Restriction](static_shapes.html) article for more such patterns.
-
-## Subsetting
-
-Arrays are subset and modified with `[` and `[<-`, like in R.
-The index can also be an array, which allows picking different elements on each call without compiling the function again:
-
-```{r}
-x <- nv_array(1:10)
-x[2:4]
-
-get_elt <- jit(function(x, i) x[i])
-get_elt(x, nv_scalar(3L))
-```
-
-Because shapes must be known in advance, logical masks cannot be used for subsetting, and ranges such as `2:4` must be R values rather than arrays.
-Also note that indices outside of the array don't raise an error, but are moved to the nearest valid index.
-See the [Subsetting](subsetting.html) article for the details.
-
-## Random Numbers
-
-Because a jitted function only runs the R code once, R's random number generators such as `rnorm()` are only called once as well.
-Their result is then fixed in the compiled function, so every call returns the same "random" number:
-
-```{r}
-noisy <- jit(function(x) x + rnorm(1))
-noisy(nv_scalar(0))
-noisy(nv_scalar(0))
-```
-
-Instead, {anvl} has its own random number generators, which take the random state as an explicit input.
-`nv_rng_state()` creates a state from a seed, and functions such as `nv_rnorm()` return both the random values and a new state, which is passed to the next call:
-
-```{r}
-draw <- jit(function(state) nv_rnorm(state, shape = 2L))
-
-res <- draw(nv_rng_state(42L))
-res$values
-res <- draw(res$state)
-res$values
-```
-
-This also makes results reproducible: the same state always gives the same numbers.
-See the [Random Number Generation](random-numbers.html) article for the available distributions.
-
-## Debugging
-
-For the same reason, `print()` inside a jitted function runs only once, while the function is being compiled, and at that point there are no values yet: it only shows a placeholder describing the shape and data type.
-To see the actual values on every call, use `nv_print()`, which returns its input unchanged and can therefore be placed anywhere in the code:
-
-```{r}
-f <- jit(function(x) {
-  print(x)
-  y <- nv_print(x * 2)
-  y + 1
-})
-
-f(nv_array(1:3))
-```
-
-To step through the code, e.g. with `browser()`, the function can also be called without `jit()`, as most code runs eagerly as well.
-
-## Control Flow
-
-There are three ways to write loops and branches, and which one fits depends on the use case:
-
-1. **An R loop around a jitted function**, as in the training loop of the Get Started article.
-   This is the simplest option and easy to debug, but each iteration returns to R, which adds some overhead.
-2. **R control flow inside a jitted function.**
-   An R `if` works as long as the condition doesn't depend on the values of arrays, e.g. when branching on a static argument.
-   An R loop is fine for a few iterations, but it is expanded into one copy of its body per iteration, so compilation gets slower the more iterations it has
-   (see [R loops are unrolled](jit.html#r-loops-are-unrolled) and [R `if` statements pick one branch](jit.html#r-if-statements-pick-one-branch)).
-3. **`nv_while()` and `nv_if()`.**
-   They run the loop or branch within the compiled program, so there is no overhead per iteration, and the number of iterations or the branch taken can depend on the values of arrays.
-   However, gradients through them are currently not supported.
-
-`nv_while()` works differently from an R `while` loop, because it cannot modify variables outside of it.
-Instead, it takes:
-
-1. An initial state, which is a (nested) list of arrays.
-1. A `cond` function, which receives the current state and returns whether to continue.
-1. A `body` function, which receives the current state and returns the new state.
-
-Below, we run the whole gradient descent of the Get Started article within a single jitted function:
-
-```{r}
-X <- matrix(rnorm(100), ncol = 1)
-y <- X %*% rnorm(1) + rnorm(1) + rnorm(100, sd = 0.5)
-X <- nv_array(X, dtype = "f32")
-y <- nv_array(y, dtype = "f32")
-beta <- nv_array(rnorm(1), shape = c(1, 1), dtype = "f32")
-alpha <- nv_scalar(rnorm(1), dtype = "f32")
-
-model_loss <- function(X, beta, alpha, y) {
-  mean((X %*% beta + alpha - y)^2)
-}
-model_loss_grad <- gradient(model_loss, wrt = c("beta", "alpha"))
-
-train_while <- jit(function(X, beta, alpha, y, n_steps, lr) {
-  nv_while(
-    list(beta = beta, alpha = alpha, i = 0),
-    \(beta, alpha, i) i < n_steps,
-    \(beta, alpha, i) {
-      grads <- model_loss_grad(X, beta, alpha, y)
-      list(
-        beta = beta - lr * grads$beta,
-        alpha = alpha - lr * grads$alpha,
-        i = i + 1L
-      )
-    }
-  )
-})
-
-train_while(X, beta, alpha, y, nv_scalar(100L), lr = 0.1)
-```
-
-`nv_if()` works analogously for branches.
+Anything expressed in terms of primitives is compiled into a single optimized program, so even algorithms without a built-in operation run fast.
+See the [Primitives Reference](primitives.html) for the available primitives, and the [Adding a Primitive](extending_primitive.html) article for how to add new ones.

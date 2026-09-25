@@ -6,6 +6,8 @@
 \title{Digamma}
 \usage{
 nv_digamma(x)
+
+\method{digamma}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

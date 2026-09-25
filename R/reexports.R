@@ -53,7 +53,7 @@ tengen::device
 #' This is implemented via the generic [`tengen::as_array()`].
 #'
 #' @section Data types:
-#' R has fewer data types than {anvl}, so the values are converted to the R
+#' R has fewer data types than anvl, so the values are converted to the R
 #' type that can represent them:
 #'
 #' | Data type | R type |

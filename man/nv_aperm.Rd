@@ -11,6 +11,8 @@ nv_aperm(x, perm = NULL)
 
 nv_transpose(x, perm = NULL)
 
+\method{t}{AnvlArray}(x)
+
 \method{aperm}{AnvlArray}(a, perm = NULL, ...)
 }
 \arguments{

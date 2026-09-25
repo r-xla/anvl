@@ -6,6 +6,8 @@
 \title{Multiplication}
 \usage{
 nv_mul(lhs, rhs)
+
+\method{*}{AnvlArray}(e1, e2)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
@@ -14,6 +16,9 @@ any data type. Scalars are broadcast, and R values assume the other
 operand's data type within their \link[=dtypes]{data type category},
 otherwise falling back to their \link[=default_dtypes]{default data type} and
 being converted to the common data type.}
+
+\item{e1, e2}{(\code{\link{arrayish}})\cr
+The operands of the operator, which it passes on as \code{lhs} and \code{rhs}.}
 }
 \value{
 (\code{\link{arrayish}})\cr

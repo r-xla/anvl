@@ -6,6 +6,8 @@
 \title{Cosine of a Multiple of Pi}
 \usage{
 nv_cospi(x)
+
+\method{cospi}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
