@@ -533,6 +533,13 @@
 
 ### Bug fixes
 
+- A bare R integer start index of
+  [`prim_dynamic_slice()`](https://r-xla.github.io/anvl/dev/reference/prim_dynamic_slice.md)
+  /
+  [`prim_dynamic_update_slice()`](https://r-xla.github.io/anvl/dev/reference/prim_dynamic_update_slice.md)
+  takes the data type of the other start indices, so
+  `prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)` no longer
+  fails.
 - [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   with a scalar `shape` and a non-scalar `mean` or `sd` returned one
   draw shifted/scaled to the shape of `mean`/`sd`; it is now an error,

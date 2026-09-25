@@ -240,7 +240,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
+<ul><li>A bare R integer start index of <code><a href="../reference/prim_dynamic_slice.html">prim_dynamic_slice()</a></code> / <code><a href="../reference/prim_dynamic_update_slice.html">prim_dynamic_update_slice()</a></code> takes the data type of the other start indices, so <code>prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)</code> no longer fails.</li>
+<li>
 <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> with a scalar <code>shape</code> and a non-scalar <code>mean</code> or <code>sd</code> returned one draw shifted/scaled to the shape of <code>mean</code>/<code>sd</code>; it is now an error, as any shape other than a scalar or <code>shape</code> already was.</li>
 <li>Whatever a <code>prim_*()</code> refuses now reports that primitive as the call, rather than the helper that checked the argument or the anonymous function <code><a href="../reference/jit.html">jit()</a></code> wraps.</li>
 <li>

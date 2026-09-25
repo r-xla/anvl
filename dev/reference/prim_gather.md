@@ -41,9 +41,10 @@ prim_gather(
 - start_indices:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Array of starting indices, of the same integer data type. Contains
-  index vectors that map to positions in `x` via `start_index_map`. The
-  axis specified by `index_vector_axis` holds the index vectors.
+  Array of starting indices, of an integer data type, which it keeps –
+  the indices take no part in `x`'s. Contains index vectors that map to
+  positions in `x` via `start_index_map`. The axis specified by
+  `index_vector_axis` holds the index vectors.
 
 - slice_sizes:
 

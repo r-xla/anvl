@@ -27,8 +27,8 @@ prim_dynamic_slice(x, ..., slice_sizes)
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar start indices, one per axis of `x`. Each must be a scalar of
-  the same integer data type.
+  Scalar start indices of an integer data type, one per axis of `x`.
+  They are brought to one data type among themselves, never `x`'s.
 
 - slice_sizes:
 
