@@ -411,6 +411,11 @@ y3 <- g(x, x, op = "add")
 A jitted function called from within another jitted function is not executed separately, but traced as part of the outer function, so that both are compiled into a single executable.
 Because every primitive is a jitted function, the same function can therefore be used both eagerly and as a building block of larger programs.
 
+Compiling whole programs also simplifies memory management, which matters in particular on GPUs.
+In eager execution, every intermediate result is an R object that holds device memory until R's garbage collector reclaims it; as this collector only runs when R itself needs memory, device memory of results that are no longer referenced is not released in time, which is why \CRANpkg{torch} triggers the collector itself when device memory runs low [@ref-torch-memory].
+In a jitted function, intermediate results never become R objects: they are buffers of the compiled program, which XLA allocates, reuses, and frees as part of the program.
+Only the inputs and outputs of a jitted function are R objects, and inputs that are no longer needed can be donated via the `donate` argument of `jit()`, which allows XLA to reuse their memory for the outputs.
+
 ### `gradient()`
 
 `gradient()` takes a function with scalar output and returns a function that computes the gradient with respect to the arguments given in `wrt`, returning a named list.

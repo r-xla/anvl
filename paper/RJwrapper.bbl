@@ -1,4 +1,4 @@
-\begin{thebibliography}{56}
+\begin{thebibliography}{57}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -124,12 +124,19 @@ D.~Falbel.
 \newblock URL \url{https://CRAN.R-project.org/package=safetensors}.
 \newblock R package version 0.2.0.
 
-\bibitem[Falbel and Luraschi(2025)]{ref-rtorch}
+\bibitem[Falbel and Luraschi(2025{\natexlab{a}})]{ref-rtorch}
 D.~Falbel and J.~Luraschi.
 \newblock \emph{torch: Tensors and Neural Networks with 'GPU' Acceleration},
-  2025.
+  2025{\natexlab{a}}.
 \newblock URL \url{https://CRAN.R-project.org/package=torch}.
 \newblock R package version 0.17.0.
+
+\bibitem[Falbel and Luraschi(2025{\natexlab{b}})]{ref-torch-memory}
+D.~Falbel and J.~Luraschi.
+\newblock Memory management.
+\newblock \url{https://torch.mlverse.org/docs/articles/memory-management},
+  2025{\natexlab{b}}.
+\newblock torch for R documentation, accessed 2026-09-25.
 
 \bibitem[Fidler et~al.(2025)Fidler, Hallow, Wilkins, and Wang]{ref-rxode2}
 M.~Fidler, M.~Hallow, J.~Wilkins, and W.~Wang.
