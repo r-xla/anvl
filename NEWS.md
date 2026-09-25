@@ -150,6 +150,8 @@
 
 ## Features
 
+* `nv_subset_assign()` and `[<-` gain `inplace`, which writes into the memory of
+  `x` instead of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.
