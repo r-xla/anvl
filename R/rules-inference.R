@@ -93,7 +93,8 @@ params_repr <- function(parts) {
 # A whole-number param, returned as an integer vector. `NULL` (how `c()` spells
 # no axes) reads as `integer()`. Rules run this before indexing or comparing
 # with a param, so that an `NA` never reaches an `if ()`.
-assert_int_param <- function(x, arg = rlang::caller_arg(x), len = NULL, min_len = NULL) {
+assert_int_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL, min_len = NULL) {
+  force(arg)
   x <- x %||% integer()
   # A param fixed at one entry is spoken of in the singular.
   one <- identical(len, 1L)
@@ -121,7 +122,7 @@ assert_int_param <- function(x, arg = rlang::caller_arg(x), len = NULL, min_len 
 }
 
 # A data type the caller named, optionally restricted to some categories.
-assert_dtype_param <- function(x, arg = rlang::caller_arg(x), categories = NULL) {
+assert_dtype_param <- function(x, arg = rlang::as_label(substitute(x)), categories = NULL) {
   out <- tryCatch(as_dtype(x), error = function(e) NULL)
   if (is.null(out)) {
     cli_abort(c(
@@ -139,7 +140,7 @@ assert_dtype_param <- function(x, arg = rlang::caller_arg(x), categories = NULL)
   out
 }
 
-assert_flag_param <- function(x, arg = rlang::caller_arg(x)) {
+assert_flag_param <- function(x, arg = rlang::as_label(substitute(x))) {
   if (!is.logical(x) || length(x) != 1L || is.na(x)) {
     cli_abort(c(
       "{.arg {arg}} must be {.val {TRUE}} or {.val {FALSE}}.",
@@ -149,7 +150,7 @@ assert_flag_param <- function(x, arg = rlang::caller_arg(x)) {
   invisible(x)
 }
 
-assert_choice_param <- function(x, choices, arg = rlang::caller_arg(x)) {
+assert_choice_param <- function(x, choices, arg = rlang::as_label(substitute(x))) {
   if (!rlang::is_string(x) || !(x %in% choices)) {
     cli_abort(c(
       "{.arg {arg}} must be one of {.or {.val {choices}}}.",
@@ -160,7 +161,7 @@ assert_choice_param <- function(x, choices, arg = rlang::caller_arg(x)) {
 }
 
 # Sizes that become a shape, so they must also be non-negative.
-assert_size_param <- function(x, arg = rlang::caller_arg(x), len = NULL) {
+assert_size_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL) {
   x <- assert_int_param(x, arg, len = len)
   if (any(x < 0L)) {
     cli_abort(c(
@@ -209,7 +210,7 @@ dtype_in_categories <- function(dt, categories) {
   any(vapply(checks[categories], function(check) check(dt), logical(1L)))
 }
 
-assert_array <- function(x, arg = rlang::caller_arg(x)) {
+assert_array <- function(x, arg = rlang::as_label(substitute(x))) {
   if (!inherits(x, "AbstractArray")) {
     cli_abort(c(
       "{.arg {arg}} must be an array.",
@@ -244,7 +245,7 @@ assert_array_dtype <- function(
   ...,
   shape = NULL,
   naxes = NULL,
-  arg = rlang::caller_arg(x)
+  arg = rlang::as_label(substitute(x))
 ) {
   assert_array(x, arg = arg)
   categories <- c(...)
@@ -273,8 +274,8 @@ assert_array_dtype <- function(
 assert_same_type <- function(
   x,
   y,
-  arg_x = rlang::caller_arg(x),
-  arg_y = rlang::caller_arg(y)
+  arg_x = rlang::as_label(substitute(x)),
+  arg_y = rlang::as_label(substitute(y))
 ) {
   assert_array(x, arg = arg_x)
   assert_array(y, arg = arg_y)
@@ -290,8 +291,8 @@ assert_same_type <- function(
 assert_same_dtype <- function(
   x,
   y,
-  arg_x = rlang::caller_arg(x),
-  arg_y = rlang::caller_arg(y)
+  arg_x = rlang::as_label(substitute(x)),
+  arg_y = rlang::as_label(substitute(y))
 ) {
   assert_array(x, arg = arg_x)
   assert_array(y, arg = arg_y)
@@ -304,7 +305,7 @@ assert_same_dtype <- function(
   invisible(NULL)
 }
 
-assert_axes_in_range <- function(axes, n_axes, arg = rlang::caller_arg(axes)) {
+assert_axes_in_range <- function(axes, n_axes, arg = rlang::as_label(substitute(axes))) {
   if (!length(axes)) {
     return(invisible(NULL))
   }
@@ -323,7 +324,7 @@ assert_axes_in_range <- function(axes, n_axes, arg = rlang::caller_arg(axes)) {
   invisible(NULL)
 }
 
-assert_axes_unique <- function(axes, arg = rlang::caller_arg(axes)) {
+assert_axes_unique <- function(axes, arg = rlang::as_label(substitute(axes))) {
   if (anyDuplicated(axes)) {
     cli_abort(c(
       "{.arg {arg}} must contain unique axes.",
@@ -333,7 +334,7 @@ assert_axes_unique <- function(axes, arg = rlang::caller_arg(axes)) {
   invisible(NULL)
 }
 
-assert_axes_sorted <- function(axes, arg = rlang::caller_arg(axes)) {
+assert_axes_sorted <- function(axes, arg = rlang::as_label(substitute(axes))) {
   if (is.unsorted(axes)) {
     cli_abort(c(
       "{.arg {arg}} must be sorted in ascending order.",
@@ -352,7 +353,7 @@ assert_reduction_axes <- function(x, axes) {
 }
 
 # A param with one entry per axis, e.g. `slice_sizes` or `window_strides`.
-assert_entry_per_axis <- function(x, n, arg = rlang::caller_arg(x), axes = "axis of {.arg x}") {
+assert_entry_per_axis <- function(x, n, arg = rlang::as_label(substitute(x)), axes = "axis of {.arg x}") {
   if (length(x) != n) {
     cli_abort(c(
       paste0("{.arg {arg}} must have one entry per ", axes, " ({n})."),
@@ -393,7 +394,7 @@ assert_axis_layout <- function(parts, n_axes, what) {
 
 # A sub-graph traced against two scalars of `x`'s data type (`prim_reduce()`'s
 # `reducer`, `prim_scatter()`'s `update_fn`) must return one such scalar.
-assert_scalar_fn_output <- function(graph, x, arg = rlang::caller_arg(graph)) {
+assert_scalar_fn_output <- function(graph, x, arg = rlang::as_label(substitute(graph))) {
   outputs <- lapply(graph$outputs, function(out) out$aval)
   if (length(outputs) != 1L) {
     cli_abort(c(
@@ -1317,7 +1318,7 @@ assert_index_batching_axes <- function(
 }
 
 # A gather that drops an axis from the result must slice it at size one.
-assert_unit_slice_sizes <- function(sizes, axes, arg = rlang::caller_arg(axes)) {
+assert_unit_slice_sizes <- function(sizes, axes, arg = rlang::as_label(substitute(axes))) {
   bad <- axes[sizes[axes] > 1L]
   if (length(bad)) {
     cli_abort(c(
