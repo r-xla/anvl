@@ -336,7 +336,6 @@ reference:
     contents:
       - nv_normal
       - nv_uniform
-      - nv_runif
       - nv_rbinom
       - nv_sample
       - nv_sample_int

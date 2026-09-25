@@ -209,4 +209,6 @@ x[1, inplace = TRUE] <- -1L
 y
 ```
 
-Inside a jitted function, `inplace` has no effect, because the compiler avoids unnecessary copies there anyway.
+Inside a jitted function, `inplace = TRUE` is an error.
+There, `y` would stay valid, so the same code would behave differently in eager and in jit mode.
+The compiler avoids unnecessary copies inside `jit()` anyway, so `inplace` is not needed there.

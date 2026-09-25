@@ -185,6 +185,7 @@ merged_default_dtypes <- function(dtypes, backend) {
     ))
   }
   backend <- backend %||% active_backend()
+  assert_dtype_categories(dtypes, c("float", "int"))
   new <- as_default_dtypes(dtypes)
   current <- default_dtypes_setting()
   if (is.null(current)) {
@@ -344,17 +345,16 @@ convert_call <- function(f, args, targets) {
   convert_tree(do.call(f, args), targets)
 }
 
-assert_dtype_categories <- function(dtypes) {
-  categories <- names(dtypes)
+assert_dtype_categories <- function(dtypes, categories = c("float", "int", "uint")) {
+  given <- names(dtypes)
   ok <- length(dtypes) &&
-    !is.null(categories) &&
-    !anyDuplicated(categories) &&
-    all(categories %in% c("float", "int", "uint"))
+    !is.null(given) &&
+    !anyDuplicated(given) &&
+    all(given %in% categories)
   if (!ok) {
     cli_abort(c(
       "{.arg dtypes} must map the data type categories to data types.",
-      i = "The categories are {.val float}, {.val int} and {.val uint},
-           e.g. {.code c(float = \"f64\")}."
+      i = "The categories are {.val {categories}}, e.g. {.code c(float = \"f64\")}."
     ))
   }
   lapply(dtypes, as_dtype)

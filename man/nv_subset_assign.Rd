@@ -27,8 +27,10 @@ makes, but it consumes \code{x}: its buffer is \link[=jit]{donated}, so \code{x}
 any other R variable referring to the same array -- can no longer be used
 afterwards. With \verb{[<-}, pass it among the subscripts, e.g.
 \code{x[1, inplace = TRUE] <- 0}, which rebinds \code{x} to the result.
-Inside a jitted function it has no effect, as the compiler already avoids
-the copy there. Default is \code{FALSE}.}
+It is an error inside a jitted function: there, other references to \code{x}
+would stay valid, so the same code would behave differently in eager and
+in jit mode. Inside \code{jit()}, the compiler already avoids the copy anyway.
+Default is \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr

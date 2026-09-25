@@ -579,13 +579,13 @@ describe("nv_subset_assign(inplace = TRUE)", {
     expect_error(x[1, 2, inplace = TRUE] <- 0L, "subset")
   })
 
-  it("has no effect inside jit()", {
+  it("errors inside jit()", {
     f <- jit(function(a) {
       a[1, inplace = TRUE] <- 0L
-      a * 2L
+      a
     })
     a <- nv_array(1:3)
-    expect_equal(as_array(f(a)), array(c(0L, 4L, 6L)))
+    expect_error(f(a), "cannot be used inside")
     expect_equal(as_array(a), array(1:3))
   })
 

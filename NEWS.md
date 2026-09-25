@@ -243,7 +243,11 @@
   sub-graphs in full, and wrap long lines to the console width; `format()`
   takes `width` and `digits` arguments.
 * New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
-  and `nv_qunif()`.
+  and `nv_qunif()`, documented together with `nv_runif()` on `?nv_uniform`.
+* `nv_runif()`'s `min` and `max` now accept arrayish inputs, scalar or of the
+  sample's shape. Like base R's `runif()`, an invalid interval (`max < min`,
+  or a bound that is not finite) now gives `NaN` instead of an error. Note that
+  the RNG state now advances even on samples where `min == max`.
 
 ## Performance
 
@@ -258,6 +262,9 @@
 
 ## Bug fixes
 
+* `nv_rnorm()` with a scalar `shape` and a non-scalar `mean` or `sd` returned
+  one draw shifted/scaled to the shape of `mean`/`sd`; it is now an error, as
+  any shape other than a scalar or `shape` already was.
 * Whatever a `prim_*()` refuses now reports that primitive as the call, rather
   than the helper that checked the argument or the anonymous function `jit()`
   wraps.
@@ -361,6 +368,16 @@
 * Improved the documentation and various error messages.
 * `nv_runif()` with `min == max` returns the `state` / `values` pair every
   other sampler returns, instead of the filled array on its own.
+* `nv_concatenate()` broadcasts a scalar against arrays with two or more axes
+  instead of failing.
+* `nv_mod()` matches base R's `%%` for an infinite divisor: `-5 %% Inf` is
+  `Inf`, not `0`.
+* `local_default_dtypes()` / `with_default_dtypes()` reject a category other
+  than `float` and `int`.
+* `value_and_gradient()` rejects an `f` that is not a function, as
+  `gradient()` does.
+* `local_backend()` / `with_backend()` reject the internal `"plain"` backend.
+* `trunc()` on an array rejects further arguments with a clear error.
 
 ## Tests
 

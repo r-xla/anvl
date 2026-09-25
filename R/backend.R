@@ -225,8 +225,9 @@ active_backend <- function() {
   getOption("anvl.backend", "pjrt")
 }
 
+# The backends a user can select: `"plain"` only holds constants during tracing.
 assert_backend <- function(backend) {
-  assert_choice(backend, names(globals$backends))
+  assert_choice(backend, setdiff(names(globals$backends), "plain"))
 }
 
 #' Temporarily set the backend
