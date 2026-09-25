@@ -673,8 +673,10 @@ subset_scatter_core_inplace <- local({
 #'   any other R variable referring to the same array -- can no longer be used
 #'   afterwards. With `[<-`, pass it among the subscripts, e.g.
 #'   `x[1, inplace = TRUE] <- 0`, which rebinds `x` to the result.
-#'   Inside a jitted function it has no effect and warns, as the compiler
-#'   already avoids the copy there. Default is `FALSE`.
+#'   It is an error inside a jitted function: there, other references to `x`
+#'   would stay valid, so the same code would behave differently in eager and
+#'   in jit mode. Inside `jit()`, the compiler already avoids the copy anyway.
+#'   Default is `FALSE`.
 #' @return ([`arrayish`])\cr
 #'   Has `x`'s data type and shape, with the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
@@ -695,11 +697,11 @@ subset_scatter_core_inplace <- local({
 nv_subset_assign <- function(x, ..., value, inplace = FALSE) {
   assert_flag(inplace)
   if (inplace && currently_tracing()) {
-    cli_warn(c(
-      "{.arg inplace} has no effect inside {.fn jit}.",
-      i = "The compiler already avoids unnecessary copies of {.arg x} there."
+    cli_abort(c(
+      "{.arg inplace} cannot be used inside {.fn jit}.",
+      i = "Eagerly, it invalidates every other reference to {.arg x}; inside {.fn jit}, other references stay valid.",
+      i = "Remove {.code inplace = TRUE}: the compiler already avoids unnecessary copies of {.arg x}."
     ))
-    inplace <- FALSE
   }
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish `x`, but got {.cls {class(x)[1]}}")
