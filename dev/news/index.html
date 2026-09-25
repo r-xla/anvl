@@ -302,6 +302,18 @@
 <li>Improved the documentation and various error messages.</li>
 <li>
 <code><a href="../reference/nv_uniform.html">nv_runif()</a></code> with <code>min == max</code> returns the <code>state</code> / <code>values</code> pair every other sampler returns, instead of the filled array on its own.</li>
+<li>
+<code><a href="../reference/nv_concatenate.html">nv_concatenate()</a></code> broadcasts a scalar against arrays with two or more axes instead of failing.</li>
+<li>
+<code><a href="../reference/nv_mod.html">nv_mod()</a></code> matches base R’s <code>%%</code> for an infinite divisor: <code>-5 %% Inf</code> is <code>Inf</code>, not <code>0</code>.</li>
+<li>
+<code><a href="../reference/local_default_dtypes.html">local_default_dtypes()</a></code> / <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code> reject a category other than <code>float</code> and <code>int</code>.</li>
+<li>
+<code><a href="../reference/value_and_gradient.html">value_and_gradient()</a></code> rejects an <code>f</code> that is not a function, as <code><a href="../reference/gradient.html">gradient()</a></code> does.</li>
+<li>
+<code><a href="../reference/local_backend.html">local_backend()</a></code> / <code><a href="../reference/with_backend.html">with_backend()</a></code> reject the internal <code>"plain"</code> backend.</li>
+<li>
+<code><a href="https://rdrr.io/r/base/Round.html" class="external-link">trunc()</a></code> on an array rejects further arguments with a clear error.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="tests-development-version">Tests<a class="anchor" aria-label="anchor" href="#tests-development-version"></a></h3>

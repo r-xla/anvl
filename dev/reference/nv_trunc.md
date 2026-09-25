@@ -25,7 +25,7 @@ trunc(x, ...)
 
 - ...:
 
-  Further arguments of `nv_trunc()`.
+  Not used; must be empty.
 
 ## Value
 

@@ -746,6 +746,26 @@
 - [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   with `min == max` returns the `state` / `values` pair every other
   sampler returns, instead of the filled array on its own.
+- [`nv_concatenate()`](https://r-xla.github.io/anvl/dev/reference/nv_concatenate.md)
+  broadcasts a scalar against arrays with two or more axes instead of
+  failing.
+- [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md)
+  matches base R’s `%%` for an infinite divisor: `-5 %% Inf` is `Inf`,
+  not `0`.
+- [`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  /
+  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  reject a category other than `float` and `int`.
+- [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)
+  rejects an `f` that is not a function, as
+  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  does.
+- [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
+  /
+  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+  reject the internal `"plain"` backend.
+- [`trunc()`](https://rdrr.io/r/base/Round.html) on an array rejects
+  further arguments with a clear error.
 
 ### Tests
 
