@@ -54,6 +54,14 @@ x
 sum(x * 2)
 
 
+## ----cumsum-------------------------------------------------------------------
+m <- matrix(1:6, nrow = 2)
+cumsum(m)
+as_array(cumsum(nv_array(m)))
+t <- torch::torch_flatten(torch::torch_tensor(m))
+torch::as_array(torch::torch_cumsum(t, dim = 1))
+
+
 ## ----rapi---------------------------------------------------------------------
 m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))
 m[, 2:3] <- 0

@@ -288,6 +288,17 @@ Array libraries such as NumPy, and with it JAX and PyTorch, follow Python's conv
 \pkg{anvl} instead aims to feel familiar to R users, so that numerical code written for base R carries over with few changes.
 Arrays have methods for many base R generics, including the arithmetic, comparison, and logical operators, `%*%`, `t()`, `aperm()`, `crossprod()`, `solve()`, `chol()`, the math functions (e.g., `log(x, base)`, `sinpi()`, `lgamma()`), the reductions `sum()`, `mean()`, `prod()`, `max()`, and `range()`, as well as `cumsum()`, `rev()`, `sort()`, `quantile()`, `median()`, `c()`, `cbind()`, and `rbind()`.
 Their semantics follow base R: indexing is 1-based, arrays are laid out in column-major order, so reshaping fills an array column by column as `dim<-` does, and subsetting and subset assignment use R's bracket syntax, including ranges such as `x[, 2:3]`.
+Column-major order matters whenever an operation traverses the elements of an array.
+For example, `cumsum()` without an axis runs over the elements of a matrix column by column in both base R and \pkg{anvl}, whereas the same computation in \CRANpkg{torch}, which requires flattening the tensor first, follows row-major order:
+
+```{r cumsum}
+m <- matrix(1:6, nrow = 2)
+cumsum(m)
+as_array(cumsum(nv_array(m)))
+t <- torch::torch_flatten(torch::torch_tensor(m))
+torch::as_array(torch::torch_cumsum(t, dim = 1))
+```
+
 
 ```{r rapi}
 m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))

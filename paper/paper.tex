@@ -281,6 +281,19 @@ Array libraries such as NumPy, and with it JAX and PyTorch, follow Python's conv
 \pkg{anvl} instead aims to feel familiar to R users, so that numerical code written for base R carries over with few changes.
 Arrays have methods for many base R generics, including the arithmetic, comparison, and logical operators, \texttt{\%*\%}, \texttt{t()}, \texttt{aperm()}, \texttt{crossprod()}, \texttt{solve()}, \texttt{chol()}, the math functions (e.g., \texttt{log(x,\ base)}, \texttt{sinpi()}, \texttt{lgamma()}), the reductions \texttt{sum()}, \texttt{mean()}, \texttt{prod()}, \texttt{max()}, and \texttt{range()}, as well as \texttt{cumsum()}, \texttt{rev()}, \texttt{sort()}, \texttt{quantile()}, \texttt{median()}, \texttt{c()}, \texttt{cbind()}, and \texttt{rbind()}.
 Their semantics follow base R: indexing is 1-based, arrays are laid out in column-major order, so reshaping fills an array column by column as \texttt{dim\textless{}-} does, and subsetting and subset assignment use R's bracket syntax, including ranges such as \texttt{x{[},\ 2:3{]}}.
+Column-major order matters whenever an operation traverses the elements of an array.
+For example, \texttt{cumsum()} without an axis runs over the elements of a matrix column by column in both base R and \pkg{anvl}, whereas the same computation in \CRANpkg{torch}, which requires flattening the tensor first, follows row-major order:
+
+\begin{verbatim}
+m <- matrix(1:6, nrow = 2)
+cumsum(m)
+#> [1]  1  3  6 10 15 21
+as_array(cumsum(nv_array(m)))
+#> [1]  1  3  6 10 15 21
+t <- torch::torch_flatten(torch::torch_tensor(m))
+torch::as_array(torch::torch_cumsum(t, dim = 1))
+#> [1]  1  4  9 11 15 21
+\end{verbatim}
 
 \begin{verbatim}
 m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))
@@ -426,9 +439,9 @@ update <- jit(function(beta, X, y, lr) {
 X <- nv_array(matrix(rnorm(20), 10, 2))
 y <- X %*% matrix(c(1, 2))
 as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
-#>             [,1]
-#> [1,] -0.08614526
-#> [2,]  0.80005324
+#>           [,1]
+#> [1,] 0.2038920
+#> [2,] 0.2788815
 \end{verbatim}
 
 When \texttt{update()} is traced, the call to the gradient function traces \texttt{loss()} into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of \texttt{update()}.
