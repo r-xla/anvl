@@ -11,17 +11,25 @@ if [ ! -e "$R_USER_CACHE_DIR/R/pjrt.cuda" ]; then
   mkdir -p "$R_USER_CACHE_DIR/R"
   ln -s "$src" "$R_USER_CACHE_DIR/R/pjrt.cuda"
 fi
-# The CUDA base image ships NVIDIA's forward-compatibility libraries (libcuda, the
-# PTX JIT compiler and NVVM of a newer driver), while the container runtime injects
-# the host driver's OpenCL library. OpenCL crashes or fails to build kernels with
-# the newer libraries, so the Stan runs use the host driver's own ones.
-HOSTV=$(readlink /lib/x86_64-linux-gnu/libnvidia-opencl.so.1 | sed 's/libnvidia-opencl.so.//')
-mkdir -p /tmp/host-driver
-for l in libcuda libnvidia-ptxjitcompiler; do
-  ln -sf "/lib/x86_64-linux-gnu/$l.so.$HOSTV" "/tmp/host-driver/$l.so.1"
-done
-ln -sf "/lib/x86_64-linux-gnu/libnvidia-nvvm.so.$HOSTV" /tmp/host-driver/libnvidia-nvvm.so.4
-export LD_LIBRARY_PATH="/tmp/host-driver:${LD_LIBRARY_PATH:-}"
+# OpenCL needs NVIDIA's user-space libraries in exactly the version of the host's
+# kernel driver. The container runtime injects only some of them, and the CUDA base
+# image ships newer forward-compatibility versions of others, so we extract the
+# complete set from the driver installer of the host's version.
+HOSTV=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1)
+NV=/tmp/nvidia-$HOSTV
+if [ ! -d "$NV" ]; then
+  curl -fsSL -o /tmp/nvidia.run \
+    "https://download.nvidia.com/XFree86/Linux-x86_64/$HOSTV/NVIDIA-Linux-x86_64-$HOSTV.run"
+  sh /tmp/nvidia.run --extract-only --target "$NV" > /dev/null
+  rm /tmp/nvidia.run
+fi
+ln -sf "libnvidia-opencl.so.$HOSTV" "$NV/libnvidia-opencl.so.1"
+ln -sf "libnvidia-ptxjitcompiler.so.$HOSTV" "$NV/libnvidia-ptxjitcompiler.so.1"
+ln -sf "libnvidia-nvvm.so.$HOSTV" "$NV/libnvidia-nvvm.so.4"
+ln -sf "libcuda.so.$HOSTV" "$NV/libcuda.so.1"
+echo "$NV/libnvidia-opencl.so.1" > "$NV/nvidia.icd"
+export OCL_ICD_VENDORS="$NV/nvidia.icd"
+export LD_LIBRARY_PATH="$NV:${LD_LIBRARY_PATH:-}"
 mkdir -p results
 OUT=results/gpu-stan.csv
 rm -f "$OUT" results/scaling-gpu-stan.csv
