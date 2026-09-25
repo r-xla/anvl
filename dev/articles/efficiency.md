@@ -1,24 +1,10 @@
 # Efficiency
 
-This vignette summarizes various important considerations in order to
-write efficient programs using {anvl}. Some of the topics are covered in
-more depth elsewhere, but here we gather everything in one place, albeit
-sometimes only briefly.
-
-- [**Eager vs. JIT**](#eager-vs-jit) – comparison of the two execution
-  modes.
-- [**CUDA**](#cuda) – running on a GPU instead of CPU (Linux x86 / WSL2
-  only).
-- [**Data types**](#data-types) – working in single instead of double
-  precision.
-- [**BLAS / LAPACK**](#blas-lapack) – linking R against a fast LAPACK to
-  speed up linear algebra on CPU.
-- [**Compilation cost**](#compilation-cost) – padding inputs so more
-  calls hit the same cache entry.
-- [**Asynchronous execution**](#asynchronous-execution) – how to keep
-  the device (e.g. a GPU) busy while R prepares the next call.
-- [**Memory**](#memory) – avoiding unnecessary copies via donation and
-  jit-internal optimization.
+This article collects what makes {anvl} programs fast or slow, from
+compiling with
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) and running
+on a GPU to data types, compilation cost, asynchronous execution, and
+memory.
 
 ## Eager vs. JIT
 
@@ -36,10 +22,7 @@ This comes at a performance cost, however. Specifically:
 
 To get the best performance, you will therefore usually want to
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) the whole
-function. There might be some exceptions, as compiling one large
-function can sometimes be more costly than compiling several smaller
-ones, even though splitting it up gives the compiler less room for joint
-optimization.
+function.
 
 ## CUDA
 
@@ -48,10 +31,9 @@ the GPU, running on a CUDA GPU is the single biggest speed-up {anvl}
 offers – typically 10x to 100x over CPU on linear algebra and large
 elementwise work.
 
-GPU support currently only works on Linux (amd64/x86-64) or via WSL2 on
-Windows. See the [GPU
-Installation](https://r-xla.github.io/anvl/dev/articles/installation.html#gpu-installation)
-section of the installation vignette for setup; once that’s done, any
+See the [CUDA
+setup](https://r-xla.github.io/anvl/dev/articles/installation.html#cuda-setup)
+section of the installation article for setup; once that’s done, any
 `AnvlArray` constructor and
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) accept
 `device = "cuda"`:
@@ -74,7 +56,7 @@ A few things to keep in mind when moving to GPU:
   the GPU, keep it there; avoid
   [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
   (which copies the value back into R) inside loops you want to run fast
-  (see [Asynchronous execution](#asynchronous-execution) below).
+  (see [asynchronous execution](#asynchronous-execution) below).
 - **Each call to the GPU has more overhead than a CPU call.** Small
   operations on small arrays can actually be *slower* on GPU than on CPU
   because the per-call overhead dominates the actual work.
@@ -112,13 +94,10 @@ pjrt backend the default is `f32` for R `double`s and `i32` for R
 `integer`s. Currently, we don’t support other floating-point data types
 such as `f16` or `bf16`. There is of course a trade-off between
 efficiency and precision here. Speedups from using `f32` over `f64` also
-depend on the specific hardware. Commonly, `f32` is the default data
-type for floating-point operations in GPU-accelerated frameworks, so
-unless you have a specific reason, we recommend sticking with the
-defaults.
+depend on the specific hardware.
 
-If you do want `f64` throughout, set it once rather than annotating
-every value: `options(anvl.default_dtypes = c(float = "f64"))`, or
+To use `f64` throughout, set it once rather than annotating every value:
+`options(anvl.default_dtypes = c(float = "f64"))`, or
 `with_default_dtypes(c(float = "f64"), ...)` for a single scope.
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
 reports the active pair. Note that a program is compiled for the
@@ -145,11 +124,11 @@ framework. The CUDA backend is unaffected.
 Compiling an {anvl} function can take anywhere from milliseconds to
 seconds (or even minutes) depending on the size of the function. The
 compilation cache reuses the compiled function across calls with
-matching input types – see [The compilation
+matching input types – see [the compilation
 cache](https://r-xla.github.io/anvl/dev/articles/jit.html#the-compilation-cache)
-in the JIT Deep Dive for the details. What follows is the complementary
-trick of reshaping inputs so that more calls land on the same cache
-entry.
+section of the JIT Deep Dive for the details. What follows is the
+complementary trick of reshaping inputs so that more calls land on the
+same cache entry.
 
 ### Padding inputs to avoid recompilation
 
@@ -206,7 +185,7 @@ the pad value is not neutral – e.g. the mean, where the padded positions
 would skew the average – the padded entries have to be masked out
 explicitly. See the [Static Shape
 Restriction](https://r-xla.github.io/anvl/dev/articles/static_shapes.md)
-vignette for the masking patterns and a table of neutral values for
+article for the masking patterns and a table of neutral values for
 common reductions.
 
 ## Asynchronous execution
@@ -218,8 +197,7 @@ computation keeps running in the background while the R interpreter can
 do something else. This is especially important when working with a GPU,
 because we want to use both CPU and GPU simultaneously. But it also
 matters on CPU as XLA runs many threads in parallel, while R itself is
-single-threaded. Note that you need to be aware of this when
-benchmarking your {anvl} functions.
+single-threaded.
 
 The natural question is how we avoid reading wrong results when
 functions always return immediately, before the computation has
@@ -234,7 +212,7 @@ However, some operations such as accessing
 not require awaiting the result.
 
 One classic mistake that can degrade GPU performance is to always force
-this synchronization. For example, in a typical ML training loop, we
+this synchronization. For example, in a typical model fitting loop, we
 have some batch preparation that runs on the CPU and then some expensive
 computation that runs on the GPU. Ideally, the CPU and the GPU run
 simultaneously. This is what will happen when you write code like the
@@ -269,6 +247,25 @@ for (i in seq_len(n_steps)) {
 }
 ```
 
+The figure below shows both loops over time:
+
+``` text
+Calls return immediately: R prepares the next batch while the device computes
+
+R (host)  [prep 1][prep 2][prep 3][prep 4][prep 5]
+Device            [  step 1  ][  step 2  ][  step 3  ][  step 4  ]
+
+print(loss) in every step: R waits for the device, and the device for R
+
+R (host)  [prep 1][ waiting  ]p[prep 2][ waiting  ]p[prep 3]
+Device            [  step 1  ].........[  step 2  ].........[  step 3  ]
+
+          ----------------------------------------------------------> time
+
+[prep i]  R code, e.g. preparing a batch     p     print()
+[step i]  compiled step on the device        ...   device idle
+```
+
 Because [`print()`](https://rdrr.io/r/base/print.html) requires the
 actual data, we now have to wait for the GPU to finish its computation
 so the result can be sent back to the CPU. But this means that while the
@@ -278,8 +275,8 @@ logging less often, or printing the loss from the previous iteration.
 ## Memory
 
 Value semantics and the fact that subset-assignment always copies were
-introduced in the [Get Started
-vignette](https://r-xla.github.io/anvl/dev/articles/anvl.html#the-anvlarray).
+introduced in the [Next Steps
+article](https://r-xla.github.io/anvl/dev/articles/next_steps.html#value-semantics).
 This section covers the one extra lever
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) gives you:
 telling XLA it can reuse an input buffer for the output.
@@ -307,8 +304,22 @@ x
 #> [ CPUf32{3} ]
 ```
 
-One common scenario for this pattern is weight updates in training
-loops.
+One common scenario for this pattern is weight updates in model fitting
+loops, where every step would otherwise allocate a new buffer for the
+parameters and leave the previous one for the garbage collector.
+
+The donated input is consumed by the call, so it must not be used
+afterwards, otherwise an error is thrown:
+
+``` r
+
+x_old <- nv_array(c(1, 2, 3), dtype = "f32")
+x_new <- update(x_old, nv_array(c(0.1, 0.1, 0.1), dtype = "f32"))
+x_old
+#> AnvlArray
+#> Error:
+#> ! called on deleted or donated buffer
+```
 
 ### Subset assignment in eager mode
 
@@ -319,6 +330,6 @@ call produces a copy by default: modifying the array in place would also
 modify it for every other variable referring to it. If the original
 array is not needed anymore, `y[i, inplace = TRUE] <- val` instead
 donates `y`’s memory to the result and avoids the copy. See the
-[In-place
-Updates](https://r-xla.github.io/anvl/dev/articles/subsetting.html#in-place-updates)
-section of the Subsetting vignette for details.
+[in-place
+updates](https://r-xla.github.io/anvl/dev/articles/subsetting.html#in-place-updates)
+section of the Subsetting article for details.

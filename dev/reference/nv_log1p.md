@@ -7,6 +7,9 @@ Element-wise `log(1 + x)`, more accurate for small `x`. You can also use
 
 ``` r
 nv_log1p(x)
+
+# S3 method for class 'AnvlArray'
+log1p(x)
 ```
 
 ## Arguments

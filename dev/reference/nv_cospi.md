@@ -7,6 +7,9 @@ Element-wise `cos(pi * x)`. You can also use
 
 ``` r
 nv_cospi(x)
+
+# S3 method for class 'AnvlArray'
+cospi(x)
 ```
 
 ## Arguments

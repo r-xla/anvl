@@ -7,6 +7,9 @@ Element-wise absolute value. You can also use
 
 ``` r
 nv_abs(x)
+
+# S3 method for class 'AnvlArray'
+abs(x)
 ```
 
 ## Arguments

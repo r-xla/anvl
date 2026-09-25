@@ -7,6 +7,9 @@ Element-wise base-10 logarithm. You can also use
 
 ``` r
 nv_log10(x)
+
+# S3 method for class 'AnvlArray'
+log10(x)
 ```
 
 ## Arguments

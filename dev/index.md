@@ -114,8 +114,8 @@ with_default_dtypes(c(float = "f64"), {
 #> [ CPUf64{} ]
 ```
 
-For more complex examples, such as implementing a Gaussian Process, see
-the package website.
+To learn more, see the [Get
+Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
 
 ## Platform Support
 

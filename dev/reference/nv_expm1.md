@@ -7,6 +7,9 @@ Element-wise `exp(x) - 1`, more accurate for small `x`. You can also use
 
 ``` r
 nv_expm1(x)
+
+# S3 method for class 'AnvlArray'
+expm1(x)
 ```
 
 ## Arguments

@@ -128,7 +128,9 @@ sizes. For example, `nv_array(1:6, shape = c(2, 3))` has two axes; the
 size of axis `1` is `2` and the size of axis `2` is `3`, so its shape is
 `c(2, 3)`. Use
 [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html) for the
-number of axes and
+number of axes,
+[`axes()`](https://r-xla.github.io/anvl/dev/reference/axes.md) for the
+axis indices, and
 [`shape()`](https://r-xla.github.io/tengen/reference/shape.html) for the
 axis sizes. We speak of the *size of an axis* rather than an array's
 "dimensions", as the latter is generally overloaded as it is used to
@@ -147,6 +149,9 @@ an `AnvlArray`:
 
 - [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
   the number of axes.
+
+- [`axes()`](https://r-xla.github.io/anvl/dev/reference/axes.md): Get
+  the axis indices.
 
 - [`device()`](https://r-xla.github.io/tengen/reference/device.html):
   Get the device of the array.
@@ -189,7 +194,8 @@ are always rejected, except when:
     of `NAinteger_`, which is `-INT_MIN`. Disallowing this would prevent
     round-trips between the data types.
 
-See the "Gotchas" vignette for more information.
+See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html)
+article for more information.
 
 ## Out of Range values
 
@@ -256,8 +262,9 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  1.6255e-43 1.5975e-43 1.3593e-43
-#>  6.4460e-44 1.4854e-43 1.6115e-43
+#> 1e+45 *
+#>  0.0000 5.6052 0.0000
+#>  0.0000 0.0000 0.0000
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

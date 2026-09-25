@@ -49,6 +49,8 @@ Functions for querying array properties
   the shape of an array
 - [`naxes()`](https://r-xla.github.io/anvl/dev/reference/naxes.md) : Get
   the number of axes of an array
+- [`axes()`](https://r-xla.github.io/anvl/dev/reference/axes.md) : Get
+  the axes of an array
 - [`device()`](https://r-xla.github.io/anvl/dev/reference/device.md) :
   Get the device of an array
 - [`platform()`](https://r-xla.github.io/anvl/dev/reference/platform.md)
@@ -62,10 +64,6 @@ Functions for converting arrays
   : Convert to an R array
 - [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md) :
   Convert an array to a raw vector
-- [`as_dtype()`](https://r-xla.github.io/anvl/dev/reference/as_dtype.md)
-  : Convert to a DataType
-- [`is_dtype()`](https://r-xla.github.io/anvl/dev/reference/is_dtype.md)
-  : Check if an object is a DataType
 - [`as.double(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   [`as.integer(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   [`as.integer64(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
@@ -104,33 +102,18 @@ User-facing `nv_*` functions for array operations
 
 ### Type Conversion and Broadcasting
 
-Functions for type conversion, promotion, and broadcasting
+Functions for converting data types and broadcasting shapes
 
 - [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
   : Convert Data Type
 - [`nv_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_bitcast_convert.md)
   : Bitcast Conversion
-- [`nv_promote_to_common()`](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md)
-  : Promote Arrays to a Common Data Type
 - [`nv_broadcast_scalars()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
   : Broadcast Scalars to Common Shape
 - [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
   : Broadcast Arrays to a Common Shape
 - [`nv_broadcast_to()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_to.md)
   : Broadcast to Shape
-- [`dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md) :
-  Data Type Categories
-- [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
-  : Type Promotion Rules
-- [`promotion_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promotion_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promotion_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promotion_grouped()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promotion_rule()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  : Promotion Rules
-- [`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)
-  : Bring a Primitive's Operands to One Data Type
 
 ### Array Manipulation
 
@@ -142,9 +125,11 @@ Functions for reshaping and rearranging arrays
   : Flatten
 - [`nv_aperm()`](https://r-xla.github.io/anvl/dev/reference/nv_aperm.md)
   [`nv_transpose()`](https://r-xla.github.io/anvl/dev/reference/nv_aperm.md)
+  [`t(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_aperm.md)
   [`aperm(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_aperm.md)
   : Transpose
 - [`nv_concatenate()`](https://r-xla.github.io/anvl/dev/reference/nv_concatenate.md)
+  [`c(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_concatenate.md)
   : Concatenate
 - [`nv_rbind()`](https://r-xla.github.io/anvl/dev/reference/nv_bind.md)
   [`nv_cbind()`](https://r-xla.github.io/anvl/dev/reference/nv_bind.md)
@@ -157,119 +142,161 @@ Functions for reshaping and rearranging arrays
   : Select Elements Along an Axis
 - [`nv_pad()`](https://r-xla.github.io/anvl/dev/reference/nv_pad.md) :
   Pad
-- [`nv_rev()`](https://r-xla.github.io/anvl/dev/reference/nv_rev.md) :
-  Reverse
+- [`nv_rev()`](https://r-xla.github.io/anvl/dev/reference/nv_rev.md)
+  [`rev(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_rev.md)
+  : Reverse
 - [`nv_squeeze()`](https://r-xla.github.io/anvl/dev/reference/nv_squeeze.md)
   [`nv_drop()`](https://r-xla.github.io/anvl/dev/reference/nv_squeeze.md)
   : Squeeze
 - [`nv_unsqueeze()`](https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.md)
   : Unsqueeze
-- [`nv_subset()`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md)
+- [`` `[`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md)
+  [`nv_subset()`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md)
   : Subset an Array
-- [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
+- [`` `[<-`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
+  [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
   : Update Subset
 
 ### Arithmetic Operations
 
 Basic arithmetic operations on arrays
 
-- [`nv_add()`](https://r-xla.github.io/anvl/dev/reference/nv_add.md) :
-  Addition
-- [`nv_sub()`](https://r-xla.github.io/anvl/dev/reference/nv_sub.md) :
-  Subtraction
-- [`nv_mul()`](https://r-xla.github.io/anvl/dev/reference/nv_mul.md) :
-  Multiplication
-- [`nv_div()`](https://r-xla.github.io/anvl/dev/reference/nv_div.md) :
-  Division
-- [`nv_pow()`](https://r-xla.github.io/anvl/dev/reference/nv_pow.md) :
-  Power
+- [`nv_add()`](https://r-xla.github.io/anvl/dev/reference/nv_add.md)
+  [`` `+`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_add.md)
+  : Addition
+- [`nv_sub()`](https://r-xla.github.io/anvl/dev/reference/nv_sub.md)
+  [`` `-`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_sub.md)
+  : Subtraction
+- [`nv_mul()`](https://r-xla.github.io/anvl/dev/reference/nv_mul.md)
+  [`` `*`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_mul.md)
+  : Multiplication
+- [`nv_div()`](https://r-xla.github.io/anvl/dev/reference/nv_div.md)
+  [`` `/`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_div.md)
+  : Division
+- [`nv_pow()`](https://r-xla.github.io/anvl/dev/reference/nv_pow.md)
+  [`` `^`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_pow.md)
+  : Power
 - [`nv_negate()`](https://r-xla.github.io/anvl/dev/reference/nv_negate.md)
   : Negation
 - [`nv_remainder()`](https://r-xla.github.io/anvl/dev/reference/nv_remainder.md)
   : Remainder (Truncating)
-- [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md) :
-  Modulo (Flooring Remainder)
+- [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md)
+  [`` `%%`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md)
+  : Modulo (Flooring Remainder)
 - [`nv_floor_div()`](https://r-xla.github.io/anvl/dev/reference/nv_floor_div.md)
+  [`` `%/%`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_floor_div.md)
   : Flooring Division
 
 ### Comparison Operations
 
 Element-wise comparison operations
 
-- [`nv_eq()`](https://r-xla.github.io/anvl/dev/reference/nv_eq.md) :
-  Equal
-- [`nv_ne()`](https://r-xla.github.io/anvl/dev/reference/nv_ne.md) : Not
-  Equal
-- [`nv_gt()`](https://r-xla.github.io/anvl/dev/reference/nv_gt.md) :
-  Greater Than
-- [`nv_ge()`](https://r-xla.github.io/anvl/dev/reference/nv_ge.md) :
-  Greater Than or Equal
-- [`nv_lt()`](https://r-xla.github.io/anvl/dev/reference/nv_lt.md) :
-  Less Than
-- [`nv_le()`](https://r-xla.github.io/anvl/dev/reference/nv_le.md) :
-  Less Than or Equal
+- [`nv_eq()`](https://r-xla.github.io/anvl/dev/reference/nv_eq.md)
+  [`` `==`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_eq.md)
+  : Equal
+- [`nv_ne()`](https://r-xla.github.io/anvl/dev/reference/nv_ne.md)
+  [`` `!=`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_ne.md)
+  : Not Equal
+- [`nv_gt()`](https://r-xla.github.io/anvl/dev/reference/nv_gt.md)
+  [`` `>`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_gt.md)
+  : Greater Than
+- [`nv_ge()`](https://r-xla.github.io/anvl/dev/reference/nv_ge.md)
+  [`` `>=`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_ge.md)
+  : Greater Than or Equal
+- [`nv_lt()`](https://r-xla.github.io/anvl/dev/reference/nv_lt.md)
+  [`` `<`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_lt.md)
+  : Less Than
+- [`nv_le()`](https://r-xla.github.io/anvl/dev/reference/nv_le.md)
+  [`` `<=`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_le.md)
+  : Less Than or Equal
 
 ### Mathematical Functions
 
 Mathematical and trigonometric functions
 
-- [`nv_abs()`](https://r-xla.github.io/anvl/dev/reference/nv_abs.md) :
-  Absolute Value
-- [`nv_sqrt()`](https://r-xla.github.io/anvl/dev/reference/nv_sqrt.md) :
-  Square Root
+- [`nv_abs()`](https://r-xla.github.io/anvl/dev/reference/nv_abs.md)
+  [`abs(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_abs.md)
+  : Absolute Value
+- [`nv_sqrt()`](https://r-xla.github.io/anvl/dev/reference/nv_sqrt.md)
+  [`sqrt(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_sqrt.md)
+  : Square Root
 - [`nv_rsqrt()`](https://r-xla.github.io/anvl/dev/reference/nv_rsqrt.md)
   : Reciprocal Square Root
 - [`nv_cbrt()`](https://r-xla.github.io/anvl/dev/reference/nv_cbrt.md) :
   Cube Root
-- [`nv_exp()`](https://r-xla.github.io/anvl/dev/reference/nv_exp.md) :
-  Exponential
+- [`nv_exp()`](https://r-xla.github.io/anvl/dev/reference/nv_exp.md)
+  [`exp(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_exp.md)
+  : Exponential
 - [`nv_expm1()`](https://r-xla.github.io/anvl/dev/reference/nv_expm1.md)
+  [`expm1(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_expm1.md)
   : Exponential Minus One
-- [`nv_log()`](https://r-xla.github.io/anvl/dev/reference/nv_log.md) :
-  Natural Logarithm
+- [`nv_log()`](https://r-xla.github.io/anvl/dev/reference/nv_log.md)
+  [`log(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_log.md)
+  : Natural Logarithm
 - [`nv_log1p()`](https://r-xla.github.io/anvl/dev/reference/nv_log1p.md)
+  [`log1p(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_log1p.md)
   : Log Plus One
-- [`nv_log2()`](https://r-xla.github.io/anvl/dev/reference/nv_log2.md) :
-  Base-2 Logarithm
+- [`nv_log2()`](https://r-xla.github.io/anvl/dev/reference/nv_log2.md)
+  [`log2(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_log2.md)
+  : Base-2 Logarithm
 - [`nv_log10()`](https://r-xla.github.io/anvl/dev/reference/nv_log10.md)
+  [`log10(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_log10.md)
   : Base-10 Logarithm
-- [`nv_sin()`](https://r-xla.github.io/anvl/dev/reference/nv_sin.md) :
-  Sine
-- [`nv_cos()`](https://r-xla.github.io/anvl/dev/reference/nv_cos.md) :
-  Cosine
-- [`nv_tan()`](https://r-xla.github.io/anvl/dev/reference/nv_tan.md) :
-  Tangent
+- [`nv_sin()`](https://r-xla.github.io/anvl/dev/reference/nv_sin.md)
+  [`sin(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_sin.md)
+  : Sine
+- [`nv_cos()`](https://r-xla.github.io/anvl/dev/reference/nv_cos.md)
+  [`cos(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_cos.md)
+  : Cosine
+- [`nv_tan()`](https://r-xla.github.io/anvl/dev/reference/nv_tan.md)
+  [`tan(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_tan.md)
+  : Tangent
 - [`nv_sinpi()`](https://r-xla.github.io/anvl/dev/reference/nv_sinpi.md)
+  [`sinpi(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_sinpi.md)
   : Sine of a Multiple of Pi
 - [`nv_cospi()`](https://r-xla.github.io/anvl/dev/reference/nv_cospi.md)
+  [`cospi(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_cospi.md)
   : Cosine of a Multiple of Pi
 - [`nv_tanpi()`](https://r-xla.github.io/anvl/dev/reference/nv_tanpi.md)
+  [`tanpi(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_tanpi.md)
   : Tangent of a Multiple of Pi
-- [`nv_asin()`](https://r-xla.github.io/anvl/dev/reference/nv_asin.md) :
-  Arc Sine
-- [`nv_acos()`](https://r-xla.github.io/anvl/dev/reference/nv_acos.md) :
-  Arc Cosine
-- [`nv_atan()`](https://r-xla.github.io/anvl/dev/reference/nv_atan.md) :
-  Arc Tangent
+- [`nv_asin()`](https://r-xla.github.io/anvl/dev/reference/nv_asin.md)
+  [`asin(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_asin.md)
+  : Arc Sine
+- [`nv_acos()`](https://r-xla.github.io/anvl/dev/reference/nv_acos.md)
+  [`acos(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_acos.md)
+  : Arc Cosine
+- [`nv_atan()`](https://r-xla.github.io/anvl/dev/reference/nv_atan.md)
+  [`atan(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_atan.md)
+  : Arc Tangent
 - [`nv_atan2()`](https://r-xla.github.io/anvl/dev/reference/nv_atan2.md)
   : Arctangent 2
-- [`nv_sinh()`](https://r-xla.github.io/anvl/dev/reference/nv_sinh.md) :
-  Hyperbolic Sine
-- [`nv_cosh()`](https://r-xla.github.io/anvl/dev/reference/nv_cosh.md) :
-  Hyperbolic Cosine
-- [`nv_tanh()`](https://r-xla.github.io/anvl/dev/reference/nv_tanh.md) :
-  Hyperbolic Tangent
+- [`nv_sinh()`](https://r-xla.github.io/anvl/dev/reference/nv_sinh.md)
+  [`sinh(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_sinh.md)
+  : Hyperbolic Sine
+- [`nv_cosh()`](https://r-xla.github.io/anvl/dev/reference/nv_cosh.md)
+  [`cosh(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_cosh.md)
+  : Hyperbolic Cosine
+- [`nv_tanh()`](https://r-xla.github.io/anvl/dev/reference/nv_tanh.md)
+  [`tanh(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_tanh.md)
+  : Hyperbolic Tangent
 - [`nv_asinh()`](https://r-xla.github.io/anvl/dev/reference/nv_asinh.md)
+  [`asinh(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_asinh.md)
   : Inverse Hyperbolic Sine
 - [`nv_acosh()`](https://r-xla.github.io/anvl/dev/reference/nv_acosh.md)
+  [`acosh(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_acosh.md)
   : Inverse Hyperbolic Cosine
 - [`nv_atanh()`](https://r-xla.github.io/anvl/dev/reference/nv_atanh.md)
+  [`atanh(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_atanh.md)
   : Inverse Hyperbolic Tangent
-- [`nv_sign()`](https://r-xla.github.io/anvl/dev/reference/nv_sign.md) :
-  Sign
+- [`nv_sign()`](https://r-xla.github.io/anvl/dev/reference/nv_sign.md)
+  [`sign(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_sign.md)
+  : Sign
 - [`nv_floor()`](https://r-xla.github.io/anvl/dev/reference/nv_floor.md)
+  [`floor(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_floor.md)
   : Floor
 - [`nv_ceiling()`](https://r-xla.github.io/anvl/dev/reference/nv_ceiling.md)
+  [`ceiling(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_ceiling.md)
   : Ceiling
 - [`nv_trunc()`](https://r-xla.github.io/anvl/dev/reference/nv_trunc.md)
   [`trunc(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_trunc.md)
@@ -285,39 +312,52 @@ Mathematical and trigonometric functions
 - [`nv_erf_inv()`](https://r-xla.github.io/anvl/dev/reference/nv_erf_inv.md)
   : Inverse Error Function
 - [`nv_gamma()`](https://r-xla.github.io/anvl/dev/reference/nv_gamma.md)
+  [`gamma(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_gamma.md)
   : Gamma Function
 - [`nv_digamma()`](https://r-xla.github.io/anvl/dev/reference/nv_digamma.md)
+  [`digamma(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_digamma.md)
   : Digamma
 - [`nv_lgamma()`](https://r-xla.github.io/anvl/dev/reference/nv_lgamma.md)
+  [`lgamma(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_lgamma.md)
   : Log-Gamma
 - [`nv_psigamma()`](https://r-xla.github.io/anvl/dev/reference/nv_psigamma.md)
+  [`trigamma(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_psigamma.md)
   : Psigamma
 - [`nv_is_finite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_finite.md)
+  [`is.finite(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_is_finite.md)
   : Is Finite
 - [`nv_is_nan()`](https://r-xla.github.io/anvl/dev/reference/nv_is_nan.md)
+  [`is.nan(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_is_nan.md)
   : Is NaN
 - [`nv_is_infinite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_infinite.md)
+  [`is.infinite(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_is_infinite.md)
   : Is Infinite
 
 ### Reduction Operations
 
 Operations that reduce array axes
 
-- [`nv_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_sum.md) :
-  Sum Reduction
-- [`nv_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_prod.md) :
-  Product Reduction
-- [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md) :
-  Max Reduction
-- [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md) :
-  Min Reduction
+- [`nv_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_sum.md)
+  [`sum(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_sum.md)
+  : Sum Reduction
+- [`nv_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_prod.md)
+  [`prod(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_prod.md)
+  : Product Reduction
+- [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md)
+  [`max(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_max.md)
+  : Max Reduction
+- [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md)
+  [`min(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_min.md)
+  : Min Reduction
 - [`nv_range()`](https://r-xla.github.io/anvl/dev/reference/nv_range.md)
   [`range(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_range.md)
   : Range Reduction
-- [`nv_any()`](https://r-xla.github.io/anvl/dev/reference/nv_any.md) :
-  Any Reduction
-- [`nv_all()`](https://r-xla.github.io/anvl/dev/reference/nv_all.md) :
-  All Reduction
+- [`nv_any()`](https://r-xla.github.io/anvl/dev/reference/nv_any.md)
+  [`any(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_any.md)
+  : Any Reduction
+- [`nv_all()`](https://r-xla.github.io/anvl/dev/reference/nv_all.md)
+  [`all(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_all.md)
+  : All Reduction
 
 ### Statistical Summaries
 
@@ -342,12 +382,16 @@ Summary statistics over array axes
 Cumulative (scan) operations along a single axis
 
 - [`nv_cumsum()`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md)
+  [`cumsum(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md)
   : Cumulative Sum
 - [`nv_cumprod()`](https://r-xla.github.io/anvl/dev/reference/nv_cumprod.md)
+  [`cumprod(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_cumprod.md)
   : Cumulative Product
 - [`nv_cummax()`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
+  [`cummax(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
   : Cumulative Maximum
 - [`nv_cummin()`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
+  [`cummin(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
   : Cumulative Minimum
 
 ### Linear Algebra
@@ -355,6 +399,7 @@ Cumulative (scan) operations along a single axis
 Linear algebra operations
 
 - [`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md)
+  [`` `%*%`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md)
   : Matrix Multiplication
 - [`nv_chol()`](https://r-xla.github.io/anvl/dev/reference/nv_chol.md)
   [`chol(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_chol.md)
@@ -418,14 +463,17 @@ N-dimensional convolution operations
 
 Logical and bitwise operations on arrays
 
-- [`nv_and()`](https://r-xla.github.io/anvl/dev/reference/nv_and.md) :
-  Bitwise AND
-- [`nv_or()`](https://r-xla.github.io/anvl/dev/reference/nv_or.md) :
-  Bitwise OR
+- [`nv_and()`](https://r-xla.github.io/anvl/dev/reference/nv_and.md)
+  [`` `&`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_and.md)
+  : Bitwise AND
+- [`nv_or()`](https://r-xla.github.io/anvl/dev/reference/nv_or.md)
+  [`` `|`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_or.md)
+  : Bitwise OR
 - [`nv_xor()`](https://r-xla.github.io/anvl/dev/reference/nv_xor.md) :
   Bitwise XOR
-- [`nv_not()`](https://r-xla.github.io/anvl/dev/reference/nv_not.md) :
-  Bitwise Not
+- [`nv_not()`](https://r-xla.github.io/anvl/dev/reference/nv_not.md)
+  [`` `!`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_not.md)
+  : Bitwise Not
 - [`nv_shift_left()`](https://r-xla.github.io/anvl/dev/reference/nv_shift_left.md)
   : Shift Left
 - [`nv_shift_right_logical()`](https://r-xla.github.io/anvl/dev/reference/nv_shift_right_logical.md)
@@ -503,6 +551,54 @@ Helpers supporting the API functions
 
 - [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
   : Generate RNG State
+- [`nv_print()`](https://r-xla.github.io/anvl/dev/reference/nv_print.md)
+  : Print Array
+
+## Data Types and Promotion
+
+Data types, their defaults, and the rules for promoting inputs to a
+common one
+
+### Data Types
+
+- [`dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md) :
+  Data Type Categories
+- [`as_dtype()`](https://r-xla.github.io/anvl/dev/reference/as_dtype.md)
+  : Convert to a DataType
+- [`is_dtype()`](https://r-xla.github.io/anvl/dev/reference/is_dtype.md)
+  : Check if an object is a DataType
+- [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
+  : Type Promotion Rules
+- [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
+  : Peek at a Data Type
+- [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  [`default_float()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  [`default_int()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  : Default Data Types
+- [`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  : Set the Default Data Types
+- [`with_dtypes()`](https://r-xla.github.io/anvl/dev/reference/with_dtypes.md)
+  : Run a Function at Given Data Types
+
+### Promotion Rules
+
+How `nv_*` functions promote their inputs; see the [Data Types and
+Promotion
+Rules](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
+article for how they are used.
+
+- [`nv_promote_to_common()`](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md)
+  : Promote Arrays to a Common Data Type
+- [`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)
+  : Bring a Primitive's Operands to One Data Type
+- [`promotion_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_grouped()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_rule()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  : Promotion Rules
 
 ## Transformations
 
@@ -517,13 +613,6 @@ Code transformations
 - [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)
   : Value and Gradient
 
-## Debugging
-
-Debugging utilities and tools
-
-- [`nv_print()`](https://r-xla.github.io/anvl/dev/reference/nv_print.md)
-  : Print Array
-
 ## Backend
 
 Backend-related functionality and implementations
@@ -536,15 +625,6 @@ Backend-related functionality and implementations
   : Temporarily set the backend
 - [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
   : Run code with a specific backend
-- [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  [`default_float()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  [`default_int()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  : Default Data Types
-- [`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
-  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
-  : Set the Default Data Types
-- [`with_dtypes()`](https://r-xla.github.io/anvl/dev/reference/with_dtypes.md)
-  : Run a Function at Given Data Types
 - [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md)
   : Install what a backend needs to run
 - [`nv_device()`](https://r-xla.github.io/anvl/dev/reference/nv_device.md)
@@ -626,8 +706,6 @@ Internal data structures and functions
   Data Class
 - [`IotaArray()`](https://r-xla.github.io/anvl/dev/reference/IotaArray.md)
   : Iota Array Class
-- [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
-  : Peek at a Data Type
 - [`to_abstract()`](https://r-xla.github.io/anvl/dev/reference/to_abstract.md)
   : Convert to Abstract Array
 - [`is_arrayish()`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)

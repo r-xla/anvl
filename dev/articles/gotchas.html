@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,13 +112,13 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Gotchas</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/gotchas.Rmd" class="external-link"><code>vignettes/gotchas.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/gotchas.Rmd" class="external-link"><code>vignettes/articles/gotchas.Rmd</code></a></small>
       <div class="d-none name"><code>gotchas.Rmd</code></div>
     </div>
 
     
     
-<p>This vignette lists various things to be aware of, specifically in
+<p>This article lists various things to be aware of, specifically in
 relation to base R.</p>
 <div class="section level2">
 <h2 id="no-recycling">No recycling<a class="anchor" aria-label="anchor" href="#no-recycling"></a>
@@ -172,10 +173,10 @@ when one shape is a “tile” of the other:</p>
 <span><span class="co">## [ CPUf32{2,3} ]</span></span></code></pre>
 <p>Axes are aligned <strong>from the first</strong>: an array with fewer
 axes gets size-1 axes appended, so its axis 1 meets axis 1 of the other.
-Anvl arrays are column-major, so the first axis is the one that varies
-fastest, and appending leaves every axis the array already had meaning
-what it did. (NumPy prepends instead, which is the matching choice for a
-row-major array.) A vector therefore meets a matrix as a
+<code>AnvlArray</code>s are column-major, so the first axis is the one
+that varies fastest, and appending leaves every axis the array already
+had meaning what it did. (NumPy prepends instead, which is the matching
+choice for a row-major array.) A vector therefore meets a matrix as a
 <strong>column</strong>: a length-<code>nrow</code> vector broadcasts
 against it, one value per row, and a length-<code>ncol</code> one does
 not.</p>
@@ -236,8 +237,8 @@ into a <code>NaN</code>:</p>
 <span><span class="co">## [ CPUf32{3} ]</span></span></code></pre>
 <p>Round-tripping back to R is not guaranteed to produce
 <code>NA</code>, but can also yield <code>NaN</code>. What comes back
-depends on the data type the value was built at, so it is pinned
-here:</p>
+depends on the data type the value was built at, so the example below
+builds it at <code>f32</code>:</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NA</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]   1 NaN   3</span></span></code></pre>
@@ -359,7 +360,7 @@ backend.</p>
 <pre><code><span><span class="co">## [1] 0</span></span></code></pre>
 <p>If the first argument to <code><a href="../reference/with_backend.html">with_backend()</a></code> is changed to
 <code>"quickr"</code> – the experimental, optional backend described in
-the <a href="internals.html">internals vignette</a> – then you should
+the <a href="internals.html">internals article</a> – then you should
 observe the results of subnormal computations are preserved
 correctly.</p>
 <p>This is also present, for example, in the <a href="https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html#miscellaneous-divergences-from-numpy" class="external-link">JAX
@@ -367,7 +368,7 @@ gotchas guide</a> which also illustrates values preserved in storage but
 flushed during operations on some backends.</p>
 </div>
 <div class="section level2">
-<h2 id="no-unsigned-integers">No unsigned integers<a class="anchor" aria-label="anchor" href="#no-unsigned-integers"></a>
+<h2 id="unsigned-integers">Unsigned integers<a class="anchor" aria-label="anchor" href="#unsigned-integers"></a>
 </h2>
 <p>R’s <code>integer</code> type is signed 32-bit (range
 <code>-2147483648</code> to <code>2147483647</code>). {anvl} also
@@ -412,57 +413,6 @@ wrapping is possible. <code><a href="../reference/as_array.html">as_array()</a><
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Exactly `2^63` becomes `NA_integer64_`; larger values become negative</span></span>
 <span><span class="co">##   <span style="color: #0000BB;">&lt;integer64&gt;</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = FALSE` to skip this check.</span></span></code></pre>
-</div>
-<div class="section level2">
-<h2 id="differences-between-eager-and-jit-mode">Differences between eager and jit-mode<a class="anchor" aria-label="anchor" href="#differences-between-eager-and-jit-mode"></a>
-</h2>
-<p>We try to keep the semantics of eager and jit-mode as close as
-possible. There are a few reasons why this might not be the case, which
-are listed here:</p>
-</div>
-<div class="section level2">
-<h2 id="the-function-does-not-canonicalize-its-inputs-">The function does not canonicalize its inputs.<a class="anchor" aria-label="anchor" href="#the-function-does-not-canonicalize-its-inputs-"></a>
-</h2>
-<p>One difference arises when eager functions do not canonicalize their
-inputs. Here, canoicalizing refers to the conversion or dynamic R inputs
-to <code>AnvlArray</code>s. This can be done via
-<code>as_anvl_array</code> for single arguments and
-<code>as_anvl_arrays</code> for multiple arguments.</p>
-<p>E.g., the following function does not behave the same in jit-mode and
-in eager mode. The untyped <code>1</code> materializes at the default
-float, so under the default <code>f32</code> the jitted result is
-rounded where the eager one is not (at an <code>f64</code> default the
-two would agree, which is exactly the point: the answer depends on a
-default rather than on the code):</p>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">add_pi</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">add_pi</span><span class="op">)</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">add_pi</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] FALSE</span></span></code></pre>
-<p>We can fix this, by canonicalizing the inputs:</p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">add_pi2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
-<span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">add_pi2</span><span class="op">)</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span> <span class="op">==</span> <span class="fu">add_pi2</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  1</span></span>
-<span><span class="co">## [ CPUbool{} ]</span></span></code></pre>
-<p>Not canonicalizing inputs can also be a problem for device placement.
-If we were to call the function below as
-<code>threeway_add(1, 2, nv_scalar(3, "cuda"))</code>, then the
-<code>1 + 2</code> would first move the <code>1</code> and
-<code>2</code> to the default device (which is CPU by default) and the
-second addition would then fail because it would attempt to call
-<code>nv_add</code> with mixed-device inputs.</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">threeway_add</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="va">z</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span>, <span class="va">z</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>Therefore, you should always canonicalize your inputs in eager
-functions.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

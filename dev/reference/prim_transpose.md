@@ -21,8 +21,9 @@ prim_transpose(x, perm)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Specifies the new ordering of axes. Must be a permutation of
-  `seq_len(naxes(x))`, the axis indices of `x`. Negative values count
-  from the end, i.e. `-1` refers to the last axis.
+  [`axes(x)`](https://r-xla.github.io/anvl/dev/reference/axes.md), the
+  axis indices of `x`. Negative values count from the end, i.e. `-1`
+  refers to the last axis.
 
 ## Value
 

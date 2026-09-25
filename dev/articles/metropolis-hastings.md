@@ -1,6 +1,6 @@
 # Metropolis-Hastings
 
-In this vignette, we show how to implement a random-walk
+In this article, we show how to implement a random-walk
 Metropolis-Hastings sampler using {anvl} (Hastings 1970).
 Metropolis-Hastings is a well known MCMC algorithm that generates
 samples from a target distribution by proposing moves and accepting or
@@ -71,7 +71,7 @@ log_density <- function(theta, b) {
 
 There are a few things to note in the code below:
 
-1.  the accept/reject decision uses the primitive
+1.  the accept/reject decision uses
     [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) and
     not a native R conditional.
 2.  we sample a scalar uniform random number by setting

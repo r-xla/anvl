@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Type Promotion • anvl</title>
+<title>Data Types and Promotion Rules • anvl</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -21,7 +21,7 @@
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Type Promotion">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Data Types and Promotion Rules">
 <meta name="robots" content="noindex">
 </head>
 <body>
@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -108,15 +109,89 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.svg" class="logo" alt=""><h1>Type Promotion</h1>
+      <img src="../logo.svg" class="logo" alt=""><h1>Data Types and Promotion Rules</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/type-promotion.Rmd" class="external-link"><code>vignettes/type-promotion.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/type-promotion.Rmd" class="external-link"><code>vignettes/articles/type-promotion.Rmd</code></a></small>
       <div class="d-none name"><code>type-promotion.Rmd</code></div>
     </div>
 
     
     
+<div class="section level2">
+<h2 id="data-types">Data Types<a class="anchor" aria-label="anchor" href="#data-types"></a>
+</h2>
+<p>Every <code>AnvlArray</code> has a data type, which
+<code><a href="../reference/dtype.html">dtype()</a></code> reports. The data types fall into three categories,
+where the number is the width in bits:</p>
+<table class="table">
+<colgroup>
+<col width="45%">
+<col width="54%">
+</colgroup>
+<thead><tr class="header">
+<th>Category</th>
+<th>Data types</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Boolean</td>
+<td><code>bool</code></td>
+</tr>
+<tr class="even">
+<td>Integer</td>
+<td>signed: <code>i8</code>, <code>i16</code>, <code>i32</code>,
+<code>i64</code>; unsigned: <code>ui8</code>, <code>ui16</code>,
+<code>ui32</code>, <code>ui64</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Float</td>
+<td>
+<code>f32</code>, <code>f64</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Other floating-point data types, such as <code>f16</code>, and
+complex numbers are currently not supported.</p>
+<p>The data type of a new <code>AnvlArray</code> is chosen with the
+<code>dtype</code> argument, and <code><a href="../reference/nv_convert.html">nv_convert()</a></code> converts an
+existing one:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, dtype <span class="op">=</span> <span class="st">"i16"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;i16&gt;</span></span></code></pre>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_convert.html">nv_convert</a></span><span class="op">(</span><span class="va">x</span>, <span class="st">"f64"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  1</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">##  3</span></span>
+<span><span class="co">## [ CPUf64{3} ]</span></span></code></pre>
+<p>Without a <code>dtype</code>, an R <code>logical</code> becomes a
+<code>bool</code>, and R <code>double</code>s and <code>integer</code>s
+become the default float and integer data types, which
+<code><a href="../reference/default_dtypes.html">default_dtypes()</a></code> reports and the
+<code>anvl.default_dtypes</code> option configures:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/default_dtypes.html">default_dtypes</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## $float</span></span>
+<span><span class="co">## &lt;f32&gt;</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## $int</span></span>
+<span><span class="co">## &lt;i32&gt;</span></span></code></pre>
+<p>Converting an <code>AnvlArray</code> back to R with
+<code><a href="../reference/as_array.html">as_array()</a></code> gives the R type that can represent its values,
+e.g. a <code>double</code> for an <code>f32</code>; see
+<code><a href="../reference/as_array.html">?as_array</a></code> for the full list. Help pages name groups of data
+types that an argument accepts with single words, such as
+<em>numeric</em> or <em>integerish</em>, which <code><a href="../reference/dtypes.html">?dtypes</a></code>
+defines.</p>
+<p>The rest of this article covers which data type the result of an
+operation has when its inputs have different ones.</p>
+</div>
 <div class="section level2">
 <h2 id="type-promotion-rules">Type Promotion Rules<a class="anchor" aria-label="anchor" href="#type-promotion-rules"></a>
 </h2>
@@ -125,9 +200,8 @@
 common type. For example, below we are adding an <code>f32</code> to an
 <code>f64</code>, where the former is promoted to the latter’s type,
 because it’s more expressive.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1.0</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1.0</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -136,16 +210,21 @@ because it’s more expressive.</p>
 <span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
 <p>The rules are defined by the <code><a href="../reference/common_dtype.html">common_dtype()</a></code>
 function.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"f64"</span>, <span class="st">"f32"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;f64&gt;</span></span></code></pre>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"i64"</span>, <span class="st">"f32"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;f32&gt;</span></span></code></pre>
-<p>A table with the promotion rules is below.</p>
+<p>The table below shows the common data type of every pair of data
+types. The cells are colored by the category of the result: <span style="background-color: rgba(128, 128, 128, 0.25); padding: 0 0.3em;">boolean</span>,
+<span style="background-color: rgba(66, 133, 244, 0.25); padding: 0 0.3em;">signed
+integer</span>, <span style="background-color: rgba(52, 168, 83, 0.25); padding: 0 0.3em;">unsigned
+integer</span>, <span style="background-color: rgba(251, 140, 0, 0.3); padding: 0 0.3em;">float</span>,
+and <span style="background-color: rgba(229, 57, 53, 0.25); padding: 0 0.3em;">none</span>.</p>
 <table class="table">
 <caption>
-Type promotion rules (row × column)
+Common data type of two data types
 </caption>
 <thead><tr>
 <th style="text-align:left;">
@@ -190,37 +269,37 @@ f64
 <strong>bool</strong>
 </td>
 <td style="text-align:left;">
-bool
+<span style="display: block; background-color: rgba(128, 128, 128, 0.25); text-align: center;">bool</span>
 </td>
 <td style="text-align:left;">
-i8
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i8</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-ui8
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui8</span>
 </td>
 <td style="text-align:left;">
-ui16
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui16</span>
 </td>
 <td style="text-align:left;">
-ui32
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui32</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -228,37 +307,37 @@ f64
 <strong>i8</strong>
 </td>
 <td style="text-align:left;">
-i8
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i8</span>
 </td>
 <td style="text-align:left;">
-i8
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i8</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -266,37 +345,37 @@ f64
 <strong>i16</strong>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -304,37 +383,37 @@ f64
 <strong>i32</strong>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -342,37 +421,37 @@ f64
 <strong>i64</strong>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -380,37 +459,37 @@ f64
 <strong>ui8</strong>
 </td>
 <td style="text-align:left;">
-ui8
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui8</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i16
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i16</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-ui8
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui8</span>
 </td>
 <td style="text-align:left;">
-ui16
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui16</span>
 </td>
 <td style="text-align:left;">
-ui32
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui32</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -418,37 +497,37 @@ f64
 <strong>ui16</strong>
 </td>
 <td style="text-align:left;">
-ui16
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui16</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i32
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-ui16
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui16</span>
 </td>
 <td style="text-align:left;">
-ui16
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui16</span>
 </td>
 <td style="text-align:left;">
-ui32
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui32</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -456,37 +535,37 @@ f64
 <strong>ui32</strong>
 </td>
 <td style="text-align:left;">
-ui32
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui32</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-i64
+<span style="display: block; background-color: rgba(66, 133, 244, 0.25); text-align: center;">i64</span>
 </td>
 <td style="text-align:left;">
-ui32
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui32</span>
 </td>
 <td style="text-align:left;">
-ui32
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui32</span>
 </td>
 <td style="text-align:left;">
-ui32
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui32</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -494,37 +573,37 @@ f64
 <strong>ui64</strong>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-–
+<span style="display: block; background-color: rgba(229, 57, 53, 0.25); text-align: center;">–</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-ui64
+<span style="display: block; background-color: rgba(52, 168, 83, 0.25); text-align: center;">ui64</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -532,37 +611,37 @@ f64
 <strong>f32</strong>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f32
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f32</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 <tr>
@@ -570,37 +649,37 @@ f64
 <strong>f64</strong>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 <td style="text-align:left;">
-f64
+<span style="display: block; background-color: rgba(251, 140, 0, 0.3); text-align: center;">f64</span>
 </td>
 </tr>
 </tbody>
@@ -609,50 +688,80 @@ f64
 <code>i8</code> and <code>ui8</code> meet at <code>i16</code>. The
 exception is <code>ui64</code>: no signed integer type holds its values,
 and an integer never becomes a float on its own, so a <code>ui64</code>
-and a signed integer have no common type at all (the <code>--</code>
-cells above). This is where JAX and NumPy fall back to a float – {anvl}
-instead asks you to say what you want, by converting one of the operands
-with <code><a href="../reference/nv_convert.html">nv_convert()</a></code>.</p>
-<p>The biggest differentiator between our type system and the one from
-JAX is the handling of array objects from the host language, which is R
-in our case. While introducing more complexity, these rules prevent the
-loss of precision present in JAX’s type system. We describe it
-below.</p>
+and a signed integer have no common type at all (the red cells above).
+This is where JAX and NumPy fall back to a float – {anvl} instead asks
+you to say what you want, by converting one of the operands with
+<code><a href="../reference/nv_convert.html">nv_convert()</a></code>.</p>
+<p>R values are handled differently: {anvl}’s type system keeps their
+full precision, and lets the author of a function decide how they are
+promoted, without losing precision along the way. We describe how this
+works below.</p>
 </div>
 <div class="section level2">
 <h2 id="r-values-have-no-data-type">R Values Have No Data Type<a class="anchor" aria-label="anchor" href="#r-values-have-no-data-type"></a>
 </h2>
+<p>An R number is a 64-bit double, while {anvl} computes in
+<code>f32</code> by default. There are two simple ways to reconcile the
+two, and both have a drawback:</p>
+<ul>
+<li>Converting R doubles always to <code>f64</code> means that every R
+number, such as a step size or <code>pi</code>, pulls the computation to
+<code>f64</code>, which is considerably slower on GPUs.</li>
+<li>Converting R doubles always to the default <code>f32</code> means
+that an R number loses precision before it is even used, also when it is
+combined with an <code>f64</code> <code>AnvlArray</code>.</li>
+</ul>
+<p>Below, <code>exact</code> is what {anvl} computes, and
+<code>rounded</code> is what the second approach would give, where
+<code>pi</code> is rounded to an <code>f32</code> first:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exact</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">pi</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">rounded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/nv_convert.html">nv_convert</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="va">pi</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span>, <span class="st">"f64"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>exact <span class="op">=</span> <span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">exact</span><span class="op">)</span>, rounded <span class="op">=</span> <span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">rounded</span><span class="op">)</span>, base_r <span class="op">=</span> <span class="va">pi</span> <span class="op">+</span> <span class="fl">2</span><span class="op">)</span>, digits <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##             exact           rounded            base_r </span></span>
+<span><span class="co">## 5.141592653589793 5.141592741012573 5.141592653589793</span></span></code></pre>
+<p>{anvl} avoids both drawbacks: an R value has no data type of its own,
+and takes the data type of the <code>AnvlArray</code> it is combined
+with. Combined with an <code>f64</code>, <code>pi</code> keeps its full
+precision and gives the same result as base R, while combined with an
+<code>f32</code>, the computation stays fast. This makes {anvl} well
+suited for statistical computations, where precision often matters a
+lot.</p>
 <p>In {anvl}’s type system, R objects do not have a concrete data
 type.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> An R value has no data type of its own until it is used.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value</span></span>
 <span><span class="co">##   only takes a data type when it meets a typed array, or when it materializes</span></span>
-<span><span class="co">##   at the default (<span style="color: #0000BB;">"f32"</span>).</span></span>
+<span><span class="co">##   at the default.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
 <p>The type promotion table from above therefore does not apply to them.
 However, it is possible to apply an {anvl} function to R values
 (length-1 vectors and arrays):</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_exp.html">nv_exp</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2.7183</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
 <span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  3</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <p>It is therefore important to understand the rules that govern the
-materialization of R objects as <code>AnvlArray</code>s. Generally,
-there are two routes:</p>
+materialization of R objects as <code>AnvlArray</code>s. There is no
+uniform rule how this is done, functions can decide this for themselves,
+but the two most common routes are:</p>
 <ol style="list-style-type: decimal">
 <li>The R value is materialized at its default data type, which
 <code><a href="../reference/default_dtypes.html">default_dtypes()</a></code> reports: a <code>double</code> and an
@@ -667,7 +776,7 @@ again.</li>
 </ol>
 <p>Either way the value is <em>built at</em> that data type rather than
 converted into it, so one the data type cannot hold is an error:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="op">-</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"ui8"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Cannot build the R value <span style="color: #0000BB;">-2</span> at data type <span style="color: #0000BB;">"ui8"</span>.</span></span>
@@ -677,7 +786,7 @@ converted into it, so one the data type cannot hold is an error:</p>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Convert an array with `nv_convert()` where the wraparound is what you want.</span></span></code></pre>
 <p>Converting an array is a different matter and keeps XLA’s wraparound
 semantics:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_convert.html">nv_convert</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2L</span>, <span class="st">"i32"</span><span class="op">)</span>, <span class="st">"ui8"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  254</span></span>
@@ -685,9 +794,9 @@ semantics:</p>
 <p>Note that these rules are not universal and exceptions exist. Some
 functions, such as <code>nv_clamp</code>, prioritize the data type of a
 specific argument, in this case <code>x</code>, the value that is being
-clamped. It fails if the the boundary values cannot be promoted to
+clamped. It fails if the boundary values cannot be promoted to
 <code>x</code> without loss of precision:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_clamp.html">nv_clamp</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span>, <span class="st">"f32"</span><span class="op">)</span>,</span>
 <span>  min <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span>, <span class="st">"f64"</span><span class="op">)</span>,</span>
@@ -698,12 +807,13 @@ clamped. It fails if the the boundary values cannot be promoted to
 <span><span class="co">## <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">"f64"</span> is not promotable to <span style="color: #0000BB;">"f32"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Convert it explicitly with `nv_convert()`.</span></span></code></pre>
 <p>Functions document their behavior, so consult their respective help
-page for more information.</p>
-<p>You can canonicalize and promote inputs to a function via the
-<code>.promote</code> field of <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code>. It takes a
+page for more information on how they promote their inputs.</p>
+<p>When you are writing your own {anvl} functions, you can decide the
+promotion rules yourself. This is possible via the <code>.promote</code>
+argument of <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code>. It takes a
 <code>PromotionRule</code>, which is a special function that takes in
 the arguments and outputs a data type for each one.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, .promote <span class="op">=</span> <span class="fu"><a href="../reference/promotion_rule.html">promotion_dtype</a></span><span class="op">(</span><span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [[1]]</span></span>
 <span><span class="co">## AnvlArray</span></span>
@@ -716,16 +826,30 @@ the arguments and outputs a data type for each one.</p>
 <span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
 <p>One common rule is <code><a href="../reference/promotion_rule.html">promotion_common()</a></code>, which is used by
 functions such as <code>nv_add</code> above. It computes the common data
-type of the inputs. In this case, it returns the default data type of an
-R <code>double</code>, as neither input has one of its own. We can
-override that default via <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code>, which we
-use below to ask for double precision. The two elements contrast what
+type of the inputs, so below, the R value <code>1</code> takes the data
+type of the <code>f64</code> input:</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, .promote <span class="op">=</span> <span class="fu"><a href="../reference/promotion_rule.html">promotion_common</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [[1]]</span></span>
+<span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  1</span></span>
+<span><span class="co">## [ CPUf64{} ] </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## [[2]]</span></span>
+<span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
+<p>When none of the inputs has a data type of its own,
+e.g. <code>as_anvl_arrays(1, 2, .promote = promotion_common())</code>,
+it falls back to the default data type of an R <code>double</code>. We
+can override that default via <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code>, which
+we use below to ask for double precision. The two elements contrast what
 the override does and does not touch: <code>materialized</code> is an R
 literal with no data type of its own, so it follows the new default,
 while <code>yielded</code> meets a typed <code>f32</code> array and
 takes <em>its</em> data type – a default only decides what happens when
 nothing else does.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/local_default_dtypes.html">with_default_dtypes</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    materialized <span class="op">=</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="op">)</span> <span class="fl">1.0</span><span class="op">)</span><span class="op">(</span><span class="op">)</span>,</span>
@@ -742,7 +866,7 @@ nothing else does.</p>
 <span><span class="co">##  2.5000</span></span>
 <span><span class="co">## [ CPUf32{1} ]</span></span></code></pre>
 <p>Below, we compute the common data type of the arguments.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">promotion_fn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/promotion_rule.html">promotion_common</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i8"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">promotion_fn</span><span class="op">(</span><span class="va">args</span><span class="op">)</span></span></code></pre></div>
@@ -754,9 +878,9 @@ nothing else does.</p>
 <span><span class="co">## </span></span>
 <span><span class="co">## [[3]]</span></span>
 <span><span class="co">## &lt;f32&gt;</span></span></code></pre>
-<p>And when used in <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> it moves the inputs
-there:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<p>When used in <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code>, it converts the inputs to
+that data type:</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">as_anvl_arrays</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">args</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>.promote <span class="op">=</span> <span class="va">promotion_fn</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [[1]]</span></span>
 <span><span class="co">## AnvlArray</span></span>

@@ -50,9 +50,9 @@ This backend is **experimental** and has a number of limitations:
   one-time compilation cost is amortized.
 
 - Only a subset of the primitives that the PJRT backend supports are
-  currently lowered to quickr code. See
-  [`vignette("primitives")`](https://r-xla.github.io/anvl/dev/articles/primitives.md)
-  for an overview.
+  currently lowered to quickr code. See the [Primitives
+  Reference](https://r-xla.github.io/anvl/articles/primitives.html)
+  article for an overview.
 
 - Only CPU execution is supported.
 

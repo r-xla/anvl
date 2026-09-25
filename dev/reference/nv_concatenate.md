@@ -10,6 +10,9 @@ You can also use [`c()`](https://rdrr.io/r/base/c.html) on scalars and
 
 ``` r
 nv_concatenate(..., axis = NULL)
+
+# S3 method for class 'AnvlArray'
+c(...)
 ```
 
 ## Arguments

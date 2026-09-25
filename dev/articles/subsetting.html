@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,74 +112,18 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Subsetting</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/subsetting.Rmd" class="external-link"><code>vignettes/subsetting.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/subsetting.Rmd" class="external-link"><code>vignettes/articles/subsetting.Rmd</code></a></small>
       <div class="d-none name"><code>subsetting.Rmd</code></div>
     </div>
 
     
     
-<p>In this vignette, you will learn how to subset arrays in {anvl} and
-how to update subsets. Because array shapes in {anvl} programs are
-static (see the <a href="static_shapes.html">Static Shape
-Restriction</a> vignette), only certain subsetting operations are
-supported and they come with some surprises.</p>
-<p>We start by listing possible subsets and whether they support dynamic
-values (arrays that are specified during runtime) or only static values
-(e.g., R literals).</p>
-<table class="table">
-<thead><tr class="header">
-<th>Subset</th>
-<th>Dynamic</th>
-<th>Static</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>Single Index</td>
-<td>Yes</td>
-<td>Yes</td>
-</tr>
-<tr class="even">
-<td>Multiple Indices</td>
-<td>Yes</td>
-<td>Yes</td>
-</tr>
-<tr class="odd">
-<td>Range</td>
-<td>No</td>
-<td>Yes</td>
-</tr>
-<tr class="even">
-<td>Mask</td>
-<td>No</td>
-<td>No</td>
-</tr>
-</tbody>
-</table>
-<p>Ranges cannot have dynamic values, because then the size of the
-subset would be unknown (what’s the size of <code>a:b</code> where
-<code>a</code> and <code>b</code> are unknown?). Boolean masks are not
-supported, because the output shape depends on the data, which is not
-known at compile time. For workarounds
-(e.g. <code>sum(x[x &gt; 0])</code> or
-<code>x[mask] &lt;- update</code>), see the <a href="static_shapes.html#the-masking-pattern">masking pattern</a>
-section of the Static Shape Restriction vignette. Negative indexing
-(e.g., <code>x[-1]</code> to exclude elements) is currently also not
-supported. For static values, this will throw an error. For dynamic
-values, negative indices are treated as out-of-bounds and clamped to the
-valid range (see <a href="#out-of-bounds-handling">Out-of-bounds
-Handling</a> below). If you are missing a feature, please open an issue
-on GitHub.</p>
-<p>We will start with subsetting and then move on to
-subset-assignment.</p>
-<div class="section level2">
-<h2 id="subsetting">Subsetting<a class="anchor" aria-label="anchor" href="#subsetting"></a>
-</h2>
-<div class="section level3">
-<h3 id="subsetting-1d-arrays">Subsetting 1D arrays<a class="anchor" aria-label="anchor" href="#subsetting-1d-arrays"></a>
-</h3>
-<p>Let’s start with some simple examples of selecting individual
-elements from a 1-dimensional array. The index can be either static or
-dynamic and we can drop or keep the axis:</p>
+<p><code>AnvlArray</code>s are subset with <code>[</code> and updated
+with <code>[&lt;-</code>, much like R arrays. Most differences to base R
+come from two properties of compiled code: the shape of every result
+must be known before the program runs (see the <a href="static_shapes.html">Static Shape Restriction</a> article), and the
+compiled program cannot throw errors. This article goes through what
+that means for selecting and updating elements.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
@@ -195,82 +140,41 @@ dynamic and we can drop or keep the axis:</p>
 <span><span class="co">##   9</span></span>
 <span><span class="co">##  10</span></span>
 <span><span class="co">## [ CPUi32{10} ]</span></span></code></pre>
-<ul>
-<li>
-<p>Static &amp; Drop:</p>
+<div class="section level2">
+<h2 id="selecting-elements">Selecting Elements<a class="anchor" aria-label="anchor" href="#selecting-elements"></a>
+</h2>
+<p>A single index selects one element and drops the axis, just like in
+R:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
 <span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
-</li>
-<li>
-<p>Static &amp; Keep:</p>
-<p>Here we use <code><a href="../reference/arr.html">arr()</a></code>, a convenience helper that builds an R
-array without having to wrap the values in <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> (so
-<code>arr(2L)</code> is equivalent to <code>array(2L)</code>, and
-<code>arr(1, 2, 3)</code> to <code>array(c(1, 2, 3))</code>).</p>
+<p>To select several elements, pass the indices as an R array.
+<code><a href="../reference/arr.html">arr()</a></code> is a shorthand for this,
+e.g. <code>arr(2, 4, 6)</code> is the same as
+<code>array(c(2, 4, 6))</code>:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  2</span></span>
-<span><span class="co">## [ CPUi32{1} ]</span></span></code></pre>
-</li>
-<li>
-<p>Dynamic &amp; Drop:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  2</span></span>
-<span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
-</li>
-<li>
-<p>Dynamic &amp; Keep:</p>
-<p>Below, we perform almost the same operation as above, except that we
-use an array of shape <code>(1)</code> instead of a scalar with shape
-<code>()</code>. The difference is that subsetting with the former will
-preserve the axis, while the latter will drop it, as we have seen above.
-This ensures that the dimensionality of the result is the same for any
-1D subset specification, and does not suddenly “simplify” the result to
-0D.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  2</span></span>
-<span><span class="co">## [ CPUi32{1} ]</span></span></code></pre>
-</li>
-</ul>
-<p>Next, we subset multiple elements, where we only have to distinguish
-between static and dynamic indices.</p>
-<ul>
-<li>
-<p>Static</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">6</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
 <span><span class="co">##  4</span></span>
 <span><span class="co">##  6</span></span>
 <span><span class="co">## [ CPUi32{3} ]</span></span></code></pre>
-</li>
-<li>
-<p>Dynamic</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">4L</span>, <span class="fl">6L</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>A plain vector such as <code>c(2, 4, 6)</code> is not accepted,
+because it would be ambiguous for a single index: should
+<code>x[c(2)]</code> drop the axis, like <code>x[2]</code>, or keep it?
+With arrays, the answer is always clear, so {anvl} needs no
+<code>drop</code> argument: <code>x[2]</code> drops the axis and
+<code>x[arr(2)]</code> keeps it.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
-<span><span class="co">##  4</span></span>
-<span><span class="co">##  6</span></span>
-<span><span class="co">## [ CPUi32{3} ]</span></span></code></pre>
-</li>
-</ul>
-<p>We use <code><a href="../reference/arr.html">arr()</a></code> (or equivalently <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>)
-instead of a bare R vector, because otherwise the case where we use a
-length-1 vector would be ambiguous (do we drop or keep the axis?). This
-allows us to do without a <code>drop</code> parameter.</p>
-<p>We can also use a range that can be specified either canonically via
-<code>a:b</code> or using <code><a href="../reference/nv_seq.html">nv_seq()</a></code>.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<span><span class="co">## [ CPUi32{1} ]</span></span></code></pre>
+<p>Ranges work as in R, including ranges that count down, and an empty
+subscript selects everything:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
@@ -278,21 +182,7 @@ allows us to do without a <code>drop</code> parameter.</p>
 <span><span class="co">##  4</span></span>
 <span><span class="co">##  5</span></span>
 <span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/nv_seq.html">nv_seq</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  2</span></span>
-<span><span class="co">##  3</span></span>
-<span><span class="co">##  4</span></span>
-<span><span class="co">##  5</span></span>
-<span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
-<p>Note that the <code>a:b</code> syntax works via Non-Standard
-Evaluation (NSE), so we can distinguish it from the actual vector
-<code>2:5</code>. Internally, it is translated to
-<code>nv_seq(a, b)</code>.</p>
-<p>A range that counts down selects in reverse, as it does in base
-R.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">5</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  5</span></span>
@@ -300,9 +190,7 @@ R.</p>
 <span><span class="co">##  3</span></span>
 <span><span class="co">##  2</span></span>
 <span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
-<p>It is also possible to select the whole range by omitting the
-specification altogether.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##   1</span></span>
@@ -316,145 +204,191 @@ specification altogether.</p>
 <span><span class="co">##   9</span></span>
 <span><span class="co">##  10</span></span>
 <span><span class="co">## [ CPUi32{10} ]</span></span></code></pre>
-</div>
-<div class="section level3">
-<h3 id="subsetting-higher-dimensional-arrays">Subsetting higher-dimensional arrays<a class="anchor" aria-label="anchor" href="#subsetting-higher-dimensional-arrays"></a>
-</h3>
-<p>We start by creating a 2-dimensional array.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">x</span></span></code></pre></div>
+<p>For an <code>AnvlArray</code> with several axes, there is one
+subscript per axis, and they combine as in R. Axes that are left out at
+the end select all of their elements.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">m</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##   1  2  3  4</span></span>
 <span><span class="co">##   5  6  7  8</span></span>
 <span><span class="co">##   9 10 11 12</span></span>
 <span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
-<p>Combining subsets just works like one would expect.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span> <span class="co"># the first row</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1</span></span>
 <span><span class="co">##  2</span></span>
 <span><span class="co">##  3</span></span>
 <span><span class="co">##  4</span></span>
 <span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  2</span></span>
-<span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  2 3</span></span>
-<span><span class="co">## [ CPUi32{1,2} ]</span></span></code></pre>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span> <span class="co"># rows 1 and 3, columns 2 and 3</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##   2  3</span></span>
 <span><span class="co">##  10 11</span></span>
 <span><span class="co">## [ CPUi32{2,2} ]</span></span></code></pre>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="co"># also the second row, as the column subscript is left out</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  2 3</span></span>
-<span><span class="co">##  6 7</span></span>
-<span><span class="co">## [ CPUi32{2,2} ]</span></span></code></pre>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span></span></code></pre></div>
+<span><span class="co">##  5</span></span>
+<span><span class="co">##  6</span></span>
+<span><span class="co">##  7</span></span>
+<span><span class="co">##  8</span></span>
+<span><span class="co">## [ CPUi32{4} ]</span></span></code></pre>
+</div>
+<div class="section level2">
+<h2 id="indices-given-as-anvlarrays">Indices Given as <code>AnvlArray</code>s<a class="anchor" aria-label="anchor" href="#indices-given-as-anvlarrays"></a>
+</h2>
+<p>So far, all indices were R values. We call such a subset
+<em>static</em>, because it does not depend on any
+<code>AnvlArray</code>: its values are known in advance, so {anvl} can
+check them before anything runs, e.g. whether an index is out of range
+(see <a href="#indices-outside-of-the-anvlarray">indices outside of the
+<code>AnvlArray</code></a> below). An index can also be an
+<code>AnvlArray</code>, e.g. one that is itself the result of a
+computation. Such a subset is <em>dynamic</em>: its values are only
+known once the computation runs, so these checks are not possible.
+Below, the position of the largest element is used to select it:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">9L</span>, <span class="fl">4L</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">v</span><span class="op">[</span><span class="fu"><a href="../reference/nv_which_max.html">nv_which_max</a></span><span class="op">(</span><span class="va">v</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  9</span></span>
+<span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
+<p>As with R values, a scalar index drops the axis, while an
+<code>AnvlArray</code> with one axis keeps it and can select several
+elements:</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
-<span><span class="co">##  3</span></span>
+<span><span class="co">## [ CPUi32{1} ]</span></span></code></pre>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">4L</span>, <span class="fl">6L</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">##  4</span></span>
+<span><span class="co">##  6</span></span>
+<span><span class="co">## [ CPUi32{3} ]</span></span></code></pre>
+<p>Because the shape of the result must be known in advance, not every
+kind of subscript can be dynamic:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Subscript</th>
+<th>Static (R value)</th>
+<th>Dynamic (<code>AnvlArray</code>)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Single index</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="even">
+<td>Several indices</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="odd">
+<td>Range</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr class="even">
+<td>Logical mask</td>
+<td>No</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>The size of a range <code>a:b</code>, and therefore the shape of the
+result, would not be known in advance if <code>a</code> or
+<code>b</code> were dynamic. For the same reason, logical masks such as
+<code>x[x &gt; 5]</code> are not supported at all. The <a href="static_shapes.html#the-masking-pattern">masking pattern</a>
+section of the Static Shape Restriction article shows how to get the
+same results without them. Negative indices, which exclude elements in
+R, are not supported either.</p>
+</div>
+<div class="section level2">
+<h2 id="indices-outside-of-the-anvlarray">Indices Outside of the <code>AnvlArray</code><a class="anchor" aria-label="anchor" href="#indices-outside-of-the-anvlarray"></a>
+</h2>
+<p>In a static subset, an index that is outside of the
+<code>AnvlArray</code> is an error:</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fl">11</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `parse_subset_spec()`:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> The index 11 is out of bounds for axis 1.</span></span>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> Axis 1 has size 10, so indices must be between 1 and 10.</span></span></code></pre>
+<p>In a dynamic subset, the index only has a value once the computation
+runs, when errors can no longer be thrown (see <a href="next_steps.html#compiled-code-cannot-throw-errors">compiled code
+cannot throw errors</a>). Instead, the index is moved to the nearest
+valid one, so it is worth being careful with such indices to avoid
+bugs:</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">20L</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   1</span></span>
+<span><span class="co">##  10</span></span>
 <span><span class="co">## [ CPUi32{2} ]</span></span></code></pre>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>, <span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  5 6 7 8</span></span>
-<span><span class="co">##  5 6 7 8</span></span>
-<span><span class="co">## [ CPUi32{2,4} ]</span></span></code></pre>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  5 6 7 8</span></span>
-<span><span class="co">##  5 6 7 8</span></span>
-<span><span class="co">## [ CPUi32{2,4} ]</span></span></code></pre>
-</div>
-<div class="section level3">
-<h3 id="out-of-bounds-handling">Out-of-bounds Handling<a class="anchor" aria-label="anchor" href="#out-of-bounds-handling"></a>
-</h3>
-<p>If one specifies out-of-bounds indices, we can only throw an error if
-the indices are static (and therefore known at compile time). The PJRT
-backend that {anvl} compiles to does not throw errors for out-of-bounds
-dynamic indices, but instead clamps them to the valid range:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1L</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">100L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  4</span></span>
-<span><span class="co">## [ CPUi32{1,1} ]</span></span></code></pre>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">4L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  4</span></span>
-<span><span class="co">## [ CPUi32{1,1} ]</span></span></code></pre>
-<p>Therefore, you need to be careful when using dynamic indexing in
-order to avoid bugs.</p>
-</div>
 </div>
 <div class="section level2">
 <h2 id="updating-subsets">Updating Subsets<a class="anchor" aria-label="anchor" href="#updating-subsets"></a>
 </h2>
-<p>Updating subsets supports the same syntax as subsetting. The value to
-write must either have the shape of the subset, or be a scalar.</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##   1  2  3  4</span></span>
-<span><span class="co">##   5  6  7  8</span></span>
-<span><span class="co">##   9 10 11 12</span></span>
-<span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">x</span></span></code></pre></div>
+<p>Subset assignment uses the same subscripts as selection. The new
+value must either have the shape of the selected subset, or be a scalar,
+which is then used for every selected element:</p>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">m</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##   1  2 -1  4</span></span>
 <span><span class="co">##   5  6 -2  8</span></span>
 <span><span class="co">##   9 10 -3 12</span></span>
 <span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">x</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">99L</span></span>
-<span><span class="va">x</span></span></code></pre></div>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
+<span><span class="va">m</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##    1   2 -99   4</span></span>
-<span><span class="co">##    5   6 -99   8</span></span>
-<span><span class="co">##    9  10 -99  12</span></span>
+<span><span class="co">##   0  0  0  0</span></span>
+<span><span class="co">##   5  6 -2  8</span></span>
+<span><span class="co">##   9 10 -3 12</span></span>
 <span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
-<p>Also, it must have a data type that is convertible to the data type
-of the array.</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">x</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.5</span>, <span class="fl">2.5</span>, <span class="fl">3.5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The value must also fit the data type of the <code>AnvlArray</code>.
+This is different from base R, which changes the type of the object that
+is assigned into when the value does not fit, e.g. an integer vector
+becomes a double vector:</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">r_int</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span></span>
+<span><span class="va">r_int</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
+<span><span class="va">r_int</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 0.5 2.0 3.0</span></span></code></pre>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/typeof.html" class="external-link">typeof</a></span><span class="op">(</span><span class="va">r_int</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] "double"</span></span></code></pre>
+<p>{anvl} never changes the data type of the <code>AnvlArray</code> that
+is being updated, so the same assignment is an error:</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
+<span><span class="va">y</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Cannot bring `value` to data type <span style="color: #0000BB;">"i32"</span>.</span></span>
-<span><span class="co">## <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">"f32"</span> is not promotable to <span style="color: #0000BB;">"i32"</span>.</span></span>
-<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Convert it explicitly with `nv_convert()`.</span></span></code></pre>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##   1  2  3  4</span></span>
-<span><span class="co">##   5  6  7  8</span></span>
-<span><span class="co">##   9 10 11 12</span></span>
-<span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
-<div class="section level3">
-<h3 id="out-of-bounds-handling-1">Out-of-bounds Handling<a class="anchor" aria-label="anchor" href="#out-of-bounds-handling-1"></a>
-</h3>
-<p>Similar to subsetting, out-of-bounds indices can only be checked for
-static values. For dynamic indices, out-of-bounds writes are simply
-ignored:</p>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
-<span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">100L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1L</span>, <span class="op">-</span><span class="fl">2L</span>, <span class="op">-</span><span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">x</span></span></code></pre></div>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> It is an R double, which is only ever built at a data type of its own</span></span>
+<span><span class="co">##   category: a double becomes a float, an integer an integer, a logical a</span></span>
+<span><span class="co">##   <span style="color: #0000BB;">"bool"</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Write it in the target's category (e.g. `0L` for an integer data type), or</span></span>
+<span><span class="co">##   convert it with `nv_convert()`.</span></span></code></pre>
+<p>To store non-integer values, convert the <code>AnvlArray</code> to a
+float data type first, e.g. with <code>nv_convert(y, "f32")</code>.</p>
+<p>Writes to dynamic indices outside of the <code>AnvlArray</code> are
+silently ignored, for the same reason as when selecting (see <a href="#indices-outside-of-the-anvlarray">indices outside of the
+<code>AnvlArray</code></a>). Below, only the elements 1 and 3 are
+updated:</p>
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">y</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">100L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1L</span>, <span class="op">-</span><span class="fl">2L</span>, <span class="op">-</span><span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">y</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  -1</span></span>
 <span><span class="co">##   2</span></span>
@@ -462,19 +396,13 @@ ignored:</p>
 <span><span class="co">##   4</span></span>
 <span><span class="co">##   5</span></span>
 <span><span class="co">## [ CPUi32{5} ]</span></span></code></pre>
-<p>Here, the write to index 100 is silently ignored, while indices 1 and
-3 are updated.</p>
-</div>
-<div class="section level3">
-<h3 id="duplicate-indices">Duplicate Indices<a class="anchor" aria-label="anchor" href="#duplicate-indices"></a>
-</h3>
-<p>When writing to the same element multiple times, there is no
-guarantee which value will be written. Specifically, this might differ
-between backends (CPU vs. GPU).</p>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
-<span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10L</span>, <span class="fl">20L</span>, <span class="fl">30L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">x</span></span></code></pre></div>
+<p>When the same element is written several times, it is not specified
+which of the values ends up in it, and this can differ between devices,
+e.g. between the CPU and a GPU:</p>
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">y</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10L</span>, <span class="fl">20L</span>, <span class="fl">30L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">y</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  30</span></span>
 <span><span class="co">##   2</span></span>
@@ -482,20 +410,20 @@ between backends (CPU vs. GPU).</p>
 <span><span class="co">##   4</span></span>
 <span><span class="co">##   5</span></span>
 <span><span class="co">## [ CPUi32{5} ]</span></span></code></pre>
-</div>
 <div class="section level3">
 <h3 id="in-place-updates">In-place Updates<a class="anchor" aria-label="anchor" href="#in-place-updates"></a>
 </h3>
-<p>In eager mode, <code>x[i] &lt;- val</code> creates a new array by
-default, even when R could update <code>x</code> in place. This is
-because {anvl} cannot know whether another R variable still refers to
-the same array, which would otherwise be modified as well. To avoid the
-copy, pass <code>inplace = TRUE</code> among the subscripts, which
-writes the update into the memory of <code>x</code>:</p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
-<span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
-<span><span class="va">x</span></span></code></pre></div>
+<p>Outside of <code><a href="../reference/jit.html">jit()</a></code>, <code>y[i] &lt;- value</code> creates
+a new <code>AnvlArray</code>, even where R would update <code>y</code>
+in place. This is because {anvl} cannot know whether another R variable
+still refers to the same <code>AnvlArray</code>, which would then change
+as well. To avoid the copy, pass <code>inplace = TRUE</code> among the
+subscripts, which writes the update into the memory of
+<code>y</code>:</p>
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">y</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
+<span><span class="va">y</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1</span></span>
 <span><span class="co">##  0</span></span>
@@ -504,20 +432,19 @@ writes the update into the memory of <code>x</code>:</p>
 <span><span class="co">##  5</span></span>
 <span><span class="co">## [ CPUi32{5} ]</span></span></code></pre>
 <p><code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> takes the same argument:
-<code>nv_subset_assign(x, 2:3, value = 0L, inplace = TRUE)</code>.</p>
-<p>This consumes the original array: its memory is <a href="efficiency.html#donation">donated</a> to the result, so every
-other R variable that referred to it can no longer be used
-afterwards.</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
-<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">x</span></span>
-<span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">1L</span></span>
-<span><span class="va">y</span></span></code></pre></div>
+<code>nv_subset_assign(y, 2:3, value = 0L, inplace = TRUE)</code>.</p>
+<p>This consumes the original <code>AnvlArray</code>: its memory is <a href="efficiency.html#donation">donated</a> to the result, so any other
+R variable that referred to it can no longer be used afterwards.</p>
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">z</span> <span class="op">&lt;-</span> <span class="va">y</span></span>
+<span><span class="va">y</span><span class="op">[</span><span class="fl">1</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">1L</span></span>
+<span><span class="va">z</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span></code></pre>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> called on deleted or donated buffer</span></span></code></pre>
 <p>Inside a jitted function, <code>inplace = TRUE</code> is an error.
-There, <code>y</code> would stay valid, so the same code would behave
+There, <code>z</code> would stay valid, so the same code would behave
 differently in eager and in jit mode. The compiler avoids unnecessary
 copies inside <code><a href="../reference/jit.html">jit()</a></code> anyway, so <code>inplace</code> is not
 needed there.</p>

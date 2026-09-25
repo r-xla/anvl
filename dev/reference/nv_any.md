@@ -7,6 +7,9 @@ element is `TRUE`.
 
 ``` r
 nv_any(x, axes = NULL, drop = TRUE)
+
+# S3 method for class 'AnvlArray'
+any(..., na.rm = FALSE)
 ```
 
 ## Arguments
@@ -27,6 +30,18 @@ nv_any(x, axes = NULL, drop = TRUE)
   (`logical(1)`)  
   Whether to drop the reduced axes: removed from the output shape if
   `TRUE`, set to 1 if `FALSE`.
+
+- ...:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  The arrays to reduce, and, when there is only one, further named
+  arguments of `nv_any()`, such as `axes`.
+
+- na.rm:
+
+  (`logical(1)`)  
+  Only used for R values among `...`, which are reduced by base R, as a
+  boolean array has no missing values.
 
 ## Value
 

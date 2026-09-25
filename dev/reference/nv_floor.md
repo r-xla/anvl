@@ -7,6 +7,9 @@ Element-wise floor (round toward negative infinity). You can also use
 
 ``` r
 nv_floor(x)
+
+# S3 method for class 'AnvlArray'
+floor(x)
 ```
 
 ## Arguments

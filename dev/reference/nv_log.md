@@ -7,6 +7,9 @@ Element-wise natural logarithm. You can also use
 
 ``` r
 nv_log(x)
+
+# S3 method for class 'AnvlArray'
+log(x, base = exp(1))
 ```
 
 ## Arguments
@@ -20,6 +23,12 @@ nv_log(x)
   An R value materializes at its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   and is converted in the same way.
+
+- base:
+
+  (`numeric(1)` \|
+  [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  Base of the logarithm; the natural logarithm by default.
 
 ## Value
 

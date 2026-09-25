@@ -12,7 +12,9 @@ side with
 [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
 to decide what they meet at.
 
-See the *Type Promotion* article for more information.
+See the [Data Types and Promotion
+Rules](https://r-xla.github.io/anvl/articles/type-promotion.html)
+article for more information.
 
 ## Usage
 

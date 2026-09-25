@@ -77,4 +77,6 @@ functions promote them to a common one.
 [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md),
 [`nv_promote_to_common()`](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md),
 [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md),
-[`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
+the [Data Types and Promotion
+Rules](https://r-xla.github.io/anvl/articles/type-promotion.html)
+article

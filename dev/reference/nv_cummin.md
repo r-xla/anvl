@@ -6,6 +6,9 @@ Running minimum, optionally along a single axis.
 
 ``` r
 nv_cummin(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
+
+# S3 method for class 'AnvlArray'
+cummin(x)
 ```
 
 ## Arguments

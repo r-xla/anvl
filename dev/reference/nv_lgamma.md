@@ -8,6 +8,9 @@ function. You can also use
 
 ``` r
 nv_lgamma(x)
+
+# S3 method for class 'AnvlArray'
+lgamma(x)
 ```
 
 ## Arguments

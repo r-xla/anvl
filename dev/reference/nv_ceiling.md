@@ -7,6 +7,9 @@ Element-wise ceiling (round toward positive infinity). You can also use
 
 ``` r
 nv_ceiling(x)
+
+# S3 method for class 'AnvlArray'
+ceiling(x)
 ```
 
 ## Arguments

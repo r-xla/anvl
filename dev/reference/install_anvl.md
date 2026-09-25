@@ -47,5 +47,6 @@ prompt: `"1"` always downloads without asking, `"0"` never downloads.
 
 Which plugins you get – and whether CUDA is available at all – is
 decided by the repository anvl was installed from, not by this call. See
-the installation vignette:
-[`vignette("installation", package = "anvl")`](https://r-xla.github.io/anvl/dev/articles/installation.md).
+the
+[Installation](https://r-xla.github.io/anvl/articles/installation.html)
+article.

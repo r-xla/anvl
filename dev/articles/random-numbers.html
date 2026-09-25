@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,13 +112,13 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Random Number Generation</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/random-numbers.Rmd" class="external-link"><code>vignettes/random-numbers.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/random-numbers.Rmd" class="external-link"><code>vignettes/articles/random-numbers.Rmd</code></a></small>
       <div class="d-none name"><code>random-numbers.Rmd</code></div>
     </div>
 
     
     
-<p>In this vignette, you will learn how to generate random numbers in
+<p>In this article, you will learn how to generate random numbers in
 {anvl}, which is different from base R, where random number generation
 uses a global state (<code>.Random.seed</code>) that is automatically
 updated after each call:</p>
@@ -150,11 +151,8 @@ into a state using <code><a href="../reference/nv_rng_state.html">nv_rng_state()
 <span><span class="co">#&gt;  42</span></span>
 <span><span class="co">#&gt;   0</span></span>
 <span><span class="co">#&gt; [ CPUui64{2} ]</span></span></code></pre></div>
-<p>The main functions for generating random numbers are
-<code><a href="../reference/nv_uniform.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>,
-<code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, and
-<code><a href="../reference/nv_sample.html">nv_sample()</a></code>. All those functions return a named list of two
-elements:</p>
+<p>The available samplers are listed in the <a href="../reference/index.html#distributions">distributions</a> section
+of the reference. All of them return a named list of two elements:</p>
 <ol style="list-style-type: decimal">
 <li>
 <code>state</code> – the <strong>new</strong> RNG state, to be used

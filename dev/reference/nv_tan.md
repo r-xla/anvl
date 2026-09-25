@@ -7,6 +7,9 @@ Element-wise tangent. You can also use
 
 ``` r
 nv_tan(x)
+
+# S3 method for class 'AnvlArray'
+tan(x)
 ```
 
 ## Arguments

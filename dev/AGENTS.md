@@ -166,9 +166,9 @@ The data types and the words the docs use for groups of them are in
 
 An R value entering a program is not converted at the boundary – it is
 built into the program at the dtype its use site needs, which is what
-makes `x_f64 / sqrt(2)` exact.
-[`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-is the reference for how this works and for the `.promote` rules
+makes `x_f64 / sqrt(2)` exact. The Data Types and Promotion Rules
+article (`vignettes/articles/type-promotion.Rmd`) is the reference for
+how this works and for the `.promote` rules
 ([`promotion_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
 [`promotion_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
 [`promotion_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),

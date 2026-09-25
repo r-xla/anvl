@@ -49,8 +49,9 @@ outputs by default, or plain R values when `unwrap = TRUE`.
 If the graph returns multiple outputs (e.g. a nested list), the compiled
 function returns the same structure by rebuilding the output tree in R.
 
-For a list of supported primitives see
-[`vignette("primitives")`](https://r-xla.github.io/anvl/dev/articles/primitives.md).
+For a list of supported primitives see the [Primitives
+Reference](https://r-xla.github.io/anvl/articles/primitives.html)
+article.
 
 Supported data types are `f64`, `i32` and `bool`. The code generator
 currently supports arrays up to rank 5. Some primitives are more

@@ -7,6 +7,9 @@ Element-wise inverse hyperbolic tangent. You can also use
 
 ``` r
 nv_atanh(x)
+
+# S3 method for class 'AnvlArray'
+atanh(x)
 ```
 
 ## Arguments

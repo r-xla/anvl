@@ -7,6 +7,9 @@ Element-wise inverse hyperbolic cosine. You can also use
 
 ``` r
 nv_acosh(x)
+
+# S3 method for class 'AnvlArray'
+acosh(x)
 ```
 
 ## Arguments

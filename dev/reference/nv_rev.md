@@ -8,6 +8,9 @@ which always reverses along every axis.
 
 ``` r
 nv_rev(x, axes = NULL)
+
+# S3 method for class 'AnvlArray'
+rev(x)
 ```
 
 ## Arguments

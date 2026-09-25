@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,16 +112,16 @@
       <img src="../logo.svg" class="logo" alt=""><h1>JIT Deep Dive</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/jit.Rmd" class="external-link"><code>vignettes/jit.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/jit.Rmd" class="external-link"><code>vignettes/articles/jit.Rmd</code></a></small>
       <div class="d-none name"><code>jit.Rmd</code></div>
     </div>
 
     
     
-<p>This vignette explains what actually happens when you wrap a function
+<p>This article explains what actually happens when you wrap a function
 with <code><a href="../reference/jit.html">jit()</a></code>. Understanding this is what lets you avoid
-common pitfals on tracing-based compilers. If you haven’t yet, read the
-<a href="anvl.html">Get Started</a> vignette first.</p>
+common pitfalls of tracing-based compilers. If you haven’t yet, read the
+<a href="anvl.html">Get Started</a> article first.</p>
 <p>We will use the simple <code>linear</code> function as the running
 example.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -131,7 +132,7 @@ example.</p>
 <div class="section level2">
 <h2 id="how-jit-works">How <code>jit()</code> works<a class="anchor" aria-label="anchor" href="#how-jit-works"></a>
 </h2>
-<p>In pseudo-R, <code>jit(f)</code> returns roughly this closure:</p>
+<p>In pseudo-R, <code>jit</code> is roughly defined as:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jit</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">f</span>, <span class="va">static</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">cache</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/hashtab.html" class="external-link">hashtab</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -152,9 +153,9 @@ example.</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Trace</strong> the R code once with placeholder values
-(except for <code>static</code> arguments covered below), recording the
-sequence of primitive operations into an intermediate representation
-called an <code>AnvlGraph</code>.</li>
+(except for <code>static</code> arguments, covered in <a href="#the-compilation-cache">the compilation cache</a> below),
+recording the sequence of primitive operations into an intermediate
+representation called an <code>AnvlGraph</code>.</li>
 <li>
 <strong>Compile</strong> that graph to an XLA executable and cache
 it under a key derived from the inputs, which uses abstract types for
@@ -255,11 +256,11 @@ using <code><a href="../reference/jit.html">jit()</a></code>.</p>
 <ul>
 <li>Call <code><a href="../reference/jit.html">jit()</a></code> once on a function and reuse the result;
 calling <code><a href="../reference/jit.html">jit()</a></code> inside a loop creates a fresh cache on every
-iteration and defeats the point:</li>
+iteration and defeats the point.</li>
 <li>For functions that will be called many times with consistent shapes,
 compilation is a one-time cost. For computations on shapes that won’t
-recur, the compile time may dominate – see <a href="efficiency.html#padding-inputs-to-avoid-recompilation">Padding
-Inputs to Avoid Recompilation</a> in the efficiency vignette for one way
+recur, the compile time may dominate – see <a href="efficiency.html#padding-inputs-to-avoid-recompilation">padding
+inputs to avoid recompilation</a> in the efficiency article for one way
 to keep the cache small.</li>
 </ul>
 </div>
@@ -269,10 +270,10 @@ to keep the cache small.</li>
 </h2>
 <p><em>Tracing</em> is how the R code is translated into a form that the
 XLA compiler can understand. It works by replacing the dynamic inputs
-with special (<code>GraphBox</code>) values and runnig it. Instead of
+with special (<code>GraphBox</code>) values and running it. Instead of
 doing the array computations, this will instead record every primitive
 operation in an <code>AnvlGraph</code>, which represents the
-<em>evaluation trace</em>. For the purposes of this vignette you can
+<em>evaluation trace</em>. For the purposes of this article you can
 think of tracing and the subsequent XLA compilation as a single phase
 that runs once per cache miss. Note that this is different from R’s
 <code><a href="https://rdrr.io/r/base/trace.html" class="external-link">trace()</a></code> function, which lets you insert code into
@@ -303,7 +304,7 @@ inputs, a body and outputs. However, the content is more structured:</p>
 function calls are inlined.</li>
 <li>Types are fully specified.</li>
 <li>Every variable is assigned to once, i.e. the program is in SSA
-(Single Static Assignment) form.</li>
+(Static Single Assignment) form.</li>
 </ul>
 <p>Crucially, only <code>prim_*</code> calls (and the <code>nv_*</code>
 API functions or overloaded operators that delegate to them) get
@@ -316,9 +317,9 @@ evaluation trace is, but is not present in the traced graph itself.</p>
 functions whose output depends on their arguments and nothing else, and
 that have no R-level side effects. This contract is a consequence of
 both how the caching works and that the compiled program runs outside of
-R and only communicates back to the R interpreter via it’s return
-values. Concretely, the function’s execution path – the specific
-sequence of primitive calls it performs – must depend only on:</p>
+R and only communicates back to the R interpreter via its return values.
+Concretely, the function’s execution path – the specific sequence of
+primitive calls it performs – must depend only on:</p>
 <ol style="list-style-type: decimal">
 <li>The <em>abstract</em> representation (shape and dtype) of each
 dynamic input, and</li>
@@ -331,7 +332,7 @@ and where its behavior might be surprising.</p>
 <h3 id="r-loops-are-unrolled">R loops are unrolled<a class="anchor" aria-label="anchor" href="#r-loops-are-unrolled"></a>
 </h3>
 <p>Tracing runs your R code and records primitive operations in the
-graph. Because <code>for</code> is not an anvl primitive, it will be
+graph. Because <code>for</code> is not an {anvl} primitive, it will be
 executed as usual and all the primitive calls encountered will be
 recorded in the graph. Here we apply the <code>linear</code> function
 <code>n</code> times.</p>
@@ -402,19 +403,19 @@ enclosing environment:</p>
 combination with <code><a href="../reference/jit.html">jit()</a></code>’s caching mechanism. The closed-over
 <code>threshold</code> does not influence the cache key, so subsequent
 calls with the same dynamic input type would reuse the executable
-produced when <code>threshold</code> was <code>0.5</code>, no matter how
-<code>threshold</code> is at call time. The only fix is to not let the
-graph depend on values outside the function’s signature – in this case,
-make <code>threshold</code> an explicit static argument.</p>
+produced when <code>threshold</code> was <code>0.5</code>, whatever
+value <code>threshold</code> has at call time. The only fix is to not
+let the graph depend on values outside the function’s signature – in
+this case, make <code>threshold</code> an explicit static argument.</p>
 </div>
 <div class="section level3">
 <h3 id="closed-over-values-become-constants">Closed-over values become constants<a class="anchor" aria-label="anchor" href="#closed-over-values-become-constants"></a>
 </h3>
-<p>We just saw an extreme version of this in the <code>if</code>
-section: a closed-over R variable picked the <em>branch</em> that ended
-up in the graph. The same dynamic applies to closed-over values used as
-plain operands – their value at trace time is read once and baked into
-the graph.</p>
+<p>We just saw an extreme version of this in the <a href="#r-if-statements-pick-one-branch">R <code>if</code> statements
+pick one branch</a> section: a closed-over R variable picked the
+<em>branch</em> that ended up in the graph. The same dynamic applies to
+closed-over values used as plain operands – their value at trace time is
+read once and baked into the graph.</p>
 <p>Here we close over a default bias instead of taking it as an
 argument:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -437,10 +438,11 @@ executable either).</p>
 <div class="section level3">
 <h3 id="side-effects-only-fire-during-tracing">Side effects only fire during tracing<a class="anchor" aria-label="anchor" href="#side-effects-only-fire-during-tracing"></a>
 </h3>
-<p>The <em>Tracing Contract</em> above already noted that a jitted
-function must be pure. This subsection makes the consequence concrete:
-<strong>R-level side effects only have an effect while the graph is
-being built</strong>, not on subsequent calls.</p>
+<p>The <a href="#the-tracing-contract">tracing contract</a> above
+already noted that a jitted function must be pure. This subsection makes
+the consequence concrete: <strong>R-level side effects only have an
+effect while the graph is being built</strong>, not on subsequent
+calls.</p>
 <p>A common R pattern for stateful objects is to wrap them in an
 environment, since environments give you reference semantics:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -490,7 +492,7 @@ calls.</p>
 <li>The mutation <code>e$beta &lt;- ...</code> is a plain R assignment,
 not a <code>prim_*</code> call, so it doesn’t get recorded into the
 <code>AnvlGraph</code>. It runs once, during tracing – but the value
-being assigned is anvl’s internal trace placeholder (a
+being assigned is {anvl}’s internal trace placeholder (a
 <code>GraphBox</code>), not a real array. So after the first call,
 <code>model$beta</code> is <em>broken</em>: it holds a leaked tracer
 instead of the array you expected.</li>
@@ -498,8 +500,8 @@ instead of the array you expected.</li>
 the R body, so the <code>e$beta &lt;- ...</code> line will not be
 executed again. And because <code>e$beta</code> was a closed-over R
 value at trace time, its initial value (<code>c(0, 0, 0)</code>) is
-baked into the graph as a literal (per <em>Closed-over values become
-constants</em> above), so every call returns the same
+baked into the graph as a literal (per <a href="#closed-over-values-become-constants">closed-over values become
+constants</a> above), so every call returns the same
 <code>-0.1</code>.</li>
 </ul>
 <p>This is why <code><a href="../reference/jit.html">jit()</a></code>-compiled functions must be
@@ -527,38 +529,12 @@ function:</p>
 <div class="section level3">
 <h3 id="donating-inputs">Donating inputs<a class="anchor" aria-label="anchor" href="#donating-inputs"></a>
 </h3>
-<p>By default, a compiled executable treats its inputs as read-only: the
-R-visible input arrays remain valid after the call, and XLA has to
-allocate fresh memory for any output of matching shape. For long
-training loops over large parameters, this means every step allocates a
-new parameter buffer and leaves the previous one for the garbage
-collector.</p>
-<p>Via the <code>donate</code> argument of <code><a href="../reference/jit.html">jit()</a></code>, you can
-tell XLA that an input will not be used after the call, so it is free to
-reuse the input array’s memory for an output.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">w</span>, <span class="va">g</span><span class="op">)</span> <span class="va">w</span> <span class="op">-</span> <span class="fl">0.1</span> <span class="op">*</span> <span class="va">g</span>, donate <span class="op">=</span> <span class="st">"w"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
-<span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="fl">0.1</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/step.html" class="external-link">step</a></span><span class="op">(</span><span class="va">w</span>, <span class="va">g</span><span class="op">)</span></span>
-<span><span class="va">w</span></span>
-<span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  0.9900</span></span>
-<span><span class="co">#&gt;  1.9900</span></span>
-<span><span class="co">#&gt;  2.9900</span></span>
-<span><span class="co">#&gt; [ CPUf32{3} ]</span></span></code></pre></div>
-<p>The compiled executable now consumes <code>w</code>’s buffer as part
-of the call. The caller must not reuse an array that was donated to a
-function, otherwise an error is thrown:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">w_old</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
-<span><span class="va">w_new</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/step.html" class="external-link">step</a></span><span class="op">(</span><span class="va">w_old</span>, <span class="va">g</span><span class="op">)</span></span>
-<span><span class="va">w_old</span>     <span class="co"># the old buffer has been donated</span></span>
-<span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> called on deleted or donated buffer</span></span></code></pre></div>
+<p>By default, a compiled executable treats its inputs as read-only, so
+it has to allocate new memory for its outputs. The <code>donate</code>
+argument of <code><a href="../reference/jit.html">jit()</a></code> marks inputs that will not be used after
+the call, which allows XLA to reuse their memory for the outputs. See
+the <a href="efficiency.html#donation">Donation</a> section of the
+efficiency article for an example.</p>
 </div>
 <div class="section level3">
 <h3 id="device-placement">Device placement<a class="anchor" aria-label="anchor" href="#device-placement"></a>
@@ -572,8 +548,8 @@ options are:</p>
 <ul>
 <li>
 <strong>Inferred from inputs (default).</strong> If you don’t pass
-<code>device =</code>, anvl looks at the devices of the array inputs at
-call time, requires them to agree, and compiles for that device. If
+<code>device =</code>, {anvl} looks at the devices of the array inputs
+at call time, requires them to agree, and compiles for that device. If
 there are no array inputs, it falls back to the
 <code><a href="../reference/default_device.html">default_device()</a></code>.</li>
 <li>
@@ -585,7 +561,7 @@ automatically.</li>
 </ul>
 <p>See the documentation of the <code>device</code> arg in
 <code><a href="../reference/jit.html">help(jit)</a></code> for more information.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="va">y</span><span class="op">)</span></span>
 <span><span class="va">add_cpu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="va">y</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span></span>
 <span></span>
@@ -596,11 +572,10 @@ automatically.</li>
 <span><span class="co">#&gt; &lt;CpuDevice(id=0)&gt;</span></span>
 <span><span class="fu"><a href="../reference/device.html">device</a></span><span class="op">(</span><span class="fu">add_cpu</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span><span class="op">)</span>                        <span class="co"># pinned</span></span>
 <span><span class="co">#&gt; &lt;CpuDevice(id=0)&gt;</span></span></code></pre></div>
-<p>Because the device is part of the cache key (see <em>The compilation
-cache</em> above), a single <code><a href="../reference/jit.html">jit()</a></code>ted function can hold
-compiled binaries for several devices at once, unless
-<code>device</code> was specified explicitly during
-<code><a href="../reference/jit.html">jit()</a></code>.</p>
+<p>Because the device is part of the cache key (see <a href="#the-compilation-cache">the compilation cache</a> above), a single
+<code><a href="../reference/jit.html">jit()</a></code>ted function can hold compiled binaries for several
+devices at once, unless <code>device</code> was specified explicitly
+during <code><a href="../reference/jit.html">jit()</a></code>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

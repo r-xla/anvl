@@ -9,6 +9,9 @@ a float holds an infinity, so the answer for any other data type is all
 
 ``` r
 nv_is_infinite(x)
+
+# S3 method for class 'AnvlArray'
+is.infinite(x)
 ```
 
 ## Arguments

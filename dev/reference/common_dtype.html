@@ -13,7 +13,7 @@ is the exception – no signed data type holds it, and an integer does not
 become a float on its own – so ui64 and a signed integer have no common
 data type and the pair is an error. Convert one side with nv_convert()
 to decide what they meet at.
-See the Type Promotion article for more information."><meta property="og:description" content="Compute the common data type.
+See the Data Types and Promotion Rules article for more information."><meta property="og:description" content="Compute the common data type.
 Two integer data types meet at one that holds every value of both: a signed
 and an unsigned one at the narrowest signed data type wide enough for the
 unsigned side (ui8 and i8 at i16, ui32 and i32 at i64). ui64
@@ -21,7 +21,7 @@ is the exception – no signed data type holds it, and an integer does not
 become a float on its own – so ui64 and a signed integer have no common
 data type and the pair is an error. Convert one side with nv_convert()
 to decide what they meet at.
-See the Type Promotion article for more information."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+See the Data Types and Promotion Rules article for more information."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -43,22 +43,23 @@ See the Type Promotion article for more information."><meta property="og:image" 
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -100,7 +101,7 @@ is the exception – no signed data type holds it, and an integer does not
 become a float on its own – so <code>ui64</code> and a signed integer have no common
 data type and the pair is an error. Convert one side with <code><a href="nv_convert.html">nv_convert()</a></code>
 to decide what they meet at.</p>
-<p>See the <em>Type Promotion</em> article for more information.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/type-promotion.html">Data Types and Promotion Rules</a> article for more information.</p>
     </div>
 
     <div class="section level2">

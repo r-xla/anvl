@@ -10,6 +10,9 @@ non-negative number. You can also use
 
 ``` r
 nv_sign(x)
+
+# S3 method for class 'AnvlArray'
+sign(x)
 ```
 
 ## Arguments

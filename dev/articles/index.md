@@ -3,6 +3,8 @@
 ### All vignettes
 
 - [Get Started](https://r-xla.github.io/anvl/dev/articles/anvl.md):
+- [Automatic
+  Differentiation](https://r-xla.github.io/anvl/dev/articles/autodiff.md):
 - [Efficiency](https://r-xla.github.io/anvl/dev/articles/efficiency.md):
 - [Extending the
   API](https://r-xla.github.io/anvl/dev/articles/extending_api.md):
@@ -15,9 +17,8 @@
 - [Installation](https://r-xla.github.io/anvl/dev/articles/installation.md):
 - [Internals](https://r-xla.github.io/anvl/dev/articles/internals.md):
 - [JIT Deep Dive](https://r-xla.github.io/anvl/dev/articles/jit.md):
-- [Logistic
-  Regression](https://r-xla.github.io/anvl/dev/articles/logistic-regression.md):
 - [Metropolis-Hastings](https://r-xla.github.io/anvl/dev/articles/metropolis-hastings.md):
+- [Next Steps](https://r-xla.github.io/anvl/dev/articles/next_steps.md):
 - [Primitives
   Reference](https://r-xla.github.io/anvl/dev/articles/primitives.md):
 - [Random Number
@@ -25,5 +26,5 @@
 - [Static Shape
   Restriction](https://r-xla.github.io/anvl/dev/articles/static_shapes.md):
 - [Subsetting](https://r-xla.github.io/anvl/dev/articles/subsetting.md):
-- [Type
-  Promotion](https://r-xla.github.io/anvl/dev/articles/type-promotion.md):
+- [Data Types and Promotion
+  Rules](https://r-xla.github.io/anvl/dev/articles/type-promotion.md):

@@ -9,6 +9,9 @@ as a constant rather than computed.
 
 ``` r
 nv_is_nan(x)
+
+# S3 method for class 'AnvlArray'
+is.nan(x)
 ```
 
 ## Arguments

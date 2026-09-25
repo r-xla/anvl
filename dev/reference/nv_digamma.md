@@ -8,6 +8,9 @@ function). You can also use
 
 ``` r
 nv_digamma(x)
+
+# S3 method for class 'AnvlArray'
+digamma(x)
 ```
 
 ## Arguments

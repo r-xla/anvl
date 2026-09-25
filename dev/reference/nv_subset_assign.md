@@ -6,6 +6,9 @@ array. You can also use the `[<-` operator.
 ## Usage
 
 ``` r
+# S3 method for class 'AnvlArray'
+x[...] <- value
+
 nv_subset_assign(x, ..., value, inplace = FALSE)
 ```
 
@@ -20,9 +23,9 @@ nv_subset_assign(x, ..., value, inplace = FALSE)
 
 - ...:
 
-  Subset specifications, one per axis. See
-  [`vignette("subsetting")`](https://r-xla.github.io/anvl/dev/articles/subsetting.md)
-  for details.
+  Subset specifications, one per axis. See the
+  [Subsetting](https://r-xla.github.io/anvl/articles/subsetting.html)
+  article for details.
 
 - value:
 
@@ -55,8 +58,8 @@ Has `x`'s data type and shape, with the subset replaced.
 ## See also
 
 [`nv_subset()`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md),
-[`vignette("subsetting")`](https://r-xla.github.io/anvl/dev/articles/subsetting.md)
-for a comprehensive guide.
+the [Subsetting](https://r-xla.github.io/anvl/articles/subsetting.html)
+article for a comprehensive guide.
 
 ## Examples
 

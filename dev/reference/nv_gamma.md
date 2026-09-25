@@ -7,6 +7,9 @@ Element-wise gamma function. You can also use
 
 ``` r
 nv_gamma(x)
+
+# S3 method for class 'AnvlArray'
+gamma(x)
 ```
 
 ## Arguments

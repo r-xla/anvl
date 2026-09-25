@@ -45,12 +45,13 @@ variable (read once, when anvl is loaded) is used instead, written as
 
 The defaults decide only what a value becomes when *nothing else does*:
 an R value that meets a typed array of its own category still takes that
-array's data type, whatever the default
-([`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)).
-The data type you name is taken on trust, so one that does not fit is an
-error where the data is allocated or the program compiled rather than
-where it is set. Which ones fit is the backend's own business – see the
-*Supported data types* section of
+array's data type, whatever the default (see the [Data Types and
+Promotion
+Rules](https://r-xla.github.io/anvl/articles/type-promotion.html)
+article). The data type you name is taken on trust, so one that does not
+fit is an error where the data is allocated or the program compiled
+rather than where it is set. Which ones fit is the backend's own
+business – see the *Supported data types* section of
 [`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
 and of
 [`AnvlBackendQuickr()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendQuickr.md),

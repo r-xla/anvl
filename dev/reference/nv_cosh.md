@@ -7,6 +7,9 @@ Element-wise hyperbolic cosine. You can also use
 
 ``` r
 nv_cosh(x)
+
+# S3 method for class 'AnvlArray'
+cosh(x)
 ```
 
 ## Arguments

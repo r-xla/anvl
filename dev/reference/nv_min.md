@@ -6,6 +6,9 @@ Finds the minimum of array elements along the specified axes.
 
 ``` r
 nv_min(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
+
+# S3 method for class 'AnvlArray'
+min(..., na.rm = FALSE)
 ```
 
 ## Arguments
@@ -34,6 +37,17 @@ nv_min(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
   (`logical(1)`)  
   How to handle `NaN` values in float inputs. If `FALSE` (default),
   `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+
+- ...:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  The arrays to reduce, and, when there is only one, further named
+  arguments of `nv_min()`, such as `axes`.
+
+- na.rm:
+
+  (`logical(1)`)  
+  Forwarded to `nv_min()`'s `nan_rm` argument.
 
 ## Value
 

@@ -10,6 +10,9 @@ answers `TRUE` for an integer.
 
 ``` r
 nv_is_finite(x)
+
+# S3 method for class 'AnvlArray'
+is.finite(x)
 ```
 
 ## Arguments

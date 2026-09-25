@@ -8,6 +8,9 @@ multiplied as zeroes and ones, like
 
 ``` r
 nv_prod(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
+
+# S3 method for class 'AnvlArray'
+prod(..., na.rm = FALSE)
 ```
 
 ## Arguments
@@ -36,6 +39,17 @@ nv_prod(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
   (`logical(1)`)  
   How to handle `NaN` values in float inputs. If `FALSE` (default),
   `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+
+- ...:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  The arrays to reduce, and, when there is only one, further named
+  arguments of `nv_prod()`, such as `axes`.
+
+- na.rm:
+
+  (`logical(1)`)  
+  Forwarded to `nv_prod()`'s `nan_rm` argument.
 
 ## Value
 

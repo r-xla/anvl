@@ -10,6 +10,9 @@ poles.
 
 ``` r
 nv_tanpi(x)
+
+# S3 method for class 'AnvlArray'
+tanpi(x)
 ```
 
 ## Arguments

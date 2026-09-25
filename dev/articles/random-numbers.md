@@ -1,6 +1,6 @@
 # Random Number Generation
 
-In this vignette, you will learn how to generate random numbers in
+In this article, you will learn how to generate random numbers in
 {anvl}, which is different from base R, where random number generation
 uses a global state (`.Random.seed`) that is automatically updated after
 each call:
@@ -44,14 +44,10 @@ state
 #> [ CPUui64{2} ]
 ```
 
-The main functions for generating random numbers are
-[`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
-[`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
-[`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
-[`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
-and
-[`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md).
-All those functions return a named list of two elements:
+The available samplers are listed in the
+[distributions](https://r-xla.github.io/anvl/dev/reference/index.html#distributions)
+section of the reference. All of them return a named list of two
+elements:
 
 1.  `state` – the **new** RNG state, to be used for subsequent random
     number generation.

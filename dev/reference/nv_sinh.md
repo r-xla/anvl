@@ -7,6 +7,9 @@ Element-wise hyperbolic sine. You can also use
 
 ``` r
 nv_sinh(x)
+
+# S3 method for class 'AnvlArray'
+sinh(x)
 ```
 
 ## Arguments

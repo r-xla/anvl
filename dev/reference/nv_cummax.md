@@ -6,6 +6,9 @@ Running maximum, optionally along a single axis.
 
 ``` r
 nv_cummax(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
+
+# S3 method for class 'AnvlArray'
+cummax(x)
 ```
 
 ## Arguments

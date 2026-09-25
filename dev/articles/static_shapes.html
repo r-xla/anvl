@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,13 +112,13 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Static Shape Restriction</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/static_shapes.Rmd" class="external-link"><code>vignettes/static_shapes.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/static_shapes.Rmd" class="external-link"><code>vignettes/articles/static_shapes.Rmd</code></a></small>
       <div class="d-none name"><code>static_shapes.Rmd</code></div>
     </div>
 
     
     
-<p>This vignette covers the static shape restriction within
+<p>This article covers the static shape restriction within
 <code><a href="../reference/jit.html">jit()</a></code>. First, we describe what this means and then we
 discuss how to work around it.</p>
 <p>Whenever the XLA compiler that underpins <code><a href="../reference/jit.html">jit()</a></code> compiles
@@ -134,15 +135,14 @@ The cost is that some operations require rethinking, and a few cannot
 currently be expressed inside <code><a href="../reference/jit.html">jit()</a></code> at all.</p>
 <p>For many operations, you can work around the restriction by keeping
 shapes fixed and using a logical mask – the same idea presented in the
-<em>Padding</em> section of the efficiency vignette. We cover some
-common patterns below. For operations we cannot yet handle in-graph
-(such as <code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code> or <code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code>), you currently
-need to convert the <code>AnvlArray</code> back to R, apply the
-operation there, and then convert the result back to an
+<a href="efficiency.html#padding-inputs-to-avoid-recompilation">padding
+inputs to avoid recompilation</a> section of the efficiency article. We
+cover some common patterns below. For operations we cannot yet handle
+in-graph (such as <code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code> or <code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code>), you
+currently need to convert the <code>AnvlArray</code> back to R, apply
+the operation there, and then convert the result back to an
 <code>AnvlArray</code> to resume the computation. We hope to lift the
-static-shape restriction in the long term and add functions like
-<code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code> and <code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code> to {anvl}’s eager API to
-make this more ergonomic.</p>
+static-shape restriction in the long term.</p>
 <div class="section level2">
 <h2 id="the-masking-pattern">The masking pattern<a class="anchor" aria-label="anchor" href="#the-masking-pattern"></a>
 </h2>

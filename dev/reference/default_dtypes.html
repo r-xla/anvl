@@ -35,7 +35,7 @@ When the option is not set, the ANVL_DEFAULT_DTYPES environment variable
 backend, e.g. ANVL_DEFAULT_DTYPES=&quot;float=f64,int=i64&quot;.
 The defaults decide only what a value becomes when nothing else does: an R
 value that meets a typed array of its own category still takes that array's
-data type, whatever the default (vignette(&quot;type-promotion&quot;)). The data
+data type, whatever the default (see the Data Types and Promotion Rules article). The data
 type you name is taken on trust, so one that does not fit is an error where
 the data is allocated or the program compiled rather than where it is set.
 Which ones fit is the backend's own business – see the Supported data
@@ -72,7 +72,7 @@ When the option is not set, the ANVL_DEFAULT_DTYPES environment variable
 backend, e.g. ANVL_DEFAULT_DTYPES=&quot;float=f64,int=i64&quot;.
 The defaults decide only what a value becomes when nothing else does: an R
 value that meets a typed array of its own category still takes that array's
-data type, whatever the default (vignette(&quot;type-promotion&quot;)). The data
+data type, whatever the default (see the Data Types and Promotion Rules article). The data
 type you name is taken on trust, so one that does not fit is an error where
 the data is allocated or the program compiled rather than where it is set.
 Which ones fit is the backend's own business – see the Supported data
@@ -101,22 +101,23 @@ under, so changing them never serves a stale program."><meta property="og:image"
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -177,7 +178,7 @@ the backend's default integer dtype unchanged:</p>
 backend, e.g. <code>ANVL_DEFAULT_DTYPES="float=f64,int=i64"</code>.</p>
 <p>The defaults decide only what a value becomes when <em>nothing else does</em>: an R
 value that meets a typed array of its own category still takes that array's
-data type, whatever the default (<code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code>). The data
+data type, whatever the default (see the <a href="https://r-xla.github.io/anvl/articles/type-promotion.html">Data Types and Promotion Rules</a> article). The data
 type you name is taken on trust, so one that does not fit is an error where
 the data is allocated or the program compiled rather than where it is set.
 Which ones fit is the backend's own business – see the <em>Supported data

@@ -8,6 +8,9 @@ than 2 axes.
 
 ``` r
 nv_matmul(x, y, precision = "highest")
+
+# S3 method for class 'AnvlArray'
+x %*% y
 ```
 
 ## Arguments

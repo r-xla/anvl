@@ -8,6 +8,9 @@ also use the `!` operator, which expects `bool` inputs.
 
 ``` r
 nv_not(x)
+
+# S3 method for class 'AnvlArray'
+!x
 ```
 
 ## Arguments

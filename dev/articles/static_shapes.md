@@ -1,6 +1,6 @@
 # Static Shape Restriction
 
-This vignette covers the static shape restriction within
+This article covers the static shape restriction within
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md). First, we
 describe what this means and then we discuss how to work around it.
 
@@ -22,16 +22,15 @@ currently be expressed inside
 
 For many operations, you can work around the restriction by keeping
 shapes fixed and using a logical mask – the same idea presented in the
-*Padding* section of the efficiency vignette. We cover some common
-patterns below. For operations we cannot yet handle in-graph (such as
+[padding inputs to avoid
+recompilation](https://r-xla.github.io/anvl/dev/articles/efficiency.html#padding-inputs-to-avoid-recompilation)
+section of the efficiency article. We cover some common patterns below.
+For operations we cannot yet handle in-graph (such as
 [`which()`](https://rdrr.io/r/base/which.html) or
 [`unique()`](https://rdrr.io/r/base/unique.html)), you currently need to
 convert the `AnvlArray` back to R, apply the operation there, and then
 convert the result back to an `AnvlArray` to resume the computation. We
-hope to lift the static-shape restriction in the long term and add
-functions like [`which()`](https://rdrr.io/r/base/which.html) and
-[`unique()`](https://rdrr.io/r/base/unique.html) to {anvl}’s eager API
-to make this more ergonomic.
+hope to lift the static-shape restriction in the long term.
 
 ## The masking pattern
 

@@ -7,6 +7,9 @@ Element-wise cosine. You can also use
 
 ``` r
 nv_cos(x)
+
+# S3 method for class 'AnvlArray'
+cos(x)
 ```
 
 ## Arguments

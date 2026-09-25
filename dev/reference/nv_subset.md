@@ -8,6 +8,9 @@ along a axis.
 ## Usage
 
 ``` r
+# S3 method for class 'AnvlArray'
+x[...]
+
 nv_subset(x, ...)
 ```
 
@@ -23,9 +26,9 @@ nv_subset(x, ...)
 - ...:
 
   Subset specifications, one per axis. Omitted trailing axes select all
-  elements. See
-  [`vignette("subsetting")`](https://r-xla.github.io/anvl/dev/articles/subsetting.md)
-  for details.
+  elements. See the
+  [Subsetting](https://r-xla.github.io/anvl/articles/subsetting.html)
+  article for details.
 
 ## Value
 
@@ -36,9 +39,9 @@ scalar index drops its axis, a range or an index array keeps it.
 ## See also
 
 [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
-for updating subsets,
-[`vignette("subsetting")`](https://r-xla.github.io/anvl/dev/articles/subsetting.md)
-for a comprehensive guide.
+for updating subsets, the
+[Subsetting](https://r-xla.github.io/anvl/articles/subsetting.html)
+article for a comprehensive guide.
 
 ## Examples
 

@@ -1,25 +1,52 @@
 # Get Started
 
-In this vignette, you will learn everything you need to know to get
-started implementing numerical algorithms using {anvl}. If you have
-experience with JAX in Python, you should feel right at home.
+{anvl} is a package for writing numerical code in R that runs fast, on
+the CPU or a GPU. Programs are ordinary R functions that operate on
+arrays, and {anvl} adds two things on top: it can compile a function so
+that it runs much faster than the R interpreter would run it, and it can
+compute the gradients of a function automatically. In return, the code
+has to be written in a slightly more restricted style than usual R code.
+In this article, you will learn the basics by fitting a linear model. If
+you have experience with JAX in Python, you should feel right at home.
+
+## When to Use {anvl}
+
+{anvl} is not a general replacement for base R. Every call into {anvl}
+has a small fixed overhead, and a function has to be compiled before it
+runs fast, which is only worth it if the work being done is large
+enough. {anvl} excels at:
+
+- Computations on large arrays, e.g. linear algebra on big matrices or
+  elementwise operations on millions of values.
+- Functions that are called many times with inputs of the same shape,
+  such as a step of an optimization algorithm, a simulation, or an MCMC
+  sampler, where the compilation cost is paid only once.
+- Algorithms that need gradients, such as fitting models by gradient
+  descent.
+- Computations that should run on a GPU.
+
+In contrast, base R is usually the better choice for small, one-off
+computations on short vectors, where the overhead of {anvl} dominates,
+and for tasks such as data wrangling, string processing, or operations
+whose result size depends on the data (such as filtering), which {anvl}
+does not target.
 
 ## The `AnvlArray`
 
-We will start by introducing the main data structure, which is the
-`AnvlArray`. It is essentially like an R array, with some differences:
+The main data structure of {anvl} is the `AnvlArray`. It is essentially
+like an R array, with some differences:
 
-1.  It supports more data types, such as different precisions or
-    unsigned integers.
-2.  The array is managed by a specific backend (which we will ignore for
-    now) and can live on different *device*s, such as CPU (aka host) or
-    a GPU.
-3.  0-dimensional arrays are used to represent scalars.
+1.  The precision of the numbers can be chosen, e.g. 32-bit or 64-bit
+    floats, and there are more integer types, such as unsigned integers.
+2.  An array can live on the CPU or on a GPU, which is called its
+    *device*.
+3.  A scalar is an array with no axes, not a vector of length 1.
 
-We can create an `AnvlArray` from R objects using
+An `AnvlArray` is created from R data using
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md).
-Below, we create a 0-dimensional array (i.e., a scalar) that holds a
-16-bit integer living on the CPU.
+Like most functions in {anvl}, its name starts with `nv_`, which is
+short for a**nv**l. Below, we create a scalar that holds a 16-bit
+integer living on the CPU.
 
 ``` r
 
@@ -32,10 +59,18 @@ nv_array(1L, dtype = "i16", device = "cpu", shape = integer())
     ##  1
     ## [ CPUi16{} ]
 
-Note that for the creation of scalars, you can also use
+For scalars,
 [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-as a shorthand to skip specifying the shape and omit specifying the
-device, as CPU is the default.
+is a shorthand that does not require specifying the shape. The device
+can also be omitted, in which case the default device is used. This is
+the CPU, unless configured otherwise via the `anvl.default_device`
+option.
+[`with_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
+and
+[`local_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
+change it temporarily, and
+[`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)
+reports the current one.
 
 ``` r
 
@@ -47,8 +82,7 @@ x
     ##  1
     ## [ CPUi16{} ]
 
-We can also create higher-dimensional arrays, for example a `2x3` array
-at the default float data type.
+Here, we create a `2x3` array:
 
 ``` r
 
@@ -61,17 +95,20 @@ y
     ##  2 4 6
     ## [ CPUf32{2,3} ]
 
-Without specifying the data type, it will default to the data types of
-the active backend, which
-[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-reports – on pjrt `"f32"` for R doubles and `"i32"` for integers, or
-whatever the `anvl.default_dtypes` option says once it is set. We chose
-this default, because on modern accelerators such as GPUs,
-single-precision floating point operations are considerably faster than
-when working in double precision. It is possible to change this default
-via the `anvl.default_dtypes` option. Below,
+> **Terminological remark:** In {anvl}, we do not speak of the
+> “dimensions” of an array, because the term is ambiguous. Instead, we
+> say that `y` has two *axes*, where axis `1` has *size* 2 and axis `2`
+> has size 3. The vector of axis sizes, here `c(2, 3)`, is the *shape*
+> of the array.
+
+Without a specified data type, R `double`s become `f32` (32-bit floats)
+and R `integer`s become `i32`. Base R, in contrast, always computes with
+64-bit doubles, so results are less precise. In exchange, computations
+use half the memory and are faster, especially on GPUs. Where double
+precision is needed, the default can be changed via the
+`anvl.default_dtypes` option. Below,
 [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
-modifies this option temporarily:
+changes it temporarily:
 
 ``` r
 
@@ -88,7 +125,7 @@ with_default_dtypes(c(float = "f64", int = "i64"), {
     ##  3.1416
     ## [ CPUf64{} ]
 
-You can extract the object’s properties using getter methods.
+The properties of an array can be queried with getter functions:
 
 ``` r
 
@@ -111,40 +148,17 @@ device(y)
 
     ## <CpuDevice(id=0)>
 
-`AnvlArray`s have value semantics and are (with an exception we cover
-later) never modified in-place.
-
-``` r
-
-y2 <- y
-y2[1, 1] <- 99L
-y2[1, 1]
-```
-
-    ## AnvlArray
-    ##  99
-    ## [ CPUf32{} ]
-
-``` r
-
-y[1, 1]
-```
-
-    ## AnvlArray
-    ##  1
-    ## [ CPUf32{} ]
-
-Note that such subset assignment always copies – unlike plain R, where
-`y[i] <- val` can be done in place when `y` has only one reference. This
-only applies to *eager* execution. Inside a jit-compiled function
-(covered later), the compiler can optimize reallocations away, similar
-to R’s copy-on-write.
-
-The
+To continue working with the results in R, e.g. to plot them,
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
-function allows to convert `AnvlArray`s back to R objects, which
-involves copying the data. Note that for 0-dimensional arrays, the
-result is an R vector of length 1, as R arrays cannot have 0 axes.
+converts an array back to an R object. For scalars, the result is an R
+vector of length 1. Because R has fewer data types than {anvl}, the
+values are converted to the closest R type: floats become `double`s,
+most integers become `integer`s, and integers that do not fit into an R
+`integer`, such as 64-bit integers, become
+[`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
+See
+[`?as_array`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
+for the full list of conversions.
 
 ``` r
 
@@ -155,64 +169,15 @@ as_array(y)
     ## [1,]    1    3    5
     ## [2,]    2    4    6
 
-`AnvlArray`s can also be saved to disk and loaded back via
-[`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md) /
-[`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_read.md),
-which use the
-[safetensors](https://huggingface.co/docs/safetensors/index) format – a
-simple, cross-framework standard also used by e.g. PyTorch and JAX:
+## Computing with Arrays
 
-``` r
-
-path <- tempfile(fileext = ".safetensors")
-nv_save(list(x = x, y = y), path)
-
-loaded <- nv_read(path)
-loaded$x
-```
-
-    ## AnvlArray
-    ##  1
-    ## [ CPUi16{} ]
-
-## Transforming AnvlArrays
-
-There are two categories of functions in {anvl} that can be used to
-transform arrays:
-
-1.  Anvl primitives, that follow the naming scheme `prim_<op>`. They
-    define the fundamental operations that can be expressed in {anvl}.
-    These functions are rather low-level and often lack some ergonomics
-    such as type promotion or broadcasting. Most users will not require
-    to use them; for an overview see
-    [`vignette("primitives")`](https://r-xla.github.io/anvl/dev/articles/primitives.md),
-    and for how to add one see
-    [`vignette("extending_primitive")`](https://r-xla.github.io/anvl/dev/articles/extending_primitive.md).
-2.  The main User API (`nv_<op>` functions) and the overloaded R
-    operators that dispatch to them. They are built on top of the
-    primitives and either add convenience or higher-level functionality.
-
-``` r
-
-prim_add(y, y)
-```
-
-    ## AnvlArray
-    ##   2  6 10
-    ##   4  8 12
-    ## [ CPUf32{2,3} ]
-
-``` r
-
-prim_add(y, x)
-```
-
-    ## Error in `prim_add()`:
-    ## ! These inputs have no common data type to reach without converting one
-    ##   of them.
-    ## ✖ `lhs` is `f32` and `rhs` is `i16`.
-    ## ℹ Use an operation that promotes across data types, or convert one explicitly
-    ##   with `nv_convert()`.
+Arrays are transformed with the `nv_<op>` functions, such as
+[`nv_add()`](https://r-xla.github.io/anvl/dev/reference/nv_add.md) or
+[`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md),
+or through the usual R operators and functions like `+`, `%*%`, or
+[`sum()`](https://rdrr.io/r/base/sum.html). An overview of all of them
+is in the [API Functions
+reference](https://r-xla.github.io/anvl/dev/reference/index.html#api-functions).
 
 ``` r
 
@@ -224,10 +189,20 @@ nv_add(y, x)
     ##  3 5 7
     ## [ CPUf32{2,3} ]
 
-Next we define a function that computes the output of a linear model \\y
-= X \beta + \alpha\\, generate some example data and call the function.
-We could have also used the overloaded `%*%` and `+` operators, but
-chose the underlying `nv_*` function for clarity.
+``` r
+
+y + x
+```
+
+    ## AnvlArray
+    ##  2 4 6
+    ##  3 5 7
+    ## [ CPUf32{2,3} ]
+
+Let’s use this to write a function that computes the predictions of a
+linear model \\y = X \beta + \alpha\\. We could also use `%*%` and `+`
+here, but use the `nv_*` functions to make clear that {anvl} is doing
+the work.
 
 ``` r
 
@@ -237,8 +212,8 @@ linear_model_r <- function(X, beta, alpha) {
 }
 ```
 
-We simulate some training data from a univariate linear model and
-randomly initialize some parameters that we’ll fit later.
+We simulate some data from a linear model and randomly initialize the
+parameters that we’ll fit later.
 
 ``` r
 
@@ -249,7 +224,7 @@ y <- X %*% beta_true + alpha_true + rnorm(100, sd = 0.5)
 plot(X, y)
 ```
 
-![](anvl_files/figure-html/unnamed-chunk-11-1.png)
+![](anvl_files/figure-html/unnamed-chunk-9-1.png)
 
 ``` r
 
@@ -268,24 +243,23 @@ y_hat0
     ##  1.3981
     ## [ CPUf32{2,1} ]
 
-What we have done in this section is commonly referred to as *eager
-execution*. To understand what this means, we need to differentiate it
-from *JIT compilation*, which is the primary goal of {anvl} and which we
-will cover next.
+So far, every operation ran immediately, one after the other, just like
+in normal R code. This is called *eager execution*. It is convenient for
+trying things out, but it is not where {anvl}’s speed comes from.
 
 ## Just In Time Compilation
 
-JIT stands for *just-in-time* compilation: instead of compiling the
-function ahead of time, {anvl} waits until the first call (when the
-input shapes and dtypes are known) and only then translates the function
-into a single optimized executable, which is cached for subsequent
-calls.
+When R runs a function, it evaluates one expression at a time, and every
+operation on an array is executed on its own. Each of these steps has a
+small overhead, and no step knows about the others, so nothing can be
+optimized across them.
 
-To get the most out of {anvl} in terms of performance, one should
-usually [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)
-your functions. For example, we can jit-compile the `linear_model_r`
-function we defined earlier. The output is a function with the same
-signature that produces the same results:
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) changes
+this: it turns a function into a compiled program. On the first call,
+{anvl} translates the whole function into a single optimized executable
+and caches it. Later calls with inputs of the same shape and data type
+run that executable directly, without going through the R interpreter.
+This makes the first call slower, but all subsequent ones much faster.
 
 ``` r
 
@@ -298,101 +272,43 @@ all(y_hat0 == y_hat1)
     ##  1
     ## [ CPUbool{} ]
 
-The difference from eager mode is that
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) compiles
-the whole function using [XLA](https://openxla.org/xla), which is the
-same compiler that underpins frameworks like TensorFlow and JAX. The
-output is an executable program that runs independently of the R
-interpreter. Note that under the hood, each `prim_*` function is itself
-a [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)-compiled
-function.
+The jitted function takes the same arguments and returns the same
+results[^1], so wrapping a function in
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) is usually
+all it takes to make it faster. The compiler behind this is
+[XLA](https://openxla.org/xla), which also powers TensorFlow and JAX.
 
-One central assumption about programs that are
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)-compiled is
-that the R function is a *pure* function, so do not rely on side effects
-such as manipulation of global state within such a function. See the
-[Tracing
-Contract](https://r-xla.github.io/anvl/dev/articles/jit.html#the-tracing-contract)
-section of the JIT deep dive for a more thorough explanation.
+There is one rule to follow: the function should only compute its result
+from its inputs, and not have side effects. See the [tracing
+contract](https://r-xla.github.io/anvl/dev/articles/jit.html#the-tracing-contract)
+section of the JIT deep dive for details on how to avoid unpleasent
+surprises with
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
 
-At the jit boundary, plain R values are transparently converted to
-`AnvlArray`s, so you don’t need to wrap every input in
-[`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-yourself. This applies to both `nv_*` calls and your own
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)-compiled
-functions:
+We also define a jitted function that computes the mean squared error of
+the predictions:
 
 ``` r
 
-nv_add(1, array(2:3))
-```
+mse <- jit(function(y_hat, y) {
+  mean((y_hat - y)^2)
+})
 
-    ## AnvlArray
-    ##  3
-    ##  4
-    ## [ CPUf32{2} ]
-
-An R value does not carry a data type of its own – `1` is neither an
-`f32` nor an `f64` – so it takes the one of the array it is combined
-with, and falls back to the active backend’s default (see
-[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
-when it meets nothing else. See
-[`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-for the full rules.
-
-Note that we only auto-convert `double`/`integer`/`logical`s that are
-
-1.  vectors of length 1[^1]
-2.  arbitrary arrays or matrices
-
-Besides `AnvlArray`s, jit-compiled functions can also take plain R
-values as arguments without converting them to `AnvlArray`s internally.
-Such arguments must be marked as `static`. Non-static (arrayish) inputs
-trigger recompilation only when the input type combination changes;
-static inputs trigger recompilation for every new value.
-
-To illustrate this, we create a jitted mean-squared error function whose
-reduction is configurable – `reduction = "mean"` returns a scalar loss,
-`"sum"` returns the un-normalized total:
-
-``` r
-
-mse <- jit(function(y_hat, y, reduction) {
-  se <- (y_hat - y)^2.0
-  if (reduction == "mean") {
-    mean(se)
-  } else {
-    sum(se)
-  }
-}, static = "reduction")
-
-mse(linear_model(X, beta, alpha), y, reduction = "mean")
+mse(linear_model(X, beta, alpha), y)
 ```
 
     ## AnvlArray
     ##  1.3679
     ## [ CPUf32{} ]
 
-``` r
-
-mse(linear_model(X, beta, alpha), y, reduction = "sum")
-```
-
-    ## AnvlArray
-    ##  136.7889
-    ## [ CPUf32{} ]
-
-jit-compiled functions can also be called inside other
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) calls. When
-this happens, the inner function is not compiled and executed separately
-– instead, they are compiled together. We combine `linear_model` and
-`mse` into a jitted `model_loss`:
+Jitted functions can be freely built out of other jitted functions.
+{anvl} then compiles them together into one program.
 
 ``` r
 
 model_loss <- jit(function(X, beta, alpha, y) {
   y_hat <- linear_model(X, beta, alpha)
-  mse(y_hat, y, reduction = "mean")
+  mse(y_hat, y)
 })
 
 model_loss(X, beta, alpha, y)
@@ -402,30 +318,27 @@ model_loss(X, beta, alpha, y)
     ##  1.3679
     ## [ CPUf32{} ]
 
-To get a better understanding of how
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) works see
-[`vignette("jit")`](https://r-xla.github.io/anvl/dev/articles/jit.md).
-For a detailed discussion of when to prefer eager vs. jit mode, see
-[`vignette("efficiency")`](https://r-xla.github.io/anvl/dev/articles/efficiency.md).
+To learn more about how
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) works, see
+the [JIT Deep Dive](https://r-xla.github.io/anvl/dev/articles/jit.md)
+article. For advice on when jitting pays off, see the
+[Efficiency](https://r-xla.github.io/anvl/dev/articles/efficiency.md)
+article.
 
-## Automatic Differentiation (AD)
+## Automatic Differentiation
 
-Another central feature of {anvl} is its ability to differentiate
-functions. Currently, we only support reverse-mode AD and no
-higher-order derivatives, but this will hopefully be added in the
-future. To showcase the automatic differentiation capabilities, we will
-use gradient descent to fit the linear model to the training data we
-simulated earlier – although one would usually do this by solving the
-normal equations of course.
-
-Using the
+Many numerical methods, such as fitting a model by gradient descent,
+need the gradient of a function. With {anvl}, it does not have to be
+derived by hand:
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
-transformation, we can automatically obtain the gradient function of
-`model_loss` with respect to a subset of its arguments that we specify
-via `wrt`. These must be `AnvlArray` inputs and not static values. The
-resulting `model_loss_grad` has the same signature as `model_loss`, but
-returns a named list of gradients – one entry per argument listed in
-`wrt`:
+computes it from the function itself. We use it to fit the linear model
+to the data we simulated earlier – although one would usually fit a
+linear model by solving the normal equations, of course.
+
+Below, we get the gradient of `model_loss` with respect to the
+parameters `beta` and `alpha`. `model_loss_grad` takes the same
+arguments as `model_loss`, but returns a named list with one gradient
+per parameter:
 
 ``` r
 
@@ -447,11 +360,15 @@ model_loss_grad(X, beta, alpha, y)
     ##  2.1543
     ## [ CPUf32{} ]
 
-Finally, we define the update step for the weights using gradient
-descent. We group the parameters into a `weights` list that the function
-both accepts and returns – this shows that inputs and outputs of a
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)-compiled
-function can be (nested) lists of `AnvlArray`s, not just bare arrays:
+For more on
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
+see the [Automatic
+Differentiation](https://r-xla.github.io/anvl/dev/articles/autodiff.md)
+article.
+
+Now we can write a gradient descent step that updates the parameters. We
+keep them together in a `weights` list, as jitted functions can take and
+return (nested) lists of arrays:
 
 ``` r
 
@@ -464,7 +381,7 @@ update_weights <- jit(function(X, weights, y, lr) {
 })
 ```
 
-This already allows us to fit the linear model.
+Calling it repeatedly fits the model:
 
 ``` r
 
@@ -475,91 +392,16 @@ for (i in 1:100) {
 }
 ```
 
-![](anvl_files/figure-html/unnamed-chunk-19-1.png)
+![](anvl_files/figure-html/unnamed-chunk-16-1.png)
 
-One problem with the above approach is that we are creating new weight
-arrays in each iteration and throw away the previous weights, just like
-we saw earlier when demonstrating subset assignment. We can work around
-this using the `donate` argument of
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), which
-allows XLA to overwrite the inputs. See the
-[Donation](https://r-xla.github.io/anvl/dev/articles/efficiency.html#donation)
-section of the efficiency vignette for details.
+## Next Steps
 
-Next, we will discuss control flow.
+For what to watch out for when writing larger programs, such as static
+arguments, control flow, random numbers, and debugging, continue with
+the [Next
+Steps](https://r-xla.github.io/anvl/dev/articles/next_steps.md) article.
 
-## Control Flow
-
-In principle, there are three ways to implement control flow in {anvl}:
-
-1.  Embed jit-compiled functions inside R control-flow constructs, which
-    we have seen above.
-2.  Embed R control flow inside a jit-compiled function (we have also
-    seen this earlier when `mse` branched on `reduction`). R
-    `for`/`while` loops are unrolled at trace time and R `if`-statements
-    only retain the taken branch – see the [R loops are
-    unrolled](https://r-xla.github.io/anvl/dev/articles/jit.html#r-loops-are-unrolled)
-    and [R `if` statements pick one
-    branch](https://r-xla.github.io/anvl/dev/articles/jit.html#r-if-statements-pick-one-branch)
-    sections of the JIT deep dive.
-3.  Use special control-flow primitives provided by {anvl}, such as
-    [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md)
-    and
-    [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md).
-
-Which solution is best depends on the specific use case. The first two
-have already been demonstrated, so we focus on
-[`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md)
-here. It is not like a standard while loop, because {anvl} is purely
-functional. The function takes in:
-
-1.  An initial state, which is a (nested) list of `AnvlArray`s.
-2.  A `cond` function, which takes as input the current state and
-    returns a logical flag indicating whether to continue the loop.
-3.  A `body` function, which takes as input the current state and
-    returns a new state.
-
-``` r
-
-train_while <- jit(function(X, beta, alpha, y, n_steps, lr) {
-  nv_while(
-    list(beta = beta, alpha = alpha, i = 0),
-    \(beta, alpha, i) i < n_steps,
-    \(beta, alpha, i) {
-      grads <- model_loss_grad(X, beta, alpha, y)
-      list(
-        beta = beta - lr * grads$beta,
-        alpha = alpha - lr * grads$alpha,
-        i = i + 1L
-      )
-    }
-  )
-})
-
-train_while(X, beta, alpha, y, nv_scalar(100L), lr = 0.1)
-```
-
-    ## $beta
-    ## AnvlArray
-    ##  1.2408
-    ## [ CPUf32{1,1} ] 
-    ## 
-    ## $alpha
-    ## AnvlArray
-    ##  0.9801
-    ## [ CPUf32{} ] 
-    ## 
-    ## $i
-    ## AnvlArray
-    ##  100
-    ## [ CPUf32{} ]
-
-The same approach works analogously for `if`-statements, where the
-{anvl} primitive
-[`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) is
-available.
-
-[^1]: Since R has no distinct scalar type, converting general vectors
-    would be inconsistent: a length-1 vector would become a 0D
-    `AnvlArray` (scalar), but a length-2 vector a 1D array of shape
-    `(2)`.
+[^1]: There are some differences to base R, such as the handling of
+    `NA`s or recycling; see the
+    [Gotchas](https://r-xla.github.io/anvl/dev/articles/gotchas.md)
+    article.

@@ -7,6 +7,9 @@ Element-wise inverse sine. You can also use
 
 ``` r
 nv_asin(x)
+
+# S3 method for class 'AnvlArray'
+asin(x)
 ```
 
 ## Arguments

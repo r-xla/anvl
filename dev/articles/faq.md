@@ -5,7 +5,7 @@
 There can be many reasons why an {anvl} program is not as fast as one
 might expect. See the
 [Efficiency](https://r-xla.github.io/anvl/dev/articles/efficiency.md)
-vignette which explains various pitfals and levers for optimizing
+article which explains various pitfalls and levers for optimizing
 program runtime.
 
 ## Why does timing my function show suspiciously fast results?
@@ -58,7 +58,7 @@ system.time(mul_n(x, 20))
 ```
 
     ##    user  system elapsed 
-    ##   1.381   0.340   0.948
+    ##   1.550   0.400   1.114
 
 ``` r
 
@@ -70,7 +70,7 @@ system.time(await(mul_n(x, 20)))
 ```
 
     ##    user  system elapsed 
-    ##   1.035   0.435   0.530
+    ##   1.104   0.538   0.583
 
 ## How do I control the number of threads used by XLA?
 

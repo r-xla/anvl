@@ -7,6 +7,9 @@ Element-wise inverse cosine. You can also use
 
 ``` r
 nv_acos(x)
+
+# S3 method for class 'AnvlArray'
+acos(x)
 ```
 
 ## Arguments

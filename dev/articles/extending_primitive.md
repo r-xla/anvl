@@ -2,7 +2,7 @@
 
 This guide explains how to implement a new primitive. It will primarily
 focus on *how* to do this. See the [internals
-vignette](https://r-xla.github.io/anvl/dev/articles/internals.md) for
+article](https://r-xla.github.io/anvl/dev/articles/internals.md) for
 more information on how primitives work.
 
 In general, there are two main reasons to add a new primitive:
@@ -37,10 +37,9 @@ are various scenarios:
         as using boolean values for subsetting):
 
         \\\rightarrow\\ This is currently not possible, but we hope we
-        can add support for this in the future, e.g. via a second,
-        dynamic Fortran backend.
+        can add support for this in the future.
 
-    2.  It cannot be expressed or can only expressed inefficiently:
+    2.  It cannot be expressed or can only be expressed inefficiently:
 
         \\\rightarrow\\ You can implement a StableHLO custom call, see
         the custom print operation in
@@ -73,10 +72,9 @@ Primitives are created with
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md):
 it builds the `AnvlPrimitive` metadata object that holds the rules,
 wraps the body with
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), attaches
-the metadata, and registers the result in the internal primitive
-registry. The returned callable becomes the primitive and is bound to a
-`prim_<name>` R symbol. The name passed to
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), and
+attaches the metadata. The returned callable becomes the primitive and
+is bound to a `prim_<name>` R symbol. The name passed to
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
 is that same `<name>`, not the StableHLO op the primitive lowers to, so
 an error or a printed graph naming a primitive names a function the
@@ -88,13 +86,12 @@ library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
   function(x, times, axis) {
-    # type of `x` is checked by graph_desc_add()
     infer_fn <- function(x, times, axis) {
       if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(x), len = 1L)) {
-        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val axis}")
+        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val {axis}}.")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
-        cli_abort("times must be a positive integer, but is {times}")
+        cli::cli_abort("{.arg times} must be a positive integer, but is {.val {times}}.")
       }
       new_shape <- shape(x)
       new_shape[axis] <- new_shape[axis] * times
@@ -141,8 +138,9 @@ Every argument that is *not* a dynamic array must be listed in `static`.
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) internally,
 so the primitive runs on whichever backend is active when it is called.
 
-Inference rules live together in `R/rules-inference.R`, one per
-primitive, named `infer_<primitive>()`. A rule’s formals are the
+Here we define the inference function inline to keep the example
+self-contained. Inside {anvl}, inference rules live together in
+`R/rules-inference.R`, named `infer_<primitive>()`. Its formals are the
 primitive’s own – every operand and *every* static parameter, including
 ones the rule has no use for – because
 [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
@@ -152,7 +150,7 @@ when the primitive has named outputs.
 
 If your primitive lowers to a StableHLO operation, implement the
 constraints from the [StableHLO
-specification](https://openxla.org/stablehlo/spec) directly, in anvl’s
+specification](https://openxla.org/stablehlo/spec) directly, in {anvl}’s
 vocabulary: arrays rather than tensors, axes rather than dimensions, and
 axis numbers 1-based. Many rules need nothing of their own – an
 elementwise operation reuses `infer_generic_biv()`, `infer_float_uni()`
@@ -194,9 +192,9 @@ done before calling
 These should *not* change the data type of any `AnvlArray` inputs, which
 is what the
 [`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-rule is for. See
-[`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-for more information on these rules.
+rule is for. See the [Data Types and Promotion
+Rules](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
+article for more information on these rules.
 
 #### Special case: primitives with 0 dynamic inputs
 
@@ -288,11 +286,12 @@ It must return a list of
 even if there is only one output.
 
 **Important**: StableHLO uses 0-based indexing, while {anvl} uses R’s
-1-based indexing. Always convert axis indices by subtracting 1. Also
-note that in
-[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
-we are converting the error messages from stablehlo to our 1-based
-indexing, so you do not have to worry about that here.
+1-based indexing. Always convert axis indices by subtracting 1. Nothing
+translates StableHLO’s error messages back into {anvl}’s terms: an input
+that only StableHLO rejects surfaces as an MLIR error in its own
+vocabulary, with 0-based axes. This is why the inference function has to
+check every constraint the StableHLO operation imposes, so that the
+lowering rule only ever sees valid inputs.
 
 ### Step 3: Add the Reverse Rule
 
@@ -300,7 +299,7 @@ If the operation should support automatic differentiation, attach a
 reverse rule built with
 [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md).
 The idea here is the following, where we assume the input `x` has shape
-`(s_1, ..., s_n)`, which means that the output (and therefore it’s
+`(s_1, ..., s_n)`, which means that the output (and therefore its
 gradient) has shape
 `(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
 
@@ -389,58 +388,7 @@ rules you almost always want. A primitive can optionally also carry a
 the primitive to run under `local_backend("quickr")`; if you skip it,
 the primitive will still work on the pjrt backend.
 
-### Step 4: Verify the Registration
-
-[`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
-returns the callable directly and also registers the primitive in the
-internal registry used by the graph machinery, so no separate
-registration step is needed:
-
-``` r
-
-prim_repeat_along
-#> function (x, times, axis) 
-#> {
-#>     .jit_env <- environment()
-#>     .jit_given <- intersect(.jit_names, as.character(names(match.call())))
-#>     if (currently_tracing()) {
-#>         .jit_fwd <- lapply(.jit_given, as.name)
-#>         names(.jit_fwd) <- .jit_given
-#>         if (.jit_dots) {
-#>             .jit_fwd <- c(.jit_fwd, list(quote(...)))
-#>         }
-#>         return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
-#>     }
-#>     .jit_args <- mget(.jit_given, envir = .jit_env)
-#>     if (.jit_dots) {
-#>         .jit_args <- c(.jit_args, eval(quote(list(...)), .jit_env))
-#>     }
-#>     .jit_be <- active_backend()
-#>     .jit_run <- .jit_runs[[.jit_be]]
-#>     if (is.null(.jit_run)) {
-#>         if (is.null(.jit_fns[[.jit_be]])) {
-#>             .jit_fns[[.jit_be]] <<- do.call(jit_with_backend, 
-#>                 c(list(f = .jit_cfg$f, static = .jit_cfg$static, 
-#>                   cache_size = .jit_cfg$cache_size, backend = .jit_be, 
-#>                   device = .jit_cfg$device), .jit_cfg$dots))
-#>         }
-#>         .jit_run <- attr(.jit_fns[[.jit_be]], "jit_run_args")
-#>         if (is.null(.jit_run)) {
-#>             .jit_run <- function(args) do.call(.jit_fns[[.jit_be]], 
-#>                 args)
-#>         }
-#>         .jit_runs[[.jit_be]] <<- .jit_run
-#>     }
-#>     .jit_run(.jit_args)
-#> }
-#> <environment: 0x556236f9bd38>
-#> attr(,"class")
-#> [1] "JitPrimitive" "JitFunction" 
-#> attr(,"primitive")
-#> <AnvlPrimitive:repeat_along>
-```
-
-### Step 5: Add an `nv_` API Function
+### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives. An
 example is `prim_add` vs `nv_add`, where the latter calls into the
@@ -530,6 +478,8 @@ additional things to be aware of.
 
 - **`R/primitives.R`**: Define the `prim_*` primitive via
   [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
+- **`R/rules-inference.R`**: Add the inference rule
+  `infer_<primitive>()` (unless an existing one can be reused)
 - **`R/rules-stablehlo.R`**: Add the StableHLO lowering rule
 - **`R/rules-reverse.R`**: Add the reverse rule (if differentiable)
 - **`R/rules-quickr.R`**: Add the quickr lowering rule (optional; only
@@ -545,11 +495,11 @@ Tests can go in two places:
     live in `inst/` to avoid listing torch as a dependency.
 2.  **`tests/testthat/`**: For tests without a torch counterpart.
 
-**Important**: the `describe()` / `test_that()` label must contain the
-full primitive name, e.g. `describe("prim_repeat_along", { ... })`. The
-meta tests in `tests/testthat/test-primitives-meta.R` verify that every
-primitive has corresponding stablehlo and reverse tests, and flag any
-that are missing.
+**Important**: the `describe()` / `test_that()` label must start with
+the full primitive name, e.g. `describe("prim_repeat_along", { ... })`.
+The meta tests in `tests/testthat/test-primitives-meta.R` verify that
+every primitive has corresponding stablehlo and reverse tests, and flag
+any that are missing.
 
 Since no torch counterpart exists for `prim_repeat_along`, we would add
 manual tests in:
@@ -563,7 +513,7 @@ passes, and format the code using `make format`.
 
 ## Higher-Order Primitives
 
-Higher-Order Primitives are primitives that parameterized by an R
+Higher-Order Primitives are primitives that are parameterized by an R
 function or expression. Examples include `prim_if` and `prim_while`.
 These are generally much more complex to handle, so we don’t cover them
 here in detail (for now). The general idea, however, is that the

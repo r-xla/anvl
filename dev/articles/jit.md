@@ -1,10 +1,10 @@
 # JIT Deep Dive
 
-This vignette explains what actually happens when you wrap a function
+This article explains what actually happens when you wrap a function
 with [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
-Understanding this is what lets you avoid common pitfals on
+Understanding this is what lets you avoid common pitfalls of
 tracing-based compilers. If you haven’t yet, read the [Get
-Started](https://r-xla.github.io/anvl/dev/articles/anvl.md) vignette
+Started](https://r-xla.github.io/anvl/dev/articles/anvl.md) article
 first.
 
 We will use the simple `linear` function as the running example.
@@ -19,7 +19,7 @@ linear <- function(x, w, b) nv_add(nv_mul(x, w), b)
 
 ## How `jit()` works
 
-In pseudo-R, `jit(f)` returns roughly this closure:
+In pseudo-R, `jit` is roughly defined as:
 
 ``` r
 
@@ -43,7 +43,8 @@ jit <- function(f, static = character()) {
 Three things happen:
 
 1.  **Trace** the R code once with placeholder values (except for
-    `static` arguments covered below), recording the sequence of
+    `static` arguments, covered in [the compilation
+    cache](#the-compilation-cache) below), recording the sequence of
     primitive operations into an intermediate representation called an
     `AnvlGraph`.
 2.  **Compile** that graph to an XLA executable and cache it under a key
@@ -152,21 +153,21 @@ Two important notes to be aware of:
 - Call [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) once
   on a function and reuse the result; calling
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) inside a
-  loop creates a fresh cache on every iteration and defeats the point:
+  loop creates a fresh cache on every iteration and defeats the point.
 - For functions that will be called many times with consistent shapes,
   compilation is a one-time cost. For computations on shapes that won’t
-  recur, the compile time may dominate – see [Padding Inputs to Avoid
-  Recompilation](https://r-xla.github.io/anvl/dev/articles/efficiency.html#padding-inputs-to-avoid-recompilation)
-  in the efficiency vignette for one way to keep the cache small.
+  recur, the compile time may dominate – see [padding inputs to avoid
+  recompilation](https://r-xla.github.io/anvl/dev/articles/efficiency.html#padding-inputs-to-avoid-recompilation)
+  in the efficiency article for one way to keep the cache small.
 
 ## Tracing
 
 *Tracing* is how the R code is translated into a form that the XLA
 compiler can understand. It works by replacing the dynamic inputs with
-special (`GraphBox`) values and runnig it. Instead of doing the array
+special (`GraphBox`) values and running it. Instead of doing the array
 computations, this will instead record every primitive operation in an
 `AnvlGraph`, which represents the *evaluation trace*. For the purposes
-of this vignette you can think of tracing and the subsequent XLA
+of this article you can think of tracing and the subsequent XLA
 compilation as a single phase that runs once per cache miss. Note that
 this is different from R’s
 [`trace()`](https://rdrr.io/r/base/trace.html) function, which lets you
@@ -201,8 +202,8 @@ outputs. However, the content is more structured:
 - There are only calls into primitives and not closures; i.e., function
   calls are inlined.
 - Types are fully specified.
-- Every variable is assigned to once, i.e. the program is in SSA (Single
-  Static Assignment) form.
+- Every variable is assigned to once, i.e. the program is in SSA (Static
+  Single Assignment) form.
 
 Crucially, only `prim_*` calls (and the `nv_*` API functions or
 overloaded operators that delegate to them) get recorded. Any other R
@@ -215,7 +216,7 @@ Tracing only produces correct results for *pure* functions – functions
 whose output depends on their arguments and nothing else, and that have
 no R-level side effects. This contract is a consequence of both how the
 caching works and that the compiled program runs outside of R and only
-communicates back to the R interpreter via it’s return values.
+communicates back to the R interpreter via its return values.
 Concretely, the function’s execution path – the specific sequence of
 primitive calls it performs – must depend only on:
 
@@ -229,9 +230,9 @@ and where its behavior might be surprising.
 ### R loops are unrolled
 
 Tracing runs your R code and records primitive operations in the graph.
-Because `for` is not an anvl primitive, it will be executed as usual and
-all the primitive calls encountered will be recorded in the graph. Here
-we apply the `linear` function `n` times.
+Because `for` is not an {anvl} primitive, it will be executed as usual
+and all the primitive calls encountered will be recorded in the graph.
+Here we apply the `linear` function `n` times.
 
 ``` r
 
@@ -309,17 +310,18 @@ The trace itself runs correctly, but it becomes a problem in combination
 with [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)’s
 caching mechanism. The closed-over `threshold` does not influence the
 cache key, so subsequent calls with the same dynamic input type would
-reuse the executable produced when `threshold` was `0.5`, no matter how
-`threshold` is at call time. The only fix is to not let the graph depend
-on values outside the function’s signature – in this case, make
+reuse the executable produced when `threshold` was `0.5`, whatever value
+`threshold` has at call time. The only fix is to not let the graph
+depend on values outside the function’s signature – in this case, make
 `threshold` an explicit static argument.
 
 ### Closed-over values become constants
 
-We just saw an extreme version of this in the `if` section: a
-closed-over R variable picked the *branch* that ended up in the graph.
-The same dynamic applies to closed-over values used as plain operands –
-their value at trace time is read once and baked into the graph.
+We just saw an extreme version of this in the [R `if` statements pick
+one branch](#r-if-statements-pick-one-branch) section: a closed-over R
+variable picked the *branch* that ended up in the graph. The same
+dynamic applies to closed-over values used as plain operands – their
+value at trace time is read once and baked into the graph.
 
 Here we close over a default bias instead of taking it as an argument:
 
@@ -344,10 +346,10 @@ the executable either).
 
 ### Side effects only fire during tracing
 
-The *Tracing Contract* above already noted that a jitted function must
-be pure. This subsection makes the consequence concrete: **R-level side
-effects only have an effect while the graph is being built**, not on
-subsequent calls.
+The [tracing contract](#the-tracing-contract) above already noted that a
+jitted function must be pure. This subsection makes the consequence
+concrete: **R-level side effects only have an effect while the graph is
+being built**, not on subsequent calls.
 
 A common R pattern for stateful objects is to wrap them in an
 environment, since environments give you reference semantics:
@@ -406,16 +408,17 @@ into the graph is `prim_*` calls.
 
 - The mutation `e$beta <- ...` is a plain R assignment, not a `prim_*`
   call, so it doesn’t get recorded into the `AnvlGraph`. It runs once,
-  during tracing – but the value being assigned is anvl’s internal trace
-  placeholder (a `GraphBox`), not a real array. So after the first call,
-  `model$beta` is *broken*: it holds a leaked tracer instead of the
-  array you expected.
+  during tracing – but the value being assigned is {anvl}’s internal
+  trace placeholder (a `GraphBox`), not a real array. So after the first
+  call, `model$beta` is *broken*: it holds a leaked tracer instead of
+  the array you expected.
 - On every subsequent call only the cached XLA executable runs – never
   the R body, so the `e$beta <- ...` line will not be executed again.
   And because `e$beta` was a closed-over R value at trace time, its
   initial value (`c(0, 0, 0)`) is baked into the graph as a literal (per
-  *Closed-over values become constants* above), so every call returns
-  the same `-0.1`.
+  [closed-over values become
+  constants](#closed-over-values-become-constants) above), so every call
+  returns the same `-0.1`.
 
 This is why
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)-compiled
@@ -443,47 +446,13 @@ beta
 
 ### Donating inputs
 
-By default, a compiled executable treats its inputs as read-only: the
-R-visible input arrays remain valid after the call, and XLA has to
-allocate fresh memory for any output of matching shape. For long
-training loops over large parameters, this means every step allocates a
-new parameter buffer and leaves the previous one for the garbage
-collector.
-
-Via the `donate` argument of
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), you can
-tell XLA that an input will not be used after the call, so it is free to
-reuse the input array’s memory for an output.
-
-``` r
-
-step <- jit(function(w, g) w - 0.1 * g, donate = "w")
-
-w <- nv_array(c(1, 2, 3), dtype = "f32")
-g <- nv_array(c(0.1, 0.1, 0.1), dtype = "f32")
-
-w <- step(w, g)
-w
-#> AnvlArray
-#>  0.9900
-#>  1.9900
-#>  2.9900
-#> [ CPUf32{3} ]
-```
-
-The compiled executable now consumes `w`’s buffer as part of the call.
-The caller must not reuse an array that was donated to a function,
-otherwise an error is thrown:
-
-``` r
-
-w_old <- nv_array(c(1, 2, 3), dtype = "f32")
-w_new <- step(w_old, g)
-w_old     # the old buffer has been donated
-#> AnvlArray
-#> Error:
-#> ! called on deleted or donated buffer
-```
+By default, a compiled executable treats its inputs as read-only, so it
+has to allocate new memory for its outputs. The `donate` argument of
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) marks
+inputs that will not be used after the call, which allows XLA to reuse
+their memory for the outputs. See the
+[Donation](https://r-xla.github.io/anvl/dev/articles/efficiency.html#donation)
+section of the efficiency article for an example.
 
 ### Device placement
 
@@ -496,10 +465,10 @@ call depends on how you called
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md). The two
 most relevant options are:
 
-- **Inferred from inputs (default).** If you don’t pass `device =`, anvl
-  looks at the devices of the array inputs at call time, requires them
-  to agree, and compiles for that device. If there are no array inputs,
-  it falls back to the
+- **Inferred from inputs (default).** If you don’t pass `device =`,
+  {anvl} looks at the devices of the array inputs at call time, requires
+  them to agree, and compiles for that device. If there are no array
+  inputs, it falls back to the
   [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
 - **Pinned at
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) time.**
@@ -526,8 +495,8 @@ device(add_cpu(a, b))                        # pinned
 #> <CpuDevice(id=0)>
 ```
 
-Because the device is part of the cache key (see *The compilation cache*
-above), a single
+Because the device is part of the cache key (see [the compilation
+cache](#the-compilation-cache) above), a single
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)ted function
 can hold compiled binaries for several devices at once, unless `device`
 was specified explicitly during

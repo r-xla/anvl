@@ -29,22 +29,23 @@ Only in the case of scalars is the result a vector of length 1, as R arrays cann
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -108,8 +109,8 @@ levels of strictness it does not say which one is meant. Forwarded
 to the backend; for the <code>pjrt</code> backend the cases scanned for are
 <code>i32</code>/<code>i64</code> values colliding with the <code>NA</code> bit pattern and <code>ui64</code>
 values <code>&gt;= 2^63</code> wrapping through <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. See
-<code><a href="https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html" class="external-link">pjrt::as_array.PJRTBuffer()</a></code> for the full list, and the "Gotchas"
-vignette.</p></dd>
+<code><a href="https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html" class="external-link">pjrt::as_array.PJRTBuffer()</a></code> for the full list, and
+the <a href="https://r-xla.github.io/anvl/articles/gotchas.html">Gotchas</a> article.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -125,6 +126,20 @@ represent as an array – a vector of length 1.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>This is implemented via the generic <code><a href="https://r-xla.github.io/tengen/reference/as_array.html" class="external-link">tengen::as_array()</a></code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="data-types">Data types<a class="anchor" aria-label="anchor" href="#data-types"></a></h2>
+
+
+<p>R has fewer data types than anvl, so the values are converted to the R
+type that can represent them:</p><table class="table table"><tr><td>Data type</td><td>R type</td></tr><tr><td><code>f32</code>, <code>f64</code></td><td><code>double</code></td></tr><tr><td><code>i8</code>, <code>i16</code>, <code>i32</code>, <code>ui8</code>, <code>ui16</code></td><td><code>integer</code></td></tr><tr><td><code>i64</code>, <code>ui32</code>, <code>ui64</code></td><td><code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code></td></tr><tr><td><code>bool</code></td><td><code>logical</code></td></tr></table><p>This has two consequences:</p><ul><li><p>An <code>f32</code> value is widened to a <code>double</code> and keeps the rounding error of
+the 32-bit float, e.g. <code>as_array(nv_scalar(0.1))</code> is not exactly <code>0.1</code>.</p></li>
+<li><p>Some integer values cannot be represented in R: an <code>i32</code> or <code>i64</code> value
+equal to the smallest representable integer is read as <code>NA</code>, and a
+<code>ui64</code> value <code>&gt;= 2^63</code> wraps to a negative number. The <code>check</code> argument
+decides whether this is reported.</p></li>
+</ul><p>To obtain a different R type, convert the array with <code><a href="nv_convert.html">nv_convert()</a></code>
+first, or use the coercion functions described in <code><a href="as-AnvlArray.html">as.double()</a></code>.</p>
     </div>
 
     <div class="section level2">

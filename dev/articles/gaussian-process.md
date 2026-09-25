@@ -1,6 +1,6 @@
 # Gaussian Process
 
-In this vignette, we implement a Gaussian Process (GP) regression model
+In this article, we implement a Gaussian Process (GP) regression model
 from scratch.
 
 A Gaussian Process is a collection of random variables, any finite
@@ -20,7 +20,7 @@ Gaussian:
 
 where \\\mathbf{m}\_i = m(\mathbf{x}^{(i)})\\ and \\\mathbf{K}\_{ij} =
 k(\mathbf{x}^{(i)}, \mathbf{x}^{(j)})\\. We assume a zero mean function
-\\m(\mathbf{x}) = 0\\ throughout this vignette (which is standard
+\\m(\mathbf{x}) = 0\\ throughout this article (which is standard
 practice, since the kernel already provides enough flexibility).
 
 ## Kernel
@@ -56,9 +56,10 @@ rbf_kernel_matrix <- function(X1, X2, lengthscale, signal_var) {
 }
 ```
 
-Because `anvl` jit-compiles the code, there is no performance penalty
-for custom kernels, other than if we would use a C++ library that has a
-number of hard-coded kernels available.
+Because {anvl} compiles the whole computation, a custom kernel like this
+one runs as fast as a built-in one would. This is different from
+libraries that ship a fixed set of kernels implemented in C++, where a
+custom kernel written in R would be considerably slower.
 
 ## Joint Distribution
 
@@ -206,7 +207,7 @@ marginal likelihood.
 ## Marginal Likelihood
 
 With \\\pmb{\theta} = (\ell, \sigma_f^2, \sigma^2)\\, we can write down
-the log marginal likelihood as follows:
+the marginal likelihood as follows:
 
 \\p(\mathbf{y} \mid \mathbf{X}, \pmb{\theta}) = \int p(\mathbf{y} \mid
 \mathbf{f}, \mathbf{X}) \\ p(\mathbf{f} \mid \mathbf{X}, \pmb{\theta})
@@ -282,7 +283,7 @@ We optimize the hyperparameters using gradient descent. Since \\\ell\\,
 log scale to allow unconstrained updates. `anvl` computes the gradients
 via
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
-and the entire training loop is JIT-compiled with `nv_while`.
+and the entire fitting loop is JIT-compiled with `nv_while`.
 
 ``` r
 
@@ -294,7 +295,7 @@ nll_grad <- gradient(\(X, y, log_lengthscale, log_signal_var, log_noise_var) {
   )
 }, wrt = params)
 
-train_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
+fit_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
   n_steps, learning_rate) {
   result <- nv_while(
     list(
@@ -324,7 +325,7 @@ train_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
 
 ``` r
 
-result <- train_gp(
+result <- fit_gp(
   X_t, y_t,
   lengthscale = nv_scalar(1),
   signal_var = nv_scalar(1),

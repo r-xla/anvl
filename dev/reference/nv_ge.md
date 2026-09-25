@@ -7,6 +7,9 @@ operator.
 
 ``` r
 nv_ge(lhs, rhs)
+
+# S3 method for class 'AnvlArray'
+e1 >= e2
 ```
 
 ## Arguments
@@ -22,6 +25,11 @@ nv_ge(lhs, rhs)
   otherwise falling back to their [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   and being converted to the common data type.
+
+- e1, e2:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  The operands of the operator, which it passes on as `lhs` and `rhs`.
 
 ## Value
 

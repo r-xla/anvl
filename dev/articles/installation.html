@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,7 +112,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Installation</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/installation.Rmd" class="external-link"><code>vignettes/installation.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/installation.Rmd" class="external-link"><code>vignettes/articles/installation.Rmd</code></a></small>
       <div class="d-none name"><code>installation.Rmd</code></div>
     </div>
 
@@ -124,8 +125,7 @@ from <a href="https://github.com/r-xla/anvl" class="external-link">GitHub</a>.</
 <code>libprotobuf</code>. Source installation requires a
 <code>C++20</code> compiler and <code>protoc</code> (protobuf
 compiler).</p>
-<p>You can install the latest release from r-universe (prebuilt
-binary).</p>
+<p>You can install the latest release from r-universe.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"anvl"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://cloud.r-project.org"</span>, <span class="st">"https://r-xla.r-universe.dev"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>The development version can be installed via:</p>
@@ -166,7 +166,7 @@ builds.</td>
 <div class="section level2">
 <h2 id="cuda-setup">CUDA Setup<a class="anchor" aria-label="anchor" href="#cuda-setup"></a>
 </h2>
-<p>The additional dependencies that {anvl} installs includes the
+<p>The additional dependencies that {anvl} installs include the
 {pjrt.cuda} R package, which only requires a CUDA 13.3-compatible driver
 to be installed.</p>
 <p>When the {pjrt.cuda} package is not installed, the correct runtime

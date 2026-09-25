@@ -8,6 +8,9 @@ multiplied as zeroes and ones, like
 
 ``` r
 nv_cumprod(x, axis = NULL, nan_rm = FALSE)
+
+# S3 method for class 'AnvlArray'
+cumprod(x)
 ```
 
 ## Arguments

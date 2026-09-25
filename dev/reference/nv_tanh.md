@@ -7,6 +7,9 @@ Element-wise hyperbolic tangent. You can also use
 
 ``` r
 nv_tanh(x)
+
+# S3 method for class 'AnvlArray'
+tanh(x)
 ```
 
 ## Arguments

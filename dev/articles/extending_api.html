@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,14 +112,14 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Extending the API</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/extending_api.Rmd" class="external-link"><code>vignettes/extending_api.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/extending_api.Rmd" class="external-link"><code>vignettes/articles/extending_api.Rmd</code></a></small>
       <div class="d-none name"><code>extending_api.Rmd</code></div>
     </div>
 
     
     
-<p>In this vignette we will cover some general guidelines that ensure
-your anvl functions come without surprises. This is primarily intended
+<p>In this article we will cover some general guidelines that ensure
+your {anvl} functions come without surprises. This is primarily intended
 for extending the API – either in your own package or contributing to
 {anvl} itself – but is also helpful when writing your own scripts.</p>
 <p>The general guidelines are:</p>
@@ -136,48 +137,47 @@ as well as R vectors of length 1 and <code>array</code>s.</li>
 eager and jit mode.</li>
 <li>Use static arguments when you require data-dependent input
 checks.</li>
-<li>Wrap the function in <code><a href="../reference/jit.html">jit()</a></code> (see <em>Jit-wrapping API
-Functions</em> below).</li>
+<li>Wrap the function in <code><a href="../reference/jit.html">jit()</a></code> (see <a href="#jit-wrapping-api-functions">jit-wrapping API functions</a>
+below).</li>
 </ol>
 <div class="section level2">
 <h2 id="pure-functions">Pure Functions<a class="anchor" aria-label="anchor" href="#pure-functions"></a>
 </h2>
-<p>This is extensively covered in the <em>JIT Deep Dive</em>, so we
-won’t repeat it here. While the subsequent sections mostly address
-issues that are relevant in eager mode, purity is the primary
-requirement to enable usage of <code><a href="../reference/jit.html">jit()</a></code> with your
-function.</p>
+<p>This is extensively covered in the <a href="jit.html#the-tracing-contract">JIT Deep Dive</a>, so we won’t
+repeat it here. While the subsequent sections mostly address issues that
+are relevant in eager mode, purity is the primary requirement to enable
+usage of <code><a href="../reference/jit.html">jit()</a></code> with your function.</p>
 </div>
 <div class="section level2">
 <h2 id="consistent-input-and-output-types">Consistent Input and Output Types<a class="anchor" aria-label="anchor" href="#consistent-input-and-output-types"></a>
 </h2>
-<p>Functions in anvl have <code>AnvlArray</code> inputs and R data
+<p>Functions in {anvl} have <code>AnvlArray</code> inputs and R data
 inputs. R data can be used dynamically, when it is passed to an argument
 that expects an <code>AnvlArray</code>, or statically, when it is passed
 to an argument that <code><a href="../reference/jit.html">jit()</a></code> marked as static. To make this
 work, you should call <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> on all dynamic input
 values. If there is only a single one, you can also use
 <code><a href="../reference/as_anvl_array.html">as_anvl_array()</a></code>.</p>
-<p>They do four things, and three of them are decisions <em>across</em>
-the whole argument set, which is why a function with several arrayish
-arguments should normalize them in <strong>one</strong>
+<p><code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> makes two decisions <em>across</em> the
+whole argument set, which is why a function with several arrayish
+arguments should canonicalize them in <strong>one</strong>
 <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> call rather than one
 <code><a href="../reference/as_anvl_array.html">as_anvl_array()</a></code> per argument:</p>
 <ol style="list-style-type: decimal">
-<li>every input is put on one device, and a call mixing devices or
-backends is rejected,</li>
-<li>the type promotion rules of the <code>.promote</code> argument are
-applied, which handle both placement of R values, as well as conversions
-between <code>AnvlArray</code>s, e.g., to make
+<li>Every input is put on one device, and a call mixing devices or
+backends is rejected.</li>
+<li>The promotion rule passed as <code>.promote</code> is applied. It
+decides both the data type R values materialize at and conversions
+between <code>AnvlArray</code>s, e.g. to make
 <code>nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))</code> work.</li>
-<li>afterwards, <code><a href="../reference/dtype.html">dtype()</a></code> is well defined and the remaining
-body does not have to distinguish between R value inputs and
-<code>AnvlArray</code> inputs.</li>
-<li>it reduces differences between eager and jit mode, see the
-<code><a href="../articles/gotchas.html">vignette("gotchas")</a></code> for a discussion.</li>
 </ol>
+<p>Afterwards, <code><a href="../reference/dtype.html">dtype()</a></code> is well defined, so the remaining
+body does not have to distinguish between R value inputs and
+<code>AnvlArray</code> inputs. Canonicalizing also removes differences
+between eager and jit mode, see <a href="#canonicalization-and-eager-mode">canonicalization and eager
+mode</a> below.</p>
 <p>Below, we add a function that performs the addition after coercing
-all inputs to <code>f32</code>;</p>
+all inputs to <code>f32</code>:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_f32</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, .promote <span class="op">=</span> <span class="fu"><a href="../reference/promotion_rule.html">promotion_dtype</a></span><span class="op">(</span><span class="st">"f32"</span>, coerce <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
@@ -187,6 +187,43 @@ all inputs to <code>f32</code>;</p>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  2</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="canonicalization-and-eager-mode">Canonicalization and Eager Mode<a class="anchor" aria-label="anchor" href="#canonicalization-and-eager-mode"></a>
+</h3>
+<p>A function that does not canonicalize its inputs can behave
+differently in eager and in jit mode. Below, the untyped <code>1</code>
+materializes at the default float when the function is jitted, so under
+the default <code>f32</code> the jitted result is rounded, while the
+eager one computes <code>1 + pi</code> in R, at double precision. At an
+<code>f64</code> default the two would agree, which is exactly the
+problem: the answer depends on a default rather than on the code.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">add_pi</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">add_pi</span><span class="op">)</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">add_pi</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
+<p>Canonicalizing the input fixes this:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">add_pi2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">add_pi2</span><span class="op">)</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span> <span class="op">==</span> <span class="fu">add_pi2</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt; [ CPUbool{} ]</span></span></code></pre></div>
+<p>Not canonicalizing inputs can also be a problem for device placement.
+If the function below is called as
+<code>threeway_add(1, 2, nv_scalar(3, device = "cuda"))</code>, the
+inner addition places <code>1</code> and <code>2</code> on the default
+device (the CPU by default), and the outer addition then fails, because
+it combines arrays on different devices.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">threeway_add</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="va">z</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span>, <span class="va">z</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="arbitrary-devices">Arbitrary Devices<a class="anchor" aria-label="anchor" href="#arbitrary-devices"></a>
@@ -195,7 +232,7 @@ all inputs to <code>f32</code>;</p>
 arbitrary devices, you need to be careful when creating new constants
 within your function. Let’s say you are creating your function and
 working on GPU:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_one_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span></span>
@@ -208,7 +245,7 @@ inputs and you called <code><a href="../reference/as_anvl_array.html">as_anvl_ar
 you know that there is only a single device.</p>
 <p>One way to achieve this is to simply pass the input’s device to
 <code><a href="../reference/nv_fill.html">nv_fill()</a></code>:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_one1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Converting is what gives the value a device to read back here.</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
@@ -219,7 +256,7 @@ functions. These take in another <code>AnvlArray</code> as their first
 input and use its properties as the defaults for their arguments. In
 this case, the created array will assume the data type, shape and device
 from the input array.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_one2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -235,36 +272,34 @@ device.</p>
 for runtime checks. Let’s say you want to sample from a Bernoulli
 distribution with probability <code>p</code>. If you make <code>p</code>
 a dynamic input, you can’t check that it is within <code>[0, 1]</code>,
+because under <code><a href="../reference/jit.html">jit()</a></code> it is an abstract value without data;
 so you need to make it a static input. Don’t convert it to an
 <code>AnvlArray</code> before checking its value. Later in the function,
 it will actually be converted, but from XLA’s point of view, it will
 just be a constant within the compiled program and not a dynamic
 input.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">nv_rbernoulli</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">state</span>, <span class="va">p</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">state</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">nv_rbernoulli</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">state</span>, <span class="va">p</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="op">(</span><span class="va">p</span> <span class="op">&gt;=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">(</span><span class="va">p</span> <span class="op">&lt;=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="co"># returns: (state, sample)</span></span>
 <span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="va">state</span><span class="op">)</span></span>
-<span>  <span class="va">out_state</span> <span class="op">&lt;-</span> <span class="va">out</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
-<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_convert.html">nv_convert</a></span><span class="op">(</span><span class="va">out</span><span class="op">[[</span><span class="fl">2L</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;=</span> <span class="va">p</span>, <span class="st">"i32"</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">out_state</span>, <span class="va">x</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu">nv_rbernoulli</span><span class="op">(</span><span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">[[</span><span class="fl">2L</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>state <span class="op">=</span> <span class="va">out</span><span class="op">$</span><span class="va">state</span>, values <span class="op">=</span> <span class="fu"><a href="../reference/nv_convert.html">nv_convert</a></span><span class="op">(</span><span class="va">out</span><span class="op">$</span><span class="va">values</span> <span class="op">&lt;=</span> <span class="va">p</span>, <span class="fu"><a href="../reference/default_dtypes.html">default_int</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span>, static <span class="op">=</span> <span class="st">"p"</span><span class="op">)</span></span>
+<span><span class="fu">nv_rbernoulli</span><span class="op">(</span><span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">$</span><span class="va">values</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  0</span></span>
 <span><span class="co">#&gt; [ CPUi32{1} ]</span></span></code></pre></div>
+<p>Each distinct value of <code>p</code> compiles its own program, which
+is the price of checking it.</p>
 </div>
 <div class="section level2">
 <h2 id="jit-wrapping-api-functions">Jit-wrapping API Functions<a class="anchor" aria-label="anchor" href="#jit-wrapping-api-functions"></a>
 </h2>
-<p>Most user-facing API functions in anvl are wrapped in
+<p>Most user-facing API functions in {anvl} are wrapped in
 <code>jit(f, ...)</code> so that calling them traces and compiles a
 single program instead of executing each operation eagerly. In
 <code>R/api*.R</code>, wrap any function that performs more than one
 primitive operation in <code><a href="../reference/jit.html">jit()</a></code> at the definition itself:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#' @export</span></span>
 <span><span class="va">nv_log2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
@@ -274,7 +309,7 @@ primitive operation in <code><a href="../reference/jit.html">jit()</a></code> at
 arrayish input – axes, shape, dtype, control flags, functions used as
 templates, …), list them with <code>static = c(...)</code> using either
 positional indices or argument names:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#' @export</span></span>
 <span><span class="va">nv_mean</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">axes</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">drop</span> <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">nan_rm</span> <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">...</span></span>
@@ -284,20 +319,6 @@ positional indices or argument names:</p>
 <span><span class="va">nv_concatenate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">axis</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">}</span>, static <span class="op">=</span> <span class="st">"axis"</span><span class="op">)</span></span></code></pre></div>
-<p>Put <code>static</code> after the function, so that the signature
-reads on its own line. Use names rather than positions whenever an
-argument lives after <code>...</code>, since <code>...</code> has no
-fixed position.</p>
-<p><strong>When to skip <code><a href="../reference/jit.html">jit()</a></code>.</strong> Don’t wrap a
-function whose body is essentially a single primitive call – direct
-aliases (<code>nv_log &lt;- prim_log</code>) or thin wrappers that just
-validate and forward to one primitive. The underlying primitive is
-already jit-wrapped, so adding another <code><a href="../reference/jit.html">jit()</a></code> layer adds
-tracing overhead without fusing anything new. Also skip pure I/O
-(<code>nv_save</code>, <code>nv_serialize</code>), backend constructors
-(<code>nv_array</code>, <code>nv_scalar</code>, <code>nv_matrix</code>),
-and device/state objects (<code>nv_device</code>,
-<code>nv_rng_state</code>).</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

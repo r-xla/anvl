@@ -4,6 +4,9 @@
 
 ### Breaking changes
 
+- [`nv_div()`](https://r-xla.github.io/anvl/dev/reference/nv_div.md) and
+  `/` convert integer and boolean operands to the default float, like
+  base R: `7L / 2L` is `3.5`. Use `%/%` for integer division.
 - The element-wise
   [`nv_max()`](https://r-xla.github.io/anvl/dev/reference/nv_max.md) /
   [`nv_min()`](https://r-xla.github.io/anvl/dev/reference/nv_min.md) and
@@ -330,6 +333,8 @@
 - [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
   and `[<-` gain `inplace`, which writes into the memory of `x` instead
   of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
+- New [`axes()`](https://r-xla.github.io/anvl/dev/reference/axes.md)
+  returns the axis indices of an array, `seq_len(naxes(x))`.
 - New
   [`local_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
   and

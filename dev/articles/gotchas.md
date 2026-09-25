@@ -1,6 +1,6 @@
 # Gotchas
 
-This vignette lists various things to be aware of, specifically in
+This article lists various things to be aware of, specifically in
 relation to base R.
 
 ## No recycling
@@ -87,8 +87,8 @@ xs[[1]] + xs[[2]]
     ## [ CPUf32{2,3} ]
 
 Axes are aligned **from the first**: an array with fewer axes gets
-size-1 axes appended, so its axis 1 meets axis 1 of the other. Anvl
-arrays are column-major, so the first axis is the one that varies
+size-1 axes appended, so its axis 1 meets axis 1 of the other.
+`AnvlArray`s are column-major, so the first axis is the one that varies
 fastest, and appending leaves every axis the array already had meaning
 what it did. (NumPy prepends instead, which is the matching choice for a
 row-major array.) A vector therefore meets a matrix as a **column**: a
@@ -172,7 +172,7 @@ nv_array(c(1, NA, 3))
 
 Round-tripping back to R is not guaranteed to produce `NA`, but can also
 yield `NaN`. What comes back depends on the data type the value was
-built at, so it is pinned here:
+built at, so the example below builds it at `f32`:
 
 ``` r
 
@@ -337,7 +337,7 @@ If the first argument to
 [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
 is changed to `"quickr"` – the experimental, optional backend described
 in the [internals
-vignette](https://r-xla.github.io/anvl/dev/articles/internals.md) – then
+article](https://r-xla.github.io/anvl/dev/articles/internals.md) – then
 you should observe the results of subnormal computations are preserved
 correctly.
 
@@ -346,7 +346,7 @@ guide](https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html#misce
 which also illustrates values preserved in storage but flushed during
 operations on some backends.
 
-## No unsigned integers
+## Unsigned integers
 
 R’s `integer` type is signed 32-bit (range `-2147483648` to
 `2147483647`). {anvl} also exposes unsigned integer dtypes (`ui8`,
@@ -415,64 +415,3 @@ as_array(big, check = "err")
     ## ℹ Exactly `2^63` becomes `NA_integer64_`; larger values become negative
     ##   <integer64>.
     ## ℹ Set `check = FALSE` to skip this check.
-
-## Differences between eager and jit-mode
-
-We try to keep the semantics of eager and jit-mode as close as possible.
-There are a few reasons why this might not be the case, which are listed
-here:
-
-## The function does not canonicalize its inputs.
-
-One difference arises when eager functions do not canonicalize their
-inputs. Here, canoicalizing refers to the conversion or dynamic R inputs
-to `AnvlArray`s. This can be done via `as_anvl_array` for single
-arguments and `as_anvl_arrays` for multiple arguments.
-
-E.g., the following function does not behave the same in jit-mode and in
-eager mode. The untyped `1` materializes at the default float, so under
-the default `f32` the jitted result is rounded where the eager one is
-not (at an `f64` default the two would agree, which is exactly the
-point: the answer depends on a default rather than on the code):
-
-``` r
-
-add_pi <- function(x) {
-  x + pi
-}
-as.numeric(jit(add_pi)(1)) == add_pi(1)
-```
-
-    ## [1] FALSE
-
-We can fix this, by canonicalizing the inputs:
-
-``` r
-
-add_pi2 <- function(x) {
-  x <- as_anvl_array(x)
-  x + pi
-}
-jit(add_pi2)(1) == add_pi2(1)
-```
-
-    ## AnvlArray
-    ##  1
-    ## [ CPUbool{} ]
-
-Not canonicalizing inputs can also be a problem for device placement. If
-we were to call the function below as
-`threeway_add(1, 2, nv_scalar(3, "cuda"))`, then the `1 + 2` would first
-move the `1` and `2` to the default device (which is CPU by default) and
-the second addition would then fail because it would attempt to call
-`nv_add` with mixed-device inputs.
-
-``` r
-
-threeway_add <- function(x, y, z) {
-  nv_add(nv_add(x, y), z)
-}
-```
-
-Therefore, you should always canonicalize your inputs in eager
-functions.

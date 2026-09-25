@@ -1,45 +1,12 @@
 # Subsetting
 
-In this vignette, you will learn how to subset arrays in {anvl} and how
-to update subsets. Because array shapes in {anvl} programs are static
+`AnvlArray`s are subset with `[` and updated with `[<-`, much like R
+arrays. Most differences to base R come from two properties of compiled
+code: the shape of every result must be known before the program runs
 (see the [Static Shape
 Restriction](https://r-xla.github.io/anvl/dev/articles/static_shapes.md)
-vignette), only certain subsetting operations are supported and they
-come with some surprises.
-
-We start by listing possible subsets and whether they support dynamic
-values (arrays that are specified during runtime) or only static values
-(e.g., R literals).
-
-| Subset           | Dynamic | Static |
-|------------------|---------|--------|
-| Single Index     | Yes     | Yes    |
-| Multiple Indices | Yes     | Yes    |
-| Range            | No      | Yes    |
-| Mask             | No      | No     |
-
-Ranges cannot have dynamic values, because then the size of the subset
-would be unknown (what’s the size of `a:b` where `a` and `b` are
-unknown?). Boolean masks are not supported, because the output shape
-depends on the data, which is not known at compile time. For workarounds
-(e.g. `sum(x[x > 0])` or `x[mask] <- update`), see the [masking
-pattern](https://r-xla.github.io/anvl/dev/articles/static_shapes.html#the-masking-pattern)
-section of the Static Shape Restriction vignette. Negative indexing
-(e.g., `x[-1]` to exclude elements) is currently also not supported. For
-static values, this will throw an error. For dynamic values, negative
-indices are treated as out-of-bounds and clamped to the valid range (see
-[Out-of-bounds Handling](#out-of-bounds-handling) below). If you are
-missing a feature, please open an issue on GitHub.
-
-We will start with subsetting and then move on to subset-assignment.
-
-## Subsetting
-
-### Subsetting 1D arrays
-
-Let’s start with some simple examples of selecting individual elements
-from a 1-dimensional array. The index can be either static or dynamic
-and we can drop or keep the axis:
+article), and the compiled program cannot throw errors. This article
+goes through what that means for selecting and updating elements.
 
 ``` r
 
@@ -61,101 +28,52 @@ x
     ##  10
     ## [ CPUi32{10} ]
 
-- Static & Drop:
+## Selecting Elements
 
-  ``` r
+A single index selects one element and drops the axis, just like in R:
 
-  x[2]
-  ```
+``` r
 
-      ## AnvlArray
-      ##  2
-      ## [ CPUi32{} ]
+x[2]
+```
 
-- Static & Keep:
+    ## AnvlArray
+    ##  2
+    ## [ CPUi32{} ]
 
-  Here we use
-  [`arr()`](https://r-xla.github.io/anvl/dev/reference/arr.md), a
-  convenience helper that builds an R array without having to wrap the
-  values in [`c()`](https://rdrr.io/r/base/c.html) (so `arr(2L)` is
-  equivalent to `array(2L)`, and `arr(1, 2, 3)` to `array(c(1, 2, 3))`).
+To select several elements, pass the indices as an R array.
+[`arr()`](https://r-xla.github.io/anvl/dev/reference/arr.md) is a
+shorthand for this, e.g. `arr(2, 4, 6)` is the same as
+`array(c(2, 4, 6))`:
 
-  ``` r
+``` r
 
-  x[arr(2L)]
-  ```
+x[arr(2, 4, 6)]
+```
 
-      ## AnvlArray
-      ##  2
-      ## [ CPUi32{1} ]
+    ## AnvlArray
+    ##  2
+    ##  4
+    ##  6
+    ## [ CPUi32{3} ]
 
-- Dynamic & Drop:
+A plain vector such as `c(2, 4, 6)` is not accepted, because it would be
+ambiguous for a single index: should `x[c(2)]` drop the axis, like
+`x[2]`, or keep it? With arrays, the answer is always clear, so {anvl}
+needs no `drop` argument: `x[2]` drops the axis and `x[arr(2)]` keeps
+it.
 
-  ``` r
+``` r
 
-  x[nv_scalar(2L)]
-  ```
+x[arr(2)]
+```
 
-      ## AnvlArray
-      ##  2
-      ## [ CPUi32{} ]
+    ## AnvlArray
+    ##  2
+    ## [ CPUi32{1} ]
 
-- Dynamic & Keep:
-
-  Below, we perform almost the same operation as above, except that we
-  use an array of shape `(1)` instead of a scalar with shape `()`. The
-  difference is that subsetting with the former will preserve the axis,
-  while the latter will drop it, as we have seen above. This ensures
-  that the dimensionality of the result is the same for any 1D subset
-  specification, and does not suddenly “simplify” the result to 0D.
-
-  ``` r
-
-  x[nv_array(2L)]
-  ```
-
-      ## AnvlArray
-      ##  2
-      ## [ CPUi32{1} ]
-
-Next, we subset multiple elements, where we only have to distinguish
-between static and dynamic indices.
-
-- Static
-
-  ``` r
-
-  x[arr(2, 4, 6)]
-  ```
-
-      ## AnvlArray
-      ##  2
-      ##  4
-      ##  6
-      ## [ CPUi32{3} ]
-
-- Dynamic
-
-  ``` r
-
-  x[nv_array(c(2L, 4L, 6L))]
-  ```
-
-      ## AnvlArray
-      ##  2
-      ##  4
-      ##  6
-      ## [ CPUi32{3} ]
-
-We use [`arr()`](https://r-xla.github.io/anvl/dev/reference/arr.md) (or
-equivalently [`array()`](https://rdrr.io/r/base/array.html)) instead of
-a bare R vector, because otherwise the case where we use a length-1
-vector would be ambiguous (do we drop or keep the axis?). This allows us
-to do without a `drop` parameter.
-
-We can also use a range that can be specified either canonically via
-`a:b` or using
-[`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md).
+Ranges work as in R, including ranges that count down, and an empty
+subscript selects everything:
 
 ``` r
 
@@ -171,24 +89,6 @@ x[2:5]
 
 ``` r
 
-x[nv_seq(2, 5)]
-```
-
-    ## AnvlArray
-    ##  2
-    ##  3
-    ##  4
-    ##  5
-    ## [ CPUi32{4} ]
-
-Note that the `a:b` syntax works via Non-Standard Evaluation (NSE), so
-we can distinguish it from the actual vector `2:5`. Internally, it is
-translated to `nv_seq(a, b)`.
-
-A range that counts down selects in reverse, as it does in base R.
-
-``` r
-
 x[5:2]
 ```
 
@@ -198,9 +98,6 @@ x[5:2]
     ##  3
     ##  2
     ## [ CPUi32{4} ]
-
-It is also possible to select the whole range by omitting the
-specification altogether.
 
 ``` r
 
@@ -220,14 +117,14 @@ x[]
     ##  10
     ## [ CPUi32{10} ]
 
-### Subsetting higher-dimensional arrays
-
-We start by creating a 2-dimensional array.
+For an `AnvlArray` with several axes, there is one subscript per axis,
+and they combine as in R. Axes that are left out at the end select all
+of their elements.
 
 ``` r
 
-x <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
-x
+m <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
+m
 ```
 
     ## AnvlArray
@@ -236,11 +133,9 @@ x
     ##   9 10 11 12
     ## [ CPUi32{3,4} ]
 
-Combining subsets just works like one would expect.
-
 ``` r
 
-x[1, ]
+m[1, ] # the first row
 ```
 
     ## AnvlArray
@@ -252,25 +147,7 @@ x[1, ]
 
 ``` r
 
-x[1, 2]
-```
-
-    ## AnvlArray
-    ##  2
-    ## [ CPUi32{} ]
-
-``` r
-
-x[arr(1), 2:3]
-```
-
-    ## AnvlArray
-    ##  2 3
-    ## [ CPUi32{1,2} ]
-
-``` r
-
-x[arr(1, 3), 2:3]
+m[arr(1, 3), 2:3] # rows 1 and 3, columns 2 and 3
 ```
 
     ## AnvlArray
@@ -280,92 +157,120 @@ x[arr(1, 3), 2:3]
 
 ``` r
 
-x[1:2, 2:3]
+m[2] # also the second row, as the column subscript is left out
 ```
 
     ## AnvlArray
-    ##  2 3
-    ##  6 7
-    ## [ CPUi32{2,2} ]
+    ##  5
+    ##  6
+    ##  7
+    ##  8
+    ## [ CPUi32{4} ]
+
+## Indices Given as `AnvlArray`s
+
+So far, all indices were R values. We call such a subset *static*,
+because it does not depend on any `AnvlArray`: its values are known in
+advance, so {anvl} can check them before anything runs, e.g. whether an
+index is out of range (see [indices outside of the
+`AnvlArray`](#indices-outside-of-the-anvlarray) below). An index can
+also be an `AnvlArray`, e.g. one that is itself the result of a
+computation. Such a subset is *dynamic*: its values are only known once
+the computation runs, so these checks are not possible. Below, the
+position of the largest element is used to select it:
 
 ``` r
 
-x[1, 2:3]
+v <- nv_array(c(3L, 9L, 4L, 1L))
+v[nv_which_max(v)]
+```
+
+    ## AnvlArray
+    ##  9
+    ## [ CPUi32{} ]
+
+As with R values, a scalar index drops the axis, while an `AnvlArray`
+with one axis keeps it and can select several elements:
+
+``` r
+
+x[nv_array(2L)]
 ```
 
     ## AnvlArray
     ##  2
-    ##  3
+    ## [ CPUi32{1} ]
+
+``` r
+
+x[nv_array(c(2L, 4L, 6L))]
+```
+
+    ## AnvlArray
+    ##  2
+    ##  4
+    ##  6
+    ## [ CPUi32{3} ]
+
+Because the shape of the result must be known in advance, not every kind
+of subscript can be dynamic:
+
+| Subscript       | Static (R value) | Dynamic (`AnvlArray`) |
+|-----------------|------------------|-----------------------|
+| Single index    | Yes              | Yes                   |
+| Several indices | Yes              | Yes                   |
+| Range           | Yes              | No                    |
+| Logical mask    | No               | No                    |
+
+The size of a range `a:b`, and therefore the shape of the result, would
+not be known in advance if `a` or `b` were dynamic. For the same reason,
+logical masks such as `x[x > 5]` are not supported at all. The [masking
+pattern](https://r-xla.github.io/anvl/dev/articles/static_shapes.html#the-masking-pattern)
+section of the Static Shape Restriction article shows how to get the
+same results without them. Negative indices, which exclude elements in
+R, are not supported either.
+
+## Indices Outside of the `AnvlArray`
+
+In a static subset, an index that is outside of the `AnvlArray` is an
+error:
+
+``` r
+
+x[11]
+```
+
+    ## Error in `parse_subset_spec()`:
+    ## ! The index 11 is out of bounds for axis 1.
+    ## ✖ Axis 1 has size 10, so indices must be between 1 and 10.
+
+In a dynamic subset, the index only has a value once the computation
+runs, when errors can no longer be thrown (see [compiled code cannot
+throw
+errors](https://r-xla.github.io/anvl/dev/articles/next_steps.html#compiled-code-cannot-throw-errors)).
+Instead, the index is moved to the nearest valid one, so it is worth
+being careful with such indices to avoid bugs:
+
+``` r
+
+x[nv_array(c(0L, 20L))]
+```
+
+    ## AnvlArray
+    ##   1
+    ##  10
     ## [ CPUi32{2} ]
-
-``` r
-
-x[arr(2, 2), ]
-```
-
-    ## AnvlArray
-    ##  5 6 7 8
-    ##  5 6 7 8
-    ## [ CPUi32{2,4} ]
-
-``` r
-
-x[arr(2, 2)]
-```
-
-    ## AnvlArray
-    ##  5 6 7 8
-    ##  5 6 7 8
-    ## [ CPUi32{2,4} ]
-
-### Out-of-bounds Handling
-
-If one specifies out-of-bounds indices, we can only throw an error if
-the indices are static (and therefore known at compile time). The PJRT
-backend that {anvl} compiles to does not throw errors for out-of-bounds
-dynamic indices, but instead clamps them to the valid range:
-
-``` r
-
-x[nv_array(-1L), nv_array(100L)]
-```
-
-    ## AnvlArray
-    ##  4
-    ## [ CPUi32{1,1} ]
-
-``` r
-
-x[nv_array(1L), nv_array(4L)]
-```
-
-    ## AnvlArray
-    ##  4
-    ## [ CPUi32{1,1} ]
-
-Therefore, you need to be careful when using dynamic indexing in order
-to avoid bugs.
 
 ## Updating Subsets
 
-Updating subsets supports the same syntax as subsetting. The value to
-write must either have the shape of the subset, or be a scalar.
+Subset assignment uses the same subscripts as selection. The new value
+must either have the shape of the selected subset, or be a scalar, which
+is then used for every selected element:
 
 ``` r
 
-x
-```
-
-    ## AnvlArray
-    ##   1  2  3  4
-    ##   5  6  7  8
-    ##   9 10 11 12
-    ## [ CPUi32{3,4} ]
-
-``` r
-
-x[, 3] <- nv_array(-(1:3))
-x
+m[, 3] <- nv_array(-(1:3))
+m
 ```
 
     ## AnvlArray
@@ -376,53 +281,67 @@ x
 
 ``` r
 
-x <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
-x[, 3] <- -99L
-x
+m[1, ] <- 0L
+m
 ```
 
     ## AnvlArray
-    ##    1   2 -99   4
-    ##    5   6 -99   8
-    ##    9  10 -99  12
+    ##   0  0  0  0
+    ##   5  6 -2  8
+    ##   9 10 -3 12
     ## [ CPUi32{3,4} ]
 
-Also, it must have a data type that is convertible to the data type of
-the array.
+The value must also fit the data type of the `AnvlArray`. This is
+different from base R, which changes the type of the object that is
+assigned into when the value does not fit, e.g. an integer vector
+becomes a double vector:
 
 ``` r
 
-x <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
-x[, 3] <- nv_array(c(1.5, 2.5, 3.5))
+r_int <- 1:3
+r_int[1] <- 0.5
+r_int
+```
+
+    ## [1] 0.5 2.0 3.0
+
+``` r
+
+typeof(r_int)
+```
+
+    ## [1] "double"
+
+{anvl} never changes the data type of the `AnvlArray` that is being
+updated, so the same assignment is an error:
+
+``` r
+
+y <- nv_array(1:3)
+y[1] <- 0.5
 ```
 
     ## Error:
     ## ! Cannot bring `value` to data type "i32".
-    ## ✖ "f32" is not promotable to "i32".
-    ## ℹ Convert it explicitly with `nv_convert()`.
+    ## ✖ It is an R double, which is only ever built at a data type of its own
+    ##   category: a double becomes a float, an integer an integer, a logical a
+    ##   "bool".
+    ## ℹ Write it in the target's category (e.g. `0L` for an integer data type), or
+    ##   convert it with `nv_convert()`.
+
+To store non-integer values, convert the `AnvlArray` to a float data
+type first, e.g. with `nv_convert(y, "f32")`.
+
+Writes to dynamic indices outside of the `AnvlArray` are silently
+ignored, for the same reason as when selecting (see [indices outside of
+the `AnvlArray`](#indices-outside-of-the-anvlarray)). Below, only the
+elements 1 and 3 are updated:
 
 ``` r
 
-x
-```
-
-    ## AnvlArray
-    ##   1  2  3  4
-    ##   5  6  7  8
-    ##   9 10 11 12
-    ## [ CPUi32{3,4} ]
-
-### Out-of-bounds Handling
-
-Similar to subsetting, out-of-bounds indices can only be checked for
-static values. For dynamic indices, out-of-bounds writes are simply
-ignored:
-
-``` r
-
-x <- nv_array(1:5)
-x[nv_array(c(1L, 100L, 3L))] <- nv_array(c(-1L, -2L, -3L))
-x
+y <- nv_array(1:5)
+y[nv_array(c(1L, 100L, 3L))] <- nv_array(c(-1L, -2L, -3L))
+y
 ```
 
     ## AnvlArray
@@ -433,20 +352,15 @@ x
     ##   5
     ## [ CPUi32{5} ]
 
-Here, the write to index 100 is silently ignored, while indices 1 and 3
-are updated.
-
-### Duplicate Indices
-
-When writing to the same element multiple times, there is no guarantee
-which value will be written. Specifically, this might differ between
-backends (CPU vs. GPU).
+When the same element is written several times, it is not specified
+which of the values ends up in it, and this can differ between devices,
+e.g. between the CPU and a GPU:
 
 ``` r
 
-x <- nv_array(1:5)
-x[arr(1L, 1L, 1L)] <- nv_array(c(10L, 20L, 30L))
-x
+y <- nv_array(1:5)
+y[arr(1L, 1L, 1L)] <- nv_array(c(10L, 20L, 30L))
+y
 ```
 
     ## AnvlArray
@@ -459,17 +373,18 @@ x
 
 ### In-place Updates
 
-In eager mode, `x[i] <- val` creates a new array by default, even when R
-could update `x` in place. This is because {anvl} cannot know whether
-another R variable still refers to the same array, which would otherwise
-be modified as well. To avoid the copy, pass `inplace = TRUE` among the
-subscripts, which writes the update into the memory of `x`:
+Outside of [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
+`y[i] <- value` creates a new `AnvlArray`, even where R would update `y`
+in place. This is because {anvl} cannot know whether another R variable
+still refers to the same `AnvlArray`, which would then change as well.
+To avoid the copy, pass `inplace = TRUE` among the subscripts, which
+writes the update into the memory of `y`:
 
 ``` r
 
-x <- nv_array(1:5)
-x[2:3, inplace = TRUE] <- 0L
-x
+y <- nv_array(1:5)
+y[2:3, inplace = TRUE] <- 0L
+y
 ```
 
     ## AnvlArray
@@ -482,19 +397,19 @@ x
 
 [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
 takes the same argument:
-`nv_subset_assign(x, 2:3, value = 0L, inplace = TRUE)`.
+`nv_subset_assign(y, 2:3, value = 0L, inplace = TRUE)`.
 
-This consumes the original array: its memory is
+This consumes the original `AnvlArray`: its memory is
 [donated](https://r-xla.github.io/anvl/dev/articles/efficiency.html#donation)
-to the result, so every other R variable that referred to it can no
-longer be used afterwards.
+to the result, so any other R variable that referred to it can no longer
+be used afterwards.
 
 ``` r
 
-x <- nv_array(1:5)
-y <- x
-x[1, inplace = TRUE] <- -1L
-y
+y <- nv_array(1:5)
+z <- y
+y[1, inplace = TRUE] <- -1L
+z
 ```
 
     ## AnvlArray
@@ -502,7 +417,7 @@ y
     ## Error:
     ## ! called on deleted or donated buffer
 
-Inside a jitted function, `inplace = TRUE` is an error. There, `y` would
+Inside a jitted function, `inplace = TRUE` is an error. There, `z` would
 stay valid, so the same code would behave differently in eager and in
 jit mode. The compiler avoids unnecessary copies inside
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) anyway, so

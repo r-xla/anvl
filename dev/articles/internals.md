@@ -57,21 +57,21 @@ f <- function(x, y, op) {
 ```
 
 To do this, we use
-[`anvl::trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md),
+[`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md),
 which takes in an `R` function and a list of `AbstractArray` inputs that
 specify the input types.
 
 ``` r
 
-aten <- nv_aval("f32", c())
-aten
+aval <- nv_aval("f32", c())
+aval
 ```
 
     ## AbstractArray(dtype=f32, shape=)
 
 ``` r
 
-graph <- trace_fn(f, list(x = aten, y = aten, op = "mul"))
+graph <- trace_fn(f, list(x = aval, y = aval, op = "mul"))
 graph
 ```
 
@@ -92,7 +92,7 @@ of the `AnvlGraph` are:
 - `calls`, which are `PrimitiveCall`s that take in `GraphNode`s (and
   parameters) and produce output `GraphValue`s.
 - `constants`, which are the `GraphValue`s for values closed over by the
-  traced function (see *Constant Handling*).
+  traced function (see [constant handling](#constant-handling)).
 - `in_tree`, `out_tree`, which record the nesting structure of the
   function’s inputs and outputs.
 
@@ -105,7 +105,7 @@ we need to distinguish between two cases:
 
 1.  A “standard” `R` function is called: Here, nothing special happens
     and the function is simply evaluated.
-2.  An `anvl` function is called: Here, the operation that underlies the
+2.  An {anvl} function is called: Here, the operation that underlies the
     function is recorded in the `GraphDescriptor`.
 
 The evaluation of the `if` statement is an example for the first
@@ -263,9 +263,9 @@ nv_array(out)
 
 ## The User Interface
 
-In the previous section, we have shown how the transformations are
-implemented under the hood. The actual user interface is a little more
-convenient and follows JAX’s interface.
+In the [previous section](#transforming-code), we have shown how the
+transformations are implemented under the hood. The actual user
+interface is a little more convenient and follows JAX’s interface.
 
 ### `jit()`
 
@@ -303,13 +303,15 @@ the given inputs. The cache is an LRU cache of
 `cache_size` entries, owned by the backend’s dispatcher
 ([`pjrt::dispatcher()`](https://r-xla.github.io/pjrt/reference/dispatcher.html)),
 so a function that has run on more than one backend holds one cache per
-backend (see *Backend and Device in
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)* below).
-For a hit, the types of all `AnvlArray`s need to match exactly (data
-type and shape) and all static arguments need to be identical. For
-example, if we run the function with `AnvlArray`s of the same type, but
-different values, the function won’t be recompiled, which we can see
-with
+backend (see [backend and device in `jit()`](#backend-and-device-in-jit)
+below). For a hit, the types of all `AnvlArray`s need to match exactly
+(data type and shape) and all static arguments need to be identical. The
+structure of nested inputs, the device and the default data types are
+part of the key as well (see [nested inputs and
+outputs](#nested-inputs-and-outputs) and [backend and device in
+`jit()`](#backend-and-device-in-jit)). For example, if we run the
+function with `AnvlArray`s of the same type, but different values, the
+function won’t be recompiled, which we can see with
 [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md),
 which is already 1, because we have called it on `x` and `y` above.
 
@@ -471,21 +473,20 @@ Constants are handled specially in {anvl}. Consider the program below:
 y <- nv_array(rnorm(1000000L))
 graph <- trace_fn(function(x) {
   x + y + 1
-}, list(x = nv_scalar(1L)))
+}, list(x = nv_scalar(1)))
 graph
 ```
 
-    ## <AnvlGraph> [%c1: f32[1000000]] (%x1: i32[]) {
-    ##   %1: f32[] = convert [dtype = f32] (%x1)
-    ##   %2: f32[1000000] = broadcast_in_axes [
+    ## <AnvlGraph> [%c1: f32[1000000]] (%x1: f32[]) {
+    ##   %1: f32[1000000] = broadcast_in_axes [
     ##     shape = 1000000, broadcast_axes = integer(0)
-    ##   ] (%1)
-    ##   %3: f32[1000000] = add(%2, %c1)
-    ##   %4: f32[1000000] = broadcast_in_axes [
+    ##   ] (%x1)
+    ##   %2: f32[1000000] = add(%1, %c1)
+    ##   %3: f32[1000000] = broadcast_in_axes [
     ##     shape = 1000000, broadcast_axes = integer(0)
     ##   ] (1:f32)
-    ##   %5: f32[1000000] = add(%3, %4)
-    ##   return %5
+    ##   %4: f32[1000000] = add(%2, %3)
+    ##   return %4
     ## }
 
 Here, `y` is a closed-over constant and it is included in the
@@ -516,20 +517,19 @@ out <- stablehlo(graph)
 out[[1L]]
 ```
 
-    ## func.func @main (%0: tensor<1000000xf32>, %1: tensor<i32>) -> tensor<1000000xf32> {
-    ## %2 = "stablehlo.convert" (%1): (tensor<i32>) -> (tensor<f32>)
-    ## %3 = "stablehlo.broadcast_in_dim" (%2) {
+    ## func.func @main (%0: tensor<1000000xf32>, %1: tensor<f32>) -> tensor<1000000xf32> {
+    ## %2 = "stablehlo.broadcast_in_dim" (%1) {
     ## broadcast_dimensions = array<i64>
     ## }: (tensor<f32>) -> (tensor<1000000xf32>)
-    ## %4 = stablehlo.add %3, %0 : tensor<1000000xf32>
-    ## %5 = "stablehlo.constant" () {
+    ## %3 = stablehlo.add %2, %0 : tensor<1000000xf32>
+    ## %4 = "stablehlo.constant" () {
     ## value = dense<1.00000000e+00> : tensor<f32>
     ## }: () -> (tensor<f32>)
-    ## %6 = "stablehlo.broadcast_in_dim" (%5) {
+    ## %5 = "stablehlo.broadcast_in_dim" (%4) {
     ## broadcast_dimensions = array<i64>
     ## }: (tensor<f32>) -> (tensor<1000000xf32>)
-    ## %7 = stablehlo.add %4, %6 : tensor<1000000xf32>
-    ## return %7 : tensor<1000000xf32>
+    ## %6 = stablehlo.add %3, %5 : tensor<1000000xf32>
+    ## return %6 : tensor<1000000xf32>
     ## }
 
 Also, before compiling, we remove unused constants. Captured constants
@@ -540,9 +540,9 @@ the gradient of the function w.r.t. `x` does not depend on the captured
 ``` r
 
 f <- function(x) {
-x + y
+  x + y
 }
-transform_gradient(trace_fn(f, list(x = nv_scalar(1))))
+transform_gradient(trace_fn(f, list(x = nv_scalar(1))), wrt = "x")
 ```
 
 In principle, the compiler is able to do this itself, but because we
@@ -562,8 +562,8 @@ R values can appear in two forms in compiled programs:
 1.  As constants
 2.  As non-static R inputs (`RData`).
 
-The `RData` object can be though of as the dynamic version of an R value
-within the program and they behave similarly.
+The `RData` object can be thought of as the dynamic version of an R
+value within the program and they behave similarly.
 
 Both have a shape, but no data type.
 
@@ -584,7 +584,7 @@ trace_fn(function(x) {
     ## ! An R value has no data type of its own until it is used.
     ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
     ##   only takes a data type when it meets a typed array, or when it materializes
-    ##   at the default ("i32").
+    ##   at the default.
     ## ℹ Give it one explicitly with `nv_convert()`.
 
 ``` r
@@ -603,7 +603,7 @@ trace_fn(function() {
     ## ! An R value has no data type of its own until it is used.
     ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
     ##   only takes a data type when it meets a typed array, or when it materializes
-    ##   at the default ("f32").
+    ##   at the default.
     ## ℹ Give it one explicitly with `nv_convert()`.
 
 An `RData` object resolves its data type when something materializes it,
@@ -617,13 +617,12 @@ Generally, there are two situations:
     data type
 2.  None of the inputs to a primitive has a concrete data type.
 
-In the first case, the `RData` object yields
-([`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md))
-to the concrete data type. Below, `nv_aval("integer", c())` is
-equivalent to `RData(c(), "integer")`. In the resulting graph, the `%x1`
-input has the data type it yielded to, and the `<- integer` records that
-the caller supplies it as an R integer, which the runtime uploads at
-that data type.
+In the first case, the `RData` object takes the concrete data type
+([`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)).
+Below, `nv_aval("integer", c())` is equivalent to
+`RData(c(), "integer")`. In the resulting graph, the `%x1` input has the
+data type it took, and the `<- integer` records that the caller supplies
+it as an R integer, which the runtime uploads at that data type.
 
 ``` r
 
@@ -637,11 +636,11 @@ trace_fn(\(x) {
     ##   return %1
     ## }
 
-Yielding stays within the value’s own category, so an R integer meeting
-an `f32` is an error rather than a promotion – crossing a category is
-the job of the `nv_*` layer.
+Taking a data type stays within the value’s own category, so an R
+integer meeting an `f32` is an error rather than a promotion – crossing
+a category is the job of the `nv_*` layer.
 
-In the second case, it assumes its default data type:
+In the second case, it settles on its default data type:
 
 ``` r
 
@@ -658,8 +657,7 @@ trace_fn(\(x) {
 When the same `RData` input is used at several data types, it is
 supplied at the narrowest one that holds them all, and each use site
 converts down from it. Below the input is uploaded as `i64`; the `i8`
-and `i16` uses convert from it, via `i32` because an R integer is not
-built below 32 bits.
+and `i16` uses convert down from it.
 
 ``` r
 
@@ -684,7 +682,7 @@ Another approach would be to always represent R doubles as `f64`, which
 is their natural representation. The problem with this approach is that:
 
 1.  modern accelerators run much faster in `f32` than `f64`, and
-2.  some accelerators (such as Metal) do not support `f64` at all.
+2.  some accelerators do not support `f64` at all.
 
 Therefore, one of the underlying ideas is to only introduce `f64` values
 when someone actually requested this data type – which is why `f32` is
@@ -757,59 +755,259 @@ solution to this problem. One idea would be to let a single R argument
 enter the compiled program at several data types, so that the `double`
 input is converted to an `i32` on the host before the program runs.
 
-This is why API functions and primitives should always canonicalize the
-inputs right at the beginning, so this problem rarely happens.
-
-## Backend and Device in `jit()`
-
-There is exactly one active backend at any time
-([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
-the option `anvl.backend`). A `JitFunction` reads it on every call and
-keeps one implementation – the backend’s `jit` method’s result, with its
-own compilation cache – per backend it has been called on.
-[`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
-reports one of those caches, the active backend’s unless its `backend`
-argument names another. Nothing infers a backend from the arguments: an
-array of another backend is rejected by the dispatcher. This is what
-makes the default data types
-([`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
-unambiguous in eager code, where a bare R value has nothing but the
-active backend to take its default from.
-
-Device handling within a backend has two things to be aware of:
-
-1.  We don’t know the inferred device just from looking at the input, as
-    we might have something like:
-    `jit(\(x) x + nv_scalar(1, device = "cuda"))` where we might only
-    learn about the device during tracing. This means the data is only
-    converted at the end.
-
-2.  A function without array inputs (a constructor) has no device to
-    infer from. The constructor primitives
-    ([`prim_fill()`](https://r-xla.github.io/anvl/dev/reference/prim_fill.md),
-    [`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md))
-    therefore pass the device they were asked for to
-    [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md),
-    which declares it into the trace, where it counts like the device of
-    an array input. A caller steers such a program by passing the device
-    on to the constructor, in a static argument:
-
-    ``` r
-
-    f <- jit(\(dev) nv_fill(1, 2L, dtype = "f32", device = dev), static = "dev")
-    f(nv_device("cpu"))
-    ```
+[`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
+behaves the same way: unlike other API functions, it deliberately does
+not canonicalize its input, so that the R value is built at the target
+data type instead of being rounded through the default float first.
 
 ### Nested Inputs and Outputs
 
-TODO
+The inputs and outputs of a jitted function do not have to be single
+arrays: they can be arbitrarily nested lists of arrays, such as the
+parameters of a model. The compiled program, however, only knows a flat
+sequence of inputs and outputs. To bridge the two, {anvl} uses the
+`RTree` data structure from the {pjrt} package, which is the R analog of
+[JAX’s pytrees](https://docs.jax.dev/en/latest/pytrees.html).
 
-## Dichotomy of anvl functions
+An `RTree` describes the nesting structure of an R object, without its
+contents. Unclassed lists are the inner nodes of the tree, `NULL` is an
+empty node, and everything else – such as an `AnvlArray` – is a leaf.
+[`pjrt::build_tree()`](https://r-xla.github.io/pjrt/reference/build_tree.html)
+captures the structure,
+[`pjrt::flatten()`](https://r-xla.github.io/pjrt/reference/flatten.html)
+extracts the leaves as a flat list, and
+[`pjrt::unflatten()`](https://r-xla.github.io/pjrt/reference/unflatten.html)
+puts a flat list of leaves back into the structure:
+
+``` r
+
+x <- list(a = 1, b = list(c = 2, d = NULL, e = 3))
+tree <- pjrt::build_tree(x)
+tree
+```
+
+    ## list<named>(a = *, b = list<named>(c = *, d = NULL, e = *))
+
+``` r
+
+pjrt::flatten(x)
+```
+
+    ## [[1]]
+    ## [1] 1
+    ## 
+    ## [[2]]
+    ## [1] 2
+    ## 
+    ## [[3]]
+    ## [1] 3
+
+``` r
+
+pjrt::unflatten(tree, list(10, 20, 30))
+```
+
+    ## $a
+    ## [1] 10
+    ## 
+    ## $b
+    ## $b$c
+    ## [1] 20
+    ## 
+    ## $b$d
+    ## NULL
+    ## 
+    ## $b$e
+    ## [1] 30
+
+When tracing a function, its arguments are flattened, each leaf becomes
+one input of the `AnvlGraph`, and the structure of the arguments is
+stored in the graph’s `in_tree` field. Likewise, the outputs are
+flattened into the graph’s outputs, and their structure is stored in
+`out_tree`:
+
+``` r
+
+graph <- trace_fn(
+  function(params, x) list(pred = params$w * x + params$b, w = params$w),
+  list(params = list(w = aval, b = aval), x = aval)
+)
+graph
+```
+
+    ## <AnvlGraph> (%x1: f32[], %x2: f32[], %x3: f32[]) {
+    ##   %1: f32[] = mul(%x1, %x3)
+    ##   %2: f32[] = add(%1, %x2)
+    ##   return (%2, %x1)
+    ## }
+
+``` r
+
+graph$in_tree
+```
+
+    ## list<named>(params = list<named>(w = *, b = *), x = *)
+
+``` r
+
+graph$out_tree
+```
+
+    ## list<named>(pred = *, w = *)
+
+When the compiled program is called, the arguments are flattened in the
+same way, and the flat outputs of the program are unflattened with
+`out_tree`, so the caller receives the nested structure that the
+function returned.
+
+Because the compiled program depends on the structure of the inputs, the
+input tree is also part of the cache key of
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md). Passing
+the same arrays in a list with a different order of elements therefore
+triggers a new compilation, while changing only their values does not:
+
+``` r
+
+f <- jit(function(params, x) params$w * x + params$b)
+f(list(w = nv_scalar(2), b = nv_scalar(1)), nv_scalar(3))
+```
+
+    ## AnvlArray
+    ##  7
+    ## [ CPUf32{} ]
+
+``` r
+
+f(list(b = nv_scalar(1), w = nv_scalar(2)), nv_scalar(3))
+```
+
+    ## AnvlArray
+    ##  7
+    ## [ CPUf32{} ]
+
+``` r
+
+jit_cache_size(f)
+```
+
+    ## [1] 2
+
+``` r
+
+f(list(w = nv_scalar(2), b = nv_scalar(5)), nv_scalar(3))
+```
+
+    ## AnvlArray
+    ##  11
+    ## [ CPUf32{} ]
+
+``` r
+
+jit_cache_size(f)
+```
+
+    ## [1] 2
+
+## Backend and Device in `jit()`
+
+A compiled program runs on one backend and on one device of that
+backend. [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)
+decides the two in different ways: the backend comes from a global
+setting, while the device comes from the function’s inputs and body.
+
+### Backend
+
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) does not
+tie a function to a backend when the function is created. Instead, the
+`JitFunction` reads the active backend
+([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
+the option `anvl.backend`) every time it is called. The first call on a
+backend builds that backend’s implementation of the function, with its
+own compilation cache, so calling the same function under
+`with_backend("quickr", ...)` and then under pjrt compiles once for
+each.
+[`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
+reports the cache of the active backend, or of the one its `backend`
+argument names.
+
+The backend is never inferred from the arguments: an array that belongs
+to another backend is an error. This is what makes the default data
+types
+([`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+unambiguous. It’s always the ones for the active backend.
+
+### Device
+
+With `jit(f, device = "cuda")`, the device is fixed: every array input
+is copied to it before the program runs, and the program is compiled for
+it.
+
+With the default `device = NULL`,
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) infers the
+device from everything in the program that names one:
+
+1.  The array inputs.
+2.  `AnvlArray`s the function captures from its environment, or creates
+    on an explicit device, e.g. `nv_scalar(1, device = "cuda")`.
+3.  The `device` argument of a constructor primitive, see below.
+
+If they all name the same device, the program runs there. If they name
+different devices,
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) throws an
+error. If nothing names a device, the program runs on
+[`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
+
+The inputs alone are therefore not enough to know the device: the body
+can name one that
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) only sees
+while tracing. The function below has no inputs, but it still runs on
+the GPU:
+
+``` r
+
+f <- jit(\() nv_scalar(1, device = "cuda") + 1)
+f()
+```
+
+An array the function creates *without* naming a device, such as
+`nv_array(1:3)` in the body, does not count towards this decision. While
+tracing it is a device-free constant, and its data is only copied to a
+device once the program’s device has been decided.
+
+The device is also part of the cache key: calling the same function on
+arrays from two different devices compiles two programs.
+
+#### Constructors
+
+A primitive without array inputs, such as
+[`prim_fill()`](https://r-xla.github.io/anvl/dev/reference/prim_fill.md)
+or
+[`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md),
+has no input to take a device from. It therefore has a `device` argument
+of its own, which it passes to
+[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md);
+that call records the device in the trace, where it counts exactly like
+the device of an array input. To choose the device of such a program
+from the outside, pass it to the constructor through a static argument:
+
+``` r
+
+f <- jit(\(dev) nv_fill(1, 2L, dtype = "f32", device = dev), static = "dev")
+f("cpu")
+```
+
+    ## AnvlArray
+    ##  1
+    ##  1
+    ## [ CPUf32{2} ]
+
+## Dichotomy of {anvl} functions
 
 Here, we will dig deeper into the dichotomy of {anvl} functions such as
-`prim_add`. In the *Get Started* vignette, we have learned that these
-functions can either be called directly on `AnvlArray`s to transform
-data, or used within
+`prim_add`. In the [Get
+Started](https://r-xla.github.io/anvl/dev/articles/anvl.md) article, we
+have learned that these functions can either be called directly on
+`AnvlArray`s to transform data, or used within
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) blocks to
 build up programs. Here, we will explain what this actually does and why
 this is possible.

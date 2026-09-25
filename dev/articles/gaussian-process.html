@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,13 +112,13 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Gaussian Process</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/gaussian-process.Rmd" class="external-link"><code>vignettes/gaussian-process.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/gaussian-process.Rmd" class="external-link"><code>vignettes/articles/gaussian-process.Rmd</code></a></small>
       <div class="d-none name"><code>gaussian-process.Rmd</code></div>
     </div>
 
     
     
-<p>In this vignette, we implement a Gaussian Process (GP) regression
+<p>In this article, we implement a Gaussian Process (GP) regression
 model from scratch.</p>
 <p>A Gaussian Process is a collection of random variables, any finite
 subset of which follows a joint Gaussian distribution. A GP is fully
@@ -134,9 +135,9 @@ f(\mathbf{x}^{(n)})]^\top\)</span> are jointly Gaussian:</p>
 \mathcal{N}\bigl(\mathbf{m},\; \mathbf{K}\bigr)\]</span></p>
 <p>where <span class="math inline">\(\mathbf{m}_i =
 m(\mathbf{x}^{(i)})\)</span> and <span class="math inline">\(\mathbf{K}_{ij} = k(\mathbf{x}^{(i)},
-\mathbf{x}^{(j)})\)</span>. We assume a zero mean function <span class="math inline">\(m(\mathbf{x}) = 0\)</span> throughout this
-vignette (which is standard practice, since the kernel already provides
-enough flexibility).</p>
+\mathbf{x}^{(j)})\)</span>. We assume a zero mean function <span class="math inline">\(m(\mathbf{x}) = 0\)</span> throughout this article
+(which is standard practice, since the kernel already provides enough
+flexibility).</p>
 <div class="section level2">
 <h2 id="kernel">Kernel<a class="anchor" aria-label="anchor" href="#kernel"></a>
 </h2>
@@ -166,9 +167,10 @@ sets of points:</p>
 <span>  <span class="va">sq_dist</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_sum.html">nv_sum</a></span><span class="op">(</span><span class="va">diff</span> <span class="op">*</span> <span class="va">diff</span>, axes <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
 <span>  <span class="va">signal_var</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="va">sq_dist</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">lengthscale</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>Because <code>anvl</code> jit-compiles the code, there is no
-performance penalty for custom kernels, other than if we would use a C++
-library that has a number of hard-coded kernels available.</p>
+<p>Because {anvl} compiles the whole computation, a custom kernel like
+this one runs as fast as a built-in one would. This is different from
+libraries that ship a fixed set of kernels implemented in C++, where a
+custom kernel written in R would be considerably slower.</p>
 </div>
 <div class="section level2">
 <h2 id="joint-distribution">Joint Distribution<a class="anchor" aria-label="anchor" href="#joint-distribution"></a>
@@ -306,7 +308,7 @@ marginal likelihood.</p>
 <h2 id="marginal-likelihood">Marginal Likelihood<a class="anchor" aria-label="anchor" href="#marginal-likelihood"></a>
 </h2>
 <p>With <span class="math inline">\(\pmb{\theta} = (\ell, \sigma_f^2,
-\sigma^2)\)</span>, we can write down the log marginal likelihood as
+\sigma^2)\)</span>, we can write down the marginal likelihood as
 follows:</p>
 <p><span class="math display">\[p(\mathbf{y} \mid \mathbf{X},
 \pmb{\theta}) = \int p(\mathbf{y} \mid \mathbf{f}, \mathbf{X}) \,
@@ -377,8 +379,8 @@ out the constant term because we don’t need it for optimization.</p>
 </h3>
 <p>We optimize the hyperparameters using gradient descent. Since <span class="math inline">\(\ell\)</span>, <span class="math inline">\(\sigma_f^2\)</span>, and <span class="math inline">\(\sigma^2\)</span> must be positive, we optimize on
 the log scale to allow unconstrained updates. <code>anvl</code> computes
-the gradients via <code><a href="../reference/gradient.html">gradient()</a></code> and the entire training loop
-is JIT-compiled with <code>nv_while</code>.</p>
+the gradients via <code><a href="../reference/gradient.html">gradient()</a></code> and the entire fitting loop is
+JIT-compiled with <code>nv_while</code>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"log_lengthscale"</span>, <span class="st">"log_signal_var"</span>, <span class="st">"log_noise_var"</span><span class="op">)</span></span>
 <span><span class="va">nll_grad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gradient.html">gradient</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, <span class="va">log_lengthscale</span>, <span class="va">log_signal_var</span>, <span class="va">log_noise_var</span><span class="op">)</span> <span class="op">{</span></span>
@@ -388,7 +390,7 @@ is JIT-compiled with <code>nv_while</code>.</p>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span>, wrt <span class="op">=</span> <span class="va">params</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">train_gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, <span class="va">lengthscale</span>, <span class="va">signal_var</span>, <span class="va">noise_var</span>,</span>
+<span><span class="va">fit_gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, <span class="va">lengthscale</span>, <span class="va">signal_var</span>, <span class="va">noise_var</span>,</span>
 <span>  <span class="va">n_steps</span>, <span class="va">learning_rate</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_while.html">nv_while</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -415,7 +417,7 @@ is JIT-compiled with <code>nv_while</code>.</p>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">train_gp</span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">fit_gp</span><span class="op">(</span></span>
 <span>  <span class="va">X_t</span>, <span class="va">y_t</span>,</span>
 <span>  lengthscale <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>,</span>
 <span>  signal_var <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>,</span>

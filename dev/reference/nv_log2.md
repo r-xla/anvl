@@ -7,6 +7,9 @@ Element-wise base-2 logarithm. You can also use
 
 ``` r
 nv_log2(x)
+
+# S3 method for class 'AnvlArray'
+log2(x)
 ```
 
 ## Arguments

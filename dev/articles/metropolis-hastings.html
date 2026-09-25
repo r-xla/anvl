@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,13 +112,13 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Metropolis-Hastings</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/metropolis-hastings.Rmd" class="external-link"><code>vignettes/metropolis-hastings.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/metropolis-hastings.Rmd" class="external-link"><code>vignettes/articles/metropolis-hastings.Rmd</code></a></small>
       <div class="d-none name"><code>metropolis-hastings.Rmd</code></div>
     </div>
 
     
     
-<p>In this vignette, we show how to implement a random-walk
+<p>In this article, we show how to implement a random-walk
 Metropolis-Hastings sampler using {anvl} <span class="citation">(Hastings 1970)</span>. Metropolis-Hastings is a well
 known MCMC algorithm that generates samples from a target distribution
 by proposing moves and accepting or rejecting them based on the density
@@ -186,8 +187,8 @@ need to know the log-density up to an additive constant.</p>
 <span><span class="op">}</span></span></code></pre></div>
 <p>There are a few things to note in the code below:</p>
 <ol style="list-style-type: lower-alpha">
-<li>the accept/reject decision uses the primitive <code><a href="../reference/nv_if.html">nv_if()</a></code>
-and not a native R conditional.</li>
+<li>the accept/reject decision uses <code><a href="../reference/nv_if.html">nv_if()</a></code> and not a
+native R conditional.</li>
 <li>we sample a scalar uniform random number by setting
 <code>shape = integer()</code>
 </li>

@@ -7,6 +7,9 @@ Element-wise sine. You can also use
 
 ``` r
 nv_sin(x)
+
+# S3 method for class 'AnvlArray'
+sin(x)
 ```
 
 ## Arguments

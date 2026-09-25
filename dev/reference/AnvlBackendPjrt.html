@@ -33,22 +33,23 @@ backend."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.s
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -104,8 +105,7 @@ With subclass <code>"AnvlBackendPjrt"</code>.</p>
 
 <p>An <code><a href="AnvlArray.html">AnvlArray</a></code> with <code>backend = "pjrt"</code> wraps a <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_buffer.html" class="external-link">pjrt::pjrt_buffer()</a></code>
 stored in the <code>$data</code> field. The buffer owns the memory holding the array
-values and may live on any device supported by PJRT (CPU, CUDA, Metal,
-...). Calling <code><a href="as_array.html">as_array()</a></code> transfers the buffer contents back to an R
+values and may live on any device supported by PJRT (CPU, CUDA, ...). Calling <code><a href="as_array.html">as_array()</a></code> transfers the buffer contents back to an R
 array; calling <code><a href="AnvlArray.html">nv_array()</a></code> on an R object uploads it to the requested
 device.</p>
 <p>Each <code>AnvlArray</code> therefore has an associated device, queryable via
@@ -133,7 +133,7 @@ unless the defaults say otherwise (see <code><a href="default_dtypes.html">defau
 read back into R, yet treated as zero in calculations. On CPUs, XLA enables
 a mode that replaces subnormal inputs and results with zero. The exact
 behavior depends on the platform, backend, and operation.</p>
-<p>See <code><a href="../articles/gotchas.html">vignette("gotchas", package = "anvl")</a></code> for an explanation and examples.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/gotchas.html">Gotchas</a> article for an explanation and examples.</p>
     </div>
     <div class="section level2">
     <h2 id="pjrt-jit-arguments">PJRT JIT arguments<a class="anchor" aria-label="anchor" href="#pjrt-jit-arguments"></a></h2>

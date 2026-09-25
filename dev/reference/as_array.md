@@ -34,7 +34,8 @@ as_array(x, ...)
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
   See
   [`pjrt::as_array.PJRTBuffer()`](https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html)
-  for the full list, and the "Gotchas" vignette.
+  for the full list, and the
+  [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html) article.
 
 - ...:
 
@@ -50,6 +51,35 @@ represent as an array – a vector of length 1.
 
 This is implemented via the generic
 [`tengen::as_array()`](https://r-xla.github.io/tengen/reference/as_array.html).
+
+## Data types
+
+R has fewer data types than anvl, so the values are converted to the R
+type that can represent them:
+
+|  |  |
+|----|----|
+| Data type | R type |
+| `f32`, `f64` | `double` |
+| `i8`, `i16`, `i32`, `ui8`, `ui16` | `integer` |
+| `i64`, `ui32`, `ui64` | [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html) |
+| `bool` | `logical` |
+
+This has two consequences:
+
+- An `f32` value is widened to a `double` and keeps the rounding error
+  of the 32-bit float, e.g. `as_array(nv_scalar(0.1))` is not exactly
+  `0.1`.
+
+- Some integer values cannot be represented in R: an `i32` or `i64`
+  value equal to the smallest representable integer is read as `NA`, and
+  a `ui64` value `>= 2^63` wraps to a negative number. The `check`
+  argument decides whether this is reported.
+
+To obtain a different R type, convert the array with
+[`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
+first, or use the coercion functions described in
+[`as.double()`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md).
 
 ## Examples
 

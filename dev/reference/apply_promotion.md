@@ -80,7 +80,9 @@ materializing them again changes nothing.
 
 [promotion_rule](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md),
-[`vignette("extending_primitive")`](https://r-xla.github.io/anvl/dev/articles/extending_primitive.md)
+the [Adding a
+Primitive](https://r-xla.github.io/anvl/articles/extending_primitive.html)
+article
 
 ## Examples
 

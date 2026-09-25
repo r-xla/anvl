@@ -27,22 +27,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -78,7 +79,9 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
-<ul><li>The element-wise <code><a href="../reference/nv_max.html">nv_max()</a></code> / <code><a href="../reference/nv_min.html">nv_min()</a></code> and <code><a href="../reference/prim_max.html">prim_max()</a></code> / <code><a href="../reference/prim_min.html">prim_min()</a></code> are now <code><a href="../reference/nv_pmax.html">nv_pmax()</a></code> / <code><a href="../reference/nv_pmin.html">nv_pmin()</a></code> and <code><a href="../reference/prim_pmax.html">prim_pmax()</a></code> / <code><a href="../reference/prim_pmin.html">prim_pmin()</a></code>, following <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmax()</a></code> / <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmin()</a></code>.</li>
+<ul><li>
+<code><a href="../reference/nv_div.html">nv_div()</a></code> and <code>/</code> convert integer and boolean operands to the default float, like base R: <code>7L / 2L</code> is <code>3.5</code>. Use <code>%/%</code> for integer division.</li>
+<li>The element-wise <code><a href="../reference/nv_max.html">nv_max()</a></code> / <code><a href="../reference/nv_min.html">nv_min()</a></code> and <code><a href="../reference/prim_max.html">prim_max()</a></code> / <code><a href="../reference/prim_min.html">prim_min()</a></code> are now <code><a href="../reference/nv_pmax.html">nv_pmax()</a></code> / <code><a href="../reference/nv_pmin.html">nv_pmin()</a></code> and <code><a href="../reference/prim_pmax.html">prim_pmax()</a></code> / <code><a href="../reference/prim_pmin.html">prim_pmin()</a></code>, following <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmax()</a></code> / <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmin()</a></code>.</li>
 <li>The reductions lost their <code>reduce_</code> prefix: write <code><a href="../reference/nv_sum.html">nv_sum()</a></code>, <code><a href="../reference/nv_prod.html">nv_prod()</a></code>, <code><a href="../reference/nv_max.html">nv_max()</a></code>, <code><a href="../reference/nv_min.html">nv_min()</a></code>, <code><a href="../reference/nv_any.html">nv_any()</a></code>, <code><a href="../reference/nv_all.html">nv_all()</a></code> and the matching <code>prim_*()</code> instead of <code>nv_reduce_sum()</code> and friends. <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> keeps its name.</li>
 <li>
 <code>nv_argsort()</code> is now <code><a href="../reference/nv_order.html">nv_order()</a></code>, <code>nv_reverse()</code> / <code>prim_reverse()</code> are <code><a href="../reference/nv_rev.html">nv_rev()</a></code> / <code><a href="../reference/prim_rev.html">prim_rev()</a></code>, <code>nv_argmax()</code> / <code>nv_argmin()</code> and their primitives are <code><a href="../reference/nv_which_max.html">nv_which_max()</a></code> / <code><a href="../reference/nv_which_min.html">nv_which_min()</a></code> and <code><a href="../reference/prim_which_max.html">prim_which_max()</a></code> / <code><a href="../reference/prim_which_min.html">prim_which_min()</a></code>, and <code>prim_ceil()</code> is <code><a href="../reference/prim_ceiling.html">prim_ceiling()</a></code>.</li>
@@ -180,6 +183,7 @@
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
 <ul><li>
 <code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> and <code>[&lt;-</code> gain <code>inplace</code>, which writes into the memory of <code>x</code> instead of copying it, e.g. <code>x[1, inplace = TRUE] &lt;- 0</code>; <code>x</code> is donated.</li>
+<li>New <code><a href="../reference/axes.html">axes()</a></code> returns the axis indices of an array, <code>seq_len(naxes(x))</code>.</li>
 <li>New <code><a href="../reference/local_default_device.html">local_default_device()</a></code> and <code><a href="../reference/local_default_device.html">with_default_device()</a></code> set the <code>anvl.default_device</code> option, which names the device a call that names none allocates on in place of the first CPU device.</li>
 <li>The environment variables <code>ANVL_DEFAULT_DEVICE</code> and <code>ANVL_DEFAULT_DTYPES</code>, read when anvl is loaded, are used when the <code>anvl.default_device</code> and <code>anvl.default_dtypes</code> options are not set.</li>
 <li>

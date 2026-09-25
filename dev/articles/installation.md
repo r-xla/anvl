@@ -8,7 +8,7 @@ The system library required during runtime is `libprotobuf`. Source
 installation requires a `C++20` compiler and `protoc` (protobuf
 compiler).
 
-You can install the latest release from r-universe (prebuilt binary).
+You can install the latest release from r-universe.
 
 ``` r
 
@@ -42,9 +42,9 @@ the `PJRT_INSTALL` variable:
 
 ## CUDA Setup
 
-The additional dependencies that {anvl} installs includes the
-{pjrt.cuda} R package, which only requires a CUDA 13.3-compatible driver
-to be installed.
+The additional dependencies that {anvl} installs include the {pjrt.cuda}
+R package, which only requires a CUDA 13.3-compatible driver to be
+installed.
 
 When the {pjrt.cuda} package is not installed, the correct runtime
 libraries need to be installed on the system and discoverable via

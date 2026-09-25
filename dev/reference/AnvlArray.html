@@ -31,22 +31,23 @@ be a CPU or a GPU."><meta property="og:image" content="https://r-xla.github.io/a
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -192,8 +193,8 @@ An existing array. Any of <code>shape</code>, <code>dtype</code> and <code>devic
 along that axis, and the <strong>shape</strong> is the vector of all axis sizes. For
 example, <code>nv_array(1:6, shape = c(2, 3))</code> has two axes; the size of axis <code>1</code>
 is <code>2</code> and the size of axis <code>2</code> is <code>3</code>, so its shape is <code>c(2, 3)</code>. Use
-<code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code> for the number of axes and
-<code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code> for the axis sizes. We speak of the <em>size of an
+<code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code> for the number of axes, <code><a href="axes.html">axes()</a></code> for the axis
+indices, and <code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code> for the axis sizes. We speak of the <em>size of an
 axis</em> rather than an array's "dimensions", as the latter is generally
 overloaded as it is used to refer to both the axis and its size.</p>
     </div>
@@ -204,6 +205,7 @@ overloaded as it is used to refer to both the axis and its size.</p>
 <p>The following generic functions can be used to extract information from an <code>AnvlArray</code>:</p><ul><li><p><code><a href="https://r-xla.github.io/tengen/reference/dtype.html" class="external-link">dtype()</a></code>: Get the data type of the array.</p></li>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (axis sizes) of the array.</p></li>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code>: Get the number of axes.</p></li>
+<li><p><code><a href="axes.html">axes()</a></code>: Get the axis indices.</p></li>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/device.html" class="external-link">device()</a></code>: Get the device of the array.</p></li>
 <li><p><code><a href="platform.html">platform()</a></code>: Get the platform (e.g. <code>"cpu"</code>, <code>"cuda"</code>).</p></li>
 </ul></div>
@@ -237,7 +239,7 @@ presence of such values.
 There, we throw a warning, but the resulting <code>AnvlArray</code> gets the bit
 representation of <code>NAinteger_</code>, which is <code>-INT_MIN</code>.
 Disallowing this would prevent round-trips between the data types.</p></li>
-</ol><p>See the "Gotchas" vignette for more information.</p>
+</ol><p>See the <a href="https://r-xla.github.io/anvl/articles/gotchas.html">Gotchas</a> article for more information.</p>
     </div>
     <div class="section level2">
     <h2 id="out-of-range-values">Out of Range values<a class="anchor" aria-label="anchor" href="#out-of-range-values"></a></h2>
@@ -299,8 +301,9 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span>shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.6255e-43 1.5975e-43 1.3593e-43</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  6.4460e-44 1.4854e-43 1.6115e-43</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1e+45 *</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 5.6052 0.0000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 0.0000 0.0000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

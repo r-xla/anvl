@@ -7,6 +7,9 @@ Element-wise inverse tangent. You can also use
 
 ``` r
 nv_atan(x)
+
+# S3 method for class 'AnvlArray'
+atan(x)
 ```
 
 ## Arguments

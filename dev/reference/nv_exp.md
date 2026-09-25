@@ -7,6 +7,9 @@ Element-wise exponential. You can also use
 
 ``` r
 nv_exp(x)
+
+# S3 method for class 'AnvlArray'
+exp(x)
 ```
 
 ## Arguments

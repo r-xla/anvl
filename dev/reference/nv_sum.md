@@ -7,6 +7,9 @@ counted, like [`base::sum()`](https://rdrr.io/r/base/sum.html) does.
 
 ``` r
 nv_sum(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
+
+# S3 method for class 'AnvlArray'
+sum(..., na.rm = FALSE)
 ```
 
 ## Arguments
@@ -35,6 +38,17 @@ nv_sum(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
   (`logical(1)`)  
   How to handle `NaN` values in float inputs. If `FALSE` (default),
   `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+
+- ...:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  The arrays to reduce, and, when there is only one, further named
+  arguments of `nv_sum()`, such as `axes`.
+
+- na.rm:
+
+  (`logical(1)`)  
+  Forwarded to `nv_sum()`'s `nan_rm` argument.
 
 ## Value
 

@@ -11,6 +11,9 @@ digamma function; for `deriv = 1`,
 
 ``` r
 nv_psigamma(x, deriv = 0L)
+
+# S3 method for class 'AnvlArray'
+trigamma(x)
 ```
 
 ## Arguments

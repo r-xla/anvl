@@ -8,6 +8,9 @@ does.
 
 ``` r
 nv_cumsum(x, axis = NULL, nan_rm = FALSE)
+
+# S3 method for class 'AnvlArray'
+cumsum(x)
 ```
 
 ## Arguments

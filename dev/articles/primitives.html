@@ -48,16 +48,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -66,8 +68,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -111,7 +112,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Primitives Reference</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/primitives.Rmd" class="external-link"><code>vignettes/primitives.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/primitives.Rmd" class="external-link"><code>vignettes/articles/primitives.Rmd</code></a></small>
       <div class="d-none name"><code>primitives.Rmd</code></div>
     </div>
 
@@ -124,8 +125,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <thead><tr class="header">
 <th align="left">Name</th>
 <th align="center">StableHLO</th>
-<th align="center">Quickr</th>
 <th align="center">Reverse</th>
+<th align="center">Quickr</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
@@ -137,14 +138,14 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="even">
 <td align="left">acos</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">acosh</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">add</td>
@@ -173,38 +174,38 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="even">
 <td align="left">asin</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">asinh</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">atan</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">atan2</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">atanh</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">bitcast_convert</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">broadcast_in_axes</td>
@@ -215,8 +216,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">cbrt</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">ceiling</td>
@@ -227,14 +228,14 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">chol</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">clamp</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">concatenate</td>
@@ -263,20 +264,20 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">cosh</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">cummax</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">cummin</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">cumprod</td>
@@ -287,14 +288,14 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">cumsum</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">digamma</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">div</td>
@@ -335,20 +336,20 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">erf</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">erf_inv</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">erfc</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">exp</td>
@@ -365,8 +366,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="even">
 <td align="left">fill</td>
 <td align="center">✓</td>
-<td align="center">✓</td>
 <td align="center">✗</td>
+<td align="center">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">floor</td>
@@ -395,8 +396,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">if</td>
 <td align="center">✓</td>
-<td align="center">✓</td>
 <td align="center">✗</td>
+<td align="center">✓</td>
 </tr>
 <tr class="even">
 <td align="left">ifelse</td>
@@ -407,14 +408,14 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">iota</td>
 <td align="center">✓</td>
-<td align="center">✓</td>
 <td align="center">✗</td>
+<td align="center">✓</td>
 </tr>
 <tr class="even">
 <td align="left">is_finite</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">le</td>
@@ -425,8 +426,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="even">
 <td align="left">lgamma</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">log</td>
@@ -521,8 +522,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="even">
 <td align="left">popcnt</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">pow</td>
@@ -545,8 +546,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="even">
 <td align="left">psigamma</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">qr</td>
@@ -563,8 +564,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">remainder</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">reshape</td>
@@ -587,14 +588,14 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">round</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">rsqrt</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">scan</td>
@@ -611,26 +612,26 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">shift_left</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">shift_right_arithmetic</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">shift_right_logical</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">sign</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">sin</td>
@@ -641,14 +642,14 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="even">
 <td align="left">sinh</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">sort</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">sqrt</td>
@@ -695,8 +696,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">top_k</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">transpose</td>
@@ -707,26 +708,26 @@ added yet, or because it does not apply for a specific primitive.</p>
 <tr class="odd">
 <td align="left">triangular_solve</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">which_max</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">which_min</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
 <td align="center">✓</td>
+<td align="center">✗</td>
 </tr>
 <tr class="even">
 <td align="left">while</td>
 <td align="center">✓</td>
-<td align="center">✓</td>
 <td align="center">✗</td>
+<td align="center">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">xor</td>

@@ -28,7 +28,7 @@ with `backend = "pjrt"` wraps a
 [`pjrt::pjrt_buffer()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html)
 stored in the `$data` field. The buffer owns the memory holding the
 array values and may live on any device supported by PJRT (CPU, CUDA,
-Metal, ...). Calling
+...). Calling
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 transfers the buffer contents back to an R array; calling
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
@@ -62,9 +62,8 @@ and read back into R, yet treated as zero in calculations. On CPUs, XLA
 enables a mode that replaces subnormal inputs and results with zero. The
 exact behavior depends on the platform, backend, and operation.
 
-See
-[`vignette("gotchas", package = "anvl")`](https://r-xla.github.io/anvl/dev/articles/gotchas.md)
-for an explanation and examples.
+See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html)
+article for an explanation and examples.
 
 ## PJRT JIT arguments
 

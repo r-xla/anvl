@@ -27,22 +27,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -138,7 +139,7 @@ Don’t reach for a synonym (<em>commit</em>, <em>realize</em>, <em>standardize<
 </ul></div>
 <div class="section level2">
 <h2 id="type-promotion">Type Promotion<a class="anchor" aria-label="anchor" href="#type-promotion"></a></h2>
-<p>An R value entering a program is not converted at the boundary – it is built into the program at the dtype its use site needs, which is what makes <code>x_f64 / sqrt(2)</code> exact. <code><a href="articles/type-promotion.html">vignette("type-promotion")</a></code> is the reference for how this works and for the <code>.promote</code> rules (<code><a href="reference/promotion_rule.html">promotion_common()</a></code>, <code><a href="reference/promotion_rule.html">promotion_like()</a></code>, <code><a href="reference/promotion_rule.html">promotion_dtype()</a></code>, <code><a href="reference/promotion_rule.html">promotion_rdata_common()</a></code>) that <code>nv_*</code> functions pass to <code><a href="reference/as_anvl_array.html">as_anvl_arrays()</a></code>. Two rules that bite while writing code:</p>
+<p>An R value entering a program is not converted at the boundary – it is built into the program at the dtype its use site needs, which is what makes <code>x_f64 / sqrt(2)</code> exact. The Data Types and Promotion Rules article (<code>vignettes/articles/type-promotion.Rmd</code>) is the reference for how this works and for the <code>.promote</code> rules (<code><a href="reference/promotion_rule.html">promotion_common()</a></code>, <code><a href="reference/promotion_rule.html">promotion_like()</a></code>, <code><a href="reference/promotion_rule.html">promotion_dtype()</a></code>, <code><a href="reference/promotion_rule.html">promotion_rdata_common()</a></code>) that <code>nv_*</code> functions pass to <code><a href="reference/as_anvl_array.html">as_anvl_arrays()</a></code>. Two rules that bite while writing code:</p>
 <ul><li>Never call <code><a href="reference/dtype.html">dtype()</a></code> on an argument that may still be a bare R value – it errors. Use <code><a href="reference/peek_dtype.html">peek_dtype()</a></code> to ask what it <em>would</em> materialize at.</li>
 <li>A primitive promotes nothing unless its body says so: one whose operands must agree calls <code><a href="reference/apply_promotion.html">apply_promotion()</a></code> on them before anything else reads them.</li>
 <li>A trace output that met nothing materializes at the default float / integer of the active backend, which <code><a href="reference/default_dtypes.html">default_dtypes()</a></code> reports (<code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code> for one category) and the option <code>anvl.default_dtypes</code> overrides. A trace is pinned to the pair the dispatcher keyed its program on (<code>GraphDescriptor$default_dtypes</code>); name a category with <code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code>, never hardcode <code>"f32"</code> / <code>"i32"</code> as a default. <code>default_dtype_r()</code> is for the few places that map an R storage type chosen at run time, and <code>current_default_dtypes()</code> for the whole pair.</li>

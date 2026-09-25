@@ -2,10 +2,20 @@
 
 Divides two arrays element-wise. You can also use the `/` operator.
 
+Like base R's `/`, this is a true division: integer and boolean operands
+are converted to the [default
+float](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+before dividing, so `7L / 2L` is `3.5`. Use
+[`nv_floor_div()`](https://r-xla.github.io/anvl/dev/reference/nv_floor_div.md)
+(`%/%`) for integer division.
+
 ## Usage
 
 ``` r
 nv_div(lhs, rhs)
+
+# S3 method for class 'AnvlArray'
+e1/e2
 ```
 
 ## Arguments
@@ -22,15 +32,21 @@ nv_div(lhs, rhs)
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   and being converted to the common data type.
 
+- e1, e2:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  The operands of the operator, which it passes on as `lhs` and `rhs`.
+
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the inputs' broadcast shape and common data type.
+Has the inputs' broadcast shape and their common data type, or the
+default float when that is not a float type.
 
 ## See also
 
 [`prim_div()`](https://r-xla.github.io/anvl/dev/reference/prim_div.md)
-for the underlying primitive.
+for the underlying primitive, which divides integers with truncation.
 
 ## Examples
 
@@ -63,4 +79,11 @@ x / 2L
 #>  10
 #>  15
 #> [ CPUf32{3} ] 
+
+# integers are divided as floats
+nv_array(c(7L, -7L)) / 2L
+#> AnvlArray
+#>   3.5000
+#>  -3.5000
+#> [ CPUf32{2} ] 
 ```

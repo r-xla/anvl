@@ -7,6 +7,9 @@ Element-wise square root. You can also use
 
 ``` r
 nv_sqrt(x)
+
+# S3 method for class 'AnvlArray'
+sqrt(x)
 ```
 
 ## Arguments

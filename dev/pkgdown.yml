@@ -2,24 +2,25 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
-  anvl: anvl.html
-  efficiency: efficiency.html
-  extending_api: extending_api.html
-  extending_primitive: extending_primitive.html
-  faq: faq.html
-  gaussian-process: gaussian-process.html
-  gotchas: gotchas.html
-  installation: installation.html
-  internals: internals.html
-  jit: jit.html
-  logistic-regression: logistic-regression.html
-  metropolis-hastings: metropolis-hastings.html
-  primitives: primitives.html
-  random-numbers: random-numbers.html
-  static_shapes: static_shapes.html
-  subsetting: subsetting.html
-  type-promotion: type-promotion.html
-last_built: 2026-09-25T09:48Z
+  articles/anvl: anvl.html
+  articles/autodiff: autodiff.html
+  articles/efficiency: efficiency.html
+  articles/extending_api: extending_api.html
+  articles/extending_primitive: extending_primitive.html
+  articles/faq: faq.html
+  articles/gaussian-process: gaussian-process.html
+  articles/gotchas: gotchas.html
+  articles/installation: installation.html
+  articles/internals: internals.html
+  articles/jit: jit.html
+  articles/metropolis-hastings: metropolis-hastings.html
+  articles/next_steps: next_steps.html
+  articles/primitives: primitives.html
+  articles/random-numbers: random-numbers.html
+  articles/static_shapes: static_shapes.html
+  articles/subsetting: subsetting.html
+  articles/type-promotion: type-promotion.html
+last_built: 2026-09-25T14:55Z
 urls:
   reference: https://r-xla.github.io/anvl/reference
   article: https://r-xla.github.io/anvl/articles

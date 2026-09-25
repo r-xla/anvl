@@ -7,6 +7,9 @@ Element-wise `sin(pi * x)`. You can also use
 
 ``` r
 nv_sinpi(x)
+
+# S3 method for class 'AnvlArray'
+sinpi(x)
 ```
 
 ## Arguments

@@ -14,6 +14,9 @@ nv_aperm(x, perm = NULL)
 nv_transpose(x, perm = NULL)
 
 # S3 method for class 'AnvlArray'
+t(x)
+
+# S3 method for class 'AnvlArray'
 aperm(a, perm = NULL, ...)
 ```
 
