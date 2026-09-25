@@ -1,4 +1,4 @@
-\begin{thebibliography}{53}
+\begin{thebibliography}{56}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -31,6 +31,13 @@ B.~M. Bell.
 \newblock Cppad: a package for c++ algorithmic differentiation.
 \newblock \emph{Computational Infrastructure for Operations Research},
   57\penalty0 (10):\penalty0 3, 2012.
+
+\bibitem[Blei et~al.(2017)Blei, Kucukelbir, and McAuliffe]{ref-blei2017vi}
+D.~M. Blei, A.~Kucukelbir, and J.~D. McAuliffe.
+\newblock Variational inference: A review for statisticians.
+\newblock \emph{Journal of the American Statistical Association}, 112\penalty0
+  (518):\penalty0 859--877, 2017.
+\newblock \doi{10.1080/01621459.2017.1285773}.
 
 \bibitem[Bradbury et~al.(2018)Bradbury, Frostig, Hawkins, Johnson, Leary,
   Maclaurin, Necula, Paszke, Vander{P}las, Wanderman-{M}ilne, and
@@ -179,6 +186,13 @@ M.~D. Hoffman and P.~Sountsov.
   Artificial Intelligence and Statistics}, volume 151 of \emph{Proceedings of
   Machine Learning Research}, pages 7799--7813, 2022.
 
+\bibitem[Hoffman et~al.(2013)Hoffman, Blei, Wang, and
+  Paisley]{ref-hoffman2013svi}
+M.~D. Hoffman, D.~M. Blei, C.~Wang, and J.~Paisley.
+\newblock Stochastic variational inference.
+\newblock \emph{Journal of Machine Learning Research}, 14:\penalty0 1303--1347,
+  2013.
+
 \bibitem[Hoffman et~al.(2021)Hoffman, Radul, and Sountsov]{ref-chees}
 M.~D. Hoffman, A.~Radul, and P.~Sountsov.
 \newblock An adaptive-{MCMC} scheme for setting trajectory lengths in
@@ -218,6 +232,13 @@ K.~Kristensen, A.~Nielsen, C.~W. Berg, H.~Skaug, and B.~M. Bell.
 \newblock ISSN 1548-7660.
 \newblock \doi{10.18637/jss.v070.i05}.
 \newblock URL \url{http://dx.doi.org/10.18637/jss.v070.i05}.
+
+\bibitem[Kucukelbir et~al.(2017)Kucukelbir, Tran, Ranganath, Gelman, and
+  Blei]{ref-kucukelbir2017advi}
+A.~Kucukelbir, D.~Tran, R.~Ranganath, A.~Gelman, and D.~M. Blei.
+\newblock Automatic differentiation variational inference.
+\newblock \emph{Journal of Machine Learning Research}, 18\penalty0
+  (14):\penalty0 1--45, 2017.
 
 \bibitem[Lobato-Fern\'{a}ndez et~al.(2025)Lobato-Fern\'{a}ndez, Ferrer-Bonsoms,
   and Rubio]{ref-gpumatrix}

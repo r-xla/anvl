@@ -45,6 +45,8 @@ The lack of native GPU support in R has consequences beyond runtime.
 Methodological research on how to use accelerators for expensive statistical methods can hardly be carried out in R today.
 For example, a recent line of work on Markov chain Monte Carlo methods runs hundreds or thousands of short chains in parallel on a GPU, which requires new adaptation schemes and convergence diagnostics \citep{ref-chees, ref-meads, ref-nested-rhat}.
 Such methods are developed and implemented with JAX, and R users can only use them through Python.
+Variational inference is another example \citep{ref-blei2017vi}: it turns posterior inference into the optimization of the evidence lower bound, whose gradient is estimated by Monte Carlo, often on minibatches of the data \citep{ref-hoffman2013svi, ref-kucukelbir2017advi}.
+Such algorithms consist of many cheap, iterative gradient evaluations, which is where automatic differentiation, compilation of the whole algorithm, and GPUs pay off most.
 
 Various R packages provide one or two of the three capabilities of JIT compilation, AD, and GPU execution.
 The byte-code \CRANpkg{compiler} included in R \citep{ref-r} compiles arbitrary R code, but because it has to preserve R's full semantics, the optimizations it can perform are limited \citep{ref-evaluating-r}.
@@ -405,9 +407,9 @@ update <- jit(function(beta, X, y, lr) {
 X <- nv_array(matrix(rnorm(20), 10, 2))
 y <- X %*% matrix(c(1, 2))
 as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
-#>            [,1]
-#> [1,] 0.08656476
-#> [2,] 0.37371391
+#>           [,1]
+#> [1,] 0.2331436
+#> [2,] 0.5424244
 \end{verbatim}
 
 When \texttt{update()} is traced, the call to the gradient function traces \texttt{loss()} into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of \texttt{update()}.
@@ -713,8 +715,8 @@ We ask how the sampler compares on a single CPU core, how well it uses multiple 
 
 We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40, with the same step size \(\varepsilon = 0.5/\sqrt{n}\), \(L = 10\) leapfrog steps, the identity metric, and adaptation disabled, so that both samplers perform the same number of gradient evaluations.
 The Stan model uses \texttt{bernoulli\_logit\_glm()}, Stan's specialized and most efficient implementation of the logistic regression likelihood, which Stan can also evaluate on a GPU via OpenCL.
-We attempted to include this OpenCL backend, but could not run it on the GPU nodes we used: OpenCL contexts could be created, but compiling any OpenCL kernel failed, presumably because the nodes' driver installation lacks a version of NVIDIA's OpenCL compiler library that matches the installed driver.
-We therefore report no GPU results for Stan.
+We run this OpenCL variant on the same GPU as \pkg{anvl} and \CRANpkg{torch}; to do so, we had to provide NVIDIA's OpenCL libraries in the exact version of the installed driver and enable double precision in Stan's OpenCL kernels, which the driver requires (see the benchmark scripts).
+On the GPU, Stan's chains run as separate processes that share the device, at most 8 at a time.
 The \CRANpkg{torch} sampler mirrors the \pkg{anvl} code: it obtains the gradient from \CRANpkg{torch}'s reverse-mode AD and runs the leapfrog and sampling loops as R loops, as \CRANpkg{torch} executes each operation eagerly.
 The number of threads \CRANpkg{torch} uses on the CPU is set via \texttt{torch\_set\_num\_threads()}.
 Both samplers work in double precision and start at \(\beta = 0\), and the data are simulated with standard normal features and \(\beta \sim \mathcal{N}(0, 0.25 I_p)\).
@@ -738,7 +740,7 @@ The CPU experiments used a node with two Intel Xeon Gold 6336Y processors, restr
 \subsection{Results}\label{results}}
 
 \begin{figure}[tbp]
-\includegraphics[width=0.49\linewidth]{paper_files/figure-latex/results-single-scaling-1} \includegraphics[width=0.49\linewidth]{paper_files/figure-latex/results-single-scaling-2} \caption{Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\_sum(), the single point is the unmodified Stan model, and the dashed lines are \pkg{anvl} and \CRANpkg{torch} on the GPU. Medians of three repetitions, log-log scales.}\label{fig:results-single-scaling}
+\includegraphics[width=0.49\linewidth]{paper_files/figure-latex/results-single-scaling-1} \includegraphics[width=0.49\linewidth]{paper_files/figure-latex/results-single-scaling-2} \caption{Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\_sum(), the single point is the unmodified Stan model, and the dashed lines are \pkg{anvl}, \CRANpkg{torch}, and Stan (OpenCL) on the GPU. Medians of three repetitions, log-log scales.}\label{fig:results-single-scaling}
 \end{figure}
 
 Figure \ref{fig:results-single-scaling} (left) shows the results for a single chain.
@@ -749,13 +751,14 @@ For \(n = 10^5\), however, it draws the samples in 0.31 seconds, which is about 
 The \CRANpkg{torch} sampler needs about 28 seconds for \(n = 10^3\) on one core, 200 times as long as \pkg{anvl}, and still 2.7 times as long for \(n = 10^5\).
 Its runtime is dominated by the overhead of dispatching each of the operations of a gradient evaluation from R, which is also why additional threads and the GPU do not help: on 16 threads it is slightly slower than on one, and on the GPU it takes about 36 seconds for every \(n\), 110 to 220 times as long as \pkg{anvl} on the GPU.
 This is the per-operation overhead of eager execution discussed in the introduction.
+Stan's OpenCL backend, which evaluates the likelihood and its gradient on the GPU while the sampler runs on the CPU, needs 35 to 38 seconds for every \(n\), as each gradient evaluation involves transferring data and launching kernels; it is faster than Stan on the CPU only for \(n = 10^5\) (38 versus 48 seconds), and about 120 times slower than \pkg{anvl} on the GPU.
 
 Figure \ref{fig:results-single-scaling} (right) shows how a single chain scales with the number of cores.
 Without any change to the code, \pkg{anvl} becomes 1.7, 2.8, and 4.6 times faster on 2, 4, and 8 cores, and does not improve further on 16 cores.
 With \texttt{reduce\_sum()}, Stan scales further at 16 cores (11 times faster than on one thread), but this requires rewriting the model, and the parallelized model is slower than the original on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
 Up to 8 cores, both scale similarly; beyond that, profiling suggests that \pkg{anvl} is limited by the fixed cost of distributing each operation of the gradient over the cores, as the individual operations are too small at this problem size to keep 16 cores busy.
 \CRANpkg{torch} is as fast as \pkg{anvl} on one core (37 seconds), as the operations are large enough at this problem size to hide its overhead, but it becomes only 1.7 times faster on 16 threads (22 seconds).
-On the GPU, the same run takes 0.28 seconds with \pkg{anvl} and 7 seconds with \CRANpkg{torch}.
+On the GPU, the same run takes 0.28 seconds with \pkg{anvl}, 7 seconds with \CRANpkg{torch}, and 8.9 seconds with Stan's OpenCL backend.
 
 \begin{figure}
 \centering
@@ -766,6 +769,7 @@ On the GPU, the same run takes 0.28 seconds with \pkg{anvl} and 7 seconds with \
 Figure \ref{fig:results-chains} shows the results for multiple chains.
 On one core, all samplers scale approximately linearly in the number of chains, with \pkg{anvl} being 2.8 (one chain) to 5.9 (64 chains) times faster than CmdStan, as batching the chains turns the matrix-vector products of the individual chains into matrix-matrix products.
 \CRANpkg{torch} benefits from batching as well, as its overhead is shared by all chains: for 64 chains, it is slightly faster than CmdStan on one core (244 versus 263 seconds), but still 5.5 times slower than \pkg{anvl}, and on 16 threads and the GPU it takes 361 and 51 seconds for 256 chains, respectively; on the GPU, 1024 chains did not finish within our one-hour time limit.
+Stan's OpenCL backend, whose chains compete for the GPU as separate processes, takes 53 and 200 seconds for 4 and 16 chains, and 64 chains did not finish within the time limit.
 On 16 cores, both run the chains in parallel, and \pkg{anvl} is 2.6 times faster than CmdStan for 64 chains and 4.4 times faster for 1024 chains (101 versus 443 seconds).
 Running all chains as a single program on 16 cores is considerably slower than splitting them over devices, because each operation is again too small to be distributed efficiently.
 On the GPU, the time is almost constant up to 64 chains and grows sublinearly beyond that: 4096 chains with 1000 draws each take 10.8 seconds, which corresponds to about 380,000 draws per second, compared to about 2,300 draws per second for CmdStan on 16 cores.
@@ -795,7 +799,7 @@ Future work will address these limitations.
 Adding forward-mode AD would make it possible to compute Jacobians and, combined with reverse mode, Hessian-vector products and Hessians, which are needed, e.g., for Laplace approximations.
 A vectorizing transformation similar to JAX's \texttt{vmap()} would remove the need to write batched code by hand, as we did for the HMC sampler.
 To lift the static shape restriction, the intermediate representation needs to support dynamic shapes; the \CRANpkg{quickr} backend, which already compiles shape-polymorphic code, and the IREE compiler \citep{ref-iree}, which also consumes StableHLO, are two possible routes.
-Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages that implement statistical and machine learning algorithms on top of it.
+Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages that implement statistical and machine learning algorithms on top of it; besides samplers such as the one in Section \ref{hmc}, variational inference, whose stochastic-gradient optimization of the evidence lower bound maps directly onto \pkg{anvl}'s transformations, is a natural candidate.
 
 \hypertarget{acknowledgments}{%
 \section*{Acknowledgments}\label{acknowledgments}}
