@@ -201,6 +201,17 @@ describe("nv_concatenate", {
       nv_concatenate(nv_array(1, shape = c(1, 1, 1)), nv_array(2, shape = c(1, 1)), axis = 1L)
     )
   })
+  it("broadcasts a scalar against arrays with several axes", {
+    x <- nv_matrix(1:4, nrow = 2)
+    expect_equal(
+      nv_concatenate(x, 9L, axis = 1L),
+      nv_matrix(c(1L, 2L, 9L, 3L, 4L, 9L), nrow = 3)
+    )
+    expect_equal(
+      nv_concatenate(x, 9L, axis = 2L),
+      nv_matrix(c(1:4, 9L, 9L), nrow = 2)
+    )
+  })
 })
 
 describe("nv_rbind", {
@@ -2784,6 +2795,15 @@ describe("nv_mod", {
   it("is NaN for a zero divisor and passes NaN through, like base R", {
     lhs <- c(5, -5, 0, Inf, -Inf, NaN, 7)
     rhs <- c(0, 0, 0, 3, 3, 3, Inf)
+    expect_equal(
+      as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
+      lhs %% rhs
+    )
+  })
+
+  it("takes the sign of an infinite divisor, like base R", {
+    lhs <- c(5, -5, 5, -5, 0)
+    rhs <- c(Inf, Inf, -Inf, -Inf, Inf)
     expect_equal(
       as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
       lhs %% rhs

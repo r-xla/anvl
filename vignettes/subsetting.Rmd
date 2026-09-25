@@ -191,17 +191,29 @@ x[arr(1L, 1L, 1L)] <- nv_array(c(10L, 20L, 30L))
 x
 ```
 
-### Copying Behavior
+### In-place Updates
 
-In eager mode, `x[i] <- val` always allocates a fresh array, regardless of whether `x` has any other R references.
-This differs from plain R, which can perform the update in place when its reference count for `x` is 1.
+In eager mode, `x[i] <- val` creates a new array by default, even when R could update `x` in place.
+This is because {anvl} cannot know whether another R variable still refers to the same array, which would otherwise be modified as well.
+To avoid the copy, pass `inplace = TRUE` among the subscripts, which writes the update into the memory of `x`:
 
 ```{r}
 x <- nv_array(1:5)
-x[1] <- -1L  # allocates a new length-5 buffer, even though x has only one reference
+x[2:3, inplace = TRUE] <- 0L
 x
 ```
 
-This is unnecessarily expensive.
-To avoid it, move the update into a `jit()`ed function so XLA can fuse it into the surrounding computation, and optionally use `donate` to let the input buffer be reused for the output.
-See the [Eager-mode subset-assignment always copies](efficiency.html#eager-mode-subset-assignment-always-copies) section of the efficiency vignette for details.
+`nv_subset_assign()` takes the same argument: `nv_subset_assign(x, 2:3, value = 0L, inplace = TRUE)`.
+
+This consumes the original array: its memory is [donated](efficiency.html#donation) to the result, so every other R variable that referred to it can no longer be used afterwards.
+
+```{r, error = TRUE}
+x <- nv_array(1:5)
+y <- x
+x[1, inplace = TRUE] <- -1L
+y
+```
+
+Inside a jitted function, `inplace = TRUE` is an error.
+There, `y` would stay valid, so the same code would behave differently in eager and in jit mode.
+The compiler avoids unnecessary copies inside `jit()` anyway, so `inplace` is not needed there.

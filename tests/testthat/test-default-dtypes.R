@@ -12,7 +12,10 @@ describe("default_dtypes()", {
     expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i32")))
     # `active_backend()` takes the option as given, so a backend that is not
     # registered is reported where its defaults are read.
-    expect_error(with_backend("plain", default_dtypes()), "no default data types")
+    expect_error(
+      withr::with_options(list(anvl.backend = "plain"), default_dtypes()),
+      "no default data types"
+    )
   })
 
   it("is overridden by an option value that names no backend, on every backend", {
@@ -71,6 +74,13 @@ describe("local_default_dtypes()", {
     local_default_dtypes(c(float = "i32"))
     expect_equal(default_float(), as_dtype("i32"))
     expect_error(local_default_dtypes(c(float = "nope")), "Unsupported dtype")
+  })
+
+  it("rejects a name that is not a category with a default", {
+    expect_error(local_default_dtypes(c(foo = "f64")), "must map the data type categories")
+    expect_error(local_default_dtypes(c(uint = "ui32")), "must map the data type categories")
+    expect_error(with_default_dtypes("f64", 1), "must map the data type categories")
+    expect_null(getOption("anvl.default_dtypes"))
   })
 })
 
