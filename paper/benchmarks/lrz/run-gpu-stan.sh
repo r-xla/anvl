@@ -30,6 +30,14 @@ ln -sf "libcuda.so.$HOSTV" "$NV/libcuda.so.1"
 echo "$NV/libnvidia-opencl.so.1" > "$NV/nvidia.icd"
 export OCL_ICD_VENDORS="$NV/nvidia.icd"
 export LD_LIBRARY_PATH="$NV:${LD_LIBRARY_PATH:-}"
+# Stan's OpenCL kernels use double precision without enabling cl_khr_fp64, which
+# NVIDIA's OpenCL compiler rejects (the build fails or crashes). We prepend the
+# pragma to every kernel Stan compiles; this does not change the computations.
+KCL="$CMDSTAN/stan/lib/stan_math/stan/math/opencl/kernel_cl.hpp"
+if ! grep -q sources_fp64 "$KCL"; then
+  sed -i 's|^  cl::Program program(opencl_context.context(), sources);|  std::vector<std::string> sources_fp64{"#pragma OPENCL EXTENSION cl_khr_fp64 : enable\\n"};\n  sources_fp64.insert(sources_fp64.end(), sources.begin(), sources.end());\n  cl::Program program(opencl_context.context(), sources_fp64);|' "$KCL"
+fi
+grep -q sources_fp64 "$KCL"
 mkdir -p results
 OUT=results/gpu-stan.csv
 rm -f "$OUT" results/scaling-gpu-stan.csv
