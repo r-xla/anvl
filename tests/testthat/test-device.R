@@ -10,7 +10,8 @@ test_that("nv_device builds a device of the active backend", {
 })
 
 test_that("nv_device errors on the plain backend", {
-  expect_error(with_backend("plain", nv_device("cpu")), "plain")
+  withr::local_options(anvl.backend = "plain")
+  expect_error(nv_device("cpu"), "plain")
 })
 
 test_that("nv_device rejects a device of another backend", {

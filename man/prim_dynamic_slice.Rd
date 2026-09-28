@@ -12,8 +12,8 @@ One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
 \item{...}{(\code{\link{arrayish}})\cr
-Scalar start indices, one per axis of \code{x}. Each must be a scalar of
-the same integer data type.}
+Scalar start indices of an integer data type, one per axis of \code{x}. They
+are brought to one data type among themselves, never \code{x}'s.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice in each axis. Must have length equal to

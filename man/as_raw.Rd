@@ -7,8 +7,8 @@
 as_raw(x, ...)
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr
-An array-like object.}
+\item{x}{(\code{\link{AnvlArray}})\cr
+An array.}
 
 \item{...}{Additional arguments passed to method:
 \itemize{

@@ -33,6 +33,14 @@ calling scope, restoring the previous value via \code{\link[withr:defer]{withr::
 scope exits. Useful in tests and for manually exercising platform-aware
 lowering rules outside of a \code{\link[=stablehlo]{stablehlo()}} call.
 }
+\examples{
+current_platform()
+f <- function() {
+  local_platform("cuda")
+  current_platform()
+}
+f()
+}
 \seealso{
 \code{\link[=stablehlo]{stablehlo()}}
 }

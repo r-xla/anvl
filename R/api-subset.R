@@ -516,7 +516,7 @@ parse_subset_spec <- function(quo, axis_size, axis) {
   cli_abort(c(
     "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
     x = detail,
-    i = "See {.code vignette(\"subsetting\")}."
+    i = "See {.url {article_url(\"subsetting\")}}."
   ))
 }
 
@@ -529,11 +529,13 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
-#'   axes select all elements. See `vignette("subsetting")` for details.
+#'   axes select all elements. See
+#'   `r roxy_article("subsetting")` for details.
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type, and the shape the specifications select --
 #'   a scalar index drops its axis, a range or an index array keeps it.
-#' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
+#' @seealso [nv_subset_assign()] for updating subsets,
+#'   `r roxy_article("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
@@ -587,57 +589,71 @@ nv_subset <- function(x, ...) {
 # fused into a single program here. `scatter_indices` is passed in as a traced
 # input (never reconstructed from the static params), so distinct index *values*
 # reuse one compiled program; only distinct subset *patterns* recompile.
-subset_scatter_core <- jit(
-  function(
-    x,
-    value,
-    scatter_indices,
-    update_window_axes,
-    inserted_window_axes,
-    scatter_axes_to_x_axes,
-    index_vector_axis,
-    indices_are_sorted,
-    unique_indices,
-    update_shape
-  ) {
-    # `x` and `value` arrive at one data type: nv_subset_assign() brought them
-    # there, which is also where a value `x`'s data type cannot hold is refused.
-    if (!naxes(value)) {
-      value <- nv_broadcast_to(value, update_shape)
-    } else {
-      value_shape <- shape(value)
-      if (!identical(value_shape, update_shape)) {
-        cli_abort(c(
-          "Update shape does not match subset shape.",
-          x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
-        ))
-      }
+subset_scatter_body <- function(
+  x,
+  value,
+  scatter_indices,
+  update_window_axes,
+  inserted_window_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis,
+  indices_are_sorted,
+  unique_indices,
+  update_shape
+) {
+  # `x` and `value` arrive at one data type: nv_subset_assign() brought them
+  # there, which is also where a value `x`'s data type cannot hold is refused.
+  if (!naxes(value)) {
+    value <- nv_broadcast_to(value, update_shape)
+  } else {
+    value_shape <- shape(value)
+    if (!identical(value_shape, update_shape)) {
+      cli_abort(c(
+        "Update shape does not match subset shape.",
+        x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
+      ))
     }
+  }
 
-    prim_scatter(
-      x = x,
-      scatter_indices = scatter_indices,
-      update = value,
-      update_window_axes = update_window_axes,
-      inserted_window_axes = inserted_window_axes,
-      x_batching_axes = integer(),
-      scatter_indices_batching_axes = integer(),
-      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
-      index_vector_axis = index_vector_axis,
-      indices_are_sorted = indices_are_sorted,
-      unique_indices = unique_indices
-    )
-  },
-  static = c(
-    "update_window_axes",
-    "inserted_window_axes",
-    "scatter_axes_to_x_axes",
-    "index_vector_axis",
-    "indices_are_sorted",
-    "unique_indices",
-    "update_shape"
+  prim_scatter(
+    x = x,
+    scatter_indices = scatter_indices,
+    update = value,
+    update_window_axes = update_window_axes,
+    inserted_window_axes = inserted_window_axes,
+    x_batching_axes = integer(),
+    scatter_indices_batching_axes = integer(),
+    scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+    index_vector_axis = index_vector_axis,
+    indices_are_sorted = indices_are_sorted,
+    unique_indices = unique_indices
   )
+}
+
+subset_scatter_static <- c(
+  "update_window_axes",
+  "inserted_window_axes",
+  "scatter_axes_to_x_axes",
+  "index_vector_axis",
+  "indices_are_sorted",
+  "unique_indices",
+  "update_shape"
 )
+
+subset_scatter_core <- jit(subset_scatter_body, static = subset_scatter_static)
+
+# The same program, but `x`'s buffer is donated, so the scatter writes into it
+# instead of allocating a new array (`nv_subset_assign(inplace = TRUE)`).
+# `donate` is a backend option, which `jit()` can only check once the backends
+# are registered in `.onLoad()`, so the function is created on first use.
+subset_scatter_core_inplace <- local({
+  core <- NULL
+  function() {
+    core <<- core %||%
+      jit(subset_scatter_body, static = subset_scatter_static, donate = "x")
+    core
+  }
+})
 
 #' @title Update Subset
 #' @description
@@ -647,25 +663,53 @@ subset_scatter_core <- jit(
 #'   The array to update. Can be any data type.
 #'   An R object is materialized at its [default data type][default_dtypes].
 #' @param ... Subset specifications, one per axis. See
-#'   `vignette("subsetting")` for details.
+#'   `r roxy_article("subsetting")` for details.
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
 #'   values must match it.
-#'   The value is converted to the data type of `x`.
+#'   It is brought to `x`'s data type: an R value is built at it when its
+#'   category can reach it (`0L` serves an integer and a float `x` alike, while
+#'   `1.5` into an `i32` `x` is an error), and an array is converted unless that
+#'   would narrow it or leave its category (an `f64` value for an `f32` `x` is
+#'   an error).
+#' @param inplace (`logical(1)`)\cr
+#'   Whether to write into the memory of `x` instead of allocating a new array.
+#'   This avoids the copy of `x` that an eager subset assignment otherwise
+#'   makes, but it consumes `x`: its buffer is [donated][jit], so `x` -- and
+#'   any other R variable referring to the same array -- can no longer be used
+#'   afterwards. With `[<-`, pass it among the subscripts, e.g.
+#'   `x[1, inplace = TRUE] <- 0`, which rebinds `x` to the result.
+#'   It is an error inside a jitted function: there, other references to `x`
+#'   would stay valid, so the same code would behave differently in eager and
+#'   in jit mode. Inside `jit()`, the compiler already avoids the copy anyway.
+#'   Default is `FALSE`.
 #' @return ([`arrayish`])\cr
 #'   Has `x`'s data type and shape, with the subset replaced.
-#' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
+#' @seealso [nv_subset()], `r roxy_article("subsetting")` for a
+#'   comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
 #' # set row 1 to zeros
 #' nv_subset_assign(x, 1, value = nv_scalar(0L))
 #' x[1, ] <- nv_scalar(0L)
 #' x
+#'
+#' # write into the memory of `x` instead of copying it
+#' x[2, inplace = TRUE] <- nv_scalar(1L)
+#' x
 #' @export
 # Not wrapped in `jit()`: the `...` subscripts are captured via NSE (`enquos()`),
 # which jit's argument handling cannot trace. The parsing stays here (eager) and
 # the array work is delegated to the jitted [subset_scatter_core()].
-nv_subset_assign <- function(x, ..., value) {
+nv_subset_assign <- function(x, ..., value, inplace = FALSE) {
+  assert_flag(inplace)
+  if (inplace && currently_tracing()) {
+    cli_abort(c(
+      "{.arg inplace} cannot be used inside {.fn jit}.",
+      i = "Eagerly, it invalidates every other reference to {.arg x}; inside {.fn jit}, other references stay valid.",
+      i = "Remove {.code inplace = TRUE}: the compiler already avoids unnecessary copies of {.arg x}."
+    ))
+  }
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish `x`, but got {.cls {class(x)[1]}}")
   }
@@ -693,7 +737,8 @@ nv_subset_assign <- function(x, ..., value) {
     value <- prim_rev(value, axes = reversed_axes)
   }
 
-  subset_scatter_core(
+  core <- if (inplace) subset_scatter_core_inplace() else subset_scatter_core
+  core(
     x = x,
     value = value,
     scatter_indices = params$scatter_indices,

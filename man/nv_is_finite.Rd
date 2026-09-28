@@ -6,6 +6,8 @@
 \title{Is Finite}
 \usage{
 nv_is_finite(x)
+
+\method{is.finite}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

@@ -286,7 +286,7 @@ nv_convert <- function(x, dtype) {
 #' @export
 nv_aperm <- function(x, perm = NULL) {
   x <- as_anvl_array(x)
-  perm <- perm %||% rev(seq_len(naxes(x)))
+  perm <- perm %||% rev(axes(x))
   prim_transpose(x, perm)
 }
 
@@ -419,8 +419,9 @@ nv_concatenate <- jit(
     size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
 
     out_shape <- if (length(non_scalar_shapes)) {
-      x <- non_scalar_shapes[[1L]]
-      x[axis] <- size_out_axis
+      shape <- non_scalar_shapes[[1L]]
+      shape[axis] <- size_out_axis
+      shape
     } else {
       n_scalars
     }
@@ -723,10 +724,17 @@ nv_sub <- make_do_binary(prim_sub)
 #' @title Division
 #' @description
 #' Divides two arrays element-wise. You can also use the `/` operator.
+#'
+#' Like base R's `/`, this is a true division: integer and boolean operands are converted
+#' to the [default float][default_dtypes] before dividing, so `7L / 2L` is
+#' `3.5`. Use [nv_floor_div()] (`%/%`) for integer division.
 #' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
-#' @template return_binary
-#' @seealso [prim_div()] for the underlying primitive.
+#' @return ([`arrayish`])\cr
+#'   Has the inputs' broadcast shape and their common data type, or the default
+#'   float when that is not a float type.
+#' @seealso [prim_div()] for the underlying primitive, which divides integers
+#'   with truncation.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(10, 20, 30))
 #' y <- nv_array(c(2, 5, 10))
@@ -738,8 +746,18 @@ nv_sub <- make_do_binary(prim_sub)
 #'
 #' # a scalar is broadcast and an R integer is converted to a float
 #' x / 2L
+#'
+#' # integers are divided as floats
+#' nv_array(c(7L, -7L)) / 2L
 #' @export
-nv_div <- make_do_binary(prim_div)
+nv_div <- jit(function(lhs, rhs) {
+  args <- nv_promote_to_common(lhs, rhs)
+  if (!is_dtype_float(peek_dtype(args[[1L]]))) {
+    args <- lapply(args, nv_convert, dtype = default_float())
+  }
+  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  prim_div(args[[1L]], args[[2L]])
+})
 
 #' @title Power
 #' @description
@@ -983,7 +1001,9 @@ nv_mod <- jit(function(lhs, rhs) {
     return(rest)
   }
   shifted <- nv_ifelse((rest != 0L) & ((rest < 0L) != (rhs < 0L)), rest + rhs, rest)
-  nv_ifelse(nv_abs(shifted) >= nv_abs(rhs), 0L, shifted)
+  # A shift that rounds up to the divisor itself is a remainder of 0. An
+  # infinite divisor is exempt: there the shift is exact, `-5 %% Inf` is `Inf`.
+  nv_ifelse((nv_abs(shifted) >= nv_abs(rhs)) & nv_is_finite(rhs), 0L, shifted)
 })
 
 #' @title Flooring Division
@@ -1014,11 +1034,11 @@ nv_floor_div <- jit(function(lhs, rhs) {
   }
   if (is_dtype_uint(dt)) {
     # Unsigned division cannot be negative, so there is nothing to floor.
-    return(nv_div(lhs, rhs))
+    return(prim_div(lhs, rhs))
   }
   # Integer division truncates towards zero, so subtract the flooring
   # remainder first to make the division exact.
-  nv_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs)
+  prim_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs)
 })
 
 #' @title Bitwise AND
@@ -1199,15 +1219,15 @@ nv_atan2 <- jit(function(y, x) {
 #' @name nv_bitcast_convert
 #' @description
 #' Reinterprets the bits of an array as a different data type without modifying
-#' the underlying data. If the target type is narrower, an extra trailing
-#' axis is added; if wider, the last axis is consumed.
+#' the underlying data. If the target type is narrower, a new leading axis is
+#' added; if wider, the first axis is consumed.
 #' @inheritParams prim_bitcast_convert
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype`, and the shape described under `dtype`.
 #' @seealso [prim_bitcast_convert()], which this is an alias of, and
 #'   [nv_convert()] for value-preserving type conversion.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the bits of one i32 reread as four i8, in a new trailing axis
+#' # the bits of one i32 reread as four i8, in a new leading axis
 #' x <- nv_array(1L, dtype = "i32")
 #' nv_bitcast_convert(x, dtype = "i8")
 #' @export

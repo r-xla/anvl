@@ -543,3 +543,53 @@ describe("subset_specs_start_indices", {
     expect_equal(x, nv_array(2:11))
   })
 })
+
+describe("nv_subset_assign(inplace = TRUE)", {
+  it("gives the same result as a copying assignment", {
+    x <- nv_matrix(1:6, nrow = 2)
+    expected <- nv_subset_assign(x, 1, 2:3, value = 0L)
+    expect_equal(nv_subset_assign(x, 1, 2:3, value = 0L, inplace = TRUE), expected)
+  })
+
+  it("consumes `x` and every variable referring to it", {
+    x <- nv_array(1:5)
+    y <- x
+    out <- nv_subset_assign(x, 2, value = 99L, inplace = TRUE)
+    expect_equal(as_array(out), array(c(1L, 99L, 3L, 4L, 5L)))
+    expect_error(as_array(x), "donated")
+    expect_error(as_array(y), "donated")
+  })
+
+  it("leaves `x` intact by default", {
+    x <- nv_array(1:3)
+    nv_subset_assign(x, 1, value = 0L)
+    expect_equal(as_array(x), array(1:3))
+  })
+
+  it("is passed among the subscripts of `[<-`", {
+    x <- nv_array(1:5)
+    y <- x
+    x[2:3, inplace = TRUE] <- 0L
+    expect_equal(as_array(x), array(c(1L, 0L, 0L, 4L, 5L)))
+    expect_error(as_array(y), "donated")
+  })
+
+  it("does not count `inplace` as a subscript of `[<-`", {
+    x <- nv_array(1:3)
+    expect_error(x[1, 2, inplace = TRUE] <- 0L, "subset")
+  })
+
+  it("errors inside jit()", {
+    f <- jit(function(a) {
+      a[1, inplace = TRUE] <- 0L
+      a
+    })
+    a <- nv_array(1:3)
+    expect_error(f(a), "cannot be used inside")
+    expect_equal(as_array(a), array(1:3))
+  })
+
+  it("requires a flag", {
+    expect_error(nv_subset_assign(nv_array(1:3), 1, value = 0L, inplace = NA))
+  })
+})

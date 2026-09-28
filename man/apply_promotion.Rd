@@ -63,5 +63,5 @@ dtype(operands$rhs)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link{promotion_rule}, \code{\link[=new_primitive]{new_primitive()}}, \code{vignette("extending_primitive")}
+\link{promotion_rule}, \code{\link[=new_primitive]{new_primitive()}}, the \href{https://r-xla.github.io/anvl/articles/extending_primitive.html}{Adding a Primitive} article
 }

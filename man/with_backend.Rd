@@ -10,14 +10,23 @@ with_backend(backend, code)
 \item{backend}{(\code{character(1)})\cr
 Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 
-\item{code}{An expression to evaluate with the given backend.}
+\item{code}{(any)\cr
+An expression to evaluate with the given backend.}
 }
 \value{
-(\code{any})\cr
+(any)\cr
 The result of evaluating \code{code}.
 }
 \description{
 Sets the \code{anvl.backend} option for the duration of the expression. Every
 array built and every operation run in \code{code} uses the backend, and R values
 materialize at its default data types (see \code{\link[=default_dtypes]{default_dtypes()}}).
+}
+\examples{
+\dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+with_backend("quickr", active_backend())
+\dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=active_backend]{active_backend()}}, \code{\link[=local_backend]{local_backend()}}
 }

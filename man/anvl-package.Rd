@@ -16,10 +16,10 @@ Accelerated array computing and code transformations for R. Numerical programs o
 \item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): the backend every
 operation runs on -- \code{"pjrt"} or \code{"quickr"}. Arrays are allocated with it
 and jitted functions are compiled for it.
-Also see  \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
+Also see \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
 \item \code{anvl.default_dtypes} (named \code{character()} | named \code{list()}): the data
-types an R double and integer materialize at when it cannot be inferred from
-another operand.
+types an R double and an R integer settle on when they meet no typed
+array.
 See \code{\link[=default_dtypes]{default_dtypes()}} for more details.
 \item \code{anvl.default_device} (\code{character(1)} | device object): the device a call
 that names none allocates on.

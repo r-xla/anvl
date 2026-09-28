@@ -6,6 +6,8 @@
 \title{Inverse Hyperbolic Tangent}
 \usage{
 nv_atanh(x)
+
+\method{atanh}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

@@ -6,6 +6,8 @@
 \title{Ceiling}
 \usage{
 nv_ceiling(x)
+
+\method{ceiling}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

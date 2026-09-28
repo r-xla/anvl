@@ -7,15 +7,21 @@
 vt(dtype, shape)
 }
 \arguments{
-\item{dtype}{A dtype (string or \code{\link[tengen:DataType]{tengen::DataType}}).}
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+The data type.}
 
-\item{shape}{An integer vector or \code{\link[stablehlo:Shape]{stablehlo::Shape}}.}
+\item{shape}{(\code{integer()} | \code{\link[stablehlo:Shape]{stablehlo::Shape}})\cr
+The shape.}
 }
 \value{
-(\code{ValueType})
+(\code{\link[stablehlo:ValueType]{stablehlo::ValueType}})\cr
+A tensor type of the given data type and shape.
 }
 \description{
 Shorthand for building a tensor \code{\link[stablehlo:ValueType]{stablehlo::ValueType}} from a dtype
 and shape — convenient inside stablehlo lowering rules that need to
 declare custom-call output types or similar.
+}
+\examples{
+vt("f32", c(2L, 3L))
 }

@@ -16,7 +16,7 @@ The data type \code{x} has, or the \link[=default_dtypes]{default data type} it 
 materialize at if it is still a bare R value.
 }
 \description{
-The data type \code{x} would take if it was converted to an \code{AnvlArray}.
+The data type \code{x} would take if it materialized.
 Relevant for R objects and their \code{\link{RData}} trace-time analogon: for those it
 is the default of the active backend (see \code{\link[=default_dtypes]{default_dtypes()}}), which the
 value has not materialized at yet.

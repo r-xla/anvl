@@ -15,8 +15,6 @@ Constructs the quickr backend, which stores array data as plain R arrays and
 compiles jitted functions to R code via the \CRANpkg{quickr} package.
 }
 \details{
-To use it, the \code{"quickr"} package needs to be installed.
-
 Registered automatically under the name \code{"quickr"} when the package is
 loaded; call \code{\link[=local_backend]{local_backend("quickr")}} or
 \code{\link[=with_backend]{with_backend("quickr", ...)}} to use it. Requires the
@@ -30,7 +28,7 @@ field. \code{\link[=as_array]{as_array()}} returns the underlying vector/array d
 copying, and \code{\link[=nv_array]{nv_array()}} simply wraps an R vector/array. Data always lives
 in R's memory and computation always runs on the CPU, so the only device is
 \code{\link[=quickr_device]{quickr_device("cpu")}}; every array still carries it in
-\verb{$device}, as arrays of every backend do.
+\verb{$device}.
 }
 
 \section{Status}{
@@ -41,7 +39,8 @@ This backend is \strong{experimental} and has a number of limitations:
 suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.
 \item Only a subset of the primitives that the PJRT backend supports are currently
-lowered to quickr code. See \code{vignette("primitives")} for an overview.
+lowered to quickr code. See
+the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article for an overview.
 \item Only CPU execution is supported.
 \item Only three data types are supported; see the section below.
 }

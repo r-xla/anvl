@@ -5,10 +5,10 @@ NULL
 #' * `anvl.backend` (`character(1)`, default `"pjrt"`): the backend every
 #'   operation runs on -- `"pjrt"` or `"quickr"`. Arrays are allocated with it
 #'   and jitted functions are compiled for it.
-#'   Also see  [`active_backend()`], [`local_backend()`] and [`with_backend()`].
+#'   Also see [`active_backend()`], [`local_backend()`] and [`with_backend()`].
 #' * `anvl.default_dtypes` (named `character()` | named `list()`): the data
-#'   types an R double and integer materialize at when it cannot be inferred from
-#'   another operand.
+#'   types an R double and an R integer settle on when they meet no typed
+#'   array.
 #'   See [`default_dtypes()`] for more details.
 #' * `anvl.default_device` (`character(1)` | device object): the device a call
 #'   that names none allocates on.

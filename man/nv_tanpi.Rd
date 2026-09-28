@@ -6,6 +6,8 @@
 \title{Tangent of a Multiple of Pi}
 \usage{
 nv_tanpi(x)
+
+\method{tanpi}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
