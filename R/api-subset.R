@@ -177,39 +177,37 @@ new_index_array <- function(data, shape, like = NULL) {
   nv_array_like(like, data, dtype = "i32", shape = shape)
 }
 
-#' Resolve a whole-array mask subscript
-#'
-#' A single subscript whose shape equals the shape of `x` selects elements
-#' across the entire array, flattening the result. Deciding this requires
-#' evaluating the subscript, so the quosures are returned alongside the mask
-#' with the evaluated value spliced back in -- otherwise `parse_subset_specs()`
-#' would evaluate the subscript a second time.
-#'
-#' Rank-1 arrays are left alone: there a whole-array mask and a mask on the
-#' single axis mean the same thing, so the regular path already covers it.
-#'
-#' @param quos List of quosures (from `enquos()`)
-#' @param x_shape Shape of the array being subset
-#' @return A list with `mask` (an R logical array, or `NULL` if this is not a
-#'   whole-array mask) and `quos`.
-#' @noRd
+# the purpose is to check whether we have x[mask] or x[mask] <- val, where shape(mask) is shape(x)
+# We have to be careful with argument evaluation, because if arg is x[f(a)], we don't want to evaluate
+# f(a) twice, because this will append computation twice into the graph during tracing.
+# Otherwise the logic is simple: return mask = NULL if it's NOT a flat mask
 resolve_flat_mask <- function(quos, x_shape) {
+  # The check itself is simple (one bool subscript with the shape of `x`), but it
+  # runs before `parse_subset_specs()` on unevaluated quosures: a missing
+  # subscript or a range `a:b` must not be evaluated here, and a subscript that
+  # is evaluated is spliced back so it is not evaluated (or read from the device)
+  # a second time.
   if (length(quos) != 1L || length(x_shape) < 2L) {
     return(list(mask = NULL, quos = quos))
   }
   quo <- quos[[1L]]
+  # `x[]` or a range `a:b`: not a mask, and a range must stay unevaluated for
+  # `parse_subset_specs()`
   if (rlang::quo_is_missing(quo) || rlang::is_call(rlang::quo_get_expr(quo), ":")) {
     return(list(mask = NULL, quos = quos))
   }
 
   e <- rlang::eval_tidy(quo)
+  # So we don't evaluate twice, which would append computation twice to the graph during tracing
   quos[[1L]] <- rlang::new_quosure(e)
 
+  # an index subscript rather than a mask
   if (!is_mask_subscript(e)) {
     return(list(mask = NULL, quos = quos))
   }
   mask <- as_r_mask(e)
-  if (!identical(as.integer(dim(mask)), as.integer(x_shape))) {
+  # a mask whose shape differs from `x`: left to the per-axis path
+  if (!identical(dim(mask), as.integer(x_shape))) {
     # splice the host-side mask back in so it is not read from the device twice;
     # a scalar mask comes back without `dim`, where it would be mistaken for an R
     # logical vector, so that one keeps its array form
@@ -500,6 +498,9 @@ as_r_mask <- function(e) {
       ))
     }
     mask <- e
+    if (anyNA(mask)) {
+      cli_abort("Boolean masks must not contain missing values.")
+    }
   } else {
     if (currently_tracing()) {
       cli_abort(c(
@@ -509,9 +510,6 @@ as_r_mask <- function(e) {
       ))
     }
     mask <- as_array(e)
-  }
-  if (anyNA(mask)) {
-    cli_abort("Boolean masks must not contain missing values.")
   }
   mask
 }
