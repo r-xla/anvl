@@ -59,3 +59,4 @@ gives the data type and shape, this gives the R type it is uploaded from.}
 Computational graph consisting exclusively of primitive calls.
 This is a mutable class.
 }
+\keyword{internal}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/promotion.R
 \name{common_dtype}
 \alias{common_dtype}
-\title{Type Promotion Rules}
+\title{Common Data Type}
 \usage{
 common_dtype(lhs_dtype, rhs_dtype)
 }
@@ -15,7 +15,7 @@ The two data types.}
 The narrowest common data type.
 }
 \description{
-Compute the common data type.
+Compute the common data type of two data types.
 
 Two integer data types meet at one that holds every value of both: a signed
 and an unsigned one at the narrowest signed data type wide enough for the

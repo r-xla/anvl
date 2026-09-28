@@ -756,7 +756,8 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #' @rdname nv_aperm
 #' @section The `t()` generic:
 #' `t()` requires a matrix, whereas [base::t()] also transposes a vector (into
-#' a one-row matrix) and reverses the axes of a higher-rank array.
+#' a one-row matrix). Like [base::t()], it rejects a higher-rank array; use
+#' `aperm()` to reverse its axes.
 #' @method t AnvlArray
 #' @export
 t.AnvlArray <- function(x) {
@@ -885,7 +886,7 @@ quantile.AnvlBox <- quantile.AnvlArray
 
 #' @rdname nv_sort
 #' @param decreasing (`logical(1)`)\cr If `TRUE`, sort in decreasing order.
-#' @param ... No additional arguments.
+#' @param ... Passed on to `nv_sort()`, e.g. `stable`.
 #' @method sort AnvlArray
 #' @export
 sort.AnvlArray <- function(x, decreasing = FALSE, ..., axis = NULL) {

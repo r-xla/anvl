@@ -246,7 +246,8 @@ graph_to_quickr_make_wrapper <- function(
 #'
 #' @param graph ([`AnvlGraph`])\cr
 #'   Graph to convert.
-#' @return (`function`)
+#' @return (`function`)\cr
+#'   Takes one plain R value per graph input and returns plain R values.
 #' @seealso [`jit()`] under `with_backend("quickr", ...)` for tracing and compiling a
 #'   regular R function in one step.
 #' @export

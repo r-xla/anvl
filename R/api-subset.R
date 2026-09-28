@@ -667,7 +667,11 @@ subset_scatter_core_inplace <- local({
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
 #'   values must match it.
-#'   The value is converted to the data type of `x`.
+#'   It is brought to `x`'s data type: an R value is built at it when its
+#'   category can reach it (`0L` serves an integer and a float `x` alike, while
+#'   `1.5` into an `i32` `x` is an error), and an array is converted unless that
+#'   would narrow it or leave its category (an `f64` value for an `f32` `x` is
+#'   an error).
 #' @param inplace (`logical(1)`)\cr
 #'   Whether to write into the memory of `x` instead of allocating a new array.
 #'   This avoids the copy of `x` that an eager subset assignment otherwise

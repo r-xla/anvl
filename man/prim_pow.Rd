@@ -2,24 +2,24 @@
 % Please edit documentation in R/primitives.R
 \name{prim_pow}
 \alias{prim_pow}
-\title{Primitive Power
-Raises \code{x} to the power of \code{y} element-wise.}
+\title{Primitive Power}
 \usage{
 prim_pow(x, y)
 }
 \arguments{
 \item{x, y}{(\code{\link{arrayish}})\cr
 Two inputs of the same data type and shape. Can be any numeric data type. R
-values assume the other operand's data type when it is in their
+values take the other operand's data type when it is in their
 \link[=dtypes]{data type category}, and their
-\link[=default_dtypes]{default data type} when neither operand has one.}
+\link[=default_dtypes]{default data type} when neither operand has one. An R
+value outside the other operand's category is an error, as are two R
+values of different storage types.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has the inputs' shape and data type.
 }
 \description{
-Primitive Power
 Raises \code{x} to the power of \code{y} element-wise.
 }
 \section{Implemented Rules}{

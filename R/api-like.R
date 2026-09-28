@@ -30,8 +30,9 @@ like_defaults <- function(like, ...) {
 }
 
 #' @rdname AnvlArray
-#' @param like ([`AnvlArray`])\cr
-#'   An existing array. Any of `shape`, `dtype` and `device` that are `NULL`
+#' @param like ([`AnvlArray`] | [`GraphBox`])\cr
+#'   An existing array; an R value is an error. Any of `shape` (which
+#'   `nv_scalar_like()` does not take), `dtype` and `device` that are `NULL`
 #'   (the default) are taken from `like`.
 #' @export
 nv_array_like <- function(like, data, shape = NULL, dtype = NULL, device = NULL) {

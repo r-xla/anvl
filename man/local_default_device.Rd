@@ -10,11 +10,11 @@ local_default_device(device, envir = parent.frame())
 with_default_device(device, code)
 }
 \arguments{
-\item{device}{(\code{character(1)} | device object)\cr
+\item{device}{(\code{NULL} | \code{character(1)} | device object)\cr
 The device to make the default, e.g. \code{"cpu:1"}. A string is looked up on
 whichever backend asks for the default, so an identifier only one backend
 knows (\code{"cpu:1"} is beyond quickr's single device) makes the default an
-error on the others.}
+error on the others. \code{NULL} clears the option.}
 
 \item{envir}{(\code{environment})\cr
 Scope the option is reset at the end of. Defaults to the caller.}
@@ -23,8 +23,12 @@ Scope the option is reset at the end of. Defaults to the caller.}
 Expression to evaluate with the default device set.}
 }
 \value{
-\code{local_default_device()} returns the previous option value
-invisibly, \code{with_default_device()} the value of \code{code}.
+\code{local_default_device()}: (named \code{list})\cr
+The previous value of the option, as \code{list(anvl.default_device = )},
+invisibly.
+
+\code{with_default_device()}: (any)\cr
+The value of \code{code}.
 }
 \description{
 Sets the \code{anvl.default_device} option, which \code{\link[=default_device]{default_device()}} returns in
@@ -35,9 +39,8 @@ This is what a call that names no device allocates on, and what a jitted
 function whose graph pins no device of its own compiles for.
 }
 \examples{
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-with_default_device("cpu:0", device(nv_array(1:3)))
-\dontshow{\}) # examplesIf}
+getOption("anvl.default_device")
+with_default_device("cpu:0", getOption("anvl.default_device"))
 }
 \seealso{
 \code{\link[=default_device]{default_device()}}, \code{\link[=local_backend]{local_backend()}}

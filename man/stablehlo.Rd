@@ -59,7 +59,9 @@ primitives inherit the platform of the enclosing call.}
 Of length 3:
 \itemize{
 \item the \code{\link[stablehlo:Func]{stablehlo::Func}}
-\item The list of \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s.
+\item The graph's constants: the \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s,
+whose data must be passed as the leading inputs at execution time when
+\code{constants_as_inputs = TRUE}.
 \item A list of phantom-output specs, one per phantom donated input
 appended when \code{donate_unaliased_outputs = TRUE}. Each entry is a
 \code{list(dtype, shape)} describing the buffer the executor must
@@ -72,7 +74,7 @@ Each graph operation is translated to its corresponding StableHLO op. The result
 be serialized to MLIR text via \code{stablehlo::repr()} and subsequently compiled to an
 XLA executable with \code{pjrt::pjrt_compile()}.
 
-The rules for translating to stablehlo are stored in \verb{$rules[["stablehlo"]]} of the primitives.
+The rule for translating a primitive to stablehlo is \verb{prim_<name>[["stablehlo"]]}.
 
 This is a low-level function; most users should use \code{\link[=jit]{jit()}} instead.
 }

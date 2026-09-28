@@ -7,11 +7,16 @@
 at2vt(x)
 }
 \arguments{
-\item{x}{(\code{AbstractArray})}
+\item{x}{(\code{\link{AbstractArray}})\cr
+The abstract array. Must not be an \code{\link{RData}}.}
 }
 \value{
-(\code{ValueType})
+(\code{\link[stablehlo:ValueType]{stablehlo::ValueType}})\cr
+A tensor type of \code{x}'s data type and shape.
 }
 \description{
-Convert an \code{AbstractArray} to a \code{ValueType}.
+Convert an \code{\link{AbstractArray}} to a \code{\link[stablehlo:ValueType]{stablehlo::ValueType}}.
+}
+\examples{
+at2vt(nv_aval("f32", c(2L, 3L)))
 }

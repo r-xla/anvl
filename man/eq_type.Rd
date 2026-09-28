@@ -23,7 +23,8 @@ Second array to compare. Must not be an \code{\link{RData}}.}
 Compare two abstract arrays for type equality.
 
 An \code{\link{RData}} has no data type to compare, so it is an error here, just as
-\code{\link[tengen:dtype]{dtype()}} is. Commit it first, e.g. with \code{\link[=nv_convert]{nv_convert()}}.
+\code{\link[tengen:dtype]{dtype()}} is. Give it a data type first, e.g. with
+\code{\link[=nv_convert]{nv_convert()}}.
 }
 \examples{
 a <- nv_aval("f32", c(2L, 3L))

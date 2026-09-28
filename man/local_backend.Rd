@@ -10,14 +10,28 @@ local_backend(backend, envir = parent.frame())
 \item{backend}{(\code{character(1)})\cr
 Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 
-\item{envir}{The environment to scope the change to.}
+\item{envir}{(\code{environment})\cr
+The environment to scope the change to.}
 }
 \value{
-(\code{character(1)})\cr
-The previous value of the option, invisibly.
+(named \code{list})\cr
+The previous value of the option, as \code{list(anvl.backend = )}, invisibly.
 }
 \description{
 Sets the \code{anvl.backend} option for the duration of the calling scope. Every
 array built and every operation run in that scope uses the backend, and R
 values materialize at its default data types (see \code{\link[=default_dtypes]{default_dtypes()}}).
+}
+\examples{
+\dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+f <- function() {
+  local_backend("quickr")
+  active_backend()
+}
+f()
+active_backend()
+\dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=active_backend]{active_backend()}}, \code{\link[=with_backend]{with_backend()}}
 }

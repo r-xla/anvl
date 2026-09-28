@@ -124,8 +124,6 @@ compile_quickr <- function(
 #' Constructs the quickr backend, which stores array data as plain R arrays and
 #' compiles jitted functions to R code via the \CRANpkg{quickr} package.
 #'
-#' To use it, the `"quickr"` package needs to be installed.
-#'
 #' Registered automatically under the name `"quickr"` when the package is
 #' loaded; call [`local_backend("quickr")`][local_backend()] or
 #' [`with_backend("quickr", ...)`][with_backend()] to use it. Requires the
@@ -138,7 +136,7 @@ compile_quickr <- function(
 #' copying, and [`nv_array()`] simply wraps an R vector/array. Data always lives
 #' in R's memory and computation always runs on the CPU, so the only device is
 #' [`quickr_device("cpu")`][quickr_device()]; every array still carries it in
-#' `$device`, as arrays of every backend do.
+#' `$device`.
 #'
 #' @section Status:
 #' This backend is **experimental** and has a number of limitations:

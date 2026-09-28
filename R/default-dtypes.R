@@ -54,11 +54,8 @@ effective_default_dtypes <- function(backend) {
 #' @title Default Data Types
 #' @description
 #' The default data types for the [active backend][active_backend()].
-#' They decide the data type an R value is materialized at when it cannot be
-#' inferred from another operand.
-#'
-#' This includes array creation via (`nv_array(1)`) or passing R values to unary functions
-#' (`prim_exp(1)`).
+#' They are the data types an R value settles on when it meets no typed array,
+#' e.g. `nv_array(1)` or `prim_exp(1)`.
 #'
 #' `default_dtypes()` reports both categories at once; `default_float()` and
 #' `default_int()` report one each.
@@ -68,7 +65,7 @@ effective_default_dtypes <- function(backend) {
 #' [`local_default_dtypes()`] and [`with_default_dtypes()`] set the option for
 #' a scope.
 #'
-#' Below, we configure any backend to use the default `f64` for floats and `i64` for integers:
+#' Below, we configure every backend to use the default `f64` for floats and `i64` for integers:
 #'
 #' ```
 #' options(anvl.default_dtypes = c(float = "f64", int = "i64"))
@@ -81,12 +78,13 @@ effective_default_dtypes <- function(backend) {
 #' options(anvl.default_dtypes = c(float = "f64"))
 #' ```
 #'
-#' It is also possible to specify the defaults per-backend:
+#' It is also possible to specify the defaults per backend. Below, every
+#' backend uses `f64` for floats, and `"pjrt"` also uses `i64` for integers:
 #'
 #' ```
 #' options(anvl.default_dtypes = list(
-#'   pjrt = list(float = "f64", int = "i64"),
-#'   quickr = list(int = "i32")
+#'   float = "f64",
+#'   pjrt = list(int = "i64")
 #' ))
 #' ```
 #'
@@ -107,8 +105,11 @@ effective_default_dtypes <- function(backend) {
 #' errors there. A compiled program is keyed on the defaults it was compiled
 #' under, so changing them never serves a stale program.
 #'
-#' @return `default_dtypes()` returns a named `list` with elements `float` and
-#'   `int`, each a [`DataType`]
+#' @return `default_dtypes()`: (named `list`)\cr
+#'   Elements `float` and `int`, each a [`DataType`].
+#'
+#'   `default_float()`, `default_int()`: ([`DataType`])\cr
+#'   The default of one category.
 #' @seealso [`local_default_dtypes()`], [`with_default_dtypes()`],
 #'   [`with_dtypes()`]
 #' @examplesIf pjrt::plugins_downloaded()

@@ -19,17 +19,15 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
-function (\code{q}). \code{x} can be any float data type; \code{q} must be \code{f32} or \code{f64}
-(see "Details"). An R \code{double} is materialized at its \link[=default_dtypes]{default data type}.}
+function (\code{q}).}
 
 \item{mean}{(\code{\link{arrayish}})\cr
-Mean of the distribution, scalar or the same shape as \code{x}/\code{q}/\code{p}.
-Converted to the argument's data type.}
+Mean of the distribution. Either a scalar, or an array of exactly the
+shape of \code{x}/\code{q}/\code{p} (or the sample, for \code{nv_rnorm}).}
 
 \item{sd}{(\code{\link{arrayish}})\cr
-Standard deviation of the distribution, scalar or the same shape as
-\code{x}/\code{q}/\code{p}. Converted to the argument's data type.
-Must be positive, otherwise results are invalid.}
+Standard deviation of the distribution, shaped like \code{mean}. Must be
+positive, otherwise results are invalid.}
 
 \item{log, log_p}{(\code{logical(1)})\cr
 If \code{TRUE}, the densities/probabilities are given as logarithms. For
@@ -41,9 +39,7 @@ If \code{TRUE} (default), probabilities are \eqn{P(X \le x)}; otherwise,
 
 \item{p}{(\code{\link{arrayish}})\cr
 Probabilities at which to evaluate the quantile function. Values outside
-\eqn{[0, 1]} give \code{NaN}. Must be \code{f32} or \code{f64} (see "Details"); \code{mean}
-and \code{sd} are converted to it. An R value materializes at its
-\link[=default_dtypes]{default data type}.}
+\eqn{[0, 1]} give \code{NaN}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
@@ -54,8 +50,9 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Floating point data type.
-The default (\code{NULL}) uses the \link[=default_dtypes]{default float type}.}
+Floating point data type of the sample. The default (\code{NULL}) uses the
+common data type of \code{mean} and \code{sd}, and the
+\link[=default_dtypes]{default float type} when both are R values.}
 }
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
@@ -87,6 +84,15 @@ Moshier (1989) (this is \code{ndtri} in the Cephes
 library as used by JAX) for \code{f64}, and uses a new lower degree Remez minimax
 rational approximation on the same intervals for \code{f32}.
 }
+\section{Data Types}{
+
+\code{nv_dnorm()}, \code{nv_pnorm()} and \code{nv_qnorm()} compute at
+the data type of \code{x}/\code{q}/\code{p}, which must be float; an R value settles on the
+\link[=default_dtypes]{default float}. An R value for \code{mean} or \code{sd} takes this data
+type. An array is promoted to it, so a wider one (e.g. \code{f64} for an \code{f32}
+\code{x}) is an error.
+}
+
 \section{Random generation}{
 
 \code{nv_rnorm} samples via the Box-Muller transform. To sample with a covariance

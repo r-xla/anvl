@@ -7,19 +7,20 @@
 AnvlPrimitive(name, subgraphs = character())
 }
 \arguments{
-\item{name}{(\code{character()})\cr
-The name of the primitive.}
+\item{name}{(\code{character(1)})\cr
+The name of the primitive, without the \code{prim_} prefix.}
 
 \item{subgraphs}{(\code{character()})\cr
-Names of parameters that are subgraphs. Only used if \code{higher_order = TRUE}.}
+Names of parameters that are subgraphs.}
 }
 \value{
 (\code{AnvlPrimitive})
 }
 \description{
-Primitive interpretation rule.
+Metadata object of a primitive: its name, sub-graph parameters and
+interpretation rules.
 Note that \code{[[} and \verb{[[<-} access the interpretation rules.
 To access other fields, use \code{$} and \verb{$<-}.
 
-A primitive is considered higher-order if it contains subgraphs.
+A primitive is considered higher-order if it has subgraphs.
 }

@@ -135,6 +135,7 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'   this says everything about how a call\'s arguments are uploaded: the aval
 #'   gives the data type and shape, this gives the R type it is uploaded from.
 #' @return (`AnvlGraph`)
+#' @keywords internal
 # @export
 AnvlGraph <- function(
   calls = list(),
@@ -618,13 +619,15 @@ name_failing_primitive <- function(e) {
 #'   `args_flat`/`in_tree` pair.
 #' @param desc (`NULL` | `GraphDescriptor`)\cr
 #'   Optional descriptor. When `NULL` (default), a new descriptor is created.
-#' @param mode (`character(1)`)\cr
+#' @param mode (`NULL` | `character(1)`)\cr
 #'   How to handle the inputs.
 #'   Options are:
-#'   - `"toplevel"`: Used for jit(). Default.
+#'   - `"toplevel"`: Used for [`jit()`]. Only allowed outside a trace.
 #'   - `"subgraph"`: Use for tracing subgraphs in higher-order primitives like [`prim_while()`].
-#'   - `"inline"`: Use for transformations like jit, where the graph is later inlined
-#'     into the parent graph.
+#'   - `"inline"`: Use for transformations like [`gradient()`], where the graph is
+#'     later inlined into the parent graph.
+#'
+#'   `NULL` (default) means `"toplevel"` and is only allowed outside a trace.
 #' @param args_flat (`list`)\cr
 #'   Flattened arguments. Must be accompanied by `in_tree`.
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
@@ -770,7 +773,8 @@ maybe_restore_previous_desc <- function(desc = NULL) {
 #' Get the current graph being built (via [`local_descriptor`]).
 #' @param silent (`logical(1)`)\cr
 #'   Whether to return `NULL` if no graph is currently being built (as opposed to aborting).
-#' @return ([`GraphDescriptor`])
+#' @return ([`GraphDescriptor`] | `NULL`)\cr
+#'   `NULL` only when `silent = TRUE` and no graph is being built.
 #' @export
 .current_descriptor <- function(silent = FALSE) {
   maybe_desc <- globals[["CURRENT_DESCRIPTOR"]]
@@ -856,8 +860,10 @@ is_graph_box <- function(x) {
 #' @param primitive ([`AnvlPrimitive`] | `JitPrimitive`)\cr
 #'   The primitive the call is for. A `JitPrimitive` is accepted and unwrapped
 #'   to its underlying `AnvlPrimitive` metadata.
-#' @param args (`list` of [`GraphNode`])\cr
-#'   The arguments to the primitive.
+#' @param args (`list` of [`arrayish`])\cr
+#'   The arguments to the primitive: [`GraphBox`]es, [`AnvlArray`]s (registered
+#'   as constants of the graph) or R values (materialized at their default data
+#'   type).
 #' @param params (`list`)\cr
 #'   The parameters to the primitive.
 #' @param infer_fn (`function`)\cr

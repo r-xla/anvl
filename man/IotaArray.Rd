@@ -19,8 +19,12 @@ The axis along which values increase.}
 \item{start}{(\code{integer(1)})\cr
 The starting value.}
 }
+\value{
+(\code{\link{IotaArray}})
+}
 \description{
-An \code{\link{AbstractArray}} representing an integer sequence.
+An \code{\link{AbstractArray}} representing an arithmetic sequence with step 1 along
+one axis.
 Usually created by \code{\link[=nv_iota]{nv_iota()}} / \code{\link[=nv_seq]{nv_seq()}}, which both call \code{\link[=prim_iota]{prim_iota()}} internally.
 Inherits from \code{\link{AbstractArray}}.
 }
