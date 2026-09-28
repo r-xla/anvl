@@ -444,9 +444,9 @@ update <- jit(function(beta, X, y, lr) {
 X <- nv_array(matrix(rnorm(20), 10, 2))
 y <- X %*% matrix(c(1, 2))
 as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
-#>           [,1]
-#> [1,] 0.1276008
-#> [2,] 0.3214183
+#>            [,1]
+#> [1,] 0.02904128
+#> [2,] 0.15508573
 \end{verbatim}
 
 When \texttt{update()} is traced, the call to the gradient function traces \texttt{loss()} into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of \texttt{update()}.
@@ -844,6 +844,7 @@ Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages
 
 Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) -- 460135501 (NFDI project MaRDI).
 We thank the developers of JAX, whose design and documentation, in particular the Autodidax tutorial \citep{ref-autodidax}, inspired many aspects of \pkg{anvl}, as well as the authors of the Go library gopjrt \citep{ref-gopjrt}, which informed the design of \pkg{pjrt}.
+We also thank Doug Kelkhoff, the main author of an experimental implementation of the R language (\url{https://github.com/dgkf/R}), which sparked parts of the design of \pkg{anvl}.
 We gratefully acknowledge the computational resources provided by the Leibniz Supercomputing Centre (LRZ).
 
 \hypertarget{appendix}{%

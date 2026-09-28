@@ -750,6 +750,7 @@ Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages
 
 Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) -- 460135501 (NFDI project MaRDI).
 We thank the developers of JAX, whose design and documentation, in particular the Autodidax tutorial [@ref-autodidax], inspired many aspects of \pkg{anvl}, as well as the authors of the Go library gopjrt [@ref-gopjrt], which informed the design of \pkg{pjrt}.
+We also thank Doug Kelkhoff, the main author of an experimental implementation of the R language (<https://github.com/dgkf/R>), which sparked parts of the design of \pkg{anvl}.
 We gratefully acknowledge the computational resources provided by the Leibniz Supercomputing Centre (LRZ).
 
 # Appendix {-}
