@@ -83,6 +83,7 @@
 #'
 #' @examplesIf requireNamespace("quickr", quietly = TRUE)
 #' # the same function runs on whichever backend is active when it is called
+#' f <- jit(function(x, y) x + y)
 #' with_backend("quickr", f(nv_array(1), nv_array(2)))
 jit <- function(
   f,
