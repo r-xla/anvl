@@ -6,6 +6,8 @@
 \title{Floor}
 \usage{
 nv_floor(x)
+
+\method{floor}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

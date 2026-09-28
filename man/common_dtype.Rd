@@ -25,7 +25,7 @@ become a float on its own -- so \code{ui64} and a signed integer have no common
 data type and the pair is an error. Convert one side with \code{\link[=nv_convert]{nv_convert()}}
 to decide what they meet at.
 
-See the \emph{Type Promotion} article for more information.
+See the \href{https://r-xla.github.io/anvl/articles/type-promotion.html}{Data Types and Promotion Rules} article for more information.
 }
 \examples{
 common_dtype("i32", "f32")

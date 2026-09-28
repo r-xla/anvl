@@ -6,6 +6,8 @@
 \title{Exponential Minus One}
 \usage{
 nv_expm1(x)
+
+\method{expm1}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

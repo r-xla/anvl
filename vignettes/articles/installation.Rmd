@@ -1,10 +1,5 @@
 ---
 title: "Installation"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Installation}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 Currently, {anvl} is not available on CRAN, so you either have to install it via [r-universe](https://r-xla.r-universe.dev/) or from [GitHub](https://github.com/r-xla/anvl).
@@ -12,7 +7,7 @@ Currently, {anvl} is not available on CRAN, so you either have to install it via
 The system library required during runtime is `libprotobuf`.
 Source installation requires a `C++20` compiler and `protoc` (protobuf compiler).
 
-You can install the latest release from r-universe (prebuilt binary).
+You can install the latest release from r-universe.
 
 ```{r, eval = FALSE}
 install.packages("anvl", repos = c("https://cloud.r-project.org", "https://r-xla.r-universe.dev"))
@@ -46,7 +41,7 @@ cuda_pkg <- getFromNamespace("cuda_r_package", "pjrt")()
 cuda_version <- getFromNamespace("cuda_version", "pjrt")()
 ```
 
-The additional dependencies that {anvl} installs includes the {`r cuda_pkg`} R package, which only requires a CUDA `r cuda_version`-compatible driver to be installed.
+The additional dependencies that {anvl} installs include the {`r cuda_pkg`} R package, which only requires a CUDA `r cuda_version`-compatible driver to be installed.
 
 When the {`r cuda_pkg`} package is not installed, the correct runtime libraries need to be installed on the system and discoverable via `LD_LIBRARY_PATH`.
 The specific versions of the CUDA runtime libraries provided with {`r cuda_pkg`} are listed [here](`r sprintf("https://github.com/r-xla/%s/blob/main/inst/components.tsv", cuda_pkg)`).

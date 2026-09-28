@@ -6,6 +6,8 @@
 \title{Inverse Hyperbolic Sine}
 \usage{
 nv_asinh(x)
+
+\method{asinh}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

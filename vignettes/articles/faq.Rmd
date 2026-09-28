@@ -1,18 +1,13 @@
 ---
 title: "FAQ"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{FAQ}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ## Why is my function slow?
 
 There can be many reasons why an {anvl} program is not as fast as one might
 expect.
-See the [Efficiency](efficiency.html) vignette which explains various
-pitfals and levers for optimizing program runtime.
+See the [Efficiency](efficiency.html) article which explains various
+pitfalls and levers for optimizing program runtime.
 
 ## Why does timing my function show suspiciously fast results?
 

@@ -6,6 +6,8 @@
 \title{Not Equal}
 \usage{
 nv_ne(lhs, rhs)
+
+\method{!=}{AnvlArray}(e1, e2)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
@@ -15,6 +17,9 @@ operand's data type when that is in its own or a higher
 \link[=dtypes]{category}. Otherwise it
 settles on its \link[=default_dtypes]{default data type}, and the operands meet
 at their common data type.}
+
+\item{e1, e2}{(\code{\link{arrayish}})\cr
+The operands of the operator, which it passes on as \code{lhs} and \code{rhs}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
