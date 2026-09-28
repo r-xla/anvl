@@ -114,8 +114,8 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #' @param graph ([`AnvlGraph`])\cr
 #'   The graph to transform. Must produce a single scalar float output.
 #' @param wrt (`NULL` | `character()`)\cr
-#'   Names of the graph inputs to differentiate with respect to. `NULL` or an
-#'   empty vector differentiates with respect to all inputs.
+#'   Names of the graph inputs to differentiate with respect to. `NULL` differentiates with respect
+#'   to all inputs.
 #' @return ([`AnvlGraph`])\cr
 #'   Its outputs are the requested gradients.
 #' @seealso [`gradient()`], [`value_and_gradient()`], [`rule_reverse()`]

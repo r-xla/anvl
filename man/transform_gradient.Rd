@@ -11,8 +11,8 @@ transform_gradient(graph, wrt)
 The graph to transform. Must produce a single scalar float output.}
 
 \item{wrt}{(\code{NULL} | \code{character()})\cr
-Names of the graph inputs to differentiate with respect to. \code{NULL} or an
-empty vector differentiates with respect to all inputs.}
+Names of the graph inputs to differentiate with respect to. \code{NULL} differentiates with respect
+to all inputs.}
 }
 \value{
 (\code{\link{AnvlGraph}})\cr

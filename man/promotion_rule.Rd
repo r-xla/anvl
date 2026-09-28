@@ -63,9 +63,7 @@ What the rule is, for printing: it shows as \verb{<\{kind\}>}, so give it the
 name of the function that builds it.}
 }
 \value{
-(\code{PromotionRule})\cr
-A \verb{function(args)} returning a \code{list} with one entry per input: the data
-type to bring it to, or \code{NULL} to leave it unchanged.
+(\code{PromotionRule})
 }
 \description{
 Functions for materializing R values as arrays and promoting inputs.

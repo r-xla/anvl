@@ -8,8 +8,7 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 }
 \arguments{
 \item{f}{(\code{function})\cr
-Function to compile. Its non-static arguments are arrays or R values, and it
-returns an array or a (nested) \code{list} of arrays.}
+Function to compile.}
 
 \item{static}{(\code{character()} | \code{integer()})\cr
 Names or positions of parameters of \code{f} that are \emph{not} arrays. Static values are
@@ -40,10 +39,7 @@ that does not, since the backend is not known until then.}
 }
 \value{
 (\code{JitFunction})\cr
-A \code{function} with the same formals as \code{f}. Its non-static arguments take
-\code{\link{AnvlArray}}s or R values -- an R value materializes at the data type the
-program needs -- and it returns what \code{f} returns, with \code{\link{AnvlArray}}s in
-place of the traced arrays.
+A \code{function} with the same formals as \code{f}.
 }
 \description{
 Wraps a function so that it is traced and compiled on first call. Subsequent

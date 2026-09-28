@@ -49,7 +49,7 @@ print(graph)
 # the actual inputs to the compiled program
 graph$inputs
 # the R storage types of the inputs passed as R values; NA for inputs passed
-# as arrays
+# as AnvlArrays
 graph$rdata_types
 \dontshow{\}) # examplesIf}
 }

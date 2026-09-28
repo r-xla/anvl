@@ -41,9 +41,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #'   `i32`, or an `f32` array at `i32`), and narrowing a value the target cannot
 #'   hold (an `f64` array at `f32`). The default is `FALSE`.
 #'
-#' @return (`PromotionRule`)\cr
-#'   A `function(args)` returning a `list` with one entry per input: the data
-#'   type to bring it to, or `NULL` to leave it unchanged.
+#' @return (`PromotionRule`)
 #' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
 NULL
 

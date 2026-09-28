@@ -23,16 +23,6 @@ plain R scalars/vectors/arrays and returns plain R values/arrays.
 Most users will prefer \code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)}.
 This function is the lower-level graph API.
 }
-\examples{
-\dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-graph <- trace_fn(
-  function(x, y) x * y + 1,
-  list(nv_aval("f64", 3L), nv_aval("f64", 3L))
-)
-f <- graph_to_quickr_r_function(graph)
-f(c(1, 2, 3), c(4, 5, 6))
-\dontshow{\}) # examplesIf}
-}
 \seealso{
 \code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)} for tracing and compiling a
 regular R function in one step.

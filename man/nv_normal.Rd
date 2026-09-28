@@ -19,19 +19,15 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
-function (\code{q}). \code{x} can be any float data type; \code{q} must be \code{f32} or
-\code{f64}. An R \code{double} is materialized at its \link[=default_dtypes]{default data type}.}
+function (\code{q}).}
 
 \item{mean}{(\code{\link{arrayish}})\cr
-Mean of the distribution, scalar or of the shape of \code{x}/\code{q}/\code{p} (of
-\code{shape} for \code{nv_rnorm()}). For \code{nv_dnorm()}, \code{nv_pnorm()} and
-\code{nv_qnorm()}, an R value takes the data type of \code{x}/\code{q}/\code{p}, and an array
-must be promotable to it (a wider one is an error).}
+Mean of the distribution. Either a scalar, or an array of exactly the
+shape of \code{x}/\code{q}/\code{p} (or the sample, for \code{nv_rnorm}).}
 
 \item{sd}{(\code{\link{arrayish}})\cr
-Standard deviation of the distribution, scalar or of the shape of
-\code{x}/\code{q}/\code{p} (of \code{shape} for \code{nv_rnorm()}). Brought to a data type like
-\code{mean}. Must be positive, otherwise results are invalid.}
+Standard deviation of the distribution, shaped like \code{mean}. Must be
+positive, otherwise results are invalid.}
 
 \item{log, log_p}{(\code{logical(1)})\cr
 If \code{TRUE}, the densities/probabilities are given as logarithms. For
@@ -43,8 +39,7 @@ If \code{TRUE} (default), probabilities are \eqn{P(X \le x)}; otherwise,
 
 \item{p}{(\code{\link{arrayish}})\cr
 Probabilities at which to evaluate the quantile function. Values outside
-\eqn{[0, 1]} give \code{NaN}. Must be \code{f32} or \code{f64}. An R value materializes
-at its \link[=default_dtypes]{default data type}.}
+\eqn{[0, 1]} give \code{NaN}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
@@ -89,6 +84,15 @@ Moshier (1989) (this is \code{ndtri} in the Cephes
 library as used by JAX) for \code{f64}, and uses a new lower degree Remez minimax
 rational approximation on the same intervals for \code{f32}.
 }
+\section{Data Types}{
+
+\code{nv_dnorm()}, \code{nv_pnorm()} and \code{nv_qnorm()} compute at
+the data type of \code{x}/\code{q}/\code{p}, which must be float; an R value settles on the
+\link[=default_dtypes]{default float}. An R value for \code{mean} or \code{sd} takes this data
+type. An array is promoted to it, so a wider one (e.g. \code{f64} for an \code{f32}
+\code{x}) is an error.
+}
+
 \section{Random generation}{
 
 \code{nv_rnorm} samples via the Box-Muller transform. To sample with a covariance

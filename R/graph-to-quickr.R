@@ -250,13 +250,6 @@ graph_to_quickr_make_wrapper <- function(
 #'   Takes one plain R value per graph input and returns plain R values.
 #' @seealso [`jit()`] under `with_backend("quickr", ...)` for tracing and compiling a
 #'   regular R function in one step.
-#' @examplesIf requireNamespace("quickr", quietly = TRUE)
-#' graph <- trace_fn(
-#'   function(x, y) x * y + 1,
-#'   list(nv_aval("f64", 3L), nv_aval("f64", 3L))
-#' )
-#' f <- graph_to_quickr_r_function(graph)
-#' f(c(1, 2, 3), c(4, 5, 6))
 #' @export
 graph_to_quickr_r_function <- function(graph) {
   if (!is_graph(graph)) {

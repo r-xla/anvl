@@ -70,9 +70,6 @@ distribution on the interval from \code{min} to \code{max}.
 The Uniform distribution has probability density function:
 \deqn{f(x) = \frac{1}{b - a}, \quad a \le x \le b}
 and zero elsewhere, where \eqn{a} is \code{min} and \eqn{b} is \code{max}.
-For \code{nv_dunif}, \code{nv_punif}, and \code{nv_qunif}, an R value for \code{min} or \code{max}
-takes the data type of \code{x}/\code{q}/\code{p}, and an array must be promotable to it (a
-wider one is an error).
 
 All four are univariate functions evaluated elementwise, returning one
 value per element of \code{x}/\code{q}/\code{p} (or of the sample). Non-scalar \code{min}/\code{max} therefore give a
@@ -81,6 +78,15 @@ the hyper-rectangle \eqn{\prod_i [a_i, b_i]}. For that, reduce over the
 result: \code{nv_prod(nv_dunif(x, min, max))}, or
 \code{nv_sum(nv_dunif(x, min, max, log = TRUE))} on the log scale.
 }
+\section{Data Types}{
+
+\code{nv_dunif()}, \code{nv_punif()} and \code{nv_qunif()} compute at
+the data type of \code{x}/\code{q}/\code{p}, which must be float; an R value settles on the
+\link[=default_dtypes]{default float}. An R value for \code{min} or \code{max} takes this data
+type. An array is promoted to it, so a wider one (e.g. \code{f64} for an \code{f32}
+\code{x}) is an error.
+}
+
 \section{Random generation}{
 
 \code{nv_runif} samples from the open interval \eqn{(a, b)}.

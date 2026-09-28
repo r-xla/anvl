@@ -27,21 +27,16 @@ promote_distribution_args <- function(...) {
 #' standard deviation `sd`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
-#'   function (`q`). `x` can be any float data type; `q` must be `f32` or
-#'   `f64`. An R `double` is materialized at its [default data type][default_dtypes].
+#'   function (`q`).
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
-#'   \eqn{[0, 1]} give `NaN`. Must be `f32` or `f64`. An R value materializes
-#'   at its [default data type][default_dtypes].
+#'   \eqn{[0, 1]} give `NaN`.
 #' @param mean ([`arrayish`])\cr
-#'   Mean of the distribution, scalar or of the shape of `x`/`q`/`p` (of
-#'   `shape` for `nv_rnorm()`). For `nv_dnorm()`, `nv_pnorm()` and
-#'   `nv_qnorm()`, an R value takes the data type of `x`/`q`/`p`, and an array
-#'   must be promotable to it (a wider one is an error).
+#'   Mean of the distribution. Either a scalar, or an array of exactly the
+#'   shape of `x`/`q`/`p` (or the sample, for `nv_rnorm`).
 #' @param sd ([`arrayish`])\cr
-#'   Standard deviation of the distribution, scalar or of the shape of
-#'   `x`/`q`/`p` (of `shape` for `nv_rnorm()`). Brought to a data type like
-#'   `mean`. Must be positive, otherwise results are invalid.
+#'   Standard deviation of the distribution, shaped like `mean`. Must be
+#'   positive, otherwise results are invalid.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms. For
 #'   `nv_qnorm` this describes the input `p`.
@@ -63,6 +58,9 @@ promote_distribution_args <- function(...) {
 #' library as used by JAX) for `f64`, and uses a new lower degree Remez minimax
 #' rational approximation on the same intervals for `f32`.
 #'
+#' @templateVar dist norm
+#' @templateVar params `mean` or `sd`
+#' @template section_distribution_dtype
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
@@ -448,9 +446,6 @@ nv_qnorm <- jit(
 #' The Uniform distribution has probability density function:
 #' \deqn{f(x) = \frac{1}{b - a}, \quad a \le x \le b}
 #' and zero elsewhere, where \eqn{a} is `min` and \eqn{b} is `max`.
-#' For `nv_dunif`, `nv_punif`, and `nv_qunif`, an R value for `min` or `max`
-#' takes the data type of `x`/`q`/`p`, and an array must be promotable to it (a
-#' wider one is an error).
 #'
 #' All four are univariate functions evaluated elementwise, returning one
 #' value per element of `x`/`q`/`p` (or of the sample). Non-scalar `min`/`max` therefore give a
@@ -459,6 +454,9 @@ nv_qnorm <- jit(
 #' result: `nv_prod(nv_dunif(x, min, max))`, or
 #' `nv_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
 #'
+#' @templateVar dist unif
+#' @templateVar params `min` or `max`
+#' @template section_distribution_dtype
 #' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
 #' `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an [`arrayish`] with the
 #' same shape and data type as `x`/`q`/`p`.

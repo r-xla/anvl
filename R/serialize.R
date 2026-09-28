@@ -17,8 +17,6 @@
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
 #'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
-#'   Under another backend the arrays are placed on that backend's default
-#'   device; leave `device` as `NULL` there.
 #'
 #' @returns `nv_save()`: (`NULL`)\cr
 #'   Invisibly.
@@ -72,8 +70,6 @@ nv_read <- function(path, device = NULL) {
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
 #'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
-#'   Under another backend the arrays are placed on that backend's default
-#'   device; leave `device` as `NULL` there.
 #'
 #' @returns `nv_serialize()`: ([`raw`] | `NULL`)\cr
 #'   A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.

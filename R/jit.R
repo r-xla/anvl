@@ -9,8 +9,7 @@
 #' skip recompilation.
 #'
 #' @param f (`function`)\cr
-#'   Function to compile. Its non-static arguments are arrays or R values, and it
-#'   returns an array or a (nested) `list` of arrays.
+#'   Function to compile.
 #' @param static (`character()` | `integer()`)\cr
 #'   Names or positions of parameters of `f` that are *not* arrays. Static values are
 #'   embedded as constants in the compiled program; a new compilation is triggered whenever
@@ -67,10 +66,7 @@
 #' changes the default data types.
 #'
 #' @return (`JitFunction`)\cr
-#'   A `function` with the same formals as `f`. Its non-static arguments take
-#'   [`AnvlArray`]s or R values -- an R value materializes at the data type the
-#'   program needs -- and it returns what `f` returns, with [`AnvlArray`]s in
-#'   place of the traced arrays.
+#'   A `function` with the same formals as `f`.
 #' @seealso
 #'   [`jit_cache_size()`] for how many programs a jitted function has cached.
 #' @export

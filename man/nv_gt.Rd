@@ -12,7 +12,7 @@ nv_gt(lhs, rhs)
 Two inputs with a \link[=common_dtype]{common data type}. Can be
 any data type. Scalars are broadcast. An R value takes the other
 operand's data type when that is in its own or a higher
-\link[=dtypes]{category} (an R integer meeting \code{f64} becomes \code{f64}); otherwise it
+\link[=dtypes]{category}. Otherwise it
 settles on its \link[=default_dtypes]{default data type}, and the operands meet
 at their common data type.}
 }
