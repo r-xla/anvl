@@ -1,12 +1,12 @@
 test_that("nv_rng_state", {
   out1 <- nv_runif(
-    initial_state = nv_rng_state(1L),
+    state = nv_rng_state(1L),
     dtype = "f64",
     shape = c(10, 5)
   )
 
   out2 <- nv_runif(
-    initial_state = nv_rng_state(1L),
+    state = nv_rng_state(1L),
     dtype = "f64",
     shape = c(10, 5)
   )

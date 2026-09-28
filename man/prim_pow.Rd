@@ -2,22 +2,25 @@
 % Please edit documentation in R/primitives.R
 \name{prim_pow}
 \alias{prim_pow}
-\title{Primitive Power}
+\title{Primitive Power
+Raises \code{x} to the power of \code{y} element-wise.}
 \usage{
-prim_pow(lhs, rhs)
+prim_pow(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type integer, unsigned integer, or floating-point.
-Must have the same shape.}
+\item{x, y}{(\code{\link{arrayish}})\cr
+Two inputs of the same data type and shape. Can be any numeric data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
-Raises lhs to the power of rhs element-wise.
+Primitive Power
+Raises \code{x} to the power of \code{y} element-wise.
 }
 \section{Implemented Rules}{
 
@@ -30,14 +33,17 @@ Raises lhs to the power of rhs element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_power]{hlo_power()}}.
+Lowers to \code{\link[stablehlo:hlo_power]{hlo_power()}}, specified under
+\href{https://openxla.org/stablehlo/spec#power}{power}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(2, 3, 4))
-y <- nv_array(c(3, 2, 1))
-prim_pow(x, y)
+# two R values: both take an R double's default data type
+prim_pow(2, 3)
+
+# the R value is built at the array's data type instead
+prim_pow(2, nv_scalar(3, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -4,26 +4,22 @@
 \alias{prim_iota}
 \title{Primitive Iota}
 \usage{
-prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+prim_iota(axis, shape, dtype, start = 1L, device = NULL)
 }
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
 Axis along which values increase. Negative values count from the end
 of \code{shape}, i.e. \code{-1} refers to the last axis.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
-
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Can be any numeric data type, boolean being the
+one exception.}
+
 \item{start}{(\code{integer(1)})\cr
 Starting value.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -36,11 +32,10 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
@@ -56,12 +51,14 @@ Creates an array with values increasing along the specified axis.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}.
+Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}, specified under
+\href{https://openxla.org/stablehlo/spec#iota}{iota}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-prim_iota(axis = 1L, dtype = "i32", shape = 5L)
+# the sequence is built at the requested data type
+prim_iota(axis = 1L, shape = 5L, dtype = "i32")
 \dontshow{\}) # examplesIf}
 }
 \seealso{

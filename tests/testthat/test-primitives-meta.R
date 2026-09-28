@@ -45,3 +45,19 @@ test_that("reverse rule is tested", {
 
   expect_true(length(missing) == 0L, info = paste(missing, collapse = ", "), label = "Reverse rule is tested")
 })
+
+test_that("the call an inference error reports is a function that exists", {
+  # A primitive is named for the `prim_*()` that exports it, not for the
+  # StableHLO op it lowers to, so an error can name the call by putting the
+  # prefix back on.
+  nms <- names(asNamespace("anvl"))
+  exported <- nms[grepl("^prim_", nms)]
+  for (nm in exported) {
+    obj <- getFromNamespace(nm, "anvl")
+    if (!inherits(obj, "JitPrimitive")) {
+      next
+    }
+    reported <- deparse(print_call_repr(attr(obj, "primitive")))
+    expect_identical(reported, paste0(nm, "()"), info = nm)
+  }
+})

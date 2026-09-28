@@ -17,7 +17,8 @@ Target platform name (e.g. \code{"cpu"}, \code{"cuda"}), or \code{NULL} to clear
 Environment whose exit triggers restoration of the previous platform.}
 }
 \value{
-\code{current_platform()} returns \code{NULL} or \code{character(1)}.
+(\code{NULL} | \code{character(1)})\cr
+The current platform.
 \code{local_platform()} invisibly returns the previous platform.
 }
 \description{

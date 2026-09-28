@@ -4,21 +4,24 @@
 \alias{nv_outer}
 \title{Outer Product}
 \usage{
-nv_outer(lhs, rhs)
+nv_outer(x, y)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-1-D arrays.}
+\item{x, y}{(\code{\link{arrayish}})\cr
+Two 1-D arrays. Can be of any data type; the two are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-A 2-D array of shape \verb{(length(lhs), length(rhs))}.
+(\code{\link{arrayish}})\cr
+Has the operands' common data type and shape
+\verb{(length(x), length(y))}.
 }
 \description{
 Computes the outer product of two 1-D arrays.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a length-3 and a length-2 vector give a 3x2 at their common data type
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5))
 nv_outer(x, y)

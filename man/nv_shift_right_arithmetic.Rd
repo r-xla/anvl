@@ -4,17 +4,19 @@
 \alias{nv_shift_right_arithmetic}
 \title{Arithmetic Shift Right}
 \usage{
-nv_shift_right_arithmetic(lhs, rhs)
+nv_shift_right_arithmetic(x, shift)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+The array whose bits are shifted. Can be any integer data type.}
+
+\item{shift}{(\code{\link{arrayish}})\cr
+By how many bits to shift each element of \code{x}. Brought to \code{x}'s data type,
+which it must fit in. Scalars are broadcast.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and \code{x}'s data type.
 }
 \description{
 Element-wise arithmetic right bit shift.
@@ -22,8 +24,14 @@ Element-wise arithmetic right bit shift.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(8L, -16L, 32L))
-y <- nv_array(c(1L, 2L, 3L))
-nv_shift_right_arithmetic(x, y)
+shift <- nv_array(c(1L, 2L, 3L))
+nv_shift_right_arithmetic(x, shift)
+
+# the result keeps `x`'s data type, which `shift` is brought to
+nv_shift_right_arithmetic(nv_scalar(-32L, "i64"), nv_scalar(2L, "i32"))
+
+# a scalar is broadcast
+nv_shift_right_arithmetic(x, 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

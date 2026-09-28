@@ -1,14 +1,25 @@
+#' @include jit.R
+NULL
+
 like_defaults <- function(like, ...) {
+  if (is_rdata(to_abstract(like))) {
+    cli_abort(c(
+      "{.arg like} must be an array to take defaults from.",
+      x = "Got an R {typeof(like)}, which has no data type of its own.",
+      i = "Pass {.arg dtype} and {.arg shape} directly, or build an array with {.fn nv_array}."
+    ))
+  }
   args <- list(...)
   getters <- list(
     dtype = dtype,
     shape = shape,
-    # `device` and `backend` only come from concrete AnvlArrays. For a
-    # GraphBox (during tracing) they stay NULL so downstream constructors
-    # pick them up from the tracing context.
-    device = function(x) if (is_anvl_array(x)) device(x),
-    ambiguous = ambiguous,
-    backend = function(x) if (is_anvl_array(x)) backend(x)
+    # `device` only comes from an array that is placed on one. A traced value
+    # is not, and neither is a constant of the trace -- reading the
+    # `PlainDeviceCpu()` of one back would allocate the result on the first CPU
+    # device, which under `jit()` is a device the graph never asked for. It
+    # stays `NULL` instead, so the constructor below builds a constant of the
+    # trace as well.
+    device = placement_device
   )
   for (name in names(args)) {
     if (is.null(args[[name]])) {
@@ -20,98 +31,123 @@ like_defaults <- function(like, ...) {
 
 #' @rdname AnvlArray
 #' @param like ([`AnvlArray`])\cr
-#'   An existing array. Any of `dtype`, `device`, `shape`, `ambiguous`, and
-#'   `backend` that are `NULL` (the default) are taken from `like`.
+#'   An existing array. Any of `shape`, `dtype` and `device` that are `NULL`
+#'   (the default) are taken from `like`.
 #' @export
-nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = NULL, ambiguous = NULL, backend = NULL) {
+nv_array_like <- function(like, data, shape = NULL, dtype = NULL, device = NULL) {
   do.call(
     nv_array,
     c(
       list(data = data),
-      like_defaults(like, dtype = dtype, device = device, shape = shape, ambiguous = ambiguous, backend = backend)
+      like_defaults(like, shape = shape, dtype = dtype, device = device)
     )
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar_like <- function(like, data, dtype = NULL, device = NULL, ambiguous = NULL, backend = NULL) {
+nv_scalar_like <- function(like, data, dtype = NULL, device = NULL) {
   do.call(
     nv_scalar,
     c(
       list(data = data),
-      like_defaults(like, dtype = dtype, device = device, ambiguous = ambiguous, backend = backend)
+      like_defaults(like, dtype = dtype, device = device)
     )
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-#' @jit static 2:5
-nv_empty_like <- function(like, dtype = NULL, shape = NULL, device = NULL, ambiguous = NULL) {
-  do.call(nv_empty, like_defaults(like, dtype = dtype, shape = shape, device = device, ambiguous = ambiguous))
-}
+nv_empty_like <- jit(
+  function(like, shape = NULL, dtype = NULL, device = NULL) {
+    do.call(nv_empty, like_defaults(like, shape = shape, dtype = dtype, device = device))
+  },
+  static = 2:4
+)
 
 #' @rdname nv_fill
 #' @export
-nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, ambiguous = NULL, device = NULL) {
+nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, device = NULL) {
   do.call(
     nv_fill,
     c(
       list(value = value),
-      like_defaults(like, shape = shape, dtype = dtype, ambiguous = ambiguous, device = device)
+      like_defaults(like, shape = shape, dtype = dtype, device = device)
     )
   )
 }
 
 #' @rdname nv_iota
 #' @export
-nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, ambiguous = NULL, device = NULL) {
+nv_iota_like <- function(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL) {
   do.call(
     nv_iota,
     c(
       list(axis = axis, start = start),
-      like_defaults(like, shape = shape, dtype = dtype, ambiguous = ambiguous, device = device)
+      like_defaults(like, shape = shape, dtype = dtype, device = device)
     )
   )
 }
 
 #' @rdname nv_seq
 #' @export
-#' @jit static 2:7
-nv_seq_like <- function(like, start, end, steps = NULL, dtype = NULL, ambiguous = NULL, device = NULL) {
-  do.call(
-    nv_seq,
-    c(
-      list(start = start, end = end, steps = steps),
-      like_defaults(like, dtype = dtype, ambiguous = ambiguous, device = device)
+nv_seq_like <- jit(
+  function(like, from, to, by = NULL, dtype = NULL, device = NULL) {
+    do.call(
+      nv_seq,
+      c(
+        list(from = from, to = to, by = by),
+        like_defaults(like, dtype = dtype, device = device)
+      )
     )
-  )
-}
+  },
+  static = 2:6
+)
+
+#' @rdname nv_linspace
+#' @export
+nv_linspace_like <- jit(
+  function(like, from, to, length_out, dtype = NULL, device = NULL) {
+    do.call(
+      nv_linspace,
+      c(
+        list(from = from, to = to, length_out = length_out),
+        like_defaults(like, dtype = dtype, device = device)
+      )
+    )
+  },
+  static = 2:6
+)
 
 #' @rdname nv_eye
 #' @export
-#' @jit static 2:4
-nv_eye_like <- function(like, n, dtype = NULL, device = NULL) {
-  do.call(nv_eye, c(list(n = n), like_defaults(like, dtype = dtype, device = device)))
-}
+nv_eye_like <- jit(
+  function(like, n, dtype = NULL, device = NULL) {
+    do.call(nv_eye, c(list(n = n), like_defaults(like, dtype = dtype, device = device)))
+  },
+  static = 2:4
+)
 
 #' @rdname nv_lower_tri
 #' @export
-#' @jit static 2:4
-nv_lower_tri_like <- function(like, diagonal = -1L, shape = NULL, device = NULL) {
-  do.call(
-    nv_lower_tri,
-    c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
-  )
-}
+nv_lower_tri_like <- jit(
+  function(like, shape = NULL, diagonal = -1L, device = NULL) {
+    do.call(
+      nv_lower_tri,
+      c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
+    )
+  },
+  static = 2:4
+)
 
 #' @rdname nv_upper_tri
 #' @export
-#' @jit static 2:4
-nv_upper_tri_like <- function(like, diagonal = 1L, shape = NULL, device = NULL) {
-  do.call(
-    nv_upper_tri,
-    c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
-  )
-}
+nv_upper_tri_like <- jit(
+  function(like, shape = NULL, diagonal = 1L, device = NULL) {
+    do.call(
+      nv_upper_tri,
+      c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
+    )
+  },
+  static = 2:4
+)

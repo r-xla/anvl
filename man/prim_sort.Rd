@@ -4,7 +4,7 @@
 \alias{prim_sort}
 \title{Primitive Sort}
 \usage{
-prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
 \item{xs}{(\code{list} of \code{\link{arrayish}})\cr
@@ -15,20 +15,19 @@ carried along under the same permutation. All must share the same shape.}
 Axis along which to sort.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
-\item{descending}{(\code{logical(1)})\cr
-If \code{TRUE}, sort the key in descending order (largest first). Default
+\item{decreasing}{(\code{logical(1)})\cr
+If \code{TRUE}, sort the key in decreasing order (largest first). Default
 \code{FALSE}. Additional arrays are reordered by the same permutation
 regardless.}
 
-\item{is_stable}{(\code{logical(1)})\cr
+\item{stable}{(\code{logical(1)})\cr
 If \code{TRUE}, the sort is stable: the relative order of equal \emph{keys} is
 preserved. Default \code{FALSE}.}
 }
 \value{
-\code{list} of \code{\link{arrayish}}\cr
-One sorted output per element of \code{xs}, in the same order. Each
-output has the same shape, data type, and ambiguity as the
-corresponding input.
+(\code{list} of \code{\link{arrayish}})\cr
+One sorted output per element of \code{xs}, in the same order, each with the
+shape and data type of its input.
 }
 \description{
 Sorts arrays along the given axis.
@@ -39,8 +38,7 @@ that sorts the first. This enables idioms like \emph{argsort} (sort \code{x}
 paired with an \code{iota} and read off the second output) and key-value
 sorts (sort \code{keys} paired with \code{values}).
 
-All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along \code{axis} are sorted independently; other
+1-D slices along \code{axis} are sorted independently; other
 axes are preserved.
 }
 \section{Implemented Rules}{
@@ -53,13 +51,13 @@ axes are preserved.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sort]{hlo_sort()}} with a comparator that uses
-\code{\link[stablehlo:hlo_compare]{hlo_compare()}} (\code{LT} for ascending, \code{GT} for descending) on
-the first array. For float keys the comparator uses
-\code{compare_type = "TOTALORDER"} and canonicalizes \code{-0}/\code{+0} and
-\code{-NaN}/\code{+NaN} to their positive form before comparing, so all \code{NaN}
-values land at one end of the result regardless of sign. Integer keys
-use \code{SIGNED} / \code{UNSIGNED} as appropriate.
+Lowers to \code{\link[stablehlo:hlo_sort]{hlo_sort()}}, specified under
+\href{https://openxla.org/stablehlo/spec#sort}{sort}.
+The comparator uses \code{\link[stablehlo:hlo_compare]{hlo_compare()}} (\code{LT} for ascending, \code{GT} for
+descending) on the first array. For float keys it uses \code{compare_type = "TOTALORDER"} and canonicalizes \code{-0}/\code{+0} and \code{-NaN}/\code{+NaN} to their
+positive form before comparing, so all \code{NaN} values land at one end of the
+result regardless of sign. Integer keys use \code{SIGNED} / \code{UNSIGNED} as
+appropriate.
 }
 
 \examples{
@@ -67,14 +65,14 @@ use \code{SIGNED} / \code{UNSIGNED} as appropriate.
 x <- nv_array(c(3, 1, 4, 1, 5))
 prim_sort(list(x), axis = 1L)[[1L]]
 
-# Sort indices by the values (argsort): pair x with iota and read off
-# the second result.
-idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
+# sort indices by the values (argsort): pair x with iota and read off
+# the second result
+idx <- nv_iota(axis = 1L, shape = 5L, dtype = "i64")
 out <- prim_sort(list(x, idx), axis = 1L)
 out[[1L]] # sorted x
 out[[2L]] # permutation indices
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_sort]{nv_sort()}}, \code{\link[=nv_argsort]{nv_argsort()}}, \code{\link[=nv_top_k]{nv_top_k()}}, \code{\link[=nv_median]{nv_median()}}
+\code{\link[=nv_sort]{nv_sort()}}, \code{\link[=nv_order]{nv_order()}}, \code{\link[=nv_top_k]{nv_top_k()}}, \code{\link[=nv_median]{nv_median()}}
 }

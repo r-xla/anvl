@@ -11,7 +11,8 @@ compile_pjrt(
   donate = character(),
   device = NULL,
   arg_devices = list(),
-  fallback_device = NULL
+  fallback_device = NULL,
+  default_dtypes = NULL
 )
 }
 \arguments{
@@ -21,7 +22,7 @@ Function to compile.}
 \item{args_flat}{(\code{list})\cr
 Flat list of abstract input values.}
 
-\item{in_tree}{(\code{Node})\cr
+\item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure of the inputs.}
 
 \item{donate}{(\code{character()})\cr
@@ -41,15 +42,27 @@ The device to compile for when \code{device} is \code{NULL} and nothing in the g
 names one. pjrt's dispatcher supplies the device it keyed the entry on, so
 the program and its cache key agree. \code{NULL} (a caller with no dispatcher in
 front of it) falls back to \code{\link[=default_device]{default_device()}}.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
+The data types the traced R values materialize at when nothing else decides
+one (see \code{\link[=default_dtypes]{default_dtypes()}}), read off \code{info$context} so the program
+matches the cache key it is filed under. \code{NULL} uses the active pair.}
 }
 \value{
-A \code{list} with elements:
+(\code{list})\cr
+With elements:
 \itemize{
 \item \code{exec}: The compiled PJRT executable.
 \item \code{out_tree}: The output tree structure.
 \item \code{const_arrays}: Constants needed at execution time.
-\item \code{out_avals}: One \code{list(dtype, shape, ambiguous)} per output leaf; pjrt's
+\item \code{out_avals}: One \code{list(dtype, shape)} per output leaf; pjrt's
 dispatcher builds the output wrappers from these.
+\item \code{input_dtypes}: One entry per input: the dtype an input built from bare
+R data is uploaded at, and \code{NA} for an array input, which is supplied as
+it is. The R data has no dtype of its own, so the program is the only
+thing that knows what it is uploaded as -- pjrt's dispatcher therefore
+requires an entry for every bare R input and rejects a dtype declared
+for an array one. \code{NULL} for a call whose inputs are all arrays.
 }
 }
 \description{

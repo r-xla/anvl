@@ -38,7 +38,7 @@ into the parent graph.
 \item{args_flat}{(\code{list})\cr
 Flattened arguments. Must be accompanied by \code{in_tree}.}
 
-\item{in_tree}{(\code{Node})\cr
+\item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure describing how \code{args_flat} maps back to \code{f}'s arguments.}
 
 \item{optimize}{(\code{logical(1)} | \code{character()})\cr
@@ -53,7 +53,8 @@ vector selects a subset by name. The available passes are:
 \code{\link[=jit]{jit()}} always traces with all passes enabled.}
 }
 \value{
-An \code{\link{AnvlGraph}} containing the traced operations.
+(\code{\link{AnvlGraph}})
+Contains the traced operations.
 }
 \description{
 Executes \code{f} with abstract array arguments and records every primitive operation into

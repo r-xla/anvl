@@ -4,26 +4,25 @@
 \alias{prim_clamp}
 \title{Primitive Clamp}
 \usage{
-prim_clamp(min_val, x, max_val)
+prim_clamp(x, min, max)
 }
 \arguments{
-\item{min_val}{(\code{\link{arrayish}})\cr
-Minimum value. Must be scalar or the same shape as \code{x}.}
-
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+The array to clamp. Can be any data type.
+\code{x}, \code{min} and \code{max} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
-\item{max_val}{(\code{\link{arrayish}})\cr
-Maximum value. Must be scalar or the same shape as \code{x}.}
+\item{min, max}{(\code{\link{arrayish}})\cr
+Lower and upper bound. Each must be scalar or the same shape as \code{x}, and
+shares its data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type and shape as \code{x}.
-It is ambiguous if the input is ambiguous.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s shape and the data type the operands agreed on.
 }
 \description{
-Clamps every element of \code{x} to the range \verb{[min_val, max_val]},
-i.e. \code{max(min_val, min(x, max_val))}.
+Clamps every element of \code{x} to the range \verb{[min, max]}.
 }
 \section{Implemented Rules}{
 
@@ -35,13 +34,21 @@ i.e. \code{max(min_val, min(x, max_val))}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}.
+Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}, specified under
+\href{https://openxla.org/stablehlo/spec#clamp}{clamp}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(-1, 0.5, 2))
-prim_clamp(nv_scalar(0), x, nv_scalar(1))
+# the R bounds take x's data type
+prim_clamp(x, 0, 1)
+
+# an integer array takes integer bounds
+prim_clamp(nv_array(1:5), 0L, 3L)
+
+# the f64 bound settles it: x and max are built at f64 too
+prim_clamp(1, nv_scalar(0, "f64"), 2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

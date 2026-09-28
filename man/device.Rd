@@ -13,7 +13,12 @@ An array-like object.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-\code{\link[pjrt:pjrt_device]{PJRTDevice}}
+(device object)\cr
+Backend-dependent device object. One of:
+\itemize{
+\item \code{\link[pjrt:pjrt_device]{PJRTDevice}}
+\item \code{\link{quickr_device}}
+}
 }
 \description{
 Returns the device on which an array is allocated.

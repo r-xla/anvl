@@ -4,17 +4,20 @@
 \alias{prim_shift_right_logical}
 \title{Primitive Logical Shift Right}
 \usage{
-prim_shift_right_logical(lhs, rhs)
+prim_shift_right_logical(x, shift)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type boolean, integer, or unsigned integer.
-Must have the same shape.}
+\item{x}{(\code{\link{arrayish}})\cr
+The array whose bits are shifted. Can be any integer data type.}
+
+\item{shift}{(\code{\link{arrayish}})\cr
+By how many bits to shift each element of \code{x}. Has the same data type and
+shape as \code{x}. An R value takes the other operand's data type, and its
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise logical right bit shift.
@@ -29,14 +32,17 @@ Element-wise logical right bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_right_logical]{hlo_shift_right_logical()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_right_logical]{hlo_shift_right_logical()}}, specified under
+\href{https://openxla.org/stablehlo/spec#shift_right_logical}{shift_right_logical}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(8L, 16L, 32L))
-y <- nv_array(c(1L, 2L, 3L))
-prim_shift_right_logical(x, y)
+# two R values: both take an R integer's default data type
+prim_shift_right_logical(32L, 2L)
+
+# the R value is built at the array's data type instead
+prim_shift_right_logical(32L, nv_scalar(2L, "i64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

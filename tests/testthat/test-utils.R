@@ -6,31 +6,15 @@ test_that("shape2string", {
   expect_equal(shape2string(Shape(c()), parenthesize = FALSE), "")
 })
 
-test_that("dtype2string", {
-  expect_equal(dtype2string(as_dtype("f32")), "f32")
-  expect_equal(dtype2string(as_dtype("i32")), "i32")
-  expect_equal(dtype2string(as_dtype("f32"), ambiguous = TRUE), "f32?")
-})
-
-test_that("dtype_abstract", {
+test_that("peek_dtype", {
   expect_equal(
-    dtype_abstract(1L),
-    as_dtype("i32")
+    peek_dtype(1L),
+    default_int()
   )
   expect_equal(
-    dtype_abstract(nv_scalar(1L, dtype = "f32")),
+    peek_dtype(nv_scalar(1L, dtype = "f32")),
     as_dtype("f32")
   )
-})
-
-test_that("naxes_abstract", {
-  expect_equal(naxes_abstract(1L), 0L)
-  expect_equal(naxes_abstract(nv_array(1:4, dtype = "f32", shape = c(2, 2))), 2L)
-})
-
-test_that("shape_abstract", {
-  expect_equal(shape_abstract(1L), integer())
-  expect_equal(shape_abstract(nv_array(1:4, dtype = "f32", shape = c(2, 2))), c(2, 2))
 })
 
 describe("gather_clamp_indices", {
@@ -142,24 +126,6 @@ describe("gather_clamp_indices", {
   })
 })
 
-test_that("ambiguous_abstract", {
-  # Non-ambiguous scalar (no explicit dtype)
-  expect_false(ambiguous_abstract(nv_scalar(1.0)))
-  expect_false(ambiguous_abstract(nv_scalar(1L)))
-
-  # Non-ambiguous scalar (explicit dtype)
-  expect_false(ambiguous_abstract(nv_scalar(1.0, dtype = "f32")))
-  expect_false(ambiguous_abstract(nv_scalar(1L, dtype = "i32")))
-
-  # Non-ambiguous array
-  expect_false(ambiguous_abstract(nv_array(1:4, dtype = "f32", shape = c(2, 2))))
-
-  # Primitive R values (converted via to_abstract)
-  expect_true(ambiguous_abstract(1.0))
-  expect_true(ambiguous_abstract(1L))
-  expect_false(ambiguous_abstract(TRUE))
-})
-
 describe("scatter_to_gather_slice_sizes", {
   it("x[2:5] on 1D array: range is a window axis", {
     # update_shape = c(4), one window axis covering the range
@@ -231,4 +197,15 @@ describe("scatter_to_gather_slice_sizes", {
     )
     expect_equal(result, c(1L, 3L, 6L))
   })
+})
+
+test_that("shape_repr", {
+  # The message spelling, which is `x`-separated where the repr spelling
+  # (`f32[2,2]`) is comma-separated.
+  expect_equal(shape_repr(c(2, 3)), "(2x3)")
+  expect_equal(shape_repr(Shape(c(2, 3))), "(2x3)")
+  expect_equal(shape_repr(3L), "(3)")
+  expect_equal(shape_repr(integer()), "()")
+  expect_equal(shape_repr(c(0L, 3L)), "(0x3)")
+  expect_equal(shapes_repr(list(c(2L, 3L), integer(), 4L)), "(2x3), (), (4)")
 })

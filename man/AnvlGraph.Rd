@@ -12,19 +12,20 @@ AnvlGraph(
   outputs = list(),
   constants = list(),
   is_static_flat = NULL,
-  static_args_flat = NULL
+  static_args_flat = NULL,
+  rdata_types = NULL
 )
 }
 \arguments{
 \item{calls}{(\code{list(PrimitiveCall)})\cr
 The primitive calls that make up the graph.}
 
-\item{in_tree}{(\code{NULL | Node})\cr
+\item{in_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of inputs. May contain leaves for both array inputs and static
 (non-array) arguments. Only the array leaves correspond to entries in
 \code{inputs}; use \code{is_static_flat} to distinguish them.}
 
-\item{out_tree}{(\code{NULL | Node})\cr
+\item{out_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of outputs.}
 
 \item{inputs}{(\code{list(GraphValue)})\cr
@@ -42,6 +43,14 @@ Boolean mask indicating which flat positions in \code{in_tree} are static (non-a
 
 \item{static_args_flat}{(\code{NULL | list()})\cr
 Flattened traced values for the static arguments indicated by \code{is_static_flat}.}
+
+\item{rdata_types}{(\code{NULL | character()})\cr
+One entry per input: the R storage type of an input the caller supplies as
+bare R data (\code{"double"}, \code{"integer"}, \code{"logical"}), and \code{NA} for one that
+arrives as an array and already has a data type. \code{NULL} when no input comes
+from R data, which is the common case. Together with the inputs\' own avals
+this says everything about how a call\'s arguments are uploaded: the aval
+gives the data type and shape, this gives the R type it is uploaded from.}
 }
 \value{
 (\code{AnvlGraph})

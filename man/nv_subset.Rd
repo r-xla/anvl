@@ -11,13 +11,17 @@ nv_subset(x, ...)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{...}{Subset specifications, one per axis. Omitted trailing
-axes select all elements. See \code{vignette("subsetting")} for details.}
+axes select all elements. See
+the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the input's data type, and the shape the specifications select --
+a scalar index drops its axis, a range or an index array keeps it.
 }
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.
@@ -29,14 +33,17 @@ axis.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:12, nrow = 3)
 x
-# Select row 2
+# select row 2
+nv_subset(x, 2)
 x[2, ]
 
-# Select rows 1 to 2, all columns
+# select rows 1 to 2, all columns
+nv_subset(x, 1:2)
 x[1:2, ]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset_assign]{nv_subset_assign()}} for updating subsets, \code{vignette("subsetting")}
+\code{\link[=nv_subset_assign]{nv_subset_assign()}} for updating subsets,
+the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article
 for a comprehensive guide.
 }

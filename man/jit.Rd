@@ -4,14 +4,7 @@
 \alias{jit}
 \title{JIT compile a function}
 \usage{
-jit(
-  f,
-  static = character(),
-  cache_size = 100L,
-  backend = NULL,
-  device = NULL,
-  ...
-)
+jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 }
 \arguments{
 \item{f}{(\code{function})\cr
@@ -32,28 +25,22 @@ enclosing environment does not change in a way that modifies their behavior.}
 \item{cache_size}{(\code{integer(1)})\cr
 Maximum number of compiled executables to keep in the LRU cache.}
 
-\item{backend}{(\code{NULL} |  \code{character(1)})\cr
-Compilation backend (e.g. \code{"pjrt"}, \code{"quickr"}).
-The special value \code{"auto"} defers backend selection to call-time.
-\code{NULL} (default) respects \code{device} and otherwise falls back to \code{\link[=default_backend]{default_backend()}}.}
+\item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}})\cr
+Target device, of the active backend. When a device is specified, all
+arrays are moved to it.
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}} | \code{device_arg()})\cr
-Target device. When a concrete device is specified, all arrays
-are moved to it.
+The default (\code{NULL}) infers the device at call time from the array inputs,
+falling back to \code{\link[=default_device]{default_device()}}.}
 
-The default (\code{NULL}) infers the device at call time,
-falling back to \code{\link[=default_device]{default_device()}}.
-
-In order to use dynamic device selection with the \code{"auto"} backend (e.g. for functions without
-dynamic inputs such as constant creation), set \code{device = device_arg("<arg>")}.}
-
-\item{...}{Backend-specific options. Passing an option that is not supported
-by the selected backend raises an error. See the \strong{PJRT JIT arguments} and
-\strong{Quickr JIT arguments} sections below for the options accepted by each
-backend.}
+\item{...}{Backend-specific options. See the \strong{PJRT JIT arguments} and
+\strong{Quickr JIT arguments} sections below for the options each backend
+accepts. An option no backend takes is rejected here; one that only
+another backend takes is rejected when the function is called on a backend
+that does not, since the backend is not known until then.}
 }
 \value{
-A \code{JitFunction} (a \code{function} with the same formals as \code{f}).
+(\code{JitFunction})\cr
+A \code{function} with the same formals as \code{f}.
 The returned wrapper expects \code{\link{AnvlArray}} inputs and returns
 \code{\link{AnvlArray}} values.
 }
@@ -62,48 +49,37 @@ Wraps a function so that it is traced and compiled on first call. Subsequent
 calls with the same input structure, shapes, and dtypes hit an LRU cache and
 skip recompilation.
 }
-\section{Device and Backend selection}{
+\section{Backend and device}{
 
-There are various ways to specify which device and which backend to use.
+A jitted function runs on the active backend \emph{when it is called}
+(\code{\link[=active_backend]{active_backend()}}, set with \code{\link[=with_backend]{with_backend()}} / \code{\link[=local_backend]{local_backend()}}),
+so one \code{JitFunction} serves every backend, and a function created under one
+backend and called under another runs on the latter. Array inputs must
+belong to that backend; an array of another backend is rejected. Each
+backend keeps its own compilation cache.
 
-\strong{Concrete backend}:
-In the case where we fix a concrete backend (backend is not \code{"auto"}), the device can be
-inferred or set explicitly.
-Setting the device explicitly allows you to enforce that the function always uses the specified
-device, e.g. \code{"cuda:0"}.
-If the \code{device} argument is set, all encountered arrays are copied to it.
-
-If the device is not specified (\code{NULL}; default) the device will be inferred from the input
-arrays and the constants within the program. If conflicting devices are found, an error
-is thrown. If no array with a device is found, we fall back to the default device.
-
-\strong{Auto backend}:
-When setting \code{backend = "auto"}, the backend will be inferred from the array inputs and
-otherwise fall back to the default backend.
-If you want to \code{jit()} a function without array inputs but make it work with different devices,
-set \code{device = device_arg("<argname>")} where \verb{<argname>} is the name of the argument specifying
-the device. Note that this is only necessary with the \code{"auto"} backend.
-When using a concrete backend, you can just specify the device via a static argument.
+The device is a choice within that backend. Setting \code{device} explicitly
+enforces that the function always uses it, e.g. \code{"cuda:0"}, and copies every
+array input to it. With \code{device = NULL} (default) the device is inferred from
+the input arrays and the constants within the program; conflicting devices
+are an error, and with no array to read a device from the default device is
+used. A constructor that has no array to name a device declares the one it
+was asked for itself, see \code{\link[=graph_desc_add]{graph_desc_add()}}'s \code{device} argument.
 }
 
-\section{Jitting in a Package}{
+\section{Default Data Types}{
 
-To \code{jit()} a function defined in an R package, prefer the \verb{@jit} roxygen
-tag over a top-level \code{jit()} call:
+It is possible to configure the default data types for \code{float}s and \code{int}s
+via the \code{anvl.default_dtypes} option, see \code{\link[=default_dtypes]{default_dtypes()}}.
+Note that the defaults will be read at \emph{call-time}* and not when
+\code{jit()} is called.
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{#' @export
-#' @jit static = c("flag")
-my_fun <- function(x, flag) if (flag) x + 1 else x * 2
-}\if{html}{\out{</div>}}
-
-This delegates the wrapping to \code{\link[=jit_roclet]{jit_roclet()}}, which records the
-tagged functions in \code{R/jit-registry.R}. The wrapping itself happens at
-package build time via \code{\link[=apply_jit_registry]{apply_jit_registry()}} in \code{R/zzz.R}, so the
-resulting \code{JitFunction} is byte-compiled with the rest of the package
-instead of being rebuilt on every \code{.onLoad}.
-
-See \code{\link[=jit_roclet]{jit_roclet()}} for the one-time setup of the roclet in your
-package.
+To pin a jitted function to a pair of data types instead of letting it
+follow the configured defaults, wrap it in \code{\link[=with_dtypes]{with_dtypes()}}: the wrapper
+converts the array arguments and results of a category it names, and sets
+the defaults for the duration of the call, so
+\code{f_f64 <- with_dtypes(f, c(float = "f64"))} runs \code{f} at \code{f64}, unless \code{f} itself
+changes the default data types.
 }
 
 \section{PJRT JIT arguments}{
@@ -132,7 +108,7 @@ would only get stripped again.
 f <- jit(function(x, y) x + y)
 f(nv_array(1), nv_array(2))
 
-# Static arguments enable data-dependent control flow
+# static arguments enable data-dependent control flow
 g <- jit(function(x, flag) {
   if (flag) x + 1 else x * 2
 }, static = "flag")
@@ -140,13 +116,10 @@ g(nv_array(3), TRUE)
 g(nv_array(3), FALSE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-with_backend("quickr", {
-  h <- jit(function(x, y) x + y)
-  h(nv_array(1), nv_array(2))
-})
+# the same function runs on whichever backend is active when it is called
+with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=jit_eval]{jit_eval()}} for evaluating an expression once,
-\code{\link[=jit_roclet]{jit_roclet()}} for the \verb{@jit} tag used inside R packages.
+\code{\link[=jit_cache_size]{jit_cache_size()}} for how many programs a jitted function has cached.
 }

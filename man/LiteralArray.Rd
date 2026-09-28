@@ -4,55 +4,43 @@
 \alias{LiteralArray}
 \title{Literal Array Class}
 \usage{
-LiteralArray(data, shape, dtype = default_dtype(data), ambiguous)
+LiteralArray(data, shape, dtype = default_dtype(data))
 }
 \arguments{
 \item{data}{(\code{double(1)} | \code{integer(1)} | \code{logical(1)} | \code{\link{AnvlArray}})\cr
-The scalar value or scalarish AnvlArray (contains 1 element).}
+The scalar value, or a one-element \code{\link{AnvlArray}} -- for which \code{dtype} has
+to be named, since the default takes it from an R value's storage type.}
 
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array.}
 
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The data type. Defaults to the current backend's default floating dtype,
-\code{i32} for integer, and \code{bool} for logical.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
+The data type. For the default, see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \description{
-An \code{\link{AbstractArray}} where all elements have the same constant value.
-This either arises when using literals in traced code (e.g. \code{x + 1}) or when using
-\code{\link[=nv_fill]{nv_fill()}} to create a constant.
+An \code{\link{AbstractArray}} where all elements have the same constant value. This
+arises from a literal in traced code (\code{x + 1}, say). A \code{\link[=nv_fill]{nv_fill()}} is a
+recorded operation rather than a constant, so its output is an ordinary
+\code{\link{AbstractArray}}.
 }
-\section{Type Ambiguity}{
-
-When arising from R literals, the resulting \code{LiteralArray} is ambiguous because no type
-information was available. See the \code{vignette("type-promotion")} for more details.
-}
-
 \section{Lowering}{
 
-\code{LiteralArray}s become constants inlined into the stableHLO program.
+\code{LiteralArray}s become constants inlined into the StableHLO program.
 I.e., they lower to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- LiteralArray(1L, shape = integer(), ambiguous = TRUE)
+x <- LiteralArray(1L, shape = integer())
 x
-ambiguous(x)
 shape(x)
 naxes(x)
 dtype(x)
-# How it appears during tracing:
-# 1. via R literals
+# how it appears during tracing: an R literal that meets nothing
 graph <- trace_fn(function() 1, list())
 graph
 graph$outputs[[1]]$aval
-# 2. via nv_fill()
+# a `nv_fill()`, by contrast, is a recorded operation
 graph <- trace_fn(function() nv_fill(2L, shape = c(2, 2)), list())
 graph
 graph$outputs[[1]]$aval

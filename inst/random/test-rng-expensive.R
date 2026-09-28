@@ -203,7 +203,7 @@ test_sample_statistical <- function() {
     nv_sample_int(
       n = 6L,
       shape = 60000L,
-      initial_state = nv_array(c(1, 2), dtype = "ui64")
+      state = nv_array(c(1, 2), dtype = "ui64")
     )
   }
   g1 <- jit(f1)
@@ -225,7 +225,7 @@ test_sample_statistical <- function() {
     nv_sample(
       x = nv_array(population),
       shape = 60000L,
-      initial_state = nv_array(c(7, 11), dtype = "ui64")
+      state = nv_array(c(7, 11), dtype = "ui64")
     )
   }
   g2 <- jit(f2)

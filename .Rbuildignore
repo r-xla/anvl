@@ -31,4 +31,9 @@ anvl.Rproj
 ^jarl\.toml$
 ^specs$
 ^paper$
+<<<<<<< HEAD
 ^vignettes/articles/
+=======
+^assets$
+^vignettes/articles$
+>>>>>>> main
