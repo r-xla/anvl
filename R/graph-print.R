@@ -51,13 +51,13 @@ format_aval_short <- function(aval, r_type = NA_character_) {
   out
 }
 
-build_node_ids <- function(inputs, constants, calls) {
+build_node_ids <- function(inputs, constants, statements) {
   node_ids <- hashtab()
   counters <- new.env(parent = emptyenv())
   counters$x <- 0L
   counters$c <- 0L
   counters$v <- 0L
-  name_graph_nodes(inputs, constants, calls, node_ids, counters)
+  name_graph_nodes(inputs, constants, statements, node_ids, counters)
   node_ids
 }
 
@@ -65,7 +65,7 @@ build_node_ids <- function(inputs, constants, calls) {
 # covers the whole tree: a sub-graph's constants are nodes it captured from the
 # graph around it, so letting them keep the name they already have is what shows
 # the capture. Every node is named by the outermost graph that reaches it.
-name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
+name_graph_nodes <- function(inputs, constants, statements, node_ids, counters) {
   name_node <- function(node, counter, prefix) {
     if (!is.null(node_ids[[node]]) || is_graph_literal(node)) {
       return(invisible(NULL))
@@ -80,16 +80,16 @@ name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
   for (node in constants) {
     name_node(node, "c", "c")
   }
-  for (call in calls) {
+  for (call in statements) {
     for (node in call$outputs) {
       name_node(node, "v", "")
     }
   }
   # Sub-graphs come after the whole graph holding them, so that a graph's own
-  # values are numbered without a gap where a sub-graph call sits.
-  for (call in calls) {
+  # values are numbered without a gap where a higher-order statement sits.
+  for (call in statements) {
     for (sub in Filter(is_graph, call$params)) {
-      name_graph_nodes(sub$inputs, sub$constants, sub$calls, node_ids, counters)
+      name_graph_nodes(sub$inputs, sub$constants, sub$statements, node_ids, counters)
     }
   }
 }
@@ -207,11 +207,11 @@ format_graph_param <- function(
   prefix_width = 0L
 ) {
   alone <- is.null(node_ids)
-  node_ids <- node_ids %||% build_node_ids(g$inputs, g$constants, g$calls)
+  node_ids <- node_ids %||% build_node_ids(g$inputs, g$constants, g$statements)
   lines <- format_graph_lines(
     inputs = g$inputs,
     constants = g$constants,
-    calls = g$calls,
+    statements = g$statements,
     outputs = g$outputs,
     node_ids = node_ids,
     width = width,
@@ -352,7 +352,7 @@ format_call <- function(
 format_graph_lines <- function(
   inputs,
   constants,
-  calls,
+  statements,
   outputs,
   node_ids,
   title = "",
@@ -410,7 +410,7 @@ format_graph_lines <- function(
     # behind -- a `cond = `, say -- so only its budget pays for it.
     layout_row(header, "", width - prefix_width),
     vapply(
-      calls,
+      statements,
       format_call,
       character(1L),
       node_ids = node_ids,
@@ -428,18 +428,18 @@ format_graph_lines <- function(
 format_graph_body <- function(
   inputs,
   constants,
-  calls,
+  statements,
   outputs,
   title = "Graph",
   rdata_types = NULL,
   width = getOption("width", 80L),
   digits = getOption("digits")
 ) {
-  node_ids <- build_node_ids(inputs, constants, calls)
+  node_ids <- build_node_ids(inputs, constants, statements)
   lines <- format_graph_lines(
     inputs = inputs,
     constants = constants,
-    calls = calls,
+    statements = statements,
     outputs = outputs,
     node_ids = node_ids,
     title = sprintf("<%s>", title),
@@ -452,7 +452,7 @@ format_graph_body <- function(
 }
 
 #' @export
-format.PrimitiveCall <- function(x, ..., digits = getOption("digits")) {
+format.GraphStatement <- function(x, ..., digits = getOption("digits")) {
   inputs <- paste(
     vapply(
       x$inputs,
@@ -484,7 +484,7 @@ format.AnvlGraph <- function(x, ..., width = getOption("width", 80L), digits = g
   format_graph_body(
     inputs = x$inputs,
     constants = x$constants,
-    calls = x$calls,
+    statements = x$statements,
     outputs = x$outputs,
     title = "AnvlGraph",
     rdata_types = x$rdata_types,
@@ -506,7 +506,7 @@ format.GraphDescriptor <- function(x, ..., width = getOption("width", 80L), digi
   format_graph_body(
     inputs = x$inputs,
     constants = constants,
-    calls = x$calls$as_list(),
+    statements = x$statements$as_list(),
     outputs = x$outputs,
     title = "GraphDescriptor",
     rdata_types = x$rdata_types,

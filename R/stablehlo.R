@@ -55,14 +55,21 @@ env_get <- function(env, gval) {
   cli_abort("GraphValue not found in environment")
 }
 
-#' @title Lower a graph to StableHLO
+#' @title Lower a Graph to StableHLO
 #' @description
-#' Converts a traced [`AnvlGraph`] into the StableHLO intermediate representation (IR).
-#' Each graph operation is translated to its corresponding StableHLO op. The result can
-#' be serialized to MLIR text via `stablehlo::repr()` and subsequently compiled to an
-#' XLA executable with `pjrt::pjrt_compile()`.
+#' Converts a traced [`AnvlGraph`] into the StableHLO intermediate representation (IR),
+#' building a [`stablehlo::Func`] with the [stablehlo](https://r-xla.github.io/stablehlo/) package.
+#' Each statement of the graph is translated to its corresponding StableHLO op. The result can
+#' be serialized to MLIR text via [`stablehlo::repr()`] and subsequently compiled to an
+#' XLA executable with [`pjrt::pjrt_compile()`].
 #'
 #' The rule for translating a primitive to stablehlo is `prim_<name>[["stablehlo"]]`.
+#'
+#' The arguments of the resulting function are, in this order: the graph's
+#' constants (when `constants_as_inputs = TRUE`), the graph's inputs, and the
+#' phantom donated inputs (when `donate_unaliased_outputs = TRUE`), one per
+#' output that is not already aliased to a donated input, in the order of the
+#' outputs.
 #'
 #' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
@@ -80,7 +87,7 @@ env_get <- function(env, gval) {
 #'   Note that `GraphLiteral`s are always inlined into the StableHLO function.
 #' @param env (`HloEnv` | `NULL`)\cr
 #'   Optional environment for reusing variable mappings across nested function lowerings
-#'   (e.g. for higher-order primitives like `nv_while`).
+#'   (e.g. for higher-order primitives like `prim_while`).
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
 #'   Donated buffers can be aliased with outputs of the same type, enabling in-place
@@ -88,7 +95,7 @@ env_get <- function(env, gval) {
 #' @param donate_unaliased_outputs (`logical(1)`)\cr
 #'   If `TRUE` and the current target platform is `"cpu"`, append a
 #'   phantom donated input for every output that isn't already aliased
-#'   to a user-`donate`d input.
+#'   to a user-`donate`d input. They come after all other arguments.
 #'   This is needed internally so R keeps track of the CPU buffers memory in order
 #'   to know when to garbage collect.
 #' @param platform (`NULL` | `character(1)`)\cr
@@ -110,10 +117,26 @@ env_get <- function(env, gval) {
 #' @seealso [`trace_fn()`], [`jit()`], [`current_platform()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the closed-over array `x` becomes the constant input %0, before the
+#' # graph's own input `y` (%1)
 #' x <- nv_array(c(1, 2))
-#' graph <- trace_fn(function(y) y + x, list(y = nv_aval("f32", shape = c())))
-#' graph
-#' stablehlo(graph)
+#' graph <- trace_fn(function(y) y + x, list(y = nv_aval("f32", shape = 2)))
+#' out <- stablehlo(graph)
+#' out[[1L]]
+#' out[[2L]]
+#'
+#' # a donated input is aliased with an output of the same type
+#' graph <- trace_fn(
+#'   function(a, b) list(a + b, a * b),
+#'   list(a = nv_aval("f32", 3), b = nv_aval("f32", 3))
+#' )
+#' stablehlo(graph, donate = "a")[[1L]]
+#'
+#' # on CPU, a phantom input is appended for every output not aliased yet, and
+#' # the third element describes the buffers to allocate for them
+#' out <- stablehlo(graph, donate_unaliased_outputs = TRUE, platform = "cpu")
+#' out[[1L]]
+#' out[[3L]]
 stablehlo <- function(
   graph,
   id = "main",
@@ -280,7 +303,7 @@ lower_graph_calls <- function(graph, env, func) {
     }
   }
 
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     do_call(call)
   }
 

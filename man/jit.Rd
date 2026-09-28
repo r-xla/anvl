@@ -2,7 +2,7 @@
 % Please edit documentation in R/jit.R
 \name{jit}
 \alias{jit}
-\title{JIT compile a function}
+\title{JIT Compile a Function}
 \usage{
 jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 }
@@ -31,11 +31,21 @@ arrays are moved to it.
 The default (\code{NULL}) infers the device at call time from the array inputs,
 falling back to \code{\link[=default_device]{default_device()}}.}
 
-\item{...}{Backend-specific options. See the \strong{PJRT JIT arguments} and
-\strong{Quickr JIT arguments} sections below for the options each backend
-accepts. An option no backend takes is rejected here; one that only
-another backend takes is rejected when the function is called on a backend
-that does not, since the backend is not known until then.}
+\item{...}{Backend-specific options:
+\itemize{
+\item \code{donate} (\code{character()}, default \code{character()}), \code{"pjrt"} only: names of
+arguments whose buffers the compiled program may reuse for its outputs.
+A donated array must not be used again after the call; this can save
+memory and copies for large inputs. Must not overlap with \code{static}.
+\item \code{unwrap} (\code{logical(1)}, default \code{FALSE}), \code{"quickr"} only: if \code{TRUE},
+the compiled function returns plain R arrays instead of
+\code{\link{AnvlArray}}s, which is useful when the output is consumed by non-anvl
+R code.
+}
+
+An option no backend takes is rejected here; one that only another
+backend takes is rejected when the function is called on a backend that
+does not, since the backend is not known until then.}
 }
 \value{
 (\code{JitFunction})\cr
@@ -77,31 +87,24 @@ the defaults for the duration of the call, so
 changes the default data types.
 }
 
-\section{PJRT JIT arguments}{
-
-\itemize{
-\item \code{donate} (\code{character()}, default \code{character()}): names of arguments whose
-underlying buffers may be donated to (i.e., reused/consumed by) the
-compiled XLA executable. Donated buffers must not be used again by the
-caller after the call; this can reduce memory usage and copies for large
-inputs. Must not overlap with \code{static}.
-}
-}
-
-\section{Quickr JIT arguments}{
-
-\itemize{
-\item \code{unwrap} (\code{logical(1)}, default \code{FALSE}): if \code{TRUE}, the compiled function
-returns plain R arrays instead of \code{\link{AnvlArray}}s. Useful when the jitted
-function's output is consumed by non-anvl R code and the extra wrapping
-would only get stripped again.
-}
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 f <- jit(function(x, y) x + y)
 f(nv_array(1), nv_array(2))
+
+# A non-static R value is an input of the program, just like an array: a
+# new value reuses the compiled program
+scale <- jit(function(x, n) x * n)
+scale(nv_array(1:3), 2)
+scale(nv_array(1:3), 3)
+jit_cache_size(scale)
+
+# A static R value is embedded as a constant, so each new value compiles a
+# new program
+scale_static <- jit(function(x, n) x * n, static = "n")
+scale_static(nv_array(1:3), 2)
+scale_static(nv_array(1:3), 3)
+jit_cache_size(scale_static)
 
 # static arguments enable data-dependent control flow
 g <- jit(function(x, flag) {
@@ -109,6 +112,22 @@ g <- jit(function(x, flag) {
 }, static = "flag")
 g(nv_array(3), TRUE)
 g(nv_array(3), FALSE)
+
+# R values that meet no typed array take the default data types, which are
+# read when the function is called
+half <- jit(function(x) x / 2)
+half(1)
+with_default_dtypes(c(float = "f64"), half(1))
+# or pin the data types of a function with `with_dtypes()`
+half_f64 <- with_dtypes(half, c(float = "f64"))
+half_f64(nv_array(1, dtype = "f32"))
+
+# a donated input's buffer is reused for the output, so the input must not
+# be used afterwards
+step <- jit(function(x) x + 1L, donate = "x")
+x <- nv_array(1:3)
+step(x)
+try(as_array(x))
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 # the same function runs on whichever backend is active when it is called

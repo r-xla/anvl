@@ -11,8 +11,8 @@ prim_concatenate(..., axis)
 Arrays to concatenate. Can be of any data type. Must all have the same
 number of axes, and the same shape except along \code{axis}.
 All inputs must have the same data type. An R value among them assumes
-the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to concatenate.

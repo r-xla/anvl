@@ -1047,6 +1047,58 @@ describe("as.logical", {
   })
 })
 
+describe("as.array()", {
+  it("keeps the shape", {
+    x <- nv_array(1:6, dtype = "i32", shape = c(2L, 3L))
+    expect_identical(as.array(x), array(1:6, dim = c(2L, 3L)))
+  })
+
+  it("returns a 1-D array for a scalar, like base R", {
+    expect_identical(as.array(nv_scalar(7L, dtype = "i32")), as.array(7L))
+  })
+
+  it("forwards check", {
+    x <- nv_convert(nv_array(-2147483648, dtype = "f64"), "i32")
+    expect_error(as.array(x, check = "err"), "cannot distinguish")
+  })
+})
+
+describe("as.matrix()", {
+  it("returns an R matrix for a 2-D array", {
+    x <- nv_array(1:6, dtype = "i32", shape = c(2L, 3L))
+    expect_identical(as.matrix(x), matrix(1:6, nrow = 2L))
+  })
+
+  it("errors for an array that is not 2-D", {
+    expect_error(as.matrix(nv_array(1:3)), "requires a 2-D array")
+  })
+})
+
+describe("as.raw()", {
+  it("converts the values, not the bytes, and discards shape", {
+    x <- nv_array(c(1L, 2L, 255L, 0L), dtype = "i32", shape = c(2L, 2L))
+    expect_identical(as.raw(x), as.raw(c(1L, 2L, 255L, 0L)))
+  })
+
+  it("works on unsigned integer dtypes", {
+    expect_identical(as.raw(nv_array(c(7L, 200L), dtype = "ui8")), as.raw(c(7L, 200L)))
+  })
+
+  it("turns an out-of-range value into 00 with a warning, like base R", {
+    expect_warning(out <- as.raw(nv_array(c(1L, 256L), dtype = "i32")), "out-of-range")
+    expect_identical(out, as.raw(c(1L, 0L)))
+  })
+
+  it("errors on a non-integer dtype", {
+    expect_error(as.raw(nv_array(1.5, dtype = "f32")), "requires a .* integer dtype")
+    expect_error(as.raw(nv_array(TRUE, dtype = "bool")), "requires a .* integer dtype")
+  })
+
+  it("errors on a traced array", {
+    expect_error(jit(function(x) as.raw(x))(nv_array(1L)), "not defined for a")
+  })
+})
+
 describe("as.vector()", {
   it("keeps the values of a dtype R has no native type for", {
     # `as_array()` hands those back as a `bit64::integer64`, whose class

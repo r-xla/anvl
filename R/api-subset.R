@@ -255,7 +255,7 @@ flat_mask_gather_core <- jit(function(x, indices) {
 #' Convert a whole-array mask to scatter parameters
 #'
 #' The parameters address the column-major flattening of `x`, which is what
-#' `flatten = TRUE` tells [subset_scatter_core()] to scatter into.
+#' `flatten = TRUE` tells `subset_scatter_core()` to scatter into.
 #' @noRd
 flat_mask_to_scatter <- function(mask, like = NULL) {
   indices <- flat_mask_indices(mask, like = like)

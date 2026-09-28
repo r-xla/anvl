@@ -21,7 +21,7 @@ closure.}
 Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
 of \code{backward} and \code{forward}.
 
-Pass \code{backward} when the primitive's forward call can run unmodified, which
+Pass \code{backward} when the primitive's forward statement can run unmodified, which
 covers most use cases. It has the signature
 \verb{function(inputs, outputs, grads, params, required)} and returns a \code{list}
 with one entry per input: that input's gradient, or \code{NULL} where

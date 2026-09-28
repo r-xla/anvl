@@ -2,7 +2,7 @@
 % Please edit documentation in R/array.R
 \name{backend}
 \alias{backend}
-\title{Get Backend of an Array}
+\title{Get Backend Name of an Array}
 \usage{
 backend(x, ...)
 }

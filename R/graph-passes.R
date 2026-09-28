@@ -1,5 +1,5 @@
 traverse_gnodes <- function(graph, fn, graph_outputs = TRUE) {
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     for (input in call$inputs) {
       fn(input)
     }
@@ -16,7 +16,7 @@ traverse_gnodes <- function(graph, fn, graph_outputs = TRUE) {
 
 remove_unused_constants <- function(graph) {
   new_graph <- AnvlGraph(
-    calls = graph$calls,
+    statements = graph$statements,
     in_tree = graph$in_tree,
     out_tree = graph$out_tree,
     inputs = graph$inputs,
@@ -61,7 +61,7 @@ inline_scalarish_constants <- function(graph, map = NULL) {
 
   # Create a copy of the graph
   new_graph <- AnvlGraph(
-    calls = graph$calls,
+    statements = graph$statements,
     in_tree = graph$in_tree,
     out_tree = graph$out_tree,
     inputs = graph$inputs,
@@ -89,12 +89,12 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     }
   }
 
-  for (i in seq_along(new_graph$calls)) {
-    pcall <- new_graph$calls[[i]]
+  for (i in seq_along(new_graph$statements)) {
+    pcall <- new_graph$statements[[i]]
     for (j in seq_along(pcall$inputs)) {
       replacement <- map[[pcall$inputs[[j]]]]
       if (!is.null(replacement)) {
-        new_graph$calls[[i]]$inputs[[j]] <- replacement
+        new_graph$statements[[i]]$inputs[[j]] <- replacement
       }
     }
     if (is_higher_order_primitive(pcall$primitive)) {
@@ -102,7 +102,7 @@ inline_scalarish_constants <- function(graph, map = NULL) {
       for (name in subgraph_names) {
         if (name %in% names(pcall$params)) {
           new_subgraph <- inline_scalarish_constants(pcall$params[[name]], map)
-          new_graph$calls[[i]]$params[[name]] <- new_subgraph
+          new_graph$statements[[i]]$params[[name]] <- new_subgraph
         }
       }
     }

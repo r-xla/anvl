@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend-pjrt.R
 \name{compile_pjrt}
 \alias{compile_pjrt}
-\title{Trace, lower, and compile a function to an XLA executable}
+\title{Trace, Lower, and Compile a Function to an XLA Executable}
 \usage{
 compile_pjrt(
   f,
@@ -10,7 +10,7 @@ compile_pjrt(
   in_tree,
   donate = character(),
   device = NULL,
-  arg_devices = list(),
+  arg_device = NULL,
   fallback_device = NULL,
   default_dtypes = NULL
 )
@@ -29,13 +29,12 @@ Tree structure of the inputs.}
 Names of the arguments whose buffers should be donated.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \code{PJRTDevice})\cr
-Target device (e.g. \code{"cpu"}, \code{"cuda"}). If \code{NULL}, inferred from \code{arg_devices}
-and traced arrays.}
+Target device (e.g. \code{"cpu"}, \code{"cuda"}). If \code{NULL}, inferred from
+\code{arg_device} and traced arrays.}
 
-\item{arg_devices}{(\code{list})\cr
-Devices of the concrete (non-static) input arguments, extracted before
-converting to abstract values. Used together with traced devices for
-device inference when \code{device} is \code{NULL}.}
+\item{arg_device}{(\code{NULL} | device)\cr
+The device the array inputs live on, or \code{NULL} when there are none. Used
+together with traced devices for device inference when \code{device} is \code{NULL}.}
 
 \item{fallback_device}{(\code{NULL} | device)\cr
 The device to compile for when \code{device} is \code{NULL} and nothing in the graph
@@ -45,8 +44,7 @@ front of it) falls back to \code{\link[=default_device]{default_device()}}.}
 
 \item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
 The data types the traced R values materialize at when nothing else decides
-one (see \code{\link[=default_dtypes]{default_dtypes()}}), read off \code{info$context} so the program
-matches the cache key it is filed under. \code{NULL} uses the active pair.}
+one (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 (\code{list})\cr

@@ -243,7 +243,7 @@ rdata_mat_hit <- function(box, dtype) {
   if (is.null(hit)) {
     return(NULL)
   }
-  reachable <- identical(hit$desc, box$desc) || identical(hit$desc, .current_descriptor(silent = TRUE))
+  reachable <- identical(hit$desc, box$desc) || identical(hit$desc, current_descriptor(silent = TRUE))
   if (reachable) hit else NULL
 }
 
@@ -251,7 +251,7 @@ rdata_mat_hit <- function(box, dtype) {
 # `desc` at `dtype` as a constant, and return its GraphBox. Tracing only. The
 # value is built from the R data itself, so it arrives with every digit it had,
 # which is what keeps `x_f64 / sqrt(2)` exact.
-build_r_at <- function(x, dtype, desc = .current_descriptor()) {
+build_r_at <- function(x, dtype, desc = current_descriptor()) {
   force(desc)
   if (!is_valid_r_lit(x) && !is_valid_r_array(x)) {
     # An `NA` reaches here: it is a length-1 numeric, but there is no dtype it
@@ -347,7 +347,7 @@ is_open_rdata_input <- function(gval) {
 # modifies the descriptor in-place
 # and finalizes the rdata inputs by:
 # 1. Resolving the data type the input gets
-# 2. Appending pre_calls with the conversions.
+# 2. Appending pre_statements with the conversions.
 finalize_rdata_inputs <- function(desc) {
   inputs <- desc$inputs
   is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
@@ -355,7 +355,7 @@ finalize_rdata_inputs <- function(desc) {
     return(invisible(NULL))
   }
   r_types <- rep(NA_character_, length(inputs))
-  pre_calls <- list()
+  pre_statements <- list()
   for (i in which(is_open)) {
     gval <- inputs[[i]]
     aval <- gval$aval
@@ -369,7 +369,7 @@ finalize_rdata_inputs <- function(desc) {
     for (other in setdiff(requested, resolved)) {
       # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
       # always results in the same value
-      pre_calls[[length(pre_calls) + 1L]] <- PrimitiveCall(
+      pre_statements[[length(pre_statements) + 1L]] <- GraphStatement(
         primitive = prim_convert,
         inputs = list(main$gnode),
         params = list(dtype = as_dtype(other)),
@@ -379,7 +379,7 @@ finalize_rdata_inputs <- function(desc) {
   }
   desc$inputs <- inputs
   desc$rdata_types <- r_types
-  desc$pre_calls <- c(desc$pre_calls, pre_calls)
+  desc$pre_statements <- c(desc$pre_statements, pre_statements)
   invisible(NULL)
 }
 
@@ -402,11 +402,11 @@ finalize_inline_rdata_inputs <- function(desc) {
   if (!any(is_open)) {
     return(invisible(NULL))
   }
-  pre_calls <- list()
+  pre_statements <- list()
   add_convert <- function(input, dtype, output) {
     # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
     # always results in the same value
-    pre_calls[[length(pre_calls) + 1L]] <<- PrimitiveCall(
+    pre_statements[[length(pre_statements) + 1L]] <<- GraphStatement(
       primitive = prim_convert,
       inputs = list(input),
       params = list(dtype = as_dtype(dtype)),
@@ -452,7 +452,7 @@ finalize_inline_rdata_inputs <- function(desc) {
     }
   }
   desc$inputs <- inputs
-  desc$pre_calls <- c(desc$pre_calls, pre_calls)
+  desc$pre_statements <- c(desc$pre_statements, pre_statements)
   invisible(NULL)
 }
 

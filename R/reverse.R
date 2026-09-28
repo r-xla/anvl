@@ -55,7 +55,7 @@ prepare_gradient_args <- function(args, wrt) {
 #' Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
 #' of `backward` and `forward`.
 #'
-#' Pass `backward` when the primitive's forward call can run unmodified, which
+#' Pass `backward` when the primitive's forward statement can run unmodified, which
 #' covers most use cases. It has the signature
 #' `function(inputs, outputs, grads, params, required)` and returns a `list`
 #' with one entry per input: that input's gradient, or `NULL` where
@@ -95,7 +95,7 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
   )
 }
 
-#' @title Transform a graph to its gradient
+#' @title Transform a Graph to Its Gradient
 #' @description
 #' Low-level graph transformation that transforms a graph into its gradient.
 #' The function `f` represented by `graph` must return a single
@@ -137,13 +137,13 @@ transform_gradient_impl <- function(graph, wrt) {
   out <- validate_gradient_output(graph$outputs)
   reqs <- compute_requirements(graph, wrt)
 
-  # Phase 1 -- rebuild the forward into a fresh descriptor. For each call
+  # Phase 1 -- rebuild the forward into a fresh descriptor. For each statement
   # either clone it verbatim (default-reverse / no rule) or hand off to the
   # general-form rule so it can emit its own forward primitives.
   rebuilt <- rebuild_forward_pass(graph)
   desc <- rebuilt$desc
 
-  # Phase 2 -- run backwards in reverse call order.
+  # Phase 2 -- run backwards in reverse statement order.
   grad_env <- run_backward_pass(
     graph,
     desc,
@@ -229,9 +229,9 @@ compute_requirements <- function(graph, wrt) {
   for (i in seq_along(graph$constants)) {
     required_env[[graph$constants[[i]]]] <- FALSE
   }
-  # Forward propagate: a call's outputs require grad iff any input does.
+  # Forward propagate: a statement's outputs require grad iff any input does.
   # Literals are inlined constants and never require grad.
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     any_input_requires <- any(vapply(
       call$inputs,
       function(x) {
@@ -264,14 +264,14 @@ compute_requirements <- function(graph, wrt) {
 rebuild_forward_pass <- function(graph, envir = parent.frame()) {
   desc <- local_descriptor(envir = envir)
 
-  # consts and inputs keep their identity, only GraphValues created by PrimitiveCalls
+  # consts and inputs keep their identity, only GraphValues created by GraphStatements
   # get new identifier
   register_inputs(desc, graph$inputs)
   register_consts(desc, graph$constants)
 
   # Existing GraphValues are reused where possible to minimize cloning.
   # If an alternative forward pass is called, this possibly invalidates
-  # inputs to subsequent PrimitiveCalls, so we have to look up the translated gnode every time
+  # inputs to subsequent GraphStatements, so we have to look up the translated gnode every time
   # (we could actually delay this lookup until
   trans <- hashtab()
   translate_gnode <- function(g) {
@@ -294,22 +294,22 @@ rebuild_forward_pass <- function(graph, envir = parent.frame()) {
 
   # We store the backward rules in a list so we can just traverse it backwards afterwards
 
-  # backwards be longer than graph$calls, but never shorter
-  backwards <- vector("list", length(graph$calls))
+  # backwards be longer than graph$statements, but never shorter
+  backwards <- vector("list", length(graph$statements))
 
-  for (i in seq_along(graph$calls)) {
-    call <- graph$calls[[i]]
+  for (i in seq_along(graph$statements)) {
+    call <- graph$statements[[i]]
     rule <- call$primitive[["reverse"]]
 
     if (is.null(rule) || is.null(rule$forward)) {
       # No rule, or backward-only rule: the forward computation is unchanged,
       # so we can reuse the original output gvals directly. Only mint a new
-      # PrimitiveCall if an upstream alt-forward replaced one of our inputs;
-      # otherwise share the original call object verbatim.
+      # GraphStatement if an upstream alt-forward replaced one of our inputs;
+      # otherwise share the original statement object verbatim.
       new_inputs <- lapply(call$inputs, translate_gnode)
-      new_call <- PrimitiveCall(call$primitive, new_inputs, call$params, call$outputs)
+      new_call <- GraphStatement(call$primitive, new_inputs, call$params, call$outputs)
 
-      desc$calls$add(new_call)
+      desc$statements$add(new_call)
       register_gvals(desc, call$outputs)
 
       # If `rule` is NULL `backwards[[i]]` stays NULL. `run_backward_pass`
@@ -326,7 +326,7 @@ rebuild_forward_pass <- function(graph, envir = parent.frame()) {
       }
     } else {
       # Alternative-forward path
-      # Here, new GraphValue outputs are generated and subsequent PrimitiveCalls that
+      # Here, new GraphValue outputs are generated and subsequent GraphStatements that
       # referenced the old ones need to be rewired
       input_boxes <- lapply(call$inputs, box_for)
       fwd_result <- rule$forward(input_boxes, call$params)
@@ -345,7 +345,7 @@ rebuild_forward_pass <- function(graph, envir = parent.frame()) {
   list(desc = desc, trans = trans, backwards = backwards)
 }
 
-# Walk calls in reverse, invoking each call's backward to accumulate
+# Walk statements in reverse, invoking each statement's backward to accumulate
 # gradients keyed by the *original* graph's gvals.
 run_backward_pass <- function(graph, desc, backwards, required_env, out) {
   grad_env <- hashtab()
@@ -361,8 +361,8 @@ run_backward_pass <- function(graph, desc, backwards, required_env, out) {
     prim_add(grad1, grad2)
   }
 
-  for (i in rev(seq_along(graph$calls))) {
-    call <- graph$calls[[i]]
+  for (i in rev(seq_along(graph$statements))) {
+    call <- graph$statements[[i]]
     input_required <- vapply(
       call$inputs,
       function(x) required_env[[x]] %||% FALSE,
@@ -422,27 +422,34 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 }
 
 
-#' @title Gradient
+#' @title Gradients
 #' @description
-#' Returns a new function that computes the gradient of `f` via reverse-mode automatic
-#' differentiation. `f` must return a single float scalar. The returned function has the
-#' same signature as `f` and returns the gradients in the same structure as the inputs
-#' (or the subset selected by `wrt`).
+#' Return a new function that computes the gradient of `f` via reverse-mode
+#' automatic differentiation. `f` must return a single float scalar. The
+#' returned function has the same signature as `f`.
+#'
+#' * `gradient()` returns only the gradients, structured like the inputs (or
+#'   the subset selected by `wrt`).
+#' * `value_and_gradient()` returns both the output of `f` and its gradients,
+#'   computed in a single forward and reverse pass.
 #' @param f (`function`)\cr
-#'   Function to differentiate. Arguments can be arrayish ([`AnvlArray`]) or
-#'   static (non-array) values. Must return a single scalar float array.
+#'   Function to differentiate. Must return a single scalar float array.
 #' @param wrt (`character` | `integer` | `NULL`)\cr
 #'   Names or positions of the arguments to compute the gradient with respect to.
-#'   Only arrayish (float array) arguments can be included; static arguments
-#'   must not appear in `wrt`.
+#'   Only float arrays can be included; static arguments must not appear in
+#'   `wrt`. At call time, an argument in `wrt` must be an array with a data
+#'   type, not an R value such as `3`, since the data type of its gradient
+#'   would otherwise be undetermined.
 #'   If `NULL` (the default), the gradient is computed with respect to all
 #'   arguments (which must all be arrayish in that case).
 #' @return (`function`)\cr
-#'   Has the same formals as `f` and must be called inside [`jit()`]. Returns a
-#'   named `list` of gradients, one per argument of `f` (or per `wrt` entry),
-#'   each structured like that argument.
-#' @seealso [`value_and_gradient()`] to get both the output and gradients,
-#'   [`transform_gradient()`] for the low-level graph transformation.
+#'   Has the same formals as `f` and must be called inside [`jit()`].
+#'   For `gradient()`, it returns a named `list` of gradients, one per
+#'   argument of `f` (or per `wrt` entry), each structured like that argument.
+#'   For `value_and_gradient()`, it returns `list(value = , grad = )`: the
+#'   return value of `f`, and that same `list` of gradients.
+#' @seealso `r roxy_article("autodiff")`, [`transform_gradient()`] for the
+#'   low-level graph transformation.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- function(x, y) sum(x * y)
@@ -457,6 +464,18 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #' f2 <- function(x, power) sum(x^power)
 #' g2 <- jit(gradient(f2, wrt = "x"), static = "power")
 #' g2(nv_array(c(1, 2, 3), dtype = "f32"), power = 2L)
+#'
+#' # an argument in `wrt` must be passed as an array, not as an R value
+#' g3 <- jit(gradient(function(x) x^2L))
+#' g3(nv_scalar(3))
+#' try(g3(3))
+#'
+#' # the value of `f` together with its gradient
+#' loss_fn <- function(x) sum(x^2L)
+#' vg <- jit(value_and_gradient(loss_fn))
+#' result <- vg(nv_array(c(3, 4), dtype = "f32"))
+#' result$value
+#' result$grad
 gradient <- function(f, wrt = NULL) {
   assert_function(f)
   wrt <- resolve_arg_names(f, wrt, "wrt")
@@ -468,7 +487,7 @@ gradient <- function(f, wrt = NULL) {
     args <- lapply(args, eval, envir = parent.frame())
     prep <- prepare_gradient_args(args, wrt)
 
-    parent_desc <- .current_descriptor(silent = TRUE)
+    parent_desc <- current_descriptor(silent = TRUE)
     if (is.null(parent_desc)) {
       cli_abort(c(
         "{.fn gradient} can only be called inside a {.fn jit}-compiled function.",
@@ -489,25 +508,8 @@ gradient <- function(f, wrt = NULL) {
   return(f_gradient)
 }
 
-#' @title Value and Gradient
-#' @description
-#' Returns a new function that computes both the output of `f` and its gradient in a
-#' single forward+reverse pass. The result is a named list with elements `value` (the
-#' original return value of `f`) and `grad` (the gradients, structured like the inputs or
-#' the `wrt` subset).
-#' @inheritParams gradient
-#' @return (`function`)\cr
-#'   Has the same formals as `f` and must be called inside [`jit()`]. Returns
-#'   `list(value = , grad = )`: the return value of `f`, and the named `list` of
-#'   gradients that [`gradient()`] returns.
-#' @seealso [`gradient()`]
+#' @rdname gradient
 #' @export
-#' @examplesIf pjrt::plugins_downloaded()
-#' loss_fn <- function(x) sum(x^2L)
-#' vg <- jit(value_and_gradient(loss_fn))
-#' result <- vg(nv_array(c(3, 4), dtype = "f32"))
-#' result$value
-#' result$grad
 value_and_gradient <- function(f, wrt = NULL) {
   assert_function(f)
   wrt <- resolve_arg_names(f, wrt, "wrt")
@@ -519,7 +521,7 @@ value_and_gradient <- function(f, wrt = NULL) {
     args <- lapply(args, eval, envir = parent.frame())
     prep <- prepare_gradient_args(args, wrt)
 
-    parent_desc <- .current_descriptor(silent = TRUE)
+    parent_desc <- current_descriptor(silent = TRUE)
     if (is.null(parent_desc)) {
       cli_abort(c(
         "{.fn value_and_gradient} can only be called inside a {.fn jit}-compiled function.",

@@ -968,7 +968,7 @@ prim_reduce <- new_primitive(
     # `x` and `init` agree: the rule above brought them together or refused.
     op_dtype <- dtype(x)
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
     desc_red <- local_descriptor()
 
     # Unnamed, so the two scalars are matched positionally and `reducer` may
@@ -2534,7 +2534,7 @@ prim_if <- new_primitive(
     # We need to ensure that constants that are captured in both branches receive the same
     # GraphValue if they capture the same constant
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     desc_true <- local_descriptor()
     true_graph <- trace_fn(true, list(), desc = desc_true, mode = "subgraph")
@@ -2623,7 +2623,7 @@ prim_while <- new_primitive(
       cli_abort("{.arg init} must have only named arguments.")
     }
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     desc_cond <- local_descriptor()
 
@@ -2718,7 +2718,7 @@ prim_scan <- new_primitive(
     steps <- assert_int(steps, lower = 0L, coerce = TRUE)
     assert_flag(reverse)
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     init_flat <- flatten(init)
     xs_flat <- flatten(xs)
@@ -3201,7 +3201,7 @@ prim_scatter <- new_primitive(
       cli_abort("update_fn must be a function")
     }
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     # Trace the update computation function
     # For scatter, the update computation takes 2 scalar arguments (current, update)

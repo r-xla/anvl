@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{shape}
 \alias{shape}
-\title{Get the shape of an array}
+\title{Get the Shape of an Array}
 \usage{
 shape(x, ...)
 }
@@ -19,11 +19,23 @@ An array-like object.}
 Returns the shape of an array as an \code{integer()} vector.
 }
 \details{
+An R value has a shape when it is arrayish: a length-1 vector is a scalar
+with shape \code{integer()}, and an R array has its \code{dim()}. Any other R vector is
+an error; use \code{\link[=nv_array]{nv_array()}} to make it an array.
+
 This is implemented via the generic \code{\link[tengen:shape]{tengen::shape()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:4, dtype = "f32")
 shape(x)
+shape(nv_array(1:6, shape = c(2, 3)))
+# a length-1 R vector is a scalar
+shape(1)
+shape(TRUE)
+# an R array has its `dim()`
+shape(array(1:6, dim = c(2, 3)))
+# any other R vector has no shape
+try(shape(c(2, 3)))
 \dontshow{\}) # examplesIf}
 }

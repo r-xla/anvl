@@ -8,8 +8,6 @@
 \alias{unflatten}
 \alias{tree_size}
 \alias{tree_path}
-\alias{map_tree}
-\alias{pmap_tree}
 \title{Objects exported from other packages}
 \keyword{internal}
 \description{
@@ -17,6 +15,6 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
-  \item{pjrt}{\code{\link[pjrt:build_tree]{build_tree()}}, \code{\link[pjrt:flatten]{flatten()}}, \code{\link[pjrt:map_tree]{map_tree()}}, \code{\link[pjrt:pmap_tree]{pmap_tree()}}, \code{\link[pjrt:tree_path]{tree_path()}}, \code{\link[pjrt:tree_size]{tree_size()}}, \code{\link[pjrt:unflatten]{unflatten()}}}
+  \item{pjrt}{\code{\link[pjrt:build_tree]{build_tree()}}, \code{\link[pjrt:flatten]{flatten()}}, \code{\link[pjrt:tree_path]{tree_path()}}, \code{\link[pjrt:tree_size]{tree_size()}}, \code{\link[pjrt:unflatten]{unflatten()}}}
 }}
 

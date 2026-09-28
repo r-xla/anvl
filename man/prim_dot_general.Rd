@@ -16,7 +16,7 @@ prim_dot_general(
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
 Two inputs of the same data type whose shapes are constrained by \code{contracting_axes} and \code{batching_axes} rather than having to match. Can be any data type. R
 values take the other operand's data type when it is in their
-\link[=dtypes]{data type category}, and their
+\link[=dtype_categories]{data type category}, and their
 \link[=default_dtypes]{default data type} when neither operand has one. An R
 value outside the other operand's category is an error, as are two R
 values of different storage types.}

@@ -2,6 +2,7 @@
 % Please edit documentation in R/primitive.R
 \name{new_primitive}
 \alias{new_primitive}
+\alias{AnvlPrimitive}
 \title{Create a Primitive}
 \usage{
 new_primitive(
@@ -19,7 +20,7 @@ Primitive name, without the \code{prim_} prefix (\code{"add"} for \code{prim_add
 \item{fn}{(\code{function})\cr
 Body of the primitive. Its formals become the formals of the returned
 JIT-compiled callable. Inside \code{fn}, the primitive is accessible via
-the lexically-bound symbol \code{self} (an \code{\link{AnvlPrimitive}}); pass it as
+the lexically-bound symbol \code{self} (an \code{\link{AnvlPrimitiveDef}}); pass it as
 the first argument to \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 
 \item{subgraphs}{(\code{character()})\cr
@@ -29,15 +30,24 @@ Names of parameters that are subgraphs (for higher-order primitives).}
 Passed to \code{\link[=jit]{jit()}}.}
 
 \item{register}{(\code{logical(1)})\cr
-If \code{TRUE} (default), register the result under \code{name} in the primitive
-registry.}
+Whether to add the primitive to anvl's internal registry of primitives,
+under \code{name}, replacing one registered under the same name. The quickr
+backend reads that registry to know which primitives it can lower, so a
+primitive created with \code{register = FALSE} is rejected on quickr even if
+it has a \code{quickr} rule. The other backends only read the rules of the
+primitive itself. This does not bind the result to a \verb{prim_<name>}
+variable; assign it yourself.}
 }
 \value{
-(\code{JitPrimitive})\cr
-A callable of class \code{c("JitPrimitive", "JitFunction")}.
+(\code{AnvlPrimitive})\cr
+The function the primitive is called through, of class
+\code{c("AnvlPrimitive", "JitFunction")}. Its \code{\link{AnvlPrimitiveDef}} is
+\verb{attr(<fn>, "definition")}, and \code{[[} / \verb{[[<-} on it access the rules of
+that definition.
 }
 \description{
-Create a new primitive.
-For details on how to do this, see the article on \emph{Adding a Primitive}.
+\code{new_primitive()} creates a new primitive: an \code{AnvlPrimitive}, the function
+the primitive is called through (e.g. \code{prim_add()}).
+For details on how to do this, see the \href{https://r-xla.github.io/anvl/articles/extending_primitive.html}{Adding a Primitive} article.
 Like every jitted function it runs on the active backend when called.
 }

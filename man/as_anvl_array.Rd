@@ -23,7 +23,7 @@ information. A rule materializes an R value \emph{at} its answer rather than
 converting it afterwards, so it keeps every digit.}
 
 \item{...}{(\code{\link{arrayish}})\cr
-Inputs to align. Name them to be able to point \code{.promote} at one of them.}
+Inputs to align.}
 }
 \value{
 \code{as_anvl_array()}: (\code{\link{AnvlArray}} | \code{\link{GraphBox}})\cr

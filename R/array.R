@@ -54,19 +54,19 @@
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
 #'   Empty data has no shape to infer -- `0`, `c(2, 0)` and `c(0, 3)` all hold
 #'   no elements -- so `shape` is required there.
-#'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
+#'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = integer()`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   The data type at which to create the array: a [`tengen::DataType`] or one
-#'   of `r roxy_dtypes()`. `data` is built at it rather than converted to it,
-#'   and a value it cannot hold at all is an error (`nv_array(3e9, dtype =
-#'   "i32")` overflows); a `double` at an integer data type is truncated.
+#'   of `r roxy_dtypes()`.
+#'   A value it cannot hold at all is an error (`nv_array(3e9, dtype =
+#'   "i32")` overflows). A `double` at an integer data type is truncated.
 #'   The default (`NULL`) uses the [default data type][default_dtypes] of
 #'   `data`'s category. [`nv_empty()`], which has no `data`, requires it.
 #' @template param_device
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
 #'   axes, fill the array in row-major order rather than the
-#'   default column-major order, mirroring [`base::matrix()`]'s `byrow`.
+#'   default column-major order.
 #'   Only allowed when `data` is an R object — passing an existing
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
 #'
@@ -173,7 +173,7 @@ nv_array <- function(
       i = "Use {.fn nv_convert} to give it a data type."
     ))
   }
-  if (is_box(data)) {
+  if (is_graph_box(data)) {
     cli_abort(c(
       "Cannot build an {.cls AnvlArray} from a traced value.",
       i = "It already has a data type; use {.fn nv_convert} to change it."
@@ -234,7 +234,7 @@ nv_array <- function(
 #' @param x ([`arrayish`])\cr
 #'   Input to canonicalize.
 #' @param ... ([`arrayish`])\cr
-#'   Inputs to align. Name them to be able to point `.promote` at one of them.
+#'   Inputs to align.
 #' @param device (`NULL` | [`device`])\cr
 #'   Target device. If `x` is an `AnvlArray` on a different device, an error
 #'   is raised.
@@ -260,7 +260,7 @@ NULL
 #' @rdname as_anvl_array
 #' @export
 as_anvl_array <- function(x, device = NULL, .promote = NULL) {
-  if (!is_box(x) && !is_arrayish(x)) {
+  if (!is_graph_box(x) && !is_arrayish(x)) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
   if (!is.null(.promote)) {
@@ -269,7 +269,7 @@ as_anvl_array <- function(x, device = NULL, .promote = NULL) {
       return(materialize_at(x, dtype = dtype, device = device))
     }
   }
-  if (is_box(x)) {
+  if (is_graph_box(x)) {
     return(materialize_rdata_box(x))
   }
   if (is_anvl_array(x)) {
@@ -371,7 +371,7 @@ materialize_at <- function(x, dtype, device = NULL) {
   if (is_rdata_box(x)) {
     return(materialize_rdata(x, dtype))
   }
-  if (!is_anvl_array(x) && !is_box(x) && is_valid_r(x)) {
+  if (!is_anvl_array(x) && !is_graph_box(x) && is_valid_r(x)) {
     # Outside a trace the same rule applies as inside it: build the R value
     # where it is exact, and let a conversion out of its category be the
     # program's, not R's (see `build_r_staged()`). The value needs no check of
@@ -396,7 +396,7 @@ is_anvl_array <- function(x) {
   inherits(x, "AnvlArray")
 }
 
-#' Get the underlying PJRT buffer from an AnvlArray or pass through other values
+#' Get the Underlying PJRT Buffer from an AnvlArray or Pass Through Other Values
 #' @param x An AnvlArray or any other value
 #' @return (`PJRTBuffer` | `any`)
 #' @keywords internal
@@ -540,7 +540,7 @@ shape.AnvlArray <- function(x, ...) {
   globals$backends[[x$backend]]$shape(x)
 }
 
-#' @title Get the axes of an array
+#' @title Get the Axes of an Array
 #'
 #' @description Returns the axis indices of an array, i.e. `seq_len(naxes(x))`.
 #'
@@ -560,13 +560,10 @@ axes <- function(x) {
 #' @param check (`character(1)` | `FALSE`)\cr
 #'   How to report a materialized value that the R type cannot hold:
 #'   `"warn"` (the default) warns and returns it anyway, `"err"` aborts,
-#'   and `FALSE` skips the scan. `TRUE` is not accepted -- with two
-#'   levels of strictness it does not say which one is meant. Forwarded
-#'   to the backend; for the `pjrt` backend the cases scanned for are
-#'   `i32`/`i64` values colliding with the `NA` bit pattern and `ui64`
-#'   values `>= 2^63` wrapping through `bit64::integer64`. See
-#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and
-#'   `r roxy_article("gotchas")`.
+#'   and `FALSE` skips the scan.
+#'   Problematic values are the bit-representations reserved for R's
+#'   `NA` values, as well as out-of-range values.
+#'   See `r roxy_article("gotchas")` for more.
 #' @export
 as_array.AnvlArray <- function(x, check = "warn", ...) {
   assert_check_level(check)
@@ -588,20 +585,26 @@ assert_check_level <- function(check) {
   ))
 }
 
+#' @rdname as_array
 #' @method as.array AnvlArray
 #' @export
-as.array.AnvlArray <- function(x, ...) {
-  as_array(x)
+as.array.AnvlArray <- function(x, check = "warn", ...) {
+  out <- as_array(x, check = check)
+  if (is.null(dim(out))) {
+    dim(out) <- length(out)
+  }
+  out
 }
 
+#' @rdname as_array
 #' @method as.matrix AnvlArray
 #' @export
-as.matrix.AnvlArray <- function(x, ...) {
+as.matrix.AnvlArray <- function(x, check = "warn", ...) {
   nd <- naxes(x)
   if (nd != 2L) {
     cli_abort("{.fn as.matrix} requires a 2-D array, but got a {nd}-D array.")
   }
-  as_array(x)
+  as_array(x, check = check)
 }
 
 #' @export
@@ -628,6 +631,9 @@ await.AnvlArray <- function(x, ...) {
 #'   `2^63` becomes `NA`); that is warned about, and `check = "err"` makes it
 #'   an error.
 #' * `as.logical()`: `bool`.
+#' * `as.raw()`: signed or unsigned integer dtypes. Like [base::as.raw()] it
+#'   converts the values, so a value outside `0` to `255` becomes `00` with a
+#'   warning. Use [`as_raw()`] for the bytes the array is stored as.
 #' * `as.vector()`: any dtype; the R type is chosen by the dtype. For the
 #'   dtypes R has no native type for (`i64`, `ui64`, `ui32`) that is the
 #'   [`bit64::integer64`] [`as_array()`] returns, since a bare double could
@@ -636,9 +642,9 @@ await.AnvlArray <- function(x, ...) {
 #'
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
-#' `as.vector()`'s signature is fixed by the generic, so it takes no `check`
-#' argument and always reports at the default level; call [`as_array()`]
-#' directly to pick another one.
+#' The signatures of `as.vector()` and `as.raw()` are fixed by their generics,
+#' so they take no `check` argument and always report at the default level;
+#' call [`as_array()`] directly to pick another one.
 #' @param x ([`AnvlArray`])\cr
 #'   Array to coerce.
 #' @param mode (`character(1)`)\cr
@@ -648,7 +654,7 @@ await.AnvlArray <- function(x, ...) {
 #' @param check (`character(1)` | `FALSE`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
-#' @return (`double()` | `integer()` | `logical()` | [`bit64::integer64`])\cr
+#' @return (`double()` | `integer()` | `logical()` | `raw()` | [`bit64::integer64`])\cr
 #'   The elements of `x` in column-major order, without a shape.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
@@ -656,6 +662,7 @@ await.AnvlArray <- function(x, ...) {
 #' as.integer(nv_array(1:6, shape = c(2L, 3L)))
 #' bit64::as.integer64(nv_array(1:6, shape = c(2L, 3L), dtype = "i64"))
 #' as.logical(nv_array(c(TRUE, FALSE), dtype = "bool"))
+#' as.raw(nv_array(c(1L, 255L), dtype = "ui8"))
 #' as.vector(x)
 #' @name as-AnvlArray
 NULL
@@ -708,6 +715,17 @@ as.logical.AnvlArray <- function(x, check = "warn", ...) {
 }
 
 #' @rdname as-AnvlArray
+#' @method as.raw AnvlArray
+#' @export
+as.raw.AnvlArray <- function(x) {
+  dt <- dtype(x)
+  if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
+    cli_abort("{.fn as.raw} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
+  }
+  as.raw(as.integer(as_array(x)))
+}
+
+#' @rdname as-AnvlArray
 #' @method as.vector AnvlArray
 #' @export
 as.vector.AnvlArray <- function(x, mode = "any") {
@@ -737,7 +755,7 @@ device.AnvlArray <- function(x, ...) {
   globals$backends[[x$backend]]$device(x)
 }
 
-#' @title Get Backend of an Array
+#' @title Get Backend Name of an Array
 #' @description
 #' Returns the name of the backend an array or device belongs to.
 #' @param x ([`AnvlArray`] | device object)\cr
@@ -771,8 +789,6 @@ backend.QuickrDevice <- function(x, ...) {
 #' @title Abstract Array Class
 #' @description
 #' Representation of an abstract array type.
-#' During tracing, it is wrapped in a [`GraphNode`] held by a [`GraphBox`].
-#' In the lowered [`AnvlGraph`] it is also part of [`GraphNode`]s representing the values in the program.
 #'
 #' The base class represents an *unknown* value, but child classes exist for:
 #' * closed-over constants: [`ConcreteArray`]
@@ -781,12 +797,6 @@ backend.QuickrDevice <- function(x, ...) {
 #' * R values [`RData`]. They are special because they do not have a data type.
 #'
 #' To convert an [`arrayish`] value to an abstract array, use [`to_abstract()`].
-#'
-#' @section Extractors:
-#' The following extractors are available on `AbstractArray` objects:
-#' - [`dtype()`][tengen::dtype]: Get the data type of the array.
-#' - [`shape()`][tengen::shape]: Get the shape (axis sizes) of the array.
-#' - [`naxes()`][tengen::naxes]: Get the number of axes.
 #'
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
 #'   The data type of the array. For `nv_aval()` only, `"double"`,
@@ -1047,6 +1057,11 @@ print.IotaArray <- function(x, ...) {
 #'
 #' # neq_type is the negation of eq_type
 #' neq_type(a, b)
+#'
+#' # an RData has no data type, so it cannot be compared
+#' r <- RData(c(2L, 3L), "double")
+#' try(eq_type(a, r))
+#' try(neq_type(r, r))
 #' @export
 eq_type <- function(e1, e2) {
   if (!inherits(e1, "AbstractArray") || !inherits(e2, "AbstractArray")) {
@@ -1207,27 +1222,20 @@ is_shape <- function(x) {
 }
 
 
-#' @title Array-like Objects
+#' @title Array-Like Objects
 #' @description
 #' An `arrayish` value is anything that represents an [`AnvlArray`]
 #' or can be converted to one.
 #'
 #' Specifically, these values are `arrayish`:
 #' * [`AnvlArray`]: a concrete array holding data on a device.
+#' * [`GraphBox`]: the representation of an array during tracing, e.g. inside
+#'   a [`jit()`]ted function.
 #' * R objects:
 #'   * `numeric(1)` and `logical(1)` which represent scalars.
 #'   * `numeric` and `logical` R arrays.
 #'
 #' Use [`is_arrayish()`] to check whether a value is arrayish.
-#'
-#' The group words the parameter descriptions use are listed below;
-#' [`dtypes`] gives the categories they are built from, and
-#' [`default_dtypes()`] the default an R value materializes at.
-#'
-#' @details
-#' During `jit()`, [`GraphBox`] is also arrayish, but it is simply the
-#' trace-time representation of an `AnvlArray`.
-#' @template section_dtype_words
 #' @param x (`any`)\cr
 #'   Object to check.
 #' @param convert_ok (`logical(1)`)\cr
@@ -1253,7 +1261,7 @@ NULL
 #' @export
 is_arrayish <- function(x, convert_ok = TRUE) {
   ok <- inherits(x, "AnvlArray") ||
-    is_box(x)
+    is_graph_box(x)
 
   if (ok) {
     return(TRUE)
@@ -1266,11 +1274,14 @@ is_arrayish <- function(x, convert_ok = TRUE) {
 }
 
 
-#' @title Create an R array
+#' @title Create an R Array
 #' @description
 #' Create an R array without having to wrap data in `c()`
-#' @param ... (any)\cr
-#'   Values of new array.
+#' @param ... (atomic vectors)\cr
+#'   Values of the new array. They are combined with [`c()`], so vectors are
+#'   spliced in and the result takes the common R type of all values, and fill
+#'   the array in column-major order. A single value is recycled to fill all
+#'   of `shape`.
 #' @param shape (`NULL` | `integer()`)\cr
 #'   Shape of new array. If `NULL` (default), uses length of elements to create a 1D array.
 #' @return (`array`)
@@ -1278,6 +1289,10 @@ is_arrayish <- function(x, convert_ok = TRUE) {
 #' @examples
 #' arr(1, 2, 3)
 #' arr(1, 2, 3, 4, shape = c(2, 2))
+#' # vectors are spliced in
+#' arr(1:3, 4L)
+#' # a single value fills the whole shape
+#' arr(0, shape = c(2, 3))
 arr <- function(..., shape = NULL) {
   vals <- c(...)
   if (is.null(vals)) {

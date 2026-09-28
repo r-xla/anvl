@@ -1,14 +1,3 @@
-#' @title AnvlBox
-#' @description
-#' Virtual S3 base class for [`GraphBox`].
-#' @seealso [GraphBox]
-#' @name AnvlBox
-NULL
-
-is_box <- function(x) {
-  inherits(x, "AnvlBox")
-}
-
 abort_box_to_r <- function(x, fn) {
   cli_abort(
     c(
@@ -21,65 +10,71 @@ abort_box_to_r <- function(x, fn) {
 }
 
 #' @export
-as_array.AnvlBox <- function(x, ...) {
+as_array.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as_array")
 }
 
 #' @export
-as_raw.AnvlBox <- function(x, ...) {
+as_raw.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as_raw")
 }
 
-#' @method as.array AnvlBox
+#' @method as.array GraphBox
 #' @export
-as.array.AnvlBox <- function(x, ...) {
+as.array.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.array")
 }
 
-#' @method as.matrix AnvlBox
+#' @method as.matrix GraphBox
 #' @export
-as.matrix.AnvlBox <- function(x, ...) {
+as.matrix.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.matrix")
 }
 
-#' @method as.vector AnvlBox
+#' @method as.vector GraphBox
 #' @export
-as.vector.AnvlBox <- function(x, mode = "any") {
+as.vector.GraphBox <- function(x, mode = "any") {
   abort_box_to_r(x, "as.vector")
 }
 
-#' @method as.list AnvlBox
+#' @method as.list GraphBox
 #' @export
-as.list.AnvlBox <- function(x, ...) {
+as.list.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.list")
 }
 
-#' @method as.double AnvlBox
+#' @method as.double GraphBox
 #' @export
-as.double.AnvlBox <- function(x, ...) {
+as.double.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.double")
 }
 
-#' @method as.integer AnvlBox
+#' @method as.integer GraphBox
 #' @export
-as.integer.AnvlBox <- function(x, ...) {
+as.integer.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.integer")
 }
 
-#' @method as.logical AnvlBox
+#' @method as.logical GraphBox
 #' @export
-as.logical.AnvlBox <- function(x, ...) {
+as.logical.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.logical")
 }
 
-#' @method as.character AnvlBox
+#' @method as.raw GraphBox
 #' @export
-as.character.AnvlBox <- function(x, ...) {
+as.raw.GraphBox <- function(x) {
+  abort_box_to_r(x, "as.raw")
+}
+
+#' @method as.character GraphBox
+#' @export
+as.character.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.character")
 }
 
-#' @method as.integer64 AnvlBox
+#' @method as.integer64 GraphBox
 #' @exportS3Method bit64::as.integer64
-as.integer64.AnvlBox <- function(x, ...) {
+as.integer64.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "bit64::as.integer64")
 }

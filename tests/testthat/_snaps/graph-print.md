@@ -156,21 +156,21 @@
     Output
       [1] "1"           "drop = TRUE"
 
-# format.PrimitiveCall() / renders its params the way a graph body does
+# format.GraphStatement() / renders its params the way a graph body does
 
     Code
-      cat(format(graph$calls[[1L]]))
+      cat(format(graph$statements[[1L]]))
     Output
       max(i32[10]) [axes = 1, drop = TRUE] -> i32[]
 
-# format.PrimitiveCall() / leaves out the bracket list of a call that carries no params
+# format.GraphStatement() / leaves out the bracket list of a call that carries no params
 
     Code
-      cat(format(graph$calls[[1L]]))
+      cat(format(graph$statements[[1L]]))
     Output
       add(f32[], f32[]) -> f32[]
 
-# format.PrimitiveCall() / keeps a sub-graph param to its signature, having no graph to name it against
+# format.GraphStatement() / keeps a sub-graph param to its signature, having no graph to name it against
 
     Code
       cat(format(call))

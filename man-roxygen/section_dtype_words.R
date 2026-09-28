@@ -8,5 +8,3 @@
 #' * *integer* -- signed and unsigned integer.
 #' * *integerish* -- boolean and integer, signed or unsigned.
 #' * *signed numeric* -- signed integer and float.
-#' * *float* -- the whole float category: `f32` and `f64`.
-#' * *boolean* -- `bool`, the only member of its category.

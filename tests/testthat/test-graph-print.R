@@ -142,11 +142,11 @@ describe("format_param_parts()", {
   })
 })
 
-describe("format.PrimitiveCall()", {
+describe("format.GraphStatement()", {
   it("renders its params the way a graph body does", {
     local_registered_default_dtypes()
     graph <- trace_fn(function(x) nv_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
-    expect_snapshot(cat(format(graph$calls[[1L]])))
+    expect_snapshot(cat(format(graph$statements[[1L]])))
   })
 
   it("leaves out the bracket list of a call that carries no params", {
@@ -154,11 +154,11 @@ describe("format.PrimitiveCall()", {
       function(x, y) x + y,
       list(x = nv_scalar(1, dtype = "f32"), y = nv_scalar(2, dtype = "f32"))
     )
-    expect_snapshot(cat(format(graph$calls[[1L]])))
+    expect_snapshot(cat(format(graph$statements[[1L]])))
   })
 
   it("keeps a sub-graph param to its signature, having no graph to name it against", {
-    call <- Filter(\(cl) cl$primitive$name == "while", nested_graph()$calls)[[1L]]
+    call <- Filter(\(cl) cl$primitive$name == "while", nested_graph()$statements)[[1L]]
     expect_snapshot(cat(format(call)))
   })
 })
@@ -171,7 +171,7 @@ describe("format.AnvlGraph()", {
 
   it("gives every node in the tree exactly one name", {
     graph <- nested_graph()
-    ids <- unlist(hashvalues(build_node_ids(graph$inputs, graph$constants, graph$calls)))
+    ids <- unlist(hashvalues(build_node_ids(graph$inputs, graph$constants, graph$statements)))
     expect_equal(anyDuplicated(ids), 0L)
   })
 
@@ -335,7 +335,7 @@ describe("format.GraphDescriptor()", {
     descriptor <- NULL
     trace_fn(
       function(x) {
-        descriptor <<- .current_descriptor()
+        descriptor <<- current_descriptor()
         x + 1
       },
       list(x = nv_scalar(1, dtype = "f32"))

@@ -2,6 +2,15 @@
 
 ## Breaking changes
 
+* `PrimitiveCall` is now `GraphStatement`, and the `calls` field of `AnvlGraph`
+  and `GraphDescriptor` is now `statements`.
+* `AnvlBox` is gone; `GraphBox` is the class of a traced value.
+* `at2vt()` and `vt()` are no longer exported.
+* `.current_descriptor()` is now `current_descriptor()`.
+* The primitive classes are renamed: the definition that holds the rules is
+  now `AnvlPrimitiveDef` (was `AnvlPrimitive`), and the function a primitive
+  is called through is now `AnvlPrimitive` (was `JitPrimitive`). It carries
+  its definition as `attr(<fn>, "definition")` (was `"primitive"`).
 * `nv_div()` and `/` convert integer and boolean operands to the default float,
   like base R: `7L / 2L` is `3.5`. Use `%/%` for integer division.
 * The element-wise `nv_max()` / `nv_min()` and `prim_max()` / `prim_min()` are
@@ -155,6 +164,10 @@
 * `nv_subset_assign()` and `[<-` gain `inplace`, which writes into the memory of
   `x` instead of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
 * New `axes()` returns the axis indices of an array, `seq_len(naxes(x))`.
+* `as.raw()` converts an `AnvlArray` of an integer data type to a raw vector,
+  like `base::as.raw()`; `as_raw()` still returns its bytes.
+* `as.array()` on a scalar `AnvlArray` returns a 1-D array, like
+  `base::as.array()`; `as.array()` and `as.matrix()` gain `check`.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.

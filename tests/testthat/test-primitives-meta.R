@@ -54,10 +54,10 @@ test_that("the call an inference error reports is a function that exists", {
   exported <- nms[grepl("^prim_", nms)]
   for (nm in exported) {
     obj <- getFromNamespace(nm, "anvl")
-    if (!inherits(obj, "JitPrimitive")) {
+    if (!inherits(obj, "AnvlPrimitive")) {
       next
     }
-    reported <- deparse(print_call_repr(attr(obj, "primitive")))
+    reported <- deparse(print_call_repr(attr(obj, "definition")))
     expect_identical(reported, paste0(nm, "()"), info = nm)
   }
 })

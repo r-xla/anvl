@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{naxes}
 \alias{naxes}
-\title{Get the number of axes of an array}
+\title{Get the Number of Axes of an Array}
 \usage{
 naxes(x)
 }

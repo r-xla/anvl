@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend-quickr.R
 \name{quickr_device}
 \alias{quickr_device}
-\title{Quickr device}
+\title{Quickr Device}
 \usage{
 quickr_device(x = "cpu")
 }

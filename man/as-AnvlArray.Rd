@@ -6,6 +6,7 @@
 \alias{as.integer.AnvlArray}
 \alias{as.integer64.AnvlArray}
 \alias{as.logical.AnvlArray}
+\alias{as.raw.AnvlArray}
 \alias{as.vector.AnvlArray}
 \title{Coerce AnvlArray to an R Vector}
 \usage{
@@ -16,6 +17,8 @@
 \method{as.integer64}{AnvlArray}(x, check = "warn", ...)
 
 \method{as.logical}{AnvlArray}(x, check = "warn", ...)
+
+\method{as.raw}{AnvlArray}(x)
 
 \method{as.vector}{AnvlArray}(x, mode = "any")
 }
@@ -34,7 +37,7 @@ dtype. Only present because \code{\link[base:as.vector]{base::as.vector()}}'s si
 pick an R type with one of the other methods instead.}
 }
 \value{
-(\code{double()} | \code{integer()} | \code{logical()} | \code{\link[bit64:integer64]{bit64::integer64}})\cr
+(\code{double()} | \code{integer()} | \code{logical()} | \code{raw()} | \code{\link[bit64:integer64]{bit64::integer64}})\cr
 The elements of \code{x} in column-major order, without a shape.
 }
 \description{
@@ -50,6 +53,9 @@ signed, so a \code{ui64} value \verb{>= 2^63} wraps to a negative one (exactly
 \code{2^63} becomes \code{NA}); that is warned about, and \code{check = "err"} makes it
 an error.
 \item \code{as.logical()}: \code{bool}.
+\item \code{as.raw()}: signed or unsigned integer dtypes. Like \code{\link[base:as.raw]{base::as.raw()}} it
+converts the values, so a value outside \code{0} to \code{255} becomes \code{00} with a
+warning. Use \code{\link[=as_raw]{as_raw()}} for the bytes the array is stored as.
 \item \code{as.vector()}: any dtype; the R type is chosen by the dtype. For the
 dtypes R has no native type for (\code{i64}, \code{ui64}, \code{ui32}) that is the
 \code{\link[bit64:integer64]{bit64::integer64}} \code{\link[=as_array]{as_array()}} returns, since a bare double could
@@ -59,9 +65,9 @@ not hold the values -- and it keeps its class, so \code{is.vector()} is
 
 Use \code{\link[=as_array]{as_array()}} to obtain an R array that preserves the shape, or
 \code{\link[=nv_convert]{nv_convert()}} to change the dtype of an \code{\link{AnvlArray}} before coercing.
-\code{as.vector()}'s signature is fixed by the generic, so it takes no \code{check}
-argument and always reports at the default level; call \code{\link[=as_array]{as_array()}}
-directly to pick another one.
+The signatures of \code{as.vector()} and \code{as.raw()} are fixed by their generics,
+so they take no \code{check} argument and always report at the default level;
+call \code{\link[=as_array]{as_array()}} directly to pick another one.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -70,6 +76,7 @@ as.numeric(x)
 as.integer(nv_array(1:6, shape = c(2L, 3L)))
 bit64::as.integer64(nv_array(1:6, shape = c(2L, 3L), dtype = "i64"))
 as.logical(nv_array(c(TRUE, FALSE), dtype = "bool"))
+as.raw(nv_array(c(1L, 255L), dtype = "ui8"))
 as.vector(x)
 \dontshow{\}) # examplesIf}
 }

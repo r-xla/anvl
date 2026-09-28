@@ -2,14 +2,13 @@
 % Please edit documentation in R/reexports.R
 \name{dtype}
 \alias{dtype}
-\title{Get the data type of an array}
+\title{Get the Data Type of an Array}
 \usage{
 dtype(x, ...)
 }
 \arguments{
 \item{x}{(\code{\link{AnvlArray}} | \code{\link{GraphBox}} | \code{\link{AbstractArray}})\cr
-An array. An R value has no data type of its own, so it is an error here;
-use \code{\link[=peek_dtype]{peek_dtype()}} for the data type it would take.}
+An array. See Details for the values that have no data type.}
 
 \item{...}{Additional arguments passed to methods (unused).}
 }
@@ -20,14 +19,28 @@ use \code{\link[=peek_dtype]{peek_dtype()}} for the data type it would take.}
 Returns the data type of an array (e.g. \code{f32}, \code{i64}).
 }
 \details{
+An R value has no data type of its own: it only takes one when it meets a
+typed array, or when it materializes at the default. So \code{dtype()} is an
+error for a plain R value, and also for an \code{\link{RData}}, the \code{\link{AbstractArray}}
+of an R value passed to a jit-compiled function, and so for the
+\code{\link{GraphBox}} that carries one during tracing. Use \code{\link[=peek_dtype]{peek_dtype()}} for the
+data type such a value would take.
+
 This is implemented via the generic \code{\link[tengen:dtype]{tengen::dtype()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:4, dtype = "f32")
 dtype(x)
+# an R value passed to a jit-compiled function has no data type
+try(jit(dtype)(1))
+# an array passed to it does
+jit(function(x) {
+  print(dtype(x))
+  x
+})(nv_scalar(1))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[tengen:dtype]{tengen::dtype()}}, \code{\link[=peek_dtype]{peek_dtype()}}
+\code{\link[tengen:dtype]{tengen::dtype()}}, \code{\link[=peek_dtype]{peek_dtype()}}, \link{RData}
 }

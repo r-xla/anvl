@@ -39,13 +39,7 @@ categories they name.
 \details{
 Inside a \code{\link[=jit]{jit()}}ted body the defaults the program was keyed on are the
 \emph{baseline} and an override applies to its scope, so one program can use
-different precisions in different parts of itself. Only that baseline is
-part of the compilation cache key, so \strong{an override in a body must not
-change between calls: write it out literally rather than reading it from a
-variable.} \code{with_default_dtypes(c(float = prec), ...)} with a \code{prec} that
-later changes keeps serving the program traced at the first value, exactly
-as a changing \code{dtype} argument would -- and just as silently. Nothing
-checks this for you.
+different precisions in different parts of itself.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

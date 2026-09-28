@@ -648,7 +648,7 @@ common_dtype_of <- function(..., .fallback = NULL) {
 
 
 #' @title Data Type Categories
-#' @name dtypes
+#' @name dtype_categories
 #' @description
 #' For promotion, every data type belongs to one of three categories, ordered
 #' boolean < integer < float:
@@ -663,26 +663,34 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' that names `int` and `uint` separately.
 #'
 #' @template section_dtype_words
-#' @section Where a Data Type Comes From:
-#' An R value has no data type of its own. Where nothing in the program says
-#' which one it should take, it materializes at the default of its category, which
+#' @section Data Types for R Values:
+#' An R value has no data type of its own. Within its own category, it takes the
+#' data type of the array it meets, and is built at it directly rather than
+#' converted to it, which is what keeps `nv_scalar(1, "f64") / sqrt(2)` exact.
+#' Where it meets nothing, it settles on the default of its category, which
 #' [`default_dtypes()`] reports and the `anvl.default_dtypes` option
-#' configures. [`peek_dtype()`] reports the default a given R value would
-#' materialize at.
+#' configures. [`peek_dtype()`] reports the data type a given R value would
+#' take.
 #'
-#' The same defaults settle the data type of a result anvl chooses on its own,
-#' where no R value is involved at all: an index (`nv_which_max()`,
-#' `nv_order()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
-#' the accumulator a boolean input is counted at (`nv_sum()`,
-#' `nv_prod()`, `nv_cumsum()`, `nv_cumprod()`, `nv_trace()`), and the
-#' float a non-float input is averaged or interpolated at (`nv_mean()`,
-#' `nv_var()`, `nv_sd()`, `nv_median()`, `nv_quantile()`).
+#' The same defaults are used wherever a function needs a data type that its
+#' inputs do not give it. `nv_exp()` computes an integer input at the default
+#' float, and `nv_add()` of an integer array and a double R value promotes to
+#' the default float.
 #'
-#' Within its own category an R value assumes the data type it meets instead,
-#' and is built at it directly rather than converted to it, which is what keeps
-#' `nv_scalar(1, "f64") / sqrt(2)` exact. The primitives require operands that
-#' have a data type to agree on it; the `nv_*` functions promote them to a
-#' common one.
+#' The primitives require operands that have a data type to agree on it; the
+#' `nv_*` functions promote them to a common one.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(1:3, dtype = "i16")
+#' # an R value takes the data type of the array it meets
+#' dtype(x + 1L)
+#' # and settles on the default of its category when it meets nothing
+#' dtype(nv_add(1L, 2L))
+#' peek_dtype(1)
+#' # a double meeting an integer array promotes to the default float
+#' dtype(x + 0.5)
+#' # an integer input to a float function computes at the default float
+#' dtype(nv_exp(x))
+#' with_default_dtypes(c(float = "f64"), dtype(nv_exp(x)))
 #' @seealso [`default_dtypes()`], [`common_dtype()`],
 #'   [`nv_promote_to_common()`], [`nv_convert()`],
 #'   `r roxy_article("type-promotion")`

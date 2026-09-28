@@ -2,7 +2,7 @@
 #' @include device.R
 #' @include array.R
 #' @include utils.R
-#' @title JIT compile a function
+#' @title JIT Compile a Function
 #' @description
 #' Wraps a function so that it is traced and compiled on first call. Subsequent
 #' calls with the same input structure, shapes, and dtypes hit an LRU cache and
@@ -30,13 +30,19 @@
 #'   The default (`NULL`) infers the device at call time from the array inputs,
 #'   falling back to [`default_device()`].
 #'
-#' @param ... Backend-specific options. See the **PJRT JIT arguments** and
-#'   **Quickr JIT arguments** sections below for the options each backend
-#'   accepts. An option no backend takes is rejected here; one that only
-#'   another backend takes is rejected when the function is called on a backend
-#'   that does not, since the backend is not known until then.
-#' @inheritSection AnvlBackendPjrt PJRT JIT arguments
-#' @inheritSection AnvlBackendQuickr Quickr JIT arguments
+#' @param ... Backend-specific options:
+#'   * `donate` (`character()`, default `character()`), `"pjrt"` only: names of
+#'     arguments whose buffers the compiled program may reuse for its outputs.
+#'     A donated array must not be used again after the call; this can save
+#'     memory and copies for large inputs. Must not overlap with `static`.
+#'   * `unwrap` (`logical(1)`, default `FALSE`), `"quickr"` only: if `TRUE`,
+#'     the compiled function returns plain R arrays instead of
+#'     [`AnvlArray`]s, which is useful when the output is consumed by non-anvl
+#'     R code.
+#'
+#'   An option no backend takes is rejected here; one that only another
+#'   backend takes is rejected when the function is called on a backend that
+#'   does not, since the backend is not known until then.
 #'
 #' @section Backend and device:
 #' A jitted function runs on the active backend *when it is called*
@@ -74,12 +80,42 @@
 #' f <- jit(function(x, y) x + y)
 #' f(nv_array(1), nv_array(2))
 #'
+#' # A non-static R value is an input of the program, just like an array: a
+#' # new value reuses the compiled program
+#' scale <- jit(function(x, n) x * n)
+#' scale(nv_array(1:3), 2)
+#' scale(nv_array(1:3), 3)
+#' jit_cache_size(scale)
+#'
+#' # A static R value is embedded as a constant, so each new value compiles a
+#' # new program
+#' scale_static <- jit(function(x, n) x * n, static = "n")
+#' scale_static(nv_array(1:3), 2)
+#' scale_static(nv_array(1:3), 3)
+#' jit_cache_size(scale_static)
+#'
 #' # static arguments enable data-dependent control flow
 #' g <- jit(function(x, flag) {
 #'   if (flag) x + 1 else x * 2
 #' }, static = "flag")
 #' g(nv_array(3), TRUE)
 #' g(nv_array(3), FALSE)
+#'
+#' # R values that meet no typed array take the default data types, which are
+#' # read when the function is called
+#' half <- jit(function(x) x / 2)
+#' half(1)
+#' with_default_dtypes(c(float = "f64"), half(1))
+#' # or pin the data types of a function with `with_dtypes()`
+#' half_f64 <- with_dtypes(half, c(float = "f64"))
+#' half_f64(nv_array(1, dtype = "f32"))
+#'
+#' # a donated input's buffer is reused for the output, so the input must not
+#' # be used afterwards
+#' step <- jit(function(x) x + 1L, donate = "x")
+#' x <- nv_array(1:3)
+#' step(x)
+#' try(as_array(x))
 #'
 #' @examplesIf requireNamespace("quickr", quietly = TRUE)
 #' # the same function runs on whichever backend is active when it is called
@@ -183,7 +219,7 @@ jit_config <- function(f) {
   environment(f)$.jit_cfg
 }
 
-#' @title Number of cached programs of a jitted function
+#' @title Number of Cached Programs of a Jitted Function
 #' @description
 #' The number of compiled programs a function returned by [`jit()`] currently
 #' holds for one backend, i.e. how many entries of its compilation cache are
@@ -438,9 +474,11 @@ static_path <- function(path, name, i) {
   }
 }
 
-# The devices of the call's array inputs, for compile_pjrt()'s device inference.
-# pjrt has already checked they agree; this only converts them to anvl devices.
-dispatch_arg_devices <- function(info) {
+# The device of the call's array inputs, for compile_pjrt()'s device inference,
+# or `NULL` when there are none. Without a fixed target device pjrt has already
+# checked that they all share one, so the first array's device is theirs.
+dispatch_arg_device <- function(info) {
   is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1L))
-  lapply(info$leaves[is_array], tengen::device)
+  first <- Position(isTRUE, is_array)
+  if (is.na(first)) NULL else tengen::device(info$leaves[[first]])
 }

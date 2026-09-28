@@ -49,12 +49,12 @@ The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
 Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
 no elements -- so \code{shape} is required there.
-To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = integer()}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 The data type at which to create the array: a \code{\link[tengen:DataType]{tengen::DataType}} or one
-of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. \code{data} is built at it rather than converted to it,
-and a value it cannot hold at all is an error (\code{nv_array(3e9, dtype = "i32")} overflows); a \code{double} at an integer data type is truncated.
+of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64.
+A value it cannot hold at all is an error (\code{nv_array(3e9, dtype = "i32")} overflows). A \code{double} at an integer data type is truncated.
 The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} of
 \code{data}'s category. \code{\link[=nv_empty]{nv_empty()}}, which has no \code{data}, requires it.}
 
@@ -75,7 +75,7 @@ The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 \item{byrow}{(\code{logical(1)})\cr
 When constructing from an R object and the result has at least two
 axes, fill the array in row-major order rather than the
-default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'s \code{byrow}.
+default column-major order.
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
 

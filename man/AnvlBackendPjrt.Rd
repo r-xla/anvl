@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend-pjrt.R
 \name{AnvlBackendPjrt}
 \alias{AnvlBackendPjrt}
-\title{PJRT backend}
+\title{PJRT Backend}
 \usage{
 AnvlBackendPjrt()
 }
@@ -50,17 +50,6 @@ a mode that replaces subnormal inputs and results with zero. The exact
 behavior depends on the platform, backend, and operation.
 
 See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for an explanation and examples.
-}
-
-\section{PJRT JIT arguments}{
-
-\itemize{
-\item \code{donate} (\code{character()}, default \code{character()}): names of arguments whose
-underlying buffers may be donated to (i.e., reused/consumed by) the
-compiled XLA executable. Donated buffers must not be used again by the
-caller after the call; this can reduce memory usage and copies for large
-inputs. Must not overlap with \code{static}.
-}
 }
 
 \seealso{
