@@ -980,7 +980,7 @@ prim_reduce <- new_primitive(
       nv_aval(op_dtype, integer())
     )
     reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red, mode = "subgraph")
-    captures <- close_subgraphs(current_desc, list(reducer_graph))
+    captures <- close_over(current_desc, list(desc_red), list(reducer_graph))
 
     graph_desc_add(
       self,
@@ -2546,7 +2546,7 @@ prim_if <- new_primitive(
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
-    captures <- close_subgraphs(current_desc, list(true_graph, false_graph))
+    captures <- close_over(current_desc, list(desc_true, desc_false), list(true_graph, false_graph))
 
     out <- graph_desc_add(
       self,
@@ -2637,7 +2637,7 @@ prim_while <- new_primitive(
 
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
-    captures <- close_subgraphs(current_desc, list(cond_graph, body_graph))
+    captures <- close_over(current_desc, list(desc_cond, desc_body), list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
@@ -2772,7 +2772,7 @@ prim_scan <- new_primitive(
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
-    captures <- close_subgraphs(current_desc, list(body_graph))
+    captures <- close_over(current_desc, list(desc_body), list(body_graph))
 
     infer_fn <- function(..., body, steps, reverse, n_carry, n_xs) {
       ins <- list(...)
@@ -3212,7 +3212,7 @@ prim_scatter <- new_primitive(
     )
 
     update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update, mode = "subgraph")
-    captures <- close_subgraphs(current_desc, list(update_fn_graph))
+    captures <- close_over(current_desc, list(desc_update), list(update_fn_graph))
 
     out <- graph_desc_add(
       self,
