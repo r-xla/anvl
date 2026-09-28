@@ -145,7 +145,8 @@ AnvlGraph <- function(
   constants = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  rdata_types = NULL
+  rdata_types = NULL,
+  n_captures = 0L
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -158,6 +159,9 @@ AnvlGraph <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$rdata_types <- rdata_types
+  # How many of `inputs`, at the end, are values a sub-graph closed over (see
+  # `close_subgraphs()`); only printing tells them apart.
+  env$n_captures <- n_captures
 
   structure(env, class = "AnvlGraph")
 }
@@ -567,28 +571,60 @@ get_box_or_register_const <- function(desc, x) {
   return(new_box)
 }
 
-# The values of an enclosing graph that `graphs` use. A sub-graph records such
-# a value among its own constants, where it is told apart from a materialized
-# constant by its abstract type: a `ConcreteArray` is an array the sub-graph
-# closed over and needs no more than its bytes, while an `AbstractArray` is the
-# output of a computation further out, which the enclosing graph has to be able
-# to trace dataflow through.
+# Closes the sub-graphs `graphs` of one higher-order call over what they
+# capture, and returns the boxes the call passes for it.
 #
-# Returned in a stable order, de-duplicated across the graphs, so a call can
-# list them as operands.
-subgraph_captures <- function(graphs) {
+# While a sub-graph is traced, a value from outside it -- the output of a call
+# of an enclosing graph, or an array closed over -- is recorded among its
+# `constants`. Here each of them becomes an input instead: every graph in
+# `graphs` gets one fresh input per value any of them captured, appended to its
+# own inputs in the same order, and its calls read that input in place of the
+# outer value. A sub-graph is then a pure function of its inputs, and a call of
+# it lists everything it reads among its operands: the call's own arguments
+# first, then the captures. The lowerings bind the inputs to the operands by
+# position, and a transform that rewires the operands has nothing else to
+# rewire.
+#
+# The graphs are modified in place (an `AnvlGraph` has reference semantics).
+# Returns the boxes of the captured values in `desc`, which in turn captures
+# them if it is itself a sub-graph that is being traced.
+close_subgraphs <- function(desc, graphs) {
   seen <- hashtab()
   captures <- list()
   for (graph in graphs) {
     for (gval in graph$constants) {
-      if (is_concrete_array(gval$aval) || !is.null(seen[[gval]])) {
-        next
+      if (is.null(seen[[gval]])) {
+        seen[[gval]] <- TRUE
+        captures[[length(captures) + 1L]] <- gval
       }
-      seen[[gval]] <- TRUE
-      captures[[length(captures) + 1L]] <- gval
     }
   }
-  captures
+  for (graph in graphs) {
+    fresh <- lapply(captures, function(gval) GraphValue(aval = abstract_aval(gval$aval)))
+    map <- hashtab()
+    for (i in seq_along(captures)) {
+      map[[captures[[i]]]] <- fresh[[i]]
+    }
+    substitute_gnodes(graph, map)
+    graph$inputs <- c(graph$inputs, fresh)
+    graph$n_captures <- length(fresh)
+    graph$constants <- list()
+  }
+  lapply(captures, function(gval) get_box_or_register_const(desc, gval))
+}
+
+# Replaces, in place, every node of `graph`'s calls and outputs that `map` has
+# an entry for. Nested sub-graphs are closed, so they reach an outer value only
+# through an operand of their call, and this graph's calls are all there is to
+# rewrite.
+substitute_gnodes <- function(graph, map) {
+  sub <- function(g) if (is_graph_literal(g)) g else map[[g]] %||% g
+  graph$calls <- lapply(graph$calls, function(call) {
+    call$inputs <- lapply(call$inputs, sub)
+    call
+  })
+  graph$outputs <- lapply(graph$outputs, sub)
+  invisible(graph)
 }
 
 register_inputs <- function(desc, inputs) {

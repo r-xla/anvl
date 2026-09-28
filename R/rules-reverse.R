@@ -559,18 +559,15 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
 # used by one branch alone gets a zero from the other.
 #
 # `pred` is a bool and carries no gradient; the other operands are the
-# branches' captures.
+# branches' inputs.
 prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   grads_in <- vector("list", length(inputs))
   needed <- which(unlist(required[-1L]))
   if (!length(needed)) {
     return(grads_in)
   }
-  graphs <- list(params$true, params$false)
-  bindings <- capture_bindings(graphs, inputs[-1L])
-  targets <- subgraph_captures(graphs)[needed]
   branch_vjp <- function(graph) {
-    function() graph_vjp(graph, targets, grads, bindings = bindings)
+    function() graph_vjp(graph, graph$inputs[needed], grads, inputs = inputs[-1L])
   }
   grads_in[needed + 1L] <- prim_if(
     inputs[[1L]],
@@ -597,16 +594,16 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   n_xs <- params$n_xs
   carry_idx <- seq_len(n_carry)
   xs_idx <- n_carry + seq_len(n_xs)
+  # The operands and the body's inputs line up: carry, `xs`, captures.
   cap_idx <- setdiff(seq_along(inputs), c(carry_idx, xs_idx))
+  caps <- inputs[cap_idx]
   n_out <- length(body$outputs) - n_carry
-  captures <- subgraph_captures(list(body))
-  bindings <- capture_bindings(list(body), inputs[cap_idx])
 
   taped <- prim_scan(
     init = inputs[carry_idx],
     xs = inputs[xs_idx],
     body = function(carry, x) {
-      outs <- graph_apply(body, c(carry, x), bindings)
+      outs <- graph_apply(body, c(carry, x, caps))
       list(carry = outs[carry_idx], out = c(outs[-carry_idx], carry))
     },
     steps = steps,
@@ -619,12 +616,12 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
     backward = function(inputs, outputs, grads, params, required) {
       required <- unlist(required)
       xs_needed <- xs_idx[required[xs_idx]]
-      cap_needed <- which(required[cap_idx])
-      carry_needed <- which(scan_carry_requires(body, required, carry_idx, xs_idx, cap_idx, captures))
+      cap_needed <- cap_idx[required[cap_idx]]
+      carry_needed <- which(scan_carry_requires(body, required, carry_idx))
       n_xs_needed <- length(xs_needed)
       n_cap <- length(cap_needed)
       n_carry_needed <- length(carry_needed)
-      targets <- c(body$inputs[c(carry_needed, xs_needed)], captures[cap_needed])
+      targets <- body$inputs[c(carry_needed, xs_needed, cap_needed)]
 
       # A scan needs a carry; where only `xs` is differentiated there is none
       # to thread, so a placeholder rides along.
@@ -632,7 +629,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
       pulled <- prim_scan(
         init = list(
           carry = grads[carry_needed],
-          caps = lapply(inputs[cap_idx][cap_needed], zeros_like),
+          caps = lapply(inputs[cap_needed], zeros_like),
           placeholder = placeholder
         ),
         xs = list(tape = tape, xs = inputs[xs_idx], out = grads[n_carry + seq_len(n_out)]),
@@ -643,8 +640,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
             body,
             targets,
             c(out_grads, x$out),
-            inputs = c(x$tape, x$xs),
-            bindings = bindings
+            inputs = c(x$tape, x$xs, caps)
           )
           list(
             carry = list(
@@ -662,7 +658,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
       grads_in <- vector("list", length(inputs))
       grads_in[carry_needed] <- pulled$carry$carry
       grads_in[xs_needed] <- pulled$out
-      grads_in[cap_idx[cap_needed]] <- pulled$carry$caps
+      grads_in[cap_needed] <- pulled$carry$caps
       grads_in
     }
   )
@@ -673,19 +669,13 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # required `xs` or capture, or another such slot. The set only grows, so this
 # reaches its fixed point within `n_carry` rounds. A slot outside it, such as
 # an RNG state or a counter, is neither differentiated nor has to be.
-scan_carry_requires <- function(body, required, carry_idx, xs_idx, cap_idx, captures) {
-  carry_req <- required[carry_idx]
+scan_carry_requires <- function(body, required, carry_idx) {
+  # The body's inputs line up with the call's operands.
+  seeds <- required
   repeat {
     seed <- hashtab()
-    for (g in body$constants) {
-      seed[[g]] <- FALSE
-    }
-    for (k in seq_along(captures)) {
-      seed[[captures[[k]]]] <- required[[cap_idx[[k]]]]
-    }
-    seeds_in <- c(carry_req, required[xs_idx])
     for (k in seq_along(body$inputs)) {
-      seed[[body$inputs[[k]]]] <- seeds_in[[k]]
+      seed[[body$inputs[[k]]]] <- seeds[[k]]
     }
     env <- propagate_requirements(body, seed)
     out_req <- vapply(
@@ -693,11 +683,11 @@ scan_carry_requires <- function(body, required, carry_idx, xs_idx, cap_idx, capt
       function(out) !is_graph_literal(out) && isTRUE(env[[out]]),
       logical(1L)
     )
-    grown <- carry_req | out_req
-    if (identical(grown, carry_req)) {
-      return(carry_req)
+    grown <- seeds[carry_idx] | out_req
+    if (identical(grown, seeds[carry_idx])) {
+      return(grown)
     }
-    carry_req <- grown
+    seeds[carry_idx] <- grown
   }
 }
 

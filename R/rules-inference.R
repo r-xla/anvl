@@ -1242,7 +1242,7 @@ reduced_shape <- function(x, axes, drop) {
   new_shape
 }
 
-infer_reduce <- function(x, init, axes, drop, reducer) {
+infer_reduce <- function(x, init, ..., axes, drop, reducer) {
   assert_arrays(x = x, init = init)
 
   if (length(shape(init)) != 0L) {
@@ -1623,6 +1623,7 @@ infer_scatter <- function(
   x,
   scatter_indices,
   update,
+  ...,
   update_window_axes,
   inserted_window_axes,
   x_batching_axes,
@@ -2290,10 +2291,11 @@ infer_cond <- function(pred, ..., true, false) {
 }
 
 infer_while <- function(..., cond, body) {
-  # The operands past the state are the sub-graphs' captures.
-  outs <- list(...)[seq_along(body$inputs)]
+  # The operands and the body's inputs past the state are its captures.
+  state_idx <- seq_along(body$outputs)
+  outs <- list(...)[state_idx]
   outs_body <- lapply(body$outputs, function(out) out$aval)
-  inputs_body <- lapply(body$inputs, function(inp) inp$aval)
+  inputs_body <- lapply(body$inputs[state_idx], function(inp) inp$aval)
   # `init` is a named list, so the loop state's names are the body's input
   # tree's child names. Read back rather than passed as a param: a param would
   # reach the lowering rules, which take the state positionally.

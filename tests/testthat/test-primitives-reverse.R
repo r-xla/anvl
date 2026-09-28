@@ -1291,4 +1291,20 @@ describe("prim_scan", {
     }
     expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(6, 24, 54))
   })
+
+  it("differentiates a value a nested scan closes over from two levels out", {
+    # The inner body reads `w` and the outer slice; both are threaded through
+    # the outer body as its inputs. loss = w * 2 * sum(x).
+    f <- function(x, w) {
+      outer <- function(carry, xs) {
+        inner <- function(c2, xs2) list(carry = list(b = c2$b + w * xs$v), out = NULL)
+        r <- prim_scan(list(b = carry$a), list(), inner, steps = 2L)
+        list(carry = list(a = r$carry$b), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), outer, steps = 3L)$carry$a
+    }
+    grads <- jit(gradient(f))(x, nv_scalar(2, "f64"))
+    expect_equal(as.numeric(grads$x), c(4, 4, 4))
+    expect_equal(as.numeric(grads$w), 12)
+  })
 })

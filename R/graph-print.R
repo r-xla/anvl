@@ -62,9 +62,8 @@ build_node_ids <- function(inputs, constants, calls) {
 }
 
 # Names the nodes of a graph and then, recursively, of its sub-graphs. One table
-# covers the whole tree: a sub-graph's constants are nodes it captured from the
-# graph around it, so letting them keep the name they already have is what shows
-# the capture. Every node is named by the outermost graph that reaches it.
+# covers the whole tree, so that no two nodes share a name; a node is named by
+# the outermost graph that reaches it.
 name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
   name_node <- function(node, counter, prefix) {
     if (!is.null(node_ids[[node]]) || is_graph_literal(node)) {
@@ -185,20 +184,18 @@ format_array_param <- function(x, digits = getOption("digits")) {
 }
 
 # A sub-graph as a single line: the data types it takes and returns. This is
-# what a sub-graph comes to where the whole graph cannot go -- printing one
-# outside the graph holding it would name its captures after a node table the
-# reader never sees.
+# what a sub-graph comes to where the whole graph cannot go -- outside the graph
+# holding it, its node names would refer to a table the reader never sees.
 format_graph_signature <- function(g) {
-  avals <- function(nodes) {
-    paste(vapply(nodes, \(node) format_aval_short(node$aval), character(1L)), collapse = ", ")
+  avals <- function(nodes, n_captures = 0L) {
+    join_parts(mark_captures(vapply(nodes, \(node) format_aval_short(node$aval), character(1L)), n_captures))
   }
-  sprintf("(%s) -> %s", avals(g$inputs), avals(g$outputs))
+  sprintf("(%s) -> %s", avals(g$inputs, g$n_captures), avals(g$outputs))
 }
 
 # A sub-graph param, printed in full. `node_ids` is the enclosing graph's table,
-# which is what lets a captured node keep its outer name; a graph formatted on
-# its own gets a table -- and typed captures -- of its own, there being no
-# enclosing graph to read them from.
+# so that the sub-graph's names do not clash with the graph around it; a graph
+# formatted on its own gets a table of its own.
 format_graph_param <- function(
   g,
   node_ids = NULL,
@@ -217,7 +214,8 @@ format_graph_param <- function(
     width = width,
     digits = digits,
     typed_captures = alone,
-    prefix_width = prefix_width
+    prefix_width = prefix_width,
+    n_captures = g$n_captures
   )
   paste(lines, collapse = "\n")
 }
@@ -232,7 +230,36 @@ call_chunk <- function(open, close, parts) {
 }
 
 inline_chunk <- function(chunk) {
-  paste0(chunk$open, paste(chunk$parts, collapse = ", "), chunk$close)
+  paste0(chunk$open, join_parts(chunk$parts), chunk$close)
+}
+
+# Parts are separated by commas, except before one that `mark_captures()`
+# marked: the `|` it starts with separates it instead.
+join_parts <- function(parts) {
+  if (!length(parts)) {
+    return("")
+  }
+  seps <- ifelse(startsWith(parts[-1L], "| "), " ", ", ")
+  paste0(parts[[1L]], paste0(seps, parts[-1L], collapse = ""))
+}
+
+# The last `n_captures` of `parts` stand for values a sub-graph closed over: a
+# `|` ahead of the first of them sets them apart from the arguments of its own,
+# in a sub-graph's inputs and in the operands of the call that passes them.
+mark_captures <- function(parts, n_captures) {
+  n_captures <- n_captures %||% 0L
+  if (n_captures > 0L) {
+    first <- length(parts) - n_captures + 1L
+    parts[[first]] <- paste0("| ", parts[[first]])
+  }
+  parts
+}
+
+# How many of a call's operands are captures: those of its sub-graphs, which
+# all take the same ones.
+call_n_captures <- function(call) {
+  subgraphs <- Filter(is_graph, call$params[call$primitive$subgraphs])
+  if (length(subgraphs)) subgraphs[[1L]]$n_captures else 0L
 }
 
 # Packs `parts` into rows no wider than `width`, breaking only at the commas
@@ -241,7 +268,8 @@ inline_chunk <- function(chunk) {
 # is itself multi-line (a sub-graph) takes a row alone, since nothing can share
 # a row with a last line that is not the row's own.
 fill_parts <- function(parts, width) {
-  pieces <- paste0(parts, c(rep(",", length(parts) - 1L), ""))
+  commas <- if (length(parts) > 1L) ifelse(startsWith(parts[-1L], "| "), "", ",") else character()
+  pieces <- paste0(parts, c(commas, ""))
   rows <- character()
   cur <- character()
   for (piece in pieces) {
@@ -325,6 +353,7 @@ format_call <- function(
   digits = getOption("digits")
 ) {
   input_ids <- vapply(call$inputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
+  input_ids <- mark_captures(input_ids, call_n_captures(call))
   output_ids <- vapply(call$outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
   output_types <- vapply(call$outputs, \(x) format_aval_short(x$aval), character(1L))
 
@@ -342,13 +371,13 @@ format_call <- function(
   paste(layout_row(chunks, indent, width), collapse = "\n")
 }
 
-# A graph as `[captures] (inputs) { <body> return <outputs> }`, headed by
-# `title` where it has one. The signature line carries what section headings
-# used to: the captures in brackets, the inputs in parens with their data types.
+# A graph as `[constants] (inputs) { <body> return <outputs> }`, headed by
+# `title` where it has one: the arrays it closed over in brackets, the inputs in
+# parens with their data types. A sub-graph has no constants -- what it closed
+# over are its last `n_captures` inputs, set apart by a `|`.
 #
-# `typed_captures` spells a captured node's data type too. Only a graph with
-# nothing around it needs that -- a sub-graph's captures are nodes of the graph
-# holding it, declared there, so naming them is enough.
+# `typed_captures` spells a constant's data type too, for a graph formatted on
+# its own.
 format_graph_lines <- function(
   inputs,
   constants,
@@ -360,7 +389,8 @@ format_graph_lines <- function(
   width = getOption("width", 80L),
   digits = getOption("digits"),
   typed_captures = FALSE,
-  prefix_width = 0L
+  prefix_width = 0L,
+  n_captures = 0L
 ) {
   indent <- "  "
   r_types <- rdata_types %||% rep(NA_character_, length(inputs))
@@ -376,6 +406,7 @@ format_graph_lines <- function(
     },
     character(1L)
   )
+  input_strs <- mark_captures(input_strs, n_captures)
   capture_strs <- vapply(
     constants,
     function(node) {
@@ -453,7 +484,7 @@ format_graph_body <- function(
 
 #' @export
 format.PrimitiveCall <- function(x, ..., digits = getOption("digits")) {
-  inputs <- paste(
+  inputs <- join_parts(mark_captures(
     vapply(
       x$inputs,
       function(inp) {
@@ -465,8 +496,8 @@ format.PrimitiveCall <- function(x, ..., digits = getOption("digits")) {
       },
       character(1L)
     ),
-    collapse = ", "
-  )
+    call_n_captures(x)
+  ))
   outputs <- paste(vapply(x$outputs, \(out) format_aval_short(out$aval), character(1L)), collapse = ", ")
   params_str <- if (length(x$params) > 0L) {
     sprintf(

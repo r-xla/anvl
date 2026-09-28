@@ -1,16 +1,13 @@
-traverse_gnodes <- function(graph, fn, graph_outputs = TRUE) {
+# Sub-graphs are closed -- what they read of this graph is an operand of their
+# call -- so the passes below never have to look into them.
+traverse_gnodes <- function(graph, fn) {
   for (call in graph$calls) {
     for (input in call$inputs) {
       fn(input)
     }
-    if (is_higher_order_primitive(call$primitive)) {
-      lapply(subgraphs(call), traverse_gnodes, fn = fn, graph_outputs = graph_outputs)
-    }
   }
-  if (graph_outputs) {
-    for (output in graph$outputs) {
-      fn(output)
-    }
+  for (output in graph$outputs) {
+    fn(output)
   }
 }
 
@@ -30,9 +27,6 @@ remove_unused_constants <- function(graph) {
   )
 
   is_used <- hashtab()
-  # here we assume that higher-order primitives capture their constants via
-  # lexical scoping and don't have constants of their own
-  # this means, the main graph contains all the constants that are used
   traverse_gnodes(new_graph, function(gval) {
     if (is_graph_value(gval) && is_concrete_array(gval$aval)) {
       is_used[[gval]] <- TRUE
@@ -46,7 +40,7 @@ remove_unused_constants <- function(graph) {
   new_graph
 }
 
-inline_scalarish_constants <- function(graph, map = NULL) {
+inline_scalarish_constants <- function(graph) {
   is_scalarish <- function(gval) {
     is_graph_value(gval) && is_concrete_array(gval$aval) && (nelts(gval$aval) == 1L)
   }
@@ -74,11 +68,9 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     rdata_types = graph$rdata_types
   )
 
-  # `map` answers "what did this node become", shared with the sub-graphs so a
-  # constant captured by several of them becomes the same literal.
-  map <- map %||% hashtab()
+  map <- hashtab()
   for (const in new_graph$constants) {
-    if (is_scalarish(const) && is.null(map[[const]])) {
+    if (is_scalarish(const)) {
       map[[const]] <- scalarish_to_lit(const)
     }
   }
@@ -95,15 +87,6 @@ inline_scalarish_constants <- function(graph, map = NULL) {
       replacement <- map[[pcall$inputs[[j]]]]
       if (!is.null(replacement)) {
         new_graph$calls[[i]]$inputs[[j]] <- replacement
-      }
-    }
-    if (is_higher_order_primitive(pcall$primitive)) {
-      subgraph_names <- pcall$primitive$subgraphs
-      for (name in subgraph_names) {
-        if (name %in% names(pcall$params)) {
-          new_subgraph <- inline_scalarish_constants(pcall$params[[name]], map)
-          new_graph$calls[[i]]$params[[name]] <- new_subgraph
-        }
       }
     }
   }
