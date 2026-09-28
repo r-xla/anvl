@@ -201,6 +201,17 @@ describe("nv_concatenate", {
       nv_concatenate(nv_array(1, shape = c(1, 1, 1)), nv_array(2, shape = c(1, 1)), axis = 1L)
     )
   })
+  it("broadcasts a scalar against arrays with several axes", {
+    x <- nv_matrix(1:4, nrow = 2)
+    expect_equal(
+      nv_concatenate(x, 9L, axis = 1L),
+      nv_matrix(c(1L, 2L, 9L, 3L, 4L, 9L), nrow = 3)
+    )
+    expect_equal(
+      nv_concatenate(x, 9L, axis = 2L),
+      nv_matrix(c(1:4, 9L, 9L), nrow = 2)
+    )
+  })
 })
 
 describe("nv_rbind", {
@@ -645,6 +656,28 @@ describe("nv_sign", {
 
   it("does not accept a boolean array", {
     expect_error(nv_sign(nv_array(TRUE)))
+  })
+})
+
+describe("nv_div", {
+  it("divides integers as floats, like base R", {
+    x <- nv_array(c(7L, -7L))
+    expect_dtype(nv_div(x, 2L), default_float())
+    expect_equal(as.vector(nv_div(x, 2L)), c(7L, -7L) / 2L, tolerance = 1e-6)
+    expect_equal(as.vector(x / nv_array(c(2L, 2L), dtype = "ui8")), c(3.5, -3.5), tolerance = 1e-6)
+  })
+
+  it("divides booleans as floats", {
+    expect_equal(as.vector(nv_div(nv_array(c(TRUE, FALSE)), 2L)), c(0.5, 0), tolerance = 1e-6)
+  })
+
+  it("keeps the data type of float operands", {
+    expect_dtype(nv_div(nv_array(c(1, 2), dtype = "f64"), 2L), "f64")
+  })
+
+  it("divides integers as floats under jit()", {
+    f <- jit(function(x, y) x / y)
+    expect_equal(as.vector(f(nv_array(c(1L, 3L)), nv_scalar(2L))), c(0.5, 1.5), tolerance = 1e-6)
   })
 })
 
@@ -2784,6 +2817,15 @@ describe("nv_mod", {
   it("is NaN for a zero divisor and passes NaN through, like base R", {
     lhs <- c(5, -5, 0, Inf, -Inf, NaN, 7)
     rhs <- c(0, 0, 0, 3, 3, 3, Inf)
+    expect_equal(
+      as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
+      lhs %% rhs
+    )
+  })
+
+  it("takes the sign of an infinite divisor, like base R", {
+    lhs <- c(5, -5, 5, -5, 0)
+    rhs <- c(Inf, Inf, -Inf, -Inf, Inf)
     expect_equal(
       as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
       lhs %% rhs

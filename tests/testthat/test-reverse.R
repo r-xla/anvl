@@ -157,6 +157,12 @@ test_that("gradient accepts integer positions for wrt", {
   expect_error(value_and_gradient(f, wrt = 0L), "out of range")
 })
 
+describe("value_and_gradient", {
+  it("rejects an f that is not a function", {
+    expect_error(value_and_gradient(1), "function")
+  })
+})
+
 test_that("wrt cannot be '...'", {
   f <- function(x, ...) x
   expect_error(gradient(f, wrt = "..."), "must not contain")

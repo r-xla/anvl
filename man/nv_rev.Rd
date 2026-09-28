@@ -6,6 +6,8 @@
 \title{Reverse}
 \usage{
 nv_rev(x, axes = NULL)
+
+\method{rev}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

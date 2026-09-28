@@ -6,6 +6,8 @@
 \title{Natural Logarithm}
 \usage{
 nv_log(x)
+
+\method{log}{AnvlArray}(x, base = exp(1))
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -13,6 +15,9 @@ One input. Can be any numeric data type: a float keeps its
 own, and an integer one is converted to the default float data type (see
 \code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
 \link[=default_dtypes]{default data type} and is converted in the same way.}
+
+\item{base}{(\code{numeric(1)} | \code{\link{arrayish}})\cr
+Base of the logarithm; the natural logarithm by default.}
 }
 \value{
 (\code{\link{arrayish}})\cr

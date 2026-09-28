@@ -6,6 +6,8 @@
 \title{Base-10 Logarithm}
 \usage{
 nv_log10(x)
+
+\method{log10}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

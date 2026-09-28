@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+* `nv_div()` and `/` convert integer and boolean operands to the default float,
+  like base R: `7L / 2L` is `3.5`. Use `%/%` for integer division.
 * The element-wise `nv_max()` / `nv_min()` and `prim_max()` / `prim_min()` are
   now `nv_pmax()` / `nv_pmin()` and `prim_pmax()` / `prim_pmin()`, following
   `base::pmax()` / `base::pmin()`.
@@ -154,6 +156,9 @@
   gradient is computed.
 * `prim_scan()` / `nv_scan()` are now differentiable, in time and memory
   linear in `steps`.
+* `nv_subset_assign()` and `[<-` gain `inplace`, which writes into the memory of
+  `x` instead of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
+* New `axes()` returns the axis indices of an array, `seq_len(naxes(x))`.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.
@@ -194,6 +199,17 @@
   when `from > to`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
+* `nv_subset()` and `nv_subset_assign()` (and hence `[` and `[<-`) support
+  boolean masks. A mask for a single axis selects the `TRUE` positions of
+  that axis (`x[arr(TRUE, FALSE, TRUE), ]`), while a mask with the shape of
+  the whole array selects across all axes and returns a 1-D result
+  (`x[x > 6]`). Because the number of selected elements determines the output
+  shape, a mask under `jit()` must be known at compile time: R logical arrays
+  and arrays created in or closed over by the function work, while a mask
+  computed from the function's inputs is an error.
+* Subsets that select no elements, such as an all-`FALSE` mask or
+  `x[array(integer(0)), ]`, now return a zero-sized array instead of failing
+  inside `prim_gather()` / `prim_scatter()`.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
   `nv_sample_int()`, `nv_sample()`) and `prim_rng_bit_generator()` return a
   named list with elements `state` and `values` instead of an unnamed pair,
@@ -242,7 +258,11 @@
   sub-graphs in full, and wrap long lines to the console width; `format()`
   takes `width` and `digits` arguments.
 * New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
-  and `nv_qunif()`.
+  and `nv_qunif()`, documented together with `nv_runif()` on `?nv_uniform`.
+* `nv_runif()`'s `min` and `max` now accept arrayish inputs, scalar or of the
+  sample's shape. Like base R's `runif()`, an invalid interval (`max < min`,
+  or a bound that is not finite) now gives `NaN` instead of an error. Note that
+  the RNG state now advances even on samples where `min == max`.
 
 ## Performance
 
@@ -261,6 +281,12 @@
   `prim_if()`, `prim_while()` or `prim_scan()` sub-graph closes over. A
   sub-graph now takes what it closes over as inputs, which its call passes as
   operands; printed graphs set them apart with a `|`.
+* A bare R integer start index of `prim_dynamic_slice()` /
+  `prim_dynamic_update_slice()` takes the data type of the other start indices,
+  so `prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)` no longer fails.
+* `nv_rnorm()` with a scalar `shape` and a non-scalar `mean` or `sd` returned
+  one draw shifted/scaled to the shape of `mean`/`sd`; it is now an error, as
+  any shape other than a scalar or `shape` already was.
 * Whatever a `prim_*()` refuses now reports that primitive as the call, rather
   than the helper that checked the argument or the anonymous function `jit()`
   wraps.
@@ -364,6 +390,16 @@
 * Improved the documentation and various error messages.
 * `nv_runif()` with `min == max` returns the `state` / `values` pair every
   other sampler returns, instead of the filled array on its own.
+* `nv_concatenate()` broadcasts a scalar against arrays with two or more axes
+  instead of failing.
+* `nv_mod()` matches base R's `%%` for an infinite divisor: `-5 %% Inf` is
+  `Inf`, not `0`.
+* `local_default_dtypes()` / `with_default_dtypes()` reject a category other
+  than `float` and `int`.
+* `value_and_gradient()` rejects an `f` that is not a function, as
+  `gradient()` does.
+* `local_backend()` / `with_backend()` reject the internal `"plain"` backend.
+* `trunc()` on an array rejects further arguments with a clear error.
 
 ## Tests
 

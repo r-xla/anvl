@@ -8,24 +8,23 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 }
 \arguments{
 \item{f}{(\code{function})\cr
-Function to compile. Must accept and return \code{\link{AnvlArray}}s (and/or
-static arguments).}
+Function to compile.}
 
 \item{static}{(\code{character()} | \code{integer()})\cr
 Names or positions of parameters of \code{f} that are \emph{not} arrays. Static values are
 embedded as constants in the compiled program; a new compilation is triggered whenever
 a static value changes. For example useful when you want R control flow in your function.
 
-Note that the values that are passed to static arguments must not have reference semantics.
-Such a value can be mutated in place while the cache key stays equal, which
-would silently reuse a program compiled from its old contents.
-One exception are closures, but there you need to ensure that their
-enclosing environment does not change in a way that modifies their behavior.}
+A static value must not have reference semantics: an environment or an
+external pointer, also inside a \code{list}, is an error, since it could be
+mutated in place while the cache key stays equal. Closures are allowed, but
+their enclosing environment must not change in a way that modifies their
+behavior.}
 
 \item{cache_size}{(\code{integer(1)})\cr
 Maximum number of compiled executables to keep in the LRU cache.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}})\cr
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 Target device, of the active backend. When a device is specified, all
 arrays are moved to it.
 
@@ -41,8 +40,6 @@ that does not, since the backend is not known until then.}
 \value{
 (\code{JitFunction})\cr
 A \code{function} with the same formals as \code{f}.
-The returned wrapper expects \code{\link{AnvlArray}} inputs and returns
-\code{\link{AnvlArray}} values.
 }
 \description{
 Wraps a function so that it is traced and compiled on first call. Subsequent
@@ -63,16 +60,14 @@ enforces that the function always uses it, e.g. \code{"cuda:0"}, and copies ever
 array input to it. With \code{device = NULL} (default) the device is inferred from
 the input arrays and the constants within the program; conflicting devices
 are an error, and with no array to read a device from the default device is
-used. A constructor that has no array to name a device declares the one it
-was asked for itself, see \code{\link[=graph_desc_add]{graph_desc_add()}}'s \code{device} argument.
+used.
 }
 
 \section{Default Data Types}{
 
 It is possible to configure the default data types for \code{float}s and \code{int}s
 via the \code{anvl.default_dtypes} option, see \code{\link[=default_dtypes]{default_dtypes()}}.
-Note that the defaults will be read at \emph{call-time}* and not when
-\code{jit()} is called.
+The defaults are read at \emph{call time}, not when \code{jit()} is called.
 
 To pin a jitted function to a pair of data types instead of letting it
 follow the configured defaults, wrap it in \code{\link[=with_dtypes]{with_dtypes()}}: the wrapper
@@ -117,6 +112,7 @@ g(nv_array(3), FALSE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 # the same function runs on whichever backend is active when it is called
+f <- jit(function(x, y) x + y)
 with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }

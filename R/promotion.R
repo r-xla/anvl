@@ -1,6 +1,6 @@
-#' @title Type Promotion Rules
+#' @title Common Data Type
 #' @description
-#' Compute the common data type.
+#' Compute the common data type of two data types.
 #'
 #' Two integer data types meet at one that holds every value of both: a signed
 #' and an unsigned one at the narrowest signed data type wide enough for the
@@ -10,7 +10,7 @@
 #' data type and the pair is an error. Convert one side with [`nv_convert()`]
 #' to decide what they meet at.
 #'
-#' See the *Type Promotion* article for more information.
+#' See `r roxy_article("type-promotion")` for more information.
 #' @param lhs_dtype,rhs_dtype ([`tengen::DataType`])\cr
 #'   The two data types.
 #' @return ([`tengen::DataType`])\cr
@@ -30,7 +30,10 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' Functions for materializing R values as arrays and promoting inputs.
 #' Most commonly used via the `.promote` argument of [`as_anvl_arrays()`].
 #' @param on (`NULL` | `character()` | `numeric()`)\cr
-#'   Subset of arguments to apply a rule to. Indicated either via position or argument name.
+#'   Subset of arguments to apply a rule to. Indicated either via position or
+#'   argument name. For `promotion_rule()`, `on` only declares which arguments
+#'   the rule covers (which [`promotion_grouped()`] needs to check that its
+#'   rules are disjoint); `fn` itself must restrict itself to them.
 #' @param coerce (`logical(1)`)\cr
 #'   Bring an input to the target even where that is not a promotion, instead of
 #'   raising an error. Two things are refused without it: a float reaching an
@@ -38,17 +41,15 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #'   `i32`, or an `f32` array at `i32`), and narrowing a value the target cannot
 #'   hold (an `f64` array at `f32`). The default is `FALSE`.
 #'
-#' @return (`function(args) -> list()`)
-#'   A function returning data types for those inputs to be converted and `NULL` for those
-#'   to be left unchanged.
+#' @return (`PromotionRule`)
 #' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
 NULL
 
 #' @description
 #' `promotion_common()` brings every input to their common data type
 #' ([`common_dtype()`]).
-#' R values always yield within the type category (such as float) and otherwise
-#' contribute their default data type.
+#' An R value takes the data type the arrays meet at when that is in its own or
+#' a higher category, and otherwise contributes its default data type.
 #' @param fallback (`NULL` | [`tengen::DataType`] | `character(1)`)\cr
 #'   The data type to settle on when *every* input is a bare R value, in place
 #'   of the default those would materialize at on their own. `NULL` (default)
@@ -112,6 +113,8 @@ promotion_like <- function(arg, on = NULL, coerce = FALSE) {
 #'   The data type to bring the inputs to.
 #' @rdname promotion_rule
 #' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' promotion_dtype("f64")(list(1, nv_scalar(2, "f32")))
 promotion_dtype <- function(dtype, on = NULL, coerce = FALSE) {
   assert_on(on)
   assert_flag(coerce)
@@ -128,15 +131,18 @@ promotion_dtype <- function(dtype, on = NULL, coerce = FALSE) {
 }
 
 #' @description
-#' `promotion_rdata_common()` brings the *R values* to the common data type, as
-#' long as it is within their category (a `double` can e.g. *not* become an
-#' integer).
-#' `AnvlArray` inputs are left as they are and the function throws an error
-#' if not all of them have exactly the same data type.
-#' This rule is commonly used in primitives expecting homogenous inputs
+#' `promotion_rdata_common()` brings the *R values* to the data type of the
+#' arrays among the inputs, which must all have the same one. An R value must
+#' be in that data type's category (a `double` can e.g. *not* become an
+#' integer). When all inputs are R values, they settle on their shared default
+#' data type; R values of different storage types are an error.
+#' This rule is commonly used in primitives expecting homogeneous inputs
 #' for one or more argument subsets.
 #' @rdname promotion_rule
 #' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' promotion_rdata_common()(list(nv_scalar(1, "f64"), 2))
+#' try(promotion_rdata_common()(list(nv_scalar(1L, "i32"), 2.5)))
 promotion_rdata_common <- function(on = NULL) {
   assert_on(on)
   promotion_rule(
@@ -147,11 +153,23 @@ promotion_rdata_common <- function(on = NULL) {
 }
 
 #' @description
-#' `promotion_grouped()` applies several rules to disjoint subsets.
-#' @param ... ([`PromotionRule`][promotion_rule])\cr
+#' `promotion_grouped()` applies several rules to disjoint subsets. The rules
+#' must all refer to arguments by name, or all by position.
+#' @param ... For `promotion_grouped()`: ([`PromotionRule`][promotion_rule])\cr
 #'   The rules to apply to disjoint argument subsets.
+#'
+#'   For `promotion_rule()`: (any)\cr
+#'   Further fields stored in the rule's `spec` attribute next to `on`, e.g. for
+#'   [`format()`] to show.
 #' @rdname promotion_rule
 #' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' rule <- promotion_grouped(
+#'   promotion_dtype("f64", on = "x"),
+#'   promotion_like("x", on = "y")
+#' )
+#' rule
+#' rule(list(x = 1, y = nv_scalar(2L, "i32"), z = 3L))
 promotion_grouped <- function(...) {
   rules <- list(...)
   if (!length(rules) || !all(vapply(rules, is_promotion_rule, logical(1L)))) {
@@ -181,9 +199,6 @@ rules_coverage <- function(rules) {
   if (any(vapply(covered, is.null, logical(1L)))) {
     return(NULL)
   }
-  if (length(unique(vapply(covered, function(x) is.character(x), logical(1L)))) > 1L) {
-    return(NULL)
-  }
   unlist(covered)
 }
 
@@ -200,16 +215,23 @@ assert_disjoint_rules <- function(rules) {
   if (any(undeclared)) {
     return(invisible(NULL))
   }
-  for (kind in c("character", "numeric")) {
-    refs <- unlist(Filter(function(x) is(x, kind), covered))
-    clashing <- unique(refs[duplicated(refs)])
-    if (length(clashing)) {
-      cli_abort(c(
-        "More than one rule in this {.fn promotion_grouped} covers the same argument.",
-        x = "{cli::qty(length(clashing))}Argument{?s} {.val {clashing}} {?is/are} named by more than one rule.",
-        i = "An argument can only be brought to one data type, so the groups must be disjoint."
-      ))
-    }
+  by_name <- vapply(covered, is.character, logical(1L))
+  if (any(by_name) && !all(by_name)) {
+    cli_abort(c(
+      "The rules in a {.fn promotion_grouped} must all refer to arguments by name, or all by position.",
+      x = "By name: {cli::qty(sum(by_name))}rule{?s} {.val {which(by_name)}}.",
+      x = "By position: {cli::qty(sum(!by_name))}rule{?s} {.val {which(!by_name)}}.",
+      i = "Whether a name and a position mean the same argument depends on the call, so the rules could not be checked to be disjoint." # nolint
+    ))
+  }
+  refs <- unlist(covered)
+  clashing <- unique(refs[duplicated(refs)])
+  if (length(clashing)) {
+    cli_abort(c(
+      "More than one rule in this {.fn promotion_grouped} covers the same argument.",
+      x = "{cli::qty(length(clashing))}Argument{?s} {.val {clashing}} {?is/are} named by more than one rule.",
+      i = "An argument can only be brought to one data type, so the groups must be disjoint."
+    ))
   }
   invisible(NULL)
 }
@@ -388,7 +410,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   The rule to apply; see [promotion_rule].
 #' @return (`list()`)\cr
 #'   `operands`, each materialized at the data type the rule named for it.
-#' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
+#' @seealso [promotion_rule], [new_primitive()], `r roxy_article("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # an R value takes the data type of the operand it meets
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
@@ -663,7 +685,7 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' common one.
 #' @seealso [`default_dtypes()`], [`common_dtype()`],
 #'   [`nv_promote_to_common()`], [`nv_convert()`],
-#'   `vignette("type-promotion")`
+#'   `r roxy_article("type-promotion")`
 NULL
 
 dtype_category <- function(dtype) {

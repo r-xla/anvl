@@ -6,6 +6,8 @@
 \title{Absolute Value}
 \usage{
 nv_abs(x)
+
+\method{abs}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

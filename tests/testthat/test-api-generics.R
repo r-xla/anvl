@@ -126,6 +126,13 @@ describe("trigamma", {
   })
 })
 
+describe("trunc", {
+  it("truncates like base R and rejects further arguments", {
+    expect_equal(as.vector(trunc(nv_array(c(1.5, -1.5), dtype = "f64"))), c(1, -1))
+    expect_error(trunc(nv_array(1.5), 1), "must be empty")
+  })
+})
+
 # Summary generics -------------------------------------------------------------
 
 describe("sum", {

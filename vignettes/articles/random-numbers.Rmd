@@ -1,10 +1,5 @@
 ---
 title: "Random Number Generation"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Random Number Generation}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -14,7 +9,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this vignette, you will learn how to generate random numbers in {anvl}, which is different from base R, where random number generation uses a global state (`.Random.seed`) that is automatically updated after each call:
+In this article, you will learn how to generate random numbers in {anvl}, which is different from base R, where random number generation uses a global state (`.Random.seed`) that is automatically updated after each call:
 
 ```{r}
 set.seed(42)
@@ -39,8 +34,8 @@ state <- nv_rng_state(42L)
 state
 ```
 
-The main functions for generating random numbers are `nv_runif()`, `nv_rnorm()`, `nv_rbinom()`, `nv_sample_int()`, and `nv_sample()`.
-All those functions return a named list of two elements:
+The available samplers are listed in the [distributions](../reference/index.html#distributions) section of the reference.
+All of them return a named list of two elements:
 
 1. `state` -- the **new** RNG state, to be used for subsequent random number
    generation.

@@ -6,6 +6,8 @@
 \title{Product Reduction}
 \usage{
 nv_prod(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
+
+\method{prod}{AnvlArray}(..., na.rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -23,6 +25,13 @@ set to 1 if \code{FALSE}.}
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
+
+\item{...}{(\code{\link{arrayish}})\cr
+The arrays to reduce, and, when there is only one, further named arguments
+of \code{\link[=nv_prod]{nv_prod()}}, such as \code{axes}.}
+
+\item{na.rm}{(\code{logical(1)})\cr
+Forwarded to \code{\link[=nv_prod]{nv_prod()}}'s \code{nan_rm} argument.}
 }
 \value{
 (\code{\link{arrayish}})\cr

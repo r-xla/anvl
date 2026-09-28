@@ -34,7 +34,8 @@ dtype. Only present because \code{\link[base:as.vector]{base::as.vector()}}'s si
 pick an R type with one of the other methods instead.}
 }
 \value{
-(\code{vector})
+(\code{double()} | \code{integer()} | \code{logical()} | \code{\link[bit64:integer64]{bit64::integer64}})\cr
+The elements of \code{x} in column-major order, without a shape.
 }
 \description{
 Convert an \code{\link{AnvlArray}} to a flat R vector, discarding the array's shape.

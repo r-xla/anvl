@@ -16,7 +16,7 @@ keeps its own, and an integer one is already whole and is returned
 unchanged. An R value materializes at its
 \link[=default_dtypes]{default data type} and is treated in the same way.}
 
-\item{...}{Further arguments of \code{\link[=nv_trunc]{nv_trunc()}}.}
+\item{...}{Not used; must be empty.}
 }
 \value{
 (\code{\link{arrayish}})\cr

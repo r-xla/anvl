@@ -19,7 +19,10 @@ If \code{NULL} (the default), the gradient is computed with respect to all
 arguments (which must all be arrayish in that case).}
 }
 \value{
-(\code{function})
+(\code{function})\cr
+Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}. Returns a
+named \code{list} of gradients, one per argument of \code{f} (or per \code{wrt} entry),
+each structured like that argument.
 }
 \description{
 Returns a new function that computes the gradient of \code{f} via reverse-mode automatic
