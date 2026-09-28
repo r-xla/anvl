@@ -31,7 +31,7 @@ default_dtypes()
 ```
 
 Converting an `AnvlArray` back to R with `as_array()` gives the R type that can represent its values, e.g. a `double` for an `f32`; see `?as_array` for the full list.
-Help pages name groups of data types that an argument accepts with single words, such as *numeric* or *integerish*, which `?dtypes` defines.
+Help pages name groups of data types that an argument accepts with single words, such as *numeric* or *integerish*, which `?dtype_categories` defines.
 
 The rest of this article covers which data type the result of an operation has when its inputs have different ones.
 

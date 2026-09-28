@@ -15,12 +15,11 @@ Authors@R: c(
            comment = c(ORCID = "https://orcid.org/0000-0001-9451-5010"))
   )
 Description: Accelerated array computing and code transformations for R.
-    Numerical programs operating on multi-dimensional arrays can be
-    just-in-time compiled to optimized executables via 'XLA' -- the same
-    compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or
-    NVIDIA GPU from the same source. Also provides reverse-mode automatic
-    differentiation, returning the gradient of a function as another R
-    function.
+    Numerical programs operating on arrays can be just-in-time compiled
+    to optimized executables via 'XLA' -- the same compiler that powers
+    'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the
+    same source. Also provides reverse-mode automatic differentiation,
+     returning the gradient of a function as another R function.
 License: MIT + file LICENSE
 URL: https://r-xla.github.io/anvl/, https://github.com/r-xla/anvl
 BugReports: https://github.com/r-xla/anvl/issues

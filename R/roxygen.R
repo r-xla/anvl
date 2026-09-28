@@ -83,7 +83,7 @@ roxy_agree <- function(...) {
   roxy_wrap(paste0(
     listed,
     " must have the same data type. An R value among them assumes the data type",
-    " of the others when it is in its [data type category][dtypes], and its",
+    " of the others when it is in its [data type category][dtype_categories], and its",
     " [default data type][default_dtypes] when none of them has one."
   ))
 }

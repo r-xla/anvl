@@ -2,7 +2,7 @@
 % Please edit documentation in R/graph-to-quickr.R
 \name{graph_to_quickr_function}
 \alias{graph_to_quickr_function}
-\title{Convert an AnvlGraph to a quickr-compiled function}
+\title{Convert an AnvlGraph to a Quickr-Compiled Function}
 \usage{
 graph_to_quickr_function(graph, unwrap = FALSE, flat = FALSE)
 }

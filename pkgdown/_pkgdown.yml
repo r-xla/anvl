@@ -107,13 +107,17 @@ reference:
       - as_array
       - as_raw
       - as-AnvlArray
-      - await
 
   - subtitle: Serialization
     desc: Functions for serializing and deserializing arrays
     contents:
       - nv_save
       - nv_serialize
+
+  - subtitle: Miscellaneous
+    contents:
+      - is_arrayish
+      - await
 
   - subtitle: Base R Generics
     desc: >
@@ -337,7 +341,7 @@ reference:
 
   - subtitle: Data Types
     contents:
-      - dtypes
+      - dtype_categories
       - as_dtype
       - is_dtype
       - common_dtype
@@ -366,26 +370,24 @@ reference:
     desc: Code transformations
     contents:
       - jit
-      - jit_cache_size
       - gradient
-      - value_and_gradient
 
   - title: Backend
     desc: Backend-related functionality and implementations
     contents:
       - backend
-      - active_backend
       - local_backend
-      - with_backend
-      - install_anvl
+      - AnvlBackendPjrt
+      - AnvlBackendQuickr
+
+  - title: Device
+    desc: Devices of the active backend and the default device
+    contents:
       - nv_device
       - default_device
       - local_default_device
       - is_device
       - quickr_device
-      - AnvlBackend
-      - AnvlBackendPjrt
-      - AnvlBackendQuickr
 
   - title: Miscellaneous
     desc: General-purpose helpers
@@ -393,6 +395,7 @@ reference:
       - arr
       - eq_type
       - neq_type
+      - map_tree
 
   - title: Internals
     desc: Internal data structures and functions
@@ -405,17 +408,10 @@ reference:
       - GraphValue
       - GraphBox
       - GraphLiteral
-      - AnvlBox
-      - graph_desc_add
+      - GraphStatement
       - local_descriptor
-      - .current_descriptor
+      - current_descriptor
       - subgraphs
-
-  - subtitle: Primitives
-    contents:
-      - new_primitive
-      - AnvlPrimitive
-      - PrimitiveCall
 
   - subtitle: Abstract Types
     contents:
@@ -432,7 +428,6 @@ reference:
     contents:
       - trace_fn
       - transform_gradient
-      - rule_reverse
       - graph_to_quickr_r_function
       - compile_pjrt
       - stablehlo
@@ -447,21 +442,29 @@ reference:
       - build_tree
       - tree_size
       - tree_path
-      - map_tree
-      - pmap_tree
 
   - subtitle: Miscellaneous
     contents:
-      - at2vt
-      - vt
-      - is_arrayish
+      - AnvlBackend
+      - active_backend
+      - jit_cache_size
       - Shape
 
   - title: Primitives
     desc: Low-level primitive operations (prim_* functions)
+
+  - subtitle: Construction
+    contents:
+      - new_primitive
+      - AnvlPrimitiveDef
+      - graph_desc_add
+      - rule_reverse
+
+  - subtitle: Implemented Primitives
     contents:
       - starts_with("prim_")
 
   - title: Package
     contents:
       - anvl-package
+      - install_anvl

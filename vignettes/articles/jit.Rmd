@@ -152,7 +152,7 @@ The next subsections each show what tracing does to particular R code and where 
 ### R loops are unrolled
 
 Tracing runs your R code and records primitive operations in the graph.
-Because `for` is not an {anvl} primitive, it will be executed as usual and all the primitive calls encountered will be recorded in the graph.
+Because `for` is not an {anvl} primitive, it will be executed as usual and every primitive call encountered will be recorded in the graph as a statement.
 Here we apply the `linear` function `n` times.
 
 ```{r}
@@ -168,7 +168,7 @@ The broadcast happens only once because by the second iteration `x` is already a
 The compiled executable will contain those five operations laid out one after another.
 For a different value of `n`, the loop would get unrolled for this specific iteration number.
 Long loops also lead to long compile times and large executables.
-You can instead use `nv_while()`, which records a single higher-order primitive call in the graph regardless of how many iterations the loop runs.
+You can instead use `nv_while()`, which records a single statement in the graph regardless of how many iterations the loop runs.
 
 ### R `if` statements pick one branch
 
@@ -287,7 +287,7 @@ The two most relevant options are:
 
 - **Inferred from inputs (default).** If you don't pass `device =`, {anvl} looks at the devices of the array inputs at call time, requires them to agree, and compiles for that device.
   If there are no array inputs, it falls back to the `default_device()`.
-- **Pinned at `jit()` time.** Passing a concrete device -- e.g. `jit(f, device = "cpu:0")` or `jit(f, device = nv_device("cuda:0"))` -- forces every call to run on that device.
+- **Pinned at `jit()` time.** Passing a concrete device -- e.g. `jit(f, device = "cpu")` or `jit(f, device = nv_device("cuda:0"))` -- forces every call to run on that device.
   Inputs living on a different device are copied over automatically.
 
 See the documentation of the `device` arg in `help(jit)` for more information.

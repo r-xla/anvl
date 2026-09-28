@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{is_dtype}
 \alias{is_dtype}
-\title{Check if an object is a DataType}
+\title{Check If an Object Is a DataType}
 \usage{
 is_dtype(x)
 }

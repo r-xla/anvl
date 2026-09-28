@@ -1,7 +1,7 @@
 test_that("stablehlo: basic test", {
   graph <- trace_fn(prim_add, list(lhs = nv_array(1), rhs = nv_array(2)))
   # expect_identical() is buggy ...
-  expect_true(identical(graph$outputs, graph$calls[[1]]$outputs))
+  expect_true(identical(graph$outputs, graph$statements[[1]]$outputs))
   out <- stablehlo(graph)
 })
 

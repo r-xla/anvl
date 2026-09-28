@@ -1,6 +1,6 @@
-test_that("AnvlPrimitive basics", {
-  p <- AnvlPrimitive("abc")
-  expect_class(p, "AnvlPrimitive")
+test_that("AnvlPrimitiveDef basics", {
+  p <- AnvlPrimitiveDef("abc")
+  expect_class(p, "AnvlPrimitiveDef")
   expect_equal(p$name, "abc")
   expect_snapshot(p)
 })
@@ -36,10 +36,10 @@ test_that("new_primitive builds a callable that self-registers", {
 
   fn <- new_primitive("np_test", function(x) x + 1)
 
-  expect_class(fn, "JitPrimitive")
+  expect_class(fn, "AnvlPrimitive")
   expect_class(fn, "JitFunction")
   expect_identical(primitive_env$np_test, fn)
-  expect_identical(attr(fn, "primitive")$name, "np_test")
+  expect_identical(attr(fn, "definition")$name, "np_test")
   expect_identical(formals(fn), formals(function(x) x + 1))
 })
 
@@ -48,11 +48,11 @@ test_that("new_primitive respects register = FALSE", {
   expect_false(exists("np_unregistered", envir = primitive_env, inherits = FALSE))
 })
 
-test_that("JitPrimitive [[ delegates to attached AnvlPrimitive", {
-  p <- AnvlPrimitive("jp_test_a")
+test_that("AnvlPrimitive [[ delegates to attached AnvlPrimitiveDef", {
+  p <- AnvlPrimitiveDef("jp_test_a")
   f <- function(x) x
-  attr(f, "primitive") <- p
-  class(f) <- c("JitPrimitive", "function")
+  attr(f, "definition") <- p
+  class(f) <- c("AnvlPrimitive", "function")
 
   f[["stablehlo"]] <- function(x) "stablehlo-rule"
   expect_identical(p[["stablehlo"]](), "stablehlo-rule")
@@ -64,7 +64,7 @@ describe("subgraphs", {
   it("extracts subgraphs from higher-order primitives", {
     true_graph <- trace_fn(function() nv_scalar(1), list())
     false_graph <- trace_fn(function() nv_scalar(2), list())
-    call <- PrimitiveCall(
+    call <- GraphStatement(
       primitive = prim_if,
       inputs = list(GraphValue(aval = nv_aval("bool", integer()))),
       params = list(true = true_graph, false = false_graph),
@@ -78,7 +78,7 @@ describe("subgraphs", {
     expect_identical(subgraphs_list[["false"]], false_graph)
   })
   it("returns empty list for non-higher-order primitives", {
-    call <- PrimitiveCall(
+    call <- GraphStatement(
       primitive = prim_add,
       inputs = list(GraphValue(aval = nv_aval("f32", integer())), GraphValue(aval = nv_aval("f32", integer()))),
       params = list(),

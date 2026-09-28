@@ -2,7 +2,7 @@
 % Please edit documentation in R/graph.R
 \name{trace_fn}
 \alias{trace_fn}
-\title{Trace an R function into a Graph}
+\title{Trace an R Function into a Graph}
 \usage{
 trace_fn(
   f,

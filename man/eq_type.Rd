@@ -41,4 +41,9 @@ eq_type(a, nv_aval("f32", c(3L, 2L)))
 
 # neq_type is the negation of eq_type
 neq_type(a, b)
+
+# an RData has no data type, so it cannot be compared
+r <- RData(c(2L, 3L), "double")
+try(eq_type(a, r))
+try(neq_type(r, r))
 }

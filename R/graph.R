@@ -67,16 +67,16 @@ print.GraphLiteral <- function(x, ...) {
 #' @title Graph Node
 #' @description
 #' Virtual base class for nodes in an [`AnvlGraph`].
-#' Is a [`GraphValue`], a [`GraphLiteral`], or -- only while tracing, and never
-#' as part of a primitive call -- an input whose aval is an [`RData`].
+#' Is either a [`GraphValue`] or a [`GraphLiteral`].
 #' Cannot be instantiated directly - use [`GraphValue()`] or [`GraphLiteral()`] instead.
 #' @name GraphNode
 NULL
 
-#' @title Primitive Call
+#' @title Graph Statement
 #' @description
-#' Call of a primitive in an [`AnvlGraph`].
-#' @param primitive (`AnvlPrimitive`)\cr
+#' One statement of an [`AnvlGraph`]: a primitive applied to inputs, with its
+#' results assigned to outputs.
+#' @param primitive (`AnvlPrimitiveDef`)\cr
 #'   The function.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The (array) inputs to the primitive.
@@ -84,11 +84,11 @@ NULL
 #'   The (static) parameters of the function call.
 #' @param outputs (`list(GraphValue)`)\cr
 #'   The (array) outputs of the primitive.
-#' @return (`PrimitiveCall`)
+#' @return (`GraphStatement`)
 #' @export
-PrimitiveCall <- function(primitive, inputs, params, outputs) {
-  if (inherits(primitive, "JitPrimitive")) {
-    primitive <- attr(primitive, "primitive")
+GraphStatement <- function(primitive, inputs, params, outputs) {
+  if (inherits(primitive, "AnvlPrimitive")) {
+    primitive <- attr(primitive, "definition")
   }
   # hot-path constructor: no input validation
   structure(
@@ -98,18 +98,23 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
       params = params,
       outputs = outputs
     ),
-    class = "PrimitiveCall"
+    class = "GraphStatement"
   )
 }
 
-#' @title Graph of Primitive Calls
+#' @title Graph of Statements
 #'
 #' @description
-#' Computational graph consisting exclusively of primitive calls.
+#' Computational graph consisting exclusively of statements that apply primitives.
 #' This is a mutable class.
 #'
-#' @param calls (`list(PrimitiveCall)`)\cr
-#'   The primitive calls that make up the graph.
+#' An `AnvlGraph` is usually created by tracing a function with
+#' [`trace_fn()`], which records each primitive call as a [`GraphStatement`]
+#' into a [`GraphDescriptor`] and converts it into an `AnvlGraph` at the end. The
+#' graph is then lowered, e.g. with [`stablehlo()`], and compiled.
+#'
+#' @param statements (`list(GraphStatement)`)\cr
+#'   The statements that make up the graph.
 #' @param in_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
@@ -131,14 +136,35 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'   One entry per input: the R storage type of an input the caller supplies as
 #'   bare R data (`"double"`, `"integer"`, `"logical"`), and `NA` for one that
 #'   arrives as an array and already has a data type. `NULL` when no input comes
-#'   from R data, which is the common case. Together with the inputs\' own avals
-#'   this says everything about how a call\'s arguments are uploaded: the aval
+#'   from R data, which is the common case. Together with the inputs' own avals
+#'   this says everything about how a call's arguments are uploaded: the aval
 #'   gives the data type and shape, this gives the R type it is uploaded from.
 #' @return (`AnvlGraph`)
+#' @examplesIf pjrt::plugins_downloaded()
+#' # the inputs are %x1 and %x2; each line is one statement, and `sum`
+#' # shows its parameters in brackets
+#' graph <- trace_fn(function(x, y) {
+#'   nv_sum(x * y)
+#' }, list(x = nv_aval("f32", c(2, 3)), y = nv_aval("f32", c(2, 3))))
+#' graph
+#' graph$inputs
+#' graph$outputs
+#'
+#' # an array the function closes over becomes the constant %c1, and the R
+#' # value `2` the literal `2:f32`
+#' w <- nv_array(c(1, 2), dtype = "f32")
+#' graph <- trace_fn(function(x) x + w * 2, list(x = nv_aval("f32", 2)))
+#' graph
+#' graph$constants
+#'
+#' # several outputs are returned together; `out_tree` records their structure
+#' graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", c())))
+#' graph
+#' graph$out_tree
 #' @keywords internal
 # @export
 AnvlGraph <- function(
-  calls = list(),
+  statements = list(),
   in_tree = NULL,
   out_tree = NULL,
   inputs = list(),
@@ -151,7 +177,7 @@ AnvlGraph <- function(
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
-  env$calls <- calls
+  env$statements <- statements
   env$in_tree <- in_tree
   env$out_tree <- out_tree
   env$inputs <- inputs
@@ -169,9 +195,19 @@ AnvlGraph <- function(
 
 #' @title Graph Descriptor
 #' @description
-#' Descriptor of an [`AnvlGraph`]. This is a mutable class.
-#' @param calls (`list(PrimitiveCall)`)\cr
-#'   The primitive calls that make up the graph.
+#' The in-progress representation of an [`AnvlGraph`] during tracing. This is
+#' a mutable class.
+#'
+#' While [`trace_fn()`] runs a function, every primitive call is recorded as a
+#' [`GraphStatement`] into the current descriptor (see [`graph_desc_add()`] and
+#' [`current_descriptor()`]). The descriptor also does the book-keeping the
+#' trace needs: which [`GraphValue`] an `AnvlArray` or [`GraphBox`] stands
+#' for, the constants and devices encountered, and the default data types the
+#' trace is pinned to. Once tracing finishes, it is converted to an
+#' [`AnvlGraph`], which only keeps what is needed to lower and run the
+#' program.
+#' @param statements (`list(GraphStatement)`)\cr
+#'   The statements that make up the graph.
 #' @param array_to_gval (`hashtab`)\cr
 #'   Mapping: `AnvlArray` -> `GraphValue`
 #' @param gval_to_box (`hashtab`)\cr
@@ -208,7 +244,7 @@ AnvlGraph <- function(
 #' @return (`GraphDescriptor`)
 #' @export
 GraphDescriptor <- function(
-  calls = list(),
+  statements = list(),
   array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
@@ -224,12 +260,12 @@ GraphDescriptor <- function(
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
-  # `calls` accumulates one entry per traced primitive. A fastqueue gives
-  # amortised-O(1) append; growing an R list here (`env$calls[[n]] <- x` or
-  # `c(env$calls, x)`) is copy-on-modify and would make tracing O(n^2).
-  env$calls <- fastmap::fastqueue()
-  if (length(calls)) {
-    env$calls$madd(.list = calls)
+  # `statements` accumulates one entry per traced primitive. A fastqueue gives
+  # amortised-O(1) append; growing an R list here (`env$statements[[n]] <- x` or
+  # `c(env$statements, x)`) is copy-on-modify and would make tracing O(n^2).
+  env$statements <- fastmap::fastqueue()
+  if (length(statements)) {
+    env$statements$madd(.list = statements)
   }
   env$array_to_gval <- array_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
@@ -246,7 +282,7 @@ GraphDescriptor <- function(
   # Calls that have to run before everything else, because they only depend on
   # the graph's inputs: the converts finalize_rdata_inputs() adds for an R
   # argument that one program used at more than one dtype.
-  env$pre_calls <- list()
+  env$pre_statements <- list()
   # Bookkeeping for the R arguments, which are inputs whose data type is not
   # decided yet (an `RData` aval). Kept beside the descriptor rather than on a node
   # of it: none of it outlives the trace.
@@ -305,7 +341,7 @@ descriptor_to_graph <- function(descriptor) {
   }
   captured <- lapply(descriptor$captures, \(capture) capture$inner)
   graph <- AnvlGraph(
-    calls = c(descriptor$pre_calls, descriptor$calls$as_list()),
+    statements = c(descriptor$pre_statements, descriptor$statements$as_list()),
     in_tree = descriptor$in_tree,
     out_tree = descriptor$out_tree,
     inputs = c(descriptor$inputs, captured),
@@ -324,15 +360,10 @@ descriptor_to_graph <- function(descriptor) {
 
 #' @title Graph Box
 #' @description
-#' An [`AnvlBox`] subclass that wraps a [`GraphNode`] during graph construction (tracing).
+#' Wraps a [`GraphNode`] during graph construction (tracing).
 #' When a function is traced via [`trace_fn()`], each intermediate array
 #' value is represented as a `GraphBox`.
 #' It also contains an associated [`GraphDescriptor`] in which the node "lives".
-#'
-#' @section Extractors:
-#' - [`dtype()`][tengen::dtype]
-#' - [`shape()`][tengen::shape]
-#' - [`naxes()`][tengen::naxes]
 #'
 #' @param gnode ([`GraphNode`])\cr
 #'   The graph node -- either a [`GraphValue`] or a [`GraphLiteral`].
@@ -340,13 +371,13 @@ descriptor_to_graph <- function(descriptor) {
 #'   The descriptor of the graph being built.
 #' @return (`GraphBox`)
 #'
-#' @seealso [AnvlBox], [trace_fn()], [jit()]
+#' @seealso [trace_fn()], [jit()]
 #' @export
 GraphBox <- function(gnode, desc) {
   # hot-path constructor: no input validation
   structure(
     list(gnode = gnode, desc = desc),
-    class = c("GraphBox", "AnvlBox")
+    class = "GraphBox"
   )
 }
 
@@ -386,7 +417,7 @@ format.GraphBox <- function(x, ...) {
   sprintf("GraphBox(%s)", format(x$gnode))
 }
 
-maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
+maybe_box_arrayish <- function(x, desc = current_descriptor()) {
   if (is_graph_box(x)) {
     # An R value belongs to the graph it was written in, so one reaching
     # another graph has to materialize before it can be captured there.
@@ -713,7 +744,7 @@ name_failing_primitive <- function(e) {
   e
 }
 
-#' @title Trace an R function into a Graph
+#' @title Trace an R Function into a Graph
 #' @description
 #' Executes `f` with abstract array arguments and records every primitive operation into
 #' an [`AnvlGraph`].
@@ -883,15 +914,15 @@ maybe_restore_previous_desc <- function(desc = NULL) {
   }
 }
 
-#' @title Get the current graph
+#' @title Get the Current Graph
 #' @description
-#' Get the current graph being built (via [`local_descriptor`]).
+#' Get the current graph being built.
 #' @param silent (`logical(1)`)\cr
 #'   Whether to return `NULL` if no graph is currently being built (as opposed to aborting).
 #' @return ([`GraphDescriptor`] | `NULL`)\cr
 #'   `NULL` only when `silent = TRUE` and no graph is being built.
 #' @export
-.current_descriptor <- function(silent = FALSE) {
+current_descriptor <- function(silent = FALSE) {
   maybe_desc <- globals[["CURRENT_DESCRIPTOR"]]
   if (silent) {
     return(maybe_desc)
@@ -915,13 +946,13 @@ maybe_previous_descriptor <- function() {
   stash[[n]]
 }
 
-#' @title Create a graph
+#' @title Create a Graph
 #' @description
-#' Creates a new [`GraphDescriptor`] which is afterwards accessible via [`.current_descriptor()`].
+#' Creates a new [`GraphDescriptor`] which is afterwards accessible via [`current_descriptor()`].
 #' The graph is automatically removed when exiting the current scope.
 #' After the graph is either cleaned up automatically (by exiting the scope)
 #' or finalized, the previously built graph is restored,
-#' i.e., accessible via [`.current_descriptor()`].
+#' i.e., accessible via [`current_descriptor()`].
 #'
 #' @param envir (`environment`)\cr
 #'   Environment where exit handler will be registered for cleaning up the
@@ -968,14 +999,14 @@ is_graph_box <- function(x) {
   inherits(x, "GraphBox")
 }
 
-#' @title Add a Primitive Call to a Graph Descriptor
+#' @title Add a Statement to a Graph Descriptor
 #' @description
-#' Add a primitive call to a graph descriptor. Inside a primitive body created
+#' Record a call of a primitive as a [`GraphStatement`] in a graph descriptor. Inside a primitive body created
 #' with [`new_primitive()`], pass the lexically-bound `self` as the primitive
 #' argument.
-#' @param primitive ([`AnvlPrimitive`] | `JitPrimitive`)\cr
-#'   The primitive the call is for. A `JitPrimitive` is accepted and unwrapped
-#'   to its underlying `AnvlPrimitive` metadata.
+#' @param primitive ([`AnvlPrimitiveDef`] | [`AnvlPrimitive`])\cr
+#'   The primitive the statement applies. An `AnvlPrimitive` is accepted and
+#'   unwrapped to its underlying `AnvlPrimitiveDef`.
 #' @param args (`list` of [`arrayish`])\cr
 #'   The arguments to the primitive: [`GraphBox`]es, [`AnvlArray`]s (registered
 #'   as constants of the graph) or R values (materialized at their default data
@@ -986,8 +1017,8 @@ is_graph_box <- function(x) {
 #'   The inference function to use.
 #'   Must output a list of [`AbstractArray`]s.
 #' @param desc ([`GraphDescriptor`] | `NULL`)\cr
-#'   The graph descriptor to add the primitive call to.
-#'   Uses the [current descriptor][.current_descriptor] if `NULL`.
+#'   The graph descriptor to add the statement to.
+#'   Uses the [current descriptor][current_descriptor] if `NULL`.
 #' @param device (`NULL` | `character(1)` | device object)\cr
 #'   The device the call places its result on, for a primitive that constructs
 #'   an array out of nothing (e.g. [`prim_fill()`], [`prim_iota()`]) and so has
@@ -999,16 +1030,16 @@ is_graph_box <- function(x) {
 #' @return (`list` of [`GraphBox`])
 #' @export
 graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL, device = NULL) {
-  desc <- desc %||% .current_descriptor(silent = TRUE)
+  desc <- desc %||% current_descriptor(silent = TRUE)
   if (!is.null(device)) {
     desc$devices <- c(desc$devices, nv_device(device))
   }
-  if (inherits(primitive, "JitPrimitive")) {
-    primitive <- attr(primitive, "primitive")
+  if (inherits(primitive, "AnvlPrimitive")) {
+    primitive <- attr(primitive, "definition")
   }
 
   # Box each input and pull out its gnode + aval in one pass (`gnodes_in`
-  # unnamed for the PrimitiveCall; `avals_in` keeps arg names for infer_fn).
+  # unnamed for the GraphStatement; `avals_in` keeps arg names for infer_fn).
   n_in <- length(args)
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
@@ -1030,8 +1061,8 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   # make `sin(y)` of a closed-over `y` look like `y` itself. Only a constant's
   # node carries a `ConcreteArray`.
   gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))
-  call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
-  desc$calls$add(call)
+  call <- GraphStatement(primitive, gnodes_in, params, gvals_out)
+  desc$statements$add(call)
   lapply(gvals_out, register_gval, desc = desc)
 }
 
@@ -1048,8 +1079,8 @@ inline_graph_into_desc <- function(desc, graph) {
   # registered via `maybe_box_arrayish`) still need to be propagated up.
   register_consts(desc, graph$constants)
 
-  if (length(graph$calls)) {
-    desc$calls$madd(.list = graph$calls)
+  if (length(graph$statements)) {
+    desc$statements$madd(.list = graph$statements)
   }
 
   gvals_out_flat <- graph$outputs

@@ -11,10 +11,10 @@ with_default_device(device, code)
 }
 \arguments{
 \item{device}{(\code{NULL} | \code{character(1)} | device object)\cr
-The device to make the default, e.g. \code{"cpu:1"}. A string is looked up on
-whichever backend asks for the default, so an identifier only one backend
-knows (\code{"cpu:1"} is beyond quickr's single device) makes the default an
-error on the others. \code{NULL} clears the option.}
+The device to make the default, e.g. \code{"cuda:0"}. A string is looked up
+on whichever backend asks for the default, so an identifier only one
+backend knows (quickr has no \code{"cuda"}) makes the default an error on the
+others. \code{NULL} clears the option.}
 
 \item{envir}{(\code{environment})\cr
 Scope the option is reset at the end of. Defaults to the caller.}
@@ -40,7 +40,9 @@ function whose graph pins no device of its own compiles for.
 }
 \examples{
 getOption("anvl.default_device")
-with_default_device("cpu:0", getOption("anvl.default_device"))
+# the option holds the identifier; it is resolved to a device only when
+# `default_device()` is called
+with_default_device("cuda:0", getOption("anvl.default_device"))
 }
 \seealso{
 \code{\link[=default_device]{default_device()}}, \code{\link[=local_backend]{local_backend()}}

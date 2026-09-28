@@ -468,7 +468,7 @@ describe("prim_if", {
     w <- nv_array(c(1, 2), dtype = "f32")
     graph <- trace_fn(function(p) nv_if(p, \() w * 2, \() w + 1), list(p = nv_scalar(TRUE)))
     expect_length(graph$constants, 1L)
-    expect_length(graph$calls[[1L]]$inputs, 2L)
+    expect_length(graph$statements[[1L]]$inputs, 2L)
     expect_equal(jit(function(p) nv_if(p, \() w * 2, \() w + 1))(nv_scalar(FALSE)), w + 1)
   })
 

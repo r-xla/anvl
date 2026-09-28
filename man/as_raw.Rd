@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{as_raw}
 \alias{as_raw}
-\title{Convert an array to a raw vector}
+\title{Convert an Array to a Raw Vector}
 \usage{
 as_raw(x, ...)
 }
@@ -13,7 +13,9 @@ An array.}
 \item{...}{Additional arguments passed to method:
 \itemize{
 \item \code{row_major} (\code{logical(1)})\cr
-Whether to write the bytes in row-major order.
+Whether to write the elements in row-major order. The default,
+\code{FALSE}, writes them in column-major order, the order in which R
+stores an array.
 }}
 }
 \value{
@@ -28,7 +30,8 @@ This is implemented via the generic \code{\link[tengen:as_raw]{tengen::as_raw()}
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:4, shape = c(2, 2), dtype = "f32")
+# column-major, the default
+as_raw(x)
 as_raw(x, row_major = TRUE)
-as_raw(x, row_major = FALSE)
 \dontshow{\}) # examplesIf}
 }

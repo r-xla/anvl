@@ -10,8 +10,8 @@ prim_clamp(x, min, max)
 \item{x}{(\code{\link{arrayish}})\cr
 The array to clamp. Can be any data type.
 \code{x}, \code{min} and \code{max} must have the same data type. An R value among them
-assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 
 \item{min, max}{(\code{\link{arrayish}})\cr
 Lower and upper bound. Each must be scalar or the same shape as \code{x}, and

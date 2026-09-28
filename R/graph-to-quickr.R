@@ -235,7 +235,7 @@ graph_to_quickr_make_wrapper <- function(
   wrapper
 }
 
-#' Convert an AnvlGraph to a plain R function
+#' Convert an AnvlGraph to a Plain R Function
 #'
 #' Lowers a supported subset of `AnvlGraph` objects to a plain R function (no
 #' compilation) suitable for `quickr::quick()`. The returned function expects
@@ -278,7 +278,7 @@ graph_to_quickr_r_function <- function(graph) {
   )
 }
 
-#' Convert an AnvlGraph to a quickr-compiled function
+#' Convert an AnvlGraph to a Quickr-Compiled Function
 #'
 #' Lowers a supported subset of `AnvlGraph` objects to a plain R function and
 #' compiles it with `quickr::quick()`.

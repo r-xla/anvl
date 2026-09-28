@@ -15,11 +15,11 @@ library(anvl)
 ns <- asNamespace("anvl")
 prim_names <- grep("^prim_", ls(ns), value = TRUE)
 prims <- mget(prim_names, envir = ns)
-prims <- Filter(function(x) inherits(x, "JitPrimitive"), prims)
+prims <- Filter(function(x) inherits(x, "AnvlPrimitive"), prims)
 
 # Extract primitive info
 primitives_list <- lapply(prims, function(p) {
-  p_meta <- attr(p, "primitive")
+  p_meta <- attr(p, "definition")
   has_stablehlo <- !is.null(p_meta$rules[["stablehlo"]])
   has_quickr <- !is.null(p_meta$rules[["quickr"]])
   has_reverse <- !is.null(p_meta$rules[["reverse"]])

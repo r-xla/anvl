@@ -3,7 +3,7 @@
 \name{platform.AnvlArray}
 \alias{platform.AnvlArray}
 \alias{platform}
-\title{Get the platform of an array or buffer}
+\title{Get the Platform Name of an Array or Buffer}
 \usage{
 \method{platform}{AnvlArray}(x, ...)
 

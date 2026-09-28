@@ -2,33 +2,44 @@
 % Please edit documentation in R/reverse.R
 \name{gradient}
 \alias{gradient}
-\title{Gradient}
+\alias{value_and_gradient}
+\title{Gradients}
 \usage{
 gradient(f, wrt = NULL)
+
+value_and_gradient(f, wrt = NULL)
 }
 \arguments{
 \item{f}{(\code{function})\cr
-Function to differentiate. Arguments can be arrayish (\code{\link{AnvlArray}}) or
-static (non-array) values. Must return a single scalar float array.}
+Function to differentiate. Must return a single scalar float array.}
 
 \item{wrt}{(\code{character} | \code{integer} | \code{NULL})\cr
 Names or positions of the arguments to compute the gradient with respect to.
-Only arrayish (float array) arguments can be included; static arguments
-must not appear in \code{wrt}.
+Only float arrays can be included; static arguments must not appear in
+\code{wrt}. At call time, an argument in \code{wrt} must be an array with a data
+type, not an R value such as \code{3}, since the data type of its gradient
+would otherwise be undetermined.
 If \code{NULL} (the default), the gradient is computed with respect to all
 arguments (which must all be arrayish in that case).}
 }
 \value{
 (\code{function})\cr
-Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}. Returns a
-named \code{list} of gradients, one per argument of \code{f} (or per \code{wrt} entry),
-each structured like that argument.
+Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}.
+For \code{gradient()}, it returns a named \code{list} of gradients, one per
+argument of \code{f} (or per \code{wrt} entry), each structured like that argument.
+For \code{value_and_gradient()}, it returns \code{list(value = , grad = )}: the
+return value of \code{f}, and that same \code{list} of gradients.
 }
 \description{
-Returns a new function that computes the gradient of \code{f} via reverse-mode automatic
-differentiation. \code{f} must return a single float scalar. The returned function has the
-same signature as \code{f} and returns the gradients in the same structure as the inputs
-(or the subset selected by \code{wrt}).
+Return a new function that computes the gradient of \code{f} via reverse-mode
+automatic differentiation. \code{f} must return a single float scalar. The
+returned function has the same signature as \code{f}.
+\itemize{
+\item \code{gradient()} returns only the gradients, structured like the inputs (or
+the subset selected by \code{wrt}).
+\item \code{value_and_gradient()} returns both the output of \code{f} and its gradients,
+computed in a single forward and reverse pass.
+}
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -44,9 +55,21 @@ g_x(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 f2 <- function(x, power) sum(x^power)
 g2 <- jit(gradient(f2, wrt = "x"), static = "power")
 g2(nv_array(c(1, 2, 3), dtype = "f32"), power = 2L)
+
+# an argument in `wrt` must be passed as an array, not as an R value
+g3 <- jit(gradient(function(x) x^2L))
+g3(nv_scalar(3))
+try(g3(3))
+
+# the value of `f` together with its gradient
+loss_fn <- function(x) sum(x^2L)
+vg <- jit(value_and_gradient(loss_fn))
+result <- vg(nv_array(c(3, 4), dtype = "f32"))
+result$value
+result$grad
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=value_and_gradient]{value_and_gradient()}} to get both the output and gradients,
-\code{\link[=transform_gradient]{transform_gradient()}} for the low-level graph transformation.
+the \href{https://r-xla.github.io/anvl/articles/autodiff.html}{Automatic Differentiation} article, \code{\link[=transform_gradient]{transform_gradient()}} for the
+low-level graph transformation.
 }

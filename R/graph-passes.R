@@ -1,7 +1,7 @@
 # Sub-graphs are closed -- what they read of this graph is an operand of their
 # call -- so the passes below never have to look into them.
 traverse_gnodes <- function(graph, fn) {
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     for (input in call$inputs) {
       fn(input)
     }
@@ -13,7 +13,7 @@ traverse_gnodes <- function(graph, fn) {
 
 remove_unused_constants <- function(graph) {
   new_graph <- AnvlGraph(
-    calls = graph$calls,
+    statements = graph$statements,
     in_tree = graph$in_tree,
     out_tree = graph$out_tree,
     inputs = graph$inputs,
@@ -55,7 +55,7 @@ inline_scalarish_constants <- function(graph) {
 
   # Create a copy of the graph
   new_graph <- AnvlGraph(
-    calls = graph$calls,
+    statements = graph$statements,
     in_tree = graph$in_tree,
     out_tree = graph$out_tree,
     inputs = graph$inputs,
@@ -81,12 +81,12 @@ inline_scalarish_constants <- function(graph) {
     }
   }
 
-  for (i in seq_along(new_graph$calls)) {
-    pcall <- new_graph$calls[[i]]
+  for (i in seq_along(new_graph$statements)) {
+    pcall <- new_graph$statements[[i]]
     for (j in seq_along(pcall$inputs)) {
       replacement <- map[[pcall$inputs[[j]]]]
       if (!is.null(replacement)) {
-        new_graph$calls[[i]]$inputs[[j]] <- replacement
+        new_graph$statements[[i]]$inputs[[j]] <- replacement
       }
     }
   }

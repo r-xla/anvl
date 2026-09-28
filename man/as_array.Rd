@@ -3,7 +3,7 @@
 \name{as_array.AnvlArray}
 \alias{as_array.AnvlArray}
 \alias{as_array}
-\title{Convert to an R array}
+\title{Convert to an R Array}
 \usage{
 \method{as_array}{AnvlArray}(x, check = "warn", ...)
 
@@ -16,13 +16,10 @@ An array-like object.}
 \item{check}{(\code{character(1)} | \code{FALSE})\cr
 How to report a materialized value that the R type cannot hold:
 \code{"warn"} (the default) warns and returns it anyway, \code{"err"} aborts,
-and \code{FALSE} skips the scan. \code{TRUE} is not accepted -- with two
-levels of strictness it does not say which one is meant. Forwarded
-to the backend; for the \code{pjrt} backend the cases scanned for are
-\code{i32}/\code{i64} values colliding with the \code{NA} bit pattern and \code{ui64}
-values \verb{>= 2^63} wrapping through \code{bit64::integer64}. See
-\code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for the full list, and
-the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article.}
+and \code{FALSE} skips the scan.
+Problematic values are the bit-representations reserved for R's
+\code{NA} values, as well as out-of-range values.
+See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for more.}
 
 \item{...}{Passed on to methods.}
 }

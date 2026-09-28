@@ -8,14 +8,14 @@
 \description{
 \if{html}{\figure{logo.svg}{options: style='float: right' alt='logo' width='120'}}
 
-Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
+Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
 }
 \section{Options}{
 
 \itemize{
-\item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): the backend every
-operation runs on -- \code{"pjrt"} or \code{"quickr"}. Arrays are allocated with it
-and jitted functions are compiled for it.
+\item \code{anvl.backend} (\code{character(1)}): the backend every
+operation runs on.
+Must be one of \code{"pjrt"} and \code{"quickr"}. If not set, \code{"pjrt"} is used.
 Also see \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
 \item \code{anvl.default_dtypes} (named \code{character()} | named \code{list()}): the data
 types an R double and an R integer settle on when they meet no typed
@@ -34,11 +34,15 @@ Also see \code{\link[=default_device]{default_device()}}, \code{\link[=local_def
 \item \code{ANVL_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
 \code{"float=f64,int=i64"}, used for every backend when the
 \code{anvl.default_dtypes} option is not set.
-\item \code{ANVL_DEFAULT_DEVICE}: a device identifier such as \code{"cuda"} or \code{"cpu:1"},
+\item \code{ANVL_DEFAULT_DEVICE}: a device identifier such as \code{"cuda"} or \code{"cuda:0"},
 used when the \code{anvl.default_device} option is not set.
 }
 
-Both are read once, when anvl is loaded.
+Both are read once, when anvl is loaded, and kept as fallbacks for the
+options rather than set as them: \code{getOption("anvl.default_device")} stays
+\code{NULL}, and an option set later takes precedence. Changing a variable after
+anvl is loaded has no effect until the package is loaded again, e.g. in a
+new R session.
 
 The remaining ones, all prefixed \code{ANVL_TEST}, affect only anvl's own test
 suite, not the package:

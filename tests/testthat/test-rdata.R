@@ -150,7 +150,7 @@ describe("resolve_upload_dtype", {
     expect_equal(graph_input_dtypes(graph), c(NA, NA, "f32"))
     expect_equal(repr(graph$inputs[[3L]]$aval), "f32[]")
     expect_equal(graph$rdata_types, c(NA_character_, NA_character_, "double"))
-    converts <- Filter(function(call) call$primitive$name == "convert", graph$calls)
+    converts <- Filter(function(call) call$primitive$name == "convert", graph$statements)
     expect_length(converts, 2L)
     expect_setequal(
       vapply(converts, function(call) as.character(call$outputs[[1L]]$aval$dtype), character(1L)),
@@ -679,7 +679,7 @@ describe("staging an R value out of its own category", {
     # conversion in the program at all, so the trace records no call.
     calls <- function(r_type, dtype) {
       graph <- trace_fn(function(x) prim_convert(x, dtype), list(x = nv_aval(r_type, integer())))
-      length(graph$calls)
+      length(graph$statements)
     }
     expect_equal(calls("double", "f32"), 0L)
     expect_equal(calls("integer", "i64"), 0L)

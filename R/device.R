@@ -1,4 +1,4 @@
-#' @title Get the default device
+#' @title Get the Default Device
 #' @description
 #' Returns the default device of the active backend: the device the
 #' `anvl.default_device` option names (see [`local_default_device()`]), else
@@ -28,10 +28,10 @@ default_device <- function(backend = NULL) {
 #' This is what a call that names no device allocates on, and what a jitted
 #' function whose graph pins no device of its own compiles for.
 #' @param device (`NULL` | `character(1)` | device object)\cr
-#'   The device to make the default, e.g. `"cpu:1"`. A string is looked up on
-#'   whichever backend asks for the default, so an identifier only one backend
-#'   knows (`"cpu:1"` is beyond quickr's single device) makes the default an
-#'   error on the others. `NULL` clears the option.
+#'   The device to make the default, e.g. `"cuda:0"`. A string is looked up
+#'   on whichever backend asks for the default, so an identifier only one
+#'   backend knows (quickr has no `"cuda"`) makes the default an error on the
+#'   others. `NULL` clears the option.
 #' @param code (`any`)\cr
 #'   Expression to evaluate with the default device set.
 #' @param envir (`environment`)\cr
@@ -45,7 +45,9 @@ default_device <- function(backend = NULL) {
 #' @seealso [`default_device()`], [`local_backend()`]
 #' @examples
 #' getOption("anvl.default_device")
-#' with_default_device("cpu:0", getOption("anvl.default_device"))
+#' # the option holds the identifier; it is resolved to a device only when
+#' # `default_device()` is called
+#' with_default_device("cuda:0", getOption("anvl.default_device"))
 #' @export
 local_default_device <- function(device, envir = parent.frame()) {
   withr::local_options(
@@ -77,8 +79,7 @@ check_default_device <- function(device) {
 #'
 #' A device identifies a compute resource, such as a CPU, or a specific GPU.
 #' It is relevant for data allocation (e.g. via [nv_array()]) but also compilation ([jit()]).
-#' A device belongs to the active backend ([`active_backend()`]); a device
-#' object of another backend is an error.
+#' A device is constructed for the active backend.
 #'
 #' @param x (`character(1)` | device object)\cr
 #'   Identifier for the device (e.g. `"cpu"`, `"cuda"`, `"cuda:<n>"`),
@@ -123,7 +124,7 @@ check_device_backend <- function(device, backend) {
   invisible(device)
 }
 
-#' Test whether an object is a device
+#' Test Whether an Object Is a Device
 #'
 #' @param x An object to test.
 #' @return (`logical(1)`)\cr
