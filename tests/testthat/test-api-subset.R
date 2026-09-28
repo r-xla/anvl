@@ -644,11 +644,52 @@ describe("nv_subset", {
     )
   })
 
-  it("errors on a bool array mask under jit", {
+  it("errors on a bool array mask that is an input under jit", {
     f <- jit(function(x, m) x[m, ])
     expect_error(
       f(nv_array(array(1:12, dim = c(3L, 4L))), nv_array(arr(TRUE, FALSE, TRUE))),
-      "only supported in eager mode"
+      "depend on the inputs"
+    )
+  })
+
+  it("errors on a bool array mask computed from the inputs under jit", {
+    f <- jit(function(x) x[x > 6L])
+    expect_error(f(nv_array(array(1:12, dim = c(3L, 4L)))), "depend on the inputs")
+  })
+
+  it("accepts a bool array mask created inside jit", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(as_array(jit(function(x) x[nv_array(r_mask)])(x)), array(r_arr[r_mask]))
+    expect_equal(
+      as_array(jit(function(x) x[nv_array(arr(TRUE, FALSE, TRUE)), ])(x)),
+      r_arr[c(TRUE, FALSE, TRUE), , drop = FALSE]
+    )
+  })
+
+  it("accepts a closed-over bool array mask under jit", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    mask <- nv_array(r_mask)
+    row_mask <- nv_array(arr(TRUE, FALSE, TRUE))
+    expect_equal(as_array(jit(function(x) x[mask])(x)), array(r_arr[r_mask]))
+    expect_equal(
+      as_array(jit(function(x) x[row_mask, ])(x)),
+      r_arr[c(TRUE, FALSE, TRUE), , drop = FALSE]
+    )
+    # nested: the mask is a constant of the outer trace
+    expect_equal(as_array(jit(function(x) jit(function(y) y[mask])(x))(x)), array(r_arr[r_mask]))
+
+    expected <- r_arr
+    expected[r_mask] <- 0L
+    expect_equal(
+      as_array(jit(function(x) {
+        x[mask] <- 0L
+        x
+      })(x)),
+      expected
     )
   })
 

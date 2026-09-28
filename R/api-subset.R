@@ -485,7 +485,8 @@ is_mask_subscript <- function(x) {
 #'
 #' Masks are resolved to positions with `which()`, so their values must be known
 #' on the host. For an R logical array that is free; for an arrayish mask it
-#' requires reading the array back, which is only possible in eager mode.
+#' requires reading the array back, which is only possible when its values do
+#' not depend on the inputs of a traced function.
 #' @param e Evaluated subscript, as recognised by `is_mask_subscript()`
 #' @return An R logical array
 #' @noRd
@@ -502,16 +503,38 @@ as_r_mask <- function(e) {
       cli_abort("Boolean masks must not contain missing values.")
     }
   } else {
-    if (currently_tracing()) {
+    known <- known_mask_array(e)
+    if (is.null(known)) {
       cli_abort(c(
-        "Boolean masks from arrays are only supported in eager mode.",
+        "Boolean masks that depend on the inputs of a jitted function are not supported.",
         "x" = "The number of selected elements, and hence the output shape, depends on the data.",
-        "i" = "Use an R logical mask (e.g. {.code arr(TRUE, FALSE, TRUE)}) for a mask that is known at compile time."
+        "i" = paste0(
+          "Use a mask whose values are known at compile time: an R logical array such as ",
+          "{.code arr(TRUE, FALSE, TRUE)}, or an array created in or closed over by the function."
+        )
       ))
     }
-    mask <- as_array(e)
+    mask <- as_array(known)
   }
   mask
+}
+
+#' The `AnvlArray` holding the values of an arrayish mask, if they are known
+#'
+#' Outside of tracing that is the mask itself. While tracing, a mask is known if
+#' it is an `AnvlArray` (e.g. created inside the traced function) or a boxed
+#' constant closed over from the environment; a mask computed from the inputs
+#' is not.
+#' @return (`AnvlArray | NULL`)
+#' @noRd
+known_mask_array <- function(e) {
+  if (is_anvl_array(e)) {
+    return(e)
+  }
+  if (is_graph_box(e) && is_concrete_array(e$gnode$aval)) {
+    return(e$gnode$aval$data)
+  }
+  NULL
 }
 
 #' Parse a single subset specification
@@ -699,9 +722,11 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #'   arrayish value of dtype `bool`) selects the elements at the `TRUE`
 #'   positions. A mask for one axis must have as many elements as the size of
 #'   that axis. A mask that is the only subscript and has the same shape as
-#'   `x` selects across the whole array, yielding a 1-D result. Masks whose
-#'   values come from an array only work in eager mode, because the number of
-#'   selected elements determines the output shape.
+#'   `x` selects across the whole array, yielding a 1-D result. Under [jit()],
+#'   the values of a mask must be known at compile time, because the number of
+#'   selected elements determines the output shape: R logical arrays and
+#'   arrays created in or closed over by the function work, a mask computed
+#'   from the function's inputs does not.
 #'
 #'   See `r roxy_article("subsetting")` for details.
 #' @return ([`arrayish`])\cr
@@ -725,7 +750,7 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #' # Select rows 1 and 3 with a mask
 #' x[arr(TRUE, FALSE, TRUE), ]
 #'
-#' # Select all elements greater than 6 (eager mode only)
+#' # Select all elements greater than 6 (not in `jit()`, see above)
 #' x[x > 6]
 #' @export
 nv_subset <- function(x, ...) {
@@ -889,7 +914,7 @@ subset_scatter_core_inplace <- local({
 #' x[1, ] <- nv_scalar(0L)
 #' x
 #'
-#' # Zero out every element greater than 6 (eager mode only)
+#' # Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)
 #' x[x > 6] <- 0L
 #' x
 #'

@@ -21,9 +21,11 @@ A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
 arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
 positions. A mask for one axis must have as many elements as the size of
 that axis. A mask that is the only subscript and has the same shape as
-\code{x} selects across the whole array, yielding a 1-D result. Masks whose
-values come from an array only work in eager mode, because the number of
-selected elements determines the output shape.
+\code{x} selects across the whole array, yielding a 1-D result. Under \code{\link[=jit]{jit()}},
+the values of a mask must be known at compile time, because the number of
+selected elements determines the output shape: R logical arrays and
+arrays created in or closed over by the function work, a mask computed
+from the function's inputs does not.
 
 See the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 }
@@ -54,7 +56,7 @@ x[1:2, ]
 # Select rows 1 and 3 with a mask
 x[arr(TRUE, FALSE, TRUE), ]
 
-# Select all elements greater than 6 (eager mode only)
+# Select all elements greater than 6 (not in `jit()`, see above)
 x[x > 6]
 \dontshow{\}) # examplesIf}
 }
