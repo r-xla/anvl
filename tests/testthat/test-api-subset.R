@@ -657,6 +657,14 @@ describe("nv_subset", {
     expect_error(f(nv_array(array(1:12, dim = c(3L, 4L)))), "depend on the inputs")
   })
 
+  it("errors on a bool array mask computed from a closed-over mask under jit", {
+    # `!mask` is computed, so its values are not known when the program is
+    # built, even though `mask` is.
+    mask <- nv_array(arr(TRUE, FALSE, TRUE))
+    f <- jit(function(x) x[!mask])
+    expect_error(f(nv_array(c(1, 2, 3))), "depend on the inputs")
+  })
+
   it("accepts a bool array mask created inside jit", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))

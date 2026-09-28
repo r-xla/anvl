@@ -242,15 +242,13 @@ compute_requirements <- function(graph, wrt) {
 # calling this inside a branch of `prim_if()` puts a branch's backward pass
 # inside that branch, where only the taken one runs.
 #
-# `inputs` binds the graph's own inputs to boxes of the current descriptor,
-# for a sub-graph that takes arguments (a loop body); a target may then be one
-# of `graph$inputs`. `bindings` (see `capture_bindings()`) binds what the
-# sub-graph captures to the call's operands. Targets are named as the sub-graph
-# knows them: its inputs and captures, not what they are bound to.
-graph_vjp <- function(graph, targets, out_grads, inputs = NULL, bindings = NULL) {
+# `inputs` binds the graph's inputs -- its own arguments and what it captures
+# -- to boxes of the current descriptor, typically the operands of the call
+# the sub-graph belongs to. Targets are among `graph$inputs`.
+graph_vjp <- function(graph, targets, out_grads, inputs) {
   desc <- .current_descriptor()
   required_env <- requirements_from(graph, targets)
-  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env, bindings)
+  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env, replay = TRUE)
 
   grad_env <- hashtab()
   for (i in seq_along(graph$outputs)) {
@@ -282,8 +280,11 @@ requirements_from <- function(graph, targets) {
 }
 
 # Forward propagation over `graph`'s calls, starting from the seeded
-# `required_env`: a call's outputs require a gradient exactly when one of its
-# operands does. Literals are inlined constants and never do.
+# `required_env`: a call's float outputs require a gradient exactly when one of
+# its operands does. An integer or boolean output never does -- it has no
+# derivative, and the reverse rules give such values a zero -- so an RNG state
+# or a loop counter computed alongside a float does not drag the calls it feeds
+# into the backward pass. Literals are inlined constants and never do either.
 propagate_requirements <- function(graph, required_env) {
   for (call in graph$calls) {
     requires <- any(vapply(
@@ -292,7 +293,7 @@ propagate_requirements <- function(graph, required_env) {
       logical(1L)
     ))
     for (out_node in call$outputs) {
-      required_env[[out_node]] <- requires
+      required_env[[out_node]] <- requires && is_dtype_float(out_node$aval$dtype)
     }
   }
   required_env
@@ -323,22 +324,21 @@ rebuild_forward_pass <- function(graph, required_env = NULL, envir = parent.fram
 # skips it, so what the replacement keeps for it -- a scan's tape -- would be
 # computed for nothing.
 #
-# `bindings` maps a captured constant of `graph` to the box it is bound to: a
-# sub-graph replayed on behalf of a call reads what the call's operands hold
-# now, which a transform may have rewired since the sub-graph was traced.
-rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL, bindings = NULL) {
+# `replay = TRUE` marks a second run of a sub-graph whose forward already ran
+# -- a backward pass pulling cotangents through it -- and drops its prints, so
+# that what a user prints appears once per execution of their code.
+rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL, replay = FALSE) {
   # consts and inputs keep their identity, only GraphValues created by PrimitiveCalls
   # get new identifier -- unless `inputs` binds the inputs to boxes of `desc`,
   # in which case the graph is replayed as a function of them.
   if (is.null(inputs)) {
     register_inputs(desc, graph$inputs)
-  }
-  bound <- if (is.null(bindings)) {
-    rep(FALSE, length(graph$constants))
   } else {
-    vapply(graph$constants, \(g) !is.null(bindings[[g]]), logical(1L))
+    # A box of an enclosing trace -- an operand of the call the sub-graph
+    # belongs to -- is captured by `desc` like any other value from outside.
+    inputs <- lapply(inputs, maybe_box_arrayish, desc = desc)
   }
-  register_consts(desc, graph$constants[!bound])
+  register_consts(desc, graph$constants)
 
   # Existing GraphValues are reused where possible to minimize cloning.
   # If an alternative forward pass is called, this possibly invalidates
@@ -353,10 +353,6 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
   }
   for (i in seq_along(inputs)) {
     trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
-  }
-  # A bound value from further out is a capture of `desc` in its own right.
-  for (g in graph$constants[bound]) {
-    trans[[g]] <- get_box_or_register_const(desc, bindings[[g]]$gnode)$gnode
   }
   # Get/create the box for a translated gval. Literals reach this branch
   # only when used as a call input; mint a box on demand (GraphBox has value semantics)
@@ -378,6 +374,13 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
   for (i in seq_along(graph$calls)) {
     call <- graph$calls[[i]]
     rule <- call$primitive[["reverse"]]
+
+    if (replay && identical(call$primitive$name, "print")) {
+      input <- box_for(call$inputs[[1L]])
+      trans[[call$outputs[[1L]]]] <- input$gnode
+      backwards[[i]] <- list(fn = rule$backward, inputs = list(input), outputs = list(input), params = call$params)
+      next
+    }
 
     needs_grad <- is.null(required_env) ||
       any(vapply(call$inputs, \(x) !is_graph_literal(x) && isTRUE(required_env[[x]]), logical(1L)))
@@ -433,25 +436,13 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
 # forward-only counterpart of `graph_vjp()`, for re-running a loop body. No
 # backward pass follows, so every call keeps its plain forward: an empty
 # `required_env` says that nothing requires a gradient.
-graph_apply <- function(graph, inputs, bindings = NULL) {
+graph_apply <- function(graph, inputs) {
   desc <- .current_descriptor()
-  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env = hashtab(), bindings = bindings)
+  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env = hashtab())
   lapply(graph$outputs, function(out) {
     g <- if (is_graph_literal(out)) out else rebuilt$trans[[out]] %||% out
     desc$gval_to_box[[g]] %||% GraphBox(g, desc)
   })
-}
-
-# Binds each value `graphs` capture to the box of the call operand listed for
-# it: the operands past the call's own arguments, in `subgraph_captures()`
-# order.
-capture_bindings <- function(graphs, boxes) {
-  captures <- subgraph_captures(graphs)
-  bindings <- hashtab()
-  for (i in seq_along(captures)) {
-    bindings[[captures[[i]]]] <- boxes[[i]]
-  }
-  bindings
 }
 
 # Walk calls in reverse, invoking each call's backward to accumulate
@@ -474,7 +465,10 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
       function(x) required_env[[x]] %||% FALSE,
       logical(1L)
     )
-    if (!any(input_required)) {
+    # A call none of whose outputs requires a gradient contributes none, even
+    # where an operand requires one -- e.g. a loop that only counts.
+    output_required <- vapply(call$outputs, \(x) isTRUE(required_env[[x]]), logical(1L))
+    if (!any(input_required) || !any(output_required)) {
       next
     }
 

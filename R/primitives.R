@@ -980,14 +980,11 @@ prim_reduce <- new_primitive(
       nv_aval(op_dtype, integer())
     )
     reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red, mode = "subgraph")
-
-    for (const in reducer_graph$constants) {
-      get_box_or_register_const(current_desc, const)
-    }
+    captures <- close_over(current_desc, list(desc_red), list(reducer_graph))
 
     graph_desc_add(
       self,
-      args = operands,
+      args = c(operands, captures),
       params = list(axes = axes, drop = drop, reducer = reducer_graph),
       infer_fn = infer_reduce,
       desc = current_desc
@@ -2536,41 +2533,24 @@ prim_if <- new_primitive(
       ))
     }
 
-    # Build sub-graphs for each branch (no inputs, just capture closed-over values)
-    # We need to ensure that constants that are captured in both branches receive the same
-    # GraphValue if they capture the same constant
-
     current_desc <- .current_descriptor(silent = TRUE)
 
     desc_true <- local_descriptor()
     true_graph <- trace_fn(true, list(), desc = desc_true, mode = "subgraph")
     desc_false <- local_descriptor()
-
-    register_consts(desc_false, desc_true$constants)
     false_graph <- trace_fn(false, list(), desc = desc_false, mode = "subgraph")
-
-    register_consts(current_desc, desc_false$constants)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
 
-    # The branches take no arguments and reach the values they use by closing
-    # over them, which is also how the regions of a StableHLO `if` read them.
-    # Dataflow, though, has to be visible in the graph: a transform that walks
-    # operands -- reverse-mode autodiff above all -- would otherwise see a call
-    # that depends on nothing but `pred` and conclude the captured values do not
-    # reach the output. So they are listed as operands here. The lowering
-    # ignores them and keeps capturing implicitly; they exist to say what the
-    # call reads.
-    captures <- subgraph_captures(list(true_graph, false_graph))
-    capture_boxes <- lapply(captures, function(gval) get_box_or_register_const(current_desc, gval))
-
-    # TODO: Apply promotion rules to the outputs of the branches
+    # What the branches close over becomes their inputs -- both take all of it,
+    # in the same order -- and the call's operands after `pred`.
+    captures <- close_over(current_desc, list(desc_true, desc_false), list(true_graph, false_graph))
 
     out <- graph_desc_add(
       self,
-      c(list(pred = pred), capture_boxes),
+      c(list(pred = pred), captures),
       params = list(true = true_graph, false = false_graph),
       infer_fn = infer_cond,
       desc = current_desc
@@ -2643,15 +2623,9 @@ prim_while <- new_primitive(
     current_desc <- .current_descriptor(silent = TRUE)
 
     desc_cond <- local_descriptor()
-
     cond_graph <- trace_fn(cond, init, desc = desc_cond, mode = "subgraph")
-
     desc_body <- local_descriptor()
-
-    # ensure that constant ids are the same between cond and body
-    # inputs don't matter, because we don't inline the sub-graphs into the parent graph
-    register_consts(desc_body, desc_cond$constants)
-    body_graph <- trace_fn(body, init, desc_body, mode = "subgraph")
+    body_graph <- trace_fn(body, init, desc = desc_body, mode = "subgraph")
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
       cli_abort("cond and body must have the same input structure")
@@ -2661,17 +2635,13 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
-    # now we register the constants of both sub-graphs (body includes cond's constants) into the graph
-    register_consts(current_desc, body_graph$constants)
-    # As in `prim_if()`: what the sub-graphs close over is listed after the
-    # state. The lowerings take the first `length(body$inputs)` operands as the
-    # state and bind the rest to the captures.
-    captures <- subgraph_captures(list(cond_graph, body_graph))
-    capture_boxes <- lapply(captures, function(gval) get_box_or_register_const(current_desc, gval))
+    # `cond` and `body` take the state, then what either of them closes over;
+    # the call's operands are the same.
+    captures <- close_over(current_desc, list(desc_cond, desc_body), list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = c(flatten(init), capture_boxes),
+      args = c(flatten(init), captures),
       params = list(cond = cond_graph, body = body_graph),
       infer_fn = infer_while,
       desc = current_desc
@@ -2800,15 +2770,9 @@ prim_scan <- new_primitive(
 
     desc_body <- local_descriptor()
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
-    # The body is lowered inline into the parent's loop region, so whatever it
-    # closed over has to be a constant of the parent graph too -- the same
-    # reason `prim_while()` and `prim_if()` register theirs.
-    register_consts(current_desc, body_graph$constants)
-    # As in `prim_if()`: what the body closes over is listed after the carry
-    # and `xs`, so that the backward pass sees it. The lowering reads the
-    # first `n_carry + n_xs` operands and ignores the rest.
-    captures <- subgraph_captures(list(body_graph))
-    capture_boxes <- lapply(captures, function(gval) get_box_or_register_const(current_desc, gval))
+    # The body takes the carry, the `xs` slices, then what it closes over; the
+    # call's operands are the carry, `xs`, then the same captures.
+    captures <- close_over(current_desc, list(desc_body), list(body_graph))
 
     infer_fn <- function(..., body, steps, reverse, n_carry, n_xs) {
       ins <- list(...)
@@ -2840,7 +2804,7 @@ prim_scan <- new_primitive(
 
     out <- graph_desc_add(
       self,
-      args = c(init_flat, xs_flat, capture_boxes),
+      args = c(init_flat, xs_flat, captures),
       params = list(
         body = body_graph,
         steps = steps,
@@ -3248,13 +3212,11 @@ prim_scatter <- new_primitive(
     )
 
     update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update, mode = "subgraph")
-
-    # Register constants from the update computation graph
-    register_consts(current_desc, update_fn_graph$constants)
+    captures <- close_over(current_desc, list(desc_update), list(update_fn_graph))
 
     out <- graph_desc_add(
       self,
-      args = list(x = x, scatter_indices = scatter_indices, update = update),
+      args = c(list(x = x, scatter_indices = scatter_indices, update = update), captures),
       params = list(
         update_window_axes = update_window_axes,
         inserted_window_axes = inserted_window_axes,

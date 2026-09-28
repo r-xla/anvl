@@ -342,6 +342,40 @@ describe("prim_if", {
     expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(6, 12, 18))
   })
 
+  it("leaves an RNG state a branch returns undifferentiated", {
+    f <- function(p, x, st) {
+      r <- nv_if(
+        p,
+        function() {
+          d <- nv_rnorm(integer(), st, dtype = "f64")
+          list(st = d$state, a = nv_sum(x) * d$values)
+        },
+        function() list(st = st, a = nv_sum(x))
+      )
+      r$a + nv_rnorm(integer(), r$st, dtype = "f64")$values
+    }
+    grad <- jit(gradient(f, wrt = "x"))(false_, x, nv_rng_state(1L))$x
+    expect_equal(as.numeric(grad), c(1, 1, 1))
+  })
+
+  it("lets a branch take the gradient of a value it closes over", {
+    # The inlined gradient graph reaches `x` and the R value `a` from outside
+    # the branch, so the branch has to capture them first.
+    x <- nv_array(c(0.7, -1.3, 2.1))
+    f <- jit(function(p, x, a) {
+      nv_if(p, function() nv_sum(gradient(function(y, a) nv_sum(y * y * a), wrt = "y")(x, a)[[1L]]), function() nv_sum(x))
+    })
+    expect_equal(as.numeric(f(true_, x, 2)), sum(4 * c(0.7, -1.3, 2.1)), tolerance = 1e-6)
+  })
+
+  it("passes a gradient computed outside a branch into it", {
+    f <- jit(function(x) {
+      v <- gradient(function(z) sin(z))(x)[[1L]]
+      nv_if(true_, function() v, function() x)
+    })
+    expect_equal(as.numeric(f(nv_scalar(2, "f64"))), cos(2))
+  })
+
   it("differentiates a value an earlier call's reverse rule replaced", {
     # `prim_sort()`'s reverse rule replaces its forward, so the value the
     # branches closed over is rebuilt before they are differentiated.
@@ -1272,6 +1306,24 @@ describe("prim_scan", {
     expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), c(6, 12, 18))
   })
 
+  it("leaves an RNG state it carries on undifferentiated after the scan", {
+    # The final state feeds another draw, which needs no gradient either.
+    f <- function(x, st) {
+      body <- function(carry, xs) {
+        d <- nv_rnorm(integer(), carry$st, dtype = "f64")
+        list(carry = list(st = d$state, a = carry$a + xs$v * d$values), out = d$values)
+      }
+      r <- prim_scan(list(st = st, a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      last <- nv_rnorm(integer(), r$carry$st, dtype = "f64")$values
+      list(value = r$carry$a * last, draws = r$out, last = last)
+    }
+    st <- nv_rng_state(1L)
+    run <- jit(f)(x, st)
+    loss <- function(x, st) f(x, st)$value
+    grad <- jit(gradient(loss, wrt = "x"))(x, st)$x
+    expect_equal(as.numeric(grad), as.numeric(run$draws) * as.numeric(run$last))
+  })
+
   it("passes the gradient straight through a scan of zero steps", {
     f <- function(x) {
       body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
@@ -1290,5 +1342,55 @@ describe("prim_scan", {
       prim_scan(list(a = nv_scalar(0, "f64")), list(), body, steps = 2L)$carry$a
     }
     expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(6, 24, 54))
+  })
+
+  it("differentiates a value a nested scan closes over from two levels out", {
+    # The inner body reads `w` and the outer slice; both are threaded through
+    # the outer body as its inputs. loss = w * 2 * sum(x).
+    f <- function(x, w) {
+      outer <- function(carry, xs) {
+        inner <- function(c2, xs2) list(carry = list(b = c2$b + w * xs$v), out = NULL)
+        r <- prim_scan(list(b = carry$a), list(), inner, steps = 2L)
+        list(carry = list(a = r$carry$b), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), outer, steps = 3L)$carry$a
+    }
+    grads <- jit(gradient(f))(x, nv_scalar(2, "f64"))
+    expect_equal(as.numeric(grads$x), c(4, 4, 4))
+    expect_equal(as.numeric(grads$w), 12)
+  })
+})
+
+describe("prim_print", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  # The number of times a print ran: each one shows the value 7 on a line of
+  # its own.
+  prints_of_seven <- function(expr) sum(trimws(capture.output(expr)) == "7")
+
+  it("passes the gradient through", {
+    grad <- expect_output(jit(gradient(function(x) nv_sum(prim_print(x) * x)))(x))
+    expect_equal(as.numeric(grad[[1L]]), c(2, 4, 6))
+  })
+
+  it("prints once where a differentiated branch runs", {
+    f <- function(p, x) {
+      nv_if(p, function() {
+        prim_print(nv_scalar(7L))
+        nv_sum(x * x)
+      }, function() nv_sum(x))
+    }
+    g <- jit(gradient(f, wrt = "x"))
+    expect_equal(prints_of_seven(g(nv_scalar(TRUE), x)), 1L)
+  })
+
+  it("prints once per step of a differentiated scan", {
+    f <- function(x) {
+      body <- function(carry, xs) {
+        prim_print(nv_scalar(7L))
+        list(carry = list(a = carry$a + xs$v * xs$v), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    expect_equal(prints_of_seven(jit(gradient(f))(x)), 3L)
   })
 })

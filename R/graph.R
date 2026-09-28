@@ -146,7 +146,8 @@ AnvlGraph <- function(
   constants = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  rdata_types = NULL
+  rdata_types = NULL,
+  n_captures = 0L
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -159,6 +160,9 @@ AnvlGraph <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$rdata_types <- rdata_types
+  # How many of `inputs`, at the end, are values a sub-graph closed over (see
+  # `close_over()`); only printing tells them apart.
+  env$n_captures <- n_captures
 
   structure(env, class = "AnvlGraph")
 }
@@ -253,6 +257,14 @@ GraphDescriptor <- function(
   #                argument, for an inline trace. Empty elsewhere.
   env$rdata_mat <- hashtab()
   env$rdata_outer <- hashtab()
+  # The trace this one was opened inside (NULL for a toplevel trace), and
+  # whether this one is a sub-graph of a higher-order primitive, which reaches
+  # values from outside only through inputs of its own: `captures` pairs each
+  # such outer value with the input it arrives at (see
+  # `get_box_or_register_const()` and `close_over()`).
+  env$parent <- NULL
+  env$closed <- FALSE
+  env$captures <- list()
   # One entry per input, set by finalize: the R storage type of an input the
   # caller supplies as bare R data, `NA` for one that arrives as an array.
   env$rdata_types <- NULL
@@ -286,11 +298,18 @@ is_graph_descriptor <- function(x) {
 }
 
 descriptor_to_graph <- function(descriptor) {
+  # Only a toplevel graph holds constants: a sub-graph reads everything from
+  # outside through its inputs.
+  if (descriptor$closed && length(descriptor$constants)) {
+    cli_abort("Internal error: a sub-graph must not hold constants.")
+  }
+  captured <- lapply(descriptor$captures, \(capture) capture$inner)
   graph <- AnvlGraph(
     calls = c(descriptor$pre_calls, descriptor$calls$as_list()),
     in_tree = descriptor$in_tree,
     out_tree = descriptor$out_tree,
-    inputs = descriptor$inputs,
+    inputs = c(descriptor$inputs, captured),
+    n_captures = length(captured),
     outputs = descriptor$outputs,
     constants = descriptor$constants,
     is_static_flat = descriptor$is_static_flat,
@@ -442,15 +461,27 @@ maybe_box_input <- function(x, desc, mode) {
       parent_box <- get_box_or_register_const(parent_desc, x)
       return(register_input(desc, parent_box$gnode))
     }
-    if (is_rdata_box(x)) {
-      # When we trace within a trace
-      # Keep it open here too, so the traced body decides
-      # which dtypes it is used at, exactly as it does under plain jit(). The
-      # input slot is settled by finalize_inline_rdata_inputs().
-      return(register_rdata_input(desc, x$gnode$aval, outer = x))
-    }
-    # \(x) gradient(f)(x)
     if (is_graph_box(x)) {
+      # A box of a trace further out than the one gradient() is called in --
+      # e.g. a value an nv_if() branch closes over -- is captured by that trace
+      # first: its sub-graph reaches outer values only through its inputs.
+      # An R value of that outer trace materializes there first, as any R value
+      # reaching another graph does (see `maybe_box_arrayish()`).
+      parent_desc <- maybe_previous_descriptor()
+      if (!identical(x$desc, parent_desc)) {
+        if (is_rdata_box(x)) {
+          x <- materialize_rdata(x, peek_dtype(x))
+        }
+        x <- maybe_box_arrayish(x, parent_desc)
+      }
+      if (is_rdata_box(x)) {
+        # When we trace within a trace
+        # Keep it open here too, so the traced body decides
+        # which dtypes it is used at, exactly as it does under plain jit(). The
+        # input slot is settled by finalize_inline_rdata_inputs().
+        return(register_rdata_input(desc, x$gnode$aval, outer = x))
+      }
+      # \(x) gradient(f)(x)
       return(register_input(desc, x$gnode))
     }
     # don't convert R values because they might be static.
@@ -528,11 +559,19 @@ get_box_or_register_const <- function(desc, x) {
     if (!is.null(gval)) {
       return(desc$gval_to_box[[gval]])
     }
-    gval <- GraphValue(aval = ConcreteArray(x))
-    desc$array_to_gval[[x]] <- gval
-    desc$constants <- c(desc$constants, list(gval))
-    box <- GraphBox(gval, desc)
-    desc$gval_to_box[[gval]] <- box
+    # A trace other than a sub-graph mints its own node for the array. Where it
+    # is nested -- an inlined gradient(), whose arguments are the enclosing
+    # trace's nodes -- that keeps the array apart from an argument it is also
+    # passed as: `gradient(\(x) x * y)(y)` differentiates `x` with `y` held
+    # fixed. Merged into a sub-graph, the node becomes an input of it.
+    box <- if (desc$closed) {
+      capture_outer(desc, x, GraphValue(aval = abstract_aval(ConcreteArray(x))))
+    } else {
+      gval <- GraphValue(aval = ConcreteArray(x))
+      desc$constants <- c(desc$constants, list(gval))
+      register_gval(desc, gval)
+    }
+    desc$array_to_gval[[x]] <- box$gnode
     return(box)
   }
   if (is_valid_r_lit(x)) {
@@ -547,49 +586,95 @@ get_box_or_register_const <- function(desc, x) {
   if (!is_graph_value(x)) {
     cli_abort("Internal error: trying to register an invalid constant")
   }
-  # gval$aval can either be a
-  # * ConcreteArray: AnvlArray that is captured from the parent environment
-  # * AbstractArray: Output of a computation in a parent graph
-  # In either case, we first check whether the value is already registered in the current graph
-  # and if so, return it:
+  # A value this graph already has -- its own, or one from outside it has seen
+  # before -- is returned as it is.
   box <- desc$gval_to_box[[x]]
   if (!is.null(box)) {
     return(box)
   }
-
-  # Now, we create the new box and register it, so if we see it again, we can return it immediately.
-  new_box <- GraphBox(x, desc)
-
+  # Otherwise `x` is from outside: an array closed over (`ConcreteArray`) or the
+  # output of a computation further out (`AbstractArray`).
+  if (desc$closed) {
+    # An array node a nested trace minted (see above) stays that trace's node,
+    # now an input of the sub-graph; the call passes the array for it.
+    if (is_concrete_array(x$aval)) {
+      return(capture_outer(desc, x$aval$data, x))
+    }
+    box <- capture_outer(desc, x, GraphValue(aval = abstract_aval(x$aval)))
+    desc$gval_to_box[[x]] <- box
+    return(box)
+  }
+  if (!is.null(desc$parent)) {
+    box <- adopt_outer(desc, get_box_or_register_const(desc$parent, x)$gnode)
+    desc$gval_to_box[[x]] <- box
+    return(box)
+  }
   if (is_concrete_array(x$aval)) {
     desc$array_to_gval[[x$aval$data]] <- x
   }
-  desc$gval_to_box[[x]] <- new_box
   desc$constants <- c(desc$constants, list(x))
-  return(new_box)
+  register_gval(desc, x)
 }
 
-# The values of an enclosing graph that `graphs` use. A sub-graph records such
-# a value among its own constants, where it is told apart from a materialized
-# constant by its abstract type: a `ConcreteArray` is an array the sub-graph
-# closed over and needs no more than its bytes, while an `AbstractArray` is the
-# output of a computation further out, which the enclosing graph has to be able
-# to trace dataflow through.
-#
-# Returned in a stable order, de-duplicated across the graphs, so a call can
-# list them as operands.
-subgraph_captures <- function(graphs) {
-  seen <- hashtab()
-  captures <- list()
-  for (graph in graphs) {
-    for (gval in graph$constants) {
-      if (is_concrete_array(gval$aval) || !is.null(seen[[gval]])) {
-        next
-      }
-      seen[[gval]] <- TRUE
-      captures[[length(captures) + 1L]] <- gval
-    }
+# `inner` becomes the sub-graph's input for the value `outer` of the trace
+# around it -- a GraphValue, or an array closed over -- which the primitive the
+# sub-graph belongs to passes as an operand (see `close_over()`).
+capture_outer <- function(desc, outer, inner) {
+  desc$captures <- c(desc$captures, list(list(outer = outer, inner = inner)))
+  register_gval(desc, inner)
+}
+
+# A value of the enclosing trace, as a constant of the nested, non-sub-graph
+# trace `desc`; inlining that trace back into its parent makes it the parent's
+# own value again.
+adopt_outer <- function(desc, gval) {
+  box <- desc$gval_to_box[[gval]]
+  if (!is.null(box)) {
+    return(box)
   }
-  captures
+  desc$constants <- c(desc$constants, list(gval))
+  register_gval(desc, gval)
+}
+
+# The sub-graphs of one higher-order call, traced in the closed descriptors
+# `descs`, take what they captured as inputs after their own (see
+# `capture_outer()`). The call passes one list of those values for all of them:
+# each graph's captured inputs are laid out in that shared order, with an unused
+# input for a value only another sub-graph reads. Returns the boxes of the
+# values in `desc`, the trace the call is recorded in -- which captures them in
+# turn if it is itself a sub-graph.
+close_over <- function(desc, descs, graphs) {
+  # A slot per occurrence: the k-th capture of an outer value in any sub-graph
+  # shares a slot with the k-th in the others. A value is almost always captured
+  # once; an array a sub-graph reads both directly and through an inlined
+  # gradient() is passed twice, once for each input.
+  slots <- hashtab()
+  outer <- list()
+  slot_of <- lapply(descs, function(d) {
+    seen <- hashtab()
+    vapply(d$captures, function(capture) {
+      k <- (seen[[capture$outer]] %||% 0L) + 1L
+      seen[[capture$outer]] <- k
+      ids <- slots[[capture$outer]] %||% integer()
+      if (length(ids) < k) {
+        outer[[length(outer) + 1L]] <<- capture$outer
+        ids <- c(ids, length(outer))
+        slots[[capture$outer]] <- ids
+      }
+      ids[[k]]
+    }, integer(1L))
+  })
+  outer_aval <- function(o) abstract_aval(if (is_anvl_array(o)) ConcreteArray(o) else o$aval)
+  for (i in seq_along(graphs)) {
+    graph <- graphs[[i]]
+    captures <- descs[[i]]$captures
+    inner <- lapply(outer, \(o) GraphValue(aval = outer_aval(o)))
+    inner[slot_of[[i]]] <- lapply(captures, \(capture) capture$inner)
+    own <- graph$inputs[seq_len(length(graph$inputs) - length(captures))]
+    graph$inputs <- c(own, inner)
+    graph$n_captures <- length(outer)
+  }
+  lapply(outer, \(o) get_box_or_register_const(desc, o))
 }
 
 register_inputs <- function(desc, inputs) {
@@ -700,6 +785,12 @@ trace_fn <- function(
   }
 
   parent_desc <- maybe_previous_descriptor()
+  # A sub-graph reaches outside only through its captures, which the primitive
+  # passes from its own trace; it has no parent to hand values to.
+  desc$closed <- mode == "subgraph"
+  if (desc$closed) {
+    desc$parent <- NULL
+  }
   if (mode == "toplevel" && !is.null(parent_desc)) {
     cli_abort('Internal error: trace_fn(mode = "toplevel") must not have a parent descriptor')
   }
@@ -851,6 +942,7 @@ local_descriptor <- function(..., envir = parent.frame()) {
   args$backend <- args$backend %||% active_backend()
   args$default_dtypes <- args$default_dtypes %||% current_default_dtypes()
   desc <- do.call(GraphDescriptor, args)
+  desc$parent <- globals[["CURRENT_DESCRIPTOR"]]
   if (!is.null(globals[["CURRENT_DESCRIPTOR"]])) {
     globals[["DESCRIPTOR_STASH"]] <- c(
       globals[["DESCRIPTOR_STASH"]],
@@ -933,7 +1025,11 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   # the traced function is not attributed to the last primitive that ran.
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["INFER_PRIMITIVE"]] <- NULL
-  gvals_out <- lapply(ats_out, GraphValue)
+  # An output is computed, whatever its inputs were: an inference rule that
+  # hands an input's aval back (`infer_generic_biv()` returns `lhs`) must not
+  # make `sin(y)` of a closed-over `y` look like `y` itself. Only a constant's
+  # node carries a `ConcreteArray`.
+  gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
   desc$calls$add(call)
   lapply(gvals_out, register_gval, desc = desc)

@@ -1134,7 +1134,7 @@ reduced_shape <- function(x, axes, drop) {
   new_shape
 }
 
-infer_reduce <- function(x, init, axes, drop, reducer) {
+infer_reduce <- function(x, init, ..., axes, drop, reducer) {
   assert_arrays(x = x, init = init)
 
   if (length(shape(init)) != 0L) {
@@ -1451,6 +1451,7 @@ infer_scatter <- function(
   x,
   scatter_indices,
   update,
+  ...,
   update_window_axes,
   inserted_window_axes,
   x_batching_axes,
@@ -1972,6 +1973,8 @@ type_mismatches <- function(a, b) {
   which(!vapply(seq_along(a), function(i) eq_type(a[[i]], b[[i]]), logical(1L)))
 }
 
+# The operands after `pred` are the branches' inputs, which only the lowering
+# reads.
 infer_cond <- function(pred, ..., true, false) {
   assert_array_dtype(pred, "bool", shape = integer())
   outs_true <- graph_output_avals(true)
@@ -2003,10 +2006,11 @@ infer_cond <- function(pred, ..., true, false) {
 }
 
 infer_while <- function(..., cond, body) {
-  # The operands past the state are the sub-graphs' captures.
-  outs <- list(...)[seq_along(body$inputs)]
+  # The operands and the body's inputs past the state are its captures.
+  state_idx <- seq_along(body$outputs)
+  outs <- list(...)[state_idx]
   outs_body <- graph_output_avals(body)
-  inputs_body <- lapply(body$inputs, function(inp) inp$aval)
+  inputs_body <- lapply(body$inputs[state_idx], function(inp) inp$aval)
   # The names of `init`, read off the body's input tree rather than passed as a
   # param (which would reach the lowering rules).
   state_names <- pjrt::tree_child_names(body$in_tree)

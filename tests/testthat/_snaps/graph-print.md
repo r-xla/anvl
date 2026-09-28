@@ -175,7 +175,7 @@
     Code
       cat(format(call))
     Output
-      while(f32[], f32[], f32[]) [cond = (f32[]) -> bool[], body = (f32[]) -> f32[]] -> f32[]
+      while(f32[] | f32[], f32[], f32[]) [cond = (f32[] | f32[], f32[], f32[]) -> bool[], body = (f32[] | f32[], f32[], f32[]) -> f32[]] -> f32[]
 
 # format.AnvlGraph() / shows literals, constants, params, captures and nested sub-graphs
 
@@ -186,25 +186,25 @@
         %1: f32[] = convert [dtype = f32] (2:i32)
         %2: f32[] = mul(%x1, %1)
         %3: f32[] = while [
-          cond = [%x1] (%x2: f32[]) {
-            %5: bool[] = lt(%x2, %x1)
+          cond = (%x2: f32[] | %x3: f32[], %x4: f32[], %x5: f32[]) {
+            %5: bool[] = lt(%x2, %x3)
             return %5
           },
-          body = [%x1, %2, %c1] (%x3: f32[]) {
-            %6: bool[] = lt(%x3, %2)
+          body = (%x6: f32[] | %x7: f32[], %x8: f32[], %x9: f32[]) {
+            %6: bool[] = lt(%x6, %x8)
             %7: f32[] = if [
-              true = [%x3, %2] () {
-                %8: f32[] = add(%x3, %2)
+              true = (| %x10: f32[], %x11: f32[], %x12: f32[]) {
+                %8: f32[] = add(%x10, %x11)
                 return %8
               },
-              false = [%x3, %2, %c1] () {
-                %9: f32[] = add(%x3, %c1)
+              false = (| %x13: f32[], %x14: f32[], %x15: f32[]) {
+                %9: f32[] = add(%x13, %x15)
                 return %9
               }
-            ] (%6, %x3, %2)
+            ] (%6 | %x6, %x8, %x9)
             return %7
           }
-        ] (%c2, %x1, %2)
+        ] (%c2 | %x1, %2, %c1)
         %4: f32[2,1] = broadcast_in_axes [
           shape = c(2, 1), broadcast_axes = integer(0)
         ] (%3)

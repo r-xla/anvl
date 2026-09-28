@@ -185,7 +185,7 @@ describe("inline_scalarish_constants", {
     )
   })
 
-  it("processes nested subgraphs", {
+  it("inlines what nested sub-graphs close over, as operands of the outermost call", {
     # Create a graph with nested nv_if calls
     const_inner_true <- nv_scalar(100)
     const_inner_false <- nv_scalar(200)
@@ -204,12 +204,11 @@ describe("inline_scalarish_constants", {
       graph_fun = f,
       args = list(list(x = nv_scalar(TRUE), y = nv_scalar(TRUE))),
       check_literals = function(new_graph, original_graph) {
-        outer <- new_graph$calls[[1L]]$params
-        branch_outputs <- lapply(
-          c(outer$true$calls[[1L]]$params, outer$false$calls[[1L]]$params),
-          \(g) g$outputs[[1L]]
-        )
-        expect_true(all(vapply(branch_outputs, is_graph_literal, logical(1L))))
+        # The sub-graphs are closed, so the four constants reach them as
+        # operands of the outer call, beside the inner predicate `y`.
+        captured <- new_graph$calls[[1L]]$inputs[-1L]
+        expect_equal(sum(vapply(captured, is_graph_literal, logical(1L))), 4L)
+        expect_length(new_graph$constants, 0L)
       }
     )
   })

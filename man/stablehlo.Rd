@@ -7,8 +7,7 @@
 stablehlo(
   graph,
   id = "main",
-  constants_as_inputs = TRUE,
-  env = NULL,
+  captured = list(),
   donate = character(),
   donate_unaliased_outputs = FALSE,
   platform = NULL
@@ -25,15 +24,13 @@ the module) and \code{""} for a closure/region lowering (e.g. a while body or
 a scatter update computation) that builds an anonymous nested function
 inside an enclosing build.}
 
-\item{constants_as_inputs}{(\code{logical(1)})\cr
-If \code{TRUE} (default), constants are registered as inputs to the StableHLO function
-so they can be passed in at execution time.
-If \code{FALSE}, they are not added as inputs. Set to \code{FALSE} for closures.
-Note that \code{GraphLiteral}s are always inlined into the StableHLO function.}
-
-\item{env}{(\code{HloEnv} | \code{NULL})\cr
-Optional environment for reusing variable mappings across nested function lowerings
-(e.g. for higher-order primitives like \code{nv_while}).}
+\item{captured}{(\code{list(FuncValue)})\cr
+Values of the enclosing function to bind the graph's last \code{length(captured)}
+inputs to. The lowered function reads them the way an MLIR region captures
+a value from above, instead of declaring them as inputs. Used for the
+sub-graphs of higher-order primitives (e.g. \code{nv_while}), whose trailing
+inputs are the values they close over. The graph's constants always become
+inputs, and \code{GraphLiteral}s are always inlined.}
 
 \item{donate}{(\code{character()})\cr
 Names of the arguments whose buffers should be donated.

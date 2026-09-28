@@ -1562,16 +1562,6 @@ quickr_lower_graph_calls <- function(graph, ctx) {
   list(stmts = stmts, out_exprs = out_exprs)
 }
 
-# The quickr counterpart of `bind_captures()`: points each capture of `graphs`
-# at the expression of the operand the call lists for it.
-quickr_bind_captures <- function(ctx, graphs, capture_exprs) {
-  captures <- subgraph_captures(graphs)
-  for (i in seq_along(captures)) {
-    ctx$node_expr[[captures[[i]]]] <- capture_exprs[[i]]
-  }
-  invisible(ctx)
-}
-
 quickr_lower_inline_graph <- function(graph, input_exprs, ctx) {
   if (!is_graph(graph)) {
     cli_abort("{.arg graph} must be a {.cls AnvlGraph}")
@@ -1584,15 +1574,6 @@ quickr_lower_inline_graph <- function(graph, input_exprs, ctx) {
 
   for (i in seq_along(graph$inputs)) {
     node_expr[[graph$inputs[[i]]]] <- input_exprs[[i]]
-  }
-
-  for (const_node in graph$constants) {
-    if (!is_graph_value(const_node)) {
-      cli_abort("Internal error: subgraph constants must be GraphValue nodes")
-    }
-    if (is.null(node_expr[[const_node]])) {
-      cli_abort("quickr lowering: subgraph constant is not available in parent graph constants")
-    }
   }
 
   quickr_lower_graph_calls(graph, ctx)
@@ -1774,10 +1755,9 @@ local({
       }
       true_graph <- params$true
       false_graph <- params$false
-      quickr_bind_captures(ctx, list(true_graph, false_graph), inputs[-1L])
 
-      lowered_true <- quickr_lower_inline_graph(true_graph, list(), ctx)
-      lowered_false <- quickr_lower_inline_graph(false_graph, list(), ctx)
+      lowered_true <- quickr_lower_inline_graph(true_graph, inputs[-1L], ctx)
+      lowered_false <- quickr_lower_inline_graph(false_graph, inputs[-1L], ctx)
 
       if (length(out_syms) != length(lowered_true$out_exprs) || length(out_syms) != length(lowered_false$out_exprs)) {
         cli_abort("if: branch arity mismatch")
@@ -1802,8 +1782,9 @@ local({
       }
       cond_graph <- params$cond
       body_graph <- params$body
-      state_idx <- seq_along(body_graph$inputs)
-      quickr_bind_captures(ctx, list(cond_graph, body_graph), inputs[-state_idx])
+      # The operands past the state are the sub-graphs' captures.
+      state_idx <- seq_along(out_syms)
+      captured <- inputs[-state_idx]
       inputs <- inputs[state_idx]
 
       if (length(out_syms) != length(inputs)) {
@@ -1817,12 +1798,12 @@ local({
       cond_sym <- as.name(paste0("cond_", as.character(out_syms[[1L]])))
 
       lower_cond <- function() {
-        lowered <- quickr_lower_inline_graph(cond_graph, out_syms, ctx)
+        lowered <- quickr_lower_inline_graph(cond_graph, c(out_syms, captured), ctx)
         c(lowered$stmts, list(rlang::call2("<-", cond_sym, lowered$out_exprs[[1L]])))
       }
 
       lower_body <- function() {
-        lowered <- quickr_lower_inline_graph(body_graph, out_syms, ctx)
+        lowered <- quickr_lower_inline_graph(body_graph, c(out_syms, captured), ctx)
         assigns <- Map(rlang::call2, rep("<-", length(out_syms)), out_syms, lowered$out_exprs)
         c(lowered$stmts, assigns)
       }
@@ -1902,7 +1883,7 @@ local({
       if (!is_graph(update_comp)) {
         cli_abort("scatter: missing update computation graph")
       }
-      if (length(update_comp$inputs) != 2L || length(update_comp$outputs) != 1L) {
+      if (length(update_comp$inputs) != length(inputs) - 1L || length(update_comp$outputs) != 1L) {
         cli_abort("scatter: update computation graph must be a scalar binary function")
       }
 
@@ -1918,7 +1899,7 @@ local({
       upd_expr <- rlang::call2("[", inputs[[3L]], ii)
 
       lower_update_comp <- function() {
-        lowered <- quickr_lower_inline_graph(update_comp, list(old_sym, upd_sym), ctx)
+        lowered <- quickr_lower_inline_graph(update_comp, c(list(old_sym, upd_sym), inputs[-(1:3)]), ctx)
         c(lowered$stmts, list(rlang::call2("<-", new_sym, lowered$out_exprs[[1L]])))
       }
 

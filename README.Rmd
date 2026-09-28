@@ -106,16 +106,17 @@ To learn more, see the [Get Started](https://r-xla.github.io/anvl/articles/anvl.
 
 ## Platform Support
 
-| OS      | Architecture |  CPU  |     CUDA       |
-| ------- | ------------ | :---: | :------------: |
-| Linux   | x86_64       |   ✓   |   ✓            |
-| Linux   | arm64        |   ✓   |   ✓            |
-| Windows | x86_64       |   ✓   |   WSL2         |
-| Windows | arm64        |   ✗   |   ✗            |
-| macOS   | x86_64       |   ✓   |   ✗            |
-| macOS   | arm64        |   ✓   |   ✗            |
+```{r, echo = FALSE}
+support <- pjrt::platform_support()
+backends <- c(cpu = "CPU", cuda = "CUDA")
+symbols <- c(yes = "✓", no = "✗", wsl2 = "WSL2")
+support <- support[c("os", "arch", names(backends))]
+support[names(backends)] <- lapply(support[names(backends)], function(x) unname(symbols[x]))
+names(support) <- c("OS", "Architecture", backends)
+knitr::kable(support, align = "llcc")
+```
 
-✓ fully supported &nbsp;·&nbsp; ✗ not supported
+✓ supported &nbsp;·&nbsp; WSL2: via the Windows Subsystem for Linux &nbsp;·&nbsp; ✗ not supported
 
 ## Acknowledgments
 
