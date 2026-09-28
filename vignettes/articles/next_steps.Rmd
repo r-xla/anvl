@@ -153,6 +153,17 @@ double_until <- jit(function(x, limit) {
 double_until(nv_scalar(1), 100)
 ```
 
+For a loop with a fixed number of steps there is also `nv_scan()`, which threads a carry through `body` like `nv_while()` and additionally stacks what each step returns.
+The difference matters for automatic differentiation: `gradient()` differentiates through `nv_if()` and `nv_scan()`, but not through `nv_while()`.
+A while loop's number of iterations is only known at run time, so there is no static size for the per-iteration states the backward pass needs:
+
+```{r}
+double_n <- function(x) {
+  nv_scan(list(x = x), body = \(carry, xs) list(carry = list(x = carry$x * 2), out = NULL), steps = 3L)$carry$x
+}
+jit(gradient(double_n))(nv_scalar(1))
+```
+
 Alternatively, an R loop around a jitted function, as in the [Get Started](anvl.html) article, can also be an option.
 
 ## Shapes Must Be Known in Advance
