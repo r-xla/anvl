@@ -82,7 +82,8 @@ if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
 for one or more argument subsets.
 
-\code{promotion_grouped()} applies several rules to disjoint subsets.
+\code{promotion_grouped()} applies several rules to disjoint subsets. The rules
+must all refer to arguments by name, or all by position.
 
 \code{promotion_rule()} creates a new promotion rule.
 It takes in \code{\link{arrayish}} values and outputs a list of data types, with \code{NULL} indicating

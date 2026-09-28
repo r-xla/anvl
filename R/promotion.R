@@ -147,7 +147,8 @@ promotion_rdata_common <- function(on = NULL) {
 }
 
 #' @description
-#' `promotion_grouped()` applies several rules to disjoint subsets.
+#' `promotion_grouped()` applies several rules to disjoint subsets. The rules
+#' must all refer to arguments by name, or all by position.
 #' @param ... ([`PromotionRule`][promotion_rule])\cr
 #'   The rules to apply to disjoint argument subsets.
 #' @rdname promotion_rule
@@ -181,9 +182,6 @@ rules_coverage <- function(rules) {
   if (any(vapply(covered, is.null, logical(1L)))) {
     return(NULL)
   }
-  if (length(unique(vapply(covered, function(x) is.character(x), logical(1L)))) > 1L) {
-    return(NULL)
-  }
   unlist(covered)
 }
 
@@ -200,16 +198,23 @@ assert_disjoint_rules <- function(rules) {
   if (any(undeclared)) {
     return(invisible(NULL))
   }
-  for (kind in c("character", "numeric")) {
-    refs <- unlist(Filter(function(x) is(x, kind), covered))
-    clashing <- unique(refs[duplicated(refs)])
-    if (length(clashing)) {
-      cli_abort(c(
-        "More than one rule in this {.fn promotion_grouped} covers the same argument.",
-        x = "{cli::qty(length(clashing))}Argument{?s} {.val {clashing}} {?is/are} named by more than one rule.",
-        i = "An argument can only be brought to one data type, so the groups must be disjoint."
-      ))
-    }
+  by_name <- vapply(covered, is.character, logical(1L))
+  if (any(by_name) && !all(by_name)) {
+    cli_abort(c(
+      "The rules in a {.fn promotion_grouped} must all refer to arguments by name, or all by position.",
+      x = "By name: {cli::qty(sum(by_name))}rule{?s} {.val {which(by_name)}}.",
+      x = "By position: {cli::qty(sum(!by_name))}rule{?s} {.val {which(!by_name)}}.",
+      i = "Whether a name and a position mean the same argument depends on the call, so the rules could not be checked to be disjoint." # nolint
+    ))
+  }
+  refs <- unlist(covered)
+  clashing <- unique(refs[duplicated(refs)])
+  if (length(clashing)) {
+    cli_abort(c(
+      "More than one rule in this {.fn promotion_grouped} covers the same argument.",
+      x = "{cli::qty(length(clashing))}Argument{?s} {.val {clashing}} {?is/are} named by more than one rule.",
+      i = "An argument can only be brought to one data type, so the groups must be disjoint."
+    ))
   }
   invisible(NULL)
 }

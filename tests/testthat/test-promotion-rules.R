@@ -381,6 +381,20 @@ test_that("promotion_grouped() refuses groups that could overlap", {
     promotion_grouped(promotion_common(on = 1:2), promotion_common(on = 2:3)),
     "covers the same argument"
   )
+  # A name and a position may mean the same argument, which only the call can
+  # tell -- so a group refers to arguments one way.
+  expect_error(
+    promotion_grouped(promotion_dtype("f64", on = "x"), promotion_common(on = 3L)),
+    "all refer to arguments by"
+  )
+  expect_error(
+    promotion_grouped(
+      promotion_grouped(promotion_dtype("f64", on = "x")),
+      promotion_common(on = 2L)
+    ),
+    "all refer to arguments by"
+  )
+
   # A rule that names no `on` covers any argument, so it can only stand alone.
   expect_error(
     promotion_grouped(promotion_common(), promotion_common(on = "x")),
