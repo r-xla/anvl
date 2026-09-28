@@ -625,7 +625,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 
       # A scan needs a carry; where only `xs` is differentiated there is none
       # to thread, so a placeholder rides along.
-      placeholder <- if (!n_carry_needed && !n_cap) list(nv_scalar(0L, dtype = "i32"))
+      placeholder <- if (!n_carry_needed && !n_cap) list(nv_scalar(FALSE))
       pulled <- prim_scan(
         init = list(
           carry = grads[carry_needed],

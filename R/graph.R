@@ -590,21 +590,35 @@ get_box_or_register_const <- function(desc, x) {
 # Returns the boxes of the captured values in `desc`, which in turn captures
 # them if it is itself a sub-graph that is being traced.
 close_subgraphs <- function(desc, graphs) {
-  seen <- hashtab()
+  # `slot` maps each captured GraphValue to its position among the captures.
+  # Two sub-graphs that closed over the same array each minted a GraphValue for
+  # it, so an array is matched by itself rather than by its GraphValue, and is
+  # passed once.
+  slot <- hashtab()
+  slot_of_array <- hashtab()
   captures <- list()
   for (graph in graphs) {
     for (gval in graph$constants) {
-      if (is.null(seen[[gval]])) {
-        seen[[gval]] <- TRUE
-        captures[[length(captures) + 1L]] <- gval
+      if (!is.null(slot[[gval]])) {
+        next
       }
+      array <- if (is_concrete_array(gval$aval)) gval$aval$data
+      k <- if (!is.null(array)) slot_of_array[[array]]
+      if (is.null(k)) {
+        captures[[length(captures) + 1L]] <- gval
+        k <- length(captures)
+        if (!is.null(array)) {
+          slot_of_array[[array]] <- k
+        }
+      }
+      slot[[gval]] <- k
     }
   }
   for (graph in graphs) {
     fresh <- lapply(captures, function(gval) GraphValue(aval = abstract_aval(gval$aval)))
     map <- hashtab()
-    for (i in seq_along(captures)) {
-      map[[captures[[i]]]] <- fresh[[i]]
+    for (gval in graph$constants) {
+      map[[gval]] <- fresh[[slot[[gval]]]]
     }
     substitute_gnodes(graph, map)
     graph$inputs <- c(graph$inputs, fresh)

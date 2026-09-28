@@ -278,9 +278,10 @@
 ## Bug fixes
 
 * `gradient()` no longer returns a zero gradient for a value that a
-  `prim_if()`, `prim_while()` or `prim_scan()` sub-graph closes over. A
-  sub-graph now takes what it closes over as inputs, which its call passes as
-  operands; printed graphs set them apart with a `|`.
+  `prim_if()` or `prim_scan()` sub-graph closes over, and refuses one that a
+  `prim_while()` loop's result depends on. A sub-graph now takes what it closes
+  over as inputs, which its call passes as operands; printed graphs set them
+  apart with a `|`.
 * A bare R integer start index of `prim_dynamic_slice()` /
   `prim_dynamic_update_slice()` takes the data type of the other start indices,
   so `prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)` no longer fails.

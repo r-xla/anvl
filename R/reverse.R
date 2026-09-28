@@ -280,8 +280,11 @@ requirements_from <- function(graph, targets) {
 }
 
 # Forward propagation over `graph`'s calls, starting from the seeded
-# `required_env`: a call's outputs require a gradient exactly when one of its
-# operands does. Literals are inlined constants and never do.
+# `required_env`: a call's float outputs require a gradient exactly when one of
+# its operands does. An integer or boolean output never does -- it has no
+# derivative, and the reverse rules give such values a zero -- so an RNG state
+# or a loop counter computed alongside a float does not drag the calls it feeds
+# into the backward pass. Literals are inlined constants and never do either.
 propagate_requirements <- function(graph, required_env) {
   for (call in graph$calls) {
     requires <- any(vapply(
@@ -290,7 +293,7 @@ propagate_requirements <- function(graph, required_env) {
       logical(1L)
     ))
     for (out_node in call$outputs) {
-      required_env[[out_node]] <- requires
+      required_env[[out_node]] <- requires && is_dtype_float(out_node$aval$dtype)
     }
   }
   required_env
@@ -451,7 +454,10 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
       function(x) required_env[[x]] %||% FALSE,
       logical(1L)
     )
-    if (!any(input_required)) {
+    # A call none of whose outputs requires a gradient contributes none, even
+    # where an operand requires one -- e.g. a loop that only counts.
+    output_required <- vapply(call$outputs, \(x) isTRUE(required_env[[x]]), logical(1L))
+    if (!any(input_required) || !any(output_required)) {
       next
     }
 

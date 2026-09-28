@@ -342,6 +342,22 @@ describe("prim_if", {
     expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(6, 12, 18))
   })
 
+  it("leaves an RNG state a branch returns undifferentiated", {
+    f <- function(p, x, st) {
+      r <- nv_if(
+        p,
+        function() {
+          d <- nv_rnorm(integer(), st, dtype = "f64")
+          list(st = d$state, a = nv_sum(x) * d$values)
+        },
+        function() list(st = st, a = nv_sum(x))
+      )
+      r$a + nv_rnorm(integer(), r$st, dtype = "f64")$values
+    }
+    grad <- jit(gradient(f, wrt = "x"))(false_, x, nv_rng_state(1L))$x
+    expect_equal(as.numeric(grad), c(1, 1, 1))
+  })
+
   it("differentiates a value an earlier call's reverse rule replaced", {
     # `prim_sort()`'s reverse rule replaces its forward, so the value the
     # branches closed over is rebuilt before they are differentiated.
@@ -1270,6 +1286,24 @@ describe("prim_scan", {
     }
     g <- function(x) nv_sum(gradient(f)(x)[[1L]])
     expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), c(6, 12, 18))
+  })
+
+  it("leaves an RNG state it carries on undifferentiated after the scan", {
+    # The final state feeds another draw, which needs no gradient either.
+    f <- function(x, st) {
+      body <- function(carry, xs) {
+        d <- nv_rnorm(integer(), carry$st, dtype = "f64")
+        list(carry = list(st = d$state, a = carry$a + xs$v * d$values), out = d$values)
+      }
+      r <- prim_scan(list(st = st, a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      last <- nv_rnorm(integer(), r$carry$st, dtype = "f64")$values
+      list(value = r$carry$a * last, draws = r$out, last = last)
+    }
+    st <- nv_rng_state(1L)
+    run <- jit(f)(x, st)
+    loss <- function(x, st) f(x, st)$value
+    grad <- jit(gradient(loss, wrt = "x"))(x, st)$x
+    expect_equal(as.numeric(grad), as.numeric(run$draws) * as.numeric(run$last))
   })
 
   it("passes the gradient straight through a scan of zero steps", {

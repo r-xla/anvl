@@ -599,6 +599,17 @@ describe("gradients through prim_while", {
     expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No reverse rule for primitive .*while")
   })
 
+  it("leaves one alone whose outputs are integers", {
+    # The loop only counts, so it contributes no gradient even though its
+    # condition reads `x`: 0.25 + 2.25 + 4 = 6.5, so it runs 7 times.
+    x <- nv_array(c(0.5, 1.5, -2), dtype = "f64")
+    f <- function(x) {
+      n <- nv_while(list(i = 0L), \(i) nv_convert(i, "f64") < nv_sum(x * x), \(i) list(i = i + 1L))$i
+      nv_sum(x) * nv_convert(n, "f64")
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(7, 7, 7))
+  })
+
   it("leaves one that does not depend on wrt alone", {
     f <- function(x, y) accumulate(x) * y
     expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(x, nv_scalar(1, "f64"))$y), 12)
