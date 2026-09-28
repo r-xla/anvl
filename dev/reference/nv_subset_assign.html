@@ -102,8 +102,18 @@ An R object is materialized at its <a href="default_dtypes.html">default data ty
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Subset specifications, one per axis. See
-the <a href="https://r-xla.github.io/anvl/articles/subsetting.html">Subsetting</a> article for details.</p></dd>
+<dd><p>Subset specifications, one per axis. Omitted trailing
+axes select all elements.</p>
+<p>A boolean mask (an R logical array such as <code>arr(TRUE, FALSE)</code>, or an
+arrayish value of dtype <code>bool</code>) selects the elements at the <code>TRUE</code>
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+<code>x</code> selects across the whole array, yielding a 1-D result. Under <code><a href="jit.html">jit()</a></code>,
+the values of a mask must be known at compile time, because the number of
+selected elements determines the output shape: R logical arrays and
+arrays created in or closed over by the function work, a mask computed
+from the function's inputs does not.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/subsetting.html">Subsetting</a> article for details.</p></dd>
 
 
 <dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
@@ -160,13 +170,22 @@ comprehensive guide.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
 <span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)</span></span></span>
+<span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">6</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span></span>
+<span class="r-in"><span><span class="va">x</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2 5 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3 6 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># write into the memory of `x` instead of copying it</span></span></span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">x</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   0  0  0  0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   1  1  1  1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1 1 1 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3 6 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
 </code></pre></div>
     </div>

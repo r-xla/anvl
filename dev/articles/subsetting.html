@@ -277,8 +277,8 @@ kind of subscript can be dynamic:</p>
 <table class="table">
 <thead><tr class="header">
 <th>Subscript</th>
-<th>Static (R value)</th>
-<th>Dynamic (<code>AnvlArray</code>)</th>
+<th>Known Value</th>
+<th>Runtimew Value</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
@@ -298,18 +298,18 @@ kind of subscript can be dynamic:</p>
 </tr>
 <tr class="even">
 <td>Logical mask</td>
-<td>No</td>
-<td>No</td>
+<td>Yes</td>
+<td>Outside of <code><a href="../reference/jit.html">jit()</a></code>
+</td>
 </tr>
 </tbody>
 </table>
 <p>The size of a range <code>a:b</code>, and therefore the shape of the
 result, would not be known in advance if <code>a</code> or
-<code>b</code> were dynamic. For the same reason, logical masks such as
-<code>x[x &gt; 5]</code> are not supported at all. The <a href="static_shapes.html#the-masking-pattern">masking pattern</a>
-section of the Static Shape Restriction article shows how to get the
-same results without them. Negative indices, which exclude elements in
-R, are not supported either.</p>
+<code>b</code> were dynamic. For the same reason, a logical mask
+computed from the inputs of a jitted function, such as
+<code>x[x &gt; 5]</code>, is not supported (see <a href="#logical-masks">logical masks</a> below). Negative indices, which
+exclude elements in R, are not supported either.</p>
 </div>
 <div class="section level2">
 <h2 id="indices-outside-of-the-anvlarray">Indices Outside of the <code>AnvlArray</code><a class="anchor" aria-label="anchor" href="#indices-outside-of-the-anvlarray"></a>
@@ -334,12 +334,108 @@ bugs:</p>
 <span><span class="co">## [ CPUi32{2} ]</span></span></code></pre>
 </div>
 <div class="section level2">
+<h2 id="logical-masks">Logical Masks<a class="anchor" aria-label="anchor" href="#logical-masks"></a>
+</h2>
+<p>A logical mask selects the elements at the <code>TRUE</code>
+positions. Like indices, a mask must be an array – a plain logical
+vector is rejected – so use <code><a href="../reference/arr.html">arr()</a></code> to write one out. A mask
+for a single axis must have as many elements as the size of that axis,
+and never drops the axis:</p>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span>, <span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   1  2  3  4</span></span>
+<span><span class="co">##   9 10 11 12</span></span>
+<span><span class="co">## [ CPUi32{2,4} ]</span></span></code></pre>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span>, <span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="cn">FALSE</span>, <span class="cn">TRUE</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   2  3</span></span>
+<span><span class="co">##   6  7</span></span>
+<span><span class="co">##  10 11</span></span>
+<span><span class="co">## [ CPUi32{3,2} ]</span></span></code></pre>
+<p>A mask that has the same shape as the <code>AnvlArray</code> and is
+the only subscript selects across all axes, and the result has a single
+axis. This is the familiar <code>x[x &gt; 6]</code> idiom:</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="va">m</span> <span class="op">&gt;</span> <span class="fl">6</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   9</span></span>
+<span><span class="co">##  10</span></span>
+<span><span class="co">##   7</span></span>
+<span><span class="co">##  11</span></span>
+<span><span class="co">##   8</span></span>
+<span><span class="co">##  12</span></span>
+<span><span class="co">## [ CPUi32{6} ]</span></span></code></pre>
+<p>The elements come back in the same order as in R, i.e. column-major.
+A single subscript that is <em>not</em> shaped like the whole
+<code>AnvlArray</code> still refers to the first axis, as everywhere
+else in {anvl}:</p>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   1  2  3  4</span></span>
+<span><span class="co">##   9 10 11 12</span></span>
+<span><span class="co">## [ CPUi32{2,4} ]</span></span></code></pre>
+<p>This differs from base R, where a single subscript indexes the
+flattened matrix and a shorter mask is recycled, so the same call picks
+elements from all columns:</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">r_m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">r_m</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1]  1  9  2 10  3 11  4 12</span></span></code></pre>
+<p>{anvl} keeps one rule instead: <code>x[i]</code> always means
+<code>x[i, ]</code>, whether <code>i</code> is an index, a range,
+several indices, or a mask. Only a mask of the full shape selects across
+all axes, since it cannot be read as a subset of one axis. An
+all-<code>FALSE</code> mask selects nothing and produces an
+<code>AnvlArray</code> with no elements:</p>
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="va">m</span> <span class="op">&gt;</span> <span class="fl">100</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">## [ CPUi32{0} ]</span></span></code></pre>
+<p>The number of elements a mask selects depends on its values, so
+inside <code><a href="../reference/jit.html">jit()</a></code> these must be known in advance. That is the
+case for a mask of R values, and for an <code>AnvlArray</code> that the
+function creates or closes over, because neither depends on the
+inputs:</p>
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">row_mask</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="va">m</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   1  2  3  4</span></span>
+<span><span class="co">##   9 10 11 12</span></span>
+<span><span class="co">## [ CPUi32{2,4} ]</span></span></code></pre>
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="va">m</span><span class="op">[</span><span class="va">row_mask</span>, <span class="op">]</span><span class="op">)</span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   1  2  3  4</span></span>
+<span><span class="co">##   9 10 11 12</span></span>
+<span><span class="co">## [ CPUi32{2,4} ]</span></span></code></pre>
+<p>A mask computed from the inputs only has values once the program
+runs, so it is an error:</p>
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="va">m</span><span class="op">[</span><span class="va">m</span> <span class="op">&gt;</span> <span class="fl">6</span><span class="op">]</span><span class="op">)</span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `as_r_mask()`:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> Boolean masks that depend on the inputs of a jitted function are not</span></span>
+<span><span class="co">##   supported.</span></span>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> The number of selected elements, and hence the output shape, depends on the</span></span>
+<span><span class="co">##   data.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Use a mask whose values are known at compile time: an R logical array such as</span></span>
+<span><span class="co">##   `arr(TRUE, FALSE, TRUE)`, or an array created in or closed over by the</span></span>
+<span><span class="co">##   function.</span></span></code></pre>
+<p>The <a href="static_shapes.html#the-masking-pattern">masking
+pattern</a> section of the Static Shape Restriction article shows how to
+get the same results inside <code><a href="../reference/jit.html">jit()</a></code>,
+e.g. <code>sum(x[x &gt; 0])</code>.</p>
+</div>
+<div class="section level2">
 <h2 id="updating-subsets">Updating Subsets<a class="anchor" aria-label="anchor" href="#updating-subsets"></a>
 </h2>
 <p>Subset assignment uses the same subscripts as selection. The new
 value must either have the shape of the selected subset, or be a scalar,
 which is then used for every selected element:</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">m</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -347,7 +443,7 @@ which is then used for every selected element:</p>
 <span><span class="co">##   5  6 -2  8</span></span>
 <span><span class="co">##   9 10 -3 12</span></span>
 <span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
 <span><span class="va">m</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -355,21 +451,31 @@ which is then used for every selected element:</p>
 <span><span class="co">##   5  6 -2  8</span></span>
 <span><span class="co">##   9 10 -3 12</span></span>
 <span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
+<p>A mask works as well, and the result keeps the shape of the
+<code>AnvlArray</code>:</p>
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span><span class="op">[</span><span class="va">m</span> <span class="op">&gt;</span> <span class="fl">6</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
+<span><span class="va">m</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##   0  0  0  0</span></span>
+<span><span class="co">##   5  6 -2  0</span></span>
+<span><span class="co">##   0  0 -3  0</span></span>
+<span><span class="co">## [ CPUi32{3,4} ]</span></span></code></pre>
 <p>The value must also fit the data type of the <code>AnvlArray</code>.
 This is different from base R, which changes the type of the object that
 is assigned into when the value does not fit, e.g. an integer vector
 becomes a double vector:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r_int</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span></span>
 <span><span class="va">r_int</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
 <span><span class="va">r_int</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 0.5 2.0 3.0</span></span></code></pre>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/typeof.html" class="external-link">typeof</a></span><span class="op">(</span><span class="va">r_int</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "double"</span></span></code></pre>
 <p>{anvl} never changes the data type of the <code>AnvlArray</code> that
 is being updated, so the same assignment is an error:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
 <span><span class="va">y</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
@@ -385,7 +491,7 @@ float data type first, e.g. with <code>nv_convert(y, "f32")</code>.</p>
 silently ignored, for the same reason as when selecting (see <a href="#indices-outside-of-the-anvlarray">indices outside of the
 <code>AnvlArray</code></a>). Below, only the elements 1 and 3 are
 updated:</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">y</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">100L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1L</span>, <span class="op">-</span><span class="fl">2L</span>, <span class="op">-</span><span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">y</span></span></code></pre></div>
@@ -399,7 +505,7 @@ updated:</p>
 <p>When the same element is written several times, it is not specified
 which of the values ends up in it, and this can differ between devices,
 e.g. between the CPU and a GPU:</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">y</span><span class="op">[</span><span class="fu"><a href="../reference/arr.html">arr</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10L</span>, <span class="fl">20L</span>, <span class="fl">30L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">y</span></span></code></pre></div>
@@ -420,7 +526,7 @@ still refers to the same <code>AnvlArray</code>, which would then change
 as well. To avoid the copy, pass <code>inplace = TRUE</code> among the
 subscripts, which writes the update into the memory of
 <code>y</code>:</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">y</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
 <span><span class="va">y</span></span></code></pre></div>
@@ -435,7 +541,7 @@ subscripts, which writes the update into the memory of
 <code>nv_subset_assign(y, 2:3, value = 0L, inplace = TRUE)</code>.</p>
 <p>This consumes the original <code>AnvlArray</code>: its memory is <a href="efficiency.html#donation">donated</a> to the result, so any other
 R variable that referred to it can no longer be used afterwards.</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">z</span> <span class="op">&lt;-</span> <span class="va">y</span></span>
 <span><span class="va">y</span><span class="op">[</span><span class="fl">1</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">1L</span></span>

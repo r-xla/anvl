@@ -23,7 +23,21 @@ nv_subset_assign(x, ..., value, inplace = FALSE)
 
 - ...:
 
-  Subset specifications, one per axis. See the
+  Subset specifications, one per axis. Omitted trailing axes select all
+  elements.
+
+  A boolean mask (an R logical array such as `arr(TRUE, FALSE)`, or an
+  arrayish value of dtype `bool`) selects the elements at the `TRUE`
+  positions. A mask for one axis must have as many elements as the size
+  of that axis. A mask that is the only subscript and has the same shape
+  as `x` selects across the whole array, yielding a 1-D result. Under
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), the
+  values of a mask must be known at compile time, because the number of
+  selected elements determines the output shape: R logical arrays and
+  arrays created in or closed over by the function work, a mask computed
+  from the function's inputs does not.
+
+  See the
   [Subsetting](https://r-xla.github.io/anvl/articles/subsetting.html)
   article for details.
 
@@ -83,12 +97,21 @@ x
 #>   3  6  9 12
 #> [ CPUi32{3,4} ] 
 
+# Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)
+x[x > 6] <- 0L
+x
+#> AnvlArray
+#>  0 0 0 0
+#>  2 5 0 0
+#>  3 6 0 0
+#> [ CPUi32{3,4} ] 
+
 # write into the memory of `x` instead of copying it
 x[2, inplace = TRUE] <- nv_scalar(1L)
 x
 #> AnvlArray
-#>   0  0  0  0
-#>   1  1  1  1
-#>   3  6  9 12
+#>  0 0 0 0
+#>  1 1 1 1
+#>  3 6 0 0
 #> [ CPUi32{3,4} ] 
 ```

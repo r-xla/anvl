@@ -414,6 +414,25 @@
   [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
   reports how many compiled programs a jitted function currently holds
   for a backend.
+- [`nv_subset()`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md)
+  and
+  [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
+  (and hence `[` and `[<-`) support boolean masks. A mask for a single
+  axis selects the `TRUE` positions of that axis
+  (`x[arr(TRUE, FALSE, TRUE), ]`), while a mask with the shape of the
+  whole array selects across all axes and returns a 1-D result
+  (`x[x > 6]`). Because the number of selected elements determines the
+  output shape, a mask under
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) must be
+  known at compile time: R logical arrays and arrays created in or
+  closed over by the function work, while a mask computed from the
+  function’s inputs is an error.
+- Subsets that select no elements, such as an all-`FALSE` mask or
+  `x[array(integer(0)), ]`, now return a zero-sized array instead of
+  failing inside
+  [`prim_gather()`](https://r-xla.github.io/anvl/dev/reference/prim_gather.md)
+  /
+  [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md).
 - The random number generators
   ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
   [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),

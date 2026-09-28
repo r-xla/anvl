@@ -215,20 +215,19 @@ x[nv_array(c(2L, 4L, 6L))]
 Because the shape of the result must be known in advance, not every kind
 of subscript can be dynamic:
 
-| Subscript       | Static (R value) | Dynamic (`AnvlArray`) |
-|-----------------|------------------|-----------------------|
-| Single index    | Yes              | Yes                   |
-| Several indices | Yes              | Yes                   |
-| Range           | Yes              | No                    |
-| Logical mask    | No               | No                    |
+| Subscript | Known Value | Runtimew Value |
+|----|----|----|
+| Single index | Yes | Yes |
+| Several indices | Yes | Yes |
+| Range | Yes | No |
+| Logical mask | Yes | Outside of [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) |
 
 The size of a range `a:b`, and therefore the shape of the result, would
 not be known in advance if `a` or `b` were dynamic. For the same reason,
-logical masks such as `x[x > 5]` are not supported at all. The [masking
-pattern](https://r-xla.github.io/anvl/dev/articles/static_shapes.html#the-masking-pattern)
-section of the Static Shape Restriction article shows how to get the
-same results without them. Negative indices, which exclude elements in
-R, are not supported either.
+a logical mask computed from the inputs of a jitted function, such as
+`x[x > 5]`, is not supported (see [logical masks](#logical-masks)
+below). Negative indices, which exclude elements in R, are not supported
+either.
 
 ## Indices Outside of the `AnvlArray`
 
@@ -261,6 +260,144 @@ x[nv_array(c(0L, 20L))]
     ##  10
     ## [ CPUi32{2} ]
 
+## Logical Masks
+
+A logical mask selects the elements at the `TRUE` positions. Like
+indices, a mask must be an array – a plain logical vector is rejected –
+so use [`arr()`](https://r-xla.github.io/anvl/dev/reference/arr.md) to
+write one out. A mask for a single axis must have as many elements as
+the size of that axis, and never drops the axis:
+
+``` r
+
+m[arr(TRUE, FALSE, TRUE), ]
+```
+
+    ## AnvlArray
+    ##   1  2  3  4
+    ##   9 10 11 12
+    ## [ CPUi32{2,4} ]
+
+``` r
+
+m[, arr(FALSE, TRUE, TRUE, FALSE)]
+```
+
+    ## AnvlArray
+    ##   2  3
+    ##   6  7
+    ##  10 11
+    ## [ CPUi32{3,2} ]
+
+A mask that has the same shape as the `AnvlArray` and is the only
+subscript selects across all axes, and the result has a single axis.
+This is the familiar `x[x > 6]` idiom:
+
+``` r
+
+m[m > 6]
+```
+
+    ## AnvlArray
+    ##   9
+    ##  10
+    ##   7
+    ##  11
+    ##   8
+    ##  12
+    ## [ CPUi32{6} ]
+
+The elements come back in the same order as in R, i.e. column-major. A
+single subscript that is *not* shaped like the whole `AnvlArray` still
+refers to the first axis, as everywhere else in {anvl}:
+
+``` r
+
+m[arr(TRUE, FALSE, TRUE)]
+```
+
+    ## AnvlArray
+    ##   1  2  3  4
+    ##   9 10 11 12
+    ## [ CPUi32{2,4} ]
+
+This differs from base R, where a single subscript indexes the flattened
+matrix and a shorter mask is recycled, so the same call picks elements
+from all columns:
+
+``` r
+
+r_m <- matrix(1:12, nrow = 3, byrow = TRUE)
+r_m[c(TRUE, FALSE, TRUE)]
+```
+
+    ## [1]  1  9  2 10  3 11  4 12
+
+{anvl} keeps one rule instead: `x[i]` always means `x[i, ]`, whether `i`
+is an index, a range, several indices, or a mask. Only a mask of the
+full shape selects across all axes, since it cannot be read as a subset
+of one axis. An all-`FALSE` mask selects nothing and produces an
+`AnvlArray` with no elements:
+
+``` r
+
+m[m > 100]
+```
+
+    ## AnvlArray
+    ## [ CPUi32{0} ]
+
+The number of elements a mask selects depends on its values, so inside
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) these must
+be known in advance. That is the case for a mask of R values, and for an
+`AnvlArray` that the function creates or closes over, because neither
+depends on the inputs:
+
+``` r
+
+row_mask <- nv_array(arr(TRUE, FALSE, TRUE))
+jit(function(m) m[arr(TRUE, FALSE, TRUE), ])(m)
+```
+
+    ## AnvlArray
+    ##   1  2  3  4
+    ##   9 10 11 12
+    ## [ CPUi32{2,4} ]
+
+``` r
+
+jit(function(m) m[row_mask, ])(m)
+```
+
+    ## AnvlArray
+    ##   1  2  3  4
+    ##   9 10 11 12
+    ## [ CPUi32{2,4} ]
+
+A mask computed from the inputs only has values once the program runs,
+so it is an error:
+
+``` r
+
+jit(function(m) m[m > 6])(m)
+```
+
+    ## Error in `as_r_mask()`:
+    ## ! Boolean masks that depend on the inputs of a jitted function are not
+    ##   supported.
+    ## ✖ The number of selected elements, and hence the output shape, depends on the
+    ##   data.
+    ## ℹ Use a mask whose values are known at compile time: an R logical array such as
+    ##   `arr(TRUE, FALSE, TRUE)`, or an array created in or closed over by the
+    ##   function.
+
+The [masking
+pattern](https://r-xla.github.io/anvl/dev/articles/static_shapes.html#the-masking-pattern)
+section of the Static Shape Restriction article shows how to get the
+same results inside
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
+e.g. `sum(x[x > 0])`.
+
 ## Updating Subsets
 
 Subset assignment uses the same subscripts as selection. The new value
@@ -289,6 +426,20 @@ m
     ##   0  0  0  0
     ##   5  6 -2  8
     ##   9 10 -3 12
+    ## [ CPUi32{3,4} ]
+
+A mask works as well, and the result keeps the shape of the `AnvlArray`:
+
+``` r
+
+m[m > 6] <- 0L
+m
+```
+
+    ## AnvlArray
+    ##   0  0  0  0
+    ##   5  6 -2  0
+    ##   0  0 -3  0
     ## [ CPUi32{3,4} ]
 
 The value must also fit the data type of the `AnvlArray`. This is
