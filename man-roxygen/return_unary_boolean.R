@@ -1,2 +1,2 @@
-#' @return [`arrayish`]\cr
-#'   Has the same shape as the input and boolean data type.
+#' @return ([`arrayish`])\cr
+#'   Has the input's shape and boolean data type.

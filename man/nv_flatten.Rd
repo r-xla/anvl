@@ -2,22 +2,29 @@
 % Please edit documentation in R/api.R
 \name{nv_flatten}
 \alias{nv_flatten}
-\title{Flatte}
+\title{Flatten}
 \usage{
 nv_flatten(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-1-D array.
+Has the input's data type, and one axis holding all of its elements --
+so a scalar, which has none, becomes a length-1 vector.
 }
 \description{
-Flattens an N-dimensional array into a 1-dimensional array.
-Fails with scalar inputs.
+Flattens an array with one or more axes into a 1-D array, using col-major semantics.
 }
 \examples{
-nv_flatten(matrix(1:4, nrow = 2))
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the 2x2 matrix becomes a length-4 vector
+x <- matrix(1:4, nrow = 2)
+nv_flatten(x)
+# the same column-major order base R uses
+c(x)
+\dontshow{\}) # examplesIf}
 }

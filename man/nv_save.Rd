@@ -2,19 +2,20 @@
 % Please edit documentation in R/serialize.R
 \name{nv_save}
 \alias{nv_save}
-\title{Save arrays to a file}
+\title{Save Arrays to a File}
 \usage{
 nv_save(arrays, path)
 }
 \arguments{
 \item{arrays}{(named \code{list} of \code{\link{AnvlArray}})\cr
-Named list of arrays to save. Names must be unique.}
+Named list of arrays. Names must be unique.}
 
 \item{path}{(\code{character(1)})\cr
 File path to write to.}
 }
 \value{
-\code{NULL} (invisibly).
+(\code{NULL})\cr
+Invisibly.
 }
 \description{
 Saves a named list of arrays to a file in the
@@ -26,6 +27,7 @@ a file connection.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 path <- tempfile(fileext = ".safetensors")

@@ -50,13 +50,13 @@ a
 dtype(a)
 shape(a)
 
-# Shorthand
+# shorthand
 nv_aval("f32", c(2L, 3L))
 
-# An R value, which has no dtype until it is used
+# an R value, which has no dtype until it is used
 nv_aval("double", c(2L, 3L))
 
-# How AbstractArrays appear in an AnvlGraph
+# how AbstractArrays appear in an AnvlGraph
 graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
 graph
 graph$inputs[[1]]$aval

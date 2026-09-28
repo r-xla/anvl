@@ -1,3 +1,24 @@
+describe("graph_desc_add's device", {
+  it("declares the device into the descriptor being traced", {
+    desc <- local_descriptor()
+    prim_fill(1, shape = 2L, dtype = "f32", device = "cpu:1")
+    expect_equal(desc$devices, list(nv_device("cpu:1")))
+  })
+
+  it("declares nothing when there is no device", {
+    desc <- local_descriptor()
+    prim_fill(1, shape = 2L, dtype = "f32")
+    expect_length(desc$devices, 0L)
+  })
+
+  it("rejects a device of another backend", {
+    skip_if_no_quickr()
+    dev_q <- with_backend("quickr", nv_device("cpu"))
+    local_descriptor()
+    expect_error(prim_fill(1, shape = 2L, dtype = "f32", device = dev_q), "active backend")
+  })
+})
+
 test_that("trace_fn: simple test", {
   f <- function(x, y) {
     prim_add(x, y)
@@ -144,9 +165,10 @@ test_that("can pass constant to nested trace_fn call if it is defined in the par
 })
 
 test_that("GraphLiteral", {
+  local_registered_default_dtypes()
   gl <- GraphLiteral(LiteralArray(1L, integer()))
-  expect_equal(dtype(gl), as_dtype("i32"))
-  expect_equal(shape(gl), integer())
+  expect_dtype(gl, default_int())
+  expect_shape(gl, integer())
   expect_snapshot(gl)
 })
 
@@ -184,43 +206,34 @@ test_that("can pass abstract arrays to trace_fn", {
 })
 
 test_that("error handling", {
-  expect_snapshot(error = TRUE, jit(prim_ceil)(nv_array(1:4)))
+  local_registered_default_dtypes()
+  expect_snapshot(error = TRUE, jit(prim_ceiling)(nv_array(1:4)))
   expect_snapshot(
     error = TRUE,
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = c(2, 2))
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = c(2, 2))
   )
 })
 
-test_that("error handling: stablehlo errors use anvl's terminology", {
-  # `cli_abort()` errors from stablehlo store an already formatted message in
-  # the condition's fields. Shapes rather than data types, since operands whose
-  # data types disagree are refused by `promote_rdata_common()` before inference
-  # ever sees them.
+test_that("error handling: type inference reports in anvl's terminology", {
+  local_registered_default_dtypes()
+  # Shapes rather than data types, since operands whose data types disagree are
+  # refused by `promotion_rdata_common()` before inference ever sees them.
   expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
-  # stablehlo's `operand` is anvl's `x`
-  err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
-  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
+  # The primary operand is `x`, never `operand`.
+  err <- tryCatch(jit(prim_ceiling)(nv_array(1:4)), error = identity)
+  expect_match(conditionMessage(err), "`x` must have a float data type", fixed = TRUE)
 
-  # `ErrorStablehlo` conditions build their message lazily in a
-  # `conditionMessage()` method; they keep their class and their 1-based indices.
-  # A too-short `permutation` passes anvl's own checks (every entry is a valid,
-  # non-duplicated dimension) and is only rejected by stablehlo.
+  # Axis numbers are 1-based, with no conversion step on the way out. A
+  # too-short `perm` passes anvl's own checks (every entry is a valid,
+  # non-duplicated axis) and is only rejected by inference.
   err <- tryCatch(
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = 1L),
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = 1L),
     error = identity
   )
-  expect_s3_class(err, "ErrorPermuteIndex")
   expect_match(conditionMessage(err), "must be a permutation of c(1, 2)", fixed = TRUE)
-})
-
-test_that("user_terminology() rewrites words but not identifiers", {
-  expect_equal(
-    user_terminology("hlo_tensor() returns a TensorType; rank(operand) and operand_batching_dims are tensors"),
-    "hlo_tensor() returns a TensorType; rank(x) and operand_batching_dims are arrays"
-  )
 })
 
 test_that("can print GraphLiteral if it holds scalar array", {
@@ -267,8 +280,8 @@ test_that("trace_fn(mode = 'subgraph') promotes R lits/arrays to AnvlArray input
     mode = "subgraph"
   )
   expect_equal(length(graph$inputs), 2L)
-  expect_equal(shape(graph$inputs[[1L]]), integer())
-  expect_equal(shape(graph$inputs[[2L]]), 2L)
+  expect_shape(graph$inputs[[1L]], integer())
+  expect_shape(graph$inputs[[2L]], 2L)
 })
 
 test_that("trace_fn(mode = 'subgraph') errors on non-arrayish args", {
@@ -307,13 +320,12 @@ describe("how an R value is built into a graph", {
   })
 
   it("converts inside the program when the value crosses its category", {
+    # This only happens when the default float is narrower than an R double.
+    local_registered_default_dtypes()
     # An R double built at an integer data type is built at f64 -- where it is
     # exact -- and converted by the program, so narrowing follows XLA.
     f <- function(x) nv_add(x, nv_convert(1.5, "i32"))
-    # The f64 the staging brings in is what `anvl_staging_widens_warning`
-    # reports; here the point is the graph it produces.
-    expect_warning(trace_fn(f, list(x = nv_aval("i32", integer()))))
-    graph <- suppressWarnings(trace_fn(f, list(x = nv_aval("i32", integer()))))
+    graph <- trace_fn(f, list(x = nv_aval("i32", integer())))
     expect_snapshot(graph)
   })
 
@@ -346,5 +358,50 @@ describe("how an R value is built into a graph", {
     })
     out <- f(nv_scalar(1, dtype = "f64"))
     expect_equal(as_array(out$acc), 8)
+  })
+})
+
+describe("coercing a traced array to R", {
+  trace_call <- function(f) {
+    jit(function(x) {
+      f(x)
+      x
+    })(nv_array(1:3))
+  }
+
+  coercions <- list(
+    as_array = as_array,
+    as_raw = as_raw,
+    as.array = as.array,
+    as.matrix = as.matrix,
+    as.vector = as.vector,
+    as.list = as.list,
+    as.double = as.double,
+    as.numeric = as.numeric,
+    as.integer = as.integer,
+    as.logical = as.logical,
+    as.character = as.character,
+    as.integer64 = bit64::as.integer64
+  )
+
+  for (nm in names(coercions)) {
+    local({
+      fn <- coercions[[nm]]
+      name <- nm
+      it(paste0(name, "() errors"), {
+        expect_error(trace_call(fn), "has no values")
+      })
+    })
+  }
+
+  it("a closed-over concrete array still converts", {
+    # the closed-over array is anyway a constant.
+    k <- nv_array(1:3)
+    out <- NULL
+    jit(function(x) {
+      out <<- as_array(k)
+      x
+    })(nv_array(1:3))
+    expect_equal(out, array(1:3))
   })
 })

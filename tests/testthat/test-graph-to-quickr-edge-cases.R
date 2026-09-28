@@ -81,7 +81,7 @@ test_that("graph_to_quickr_function rejects transpose ranks other than 2", {
 
   x3 <- array(1:8, dim = c(2L, 2L, 2L))
   graph <- trace_fn(
-    function(x) prim_transpose(x, permutation = c(2L, 1L, 3L)),
+    function(x) prim_transpose(x, perm = c(2L, 1L, 3L)),
     list(x = nv_array(x3, dtype = "i32", shape = dim(x3)))
   )
   testthat::expect_error(graph_to_quickr_function(graph), "transpose: only rank-2", fixed = FALSE)
@@ -112,7 +112,7 @@ test_that("graph_to_quickr_function rejects reductions over empty axes", {
   skip_if_no_quickr()
 
   templ <- list(x = nv_aval("f64", c(2L, 0L)))
-  graph <- trace_fn(function(x) prim_reduce_max(x, axes = 2L, drop = TRUE), templ)
+  graph <- trace_fn(function(x) prim_max(x, axes = 2L, drop = TRUE), templ)
   expect_error(graph_to_quickr_function(graph), "empty axes", fixed = FALSE)
 })
 
@@ -120,10 +120,10 @@ test_that("graph_to_quickr_function rejects unsupported reduce_sum variants", {
   skip_if_no_quickr()
 
   # The lowering's other guards (scalar / rank-1 / rank-2 with out-of-range
-  # axes) are unreachable through `prim_reduce_sum()`, which validates `axes`
+  # axes) are unreachable through `prim_sum()`, which validates `axes`
   # against the input rank at trace time -- see test-primitives-stablehlo.R.
   graph <- trace_fn(
-    function(x) prim_reduce_sum(x, axes = 2L, drop = TRUE),
+    function(x) prim_sum(x, axes = 2L, drop = TRUE),
     list(x = nv_array(1:8, shape = c(2L, 2L, 2L), dtype = "i32"))
   )
   expect_error(graph_to_quickr_function(graph), "for rank > 2, only full reductions", fixed = FALSE)
@@ -154,14 +154,14 @@ test_that("quickr computes NaN and infinite literals at runtime", {
 
   # As an operand of a call, where it is bound to a temp the call then reads.
   x <- nv_array(c(1, 2), dtype = "f64")
-  expect_equal(as.vector(jit(function(v) nv_min(v, Inf))(x)), c(1, 2))
-  expect_equal(as.vector(jit(function(v) nv_max(v, -Inf))(x)), c(1, 2))
+  expect_equal(as.vector(jit(function(v) nv_pmin(v, Inf))(x)), c(1, 2))
+  expect_equal(as.vector(jit(function(v) nv_pmax(v, -Inf))(x)), c(1, 2))
   expect_true(all(is.nan(as.vector(jit(function(v) v + NaN)(x)))))
 
   # `nan_rm = TRUE` reductions seed themselves with +-Inf, the path that made
   # this necessary in the first place.
   y <- nv_array(c(1, NaN, 3), dtype = "f64")
-  expect_equal(as.vector(nv_reduce_max(y, nan_rm = TRUE)), 3)
-  expect_equal(as.vector(nv_reduce_min(y, nan_rm = TRUE)), 1)
-  expect_equal(as.vector(nv_reduce_sum(y, nan_rm = TRUE)), 4)
+  expect_equal(as.vector(nv_max(y, nan_rm = TRUE)), 3)
+  expect_equal(as.vector(nv_min(y, nan_rm = TRUE)), 1)
+  expect_equal(as.vector(nv_sum(y, nan_rm = TRUE)), 4)
 })

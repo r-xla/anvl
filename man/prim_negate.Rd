@@ -8,11 +8,12 @@ prim_negate(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type integer or floating-point.}
+One input. Can be any numeric data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Negates an array element-wise.
@@ -28,13 +29,18 @@ Negates an array element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_negate]{hlo_negate()}}.
+Lowers to \code{\link[stablehlo:hlo_negate]{hlo_negate()}}, specified under
+\href{https://openxla.org/stablehlo/spec#negate}{negate}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, -2, 3))
 prim_negate(x)
+
+# an R value materializes at its default data type
+prim_negate(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

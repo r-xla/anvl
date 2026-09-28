@@ -8,11 +8,12 @@ prim_tan(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point.}
+One input. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise tangent.
@@ -28,13 +29,18 @@ Element-wise tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tan]{hlo_tan()}}.
+Lowers to \code{\link[stablehlo:hlo_tan]{hlo_tan()}}, specified under
+\href{https://openxla.org/stablehlo/spec#tan}{tan}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 0.5, 1))
 prim_tan(x)
+
+# an R value materializes at its default data type
+prim_tan(0.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

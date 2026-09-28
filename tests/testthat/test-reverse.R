@@ -85,7 +85,7 @@ test_that("broadcasting works", {
   res <- g(nv_scalar(2), nv_array(c(1, 2, 3), dtype = "f32"))
   # d/da sum(a * b) = sum(b) = 6, reduced back to a scalar
   expect_equal(res$a, nv_scalar(6))
-  expect_equal(shape(res$a), integer())
+  expect_shape(res$a, integer())
   # d/db sum(a * b) = a broadcast over b's shape
   expect_equal(res$b, nv_array(c(2, 2, 2), dtype = "f32"))
 })
@@ -251,6 +251,7 @@ test_that("wrt for non-array input: value_and_gradient", {
 })
 
 test_that("wrt for nested non-array input: gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -261,6 +262,7 @@ test_that("wrt for nested non-array input: gradient", {
 })
 
 test_that("wrt for nested non-array input: value_and_gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -271,6 +273,7 @@ test_that("wrt for nested non-array input: value_and_gradient", {
 })
 
 test_that("can only compute gradient w.r.t. float arrays", {
+  local_registered_default_dtypes()
   expect_snapshot(error = TRUE, {
     gradient(nv_floor, wrt = "x")(nv_scalar(1L))
   })
@@ -431,10 +434,10 @@ describe("rdata", {
 
   it("keeps a bare R value outside wrt exact through the inline trace", {
     # `k` is an R double used at f64. sqrt(2) is not representable at f32, so a
-    # commit at the default would show up in the gradient.
+    # materialize at the default would show up in the gradient.
     f <- jit(gradient(function(v, k) v * k, wrt = "v"))
     r <- f(nv_scalar(1, dtype = "f64"), sqrt(2))
-    expect_equal(dtype(r$v), as_dtype("f64"))
+    expect_dtype(r$v, "f64")
     expect_identical(as_array(r$v), sqrt(2))
   })
 
@@ -456,7 +459,7 @@ describe("rdata", {
     # and the differentiated body builds it at the data type it meets there.
     f <- jit(function(x) gradient(function(a, b) a * b, wrt = "a")(x, sqrt(2))$a)
     r <- f(nv_scalar(1, dtype = "f64"))
-    expect_equal(dtype(r), as_dtype("f64"))
+    expect_dtype(r, "f64")
     expect_identical(as_array(r), sqrt(2))
   })
 
@@ -468,7 +471,7 @@ describe("rdata", {
       })(v)[[1L]]
     })
     r <- f(nv_scalar(sqrt(2), dtype = "f64"))
-    expect_equal(dtype(r), as_dtype("f64"))
+    expect_dtype(r, "f64")
     expect_identical(as_array(r), 4 * sqrt(2))
   })
 
@@ -493,10 +496,105 @@ describe("rdata", {
   })
 })
 
-describe("gradients that involve no sub-graph at all", {
-  it("are unaffected by the capture check", {
-    x <- nv_array(c(1, 2, 3), dtype = "f64")
-    f <- function(x) prim_reduce_sum(prim_mul(x, x), axes = 1L)
-    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(2, 4, 6))
+describe("a scoped override inside a differentiated body", {
+  # `gradient()` traces the reverse pass into its own descriptor, which inherits
+  # the active defaults where it is opened. A cotangent belongs to the primal
+  # it is with respect to, so it takes *that* array's data type whatever the
+  # literals inside the body materialized at. Upstream JAX does not support a
+  # scoped dtype override inside a traced body at all (jax-ml/jax#5982), so
+  # this is worth pinning rather than assuming.
+  x32 <- nv_array(c(1, 2, 3), dtype = "f32")
+
+  it("leaves the cotangent at the data type of the primal", {
+    f <- function(x) with_default_dtypes(c(float = "f64"), nv_sum(x * 2 + 0.5))
+    out <- jit(gradient(f))(x32)
+    expect_dtype(out[[1L]], "f32")
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("holds when the override covers only part of the body", {
+    g <- function(x) {
+      a <- x * 2
+      nv_sum(with_default_dtypes(c(float = "f64"), a + 0.5))
+    }
+    out <- jit(gradient(g))(x32)
+    expect_dtype(out[[1L]], "f32")
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("does not narrow a wider primal", {
+    # The scope makes the body's literals `f32`; the primal is `f64` and the
+    # cotangent stays there rather than following the scope down.
+    x64 <- nv_array(c(1, 2, 3), dtype = "f64")
+    h <- function(x) with_default_dtypes(c(float = "f32"), nv_sum(x * 2 + 0.5))
+    out <- jit(gradient(h))(x64)
+    expect_dtype(out[[1L]], "f64")
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("agrees with the same override set outside the body", {
+    k <- function(x) nv_sum(x * 2 + 0.5)
+    scoped <- jit(gradient(function(x) with_default_dtypes(c(float = "f64"), k(x))))(x32)
+    outside <- with_default_dtypes(c(float = "f64"), jit(gradient(k))(x32))
+    expect_dtype(scoped[[1L]], dtype(outside[[1L]]))
+    expect_equal(as_array(scoped[[1L]]), as_array(outside[[1L]]))
+  })
+})
+
+describe("the float category", {
+  it("differentiates a function returning a narrower float", {
+    # The check on the output used to name `f32` and `f64` explicitly, so a
+    # function returning any other float was refused even though the gradient
+    # itself is well defined.
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "bf16")))
+    out <- g(nv_array(c(1, 2), dtype = "f32"))
+    expect_dtype(out[[1L]], "f32")
+    expect_equal(as.vector(out[[1L]]), c(1, 1))
+  })
+
+  it("still refuses a non-float return", {
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "i32")))
+    expect_error(g(nv_array(c(1, 2), dtype = "f32")), "return float scalar")
+  })
+})
+
+describe("gradients through prim_while", {
+  # A while loop's trip count is only known at run time, so there is no static
+  # size for the tape a backward pass would need.
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  accumulate <- function(x) {
+    prim_while(
+      init = list(i = nv_scalar(0L), acc = nv_scalar(0, "f64")),
+      cond = function(i, acc) i < nv_scalar(2L),
+      body = function(i, acc) list(i = i + 1L, acc = acc + prim_sum(x, axes = 1L))
+    )$acc
+  }
+
+  it("refuses one whose state depends on wrt, pointing to nv_scan()", {
+    f <- function(x) {
+      r <- prim_while(
+        init = list(i = nv_scalar(0L), y = x),
+        cond = function(i, y) i < nv_scalar(2L),
+        body = function(i, y) list(i = i + 1L, y = y * 2)
+      )
+      nv_sum(r$y)
+    }
+    expect_error(jit(gradient(f))(x), "No reverse rule for primitive .*while.*nv_scan")
+  })
+
+  it("refuses one that closes over a value wrt depends on, rather than returning zero", {
+    # What the body closes over is an operand of the call, so the backward
+    # pass sees that the loop reads `x`.
+    expect_error(jit(gradient(accumulate))(x), "No reverse rule for primitive .*while")
+  })
+
+  it("refuses such a loop inside a branch of prim_if() too", {
+    f <- function(p, x) nv_if(p, function() accumulate(x), function() nv_scalar(0, "f64"))
+    expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No reverse rule for primitive .*while")
+  })
+
+  it("leaves one that does not depend on wrt alone", {
+    f <- function(x, y) accumulate(x) * y
+    expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(x, nv_scalar(1, "f64"))$y), 12)
   })
 })

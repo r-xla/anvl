@@ -14,7 +14,7 @@ Backward hook for default case.}
 Alternative-forward hook that returns both primals and backward closure.}
 }
 \value{
-An \code{anvl_rule_reverse} object.
+(\code{anvl_rule_reverse})
 }
 \description{
 Construct a reverse-mode autodiff rule for a primitive.

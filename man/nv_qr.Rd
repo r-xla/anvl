@@ -11,14 +11,19 @@ nv_qr(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 axes.}
+One input, with exactly 2 axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 
 \item{...}{No additional arguments.}
 }
 \value{
-Named \code{list} with elements \code{Q} (shape \verb{(m, k)}) and \code{R}
-(shape \verb{(k, n)}), where \verb{(m, n) = shape(x)} and
-\code{k = min(m, n)}. Both have the same data type as \code{x}.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{Q} (shape \verb{(m, k)}) and \code{R} (shape \verb{(k, n)}), where
+\verb{(m, n) = shape(x)} and \code{k = min(m, n)}. Both have the input's data type
+-- or the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where the
+input was an integer one.
 }
 \description{
 Computes the reduced QR decomposition of a matrix \code{x}:
@@ -30,8 +35,12 @@ shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `Q` is 3x2 and `R` 2x2, both at the input's data type
 x <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 3, dtype = "f32")
 nv_qr(x)
+
+# an integer matrix is decomposed at the default float data type
+nv_qr(nv_matrix(1:6, nrow = 3))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

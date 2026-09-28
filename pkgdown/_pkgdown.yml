@@ -83,6 +83,7 @@ reference:
       - nv_fill
       - nv_iota
       - nv_seq
+      - nv_linspace
       - nv_diag
       - nv_eye
       - as_anvl_array
@@ -115,6 +116,14 @@ reference:
       - nv_serialize
       - nv_unserialize
 
+  - subtitle: Base R Generics
+    desc: >
+      Methods for base R generics that have no `nv_*` twin. Every other
+      generic is documented together with the `nv_*` function it delegates to.
+    contents:
+      - dim.AnvlArray
+      - length.AnvlArray
+
   - title: API Functions
     desc: User-facing `nv_*` functions for array operations
 
@@ -127,12 +136,13 @@ reference:
       - nv_broadcast_scalars
       - nv_broadcast_arrays
       - nv_broadcast_to
+      - dtypes
       - common_dtype
-      - promote_common
-      - promote_like
-      - promote_dtype
-      - promote_rdata_common
-      - promote_grouped
+      - promotion_common
+      - promotion_like
+      - promotion_dtype
+      - promotion_rdata_common
+      - promotion_grouped
       - promotion_rule
       - apply_promotion
 
@@ -141,14 +151,14 @@ reference:
     contents:
       - nv_reshape
       - nv_flatten
-      - nv_transpose
+      - nv_aperm
       - nv_concatenate
       - nv_rbind
       - nv_cbind
       - nv_static_slice
       - nv_select
       - nv_pad
-      - nv_reverse
+      - nv_rev
       - nv_squeeze
       - nv_unsqueeze
       - nv_subset
@@ -165,6 +175,7 @@ reference:
       - nv_negate
       - nv_remainder
       - nv_mod
+      - nv_floor_div
 
   - subtitle: Comparison Operations
     desc: Element-wise comparison operations
@@ -192,6 +203,9 @@ reference:
       - nv_sin
       - nv_cos
       - nv_tan
+      - nv_sinpi
+      - nv_cospi
+      - nv_tanpi
       - nv_asin
       - nv_acos
       - nv_atan
@@ -207,13 +221,14 @@ reference:
       - nv_ceiling
       - nv_trunc
       - nv_round
-      - nv_logistic
+      - nv_plogis
       - nv_erf
       - nv_erfc
       - nv_erf_inv
+      - nv_gamma
       - nv_digamma
       - nv_lgamma
-      - nv_polygamma
+      - nv_psigamma
       - nv_is_finite
       - nv_is_nan
       - nv_is_infinite
@@ -221,12 +236,13 @@ reference:
   - subtitle: Reduction Operations
     desc: Operations that reduce array axes
     contents:
-      - nv_reduce_sum
-      - nv_reduce_prod
-      - nv_reduce_max
-      - nv_reduce_min
-      - nv_reduce_any
-      - nv_reduce_all
+      - nv_sum
+      - nv_prod
+      - nv_max
+      - nv_min
+      - nv_range
+      - nv_any
+      - nv_all
 
   - subtitle: Statistical Summaries
     desc: Summary statistics over array axes
@@ -291,30 +307,32 @@ reference:
   - subtitle: Element-wise Operations
     desc: Other element-wise array operations
     contents:
-      - nv_min
-      - nv_max
+      - nv_pmin
+      - nv_pmax
       - nv_clamp
 
   - subtitle: Sorting and Searching
     desc: Sorting arrays and finding extrema
     contents:
       - nv_sort
-      - nv_argsort
+      - nv_order
       - nv_top_k
-      - nv_argmax
-      - nv_argmin
+      - nv_which_max
+      - nv_which_min
 
   - subtitle: Control Flow
     desc: Control flow operations
     contents:
       - nv_if
       - nv_while
+      - nv_scan
       - nv_ifelse
 
   - subtitle: Distributions
     desc: Densities, distribution functions, and samplers for probability distributions
     contents:
       - nv_normal
+      - nv_uniform
       - nv_runif
       - nv_rbinom
       - nv_sample
@@ -329,6 +347,7 @@ reference:
     desc: Code transformations
     contents:
       - jit
+      - jit_cache_size
       - gradient
       - value_and_gradient
 
@@ -341,13 +360,18 @@ reference:
     desc: Backend-related functionality and implementations
     contents:
       - backend
-      - default_backend
+      - active_backend
       - local_backend
       - with_backend
+      - default_dtypes
+      - default_float
+      - default_int
+      - local_default_dtypes
+      - with_dtypes
       - install_anvl
-      - device_arg
       - nv_device
       - default_device
+      - local_default_device
       - is_device
       - quickr_device
       - AnvlBackend
@@ -398,8 +422,6 @@ reference:
 
   - subtitle: Transformations
     contents:
-      - jit_roclet
-      - apply_jit_registry
       - trace_fn
       - transform_gradient
       - rule_reverse
@@ -423,7 +445,6 @@ reference:
   - subtitle: Miscellaneous
     contents:
       - at2vt
-      - vt2at
       - vt
       - is_arrayish
       - Shape

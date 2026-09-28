@@ -55,6 +55,25 @@ env_get <- function(env, gval) {
   cli_abort("GraphValue not found in environment")
 }
 
+# A higher-order call lists what its sub-graphs capture among its operands
+# (see `subgraph_captures()`), and the sub-graphs name those values by the
+# GraphValues they captured. A transform may rewire the call's operands -- a
+# reverse pass that replaces an earlier call, or one that replays a loop body
+# on new inputs -- without touching the sub-graphs, so the operands are what
+# counts: each capture is bound to its operand in a child of `env`, which is
+# what the sub-graphs are then lowered against.
+bind_captures <- function(env, graphs, fvals) {
+  captures <- subgraph_captures(graphs)
+  if (length(captures) != length(fvals)) {
+    cli_abort("Internal error: {length(fvals)} capture operand{?s} for {length(captures)} capture{?s}.")
+  }
+  child <- HloEnv(parent = env)
+  for (i in seq_along(captures)) {
+    env_add(child, captures[[i]], fvals[[i]])
+  }
+  child
+}
+
 #' @title Lower a graph to StableHLO
 #' @description
 #' Converts a traced [`AnvlGraph`] into the StableHLO intermediate representation (IR).
@@ -97,7 +116,8 @@ env_get <- function(env, gval) {
 #'   [`current_platform()`]) can branch on it. `NULL` (the default)
 #'   leaves the current value untouched — recursive calls from higher-order
 #'   primitives inherit the platform of the enclosing call.
-#' @return A `list` of length 3:
+#' @return (`list`)\cr
+#'   Of length 3:
 #'   - the [`stablehlo::Func`]
 #'   - The list of [`GraphValue`]s holding [`ConcreteArray`]s.
 #'   - A list of phantom-output specs, one per phantom donated input
@@ -124,7 +144,7 @@ stablehlo <- function(
   if (!is.null(platform)) {
     local_platform(platform)
   }
-  # Node -> FuncValue
+  # GraphNode -> FuncValue
   env <- HloEnv(parent = env)
   # A top-level lowering builds the module's `main` func (whose hlo_return
   # finalizes the module). A closure/region lowering (id = "", e.g. a scatter
@@ -132,15 +152,6 @@ stablehlo <- function(
   # inside the enclosing build.
   func <- stablehlo::local_func(id = id)
   inps <- if (constants_as_inputs) c(graph$constants, graph$inputs) else graph$inputs
-
-  gnode_to_fval <- function(gnode) {
-    fval <- env_get(env, gnode)
-    if (!identical(fval$func, func)) {
-      FuncValue(fval$value_id, fval$value_type, func)
-    } else {
-      fval
-    }
-  }
 
   # Compute which inputs are donated (only graph$inputs, not constants)
   donate_flat <- if (length(donate) > 0L && !is.null(graph$in_tree)) {
@@ -210,7 +221,7 @@ stablehlo <- function(
       out_aval <- graph$outputs[[j]]$aval
       phantom_specs[[length(phantom_specs) + 1L]] <- list(
         dtype = out_aval$dtype,
-        shape = out_aval$shape$dims
+        shape = shape(out_aval)
       )
     }
   }
@@ -223,6 +234,29 @@ stablehlo <- function(
     }
   }
 
+  outputs <- lower_graph_calls(graph, env, func)
+  func <- do.call(hlo_return, outputs)
+
+  constants <- graph$constants
+
+  list(func, constants, phantom_specs)
+}
+
+# Lower `graph`'s calls into `func`, reading its inputs and constants from `env`
+# and returning one FuncValue per graph output. stablehlo() uses it for a whole
+# function; a rule that inlines a sub-graph into a region it builds by hand
+# (prim_scan's loop body) first seeds `env` with the region's values for the
+# sub-graph's inputs.
+lower_graph_calls <- function(graph, env, func) {
+  gnode_to_fval <- function(gnode) {
+    fval <- env_get(env, gnode)
+    if (!identical(fval$func, func)) {
+      FuncValue(fval$value_id, fval$value_type, func)
+    } else {
+      fval
+    }
+  }
+
   do_call <- function(call) {
     prim <- call$primitive
     params <- call$params
@@ -232,7 +266,7 @@ stablehlo <- function(
         fval <- hlo_tensor(
           value = unwrap_if_array(x$aval$data),
           dtype = x$aval$dtype,
-          shape = x$aval$shape$dims,
+          shape = shape(x$aval),
           func = func
         )
         env_add(env, x, fval)
@@ -267,19 +301,14 @@ stablehlo <- function(
     do_call(call)
   }
 
-  outputs <- lapply(graph$outputs, \(x) {
+  lapply(graph$outputs, \(x) {
     if (is_graph_literal(x)) {
       # this only happens when a literal is directly returned
-      hlo_tensor(value = x$aval$data, dtype = x$aval$dtype, shape = x$aval$shape$dims, func = func)
+      hlo_tensor(value = x$aval$data, dtype = x$aval$dtype, shape = shape(x$aval), func = func)
     } else {
       gnode_to_fval(x)
     }
   })
-  func <- do.call(hlo_return, outputs)
-
-  constants <- graph$constants
-
-  list(func, constants, phantom_specs)
 }
 
 #' @title Current Lowering Target Platform
@@ -298,7 +327,8 @@ stablehlo <- function(
 #'   Target platform name (e.g. `"cpu"`, `"cuda"`), or `NULL` to clear it.
 #' @param envir (`environment`)\cr
 #'   Environment whose exit triggers restoration of the previous platform.
-#' @return `current_platform()` returns `NULL` or `character(1)`.
+#' @return (`NULL` | `character(1)`)\cr
+#'   The current platform.
 #'   `local_platform()` invisibly returns the previous platform.
 #' @seealso [`stablehlo()`]
 #' @export

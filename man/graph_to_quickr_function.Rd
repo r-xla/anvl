@@ -38,15 +38,15 @@ function returns the same structure by rebuilding the output tree in R.
 
 For a list of supported primitives see \code{vignette("primitives")}.
 
-Supported dtypes are \code{f64}, \code{i32}, and \code{pred}.
+Supported data types are \code{f64}, \code{i32} and \code{bool}.
 The code generator currently supports arrays up to rank 5. Some primitives
 are more restricted (e.g. \code{transpose} currently only handles rank-2 arrays).
 
-Most users will prefer \code{\link[=jit]{jit()}} with \code{backend = "quickr"}. This function is
+Most users will prefer \code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)}. This function is
 the lower-level graph API.
 }
 \seealso{
-\code{\link[=jit]{jit()}} with \code{backend = "quickr"} for tracing and compiling a
+\code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)} for tracing and compiling a
 regular R function in one step.
 }
 \keyword{internal}

@@ -8,11 +8,12 @@ prim_sinh(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point.}
+One input. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise hyperbolic sine.
@@ -27,13 +28,19 @@ Element-wise hyperbolic sine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sinh]{hlo_sinh()}}.
+Lowers to \code{\link[stablehlo:hlo_sinh]{hlo_sinh()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chlosinh_chlosinhop}{chlo.sinh}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 prim_sinh(x)
+
+# an R value materializes at its default data type
+prim_sinh(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

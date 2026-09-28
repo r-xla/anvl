@@ -9,7 +9,7 @@ vignette: >
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
-  eval = Sys.getenv("PJRT_PLATFORM", "cpu") != "metal"
+  eval = !startsWith(Sys.getenv("ANVL_DEFAULT_DEVICE", "cpu"), "metal")
 )
 ```
 
@@ -20,13 +20,11 @@ For example, below we are adding an `f32` to an `f64`, where the former is promo
 
 ```{r}
 library(anvl)
-jit(nv_add)(
+nv_add(
   nv_scalar(1.0, dtype = "f32"),
   nv_scalar(1.0, dtype = "f64")
 )
 ```
-
-The type-promotion rules are inspired by JAX, and they are designed for execution on accelerators like GPUs, where one often wants speed instead of precision.
 
 The rules are defined by the `common_dtype()` function.
 
@@ -43,13 +41,20 @@ dtypes <- c("bool", "i8", "i16", "i32", "i64", "ui8", "ui16", "ui32", "ui64", "f
 tbl <- matrix(NA_character_, length(dtypes), length(dtypes))
 for (i in seq_along(dtypes)) {
   for (j in seq_along(dtypes)) {
-    tbl[i, j] <- as.character(common_dtype(dtypes[i], dtypes[j]))
+    # `ui64` and a signed integer have no common data type.
+    tbl[i, j] <- tryCatch(as.character(common_dtype(dtypes[i], dtypes[j])), error = function(e) "--")
   }
 }
-rownames(tbl) <- dtypes
+# The column headers are bold as table headers; the row labels are cells, so
+# they are emphasized here to match.
+rownames(tbl) <- sprintf("<strong>%s</strong>", dtypes)
 colnames(tbl) <- dtypes
-knitr::kable(tbl, format = "html", caption = "Type promotion rules (row × column)")
+knitr::kable(tbl, format = "html", escape = FALSE, caption = "Type promotion rules (row × column)")
 ```
+
+Two integer types meet at a type that holds every value of both, so `i8` and `ui8` meet at `i16`.
+The exception is `ui64`: no signed integer type holds its values, and an integer never becomes a float on its own, so a `ui64` and a signed integer have no common type at all (the `--` cells above).
+This is where JAX and NumPy fall back to a float -- {anvl} instead asks you to say what you want, by converting one of the operands with `nv_convert()`.
 
 The biggest differentiator between our type system and the one from JAX is the handling of array objects from the host language, which is R in our case.
 While introducing more complexity, these rules prevent the loss of precision present in JAX's type system.
@@ -72,13 +77,25 @@ nv_add(1, nv_scalar(1, "f64"))
 nv_add(1, 2)
 ```
 
-It is therefore important to understand to understand the rules that govern the materialization of R objects as `AnvlArray`s.
+It is therefore important to understand the rules that govern the materialization of R objects as `AnvlArray`s.
 Generally, there are two routes:
 
-1. An R values it commited at its default data type (`double -> f32`, `integer -> i32`, `logical -> bool`).
+1. The R value is materialized at its default data type, which `default_dtypes()` reports: a `double` and an `integer` take the defaults of the active backend, configurable through the `anvl.default_dtypes` option, and a `logical` takes `bool`.
    This is e.g. the case in unary functions such as `nv_exp`.
-2. The R values data type is inferred from other arguments, as is the case of the `nv_add` call above.
-   When no concrete data type is present, `nv_add(1, 2)` falls back to the default, which is `f32` for `double`s.
+2. The R value's data type is inferred from the other arguments, as in the `nv_add` call above.
+   When no concrete data type is present, `nv_add(1, 2)` falls back to that default again.
+
+Either way the value is *built at* that data type rather than converted into it, so one the data type cannot hold is an error:
+
+```{r, error = TRUE}
+jit(function(x) x + (-2L))(nv_scalar(1L, "ui8"))
+```
+
+Converting an array is a different matter and keeps XLA's wraparound semantics:
+
+```{r}
+nv_convert(nv_scalar(-2L, "i32"), "ui8")
+```
 
 Note that these rules are not universal and exceptions exist.
 Some functions, such as `nv_clamp`, prioritize the data type of a specific argument, in this case `x`, the value that is being clamped.
@@ -86,9 +103,9 @@ It fails if the the boundary values cannot be promoted to `x` without loss of pr
 
 ```{r, error = TRUE}
 nv_clamp(
-  min_val = nv_scalar(0, "f64"),
   x = nv_scalar(0, "f32"),
-  max_val = nv_scalar(0, "f64")
+  min = nv_scalar(0, "f64"),
+  max = nv_scalar(0, "f64")
 )
 ```
 
@@ -98,24 +115,39 @@ You can canonicalize and promote inputs to a function via the `.promote` field o
 It takes a `PromotionRule`, which is a special function that takes in the arguments and outputs a data type for each one.
 
 ```{r}
-as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
+as_anvl_arrays(1, 2, .promote = promotion_dtype("f64"))
 ```
 
-One common rule is `promote_common()`, which is used by functions such as `nv_add` above.
+One common rule is `promotion_common()`, which is used by functions such as `nv_add` above.
 It computes the common data type of the inputs.
-In this case, it returns `f32`, which is the default data type of R `double`s.
+In this case, it returns the default data type of an R `double`, as neither input has one of its own.
+We can override that default via `with_default_dtypes()`, which we use below to ask for double precision.
+The two elements contrast what the override does and does not touch: `materialized` is an R literal with
+no data type of its own, so it follows the new default, while `yielded` meets a typed `f32` array and
+takes *its* data type -- a default only decides what happens when nothing else does.
+
+```{r}
+with_default_dtypes(c(float = "f64"), {
+  list(
+    materialized = jit(\() 1.0)(),
+    yielded = nv_array(1, dtype = "f32") + 1.5
+  )
+})
+```
+
+Below, we compute the common data type of the arguments.
 
 
 ```{r}
-promote_fn <- promote_common()
+promotion_fn <- promotion_common()
 args <- list(1, 2, nv_scalar(1L, "i8"))
-promote_fn(args)
+promotion_fn(args)
 ```
 
 And when used in `as_anvl_arrays()` it moves the inputs there:
 
 ```{r}
-do.call(as_anvl_arrays, c(args, list(.promote = promote_fn)))
+do.call(as_anvl_arrays, c(args, list(.promote = promotion_fn)))
 ```
 
 For more information about the available rules, see `?promotion_rule`.

@@ -8,15 +8,16 @@ prim_round(x, method = "nearest_even")
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point.}
+One input. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{method}{(\code{character(1)})\cr
 Rounding method. \code{"nearest_even"} (default) rounds to the nearest even
 integer on a tie, \code{"afz"} rounds away from zero on a tie.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same dtype and shape as \code{x}.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type and shape.
 }
 \description{
 Rounds the elements of an array to the nearest integer.
@@ -31,14 +32,21 @@ Rounds the elements of an array to the nearest integer.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_round_nearest_even]{hlo_round_nearest_even()}} or
-\code{\link[stablehlo:hlo_round_nearest_afz]{hlo_round_nearest_afz()}} depending on the \code{method} parameter.
+Lowers to \code{\link[stablehlo:hlo_round_nearest_even]{hlo_round_nearest_even()}}, specified under
+\href{https://openxla.org/stablehlo/spec#round_nearest_even}{round_nearest_even}.
+With \code{method = "afz"} it lowers to \code{\link[stablehlo:hlo_round_nearest_afz]{hlo_round_nearest_afz()}} instead,
+specified under
+\href{https://openxla.org/stablehlo/spec#round_nearest_afz}{round_nearest_afz}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.4, 2.5, 3.6))
 prim_round(x)
+
+# an R value materializes at its default data type
+prim_round(2.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

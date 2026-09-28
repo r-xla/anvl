@@ -20,12 +20,12 @@ AnvlGraph(
 \item{calls}{(\code{list(PrimitiveCall)})\cr
 The primitive calls that make up the graph.}
 
-\item{in_tree}{(\code{NULL | Node})\cr
+\item{in_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of inputs. May contain leaves for both array inputs and static
 (non-array) arguments. Only the array leaves correspond to entries in
 \code{inputs}; use \code{is_static_flat} to distinguish them.}
 
-\item{out_tree}{(\code{NULL | Node})\cr
+\item{out_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of outputs.}
 
 \item{inputs}{(\code{list(GraphValue)})\cr

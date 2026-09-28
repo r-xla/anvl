@@ -3,53 +3,11 @@ dtype_from_buffer <- function(x) {
   as_dtype(d)
 }
 
-#' @title Apply a `@jit` registry
-#' @description
-#' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
-#' listed function in `envir` to
-#' `jit(f, backend = "auto", static = entry$static)`.
-#'
-#' Call this from the top level of your package's `R/zzz.R`, right next to
-#' `.onLoad`, so the wrappers are byte-compiled during package install
-#' instead of being rebuilt on every `.onLoad`:
-#'
-#' ```r
-#' anvl::apply_jit_registry(.jit_registry)
-#' ```
-#'
-#' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
-#' regenerated on every `devtools::document()`.
-#'
-#' @param registry (`list`)\cr
-#'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
-#'   `.jit_registry` object emitted by the roclet.
-#' @param envir (`environment`)\cr
-#'   Environment in which to look up and rebind functions. Defaults to
-#'   `parent.frame()`, which at top-level package source time is the package
-#'   namespace.
-#' @return Invisibly returns `envir`.
-#' @seealso [`jit_roclet()`], [`jit()`]
-#' @export
-apply_jit_registry <- function(registry, envir = parent.frame()) {
-  for (entry in registry) {
-    assign(
-      entry$name,
-      jit(
-        get(entry$name, envir = envir, inherits = FALSE),
-        backend = "auto",
-        static = entry$static
-      ),
-      envir = envir
-    )
-  }
-  invisible(envir)
-}
-
 hashvalues <- function(h) {
   val <- vector("list", numhash(h))
-  idx <- 0
+  idx <- 0L
   maphash(h, function(k, v) {
-    idx <<- idx + 1
+    idx <<- idx + 1L
     val[[idx]] <<- v
   })
   val
@@ -67,8 +25,8 @@ formals2 <- function(f) {
 
 # We assume little endian
 minmax_raw <- function(bits, signed = TRUE) {
-  stopifnot(bits %% 8 == 0, bits >= 8)
-  n <- bits %/% 8
+  stopifnot(bits %% 8L == 0L, bits >= 8L)
+  n <- bits %/% 8L
   if (!signed) {
     return(list(
       min = as.raw(rep(0x00, n)),
@@ -77,13 +35,13 @@ minmax_raw <- function(bits, signed = TRUE) {
   }
   hi_min <- as.raw(0x80) # 1000 0000
   hi_max <- as.raw(0x7F) # 0111 1111
-  zeros <- as.raw(rep(0x00, n - 1))
-  ff <- as.raw(rep(0xFF, n - 1))
+  zeros <- as.raw(rep(0x00, n - 1L))
+  ff <- as.raw(rep(0xFF, n - 1L))
   list(min = c(zeros, hi_min), max = c(ff, hi_max))
 }
 
 
-nv_minval <- function(dtype, device) {
+nv_minval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(-Inf, dtype = dtype, device = device)
@@ -100,7 +58,7 @@ nv_minval <- function(dtype, device) {
   }
 }
 
-nv_maxval <- function(dtype, device) {
+nv_maxval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(Inf, dtype = dtype, device = device)
@@ -126,9 +84,6 @@ without <- function(x, indices) {
 }
 
 shape2string <- function(x, parenthesize = TRUE) {
-  if (is_shape(x)) {
-    x <- x$dims
-  }
   if (parenthesize) {
     sprintf("(%s)", paste0(x, collapse = ","))
   } else {
@@ -136,10 +91,29 @@ shape2string <- function(x, parenthesize = TRUE) {
   }
 }
 
-shapes2string <- function(shapes) {
-  paste0(sapply(shapes, shape2string), sep = ", ")
+# The shape spelling for user-facing messages: `(2x3)`, and `()` for a scalar.
+# `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
+# `RData(double, (2,3))` are built from and stays as it is -- so everything a
+# caller reads in an error or warning goes through these two instead.
+#
+# A shape can also be one a caller typed (`shape = 1:1000`), so past
+# `repr_max_entries` axes it is cut short, with the rank stated. That is enough
+# for an array's real shape to print whole.
+shape_repr <- function(shape) {
+  n <- length(shape)
+  if (n <= repr_max_entries) {
+    return(sprintf("(%s)", paste0(shape, collapse = "x")))
+  }
+  sprintf("(%sx...) with %d axes", paste0(shape[seq_len(repr_max_entries)], collapse = "x"), n)
 }
 
+shapes_repr <- function(shapes) {
+  paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
+}
+
+# `prim_fill()` takes a whole number at any data type -- `0` builds at `bool`,
+# at an integer one and at a float one alike -- so the fills that do not know
+# their data type statically write a plain `0` / `1`.
 zeros <- function(dtype, shape) {
   prim_fill(0L, dtype = dtype, shape = shape)
 }
@@ -171,15 +145,6 @@ is_valid_r_array <- function(x) {
 
 is_valid_r <- function(x) {
   (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
-}
-
-cache_size <- function(f) {
-  # All jit paths cache in pjrt's native dispatcher.
-  dispatcher <- environment(f)$dispatcher
-  if (is.null(dispatcher)) {
-    cli_abort("{.arg f} has no dispatcher; is it a jitted function?")
-  }
-  pjrt::dispatcher_size(dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
@@ -218,25 +183,28 @@ gather_clamp_indices <- function(
     bounds_shape <- rep(1L, length(indices_shape))
     bounds_shape[index_vector_axis] <- n_index_coords
 
-    min_tensor <- prim_broadcast_in_axes(
+    min_bound <- prim_broadcast_in_axes(
       prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
       indices_shape,
       integer()
     )
 
     # The max bound is the same for a given slice along the index_vector_axis
-    max_tensor_vals <- prim_reshape(
-      nv_convert(nv_array(max_bounds, dtype = "i64"), dtype = dtype(start_indices)),
+    max_bound_vals <- prim_reshape(
+      prim_convert(
+        nv_array(max_bounds, dtype = default_int()),
+        dtype = dtype(start_indices)
+      ),
       bounds_shape
     )
-    max_tensor <- nv_broadcast_to(max_tensor_vals, indices_shape)
+    max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    prim_clamp(start_indices, min_bound, max_bound)
   } else {
     # Implicit index vector (single coordinate)
-    min_tensor <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
-    max_tensor <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
+    max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
+    prim_clamp(start_indices, min_bound, max_bound)
   }
 }
 
@@ -273,34 +241,30 @@ col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
 }
 
-is_device_arg <- function(x) {
-  inherits(x, "AnvlDeviceArg")
+# Transpose the matrix an array's last two axes form, leaving any leading batch
+# axes in place -- what `t()` means for the batched operands `nv_matmul()`
+# takes. `nv_aperm()` reverses *every* axis, which would put a batch axis
+# into the contraction slot. An array with fewer than two axes is handed on
+# unchanged, for `nv_matmul()` to report.
+transpose_matrix_axes <- function(x) {
+  n <- naxes(x)
+  if (n < 2L) {
+    return(x)
+  }
+  nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
 }
 
-# returns list(device | NULL, backend)
-resolve_device <- function(device, backend) {
-  if (is.character(device)) {
-    backend <- backend %||% default_backend()
-    device <- if (backend == "auto") {
-      nv_device(device, default_backend())
-    } else {
-      nv_device(device, backend)
-    }
-    return(list(device, backend))
-  }
-  if (is.null(device)) {
-    return(list(NULL, backend %||% default_backend()))
-  }
-  # concrete device
-  if (is.null(backend) || (backend == "auto")) {
-    return(list(device, backend(device)))
-  }
-  if (backend(device) != backend) {
-    cli_abort(c(
-      "Backend of requested device does not match requested backend",
-      i = "backend(device) = {backend(device)}",
-      i = "backend = {backend}"
-    ))
-  }
-  list(device, backend)
+# Where `prim_bitcast_convert()` puts the axis holding an element's pieces when
+# the two data types differ in width. StableHLO puts it last, where the pieces
+# of one element sit next to each other under its row-major reading; anvl is
+# column-major, so the axis belongs first instead. Returns the number of pieces
+# and which way the conversion goes, so the shape rule and the lowering agree.
+bitcast_lane <- function(dtype_in, dtype_out) {
+  width_in <- dtype_width(as_dtype(dtype_in))
+  width_out <- dtype_width(as_dtype(dtype_out))
+  list(
+    pieces = as.integer(max(width_in, width_out) / min(width_in, width_out)),
+    splits = width_in > width_out,
+    joins = width_in < width_out
+  )
 }

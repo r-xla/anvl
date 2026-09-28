@@ -6,40 +6,45 @@
 \alias{nv_cbind}
 \alias{rbind.AnvlArray}
 \alias{cbind.AnvlArray}
-\title{Combine arrays by rows or columns}
+\title{Combine Arrays by Rows or Columns}
 \usage{
 nv_rbind(...)
 
 nv_cbind(...)
 
-\method{rbind}{AnvlArray}(..., deparse.level = 1)
+\method{rbind}{AnvlArray}(..., deparse.level = 1L)
 
-\method{cbind}{AnvlArray}(..., deparse.level = 1)
+\method{cbind}{AnvlArray}(..., deparse.level = 1L)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to combine. Inputs are promoted to a common data type.}
+Arrays to combine. Can be of any data type; they are
+\link[=nv_promote_to_common]{promoted to a common data type}, and a scalar is
+\link[=nv_broadcast_scalars]{broadcast} to match the non-stacked axes.}
 
 \item{deparse.level}{Ignored. Kept for compatibility with \code{\link[base:rbind]{base::rbind()}}
 and \code{\link[base:cbind]{base::cbind()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
+Has the inputs' common data type. The stacked axis is the sum of their
+sizes along it -- rows for \code{nv_rbind()}, columns for \code{nv_cbind()} -- and
+every other axis is theirs unchanged.
 }
 \description{
 Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) axis.
-Arguments are first promoted to a common data type
-(see \code{\link[=nv_promote_to_common]{nv_promote_to_common()}}).
 
-Each input is then handled according to its rank:
+Each input is handled according to its rank:
 \itemize{
-\item 0-D: broadcast to match the non-stacked axes of the other inputs.
+\item a scalar: broadcast to match the non-stacked axes of the other inputs.
 \item 1-D: treated as a single row/column.
 \item Other: used as-is.
 }
 }
 \section{Differences from base R}{
-\code{\link[base:rbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[=array]{array()}} of rank > 2
+
+
+\code{\link[base:rbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[base:array]{array()}} of rank > 2
 flatten the trailing axes into the column axis (so a \code{c(2, 3, 4)}
 array becomes a \verb{2 x 12} matrix). \code{nv_rbind} and \code{nv_cbind} instead
 preserve all non-stacked axes: combining two \code{c(2, 3, 4)} arrays
@@ -49,14 +54,14 @@ with \code{nv_rbind} produces a \code{c(4, 3, 4)} array, and with \code{nv_cbind
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Vectors as rows / columns
+# vectors as rows / columns
 nv_rbind(nv_array(1:3), nv_array(4:6))
 nv_cbind(nv_array(1:3), nv_array(4:6))
 
-# Scalar broadcasting
+# scalar broadcasting
 nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 
-# Rank-3 arrays preserve trailing axes
+# rank-3 arrays preserve trailing axes
 a <- nv_array(1:24, shape = c(2, 3, 4))
 shape(nv_rbind(a, a)) # c(4, 3, 4)
 \dontshow{\}) # examplesIf}

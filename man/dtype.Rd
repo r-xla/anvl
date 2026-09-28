@@ -13,7 +13,7 @@ An array-like object.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-A \code{\link[tengen:DataType]{DataType}}.
+(\code{\link[tengen:DataType]{DataType}})
 }
 \description{
 Returns the data type of an array (e.g. \code{f32}, \code{i64}).

@@ -8,17 +8,20 @@ nv_diag(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-A 1-D array of length \code{n} whose elements become the diagonal entries.}
+One input, a 1-D array of length \code{n} whose elements become the diagonal entries. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-An \verb{n x n} matrix with \code{x} on the diagonal and zeros elsewhere.
+(\code{\link{arrayish}})\cr
+Has the input's data type and shape \verb{(n, n)}, with the input on the
+diagonal and zeros elsewhere.
 }
 \description{
 Creates a diagonal matrix from a 1-D array.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the vector becomes the diagonal of a 3x3 matrix
 nv_diag(nv_array(c(1, 2, 3)))
 \dontshow{\}) # examplesIf}
 }

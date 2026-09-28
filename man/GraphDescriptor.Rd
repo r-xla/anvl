@@ -6,7 +6,7 @@
 \usage{
 GraphDescriptor(
   calls = list(),
-  tensor_to_gval = NULL,
+  array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -15,14 +15,16 @@ GraphDescriptor(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character()
+  devices = character(),
+  default_dtypes = NULL,
+  backend
 )
 }
 \arguments{
 \item{calls}{(\code{list(PrimitiveCall)})\cr
 The primitive calls that make up the graph.}
 
-\item{tensor_to_gval}{(\code{hashtab})\cr
+\item{array_to_gval}{(\code{hashtab})\cr
 Mapping: \code{AnvlArray} -> \code{GraphValue}}
 
 \item{gval_to_box}{(\code{hashtab})\cr
@@ -31,12 +33,12 @@ Mapping: \code{GraphValue} -> \code{GraphBox}}
 \item{constants}{(\code{list(GraphValue)})\cr
 The constants of the graph.}
 
-\item{in_tree}{(\code{NULL | Node})\cr
+\item{in_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of inputs. May contain leaves for both array inputs and static
 (non-array) arguments. Only the array leaves correspond to entries in
 \code{inputs}; use \code{is_static_flat} to distinguish them.}
 
-\item{out_tree}{(\code{NULL | Node})\cr
+\item{out_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of outputs.}
 
 \item{inputs}{(\code{list(GraphValue)})\cr
@@ -52,9 +54,20 @@ Boolean mask indicating which flat positions in \code{in_tree} are static (non-a
 \item{static_args_flat}{(\code{NULL | list()})\cr
 Flattened traced values for the static arguments indicated by \code{is_static_flat}.}
 
-\item{devices}{(\code{character()})\cr
-Device platforms encountered during tracing (e.g. \code{"cpu"}, \code{"cuda"}).
-Populated automatically as arrays are registered.}
+\item{devices}{(\code{list()})\cr
+Devices encountered during tracing: the device of every concrete array
+registered in the graph, plus the ones declared by \code{\link[=graph_desc_add]{graph_desc_add()}}.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
+The data types every R value in this trace materializes at when nothing
+else decides one (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+
+\item{backend}{(\code{character(1)})\cr
+The backend this trace is compiled for. Required: it decides which entry
+of the \code{anvl.default_dtypes} option applies to the trace, so switching the
+active backend inside a traced body changes nothing.
+\code{\link[=local_descriptor]{local_descriptor()}} fills it in from \code{\link[=active_backend]{active_backend()}}, so only a
+direct call has to name it.}
 }
 \value{
 (\code{GraphDescriptor})

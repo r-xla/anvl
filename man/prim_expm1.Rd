@@ -8,11 +8,12 @@ prim_expm1(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point.}
+One input. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise exp(x) - 1, more accurate for small x.
@@ -28,13 +29,18 @@ Element-wise exp(x) - 1, more accurate for small x.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_exponential_minus_one]{hlo_exponential_minus_one()}}.
+Lowers to \code{\link[stablehlo:hlo_exponential_minus_one]{hlo_exponential_minus_one()}}, specified under
+\href{https://openxla.org/stablehlo/spec#exponential_minus_one}{exponential_minus_one}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 0.001, 1))
 prim_expm1(x)
+
+# an R value materializes at its default data type
+prim_expm1(0.001)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

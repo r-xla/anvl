@@ -8,16 +8,19 @@ prim_concatenate(..., axis)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to concatenate. Must all have the same data type, naxes,
-and shape except along \code{axis}.}
+Arrays to concatenate. Can be of any data type. Must all have the same
+number of axes, and the same shape except along \code{axis}.
+All inputs must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to concatenate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as the inputs.
+(\code{\link{arrayish}})\cr
+Has the data type the inputs agreed on.
 The output shape matches the inputs in all axes except \code{axis},
 which is the sum of the input sizes along that axis.
 }
@@ -35,11 +38,13 @@ Concatenates arrays along an axis.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}.
+Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}, specified under
+\href{https://openxla.org/stablehlo/spec#concatenate}{concatenate}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the inputs already agree on a data type; axis 1 grows to 6
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
 prim_concatenate(x, y, axis = 1L)

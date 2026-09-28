@@ -7,11 +7,11 @@
 \usage{
 nv_lower_tri(shape, diagonal = -1L, device = NULL)
 
-nv_lower_tri_like(like, diagonal = -1L, shape = NULL, device = NULL)
+nv_lower_tri_like(like, shape = NULL, diagonal = -1L, device = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: exactly two axis sizes, since the result is a matrix.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset, with the same meaning as in \code{\link[=nv_tril]{nv_tril()}}. The default
@@ -29,16 +29,17 @@ The device the data lives on, given either as:
 is backend-specific, it also determines the backend.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_lower_tri_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{shape} and dtype \code{bool}.
+(\code{\link{arrayish}})\cr
+Has the given \code{shape} and boolean data type. It is a mask over positions,
+so no array data enters it -- pass it to \code{\link[=nv_ifelse]{nv_ifelse()}} or multiply by it
+to use it.
 }
 \description{
 Returns a boolean matrix that is \code{TRUE} on and below the given diagonal,
@@ -47,6 +48,7 @@ triangle of an existing array instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a boolean mask, whatever the array it is later used with
 nv_lower_tri(c(3, 3))
 nv_lower_tri(c(3, 3), diagonal = 0L)
 x <- nv_fill(0, shape = c(3, 3))

@@ -1,2 +1,2 @@
 #' @param shape (`integer()`)\cr
-#'   Shape.
+#'   Shape of the result.

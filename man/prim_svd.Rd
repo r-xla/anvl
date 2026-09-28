@@ -8,12 +8,13 @@ prim_svd(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 axes.}
+One input, with exactly 2 axes. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-Named \code{list} with elements \code{d} (length \code{k}), \code{u} (shape
-\verb{(m, k)}), and \code{vt} (shape \verb{(k, n)}). All have the same dtype as
-the input.
+(named \code{list} of three \code{\link{arrayish}})\cr
+Elements \code{d} (length \code{k}), \code{u} (shape
+\verb{(m, k)}), and \code{vt} (shape \verb{(k, n)}). All have the input's data type.
 }
 \description{
 Computes the reduced ("economy") singular value decomposition of a
@@ -47,6 +48,7 @@ Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} with target
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# all three outputs have the input's data type
 x <- nv_array(c(1, 0, 0, 1, 0, 1), shape = c(3, 2))
 prim_svd(x)
 \dontshow{\}) # examplesIf}

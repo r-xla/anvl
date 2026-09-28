@@ -11,7 +11,7 @@ naxes(x)
 An array-like object.}
 }
 \value{
-\code{integer(1)}
+(\code{integer(1)})
 }
 \description{
 Returns the number of axes (sometimes also refered to as rank) of an array.

@@ -42,7 +42,7 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
     A %*% B
   }
 
-  template_tensor <- function(x) {
+  template_array <- function(x) {
     shp <- dim(x)
     if (is.null(shp)) {
       shp <- c(length(x))
@@ -79,7 +79,7 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
     A <- make_input(a_rank, "lhs")
     B <- make_input(b_rank, "rhs")
 
-    templates <- list(A = template_tensor(A), B = template_tensor(B))
+    templates <- list(A = template_array(A), B = template_array(B))
     run <- list(
       args = list(A = A, B = B),
       info = paste0("a_rank=", a_rank, ", b_rank=", b_rank)

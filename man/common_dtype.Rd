@@ -7,19 +7,28 @@
 common_dtype(lhs_dtype, rhs_dtype)
 }
 \arguments{
-\item{lhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The left-hand side type.}
-
-\item{rhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The right-hand side type.}
+\item{lhs_dtype, rhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+The two data types.}
 }
 \value{
-(\code{\link[tengen:DataType]{tengen::DataType}})
+(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+The narrowest common data type.
 }
 \description{
 Compute the common data type.
+
+Two integer data types meet at one that holds every value of both: a signed
+and an unsigned one at the narrowest signed data type wide enough for the
+unsigned side (\code{ui8} and \code{i8} at \code{i16}, \code{ui32} and \code{i32} at \code{i64}). \code{ui64}
+is the exception -- no signed data type holds it, and an integer does not
+become a float on its own -- so \code{ui64} and a signed integer have no common
+data type and the pair is an error. Convert one side with \code{\link[=nv_convert]{nv_convert()}}
+to decide what they meet at.
+
+See the \emph{Type Promotion} article for more information.
 }
 \examples{
 common_dtype("i32", "f32")
 common_dtype("i32", "i64")
+try(common_dtype("ui64", "i8"))
 }

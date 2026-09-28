@@ -23,7 +23,7 @@ test_that("integration: MNIST-shaped classifier training from rank-5 image batch
 
   loss_fn <- function(X, Y, W, b) {
     X2 <- nv_reshape(X, shape = c(n, d))
-    logits <- nv_matmul(X2, W) + nv_broadcast_to(b, shape = c(n, k))
+    logits <- nv_matmul(X2, W) + prim_broadcast_in_axes(b, shape = c(n, k), broadcast_axes = 2L)
     resid <- logits - Y
     sum(resid * resid) * scale
   }

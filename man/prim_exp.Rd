@@ -8,11 +8,12 @@ prim_exp(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point.}
+One input. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise exponential.
@@ -28,13 +29,18 @@ Element-wise exponential.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_exponential]{hlo_exponential()}}.
+Lowers to \code{\link[stablehlo:hlo_exponential]{hlo_exponential()}}, specified under
+\href{https://openxla.org/stablehlo/spec#exponential}{exponential}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 1, 2))
 prim_exp(x)
+
+# an R value materializes at its default data type
+prim_exp(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

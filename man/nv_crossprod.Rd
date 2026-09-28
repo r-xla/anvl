@@ -5,29 +5,33 @@
 \alias{crossprod.AnvlArray}
 \title{Cross Product (Matrix)}
 \usage{
-nv_crossprod(lhs, rhs = NULL)
+nv_crossprod(x, y = NULL)
 
 \method{crossprod}{AnvlArray}(x, y = NULL, ...)
 }
 \arguments{
-\item{lhs}{(\code{\link{arrayish}})\cr
-An array with at least 2 axes.}
+\item{x}{(\code{\link{arrayish}})\cr
+An array with at least 2 axes, as for \code{\link[base:crossprod]{base::crossprod()}}. Can be any numeric
+data type; \code{x} and \code{y} are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 
-\item{rhs}{(\code{\link{arrayish}} | \code{NULL})\cr
-Optional second array. If \code{NULL}, uses \code{lhs}.}
-
-\item{x, y}{Same as \code{lhs} and \code{rhs}; the names used by the base R S3 generic.}
+\item{y}{(\code{\link{arrayish}} | \code{NULL})\cr
+Optional second array. If \code{NULL}, uses \code{x}.}
 
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the operands' common data type, and the shape of \code{t(x) \%*\% y}.
 }
 \description{
-Computes \code{t(lhs) \%*\% rhs}. If \code{rhs} is missing, computes \code{t(lhs) \%*\% lhs}.
+Computes \code{t(x) \%*\% y}. If \code{y} is missing, computes \code{t(x) \%*\% x}.
+Above rank 2 the last two axes are the matrix and the leading ones are batch
+axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `t(x) \%*\% x`, so a 3x2 gives a 2x2
 x <- nv_matrix(1:6, nrow = 3, dtype = "f32")
 nv_crossprod(x)
 \dontshow{\}) # examplesIf}

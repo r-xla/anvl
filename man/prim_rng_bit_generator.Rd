@@ -4,31 +4,29 @@
 \alias{prim_rng_bit_generator}
 \title{Primitive RNG Bit Generator}
 \usage{
-prim_rng_bit_generator(
-  initial_state,
-  rng_algorithm = "THREE_FRY",
-  dtype,
-  shape
-)
+prim_rng_bit_generator(state, rng_algorithm = "THREE_FRY", dtype, shape)
 }
 \arguments{
-\item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+\item{state}{(\code{\link{arrayish}})\cr
+RNG state: a 1-D array of the \code{ui64} data type. Its length depends on
+\code{rng_algorithm} -- exactly 2 for \code{"THREE_FRY"}, 2 or 3 for \code{"PHILOX"},
+and whatever the implementation wants for \code{"DEFAULT"}.}
 
 \item{rng_algorithm}{(\code{character(1)})\cr
-RNG algorithm name. Default is \code{"THREE_FRY"}.}
+One of \code{"THREE_FRY"} (default), \code{"PHILOX"} or \code{"DEFAULT"}, the last
+leaving the choice to the implementation.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the generated random values.}
+Data type of the generated random values. Can be any numeric data type.}
 
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result.}
 }
 \value{
-\code{list} of two \code{\link{arrayish}} values:\cr
-The first element is the updated RNG state with the same dtype and shape
-as \code{initial_state}. The second element is an array of random values with
-the given \code{dtype} and \code{shape}.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{state}, the updated RNG state with the input \code{state}'s data type
+and shape, and \code{values}, the random values with the given \code{dtype} and
+\code{shape}.
 }
 \description{
 Generates pseudo-random numbers using the specified algorithm and returns
@@ -43,13 +41,25 @@ the updated RNG state together with the generated values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_rng_bit_generator]{hlo_rng_bit_generator()}}.
+Lowers to \code{\link[stablehlo:hlo_rng_bit_generator]{hlo_rng_bit_generator()}}, specified under
+\href{https://openxla.org/stablehlo/spec#rng_bit_generator}{rng_bit_generator}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# THREE_FRY, the default, takes a two-element state
 state <- nv_array(c(0L, 0L), dtype = "ui64")
 prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
+
+# the updated state feeds the next draw, so the two differ
+out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
+prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
+
+# PHILOX also accepts a three-element state
+prim_rng_bit_generator(
+  nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
+  dtype = "i32", shape = 4L
+)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
