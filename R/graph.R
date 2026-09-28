@@ -446,15 +446,27 @@ maybe_box_input <- function(x, desc, mode) {
       parent_box <- get_box_or_register_const(parent_desc, x)
       return(register_input(desc, parent_box$gnode))
     }
-    if (is_rdata_box(x)) {
-      # When we trace within a trace
-      # Keep it open here too, so the traced body decides
-      # which dtypes it is used at, exactly as it does under plain jit(). The
-      # input slot is settled by finalize_inline_rdata_inputs().
-      return(register_rdata_input(desc, x$gnode$aval, outer = x))
-    }
-    # \(x) gradient(f)(x)
     if (is_graph_box(x)) {
+      # A box of a trace further out than the one gradient() is called in --
+      # e.g. a value an nv_if() branch closes over -- is captured by that trace
+      # first: its sub-graph reaches outer values only through its inputs.
+      # An R value of that outer trace materializes there first, as any R value
+      # reaching another graph does (see `maybe_box_arrayish()`).
+      parent_desc <- maybe_previous_descriptor()
+      if (!identical(x$desc, parent_desc)) {
+        if (is_rdata_box(x)) {
+          x <- materialize_rdata(x, peek_dtype(x))
+        }
+        x <- maybe_box_arrayish(x, parent_desc)
+      }
+      if (is_rdata_box(x)) {
+        # When we trace within a trace
+        # Keep it open here too, so the traced body decides
+        # which dtypes it is used at, exactly as it does under plain jit(). The
+        # input slot is settled by finalize_inline_rdata_inputs().
+        return(register_rdata_input(desc, x$gnode$aval, outer = x))
+      }
+      # \(x) gradient(f)(x)
       return(register_input(desc, x$gnode))
     }
     # don't convert R values because they might be static.

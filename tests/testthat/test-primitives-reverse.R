@@ -1342,3 +1342,37 @@ describe("prim_scan", {
     expect_equal(as.numeric(grads$w), 12)
   })
 })
+
+describe("prim_print", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  # The number of times a print ran: each one shows the value 7 on a line of
+  # its own.
+  prints_of_seven <- function(expr) sum(trimws(capture.output(expr)) == "7")
+
+  it("passes the gradient through", {
+    grad <- expect_output(jit(gradient(function(x) nv_sum(prim_print(x) * x)))(x))
+    expect_equal(as.numeric(grad[[1L]]), c(2, 4, 6))
+  })
+
+  it("prints once where a differentiated branch runs", {
+    f <- function(p, x) {
+      nv_if(p, function() {
+        prim_print(nv_scalar(7L))
+        nv_sum(x * x)
+      }, function() nv_sum(x))
+    }
+    g <- jit(gradient(f, wrt = "x"))
+    expect_equal(prints_of_seven(g(nv_scalar(TRUE), x)), 1L)
+  })
+
+  it("prints once per step of a differentiated scan", {
+    f <- function(x) {
+      body <- function(carry, xs) {
+        prim_print(nv_scalar(7L))
+        list(carry = list(a = carry$a + xs$v * xs$v), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    expect_equal(prints_of_seven(jit(gradient(f))(x)), 3L)
+  })
+})

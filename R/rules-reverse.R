@@ -691,6 +691,11 @@ scan_carry_requires <- function(body, required, carry_idx) {
   }
 }
 
+# Printing hands its argument back unchanged, so the cotangent passes through.
+prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  list(if (required[[1L]]) grads[[1L]])
+})
+
 # convert reverse -----------------
 
 # A conversion is the identity, and so passes the cotangent through, only

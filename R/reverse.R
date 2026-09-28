@@ -248,7 +248,7 @@ compute_requirements <- function(graph, wrt) {
 graph_vjp <- function(graph, targets, out_grads, inputs) {
   desc <- .current_descriptor()
   required_env <- requirements_from(graph, targets)
-  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env)
+  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env, replay = TRUE)
 
   grad_env <- hashtab()
   for (i in seq_along(graph$outputs)) {
@@ -323,7 +323,11 @@ rebuild_forward_pass <- function(graph, required_env = NULL, envir = parent.fram
 # its plain forward even where its rule has a replacement: the backward pass
 # skips it, so what the replacement keeps for it -- a scan's tape -- would be
 # computed for nothing.
-rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL) {
+#
+# `replay = TRUE` marks a second run of a sub-graph whose forward already ran
+# -- a backward pass pulling cotangents through it -- and drops its prints, so
+# that what a user prints appears once per execution of their code.
+rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL, replay = FALSE) {
   # consts and inputs keep their identity, only GraphValues created by PrimitiveCalls
   # get new identifier -- unless `inputs` binds the inputs to boxes of `desc`,
   # in which case the graph is replayed as a function of them.
@@ -370,6 +374,13 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
   for (i in seq_along(graph$calls)) {
     call <- graph$calls[[i]]
     rule <- call$primitive[["reverse"]]
+
+    if (replay && identical(call$primitive$name, "print")) {
+      input <- box_for(call$inputs[[1L]])
+      trans[[call$outputs[[1L]]]] <- input$gnode
+      backwards[[i]] <- list(fn = rule$backward, inputs = list(input), outputs = list(input), params = call$params)
+      next
+    }
 
     needs_grad <- is.null(required_env) ||
       any(vapply(call$inputs, \(x) !is_graph_literal(x) && isTRUE(required_env[[x]]), logical(1L)))

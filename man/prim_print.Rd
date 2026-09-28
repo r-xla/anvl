@@ -24,6 +24,7 @@ Bare R inputs print at their category's default data type.
 
 \itemize{
 \item \code{stablehlo}
+\item \code{reverse}
 }
 }
 

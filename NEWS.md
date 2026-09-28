@@ -156,6 +156,8 @@
   gradient is computed.
 * `prim_scan()` / `nv_scan()` are now differentiable, in time and memory
   linear in `steps`.
+* `prim_print()` / `nv_print()` pass the gradient through, and print once per
+  execution of a differentiated `nv_if()` branch or `nv_scan()` step.
 * `nv_subset_assign()` and `[<-` gain `inplace`, which writes into the memory of
   `x` instead of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
 * New `axes()` returns the axis indices of an array, `seq_len(naxes(x))`.
