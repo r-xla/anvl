@@ -112,6 +112,7 @@ g(nv_array(3), FALSE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 # the same function runs on whichever backend is active when it is called
+f <- jit(function(x, y) x + y)
 with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }
