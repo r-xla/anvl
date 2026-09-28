@@ -358,6 +358,24 @@ describe("prim_if", {
     expect_equal(as.numeric(grad), c(1, 1, 1))
   })
 
+  it("lets a branch take the gradient of a value it closes over", {
+    # The inlined gradient graph reaches `x` and the R value `a` from outside
+    # the branch, so the branch has to capture them first.
+    x <- nv_array(c(0.7, -1.3, 2.1))
+    f <- jit(function(p, x, a) {
+      nv_if(p, function() nv_sum(gradient(function(y, a) nv_sum(y * y * a), wrt = "y")(x, a)[[1L]]), function() nv_sum(x))
+    })
+    expect_equal(as.numeric(f(true_, x, 2)), sum(4 * c(0.7, -1.3, 2.1)), tolerance = 1e-6)
+  })
+
+  it("passes a gradient computed outside a branch into it", {
+    f <- jit(function(x) {
+      v <- gradient(function(z) sin(z))(x)[[1L]]
+      nv_if(true_, function() v, function() x)
+    })
+    expect_equal(as.numeric(f(nv_scalar(2, "f64"))), cos(2))
+  })
+
   it("differentiates a value an earlier call's reverse rule replaced", {
     # `prim_sort()`'s reverse rule replaces its forward, so the value the
     # branches closed over is rebuilt before they are differentiated.

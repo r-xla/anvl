@@ -472,6 +472,16 @@ describe("prim_if", {
     expect_equal(jit(function(p) nv_if(p, \() w * 2, \() w + 1))(nv_scalar(FALSE)), w + 1)
   })
 
+  it("captures a value computed from a closed-over array as that value", {
+    # `sin(y)` is computed from the constant `y`, but is not `y`.
+    y <- nv_scalar(3, "f32")
+    f <- jit(function(x) {
+      v <- sin(y)
+      nv_if(nv_scalar(TRUE), \() v + x, \() x)
+    })
+    expect_equal(as.numeric(f(nv_scalar(2, "f32"))), sin(3) + 2, tolerance = 1e-6)
+  })
+
   it("works with literals as predicate", {
     expect_equal(nv_if(TRUE, \() 1, \() 2), nv_scalar(1))
   })

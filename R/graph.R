@@ -785,7 +785,12 @@ trace_fn <- function(
   }
 
   parent_desc <- maybe_previous_descriptor()
+  # A sub-graph reaches outside only through its captures, which the primitive
+  # passes from its own trace; it has no parent to hand values to.
   desc$closed <- mode == "subgraph"
+  if (desc$closed) {
+    desc$parent <- NULL
+  }
   if (mode == "toplevel" && !is.null(parent_desc)) {
     cli_abort('Internal error: trace_fn(mode = "toplevel") must not have a parent descriptor')
   }
@@ -1020,7 +1025,11 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   # the traced function is not attributed to the last primitive that ran.
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["INFER_PRIMITIVE"]] <- NULL
-  gvals_out <- lapply(ats_out, GraphValue)
+  # An output is computed, whatever its inputs were: an inference rule that
+  # hands an input's aval back (`infer_generic_biv()` returns `lhs`) must not
+  # make `sin(y)` of a closed-over `y` look like `y` itself. Only a constant's
+  # node carries a `ConcreteArray`.
+  gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
   desc$calls$add(call)
   lapply(gvals_out, register_gval, desc = desc)
