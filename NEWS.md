@@ -199,6 +199,17 @@
   when `from > to`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
+* `nv_subset()` and `nv_subset_assign()` (and hence `[` and `[<-`) support
+  boolean masks. A mask for a single axis selects the `TRUE` positions of
+  that axis (`x[arr(TRUE, FALSE, TRUE), ]`), while a mask with the shape of
+  the whole array selects across all axes and returns a 1-D result
+  (`x[x > 6]`). Because the number of selected elements determines the output
+  shape, a mask under `jit()` must be known at compile time: R logical arrays
+  and arrays created in or closed over by the function work, while a mask
+  computed from the function's inputs is an error.
+* Subsets that select no elements, such as an all-`FALSE` mask or
+  `x[array(integer(0)), ]`, now return a zero-sized array instead of failing
+  inside `prim_gather()` / `prim_scatter()`.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
   `nv_sample_int()`, `nv_sample()`) and `prim_rng_bit_generator()` return a
   named list with elements `state` and `values` instead of an unnamed pair,

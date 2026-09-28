@@ -202,7 +202,13 @@ register_backend(
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    as_array = function(x, check) x$data,
+    # `new_data()` stores the data flat (coercing the storage mode drops `dim`)
+    as_array = function(x, check) {
+      if (length(x$shape) < 1L) {
+        return(x$data)
+      }
+      array(x$data, dim = x$shape)
+    },
     as_raw = function(x, row_major) cli_abort("as_raw not supported for plain backend"),
     platform = function(x) "cpu",
     device = function(x) PlainDeviceCpu(),
