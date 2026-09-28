@@ -1,7 +1,8 @@
-# Add a Primitive Call to a Graph Descriptor
+# Add a Statement to a Graph Descriptor
 
-Add a primitive call to a graph descriptor. Inside a primitive body
-created with
+Record a call of a primitive as a
+[`GraphStatement`](https://r-xla.github.io/anvl/dev/reference/GraphStatement.md)
+in a graph descriptor. Inside a primitive body created with
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md),
 pass the lexically-bound `self` as the primitive argument.
 
@@ -22,10 +23,11 @@ graph_desc_add(
 
 - primitive:
 
-  ([`AnvlPrimitive`](https://r-xla.github.io/anvl/dev/reference/AnvlPrimitive.md)
-  \| `JitPrimitive`)  
-  The primitive the call is for. A `JitPrimitive` is accepted and
-  unwrapped to its underlying `AnvlPrimitive` metadata.
+  ([`AnvlPrimitiveDef`](https://r-xla.github.io/anvl/dev/reference/AnvlPrimitiveDef.md)
+  \|
+  [`AnvlPrimitive`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md))  
+  The primitive the statement applies. An `AnvlPrimitive` is accepted
+  and unwrapped to its underlying `AnvlPrimitiveDef`.
 
 - args:
 
@@ -52,8 +54,8 @@ graph_desc_add(
 
   ([`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
   \| `NULL`)  
-  The graph descriptor to add the primitive call to. Uses the [current
-  descriptor](https://r-xla.github.io/anvl/dev/reference/dot-current_descriptor.md)
+  The graph descriptor to add the statement to. Uses the [current
+  descriptor](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md)
   if `NULL`.
 
 - device:

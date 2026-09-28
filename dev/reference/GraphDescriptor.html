@@ -5,7 +5,25 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Graph Descriptor — GraphDescriptor"><meta name="description" content="Descriptor of an AnvlGraph. This is a mutable class."><meta property="og:description" content="Descriptor of an AnvlGraph. This is a mutable class."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Graph Descriptor — GraphDescriptor"><meta name="description" content="The in-progress representation of an AnvlGraph during tracing. This is
+a mutable class.
+While trace_fn() runs a function, every primitive call is recorded as a
+GraphStatement into the current descriptor (see graph_desc_add() and
+current_descriptor()). The descriptor also does the book-keeping the
+trace needs: which GraphValue an AnvlArray or GraphBox stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+AnvlGraph, which only keeps what is needed to lower and run the
+program."><meta property="og:description" content="The in-progress representation of an AnvlGraph during tracing. This is
+a mutable class.
+While trace_fn() runs a function, every primitive call is recorded as a
+GraphStatement into the current descriptor (see graph_desc_add() and
+current_descriptor()). The descriptor also does the book-keeping the
+trace needs: which GraphValue an AnvlArray or GraphBox stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+AnvlGraph, which only keeps what is needed to lower and run the
+program."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -77,13 +95,22 @@
     </div>
 
     <div class="ref-description section level2">
-    <p>Descriptor of an <code><a href="AnvlGraph.html">AnvlGraph</a></code>. This is a mutable class.</p>
+    <p>The in-progress representation of an <code><a href="AnvlGraph.html">AnvlGraph</a></code> during tracing. This is
+a mutable class.</p>
+<p>While <code><a href="trace_fn.html">trace_fn()</a></code> runs a function, every primitive call is recorded as a
+<code><a href="GraphStatement.html">GraphStatement</a></code> into the current descriptor (see <code><a href="graph_desc_add.html">graph_desc_add()</a></code> and
+<code><a href="current_descriptor.html">current_descriptor()</a></code>). The descriptor also does the book-keeping the
+trace needs: which <code><a href="GraphValue.html">GraphValue</a></code> an <code>AnvlArray</code> or <code><a href="GraphBox.html">GraphBox</a></code> stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+<code><a href="AnvlGraph.html">AnvlGraph</a></code>, which only keeps what is needed to lower and run the
+program.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">GraphDescriptor</span><span class="op">(</span></span>
-<span>  calls <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  statements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  array_to_gval <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gval_to_box <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  constants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -103,9 +130,9 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-calls">calls<a class="anchor" aria-label="anchor" href="#arg-calls"></a></dt>
-<dd><p>(<code>list(PrimitiveCall)</code>)<br>
-The primitive calls that make up the graph.</p></dd>
+<dl><dt id="arg-statements">statements<a class="anchor" aria-label="anchor" href="#arg-statements"></a></dt>
+<dd><p>(<code>list(GraphStatement)</code>)<br>
+The statements that make up the graph.</p></dd>
 
 
 <dt id="arg-array-to-gval">array_to_gval<a class="anchor" aria-label="anchor" href="#arg-array-to-gval"></a></dt>

@@ -190,7 +190,7 @@ axis).</p>
 <h3 id="step-1-define-the-primitive">Step 1: Define the Primitive<a class="anchor" aria-label="anchor" href="#step-1-define-the-primitive"></a>
 </h3>
 <p>Primitives are created with <code><a href="../reference/new_primitive.html">new_primitive()</a></code>: it builds
-the <code>AnvlPrimitive</code> metadata object that holds the rules,
+the <code>AnvlPrimitiveDef</code> metadata object that holds the rules,
 wraps the body with <code><a href="../reference/jit.html">jit()</a></code>, and attaches the metadata. The
 returned callable becomes the primitive and is bound to a
 <code>prim_&lt;name&gt;</code> R symbol. The name passed to
@@ -218,7 +218,7 @@ naming a primitive names a function the reader can look up.</p>
 <span>    <span class="op">}</span></span>
 <span></span>
 <span>    <span class="fu"><a href="../reference/graph_desc_add.html">graph_desc_add</a></span><span class="op">(</span></span>
-<span>      <span class="va">self</span>,                       <span class="co"># lexically bound to the AnvlPrimitive</span></span>
+<span>      <span class="va">self</span>,                       <span class="co"># lexically bound to the AnvlPrimitiveDef</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span><span class="op">)</span>,                <span class="co"># Dynamic inputs (arrays)</span></span>
 <span>      params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>              <span class="co"># Static parameters</span></span>
 <span>        times <span class="op">=</span> <span class="va">times</span>,</span>
@@ -234,7 +234,7 @@ naming a primitive names a function the reader can look up.</p>
 <p>Key points:</p>
 <ul>
 <li>Pass the lexically-bound <code>self</code> (the
-[<code>AnvlPrimitive</code>]) as the first argument to
+[<code>AnvlPrimitiveDef</code>]) as the first argument to
 <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>. <code><a href="../reference/new_primitive.html">new_primitive()</a></code> installs
 <code>self</code> into the enclosing environment of the body, so this is
 always available inside a primitive.</li>
@@ -442,7 +442,7 @@ forward pass</li>
 <code>grads</code>: Gradients flowing back from downstream (one per
 output)</li>
 <li>
-<code>params</code>: Named list of the call’s static parameters
+<code>params</code>: Named list of the statement’s static parameters
 (here: <code>params$axis</code>, <code>params$times</code>)</li>
 <li>
 <code>required</code>: Logical vector indicating which input
@@ -469,7 +469,7 @@ Intermediates flow from forward to backward via R’s lexical scoping:</p>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  y <span class="ot">&lt;-</span> <span class="fu">prim_some_op</span>(x)        <span class="co"># forward emit 1</span></span>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  z <span class="ot">&lt;-</span> <span class="fu">prim_other_op</span>(x, y)    <span class="co"># forward emit 2; both `x` and `y` captured</span></span>
 <span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="fu">list</span>(</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>    <span class="at">outputs  =</span> <span class="fu">list</span>(z),       <span class="co"># one box per original call output</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>    <span class="at">outputs  =</span> <span class="fu">list</span>(z),       <span class="co"># one box per output of the original statement</span></span>
 <span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    <span class="at">backward =</span> <span class="cf">function</span>(inputs, outputs, grads, params, required) {</span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>      <span class="co"># `x` is also available via `inputs`; what lexical capture buys us is</span></span>
 <span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>      <span class="co"># access to intermediates like `y` that the framework doesn't pass in.</span></span>
@@ -480,8 +480,8 @@ Intermediates flow from forward to backward via R’s lexical scoping:</p>
 <p>The <code>backward</code> closure shares the same signature as the
 backward-only form. Intermediates that aren’t passed in (like
 <code>y</code> above) flow in via lexical capture. The forward must
-return one output box per original call output, with matching
-shape/dtype.</p>
+return one output box per output of the original statement, with
+matching shape/dtype.</p>
 </div>
 <div class="section level4">
 <h4 id="optional-a-quickr-rule">Optional: a quickr rule<a class="anchor" aria-label="anchor" href="#optional-a-quickr-rule"></a>

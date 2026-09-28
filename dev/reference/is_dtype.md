@@ -1,4 +1,4 @@
-# Check if an object is a DataType
+# Check If an Object Is a DataType
 
 Tests whether `x` is a `DataType` object.
 

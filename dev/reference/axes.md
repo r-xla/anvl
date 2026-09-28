@@ -1,4 +1,4 @@
-# Get the axes of an array
+# Get the Axes of an Array
 
 Returns the axis indices of an array, i.e. `seq_len(naxes(x))`.
 

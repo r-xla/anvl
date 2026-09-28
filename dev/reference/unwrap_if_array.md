@@ -1,7 +1,7 @@
-# Get the underlying PJRT buffer from an AnvlArray or pass through other values
+# Get the Underlying PJRT Buffer from an AnvlArray or Pass Through Other Values
 
-Get the underlying PJRT buffer from an AnvlArray or pass through other
-values
+Get the Underlying PJRT Buffer from an AnvlArray or Pass Through Other
+Values
 
 ## Usage
 

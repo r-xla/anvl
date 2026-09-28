@@ -1,4 +1,4 @@
-# Convert an AnvlGraph to a plain R function
+# Convert an AnvlGraph to a Plain R Function
 
 Lowers a supported subset of `AnvlGraph` objects to a plain R function
 (no compilation) suitable for

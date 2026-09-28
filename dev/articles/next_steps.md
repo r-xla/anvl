@@ -110,8 +110,9 @@ section of the JIT deep dive for details.
 
 Jitted functions can take and return (nested) lists of `AnvlArray`s,
 e.g. the parameters of a model.
-[`map_tree()`](https://r-xla.github.io/pjrt/reference/map_tree.html) and
-[`pmap_tree()`](https://r-xla.github.io/pjrt/reference/pmap_tree.html)
+[`map_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
+and
+[`pmap_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
 apply a function to every `AnvlArray` in such lists, like
 [`lapply()`](https://rdrr.io/r/base/lapply.html) and
 [`Map()`](https://rdrr.io/r/base/funprog.html), but keeping the nesting:

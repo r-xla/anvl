@@ -1,4 +1,4 @@
-# Install what a backend needs to run
+# Install What a Backend Needs to Run
 
 A backend needs more than the packages anvl declares as dependencies:
 the `"pjrt"` backend runs on PJRT plugins that are downloaded rather
@@ -20,7 +20,6 @@ install_anvl(backend = active_backend(), ...)
   (`character(1)`)  
   Backend to install for. Defaults to
   [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
-  The `"plain"` backend has nothing to install and is not accepted.
 
 - ...:
 
@@ -45,8 +44,10 @@ make the download an explicit step instead, for instance in a
 runs unattended. The `PJRT_INSTALL` environment variable overrides the
 prompt: `"1"` always downloads without asking, `"0"` never downloads.
 
-Which plugins you get – and whether CUDA is available at all – is
-decided by the repository anvl was installed from, not by this call. See
-the
-[Installation](https://r-xla.github.io/anvl/articles/installation.html)
-article.
+For `"pjrt"`, the CPU plugin is always installed, and the CUDA plugin
+too when an NVIDIA GPU is detected on Linux (or `cuda = TRUE` is
+passed). The CUDA plugin additionally needs the CUDA libraries, which
+come in the `pjrt.cuda` R package from the r-xla r-universe;
+`install_anvl()` installs it along with the CUDA plugin. See
+[`pjrt::install_pjrt()`](https://r-xla.github.io/pjrt/reference/install_pjrt.html)
+for details.

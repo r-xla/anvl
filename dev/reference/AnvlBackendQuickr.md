@@ -1,4 +1,4 @@
-# Quickr backend
+# Quickr Backend
 
 Constructs the quickr backend, which stores array data as plain R arrays
 and compiles jitted functions to R code via the
@@ -21,7 +21,7 @@ Registered automatically under the name `"quickr"` when the package is
 loaded; call
 [`local_backend("quickr")`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
 or
-[`with_backend("quickr", ...)`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+[`with_backend("quickr", ...)`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
 to use it. Requires the quickr package to be installed.
 
 ## Data representation
@@ -58,14 +58,6 @@ This backend is **experimental** and has a number of limitations:
 ## Supported data types
 
 `f64`, `i32` and `bool` – the three R storage types.
-
-## Quickr JIT arguments
-
-- `unwrap` (`logical(1)`, default `FALSE`): if `TRUE`, the compiled
-  function returns plain R arrays instead of
-  [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)s.
-  Useful when the jitted function's output is consumed by non-anvl R
-  code and the extra wrapping would only get stripped again.
 
 ## See also
 

@@ -334,7 +334,7 @@ with_backend("pjrt", {
     ## [1] 0
 
 If the first argument to
-[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
 is changed to `"quickr"` – the experimental, optional backend described
 in the [internals
 article](https://r-xla.github.io/anvl/dev/articles/internals.md) – then

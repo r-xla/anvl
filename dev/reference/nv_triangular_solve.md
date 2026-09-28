@@ -31,8 +31,8 @@ nv_triangular_solve(
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
   where it is not a float already, since the solve is a float one. An R
   value assumes the other operand's data type within its [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  settles on the default float when neither has one.
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
+  and settles on the default float when neither has one.
 
 - b:
 

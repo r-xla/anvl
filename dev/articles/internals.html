@@ -133,7 +133,7 @@ them into a computational <code>AnvlGraph</code> object via
 <strong>tracing</strong>. Such an <code>AnvlGraph</code> is similar to
 <code>Jaxpr</code> objects in JAX. It operates only on
 <code>GraphNode</code>s – the graph’s stand-ins for arrays – and applies
-<code>AnvlPrimitive</code> operations to them.</li>
+<code>AnvlPrimitiveDef</code> operations to them.</li>
 <li>
 <code>AnvlGraph</code> <span class="math inline">\(\rightarrow\)</span> <code>AnvlGraph</code>: It is
 possible to transform <code>AnvlGraph</code>s into other
@@ -204,8 +204,8 @@ represent the inputs to the function.</li>
 <code>outputs</code>, which are <code>GraphValue</code>s that
 represent the outputs of the function.</li>
 <li>
-<code>calls</code>, which are <code>PrimitiveCall</code>s that take
-in <code>GraphNode</code>s (and parameters) and produce output
+<code>statements</code>, which are <code>GraphStatement</code>s that
+take in <code>GraphNode</code>s (and parameters) and produce output
 <code>GraphValue</code>s.</li>
 <li>
 <code>constants</code>, which are the <code>GraphValue</code>s for
@@ -229,12 +229,12 @@ function is recorded in the <code>GraphDescriptor</code>.</li>
 <p>The evaluation of the <code>if</code> statement is an example for the
 first category. Because we set <code>op = "mul"</code>, only the second
 branch is executed. Then, we are calling <code>nv_mul</code>, which
-attaches a <code>PrimitiveCall</code> that represents the multiplication
-of the two arrays to the <code>$calls</code> of the
+attaches a <code>GraphStatement</code> that represents the
+multiplication of the two arrays to the <code>$statements</code> of the
 <code>GraphDescriptor</code>. Note that <code>nv_mul</code> is itself
 not a primitive: it performs some type promotion and broadcasting if
 needed before calling into the primitive <code>prim_mul</code>.</p>
-<p>A <code>PrimitiveCall</code> object consists of the following
+<p>A <code>GraphStatement</code> object consists of the following
 fields:</p>
 <ul>
 <li>
@@ -265,9 +265,9 @@ dictate how such an <code>AnvlGraph</code> to <code>AnvlGraph</code>
 transformation can be implemented. For most interesting transformations,
 however, we need to store some information for each {anvl} primitive
 function. In the case of the gradient, we need to store the derivative
-rules. For this, the <code>AnvlPrimitive</code> metadata object attached
-to each primitive has a <code>rules</code> field that can be populated.
-The derivative rules are stored as functions under the
+rules. For this, the <code>AnvlPrimitiveDef</code> metadata object
+attached to each primitive has a <code>rules</code> field that can be
+populated. The derivative rules are stored as functions under the
 <code>"reverse"</code> name. Each primitive is an exported
 <code>prim_*</code> function; <code>[[</code> on it reads a rule:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
@@ -324,7 +324,7 @@ transformation are attached to each primitive.</p>
 <span><span class="co">## &lt;environment: namespace:anvl&gt;</span></span></code></pre>
 <p>The <code><a href="../reference/stablehlo.html">stablehlo()</a></code> function creates a
 <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code> object and sequentially translates the
-<code>PrimitiveCall</code>s into StableHLO operations.</p>
+<code>GraphStatement</code>s into StableHLO operations.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">func</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/stablehlo.html">stablehlo</a></span><span class="op">(</span><span class="va">graph</span><span class="op">)</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">func</span></span></code></pre></div>

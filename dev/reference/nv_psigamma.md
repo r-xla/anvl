@@ -31,8 +31,8 @@ trigamma(x)
   [`prim_psigamma()`](https://r-xla.github.io/anvl/dev/reference/prim_psigamma.md)
   takes. An R value assumes the other operand's data type within its
   [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  settles on the default float when neither has one. Scalars are
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
+  and settles on the default float when neither has one. Scalars are
   [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
   to the shape of the other, so `nv_psigamma(x, 1)` works for any float
   `x`.

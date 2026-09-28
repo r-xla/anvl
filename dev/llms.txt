@@ -185,36 +185,34 @@ Functions for creating and initializing arrays
 Functions for querying array properties
 
 - [`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md) :
-  Get Backend of an Array
+  Get Backend Name of an Array
 - [`dtype()`](https://r-xla.github.io/anvl/dev/reference/dtype.md) : Get
-  the data type of an array
+  the Data Type of an Array
 - [`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) : Get
-  the shape of an array
+  the Shape of an Array
 - [`naxes()`](https://r-xla.github.io/anvl/dev/reference/naxes.md) : Get
-  the number of axes of an array
+  the Number of Axes of an Array
 - [`axes()`](https://r-xla.github.io/anvl/dev/reference/axes.md) : Get
-  the axes of an array
+  the Axes of an Array
 - [`device()`](https://r-xla.github.io/anvl/dev/reference/device.md) :
-  Get the device of an array
+  Get the Device of an Array
 - [`platform()`](https://r-xla.github.io/anvl/dev/reference/platform.md)
-  : Get the platform of an array or buffer
+  : Get the Platform Name of an Array or Buffer
 
 ### Converters
 
 Functions for converting arrays
 
 - [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
-  : Convert to an R array
+  : Convert to an R Array
 - [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md) :
-  Convert an array to a raw vector
+  Convert an Array to a Raw Vector
 - [`as.double(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   [`as.integer(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   [`as.integer64(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   [`as.logical(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   [`as.vector(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   : Coerce AnvlArray to an R Vector
-- [`await()`](https://r-xla.github.io/anvl/dev/reference/await.md) :
-  Block until an async operation completes
 
 ### Serialization
 
@@ -226,6 +224,13 @@ Functions for serializing and deserializing arrays
 - [`nv_serialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
   [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
   : Serialize Arrays to Raw Bytes
+
+### Miscellaneous
+
+- [`is_arrayish()`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+  : Array-Like Objects
+- [`await()`](https://r-xla.github.io/anvl/dev/reference/await.md) :
+  Block Until an Async Operation Completes
 
 ### Base R Generics
 
@@ -660,7 +665,7 @@ Control flow operations
 - [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md)
   : While Loop
 - [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md) :
-  Scan (Loop With Per-Step Outputs)
+  Scan (Loop with Per-Step Outputs)
 - [`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md)
   : Conditional Element Selection
 
@@ -702,12 +707,12 @@ common one
 
 ### Data Types
 
-- [`dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md) :
-  Data Type Categories
+- [`dtype_categories`](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md)
+  : Data Type Categories
 - [`as_dtype()`](https://r-xla.github.io/anvl/dev/reference/as_dtype.md)
   : Convert to a DataType
 - [`is_dtype()`](https://r-xla.github.io/anvl/dev/reference/is_dtype.md)
-  : Check if an object is a DataType
+  : Check If an Object Is a DataType
 - [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
   : Common Data Type
 - [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
@@ -746,55 +751,53 @@ article for how they are used.
 Code transformations
 
 - [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) : JIT
-  compile a function
-- [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
-  : Number of cached programs of a jitted function
+  Compile a Function
 - [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
-  : Gradient
-- [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)
-  : Value and Gradient
+  [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  : Gradients
 
 ## Backend
 
 Backend-related functionality and implementations
 
 - [`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md) :
-  Get Backend of an Array
-- [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md)
-  : Get Active Backend
+  Get Backend Name of an Array
 - [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
-  : Temporarily set the backend
-- [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
-  : Run code with a specific backend
-- [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md)
-  : Install what a backend needs to run
+  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
+  : Temporarily Set the Backend
+- [`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
+  : PJRT Backend
+- [`AnvlBackendQuickr()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendQuickr.md)
+  : Quickr Backend
+
+## Device
+
+Devices of the active backend and the default device
+
 - [`nv_device()`](https://r-xla.github.io/anvl/dev/reference/nv_device.md)
   : Create a Device
 - [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)
-  : Get the default device
+  : Get the Default Device
 - [`local_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
   [`with_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
   : Temporarily Set the Default Device
 - [`is_device()`](https://r-xla.github.io/anvl/dev/reference/is_device.md)
-  : Test whether an object is a device
+  : Test Whether an Object Is a Device
 - [`quickr_device()`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md)
-  : Quickr device
-- [`AnvlBackend()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md)
-  : Create a backend
-- [`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
-  : PJRT backend
-- [`AnvlBackendQuickr()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendQuickr.md)
-  : Quickr backend
+  : Quickr Device
 
 ## Miscellaneous
 
 General-purpose helpers
 
 - [`arr()`](https://r-xla.github.io/anvl/dev/reference/arr.md) : Create
-  an R array
+  an R Array
 - [`eq_type()`](https://r-xla.github.io/anvl/dev/reference/eq_type.md)
   [`neq_type()`](https://r-xla.github.io/anvl/dev/reference/eq_type.md)
   : Compare AbstractArray Types
+- [`map_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
+  [`pmap_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
+  : Map a Function over Trees
 
 ## Internals
 
@@ -803,7 +806,7 @@ Internal data structures and functions
 ### Graph
 
 - [`AnvlGraph()`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md)
-  : Graph of Primitive Calls
+  : Graph of Statements
 - [`GraphDescriptor()`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
   : Graph Descriptor
 - [`GraphNode`](https://r-xla.github.io/anvl/dev/reference/GraphNode.md)
@@ -814,25 +817,14 @@ Internal data structures and functions
   : Graph Box
 - [`GraphLiteral()`](https://r-xla.github.io/anvl/dev/reference/GraphLiteral.md)
   : Graph Literal
-- [`AnvlBox`](https://r-xla.github.io/anvl/dev/reference/AnvlBox.md) :
-  AnvlBox
-- [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
-  : Add a Primitive Call to a Graph Descriptor
+- [`GraphStatement()`](https://r-xla.github.io/anvl/dev/reference/GraphStatement.md)
+  : Graph Statement
 - [`local_descriptor()`](https://r-xla.github.io/anvl/dev/reference/local_descriptor.md)
-  : Create a graph
-- [`.current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/dot-current_descriptor.md)
-  : Get the current graph
+  : Create a Graph
+- [`current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md)
+  : Get the Current Graph
 - [`subgraphs()`](https://r-xla.github.io/anvl/dev/reference/subgraphs.md)
   : Get Subgraphs from Higher-Order Primitive
-
-### Primitives
-
-- [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
-  : Create a Primitive
-- [`AnvlPrimitive()`](https://r-xla.github.io/anvl/dev/reference/AnvlPrimitive.md)
-  : AnvlPrimitive
-- [`PrimitiveCall()`](https://r-xla.github.io/anvl/dev/reference/PrimitiveCall.md)
-  : Primitive Call
 
 ### Abstract Types
 
@@ -850,22 +842,20 @@ Internal data structures and functions
 - [`to_abstract()`](https://r-xla.github.io/anvl/dev/reference/to_abstract.md)
   : Convert to Abstract Array
 - [`is_arrayish()`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-  : Array-like Objects
+  : Array-Like Objects
 
 ### Transformations
 
 - [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
-  : Trace an R function into a Graph
+  : Trace an R Function into a Graph
 - [`transform_gradient()`](https://r-xla.github.io/anvl/dev/reference/transform_gradient.md)
-  : Transform a graph to its gradient
-- [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md)
-  : Reverse Rule
+  : Transform a Graph to Its Gradient
 - [`graph_to_quickr_r_function()`](https://r-xla.github.io/anvl/dev/reference/graph_to_quickr_r_function.md)
-  : Convert an AnvlGraph to a plain R function
+  : Convert an AnvlGraph to a Plain R Function
 - [`compile_pjrt()`](https://r-xla.github.io/anvl/dev/reference/compile_pjrt.md)
-  : Trace, lower, and compile a function to an XLA executable
+  : Trace, Lower, and Compile a Function to an XLA Executable
 - [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
-  : Lower a graph to StableHLO
+  : Lower a Graph to StableHLO
 - [`current_platform()`](https://r-xla.github.io/anvl/dev/reference/current_platform.md)
   [`local_platform()`](https://r-xla.github.io/anvl/dev/reference/current_platform.md)
   : Current Lowering Target Platform
@@ -880,24 +870,35 @@ Utilities for working with nested structures
   [`unflatten`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
   [`tree_size`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
   [`tree_path`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
-  [`map_tree`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
-  [`pmap_tree`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
   : Objects exported from other packages
 
 ### Miscellaneous
 
-- [`at2vt()`](https://r-xla.github.io/anvl/dev/reference/at2vt.md) :
-  Convert AbstractArray to ValueType
-- [`vt()`](https://r-xla.github.io/anvl/dev/reference/vt.md) : Construct
-  a stablehlo ValueType
-- [`is_arrayish()`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-  : Array-like Objects
+- [`AnvlBackend()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md)
+  : Create a Backend
+- [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md)
+  : Get Active Backend
+- [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
+  : Number of Cached Programs of a Jitted Function
 - [`Shape()`](https://r-xla.github.io/anvl/dev/reference/Shape-constructor.md)
-  : Create a Shape object
+  : Create a Shape Object
 
 ## Primitives
 
 Low-level primitive operations (prim\_\* functions)
+
+### Construction
+
+- [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
+  : Create a Primitive
+- [`AnvlPrimitiveDef()`](https://r-xla.github.io/anvl/dev/reference/AnvlPrimitiveDef.md)
+  : Primitive Definition
+- [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
+  : Add a Statement to a Graph Descriptor
+- [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md)
+  : Reverse Rule
+
+### Implemented Primitives
 
 - [`prim_abs()`](https://r-xla.github.io/anvl/dev/reference/prim_abs.md)
   : Primitive Absolute Value
@@ -1107,6 +1108,8 @@ Low-level primitive operations (prim\_\* functions)
 - [`anvl`](https://r-xla.github.io/anvl/dev/reference/anvl-package.md)
   [`anvl-package`](https://r-xla.github.io/anvl/dev/reference/anvl-package.md)
   : anvl: Accelerated Array Computing and Automatic Differentiation
+- [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md)
+  : Install What a Backend Needs to Run
 
 # Articles
 

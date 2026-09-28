@@ -70,7 +70,7 @@ parameters (how many times to repeat and which axis).
 
 Primitives are created with
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md):
-it builds the `AnvlPrimitive` metadata object that holds the rules,
+it builds the `AnvlPrimitiveDef` metadata object that holds the rules,
 wraps the body with
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), and
 attaches the metadata. The returned callable becomes the primitive and
@@ -102,7 +102,7 @@ prim_repeat_along <- new_primitive(
     }
 
     graph_desc_add(
-      self,                       # lexically bound to the AnvlPrimitive
+      self,                       # lexically bound to the AnvlPrimitiveDef
       list(x = x),                # Dynamic inputs (arrays)
       params = list(              # Static parameters
         times = times,
@@ -120,8 +120,8 @@ The primitive is now callable directly as
 
 Key points:
 
-- Pass the lexically-bound `self` (the \[`AnvlPrimitive`\]) as the first
-  argument to
+- Pass the lexically-bound `self` (the \[`AnvlPrimitiveDef`\]) as the
+  first argument to
   [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md).
   [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
   installs `self` into the enclosing environment of the body, so this is
@@ -337,7 +337,7 @@ The wrapped backward receives:
 - `inputs`: Input `GraphValue`s from the forward pass
 - `outputs`: Output `GraphValue`s from the forward pass
 - `grads`: Gradients flowing back from downstream (one per output)
-- `params`: Named list of the call’s static parameters (here:
+- `params`: Named list of the statement’s static parameters (here:
   `params$axis`, `params$times`)
 - `required`: Logical vector indicating which input gradients are needed
 
@@ -364,7 +364,7 @@ prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   y <- prim_some_op(x)        # forward emit 1
   z <- prim_other_op(x, y)    # forward emit 2; both `x` and `y` captured
   list(
-    outputs  = list(z),       # one box per original call output
+    outputs  = list(z),       # one box per output of the original statement
     backward = function(inputs, outputs, grads, params, required) {
       # `x` is also available via `inputs`; what lexical capture buys us is
       # access to intermediates like `y` that the framework doesn't pass in.
@@ -376,8 +376,8 @@ prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 
 The `backward` closure shares the same signature as the backward-only
 form. Intermediates that aren’t passed in (like `y` above) flow in via
-lexical capture. The forward must return one output box per original
-call output, with matching shape/dtype.
+lexical capture. The forward must return one output box per output of
+the original statement, with matching shape/dtype.
 
 #### Optional: a quickr rule
 

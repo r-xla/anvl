@@ -5,10 +5,12 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Primitive — new_primitive"><meta name="description" content="Create a new primitive.
-For details on how to do this, see the article on Adding a Primitive.
-Like every jitted function it runs on the active backend when called."><meta property="og:description" content="Create a new primitive.
-For details on how to do this, see the article on Adding a Primitive.
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Primitive — new_primitive"><meta name="description" content="new_primitive() creates a new primitive: an AnvlPrimitive, the function
+the primitive is called through (e.g. prim_add()).
+For details on how to do this, see the Adding a Primitive article.
+Like every jitted function it runs on the active backend when called."><meta property="og:description" content="new_primitive() creates a new primitive: an AnvlPrimitive, the function
+the primitive is called through (e.g. prim_add()).
+For details on how to do this, see the Adding a Primitive article.
 Like every jitted function it runs on the active backend when called."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -81,8 +83,9 @@ Like every jitted function it runs on the active backend when called."><meta pro
     </div>
 
     <div class="ref-description section level2">
-    <p>Create a new primitive.
-For details on how to do this, see the article on <em>Adding a Primitive</em>.
+    <p><code>new_primitive()</code> creates a new primitive: an <code>AnvlPrimitive</code>, the function
+the primitive is called through (e.g. <code><a href="prim_add.html">prim_add()</a></code>).
+For details on how to do this, see the <a href="https://r-xla.github.io/anvl/articles/extending_primitive.html">Adding a Primitive</a> article.
 Like every jitted function it runs on the active backend when called.</p>
     </div>
 
@@ -110,7 +113,7 @@ Primitive name, without the <code>prim_</code> prefix (<code>"add"</code> for <c
 <dd><p>(<code>function</code>)<br>
 Body of the primitive. Its formals become the formals of the returned
 JIT-compiled callable. Inside <code>fn</code>, the primitive is accessible via
-the lexically-bound symbol <code>self</code> (an <code><a href="AnvlPrimitive.html">AnvlPrimitive</a></code>); pass it as
+the lexically-bound symbol <code>self</code> (an <code><a href="AnvlPrimitiveDef.html">AnvlPrimitiveDef</a></code>); pass it as
 the first argument to <code><a href="graph_desc_add.html">graph_desc_add()</a></code>.</p></dd>
 
 
@@ -126,14 +129,22 @@ Passed to <code><a href="jit.html">jit()</a></code>.</p></dd>
 
 <dt id="arg-register">register<a class="anchor" aria-label="anchor" href="#arg-register"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-If <code>TRUE</code> (default), register the result under <code>name</code> in the primitive
-registry.</p></dd>
+Whether to add the primitive to anvl's internal registry of primitives,
+under <code>name</code>, replacing one registered under the same name. The quickr
+backend reads that registry to know which primitives it can lower, so a
+primitive created with <code>register = FALSE</code> is rejected on quickr even if
+it has a <code>quickr</code> rule. The other backends only read the rules of the
+primitive itself. This does not bind the result to a <code>prim_&lt;name&gt;</code>
+variable; assign it yourself.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code>JitPrimitive</code>)<br>
-A callable of class <code>c("JitPrimitive", "JitFunction")</code>.</p>
+    <p>(<code>AnvlPrimitive</code>)<br>
+The function the primitive is called through, of class
+<code>c("AnvlPrimitive", "JitFunction")</code>. Its <code><a href="AnvlPrimitiveDef.html">AnvlPrimitiveDef</a></code> is
+<code>attr(&lt;fn&gt;, "definition")</code>, and <code>[[</code> / <code>[[&lt;-</code> on it access the rules of
+that definition.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

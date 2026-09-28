@@ -1,4 +1,4 @@
-# Convert an AnvlGraph to a quickr-compiled function
+# Convert an AnvlGraph to a Quickr-Compiled Function
 
 Lowers a supported subset of `AnvlGraph` objects to a plain R function
 and compiles it with

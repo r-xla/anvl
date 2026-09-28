@@ -147,7 +147,7 @@ loss_grad(params, x, y)
 ```
 
 This makes it easy to update all parameters at once with
-[`pmap_tree()`](https://r-xla.github.io/pjrt/reference/pmap_tree.html),
+[`pmap_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md),
 which applies a function to the corresponding `AnvlArray`s of several
 lists with the same structure.
 
@@ -171,7 +171,7 @@ pmap_tree(list(params, grads), \(p, g) p - 0.1 * g)
 When fitting a model, one usually needs both the value of the loss and
 its gradient. Instead of calling the function and its gradient
 separately,
-[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)
+[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
 computes both in a single pass:
 
 ``` r

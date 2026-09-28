@@ -9,7 +9,7 @@ two middle values is returned, matching base R's
 You can also use [`median()`](https://rdrr.io/r/stats/median.html)
 directly on an
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-or [`AnvlBox`](https://r-xla.github.io/anvl/dev/reference/AnvlBox.md);
+or [`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md);
 extra arguments (e.g. `method`) are forwarded via `...`.
 
 ## Usage

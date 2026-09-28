@@ -1,4 +1,4 @@
-# Block until an async operation completes
+# Block Until an Async Operation Completes
 
 Block until the array's underlying computation has finished, and return
 the object invisibly. Useful for benchmarking, where the dispatch of an
@@ -37,8 +37,8 @@ no-op.
 ## See also
 
 [`pjrt::await()`](https://r-xla.github.io/pjrt/reference/await.html),
-[`map_tree()`](https://r-xla.github.io/pjrt/reference/map_tree.html) (to
-await a tree of outputs)
+[`map_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
+(to await a tree of outputs)
 
 ## Examples
 

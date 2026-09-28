@@ -54,19 +54,13 @@ set, invisibly. `with_default_dtypes()` returns the result of evaluating
 Inside a [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)ted
 body the defaults the program was keyed on are the *baseline* and an
 override applies to its scope, so one program can use different
-precisions in different parts of itself. Only that baseline is part of
-the compilation cache key, so **an override in a body must not change
-between calls: write it out literally rather than reading it from a
-variable.** `with_default_dtypes(c(float = prec), ...)` with a `prec`
-that later changes keeps serving the program traced at the first value,
-exactly as a changing `dtype` argument would – and just as silently.
-Nothing checks this for you.
+precisions in different parts of itself.
 
 ## See also
 
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md),
 [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
-[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
 
 ## Examples
 

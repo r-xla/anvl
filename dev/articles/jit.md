@@ -231,8 +231,8 @@ and where its behavior might be surprising.
 
 Tracing runs your R code and records primitive operations in the graph.
 Because `for` is not an {anvl} primitive, it will be executed as usual
-and all the primitive calls encountered will be recorded in the graph.
-Here we apply the `linear` function `n` times.
+and every primitive call encountered will be recorded in the graph as a
+statement. Here we apply the `linear` function `n` times.
 
 ``` r
 
@@ -260,8 +260,8 @@ after another. For a different value of `n`, the loop would get unrolled
 for this specific iteration number. Long loops also lead to long compile
 times and large executables. You can instead use
 [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md),
-which records a single higher-order primitive call in the graph
-regardless of how many iterations the loop runs.
+which records a single statement in the graph regardless of how many
+iterations the loop runs.
 
 ### R `if` statements pick one branch
 
@@ -399,7 +399,7 @@ grad_step_jit(g, 0.1)   # expected c(-0.3, -0.3, -0.3) -- but identical to call 
 #> [ CPUf32{3} ]
 
 class(model$beta)       # not even an AnvlArray any more
-#> [1] "GraphBox" "AnvlBox"
+#> [1] "GraphBox"
 ```
 
 Two things went wrong, both for the same reason: the only thing
@@ -472,7 +472,7 @@ most relevant options are:
   [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
 - **Pinned at
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) time.**
-  Passing a concrete device – e.g. `jit(f, device = "cpu:0")` or
+  Passing a concrete device – e.g. `jit(f, device = "cpu")` or
   `jit(f, device = nv_device("cuda:0"))` – forces every call to run on
   that device. Inputs living on a different device are copied over
   automatically.

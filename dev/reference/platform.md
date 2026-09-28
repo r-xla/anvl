@@ -1,4 +1,4 @@
-# Get the platform of an array or buffer
+# Get the Platform Name of an Array or Buffer
 
 Returns the name of the hardware platform (e.g. `"cpu"`, `"cuda"`) the
 data lives on. This is not the backend; see

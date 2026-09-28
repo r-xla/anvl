@@ -1,6 +1,6 @@
-# Test whether an object is a device
+# Test Whether an Object Is a Device
 
-Test whether an object is a device
+Test Whether an Object Is a Device
 
 ## Usage
 

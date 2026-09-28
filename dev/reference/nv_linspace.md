@@ -81,8 +81,8 @@ Has `dtype` and shape `length_out`.
 consecutive integers,
 [`nv_iota()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md) for
 values increasing along an axis of any shape,
-[`dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md) for the
-data type categories.
+[`dtype_categories`](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md)
+for the data type categories.
 
 ## Examples
 

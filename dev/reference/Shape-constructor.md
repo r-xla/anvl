@@ -1,4 +1,4 @@
-# Create a Shape object
+# Create a Shape Object
 
 Constructs a `Shape`, the axis sizes of an array. A `Shape` *is* its
 integer vector, with a class attached, so

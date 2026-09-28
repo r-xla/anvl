@@ -9,7 +9,7 @@ provides JIT compilation
 ([`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)) and
 automatic differentiation
 ([`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
-[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)).
+[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)).
 
 ## Commands
 
@@ -153,7 +153,7 @@ category. `nv_rnorm(mean = 0, sd = 1)` has to stay plain: written `0L` /
 ## Supported dtypes
 
 The data types and the words the docs use for groups of them are in
-[`?dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md)
+[`?dtype_categories`](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md)
 (`R/promotion.R`) and `man-roxygen/section_dtype_words.R`: *any* /
 *numeric* / *integer* / *integerish* / *signed numeric* / *float* /
 *boolean*. Two things to keep in mind:
@@ -205,7 +205,7 @@ Two rules that bite while writing code:
 - **One backend at a time.** The backend is the option `anvl.backend`
   ([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
   [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
-  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)).
+  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)).
   Every jitted function runs on it, reading it at call time; nothing
   infers a backend from an argument, no array operation or
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) takes a
@@ -223,7 +223,7 @@ Two rules that bite while writing code:
 The backend is the option `anvl.backend`
 ([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
 [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
-[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)).
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)).
 Every jitted function runs on it, reading it at call time; nothing
 infers a backend from an argument, no array operation or
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) takes a
@@ -237,21 +237,21 @@ error. Only helpers *about* the backend name one
 
 ## Primitive System
 
-Primitives are `JitPrimitive` callables constructed by
+Primitives are `AnvlPrimitive` callables constructed by
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
 (defined in `R/primitive.R`). The returned object is both callable (it
 wraps `fn` with
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)) and
-carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`.
-Primitives are stored as `prim_<name>` variables, and the string passed
-to
+carries an `AnvlPrimitiveDef` metadata object via
+`attr(., "definition")`. Primitives are stored as `prim_<name>`
+variables, and the string passed to
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
 is that same `<name>` – not the StableHLO op it lowers to – so printed
 graphs and error messages name a function the reader can look up.
 `test-primitives-meta.R` enforces this.
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
-lexically binds `self` (the `AnvlPrimitive`) into the body’s enclosing
-environment, so inside a primitive body you write
+lexically binds `self` (the `AnvlPrimitiveDef`) into the body’s
+enclosing environment, so inside a primitive body you write
 `graph_desc_add(self, ...)` — never the primitive name as a string.
 Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 

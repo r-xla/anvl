@@ -11,7 +11,7 @@ for reshaping code. We refer to such a rewriting of code as a
     convert them into a computational `AnvlGraph` object via
     **tracing**. Such an `AnvlGraph` is similar to `Jaxpr` objects in
     JAX. It operates only on `GraphNode`s – the graph’s stand-ins for
-    arrays – and applies `AnvlPrimitive` operations to them.
+    arrays – and applies `AnvlPrimitiveDef` operations to them.
 2.  `AnvlGraph` \\\rightarrow\\ `AnvlGraph`: It is possible to transform
     `AnvlGraph`s into other `AnvlGraph`s. Their purpose is to change the
     functionality of the code. At the time of writing, there is
@@ -89,8 +89,8 @@ of the `AnvlGraph` are:
   function.
 - `outputs`, which are `GraphValue`s that represent the outputs of the
   function.
-- `calls`, which are `PrimitiveCall`s that take in `GraphNode`s (and
-  parameters) and produce output `GraphValue`s.
+- `statements`, which are `GraphStatement`s that take in `GraphNode`s
+  (and parameters) and produce output `GraphValue`s.
 - `constants`, which are the `GraphValue`s for values closed over by the
   traced function (see [constant handling](#constant-handling)).
 - `in_tree`, `out_tree`, which record the nesting structure of the
@@ -111,12 +111,12 @@ we need to distinguish between two cases:
 The evaluation of the `if` statement is an example for the first
 category. Because we set `op = "mul"`, only the second branch is
 executed. Then, we are calling `nv_mul`, which attaches a
-`PrimitiveCall` that represents the multiplication of the two arrays to
-the `$calls` of the `GraphDescriptor`. Note that `nv_mul` is itself not
-a primitive: it performs some type promotion and broadcasting if needed
-before calling into the primitive `prim_mul`.
+`GraphStatement` that represents the multiplication of the two arrays to
+the `$statements` of the `GraphDescriptor`. Note that `nv_mul` is itself
+not a primitive: it performs some type promotion and broadcasting if
+needed before calling into the primitive `prim_mul`.
 
-A `PrimitiveCall` object consists of the following fields:
+A `GraphStatement` object consists of the following fields:
 
 - `primitive`: The primitive function that was called.
 - `inputs`: The inputs to the primitive function.
@@ -138,8 +138,8 @@ such an `AnvlGraph` to `AnvlGraph` transformation can be implemented.
 For most interesting transformations, however, we need to store some
 information for each {anvl} primitive function. In the case of the
 gradient, we need to store the derivative rules. For this, the
-`AnvlPrimitive` metadata object attached to each primitive has a `rules`
-field that can be populated. The derivative rules are stored as
+`AnvlPrimitiveDef` metadata object attached to each primitive has a
+`rules` field that can be populated. The derivative rules are stored as
 functions under the `"reverse"` name. Each primitive is an exported
 `prim_*` function; `[[` on it reads a rule:
 
@@ -213,7 +213,7 @@ The
 [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
 function creates a
 [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)
-object and sequentially translates the `PrimitiveCall`s into StableHLO
+object and sequentially translates the `GraphStatement`s into StableHLO
 operations.
 
 ``` r

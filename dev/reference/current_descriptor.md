@@ -1,12 +1,11 @@
-# Get the current graph
+# Get the Current Graph
 
-Get the current graph being built (via
-[`local_descriptor`](https://r-xla.github.io/anvl/dev/reference/local_descriptor.md)).
+Get the current graph being built.
 
 ## Usage
 
 ``` r
-.current_descriptor(silent = FALSE)
+current_descriptor(silent = FALSE)
 ```
 
 ## Arguments

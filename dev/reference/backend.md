@@ -1,4 +1,4 @@
-# Get Backend of an Array
+# Get Backend Name of an Array
 
 Returns the name of the backend an array or device belongs to.
 

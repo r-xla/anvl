@@ -1,4 +1,4 @@
-# Get the number of axes of an array
+# Get the Number of Axes of an Array
 
 Returns the number of axes (sometimes also referred to as rank) of an
 array. Equivalent to `length(shape(x))`.

@@ -80,6 +80,15 @@
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
 <ul><li>
+<code>PrimitiveCall</code> is now <code>GraphStatement</code>, and the <code>calls</code> field of <code>AnvlGraph</code> and <code>GraphDescriptor</code> is now <code>statements</code>.</li>
+<li>
+<code>AnvlBox</code> is gone; <code>GraphBox</code> is the class of a traced value.</li>
+<li>
+<code>at2vt()</code> and <code>vt()</code> are no longer exported.</li>
+<li>
+<code>.current_descriptor()</code> is now <code><a href="../reference/current_descriptor.html">current_descriptor()</a></code>.</li>
+<li>The primitive classes are renamed: the definition that holds the rules is now <code>AnvlPrimitiveDef</code> (was <code>AnvlPrimitive</code>), and the function a primitive is called through is now <code>AnvlPrimitive</code> (was <code>JitPrimitive</code>). It carries its definition as <code>attr(&lt;fn&gt;, "definition")</code> (was <code>"primitive"</code>).</li>
+<li>
 <code><a href="../reference/nv_div.html">nv_div()</a></code> and <code>/</code> convert integer and boolean operands to the default float, like base R: <code>7L / 2L</code> is <code>3.5</code>. Use <code>%/%</code> for integer division.</li>
 <li>The element-wise <code><a href="../reference/nv_max.html">nv_max()</a></code> / <code><a href="../reference/nv_min.html">nv_min()</a></code> and <code><a href="../reference/prim_max.html">prim_max()</a></code> / <code><a href="../reference/prim_min.html">prim_min()</a></code> are now <code><a href="../reference/nv_pmax.html">nv_pmax()</a></code> / <code><a href="../reference/nv_pmin.html">nv_pmin()</a></code> and <code><a href="../reference/prim_pmax.html">prim_pmax()</a></code> / <code><a href="../reference/prim_pmin.html">prim_pmin()</a></code>, following <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmax()</a></code> / <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::pmin()</a></code>.</li>
 <li>The reductions lost their <code>reduce_</code> prefix: write <code><a href="../reference/nv_sum.html">nv_sum()</a></code>, <code><a href="../reference/nv_prod.html">nv_prod()</a></code>, <code><a href="../reference/nv_max.html">nv_max()</a></code>, <code><a href="../reference/nv_min.html">nv_min()</a></code>, <code><a href="../reference/nv_any.html">nv_any()</a></code>, <code><a href="../reference/nv_all.html">nv_all()</a></code> and the matching <code>prim_*()</code> instead of <code>nv_reduce_sum()</code> and friends. <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> keeps its name.</li>
@@ -317,9 +326,9 @@
 <li>
 <code><a href="../reference/local_default_dtypes.html">local_default_dtypes()</a></code> / <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code> reject a category other than <code>float</code> and <code>int</code>.</li>
 <li>
-<code><a href="../reference/value_and_gradient.html">value_and_gradient()</a></code> rejects an <code>f</code> that is not a function, as <code><a href="../reference/gradient.html">gradient()</a></code> does.</li>
+<code><a href="../reference/gradient.html">value_and_gradient()</a></code> rejects an <code>f</code> that is not a function, as <code><a href="../reference/gradient.html">gradient()</a></code> does.</li>
 <li>
-<code><a href="../reference/local_backend.html">local_backend()</a></code> / <code><a href="../reference/with_backend.html">with_backend()</a></code> reject the internal <code>"plain"</code> backend.</li>
+<code><a href="../reference/local_backend.html">local_backend()</a></code> / <code><a href="../reference/local_backend.html">with_backend()</a></code> reject the internal <code>"plain"</code> backend.</li>
 <li>
 <code><a href="https://rdrr.io/r/base/Round.html" class="external-link">trunc()</a></code> on an array rejects further arguments with a clear error.</li>
 </ul></div>
@@ -459,7 +468,7 @@
 <h4 id="misc-0-3-0">Misc<a class="anchor" aria-label="anchor" href="#misc-0-3-0"></a></h4>
 <ul><li>New <code>AnvlArray</code> -&gt; R <code>vector</code> converters: <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code>, <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code>, <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code>, <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code>, <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>.</li>
 <li>New function <code><a href="../reference/await.html">await()</a></code> that blocks until the underlying computation has finished.</li>
-<li>New tree utilities <code><a href="https://r-xla.github.io/pjrt/reference/map_tree.html" class="external-link">map_tree()</a></code> and <code><a href="https://r-xla.github.io/pjrt/reference/pmap_tree.html" class="external-link">pmap_tree()</a></code> for applying functions leaf-wise over (possibly nested) lists.</li>
+<li>New tree utilities <code><a href="../reference/map_tree.html">map_tree()</a></code> and <code><a href="../reference/map_tree.html">pmap_tree()</a></code> for applying functions leaf-wise over (possibly nested) lists.</li>
 <li>Added support for <code>range</code> generic.</li>
 <li>Improved NaN handling across various primitives and API functions.</li>
 </ul></div>

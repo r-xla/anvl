@@ -1,4 +1,4 @@
-# Number of cached programs of a jitted function
+# Number of Cached Programs of a Jitted Function
 
 The number of compiled programs a function returned by
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) currently

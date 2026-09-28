@@ -15,7 +15,8 @@ prim_lt(lhs, rhs)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs of the same data type and shape. Can be any data type. R
   values take the other operand's data type when it is in their [data
-  type category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
+  type
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
   and their [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   when neither operand has one. An R value outside the other operand's

@@ -3,8 +3,8 @@
 Construct a reverse-mode autodiff rule for a primitive. Provide exactly
 one of `backward` and `forward`.
 
-Pass `backward` when the primitive's forward call can run unmodified,
-which covers most use cases. It has the signature
+Pass `backward` when the primitive's forward statement can run
+unmodified, which covers most use cases. It has the signature
 `function(inputs, outputs, grads, params, required)` and returns a
 `list` with one entry per input: that input's gradient, or `NULL` where
 `required` says it is not needed.
@@ -57,7 +57,7 @@ rule_reverse(function(inputs, outputs, grads, params, required) {
 #> {
 #>     list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #> }
-#> <environment: 0x55fc1cad36a8>
+#> <environment: 0x55d605582a08>
 #> 
 #> attr(,"class")
 #> [1] "anvl_rule_reverse"

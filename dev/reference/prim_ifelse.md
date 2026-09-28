@@ -29,8 +29,8 @@ prim_ifelse(test, yes, no)
   Values to select from, of the same shape. Can be any data type. `yes`
   and `no` must have the same data type. An R value among them assumes
   the data type of the others when it is in its [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  its [default data
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
+  and its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   when none of them has one.
 

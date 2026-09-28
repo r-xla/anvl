@@ -1,4 +1,4 @@
-# Get the device of an array
+# Get the Device of an Array
 
 Returns the device on which an array is allocated.
 

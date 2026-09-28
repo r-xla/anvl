@@ -1,4 +1,4 @@
-# Convert to an R array
+# Convert to an R Array
 
 Transfers array data to R and returns it as an R
 [`array`](https://rdrr.io/r/base/array.html). Only in the case of
@@ -26,16 +26,11 @@ as_array(x, ...)
   (`character(1)` \| `FALSE`)  
   How to report a materialized value that the R type cannot hold:
   `"warn"` (the default) warns and returns it anyway, `"err"` aborts,
-  and `FALSE` skips the scan. `TRUE` is not accepted – with two levels
-  of strictness it does not say which one is meant. Forwarded to the
-  backend; for the `pjrt` backend the cases scanned for are `i32`/`i64`
-  values colliding with the `NA` bit pattern and `ui64` values `>= 2^63`
-  wrapping through
-  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
-  See
-  [`pjrt::as_array.PJRTBuffer()`](https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html)
-  for the full list, and the
-  [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html) article.
+  and `FALSE` skips the scan. Problematic values are the
+  bit-representations reserved for R's `NA` values, as well as
+  out-of-range values. See the
+  [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html) article
+  for more.
 
 - ...:
 

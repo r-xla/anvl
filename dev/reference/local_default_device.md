@@ -21,10 +21,10 @@ with_default_device(device, code)
 - device:
 
   (`NULL` \| `character(1)` \| device object)  
-  The device to make the default, e.g. `"cpu:1"`. A string is looked up
+  The device to make the default, e.g. `"cuda:0"`. A string is looked up
   on whichever backend asks for the default, so an identifier only one
-  backend knows (`"cpu:1"` is beyond quickr's single device) makes the
-  default an error on the others. `NULL` clears the option.
+  backend knows (quickr has no `"cuda"`) makes the default an error on
+  the others. `NULL` clears the option.
 
 - envir:
 
@@ -55,6 +55,8 @@ The value of `code`.
 ``` r
 getOption("anvl.default_device")
 #> NULL
-with_default_device("cpu:0", getOption("anvl.default_device"))
-#> [1] "cpu:0"
+# the option holds the identifier; it is resolved to a device only when
+# `default_device()` is called
+with_default_device("cuda:0", getOption("anvl.default_device"))
+#> [1] "cuda:0"
 ```

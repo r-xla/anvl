@@ -1,4 +1,4 @@
-# Get the default device
+# Get the Default Device
 
 Returns the default device of the active backend: the device the
 `anvl.default_device` option names (see

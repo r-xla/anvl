@@ -52,7 +52,7 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
   vectors as having shape `(1)`. Empty data has no shape to infer – `0`,
   `c(2, 0)` and `c(0, 3)` all hold no elements – so `shape` is required
   there. To create a "scalar" with no axes (shape `()`), use `nv_scalar`
-  or explicitly specify `shape = c()`.
+  or explicitly specify `shape = integer()`.
 
 - dtype:
 
@@ -60,11 +60,10 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   The data type at which to create the array: a
   [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
-  or one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64.
-  `data` is built at it rather than converted to it, and a value it
-  cannot hold at all is an error (`nv_array(3e9, dtype = "i32")`
-  overflows); a `double` at an integer data type is truncated. The
-  default (`NULL`) uses the [default data
+  or one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. A
+  value it cannot hold at all is an error
+  (`nv_array(3e9, dtype = "i32")` overflows). A `double` at an integer
+  data type is truncated. The default (`NULL`) uses the [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md) of
   `data`'s category. `nv_empty()`, which has no `data`, requires it.
 
@@ -95,10 +94,8 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
   (`logical(1)`)  
   When constructing from an R object and the result has at least two
   axes, fill the array in row-major order rather than the default
-  column-major order, mirroring
-  [`base::matrix()`](https://rdrr.io/r/base/matrix.html)'s `byrow`. Only
-  allowed when `data` is an R object — passing an existing `AnvlArray`
-  together with `byrow = TRUE` is an error.
+  column-major order. Only allowed when `data` is an R object — passing
+  an existing `AnvlArray` together with `byrow = TRUE` is an error.
 
 - nrow:
 
@@ -267,8 +264,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  8.5431e-20 3.0845e-41 8.8487e-24
-#>  3.0845e-41 6.4760e-24 3.0845e-41
+#>  -1.3236e+33  3.0791e-41 -1.3236e+33
+#>   3.0791e-41 -1.5224e+33  3.0791e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

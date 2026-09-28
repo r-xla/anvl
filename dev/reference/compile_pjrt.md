@@ -1,4 +1,4 @@
-# Trace, lower, and compile a function to an XLA executable
+# Trace, Lower, and Compile a Function to an XLA Executable
 
 Takes a function, traces it into a computational graph, lowers it to
 StableHLO, and compiles it to a PJRT executable. Returns the compiled
@@ -13,7 +13,7 @@ compile_pjrt(
   in_tree,
   donate = character(),
   device = NULL,
-  arg_devices = list(),
+  arg_device = NULL,
   fallback_device = NULL,
   default_dtypes = NULL
 )
@@ -45,14 +45,14 @@ compile_pjrt(
 
   (`NULL` \| `character(1)` \| `PJRTDevice`)  
   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from
-  `arg_devices` and traced arrays.
+  `arg_device` and traced arrays.
 
-- arg_devices:
+- arg_device:
 
-  (`list`)  
-  Devices of the concrete (non-static) input arguments, extracted before
-  converting to abstract values. Used together with traced devices for
-  device inference when `device` is `NULL`.
+  (`NULL` \| device)  
+  The device the array inputs live on, or `NULL` when there are none.
+  Used together with traced devices for device inference when `device`
+  is `NULL`.
 
 - fallback_device:
 
@@ -68,9 +68,7 @@ compile_pjrt(
   (`NULL` \| `list(float, int)`)  
   The data types the traced R values materialize at when nothing else
   decides one (see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),
-  read off `info$context` so the program matches the cache key it is
-  filed under. `NULL` uses the active pair.
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Value
 

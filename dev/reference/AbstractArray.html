@@ -6,8 +6,6 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Abstract Array Class — nv_aval"><meta name="description" content="Representation of an abstract array type.
-During tracing, it is wrapped in a GraphNode held by a GraphBox.
-In the lowered AnvlGraph it is also part of GraphNodes representing the values in the program.
 The base class represents an unknown value, but child classes exist for:
 closed-over constants: ConcreteArray
 scalar arrays arising from R literals: LiteralArray
@@ -16,8 +14,6 @@ R values RData. They are special because they do not have a data type.
 
 
 To convert an arrayish value to an abstract array, use to_abstract()."><meta property="og:description" content="Representation of an abstract array type.
-During tracing, it is wrapped in a GraphNode held by a GraphBox.
-In the lowered AnvlGraph it is also part of GraphNodes representing the values in the program.
 The base class represents an unknown value, but child classes exist for:
 closed-over constants: ConcreteArray
 scalar arrays arising from R literals: LiteralArray
@@ -97,9 +93,7 @@ To convert an arrayish value to an abstract array, use to_abstract()."><meta pro
     </div>
 
     <div class="ref-description section level2">
-    <p>Representation of an abstract array type.
-During tracing, it is wrapped in a <code><a href="GraphNode.html">GraphNode</a></code> held by a <code><a href="GraphBox.html">GraphBox</a></code>.
-In the lowered <code><a href="AnvlGraph.html">AnvlGraph</a></code> it is also part of <code><a href="GraphNode.html">GraphNode</a></code>s representing the values in the program.</p>
+    <p>Representation of an abstract array type.</p>
 <p>The base class represents an <em>unknown</em> value, but child classes exist for:</p><ul><li><p>closed-over constants: <code><a href="ConcreteArray.html">ConcreteArray</a></code></p></li>
 <li><p>scalar arrays arising from R literals: <code><a href="LiteralArray.html">LiteralArray</a></code></p></li>
 <li><p>sequence patterns: <code><a href="IotaArray.html">IotaArray</a></code></p></li>
@@ -135,14 +129,6 @@ The shape of the array. Can be provided as an integer vector.</p></dd>
 <p><code>nv_aval()</code>: (<code>AbstractArray</code> | <code><a href="RData.html">RData</a></code>)<br>
 An <code><a href="RData.html">RData</a></code> when <code>dtype</code> names an R storage type.</p>
     </div>
-    <div class="section level2">
-    <h2 id="extractors">Extractors<a class="anchor" aria-label="anchor" href="#extractors"></a></h2>
-
-
-<p>The following extractors are available on <code>AbstractArray</code> objects:</p><ul><li><p><code><a href="https://r-xla.github.io/tengen/reference/dtype.html" class="external-link">dtype()</a></code>: Get the data type of the array.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (axis sizes) of the array.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code>: Get the number of axes.</p></li>
-</ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><a href="LiteralArray.html">LiteralArray</a>, <a href="ConcreteArray.html">ConcreteArray</a>, <a href="IotaArray.html">IotaArray</a>, <a href="RData.html">RData</a>, <a href="GraphValue.html">GraphValue</a>, <code><a href="to_abstract.html">to_abstract()</a></code>, <a href="GraphBox.html">GraphBox</a></p></div>

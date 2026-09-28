@@ -1,13 +1,13 @@
-# Create a graph
+# Create a Graph
 
 Creates a new
 [`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
 which is afterwards accessible via
-[`.current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/dot-current_descriptor.md).
+[`current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md).
 The graph is automatically removed when exiting the current scope. After
 the graph is either cleaned up automatically (by exiting the scope) or
 finalized, the previously built graph is restored, i.e., accessible via
-[`.current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/dot-current_descriptor.md).
+[`current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md).
 
 ## Usage
 

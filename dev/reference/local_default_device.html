@@ -105,10 +105,10 @@ function whose graph pins no device of its own compiles for.</p>
 
 <dl><dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | device object)<br>
-The device to make the default, e.g. <code>"cpu:1"</code>. A string is looked up on
-whichever backend asks for the default, so an identifier only one backend
-knows (<code>"cpu:1"</code> is beyond quickr's single device) makes the default an
-error on the others. <code>NULL</code> clears the option.</p></dd>
+The device to make the default, e.g. <code>"cuda:0"</code>. A string is looked up
+on whichever backend asks for the default, so an identifier only one
+backend knows (quickr has no <code>"cuda"</code>) makes the default an error on the
+others. <code>NULL</code> clears the option.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>
@@ -138,8 +138,10 @@ The value of <code>code</code>.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"anvl.default_device"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
-<span class="r-in"><span><span class="fu">with_default_device</span><span class="op">(</span><span class="st">"cpu:0"</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"anvl.default_device"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cpu:0"</span>
+<span class="r-in"><span><span class="co"># the option holds the identifier; it is resolved to a device only when</span></span></span>
+<span class="r-in"><span><span class="co"># `default_device()` is called</span></span></span>
+<span class="r-in"><span><span class="fu">with_default_device</span><span class="op">(</span><span class="st">"cuda:0"</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"anvl.default_device"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cuda:0"</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -1,4 +1,4 @@
-# Transform a graph to its gradient
+# Transform a Graph to Its Gradient
 
 Low-level graph transformation that transforms a graph into its
 gradient. The function `f` represented by `graph` must return a single
@@ -43,14 +43,14 @@ for more information.
 This is the building block used by
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
 and
-[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md);
+[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md);
 prefer those higher-level wrappers unless you need to operate on graphs
 directly.
 
 ## See also
 
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
-[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md),
+[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
 [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md)
 
 ## Examples

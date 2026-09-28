@@ -1,21 +1,21 @@
 # anvl: Accelerated Array Computing and Automatic Differentiation
 
 Accelerated array computing and code transformations for R. Numerical
-programs operating on multi-dimensional arrays can be just-in-time
-compiled to optimized executables via 'XLA' – the same compiler that
-powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the
-same source. Also provides reverse-mode automatic differentiation,
-returning the gradient of a function as another R function.
+programs operating on arrays can be just-in-time compiled to optimized
+executables via 'XLA' – the same compiler that powers 'JAX' and
+'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also
+provides reverse-mode automatic differentiation, returning the gradient
+of a function as another R function.
 
 ## Options
 
-- `anvl.backend` (`character(1)`, default `"pjrt"`): the backend every
-  operation runs on – `"pjrt"` or `"quickr"`. Arrays are allocated with
-  it and jitted functions are compiled for it. Also see
+- `anvl.backend` (`character(1)`): the backend every operation runs on.
+  Must be one of `"pjrt"` and `"quickr"`. If not set, `"pjrt"` is used.
+  Also see
   [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
   [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
   and
-  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md).
+  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md).
 
 - `anvl.default_dtypes` (named
   [`character()`](https://rdrr.io/r/base/character.html) \| named
@@ -38,9 +38,13 @@ returning the gradient of a function as another R function.
   `anvl.default_dtypes` option is not set.
 
 - `ANVL_DEFAULT_DEVICE`: a device identifier such as `"cuda"` or
-  `"cpu:1"`, used when the `anvl.default_device` option is not set.
+  `"cuda:0"`, used when the `anvl.default_device` option is not set.
 
-Both are read once, when anvl is loaded.
+Both are read once, when anvl is loaded, and kept as fallbacks for the
+options rather than set as them: `getOption("anvl.default_device")`
+stays `NULL`, and an option set later takes precedence. Changing a
+variable after anvl is loaded has no effect until the package is loaded
+again, e.g. in a new R session.
 
 The remaining ones, all prefixed `ANVL_TEST`, affect only anvl's own
 test suite, not the package:

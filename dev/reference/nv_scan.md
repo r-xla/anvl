@@ -1,4 +1,4 @@
-# Scan (Loop With Per-Step Outputs)
+# Scan (Loop with Per-Step Outputs)
 
 Runs a fixed-length loop that threads a carry through `body` while
 stacking each step's output into preallocated buffers.

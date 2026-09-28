@@ -1,4 +1,4 @@
-# Trace an R function into a Graph
+# Trace an R Function into a Graph
 
 Executes `f` with abstract array arguments and records every primitive
 operation into an

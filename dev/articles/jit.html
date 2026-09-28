@@ -333,9 +333,9 @@ and where its behavior might be surprising.</p>
 </h3>
 <p>Tracing runs your R code and records primitive operations in the
 graph. Because <code>for</code> is not an {anvl} primitive, it will be
-executed as usual and all the primitive calls encountered will be
-recorded in the graph. Here we apply the <code>linear</code> function
-<code>n</code> times.</p>
+executed as usual and every primitive call encountered will be recorded
+in the graph as a statement. Here we apply the <code>linear</code>
+function <code>n</code> times.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">linear_repeated</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">b</span>, <span class="va">n</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">)</span> <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">linear</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">b</span><span class="op">)</span></span>
@@ -360,8 +360,8 @@ contain those five operations laid out one after another. For a
 different value of <code>n</code>, the loop would get unrolled for this
 specific iteration number. Long loops also lead to long compile times
 and large executables. You can instead use <code><a href="../reference/nv_while.html">nv_while()</a></code>,
-which records a single higher-order primitive call in the graph
-regardless of how many iterations the loop runs.</p>
+which records a single statement in the graph regardless of how many
+iterations the loop runs.</p>
 </div>
 <div class="section level3">
 <h3 id="r-if-statements-pick-one-branch">R <code>if</code> statements pick one branch<a class="anchor" aria-label="anchor" href="#r-if-statements-pick-one-branch"></a>
@@ -484,7 +484,7 @@ with <code><a href="../reference/jit.html">jit()</a></code> breaks the function 
 <span><span class="co">#&gt; [ CPUf32{3} ]</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">model</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span>       <span class="co"># not even an AnvlArray any more</span></span>
-<span><span class="co">#&gt; [1] "GraphBox" "AnvlBox"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "GraphBox"</span></span></code></pre></div>
 <p>Two things went wrong, both for the same reason: the only thing
 <code><a href="../reference/jit.html">jit()</a></code> records into the graph is <code>prim_*</code>
 calls.</p>
@@ -554,7 +554,7 @@ there are no array inputs, it falls back to the
 <code><a href="../reference/default_device.html">default_device()</a></code>.</li>
 <li>
 <strong>Pinned at <code><a href="../reference/jit.html">jit()</a></code> time.</strong> Passing a
-concrete device – e.g. <code>jit(f, device = "cpu:0")</code> or
+concrete device – e.g. <code>jit(f, device = "cpu")</code> or
 <code>jit(f, device = nv_device("cuda:0"))</code> – forces every call to
 run on that device. Inputs living on a different device are copied over
 automatically.</li>

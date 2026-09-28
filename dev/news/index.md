@@ -4,6 +4,17 @@
 
 ### Breaking changes
 
+- `PrimitiveCall` is now `GraphStatement`, and the `calls` field of
+  `AnvlGraph` and `GraphDescriptor` is now `statements`.
+- `AnvlBox` is gone; `GraphBox` is the class of a traced value.
+- `at2vt()` and `vt()` are no longer exported.
+- `.current_descriptor()` is now
+  [`current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md).
+- The primitive classes are renamed: the definition that holds the rules
+  is now `AnvlPrimitiveDef` (was `AnvlPrimitive`), and the function a
+  primitive is called through is now `AnvlPrimitive` (was
+  `JitPrimitive`). It carries its definition as
+  `attr(<fn>, "definition")` (was `"primitive"`).
 - [`nv_div()`](https://r-xla.github.io/anvl/dev/reference/nv_div.md) and
   `/` convert integer and boolean operands to the default float, like
   base R: `7L / 2L` is `3.5`. Use `%/%` for integer division.
@@ -787,13 +798,13 @@
   /
   [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
   reject a category other than `float` and `int`.
-- [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)
+- [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
   rejects an `f` that is not a function, as
   [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
   does.
 - [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
   /
-  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+  [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
   reject the internal `"plain"` backend.
 - [`trunc()`](https://rdrr.io/r/base/Round.html) on an array rejects
   further arguments with a clear error.
@@ -1065,9 +1076,9 @@
   [`await()`](https://r-xla.github.io/anvl/dev/reference/await.md) that
   blocks until the underlying computation has finished.
 - New tree utilities
-  [`map_tree()`](https://r-xla.github.io/pjrt/reference/map_tree.html)
+  [`map_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
   and
-  [`pmap_tree()`](https://r-xla.github.io/pjrt/reference/pmap_tree.html)
+  [`pmap_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
   for applying functions leaf-wise over (possibly nested) lists.
 - Added support for `range` generic.
 - Improved NaN handling across various primitives and API functions.

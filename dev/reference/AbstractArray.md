@@ -1,15 +1,6 @@
 # Abstract Array Class
 
-Representation of an abstract array type. During tracing, it is wrapped
-in a
-[`GraphNode`](https://r-xla.github.io/anvl/dev/reference/GraphNode.md)
-held by a
-[`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md). In
-the lowered
-[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md)
-it is also part of
-[`GraphNode`](https://r-xla.github.io/anvl/dev/reference/GraphNode.md)s
-representing the values in the program.
+Representation of an abstract array type.
 
 The base class represents an *unknown* value, but child classes exist
 for:
@@ -65,19 +56,6 @@ AbstractArray(dtype, shape)
 [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md))  
 An [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md) when
 `dtype` names an R storage type.
-
-## Extractors
-
-The following extractors are available on `AbstractArray` objects:
-
-- [`dtype()`](https://r-xla.github.io/tengen/reference/dtype.html): Get
-  the data type of the array.
-
-- [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
-  the shape (axis sizes) of the array.
-
-- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
-  the number of axes.
 
 ## See also
 

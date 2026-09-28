@@ -16,47 +16,19 @@ and
 [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
 set the option for a scope.
 
-Below, we configure every backend to use the default `f64` for floats
-and `i64` for integers:
-
-    options(anvl.default_dtypes = c(float = "f64", int = "i64"))
-
-You can also only change the float dtype, leaving the backend's default
-integer dtype unchanged:
-
-    options(anvl.default_dtypes = c(float = "f64"))
-
-It is also possible to specify the defaults per backend. Below, every
-backend uses `f64` for floats, and `"pjrt"` also uses `i64` for
-integers:
-
-    options(anvl.default_dtypes = list(
-      float = "f64",
-      pjrt = list(int = "i64")
-    ))
-
-An entry that names a backend wins over the categories beside it.
+The option maps the categories `float` and `int` to data types, e.g.
+`c(float = "f64", int = "i64")`, and applies to every backend. It may
+name only one of them, like `c(float = "f64")`, in which case the other
+category keeps the backend's default. To set the defaults of a single
+backend, give a list with an entry named after that backend instead:
+`list(float = "f64", pjrt = list(int = "i64"))` sets `f64` for every
+backend and additionally `i64` for `"pjrt"`. An entry that names a
+backend wins over the categories beside it.
 
 When the option is not set, the `ANVL_DEFAULT_DTYPES` environment
 variable (read once, when anvl is loaded) is used instead, written as
 `category=dtype` pairs that apply to every backend, e.g.
 `ANVL_DEFAULT_DTYPES="float=f64,int=i64"`.
-
-The defaults decide only what a value becomes when *nothing else does*:
-an R value that meets a typed array of its own category still takes that
-array's data type, whatever the default (see the [Data Types and
-Promotion
-Rules](https://r-xla.github.io/anvl/articles/type-promotion.html)
-article). The data type you name is taken on trust, so one that does not
-fit is an error where the data is allocated or the program compiled
-rather than where it is set. Which ones fit is the backend's own
-business – see the *Supported data types* section of
-[`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
-and of
-[`AnvlBackendQuickr()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendQuickr.md),
-which has only `f64`, `i32` and `bool`, so both `"f32"` and `"i64"` are
-errors there. A compiled program is keyed on the defaults it was
-compiled under, so changing them never serves a stale program.
 
 ## Usage
 

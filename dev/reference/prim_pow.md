@@ -16,8 +16,8 @@ prim_pow(x, y)
   Two inputs of the same data type and shape. Can be any numeric data
   type. R values take the other operand's data type when it is in their
   [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  their [default data
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
+  and their [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   when neither operand has one. An R value outside the other operand's
   category is an error, as are two R values of different storage types.

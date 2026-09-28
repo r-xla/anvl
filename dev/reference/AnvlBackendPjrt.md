@@ -1,4 +1,4 @@
-# PJRT backend
+# PJRT Backend
 
 Constructs the PJRT backend, which stores array data in PJRT buffers
 (via
@@ -64,15 +64,6 @@ exact behavior depends on the platform, backend, and operation.
 
 See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html)
 article for an explanation and examples.
-
-## PJRT JIT arguments
-
-- `donate` ([`character()`](https://rdrr.io/r/base/character.html),
-  default [`character()`](https://rdrr.io/r/base/character.html)): names
-  of arguments whose underlying buffers may be donated to (i.e.,
-  reused/consumed by) the compiled XLA executable. Donated buffers must
-  not be used again by the caller after the call; this can reduce memory
-  usage and copies for large inputs. Must not overlap with `static`.
 
 ## See also
 

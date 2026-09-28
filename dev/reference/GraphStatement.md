@@ -1,19 +1,20 @@
-# Primitive Call
+# Graph Statement
 
-Call of a primitive in an
-[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md).
+One statement of an
+[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md):
+a primitive applied to inputs, with its results assigned to outputs.
 
 ## Usage
 
 ``` r
-PrimitiveCall(primitive, inputs, params, outputs)
+GraphStatement(primitive, inputs, params, outputs)
 ```
 
 ## Arguments
 
 - primitive:
 
-  (`AnvlPrimitive`)  
+  (`AnvlPrimitiveDef`)  
   The function.
 
 - inputs:
@@ -33,4 +34,4 @@ PrimitiveCall(primitive, inputs, params, outputs)
 
 ## Value
 
-(`PrimitiveCall`)
+(`GraphStatement`)

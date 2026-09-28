@@ -1,14 +1,32 @@
 # Graph Descriptor
 
-Descriptor of an
-[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md).
-This is a mutable class.
+The in-progress representation of an
+[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md)
+during tracing. This is a mutable class.
+
+While
+[`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
+runs a function, every primitive call is recorded as a
+[`GraphStatement`](https://r-xla.github.io/anvl/dev/reference/GraphStatement.md)
+into the current descriptor (see
+[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
+and
+[`current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md)).
+The descriptor also does the book-keeping the trace needs: which
+[`GraphValue`](https://r-xla.github.io/anvl/dev/reference/GraphValue.md)
+an `AnvlArray` or
+[`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md)
+stands for, the constants and devices encountered, and the default data
+types the trace is pinned to. Once tracing finishes, it is converted to
+an
+[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md),
+which only keeps what is needed to lower and run the program.
 
 ## Usage
 
 ``` r
 GraphDescriptor(
-  calls = list(),
+  statements = list(),
   array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
@@ -26,10 +44,10 @@ GraphDescriptor(
 
 ## Arguments
 
-- calls:
+- statements:
 
-  (`list(PrimitiveCall)`)  
-  The primitive calls that make up the graph.
+  (`list(GraphStatement)`)  
+  The statements that make up the graph.
 
 - array_to_gval:
 

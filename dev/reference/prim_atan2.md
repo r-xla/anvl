@@ -21,7 +21,8 @@ prim_atan2(y, x)
   Ordinate and abscissa of the point, of the same shape. Can be any
   float data type. `y` and `x` must have the same data type. An R value
   among them assumes the data type of the others when it is in its [data
-  type category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
+  type
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
   and its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   when none of them has one.

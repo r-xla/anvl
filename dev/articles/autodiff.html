@@ -244,11 +244,11 @@ argument:</p>
 <span><span class="co">#&gt;  -4</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
 <p>This makes it easy to update all parameters at once with
-<code><a href="https://r-xla.github.io/pjrt/reference/pmap_tree.html" class="external-link">pmap_tree()</a></code>, which applies a function to the corresponding
+<code><a href="../reference/map_tree.html">pmap_tree()</a></code>, which applies a function to the corresponding
 <code>AnvlArray</code>s of several lists with the same structure.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grads</span> <span class="op">&lt;-</span> <span class="fu">loss_grad</span><span class="op">(</span><span class="va">params</span>, <span class="va">x</span>, <span class="va">y</span><span class="op">)</span><span class="op">$</span><span class="va">params</span></span>
-<span><span class="fu"><a href="https://r-xla.github.io/pjrt/reference/pmap_tree.html" class="external-link">pmap_tree</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">params</span>, <span class="va">grads</span><span class="op">)</span>, \<span class="op">(</span><span class="va">p</span>, <span class="va">g</span><span class="op">)</span> <span class="va">p</span> <span class="op">-</span> <span class="fl">0.1</span> <span class="op">*</span> <span class="va">g</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/map_tree.html">pmap_tree</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">params</span>, <span class="va">grads</span><span class="op">)</span>, \<span class="op">(</span><span class="va">p</span>, <span class="va">g</span><span class="op">)</span> <span class="va">p</span> <span class="op">-</span> <span class="fl">0.1</span> <span class="op">*</span> <span class="va">g</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $w</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  1.9333</span></span>
@@ -264,10 +264,10 @@ argument:</p>
 </h2>
 <p>When fitting a model, one usually needs both the value of the loss
 and its gradient. Instead of calling the function and its gradient
-separately, <code><a href="../reference/value_and_gradient.html">value_and_gradient()</a></code> computes both in a single
+separately, <code><a href="../reference/gradient.html">value_and_gradient()</a></code> computes both in a single
 pass:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">loss_vg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="../reference/value_and_gradient.html">value_and_gradient</a></span><span class="op">(</span><span class="va">loss</span>, wrt <span class="op">=</span> <span class="st">"params"</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">loss_vg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="../reference/gradient.html">value_and_gradient</a></span><span class="op">(</span><span class="va">loss</span>, wrt <span class="op">=</span> <span class="st">"params"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">loss_vg</span><span class="op">(</span><span class="va">params</span>, <span class="va">x</span>, <span class="va">y</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $value</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
@@ -298,10 +298,10 @@ jit the outermost function, e.g. a complete step of the model
 fitting:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">params</span>, <span class="va">x</span>, <span class="va">y</span>, <span class="va">lr</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/value_and_gradient.html">value_and_gradient</a></span><span class="op">(</span><span class="va">loss</span>, wrt <span class="op">=</span> <span class="st">"params"</span><span class="op">)</span><span class="op">(</span><span class="va">params</span>, <span class="va">x</span>, <span class="va">y</span><span class="op">)</span></span>
+<span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gradient.html">value_and_gradient</a></span><span class="op">(</span><span class="va">loss</span>, wrt <span class="op">=</span> <span class="st">"params"</span><span class="op">)</span><span class="op">(</span><span class="va">params</span>, <span class="va">x</span>, <span class="va">y</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    loss <span class="op">=</span> <span class="va">out</span><span class="op">$</span><span class="va">value</span>,</span>
-<span>    params <span class="op">=</span> <span class="fu"><a href="https://r-xla.github.io/pjrt/reference/pmap_tree.html" class="external-link">pmap_tree</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">params</span>, <span class="va">out</span><span class="op">$</span><span class="va">grad</span><span class="op">$</span><span class="va">params</span><span class="op">)</span>, \<span class="op">(</span><span class="va">p</span>, <span class="va">g</span><span class="op">)</span> <span class="va">p</span> <span class="op">-</span> <span class="va">lr</span> <span class="op">*</span> <span class="va">g</span><span class="op">)</span></span>
+<span>    params <span class="op">=</span> <span class="fu"><a href="../reference/map_tree.html">pmap_tree</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">params</span>, <span class="va">out</span><span class="op">$</span><span class="va">grad</span><span class="op">$</span><span class="va">params</span><span class="op">)</span>, \<span class="op">(</span><span class="va">p</span>, <span class="va">g</span><span class="op">)</span> <span class="va">p</span> <span class="op">-</span> <span class="va">lr</span> <span class="op">*</span> <span class="va">g</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>

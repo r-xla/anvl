@@ -16,8 +16,8 @@ prim_clamp(x, min, max)
   The array to clamp. Can be any data type. `x`, `min` and `max` must
   have the same data type. An R value among them assumes the data type
   of the others when it is in its [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  its [default data
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
+  and its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   when none of them has one.
 

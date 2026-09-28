@@ -6,8 +6,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="anvl: Accelerated Array Computing and Automatic Differentiation — anvl-package"><meta name="description" content="
-Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:description" content="
-Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:description" content="
+Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -80,7 +80,7 @@ Accelerated array computing and code transformations for R. Numerical programs o
 
     <div class="ref-description section level2">
     <p></p>
-<p>Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.</p>
+<p>Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.</p>
     </div>
 
 
@@ -88,10 +88,10 @@ Accelerated array computing and code transformations for R. Numerical programs o
     <h2 id="options">Options<a class="anchor" aria-label="anchor" href="#options"></a></h2>
 
 
-<ul><li><p><code>anvl.backend</code> (<code>character(1)</code>, default <code>"pjrt"</code>): the backend every
-operation runs on – <code>"pjrt"</code> or <code>"quickr"</code>. Arrays are allocated with it
-and jitted functions are compiled for it.
-Also see <code><a href="active_backend.html">active_backend()</a></code>, <code><a href="local_backend.html">local_backend()</a></code> and <code><a href="with_backend.html">with_backend()</a></code>.</p></li>
+<ul><li><p><code>anvl.backend</code> (<code>character(1)</code>): the backend every
+operation runs on.
+Must be one of <code>"pjrt"</code> and <code>"quickr"</code>. If not set, <code>"pjrt"</code> is used.
+Also see <code><a href="active_backend.html">active_backend()</a></code>, <code><a href="local_backend.html">local_backend()</a></code> and <code><a href="local_backend.html">with_backend()</a></code>.</p></li>
 <li><p><code>anvl.default_dtypes</code> (named <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> | named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>): the data
 types an R double and an R integer settle on when they meet no typed
 array.
@@ -108,9 +108,13 @@ Also see <code><a href="default_device.html">default_device()</a></code>, <code>
 <ul><li><p><code>ANVL_DEFAULT_DTYPES</code>: <code>category=dtype</code> pairs such as
 <code>"float=f64,int=i64"</code>, used for every backend when the
 <code>anvl.default_dtypes</code> option is not set.</p></li>
-<li><p><code>ANVL_DEFAULT_DEVICE</code>: a device identifier such as <code>"cuda"</code> or <code>"cpu:1"</code>,
+<li><p><code>ANVL_DEFAULT_DEVICE</code>: a device identifier such as <code>"cuda"</code> or <code>"cuda:0"</code>,
 used when the <code>anvl.default_device</code> option is not set.</p></li>
-</ul><p>Both are read once, when anvl is loaded.</p>
+</ul><p>Both are read once, when anvl is loaded, and kept as fallbacks for the
+options rather than set as them: <code>getOption("anvl.default_device")</code> stays
+<code>NULL</code>, and an option set later takes precedence. Changing a variable after
+anvl is loaded has no effect until the package is loaded again, e.g. in a
+new R session.</p>
 <p>The remaining ones, all prefixed <code>ANVL_TEST</code>, affect only anvl's own test
 suite, not the package:</p><ul><li><p><code>ANVL_TEST</code>: <code>tests/testthat.R</code> runs the tests only when this is <code>"1"</code>,
 so <code>R CMD check</code> in a shell without it runs none of them.</p></li>

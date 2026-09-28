@@ -7,7 +7,7 @@
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Reverse Rule — rule_reverse"><meta name="description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
 of backward and forward.
-Pass backward when the primitive's forward call can run unmodified, which
+Pass backward when the primitive's forward statement can run unmodified, which
 covers most use cases. It has the signature
 function(inputs, outputs, grads, params, required) and returns a list
 with one entry per input: that input's gradient, or NULL where
@@ -18,7 +18,7 @@ and returns list(outputs = , backward = ): the forward results and a
 closure with the signature of backward above, which can use intermediate
 values of the forward pass via lexical scoping."><meta property="og:description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
 of backward and forward.
-Pass backward when the primitive's forward call can run unmodified, which
+Pass backward when the primitive's forward statement can run unmodified, which
 covers most use cases. It has the signature
 function(inputs, outputs, grads, params, required) and returns a list
 with one entry per input: that input's gradient, or NULL where
@@ -101,7 +101,7 @@ values of the forward pass via lexical scoping."><meta property="og:image" conte
     <div class="ref-description section level2">
     <p>Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
 of <code>backward</code> and <code>forward</code>.</p>
-<p>Pass <code>backward</code> when the primitive's forward call can run unmodified, which
+<p>Pass <code>backward</code> when the primitive's forward statement can run unmodified, which
 covers most use cases. It has the signature
 <code>function(inputs, outputs, grads, params, required)</code> and returns a <code>list</code>
 with one entry per input: that input's gradient, or <code>NULL</code> where
@@ -156,7 +156,7 @@ closure.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     list(if (required[[1L]]) prim_negate(grads[[1L]]))</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55fc1cad36a8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55d605582a08&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "anvl_rule_reverse"</span>

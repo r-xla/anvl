@@ -21,7 +21,7 @@ e1 >= e2
   type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
   be any data type. Scalars are broadcast. An R value takes the other
   operand's data type when that is in its own or a higher
-  [category](https://r-xla.github.io/anvl/dev/reference/dtypes.md).
+  [category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md).
   Otherwise it settles on its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md),
   and the operands meet at their common data type.

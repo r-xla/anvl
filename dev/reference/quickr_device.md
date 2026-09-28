@@ -1,4 +1,4 @@
-# Quickr device
+# Quickr Device
 
 Device descriptor for the quickr backend. The only supported `type` is
 `"cpu"`.

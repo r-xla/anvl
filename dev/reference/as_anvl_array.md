@@ -41,8 +41,7 @@ as_anvl_arrays(..., .promote = NULL)
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Inputs to align. Name them to be able to point `.promote` at one of
-  them.
+  Inputs to align.
 
 ## Value
 

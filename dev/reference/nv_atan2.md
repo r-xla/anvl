@@ -22,8 +22,8 @@ nv_atan2(y, x)
   where it is not a float already, so the result is always a float.
   Scalars are broadcast. An R value assumes the other operand's data
   type within its [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md), and
-  settles on the default float when neither operand has one.
+  category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
+  and settles on the default float when neither operand has one.
 
 ## Value
 

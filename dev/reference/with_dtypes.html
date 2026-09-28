@@ -10,18 +10,16 @@ dtypes names: on each call every array argument of a category dtypes
 names is converted to that data type, the defaults (see
 default_dtypes()) are set to the float / int entries for the
 duration of the call, and every returned array of a named category is
-converted as well.
-nv_add_f64 &amp;lt;- with_dtypes(nv_add, c(float = "f64"))
-
+converted as well. For example, with_dtypes(nv_add, c(float = "f64")) is
+an nv_add() that computes floats at f64.
 A category dtypes does not name is left alone, in the arguments, in the
 body and in the result.'><meta property="og:description" content='with_dtypes() wraps f into a function that works at the data types
 dtypes names: on each call every array argument of a category dtypes
 names is converted to that data type, the defaults (see
 default_dtypes()) are set to the float / int entries for the
 duration of the call, and every returned array of a named category is
-converted as well.
-nv_add_f64 &amp;lt;- with_dtypes(nv_add, c(float = "f64"))
-
+converted as well. For example, with_dtypes(nv_add, c(float = "f64")) is
+an nv_add() that computes floats at f64.
 A category dtypes does not name is left alone, in the arguments, in the
 body and in the result.'><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -100,8 +98,8 @@ body and in the result.'><meta property="og:image" content="https://r-xla.github
 names is converted to that data type, the defaults (see
 <code><a href="default_dtypes.html">default_dtypes()</a></code>) are set to the <code>float</code> / <code>int</code> entries for the
 duration of the call, and every returned array of a named category is
-converted as well.</p>
-<p></p><div class="sourceCode r"><pre><code><span><span class="va">nv_add_f64</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/with_dtypes.html">with_dtypes</a></span><span class="op">(</span><span class="va">nv_add</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span></code></pre><p></p></div>
+converted as well. For example, <code>with_dtypes(nv_add, c(float = "f64"))</code> is
+an <code><a href="nv_add.html">nv_add()</a></code> that computes floats at <code>f64</code>.</p>
 <p>A category <code>dtypes</code> does not name is left alone, in the arguments, in the
 body and in the result.</p>
     </div>

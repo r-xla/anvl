@@ -20,7 +20,7 @@ nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 
   (`integer(1)`)  
   Axis along which values increase. Negative values count from the end
-  of `shape`, i.e. `-1` refers to the last axis.
+  of `shape`, i.e. `-1L` refers to the last axis.
 
 - shape:
 
@@ -37,7 +37,7 @@ nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 - start:
 
   (`integer(1)`)  
-  Starting value (default 1). Built at `dtype`, as the increments are.
+  Starting value (default 1).
 
 - device:
 

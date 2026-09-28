@@ -64,7 +64,7 @@ gives the R type that can represent its values, e.g. a `double` for an
 [`?as_array`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 for the full list. Help pages name groups of data types that an argument
 accepts with single words, such as *numeric* or *integerish*, which
-[`?dtypes`](https://r-xla.github.io/anvl/dev/reference/dtypes.md)
+[`?dtype_categories`](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md)
 defines.
 
 The rest of this article covers which data type the result of an

@@ -9,13 +9,11 @@
 (active_backend()).
 A device identifies a compute resource, such as a CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via nv_array()) but also compilation (jit()).
-A device belongs to the active backend (active_backend()); a device
-object of another backend is an error."><meta property="og:description" content="Constructs a backend-specific device object for the active backend
+A device is constructed for the active backend."><meta property="og:description" content="Constructs a backend-specific device object for the active backend
 (active_backend()).
 A device identifies a compute resource, such as a CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via nv_array()) but also compilation (jit()).
-A device belongs to the active backend (active_backend()); a device
-object of another backend is an error."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+A device is constructed for the active backend."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -91,8 +89,7 @@ object of another backend is an error."><meta property="og:image" content="https
 (<code><a href="active_backend.html">active_backend()</a></code>).</p>
 <p>A device identifies a compute resource, such as a CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via <code><a href="AnvlArray.html">nv_array()</a></code>) but also compilation (<code><a href="jit.html">jit()</a></code>).
-A device belongs to the active backend (<code><a href="active_backend.html">active_backend()</a></code>); a device
-object of another backend is an error.</p>
+A device is constructed for the active backend.</p>
     </div>
 
     <div class="section level2">
@@ -127,7 +124,7 @@ Backend-specific (e.g. <code>PJRTDevice</code> for <code>"pjrt"</code>,
 <span class="r-in"><span><span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;CpuDevice(id=0)&gt;</span>
 <span class="r-in"><span><span class="co"># create CPU device for the quickr backend:</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="with_backend.html">with_backend</a></span><span class="op">(</span><span class="st">"quickr"</span>, <span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="local_backend.html">with_backend</a></span><span class="op">(</span><span class="st">"quickr"</span>, <span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> QuickrDevice(cpu) </span>
 <span class="r-in"><span><span class="co"># pass through an existing device:</span></span></span>
 <span class="r-in"><span><span class="va">dev</span> <span class="op">&lt;-</span> <span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span></span></span>

@@ -159,49 +159,49 @@
           <code><a href="backend.html">backend()</a></code>
 
         </dt>
-        <dd>Get Backend of an Array</dd>
+        <dd>Get Backend Name of an Array</dd>
 
         <dt>
 
           <code><a href="dtype.html">dtype()</a></code>
 
         </dt>
-        <dd>Get the data type of an array</dd>
+        <dd>Get the Data Type of an Array</dd>
 
         <dt>
 
           <code><a href="shape.html">shape()</a></code>
 
         </dt>
-        <dd>Get the shape of an array</dd>
+        <dd>Get the Shape of an Array</dd>
 
         <dt>
 
           <code><a href="naxes.html">naxes()</a></code>
 
         </dt>
-        <dd>Get the number of axes of an array</dd>
+        <dd>Get the Number of Axes of an Array</dd>
 
         <dt>
 
           <code><a href="axes.html">axes()</a></code>
 
         </dt>
-        <dd>Get the axes of an array</dd>
+        <dd>Get the Axes of an Array</dd>
 
         <dt>
 
           <code><a href="device.html">device()</a></code>
 
         </dt>
-        <dd>Get the device of an array</dd>
+        <dd>Get the Device of an Array</dd>
 
         <dt>
 
           <code><a href="platform.html">platform()</a></code>
 
         </dt>
-        <dd>Get the platform of an array or buffer</dd>
+        <dd>Get the Platform Name of an Array or Buffer</dd>
       </dl></div><div class="section level2">
 
       <h3 id="converters">Converters<a class="anchor" aria-label="anchor" href="#converters"></a></h3>
@@ -217,14 +217,14 @@
           <code><a href="as_array.html">as_array()</a></code>
 
         </dt>
-        <dd>Convert to an R array</dd>
+        <dd>Convert to an R Array</dd>
 
         <dt>
 
           <code><a href="as_raw.html">as_raw()</a></code>
 
         </dt>
-        <dd>Convert an array to a raw vector</dd>
+        <dd>Convert an Array to a Raw Vector</dd>
 
         <dt>
 
@@ -232,13 +232,6 @@
 
         </dt>
         <dd>Coerce AnvlArray to an R Vector</dd>
-
-        <dt>
-
-          <code><a href="await.html">await()</a></code>
-
-        </dt>
-        <dd>Block until an async operation completes</dd>
       </dl></div><div class="section level2">
 
       <h3 id="serialization">Serialization<a class="anchor" aria-label="anchor" href="#serialization"></a></h3>
@@ -262,6 +255,29 @@
 
         </dt>
         <dd>Serialize Arrays to Raw Bytes</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="miscellaneous">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous"></a></h3>
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="arrayish.html">is_arrayish()</a></code>
+
+        </dt>
+        <dd>Array-Like Objects</dd>
+
+        <dt>
+
+          <code><a href="await.html">await()</a></code>
+
+        </dt>
+        <dd>Block Until an Async Operation Completes</dd>
       </dl></div><div class="section level2">
 
       <h3 id="base-r-generics">Base R Generics<a class="anchor" aria-label="anchor" href="#base-r-generics"></a></h3>
@@ -1346,7 +1362,7 @@
           <code><a href="nv_scan.html">nv_scan()</a></code>
 
         </dt>
-        <dd>Scan (Loop With Per-Step Outputs)</dd>
+        <dd>Scan (Loop with Per-Step Outputs)</dd>
 
         <dt>
 
@@ -1438,7 +1454,7 @@
 
       <dl><dt>
 
-          <code><a href="dtypes.html">dtypes</a></code>
+          <code><a href="dtype_categories.html">dtype_categories</a></code>
 
         </dt>
         <dd>Data Type Categories</dd>
@@ -1455,7 +1471,7 @@
           <code><a href="is_dtype.html">is_dtype()</a></code>
 
         </dt>
-        <dd>Check if an object is a DataType</dd>
+        <dd>Check If an Object Is a DataType</dd>
 
         <dt>
 
@@ -1536,28 +1552,14 @@
           <code><a href="jit.html">jit()</a></code>
 
         </dt>
-        <dd>JIT compile a function</dd>
+        <dd>JIT Compile a Function</dd>
 
         <dt>
 
-          <code><a href="jit_cache_size.html">jit_cache_size()</a></code>
+          <code><a href="gradient.html">gradient()</a></code> <code><a href="gradient.html">value_and_gradient()</a></code>
 
         </dt>
-        <dd>Number of cached programs of a jitted function</dd>
-
-        <dt>
-
-          <code><a href="gradient.html">gradient()</a></code>
-
-        </dt>
-        <dd>Gradient</dd>
-
-        <dt>
-
-          <code><a href="value_and_gradient.html">value_and_gradient()</a></code>
-
-        </dt>
-        <dd>Value and Gradient</dd>
+        <dd>Gradients</dd>
       </dl></div><div class="section level2">
       <h2 id="backend">Backend<a class="anchor" aria-label="anchor" href="#backend"></a></h2>
 
@@ -1573,37 +1575,39 @@
           <code><a href="backend.html">backend()</a></code>
 
         </dt>
-        <dd>Get Backend of an Array</dd>
+        <dd>Get Backend Name of an Array</dd>
 
         <dt>
 
-          <code><a href="active_backend.html">active_backend()</a></code>
+          <code><a href="local_backend.html">local_backend()</a></code> <code><a href="local_backend.html">with_backend()</a></code>
 
         </dt>
-        <dd>Get Active Backend</dd>
+        <dd>Temporarily Set the Backend</dd>
 
         <dt>
 
-          <code><a href="local_backend.html">local_backend()</a></code>
+          <code><a href="AnvlBackendPjrt.html">AnvlBackendPjrt()</a></code>
 
         </dt>
-        <dd>Temporarily set the backend</dd>
+        <dd>PJRT Backend</dd>
 
         <dt>
 
-          <code><a href="with_backend.html">with_backend()</a></code>
+          <code><a href="AnvlBackendQuickr.html">AnvlBackendQuickr()</a></code>
 
         </dt>
-        <dd>Run code with a specific backend</dd>
+        <dd>Quickr Backend</dd>
+      </dl></div><div class="section level2">
+      <h2 id="device">Device<a class="anchor" aria-label="anchor" href="#device"></a></h2>
 
-        <dt>
+      <div class="section-desc"><p>Devices of the active backend and the default device</p></div>
 
-          <code><a href="install_anvl.html">install_anvl()</a></code>
+      <dl></dl></div><div class="section level2">
 
-        </dt>
-        <dd>Install what a backend needs to run</dd>
 
-        <dt>
+
+
+      <dl><dt>
 
           <code><a href="nv_device.html">nv_device()</a></code>
 
@@ -1615,7 +1619,7 @@
           <code><a href="default_device.html">default_device()</a></code>
 
         </dt>
-        <dd>Get the default device</dd>
+        <dd>Get the Default Device</dd>
 
         <dt>
 
@@ -1629,37 +1633,16 @@
           <code><a href="is_device.html">is_device()</a></code>
 
         </dt>
-        <dd>Test whether an object is a device</dd>
+        <dd>Test Whether an Object Is a Device</dd>
 
         <dt>
 
           <code><a href="quickr_device.html">quickr_device()</a></code>
 
         </dt>
-        <dd>Quickr device</dd>
-
-        <dt>
-
-          <code><a href="AnvlBackend.html">AnvlBackend()</a></code>
-
-        </dt>
-        <dd>Create a backend</dd>
-
-        <dt>
-
-          <code><a href="AnvlBackendPjrt.html">AnvlBackendPjrt()</a></code>
-
-        </dt>
-        <dd>PJRT backend</dd>
-
-        <dt>
-
-          <code><a href="AnvlBackendQuickr.html">AnvlBackendQuickr()</a></code>
-
-        </dt>
-        <dd>Quickr backend</dd>
+        <dd>Quickr Device</dd>
       </dl></div><div class="section level2">
-      <h2 id="miscellaneous">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous"></a></h2>
+      <h2 id="miscellaneous-1">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous-1"></a></h2>
 
       <div class="section-desc"><p>General-purpose helpers</p></div>
 
@@ -1673,7 +1656,7 @@
           <code><a href="arr.html">arr()</a></code>
 
         </dt>
-        <dd>Create an R array</dd>
+        <dd>Create an R Array</dd>
 
         <dt>
 
@@ -1681,6 +1664,13 @@
 
         </dt>
         <dd>Compare AbstractArray Types</dd>
+
+        <dt>
+
+          <code><a href="map_tree.html">map_tree()</a></code> <code><a href="map_tree.html">pmap_tree()</a></code>
+
+        </dt>
+        <dd>Map a Function over Trees</dd>
       </dl></div><div class="section level2">
       <h2 id="internals">Internals<a class="anchor" aria-label="anchor" href="#internals"></a></h2>
 
@@ -1701,7 +1691,7 @@
           <code><a href="AnvlGraph.html">AnvlGraph()</a></code>
 
         </dt>
-        <dd>Graph of Primitive Calls</dd>
+        <dd>Graph of Statements</dd>
 
         <dt>
 
@@ -1740,31 +1730,24 @@
 
         <dt>
 
-          <code><a href="AnvlBox.html">AnvlBox</a></code>
+          <code><a href="GraphStatement.html">GraphStatement()</a></code>
 
         </dt>
-        <dd>AnvlBox</dd>
-
-        <dt>
-
-          <code><a href="graph_desc_add.html">graph_desc_add()</a></code>
-
-        </dt>
-        <dd>Add a Primitive Call to a Graph Descriptor</dd>
+        <dd>Graph Statement</dd>
 
         <dt>
 
           <code><a href="local_descriptor.html">local_descriptor()</a></code>
 
         </dt>
-        <dd>Create a graph</dd>
+        <dd>Create a Graph</dd>
 
         <dt>
 
-          <code><a href="dot-current_descriptor.html">.current_descriptor()</a></code>
+          <code><a href="current_descriptor.html">current_descriptor()</a></code>
 
         </dt>
-        <dd>Get the current graph</dd>
+        <dd>Get the Current Graph</dd>
 
         <dt>
 
@@ -1772,36 +1755,6 @@
 
         </dt>
         <dd>Get Subgraphs from Higher-Order Primitive</dd>
-      </dl></div><div class="section level2">
-
-      <h3 id="primitives">Primitives<a class="anchor" aria-label="anchor" href="#primitives"></a></h3>
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="new_primitive.html">new_primitive()</a></code>
-
-        </dt>
-        <dd>Create a Primitive</dd>
-
-        <dt>
-
-          <code><a href="AnvlPrimitive.html">AnvlPrimitive()</a></code>
-
-        </dt>
-        <dd>AnvlPrimitive</dd>
-
-        <dt>
-
-          <code><a href="PrimitiveCall.html">PrimitiveCall()</a></code>
-
-        </dt>
-        <dd>Primitive Call</dd>
       </dl></div><div class="section level2">
 
       <h3 id="abstract-types">Abstract Types<a class="anchor" aria-label="anchor" href="#abstract-types"></a></h3>
@@ -1859,7 +1812,7 @@
           <code><a href="arrayish.html">is_arrayish()</a></code>
 
         </dt>
-        <dd>Array-like Objects</dd>
+        <dd>Array-Like Objects</dd>
       </dl></div><div class="section level2">
 
       <h3 id="transformations-1">Transformations<a class="anchor" aria-label="anchor" href="#transformations-1"></a></h3>
@@ -1875,42 +1828,35 @@
           <code><a href="trace_fn.html">trace_fn()</a></code>
 
         </dt>
-        <dd>Trace an R function into a Graph</dd>
+        <dd>Trace an R Function into a Graph</dd>
 
         <dt>
 
           <code><a href="transform_gradient.html">transform_gradient()</a></code>
 
         </dt>
-        <dd>Transform a graph to its gradient</dd>
-
-        <dt>
-
-          <code><a href="rule_reverse.html">rule_reverse()</a></code>
-
-        </dt>
-        <dd>Reverse Rule</dd>
+        <dd>Transform a Graph to Its Gradient</dd>
 
         <dt>
 
           <code><a href="graph_to_quickr_r_function.html">graph_to_quickr_r_function()</a></code>
 
         </dt>
-        <dd>Convert an AnvlGraph to a plain R function</dd>
+        <dd>Convert an AnvlGraph to a Plain R Function</dd>
 
         <dt>
 
           <code><a href="compile_pjrt.html">compile_pjrt()</a></code>
 
         </dt>
-        <dd>Trace, lower, and compile a function to an XLA executable</dd>
+        <dd>Trace, Lower, and Compile a Function to an XLA Executable</dd>
 
         <dt>
 
           <code><a href="stablehlo.html">stablehlo()</a></code>
 
         </dt>
-        <dd>Lower a graph to StableHLO</dd>
+        <dd>Lower a Graph to StableHLO</dd>
 
         <dt>
 
@@ -1930,13 +1876,13 @@
 
       <dl><dt>
 
-          <code><a href="reexports.html">reexports</a></code> <code><a href="reexports.html">flatten</a></code> <code><a href="reexports.html">build_tree</a></code> <code><a href="reexports.html">unflatten</a></code> <code><a href="reexports.html">tree_size</a></code> <code><a href="reexports.html">tree_path</a></code> <code><a href="reexports.html">map_tree</a></code> <code><a href="reexports.html">pmap_tree</a></code>
+          <code><a href="reexports.html">reexports</a></code> <code><a href="reexports.html">flatten</a></code> <code><a href="reexports.html">build_tree</a></code> <code><a href="reexports.html">unflatten</a></code> <code><a href="reexports.html">tree_size</a></code> <code><a href="reexports.html">tree_path</a></code>
 
         </dt>
         <dd>Objects exported from other packages</dd>
       </dl></div><div class="section level2">
 
-      <h3 id="miscellaneous-1">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous-1"></a></h3>
+      <h3 id="miscellaneous-2">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous-2"></a></h3>
 
 
       <dl></dl></div><div class="section level2">
@@ -1946,35 +1892,77 @@
 
       <dl><dt>
 
-          <code><a href="at2vt.html">at2vt()</a></code>
+          <code><a href="AnvlBackend.html">AnvlBackend()</a></code>
 
         </dt>
-        <dd>Convert AbstractArray to ValueType</dd>
+        <dd>Create a Backend</dd>
 
         <dt>
 
-          <code><a href="vt.html">vt()</a></code>
+          <code><a href="active_backend.html">active_backend()</a></code>
 
         </dt>
-        <dd>Construct a stablehlo ValueType</dd>
+        <dd>Get Active Backend</dd>
 
         <dt>
 
-          <code><a href="arrayish.html">is_arrayish()</a></code>
+          <code><a href="jit_cache_size.html">jit_cache_size()</a></code>
 
         </dt>
-        <dd>Array-like Objects</dd>
+        <dd>Number of Cached Programs of a Jitted Function</dd>
 
         <dt>
 
           <code><a href="Shape-constructor.html">Shape()</a></code>
 
         </dt>
-        <dd>Create a Shape object</dd>
+        <dd>Create a Shape Object</dd>
       </dl></div><div class="section level2">
-      <h2 id="primitives-1">Primitives<a class="anchor" aria-label="anchor" href="#primitives-1"></a></h2>
+      <h2 id="primitives">Primitives<a class="anchor" aria-label="anchor" href="#primitives"></a></h2>
 
       <div class="section-desc"><p>Low-level primitive operations (prim_* functions)</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+      <h3 id="construction-1">Construction<a class="anchor" aria-label="anchor" href="#construction-1"></a></h3>
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="new_primitive.html">new_primitive()</a></code>
+
+        </dt>
+        <dd>Create a Primitive</dd>
+
+        <dt>
+
+          <code><a href="AnvlPrimitiveDef.html">AnvlPrimitiveDef()</a></code>
+
+        </dt>
+        <dd>Primitive Definition</dd>
+
+        <dt>
+
+          <code><a href="graph_desc_add.html">graph_desc_add()</a></code>
+
+        </dt>
+        <dd>Add a Statement to a Graph Descriptor</dd>
+
+        <dt>
+
+          <code><a href="rule_reverse.html">rule_reverse()</a></code>
+
+        </dt>
+        <dd>Reverse Rule</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="implemented-primitives">Implemented Primitives<a class="anchor" aria-label="anchor" href="#implemented-primitives"></a></h3>
+
 
       <dl></dl></div><div class="section level2">
 
@@ -2703,6 +2691,13 @@
 
         </dt>
         <dd>anvl: Accelerated Array Computing and Automatic Differentiation</dd>
+
+        <dt>
+
+          <code><a href="install_anvl.html">install_anvl()</a></code>
+
+        </dt>
+        <dd>Install What a Backend Needs to Run</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
