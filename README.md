@@ -126,7 +126,7 @@ Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
 ## Platform Support
 
 | OS      | Architecture | CPU | CUDA |
-|---------|--------------|:---:|:----:|
+|:--------|:-------------|:---:|:----:|
 | Linux   | x86_64       |  ✓  |  ✓   |
 | Linux   | arm64        |  ✓  |  ✓   |
 | Windows | x86_64       |  ✓  | WSL2 |
@@ -134,7 +134,8 @@ Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
 | macOS   | x86_64       |  ✓  |  ✗   |
 | macOS   | arm64        |  ✓  |  ✗   |
 
-✓ fully supported  ·  ✗ not supported
+✓ supported  ·  WSL2: via the Windows Subsystem for Linux  ·  ✗ not
+supported
 
 ## Acknowledgments
 
