@@ -2,7 +2,8 @@
 // sync with it: an `AnyBuffer` handler that dispatches on the operand dtype,
 // so the same target serves f32 and f64.
 //
-// Compiled on the fly by integrations/run.R via Rcpp::sourceCpp().
+// Compiled on the fly by inst/extra-tests/test-custom-call-ffi.R via
+// Rcpp::sourceCpp().
 
 // [[Rcpp::plugins(cpp20)]]
 // [[Rcpp::depends(pjrt)]]

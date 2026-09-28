@@ -1,8 +1,22 @@
 # The mechanism the "Custom Calls" article documents, end to end: a handler
 # compiled against {pjrt}'s FFI headers, registered under a target name, and
 # called from anvl -- eagerly, under jit(), and through a primitive with a
-# reverse rule. integrations/run.R has compiled and registered "anvl_hypot"
-# before these run.
+# reverse rule.
+#
+# Sourced from tests/testthat/test-custom-call-ffi.R, which only reaches here
+# when ANVL_TEST_FFI is set: compiling the handler needs a C++20 toolchain and
+# takes long enough that `R CMD check` should not pay for it on every platform.
+
+# Step 1 of the article: compile the handler. Its exported
+# `hypot_handler_ptr()` lands in this environment, which the test environments
+# inherit from.
+Rcpp::sourceCpp(
+  system.file("extra-tests", "hypot.cpp", package = "anvl"),
+  env = environment()
+)
+
+# Step 2: register it. A CUDA handler would go in the same list under `cuda`.
+pjrt::pjrt_register_custom_call("anvl_hypot", list(cpu = hypot_handler_ptr()))
 
 # the wrapper the article builds around the raw call
 nv_hypot <- function(x, y) {

@@ -56,11 +56,13 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
 - `tests/testthat/test-primitives-reverse.R` -- sources `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-custom-call-ffi.R` -- sources `inst/extra-tests/test-custom-call-ffi.R`
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 
-`integrations/` holds tests that `R CMD check` must not run -- currently the custom-call path from the "Custom Calls" article, which compiles an FFI handler against {pjrt}'s headers with `Rcpp::sourceCpp()`.
-They have their own launcher (`Rscript integrations/run.R`) and run in a single CI job (Ubuntu x86, CPU).
+The custom-call tests exercise the path from the "Custom Calls" article end to end: `inst/extra-tests/test-custom-call-ffi.R` compiles `inst/extra-tests/hypot.cpp` against {pjrt}'s FFI headers with `Rcpp::sourceCpp()` and registers it before testing.
+That needs a C++20 toolchain and is too slow for `R CMD check` to pay for on every platform, so the sourcing guard requires the `ANVL_TEST_FFI` environment variable, which only the `ffi: true` row of the `R-CMD-check` matrix sets (the same Ubuntu x86 CPU job that runs the torch tests).
+{Rcpp} is not a package dependency -- that row installs it from `Config/Needs/ffi`, and the "Custom Calls" article gets it from `Config/Needs/website`.
 
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
 This helper skips when quickr is not installed, and also when the `ANVL_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).

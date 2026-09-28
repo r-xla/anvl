@@ -39,7 +39,6 @@ Imports:
 Suggests:
     knitr,
     quarto,
-    Rcpp,
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
@@ -48,6 +47,8 @@ Additional_repositories:
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
+Config/Needs/website: Rcpp
+Config/Needs/ffi: Rcpp
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
 Collate:
