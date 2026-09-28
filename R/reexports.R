@@ -52,9 +52,31 @@ tengen::device
 #' @details
 #' This is implemented via the generic [`tengen::as_array()`].
 #'
+#' @section Data types:
+#' R has fewer data types than anvl, so the values are converted to the R
+#' type that can represent them:
+#'
+#' | Data type | R type |
+#' | --- | --- |
+#' | `f32`, `f64` | `double` |
+#' | `i8`, `i16`, `i32`, `ui8`, `ui16` | `integer` |
+#' | `i64`, `ui32`, `ui64` | [`bit64::integer64`] |
+#' | `bool` | `logical` |
+#'
+#' This has two consequences:
+#' * An `f32` value is widened to a `double` and keeps the rounding error of
+#'   the 32-bit float, e.g. `as_array(nv_scalar(0.1))` is not exactly `0.1`.
+#' * Some integer values cannot be represented in R: an `i32` or `i64` value
+#'   equal to the smallest representable integer is read as `NA`, and a
+#'   `ui64` value `>= 2^63` wraps to a negative number. The `check` argument
+#'   decides whether this is reported.
+#'
+#' To obtain a different R type, convert the array with [`nv_convert()`]
+#' first, or use the coercion functions described in [`as.double()`][as-AnvlArray].
+#'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
-#' @param ... Additional arguments passed to methods (unused).
+#' @param ... Passed on to methods.
 #' @returns ([`array`][base::array] | `vector(1)`)\cr
 #'   An R array with the input's shape, or -- for a scalar, which R cannot
 #'   represent as an array -- a vector of length 1.
@@ -78,8 +100,8 @@ tengen::as_array
 #'
 #' @details This is implemented via the generic [`tengen::as_raw()`].
 #'
-#' @param x ([`arrayish`])\cr
-#'   An array-like object.
+#' @param x ([`AnvlArray`])\cr
+#'   An array.
 #' @param ... Additional arguments passed to method:
 #'   - `row_major` (`logical(1)`)\cr
 #'     Whether to write the bytes in row-major order.
@@ -103,11 +125,12 @@ tengen::as_raw
 #'
 #' @details This is implemented via the generic [`tengen::dtype()`].
 #'
-#' @param x ([`arrayish`])\cr
-#'   An array-like object.
+#' @param x ([`AnvlArray`] | [`GraphBox`] | [`AbstractArray`])\cr
+#'   An array. An R value has no data type of its own, so it is an error here;
+#'   use [`peek_dtype()`] for the data type it would take.
 #' @param ... Additional arguments passed to methods (unused).
 #' @returns ([`DataType`][tengen::DataType])
-#' @seealso [tengen::dtype()]
+#' @seealso [tengen::dtype()], [peek_dtype()]
 #' @name dtype
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
@@ -121,7 +144,7 @@ tengen::dtype
 
 #' @title Get the number of axes of an array
 #'
-#' @description Returns the number of axes (sometimes also refered to as rank) of an array.
+#' @description Returns the number of axes (sometimes also referred to as rank) of an array.
 #' Equivalent to `length(shape(x))`.
 #'
 #' @param x ([`arrayish`])\cr
@@ -170,7 +193,7 @@ tengen::is_dtype
 #' @seealso [is_dtype()], [tengen::as_dtype()], [`tengen::DataType`]
 #' @name as_dtype
 #'
-#' @examplesIf pjrt::plugins_downloaded()
+#' @examples
 #' as_dtype("f32")
 #' as_dtype("i32")
 NULL
@@ -205,14 +228,14 @@ stablehlo::Shape
 #' @title Get the platform of an array or buffer
 #'
 #' @description
-#' Returns the platform name (e.g. `"cpu"`, `"cuda"`) identifying
-#' the compute backend.
+#' Returns the name of the hardware platform (e.g. `"cpu"`, `"cuda"`) the data
+#' lives on. This is not the backend; see [`backend()`] for that.
 #'
 #' @details
 #' Implemented via the generic [`pjrt::platform()`].
 #'
-#' @param x ([`arrayish`])\cr
-#'   An array-like object.
+#' @param x ([`AnvlArray`] | [`PJRTBuffer`][pjrt::pjrt_buffer])\cr
+#'   An array or buffer.
 #' @param ... Additional arguments passed to methods (unused).
 #' @returns (`character(1)`)
 #' @seealso [pjrt::platform()]

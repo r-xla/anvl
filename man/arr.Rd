@@ -13,6 +13,9 @@ Values of new array.}
 \item{shape}{(\code{NULL} | \code{integer()})\cr
 Shape of new array. If \code{NULL} (default), uses length of elements to create a 1D array.}
 }
+\value{
+(\code{array})
+}
 \description{
 Create an R array without having to wrap data in \code{c()}
 }

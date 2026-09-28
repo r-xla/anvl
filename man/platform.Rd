@@ -10,8 +10,8 @@
 platform(x, ...)
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr
-An array-like object.}
+\item{x}{(\code{\link{AnvlArray}} | \code{\link[pjrt:pjrt_buffer]{PJRTBuffer}})\cr
+An array or buffer.}
 
 \item{...}{Additional arguments passed to methods (unused).}
 }
@@ -19,8 +19,8 @@ An array-like object.}
 (\code{character(1)})
 }
 \description{
-Returns the platform name (e.g. \code{"cpu"}, \code{"cuda"}) identifying
-the compute backend.
+Returns the name of the hardware platform (e.g. \code{"cpu"}, \code{"cuda"}) the data
+lives on. This is not the backend; see \code{\link[=backend]{backend()}} for that.
 }
 \details{
 Implemented via the generic \code{\link[pjrt:platform]{pjrt::platform()}}.

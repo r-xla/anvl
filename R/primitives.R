@@ -30,6 +30,20 @@ make_unary_op <- function(infer_fn) {
 }
 
 
+# The start indices of a dynamic slice must share one data type, so a bare R
+# integer among them takes the data type of the index arrays it meets instead
+# of settling on the default. Index arrays that disagree among themselves are
+# left for `assert_start_indices()` to refuse, so that mistake has one wording.
+promote_start_indices <- function(indices) {
+  arrays <- Filter(function(idx) !is_rdata(to_abstract(idx)), indices)
+  if (length(unique(lapply(arrays, peek_dtype))) > 1L) {
+    return(indices)
+  }
+  # Named only for the messages; the graph keeps them positional.
+  names(indices) <- sprintf("..%d", seq_along(indices))
+  unname(apply_promotion(indices, promotion_rdata_common()))
+}
+
 #' @title Primitive Fill
 #' @description
 #' Creates an array of a given shape and data type, filled with a scalar value.
@@ -178,6 +192,7 @@ prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Power
+#' @description
 #' Raises `x` to the power of `y` element-wise.
 #' @templateVar dtypes any numeric data type
 #' @template params_prim_x_y
@@ -298,7 +313,7 @@ prim_dot_general <- new_primitive(
 #' @template param_unary_x
 #' @param perm (`integer()`)\cr
 #'   Specifies the new ordering of axes. Must be a permutation of
-#'   `seq_len(naxes(x))`, the axis indices of `x`.
+#'   [`axes(x)`][axes], the axis indices of `x`.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type and shape `shape(x)[perm]`.
@@ -420,7 +435,8 @@ prim_concatenate <- new_primitive(
 #' @template param_unary_x
 #' @param start_indices (`integer()`)\cr
 #'   Start indices (inclusive), one per axis. Must satisfy
-#'   `1 <= start_indices <= end_indices` per axis.
+#'   `1 <= start_indices <= end_indices + 1` per axis, where
+#'   `start_indices == end_indices + 1` selects an empty axis.
 #' @param end_indices (`integer()`)\cr
 #'   End indices (inclusive), one per axis. Must satisfy
 #'   `end_indices <= shape(x)` per axis. Unlike StableHLO's exclusive
@@ -483,8 +499,8 @@ prim_static_slice <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
-#'   the same integer data type.
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= shape(x)`
@@ -517,7 +533,7 @@ prim_static_slice <- new_primitive(
 prim_dynamic_slice <- new_primitive(
   "dynamic_slice",
   function(x, ..., slice_sizes) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     graph_desc_add(
       self,
       args = c(list(x = x), start_indices),
@@ -525,8 +541,9 @@ prim_dynamic_slice <- new_primitive(
       infer_fn = infer_dynamic_slice
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` needs no promotion: it is the only operand of its kind. The start
+  # indices are promoted among themselves by `promote_start_indices()`, which
+  # is a group of their own -- they never take `x`'s data type.
   static = "slice_sizes"
 )
 
@@ -544,8 +561,8 @@ prim_dynamic_slice <- new_primitive(
 #'   number of axes as `x`, with `shape(update) <= shape(x)` per axis.
 #'   Shares `x`'s data type.
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
-#'   the same integer data type.
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @section Out of Bounds Behavior:
 #' Start indices are clamped before the update is written:
 #' `adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)`.
@@ -576,7 +593,7 @@ prim_dynamic_slice <- new_primitive(
 prim_dynamic_update_slice <- new_primitive(
   "dynamic_update_slice",
   function(x, update, ...) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     graph_desc_add(
       self,
@@ -1492,7 +1509,7 @@ prim_bitcast_convert <- new_primitive(
 #' # an R value materializes at its default data type
 #' prim_abs(-1)
 #' @export
-prim_abs <- new_primitive("abs", make_unary_op(infer_abs))
+prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni))
 
 #' @title Primitive Square Root
 #' @description
@@ -1702,7 +1719,7 @@ prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sign(-3)
 #' @export
-prim_sign <- new_primitive("sign", make_unary_op(infer_sign))
+prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni))
 
 #' @title Primitive Exponential
 #' @description
@@ -2373,8 +2390,11 @@ prim_round <- new_primitive(
 #' @title Primitive Convert Data Type
 #' @description
 #' Converts the elements of an array to a different data type.
-#' Bare R inputs are directly materialized at the requested data type
-#' and are checked for out-of-range or missing values.
+#' An R value in the target's category (an R integer at `i8`, say) is
+#' materialized at the target directly and checked for out-of-range or missing
+#' values. Any other R value (e.g. an R double at an integer data type) is built
+#' at `f64`, `i32` or `bool` according to its storage type and converted like an
+#' array, without that check.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
@@ -3239,10 +3259,10 @@ prim_scatter <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param start_indices ([`arrayish`])\cr
-#'   Array of starting indices, of the same integer data type.
-#'   Contains index vectors that map to
-#'   positions in `x` via `start_index_map`. The axis
-#'   specified by `index_vector_axis` holds the index vectors.
+#'   Array of starting indices, of an integer data type, which it keeps -- the
+#'   indices take no part in `x`'s. Contains index vectors that map to
+#'   positions in `x` via `start_index_map`. The axis specified by
+#'   `index_vector_axis` holds the index vectors.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice to gather from `x` in each axis.
 #'   Must have length equal to `naxes(x)`.
@@ -3342,8 +3362,8 @@ prim_gather <- new_primitive(
       infer_fn = infer_gather
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` and `start_indices` are operands of different kinds and never meet at
+  # one data type, so there is nothing for a promotion rule to do.
   static = 3:11
 )
 
