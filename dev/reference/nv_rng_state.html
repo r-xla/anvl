@@ -105,8 +105,9 @@ The device the data lives on, given either as:</p><ul><li><p>a <em>device string
 <code>"cuda:&lt;n&gt;"</code>), which is resolved against the backend in use, or</p></li>
 <li><p>a <em>device object</em> as returned by <code><a href="nv_device.html">nv_device()</a></code>: a
 <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code> for the <code>"pjrt"</code> backend or a
-<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
-is backend-specific, it also determines the backend.</p></li>
+<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. It must belong to the
+active backend (<code><a href="active_backend.html">active_backend()</a></code>); a device of another backend is an
+error.</p></li>
 </ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>.</p></dd>
 
 </dl></div>

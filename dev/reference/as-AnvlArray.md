@@ -91,7 +91,11 @@ as.vector(x, mode = "any")
 
 ## Value
 
-(`vector`)
+([`double()`](https://rdrr.io/r/base/double.html) \|
+[`integer()`](https://rdrr.io/r/base/integer.html) \|
+[`logical()`](https://rdrr.io/r/base/logical.html) \|
+[`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html))  
+The elements of `x` in column-major order, without a shape.
 
 ## Examples
 

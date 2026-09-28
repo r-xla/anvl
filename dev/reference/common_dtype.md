@@ -1,6 +1,6 @@
-# Type Promotion Rules
+# Common Data Type
 
-Compute the common data type.
+Compute the common data type of two data types.
 
 Two integer data types meet at one that holds every value of both: a
 signed and an unsigned one at the narrowest signed data type wide enough

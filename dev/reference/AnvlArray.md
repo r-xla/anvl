@@ -40,7 +40,9 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
   vector holding the native little-endian byte payload of `prod(shape)`
   elements of `dtype`; both `dtype` and `shape` are then required (only
   supported on the `"pjrt"` backend). Raw payloads are read in
-  column-major element order, or row-major with `byrow = TRUE`.
+  column-major element order, or row-major with `byrow = TRUE`. An
+  existing `AnvlArray` is returned unchanged if the `shape`, `dtype` and
+  `device` given agree with it, and is an error otherwise.
 
 - shape:
 
@@ -64,7 +66,7 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
   overflows); a `double` at an integer data type is truncated. The
   default (`NULL`) uses the [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md) of
-  `data`'s category.
+  `data`'s category. `nv_empty()`, which has no `data`, requires it.
 
 - device:
 
@@ -81,8 +83,9 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
   [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
@@ -111,8 +114,10 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
 
 - like:
 
-  (`AnvlArray`)  
-  An existing array. Any of `shape`, `dtype` and `device` that are
+  (`AnvlArray` \|
+  [`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md))  
+  An existing array; an R value is an error. Any of `shape` (which
+  `nv_scalar_like()` does not take), `dtype` and `device` that are
   `NULL` (the default) are taken from `like`.
 
 ## Value
@@ -165,12 +170,12 @@ Arrays can be serialized to and from the
 [safetensors](https://huggingface.co/docs/safetensors/index) format:
 
 - [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md) /
-  [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_read.md):
+  [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md):
   Save/load arrays to/from a file.
 
 - [`nv_serialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
   /
-  [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_unserialize.md):
+  [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md):
   Serialize/deserialize arrays to/from raw vectors.
 
 ## Backend
@@ -191,8 +196,8 @@ are always rejected, except when:
 2.  When creating an `i32` from an R
     [`integer()`](https://rdrr.io/r/base/integer.html). There, we throw
     a warning, but the resulting `AnvlArray` gets the bit representation
-    of `NAinteger_`, which is `-INT_MIN`. Disallowing this would prevent
-    round-trips between the data types.
+    of `NA_integer_`, which is `INT_MIN` (`-2147483648`). Disallowing
+    this would prevent round-trips between the data types.
 
 See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html)
 article for more information.
@@ -262,9 +267,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#> 1e+45 *
-#>  0.0000 5.6052 0.0000
-#>  0.0000 0.0000 0.0000
+#>  0 0 0
+#>  0 0 0
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
@@ -281,14 +285,14 @@ platform(x)
 #> [1] "cpu"
 
 # --- Transforming arrays with jit ---
-add_one <- jit(function(x) x + 1)
+add_one <- jit(function(x) x + 1L)
 add_one(nv_array(1:4))
 #> AnvlArray
 #>  2
 #>  3
 #>  4
 #>  5
-#> [ CPUf32{4} ] 
+#> [ CPUi32{4} ] 
 
 # --- Eager mode (calling operations directly) ---
 nv_add(nv_array(1:3), nv_array(4:6))

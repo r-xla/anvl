@@ -97,8 +97,7 @@ skip recompilation.</p>
 
 <dl><dt id="arg-f">f<a class="anchor" aria-label="anchor" href="#arg-f"></a></dt>
 <dd><p>(<code>function</code>)<br>
-Function to compile. Must accept and return <code><a href="AnvlArray.html">AnvlArray</a></code>s (and/or
-static arguments).</p></dd>
+Function to compile.</p></dd>
 
 
 <dt id="arg-static">static<a class="anchor" aria-label="anchor" href="#arg-static"></a></dt>
@@ -106,11 +105,11 @@ static arguments).</p></dd>
 Names or positions of parameters of <code>f</code> that are <em>not</em> arrays. Static values are
 embedded as constants in the compiled program; a new compilation is triggered whenever
 a static value changes. For example useful when you want R control flow in your function.</p>
-<p>Note that the values that are passed to static arguments must not have reference semantics.
-Such a value can be mutated in place while the cache key stays equal, which
-would silently reuse a program compiled from its old contents.
-One exception are closures, but there you need to ensure that their
-enclosing environment does not change in a way that modifies their behavior.</p></dd>
+<p>A static value must not have reference semantics: an environment or an
+external pointer, also inside a <code>list</code>, is an error, since it could be
+mutated in place while the cache key stays equal. Closures are allowed, but
+their enclosing environment must not change in a way that modifies their
+behavior.</p></dd>
 
 
 <dt id="arg-cache-size">cache_size<a class="anchor" aria-label="anchor" href="#arg-cache-size"></a></dt>
@@ -119,7 +118,7 @@ Maximum number of compiled executables to keep in the LRU cache.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
-<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="nv_device.html">nv_device</a></code>)<br>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <a href="nv_device.html">device</a>)<br>
 Target device, of the active backend. When a device is specified, all
 arrays are moved to it.</p>
 <p>The default (<code>NULL</code>) infers the device at call time from the array inputs,
@@ -137,9 +136,7 @@ that does not, since the backend is not known until then.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code>JitFunction</code>)<br>
-A <code>function</code> with the same formals as <code>f</code>.
-The returned wrapper expects <code><a href="AnvlArray.html">AnvlArray</a></code> inputs and returns
-<code><a href="AnvlArray.html">AnvlArray</a></code> values.</p>
+A <code>function</code> with the same formals as <code>f</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="backend-and-device">Backend and device<a class="anchor" aria-label="anchor" href="#backend-and-device"></a></h2>
@@ -156,8 +153,7 @@ enforces that the function always uses it, e.g. <code>"cuda:0"</code>, and copie
 array input to it. With <code>device = NULL</code> (default) the device is inferred from
 the input arrays and the constants within the program; conflicting devices
 are an error, and with no array to read a device from the default device is
-used. A constructor that has no array to name a device declares the one it
-was asked for itself, see <code><a href="graph_desc_add.html">graph_desc_add()</a></code>'s <code>device</code> argument.</p>
+used.</p>
     </div>
     <div class="section level2">
     <h2 id="default-data-types">Default Data Types<a class="anchor" aria-label="anchor" href="#default-data-types"></a></h2>
@@ -165,8 +161,7 @@ was asked for itself, see <code><a href="graph_desc_add.html">graph_desc_add()</
 
 <p>It is possible to configure the default data types for <code>float</code>s and <code>int</code>s
 via the <code>anvl.default_dtypes</code> option, see <code><a href="default_dtypes.html">default_dtypes()</a></code>.
-Note that the defaults will be read at <em>call-time</em>* and not when
-<code>jit()</code> is called.</p>
+The defaults are read at <em>call time</em>, not when <code>jit()</code> is called.</p>
 <p>To pin a jitted function to a pair of data types instead of letting it
 follow the configured defaults, wrap it in <code><a href="with_dtypes.html">with_dtypes()</a></code>: the wrapper
 converts the array arguments and results of a category it names, and sets

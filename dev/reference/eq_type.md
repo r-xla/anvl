@@ -5,7 +5,7 @@ Compare two abstract arrays for type equality.
 An [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md) has no
 data type to compare, so it is an error here, just as
 [`dtype()`](https://r-xla.github.io/tengen/reference/dtype.html) is.
-Commit it first, e.g. with
+Give it a data type first, e.g. with
 [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md).
 
 ## Usage

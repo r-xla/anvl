@@ -190,7 +190,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_quantile.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_range.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_rbinom.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_read.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_remainder.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_reshape.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_rev.html</loc></url>
@@ -233,7 +232,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_triu.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_trunc.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_uniform.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_unserialize.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_var.html</loc></url>

@@ -6,27 +6,26 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Default Data Types — default_dtypes"><meta name="description" content="The default data types for the active backend.
-They decide the data type an R value is materialized at when it cannot be
-inferred from another operand.
-This includes array creation via (nv_array(1)) or passing R values to unary functions
-(prim_exp(1)).
+They are the data types an R value settles on when it meets no typed array,
+e.g. nv_array(1) or prim_exp(1).
 default_dtypes() reports both categories at once; default_float() and
 default_int() report one each.
 Each backend registers its own – f32 / i32 for &quot;pjrt&quot;, f64 / i32
 for &quot;quickr&quot; – and the anvl.default_dtypes option overrides them.
 local_default_dtypes() and with_default_dtypes() set the option for
 a scope.
-Below, we configure any backend to use the default f64 for floats and i64 for integers:
+Below, we configure every backend to use the default f64 for floats and i64 for integers:
 options(anvl.default_dtypes = c(float = &quot;f64&quot;, int = &quot;i64&quot;))
 
 You can also only change the float dtype, leaving
 the backend's default integer dtype unchanged:
 options(anvl.default_dtypes = c(float = &quot;f64&quot;))
 
-It is also possible to specify the defaults per-backend:
+It is also possible to specify the defaults per backend. Below, every
+backend uses f64 for floats, and &quot;pjrt&quot; also uses i64 for integers:
 options(anvl.default_dtypes = list(
-  pjrt = list(float = &quot;f64&quot;, int = &quot;i64&quot;),
-  quickr = list(int = &quot;i32&quot;)
+  float = &quot;f64&quot;,
+  pjrt = list(int = &quot;i64&quot;)
 ))
 
 An entry that names a backend wins over the categories beside it.
@@ -43,27 +42,26 @@ types section of AnvlBackendPjrt() and of AnvlBackendQuickr(),
 which has only f64, i32 and bool, so both &quot;f32&quot; and &quot;i64&quot; are
 errors there. A compiled program is keyed on the defaults it was compiled
 under, so changing them never serves a stale program."><meta property="og:description" content="The default data types for the active backend.
-They decide the data type an R value is materialized at when it cannot be
-inferred from another operand.
-This includes array creation via (nv_array(1)) or passing R values to unary functions
-(prim_exp(1)).
+They are the data types an R value settles on when it meets no typed array,
+e.g. nv_array(1) or prim_exp(1).
 default_dtypes() reports both categories at once; default_float() and
 default_int() report one each.
 Each backend registers its own – f32 / i32 for &quot;pjrt&quot;, f64 / i32
 for &quot;quickr&quot; – and the anvl.default_dtypes option overrides them.
 local_default_dtypes() and with_default_dtypes() set the option for
 a scope.
-Below, we configure any backend to use the default f64 for floats and i64 for integers:
+Below, we configure every backend to use the default f64 for floats and i64 for integers:
 options(anvl.default_dtypes = c(float = &quot;f64&quot;, int = &quot;i64&quot;))
 
 You can also only change the float dtype, leaving
 the backend's default integer dtype unchanged:
 options(anvl.default_dtypes = c(float = &quot;f64&quot;))
 
-It is also possible to specify the defaults per-backend:
+It is also possible to specify the defaults per backend. Below, every
+backend uses f64 for floats, and &quot;pjrt&quot; also uses i64 for integers:
 options(anvl.default_dtypes = list(
-  pjrt = list(float = &quot;f64&quot;, int = &quot;i64&quot;),
-  quickr = list(int = &quot;i32&quot;)
+  float = &quot;f64&quot;,
+  pjrt = list(int = &quot;i64&quot;)
 ))
 
 An entry that names a backend wins over the categories beside it.
@@ -152,25 +150,24 @@ under, so changing them never serves a stale program."><meta property="og:image"
 
     <div class="ref-description section level2">
     <p>The default data types for the <a href="active_backend.html">active backend</a>.
-They decide the data type an R value is materialized at when it cannot be
-inferred from another operand.</p>
-<p>This includes array creation via (<code>nv_array(1)</code>) or passing R values to unary functions
-(<code>prim_exp(1)</code>).</p>
+They are the data types an R value settles on when it meets no typed array,
+e.g. <code>nv_array(1)</code> or <code>prim_exp(1)</code>.</p>
 <p><code>default_dtypes()</code> reports both categories at once; <code>default_float()</code> and
 <code>default_int()</code> report one each.</p>
 <p>Each backend registers its own – <code>f32</code> / <code>i32</code> for <code>"pjrt"</code>, <code>f64</code> / <code>i32</code>
 for <code>"quickr"</code> – and the <code>anvl.default_dtypes</code> option overrides them.
 <code><a href="local_default_dtypes.html">local_default_dtypes()</a></code> and <code><a href="local_default_dtypes.html">with_default_dtypes()</a></code> set the option for
 a scope.</p>
-<p>Below, we configure any backend to use the default <code>f64</code> for floats and <code>i64</code> for integers:</p>
+<p>Below, we configure every backend to use the default <code>f64</code> for floats and <code>i64</code> for integers:</p>
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">anvl.default_dtypes =</span> <span class="fu">c</span>(<span class="at">float =</span> <span class="st">"f64"</span>, <span class="at">int =</span> <span class="st">"i64"</span>))</span></code></pre><p></p></div>
 <p>You can also only change the float dtype, leaving
 the backend's default integer dtype unchanged:</p>
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">anvl.default_dtypes =</span> <span class="fu">c</span>(<span class="at">float =</span> <span class="st">"f64"</span>))</span></code></pre><p></p></div>
-<p>It is also possible to specify the defaults per-backend:</p>
+<p>It is also possible to specify the defaults per backend. Below, every
+backend uses <code>f64</code> for floats, and <code>"pjrt"</code> also uses <code>i64</code> for integers:</p>
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">anvl.default_dtypes =</span> <span class="fu">list</span>(</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="at">pjrt =</span> <span class="fu">list</span>(<span class="at">float =</span> <span class="st">"f64"</span>, <span class="at">int =</span> <span class="st">"i64"</span>),</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="at">quickr =</span> <span class="fu">list</span>(<span class="at">int =</span> <span class="st">"i32"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="at">float =</span> <span class="st">"f64"</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="at">pjrt =</span> <span class="fu">list</span>(<span class="at">int =</span> <span class="st">"i64"</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>))</span></code></pre><p></p></div>
 <p>An entry that names a backend wins over the categories beside it.</p>
 <p>When the option is not set, the <code>ANVL_DEFAULT_DTYPES</code> environment variable
@@ -199,8 +196,10 @@ under, so changing them never serves a stale program.</p>
 
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>default_dtypes()</code> returns a named <code>list</code> with elements <code>float</code> and
-<code>int</code>, each a <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code></p>
+    <p><code>default_dtypes()</code>: (named <code>list</code>)<br>
+Elements <code>float</code> and <code>int</code>, each a <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>.</p>
+<p><code>default_float()</code>, <code>default_int()</code>: (<code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
+The default of one category.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

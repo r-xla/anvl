@@ -32,7 +32,11 @@ gradient(f, wrt = NULL)
 
 ## Value
 
-(`function`)
+(`function`)  
+Has the same formals as `f` and must be called inside
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md). Returns a
+named `list` of gradients, one per argument of `f` (or per `wrt` entry),
+each structured like that argument.
 
 ## See also
 

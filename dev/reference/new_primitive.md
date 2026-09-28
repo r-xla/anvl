@@ -21,7 +21,8 @@ new_primitive(
 - name:
 
   (`character(1)`)  
-  Primitive name.
+  Primitive name, without the `prim_` prefix (`"add"` for
+  [`prim_add()`](https://r-xla.github.io/anvl/dev/reference/prim_add.md)).
 
 - fn:
 

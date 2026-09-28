@@ -32,3 +32,10 @@ Backend-specific.
 [`nv_device()`](https://r-xla.github.io/anvl/dev/reference/nv_device.md),
 [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
 [`local_default_device()`](https://r-xla.github.io/anvl/dev/reference/local_default_device.md)
+
+## Examples
+
+``` r
+default_device()
+#> <CpuDevice(id=0)>
+```

@@ -17,8 +17,6 @@ With subclass `"AnvlBackendQuickr"`.
 
 ## Details
 
-To use it, the `"quickr"` package needs to be installed.
-
 Registered automatically under the name `"quickr"` when the package is
 loaded; call
 [`local_backend("quickr")`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
@@ -38,8 +36,7 @@ returns the underlying vector/array directly without copying, and
 simply wraps an R vector/array. Data always lives in R's memory and
 computation always runs on the CPU, so the only device is
 [`quickr_device("cpu")`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md);
-every array still carries it in `$device`, as arrays of every backend
-do.
+every array still carries it in `$device`.
 
 ## Status
 

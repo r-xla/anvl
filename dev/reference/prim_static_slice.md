@@ -27,7 +27,8 @@ prim_static_slice(x, start_indices, end_indices, strides)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Start indices (inclusive), one per axis. Must satisfy
-  `1 <= start_indices <= end_indices` per axis.
+  `1 <= start_indices <= end_indices + 1` per axis, where
+  `start_indices == end_indices + 1` selects an empty axis.
 
 - end_indices:
 

@@ -21,7 +21,8 @@ graph_to_quickr_r_function(graph)
 
 ## Value
 
-(`function`)
+(`function`)  
+Takes one plain R value per graph input and returns plain R values.
 
 ## Details
 

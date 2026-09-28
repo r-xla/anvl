@@ -90,7 +90,7 @@
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>(<code>any</code>)<br>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code> | <code><a href="AbstractArray.html">AbstractArray</a></code>)<br>
 Object to convert.</p></dd>
 
 
@@ -101,7 +101,11 @@ Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>RData
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code><a href="AbstractArray.html">AbstractArray</a></code>)</p>
+    <p>(<code><a href="AbstractArray.html">AbstractArray</a></code>)<br>
+A <code><a href="ConcreteArray.html">ConcreteArray</a></code> for an <code><a href="AnvlArray.html">AnvlArray</a></code>, an <code><a href="RData.html">RData</a></code> for an R value,
+the abstract array of a <code><a href="GraphBox.html">GraphBox</a></code>, and <code>x</code> itself for an
+<code><a href="AbstractArray.html">AbstractArray</a></code>. With <code>pure = TRUE</code>, a plain <code>AbstractArray</code> of the same
+shape and data type.</p>
     </div>
 
     <div class="section level2">

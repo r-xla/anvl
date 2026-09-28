@@ -54,7 +54,10 @@ Has `x`'s data type and shape `shape(x)[perm]`, or `rev(shape(x))` when
 
 [`t()`](https://rdrr.io/r/base/t.html) requires a matrix, whereas
 [`base::t()`](https://rdrr.io/r/base/t.html) also transposes a vector
-(into a one-row matrix) and reverses the axes of a higher-rank array.
+(into a one-row matrix). Like
+[`base::t()`](https://rdrr.io/r/base/t.html), it rejects a higher-rank
+array; use [`aperm()`](https://rdrr.io/r/base/aperm.html) to reverse its
+axes.
 
 ## The [`aperm()`](https://rdrr.io/r/base/aperm.html) generic
 

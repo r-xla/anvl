@@ -15,7 +15,7 @@ sequence patterns: IotaArray
 R values RData. They are special because they do not have a data type.
 
 
-To convert a arrayish value to an abstract array, use to_abstract()."><meta property="og:description" content="Representation of an abstract array type.
+To convert an arrayish value to an abstract array, use to_abstract()."><meta property="og:description" content="Representation of an abstract array type.
 During tracing, it is wrapped in a GraphNode held by a GraphBox.
 In the lowered AnvlGraph it is also part of GraphNodes representing the values in the program.
 The base class represents an unknown value, but child classes exist for:
@@ -25,7 +25,7 @@ sequence patterns: IotaArray
 R values RData. They are special because they do not have a data type.
 
 
-To convert a arrayish value to an abstract array, use to_abstract()."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+To convert an arrayish value to an abstract array, use to_abstract()."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -104,7 +104,7 @@ In the lowered <code><a href="AnvlGraph.html">AnvlGraph</a></code> it is also pa
 <li><p>scalar arrays arising from R literals: <code><a href="LiteralArray.html">LiteralArray</a></code></p></li>
 <li><p>sequence patterns: <code><a href="IotaArray.html">IotaArray</a></code></p></li>
 <li><p>R values <code><a href="RData.html">RData</a></code>. They are special because they do not have a data type.</p></li>
-</ul><p>To convert a <code><a href="arrayish.html">arrayish</a></code> value to an abstract array, use <code><a href="to_abstract.html">to_abstract()</a></code>.</p>
+</ul><p>To convert an <code><a href="arrayish.html">arrayish</a></code> value to an abstract array, use <code><a href="to_abstract.html">to_abstract()</a></code>.</p>
     </div>
 
     <div class="section level2">
@@ -120,8 +120,8 @@ In the lowered <code><a href="AnvlGraph.html">AnvlGraph</a></code> it is also pa
 
 <dl><dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code> | <code>character(1)</code>)<br>
-The data type of the array.
-To create an <code><a href="RData.html">RData</a></code> object, specify <code>"double"</code>, <code>"integer"</code>, or <code>"logical"</code>.</p></dd>
+The data type of the array. For <code>nv_aval()</code> only, <code>"double"</code>,
+<code>"integer"</code> or <code>"logical"</code> create an <code><a href="RData.html">RData</a></code> instead.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
@@ -129,6 +129,12 @@ To create an <code><a href="RData.html">RData</a></code> object, specify <code>"
 The shape of the array. Can be provided as an integer vector.</p></dd>
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p><code>AbstractArray()</code>: (<code>AbstractArray</code>)</p>
+<p><code>nv_aval()</code>: (<code>AbstractArray</code> | <code><a href="RData.html">RData</a></code>)<br>
+An <code><a href="RData.html">RData</a></code> when <code>dtype</code> names an R storage type.</p>
+    </div>
     <div class="section level2">
     <h2 id="extractors">Extractors<a class="anchor" aria-label="anchor" href="#extractors"></a></h2>
 
@@ -162,15 +168,14 @@ The shape of the array. Can be provided as an integer vector.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> RData(double, (2,3)) </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># how AbstractArrays appear in an AnvlGraph</span></span></span>
-<span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu">nv_aval</span><span class="op">(</span><span class="st">"i32"</span>, <span class="fl">4L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu">nv_aval</span><span class="op">(</span><span class="st">"i32"</span>, <span class="fl">4L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; (%x1: i32[4]) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   %1: f32[4] = convert [dtype = f32] (%x1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   %2: f32[4] = broadcast_in_axes [</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %1: i32[4] = broadcast_in_axes [</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     shape = 4, broadcast_axes = integer(0)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   ] (1:f32)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   %3: f32[4] = add(%1, %2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   return %3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ] (1:i32)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %2: i32[4] = add(%x1, %1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return %2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">inputs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">aval</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AbstractArray(dtype=i32, shape=4) </span>

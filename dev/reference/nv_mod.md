@@ -19,12 +19,12 @@ e1%%e2
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs with a [common data
   type](https://r-xla.github.io/anvl/dev/reference/common_dtype.md). Can
-  be any numeric data type. Scalars are broadcast, and R values assume
-  the other operand's data type within their [data type
-  category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
-  otherwise falling back to their [default data
-  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  and being converted to the common data type.
+  be any numeric data type. Scalars are broadcast. An R value takes the
+  other operand's data type when that is in its own or a higher
+  [category](https://r-xla.github.io/anvl/dev/reference/dtypes.md).
+  Otherwise it settles on its [default data
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md),
+  and the operands meet at their common data type.
 
 - e1, e2:
 

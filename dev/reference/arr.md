@@ -22,6 +22,10 @@ arr(..., shape = NULL)
   Shape of new array. If `NULL` (default), uses length of elements to
   create a 1D array.
 
+## Value
+
+(`array`)
+
 ## Examples
 
 ``` r

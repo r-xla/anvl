@@ -20,9 +20,28 @@ local_backend(backend, envir = parent.frame())
 
 - envir:
 
+  (`environment`)  
   The environment to scope the change to.
 
 ## Value
 
-(`character(1)`)  
-The previous value of the option, invisibly.
+(named `list`)  
+The previous value of the option, as `list(anvl.backend = )`, invisibly.
+
+## See also
+
+[`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+
+## Examples
+
+``` r
+f <- function() {
+  local_backend("quickr")
+  active_backend()
+}
+f()
+#> [1] "quickr"
+active_backend()
+#> [1] "pjrt"
+```

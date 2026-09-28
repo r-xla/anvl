@@ -164,15 +164,23 @@ sample of shape <code>shape</code> and the data type described under <code>dtype
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The Uniform distribution has probability density function:
 $$f(x) = \frac{1}{b - a}, \quad a \le x \le b$$
-and zero elsewhere, where \(a\) is <code>min</code> and \(b\) is <code>max</code>.
-For <code>nv_dunif</code>, <code>nv_punif</code>, and <code>nv_qunif</code>, the <code>min</code> and <code>max</code> are
-converted to the data type of <code>x</code>/<code>q</code>/<code>p</code>.</p>
+and zero elsewhere, where \(a\) is <code>min</code> and \(b\) is <code>max</code>.</p>
 <p>All four are univariate functions evaluated elementwise, returning one
 value per element of <code>x</code>/<code>q</code>/<code>p</code> (or of the sample). Non-scalar <code>min</code>/<code>max</code> therefore give a
 separate univariate Uniform per element, <em>not</em> a multivariate Uniform over
 the hyper-rectangle \(\prod_i [a_i, b_i]\). For that, reduce over the
 result: <code>nv_prod(nv_dunif(x, min, max))</code>, or
 <code>nv_sum(nv_dunif(x, min, max, log = TRUE))</code> on the log scale.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="data-types">Data Types<a class="anchor" aria-label="anchor" href="#data-types"></a></h2>
+
+
+<p><code>nv_dunif()</code>, <code>nv_punif()</code> and <code>nv_qunif()</code> compute at
+the data type of <code>x</code>/<code>q</code>/<code>p</code>, which must be float; an R value settles on the
+<a href="default_dtypes.html">default float</a>. An R value for <code>min</code> or <code>max</code> takes this data
+type. An array is promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code>
+<code>x</code>) is an error.</p>
     </div>
     <div class="section level2">
     <h2 id="random-generation">Random generation<a class="anchor" aria-label="anchor" href="#random-generation"></a></h2>

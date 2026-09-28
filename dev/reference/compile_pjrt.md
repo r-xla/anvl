@@ -43,7 +43,7 @@ compile_pjrt(
 
 - device:
 
-  (`NULL` \| `character(1)`)  
+  (`NULL` \| `character(1)` \| `PJRTDevice`)  
   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from
   `arg_devices` and traced arrays.
 
@@ -93,3 +93,9 @@ With elements:
   dispatcher therefore requires an entry for every bare R input and
   rejects a dtype declared for an array one. `NULL` for a call whose
   inputs are all arrays.
+
+- `device`: The `PJRTDevice` the executable was compiled for.
+
+- `phantom_specs`: One `list(dtype, shape)` per phantom donated input
+  the executor must allocate for an output (see
+  [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)).

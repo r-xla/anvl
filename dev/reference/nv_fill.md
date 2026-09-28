@@ -52,8 +52,9 @@ nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
   [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).

@@ -107,7 +107,8 @@ One input. Can be any data type. An R value materializes at its
 <dt id="arg-start-indices">start_indices<a class="anchor" aria-label="anchor" href="#arg-start-indices"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 Start indices (inclusive), one per axis. Must satisfy
-<code>1 &lt;= start_indices &lt;= end_indices</code> per axis.</p></dd>
+<code>1 &lt;= start_indices &lt;= end_indices + 1</code> per axis, where
+<code>start_indices == end_indices + 1</code> selects an empty axis.</p></dd>
 
 
 <dt id="arg-end-indices">end_indices<a class="anchor" aria-label="anchor" href="#arg-end-indices"></a></dt>

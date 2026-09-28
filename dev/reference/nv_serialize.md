@@ -1,12 +1,16 @@
 # Serialize Arrays to Raw Bytes
 
-Serializes a named list of arrays into the
-[safetensors](https://huggingface.co/docs/safetensors/index) format.
+`nv_serialize()` serializes a named list of arrays into the
+[safetensors](https://huggingface.co/docs/safetensors/index) format, and
+`nv_unserialize()` deserializes them. The data type and shape of each
+array are restored.
 
 ## Usage
 
 ``` r
 nv_serialize(arrays, con = NULL)
+
+nv_unserialize(con, device = NULL)
 ```
 
 ## Arguments
@@ -19,25 +23,35 @@ nv_serialize(arrays, con = NULL)
 
 - con:
 
-  (`NULL` \| connection)  
-  An optional connection to write to. If `NULL` (default), a raw vector
-  is returned.
+  (`NULL` \| connection \| [`raw`](https://rdrr.io/r/base/raw.html))  
+  For `nv_serialize()`, an optional connection to write to; if `NULL`
+  (default), a raw vector is returned. For `nv_unserialize()`, a
+  connection or raw vector to read from.
+
+- device:
+
+  (`NULL` \| `character(1)` \|
+  [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html))  
+  The device on which to place the loaded arrays (`"cpu"`, `"cuda"`,
+  ...) when the active backend is `"pjrt"`, defaulting to
+  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
 
 ## Value
 
-([`raw`](https://rdrr.io/r/base/raw.html) \| `NULL`)  
+`nv_serialize()`: ([`raw`](https://rdrr.io/r/base/raw.html) \| `NULL`)  
 A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
+
+`nv_unserialize()`: (named `list` of
+[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))
 
 ## See also
 
-[`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_unserialize.md),
 [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md),
-[`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_read.md)
+[`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
 
 ## Examples
 
 ``` r
-# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 #> AnvlArray

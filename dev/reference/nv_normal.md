@@ -22,23 +22,19 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Quantiles at which to evaluate the density (`x`) or the distribution
-  function (`q`). `x` can be any float data type; `q` must be `f32` or
-  `f64` (see "Details"). An R `double` is materialized at its [default
-  data
-  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+  function (`q`).
 
 - mean:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Mean of the distribution, scalar or the same shape as `x`/`q`/`p`.
-  Converted to the argument's data type.
+  Mean of the distribution. Either a scalar, or an array of exactly the
+  shape of `x`/`q`/`p` (or the sample, for `nv_rnorm`).
 
 - sd:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Standard deviation of the distribution, scalar or the same shape as
-  `x`/`q`/`p`. Converted to the argument's data type. Must be positive,
-  otherwise results are invalid.
+  Standard deviation of the distribution, shaped like `mean`. Must be
+  positive, otherwise results are invalid.
 
 - log, log_p:
 
@@ -56,10 +52,7 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Probabilities at which to evaluate the quantile function. Values
-  outside \\\[0, 1\]\\ give `NaN`. Must be `f32` or `f64` (see
-  "Details"); `mean` and `sd` are converted to it. An R value
-  materializes at its [default data
-  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+  outside \\\[0, 1\]\\ give `NaN`.
 
 - shape:
 
@@ -78,8 +71,10 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Floating point data type. The default (`NULL`) uses the [default float
-  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+  Floating point data type of the sample. The default (`NULL`) uses the
+  common data type of `mean` and `sd`, and the [default float
+  type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  when both are R values.
 
 ## Value
 
@@ -111,6 +106,14 @@ maintain accuracy.
 (1989) (this is `ndtri` in the Cephes library as used by JAX) for `f64`,
 and uses a new lower degree Remez minimax rational approximation on the
 same intervals for `f32`.
+
+## Data Types
+
+`nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` compute at the data type of
+`x`/`q`/`p`, which must be float; an R value settles on the [default
+float](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md). An
+R value for `mean` or `sd` takes this data type. An array is promoted to
+it, so a wider one (e.g. `f64` for an `f32` `x`) is an error.
 
 ## Random generation
 

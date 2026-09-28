@@ -14,11 +14,12 @@ prim_ne(lhs, rhs)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Two inputs of the same data type and shape. Can be any data type. R
-  values assume the other operand's data type when it is in their [data
+  values take the other operand's data type when it is in their [data
   type category](https://r-xla.github.io/anvl/dev/reference/dtypes.md),
   and their [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-  when neither operand has one.
+  when neither operand has one. An R value outside the other operand's
+  category is an error, as are two R values of different storage types.
 
 ## Value
 

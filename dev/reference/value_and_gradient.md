@@ -32,7 +32,12 @@ value_and_gradient(f, wrt = NULL)
 ## Value
 
 (`function`)  
-Has the same formals as `f` and returns `list(value = ..., grad = ...)`.
+Has the same formals as `f` and must be called inside
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md). Returns
+`list(value = , grad = )`: the return value of `f`, and the named `list`
+of gradients that
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+returns.
 
 ## See also
 

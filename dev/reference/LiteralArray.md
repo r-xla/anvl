@@ -36,7 +36,11 @@ LiteralArray(data, shape, dtype = default_dtype(data))
 
   ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   The data type. For the default, see
-  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+
+## Value
+
+(`LiteralArray`)
 
 ## Lowering
 

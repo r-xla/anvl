@@ -135,7 +135,8 @@ when <code>perm</code> is <code>NULL</code>.</p>
 
 
 <p><code><a href="https://rdrr.io/r/base/t.html" class="external-link">t()</a></code> requires a matrix, whereas <code><a href="https://rdrr.io/r/base/t.html" class="external-link">base::t()</a></code> also transposes a vector (into
-a one-row matrix) and reverses the axes of a higher-rank array.</p>
+a one-row matrix). Like <code><a href="https://rdrr.io/r/base/t.html" class="external-link">base::t()</a></code>, it rejects a higher-rank array; use
+<code><a href="https://rdrr.io/r/base/aperm.html" class="external-link">aperm()</a></code> to reverse its axes.</p>
     </div>
     <div class="section level2">
     <h2 id="the-aperm-generic">The <code><a href="https://rdrr.io/r/base/aperm.html" class="external-link">aperm()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-aperm-generic"></a></h2>

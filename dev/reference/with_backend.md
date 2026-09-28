@@ -20,9 +20,22 @@ with_backend(backend, code)
 
 - code:
 
+  (any)  
   An expression to evaluate with the given backend.
 
 ## Value
 
-(`any`)  
+(any)  
 The result of evaluating `code`.
+
+## See also
+
+[`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
+[`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
+
+## Examples
+
+``` r
+with_backend("quickr", active_backend())
+#> [1] "quickr"
+```

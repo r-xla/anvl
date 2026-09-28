@@ -587,8 +587,8 @@
   elsewhere, which took out every
   [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   call on CUDA.
-- [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_unserialize.md)
-  / [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_read.md)
+- [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
+  / [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
   place the loaded arrays on
   \[[`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)\],
   where they always used pjrt’s first device.

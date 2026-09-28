@@ -95,8 +95,7 @@ With subclass <code>"AnvlBackendQuickr"</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>To use it, the <code>"quickr"</code> package needs to be installed.</p>
-<p>Registered automatically under the name <code>"quickr"</code> when the package is
+    <p>Registered automatically under the name <code>"quickr"</code> when the package is
 loaded; call <code><a href="local_backend.html">local_backend("quickr")</a></code> or
 <code><a href="with_backend.html">with_backend("quickr", ...)</a></code> to use it. Requires the
 quickr package to be installed.</p>
@@ -111,7 +110,7 @@ field. <code><a href="as_array.html">as_array()</a></code> returns the underlyin
 copying, and <code><a href="AnvlArray.html">nv_array()</a></code> simply wraps an R vector/array. Data always lives
 in R's memory and computation always runs on the CPU, so the only device is
 <code><a href="quickr_device.html">quickr_device("cpu")</a></code>; every array still carries it in
-<code>$device</code>, as arrays of every backend do.</p>
+<code>$device</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="status">Status<a class="anchor" aria-label="anchor" href="#status"></a></h2>

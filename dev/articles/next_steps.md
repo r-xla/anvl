@@ -399,7 +399,7 @@ there are various differences to be aware of. For an overview, see the
 An `AnvlArray` only holds a pointer to its data, so
 [`saveRDS()`](https://rdrr.io/r/base/readRDS.html) does not work for it.
 Use [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
-and [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_read.md)
+and [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
 instead, which use the
 [safetensors](https://huggingface.co/docs/safetensors/index) format.
 

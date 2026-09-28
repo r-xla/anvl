@@ -120,7 +120,9 @@ Alternatively a <code><a href="https://rdrr.io/r/base/raw.html" class="external-
 payload of <code>prod(shape)</code> elements of <code>dtype</code>; both <code>dtype</code> and <code>shape</code>
 are then required (only supported on the <code>"pjrt"</code> backend).
 Raw payloads are read in column-major element order, or row-major
-with <code>byrow = TRUE</code>.</p></dd>
+with <code>byrow = TRUE</code>. An existing <code>AnvlArray</code> is returned unchanged if
+the <code>shape</code>, <code>dtype</code> and <code>device</code> given agree with it, and is an error
+otherwise.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
@@ -139,7 +141,7 @@ The data type at which to create the array: a <code><a href="https://r-xla.githu
 of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. <code>data</code> is built at it rather than converted to it,
 and a value it cannot hold at all is an error (<code>nv_array(3e9, dtype = "i32")</code> overflows); a <code>double</code> at an integer data type is truncated.
 The default (<code>NULL</code>) uses the <a href="default_dtypes.html">default data type</a> of
-<code>data</code>'s category.</p></dd>
+<code>data</code>'s category. <code>nv_empty()</code>, which has no <code>data</code>, requires it.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
@@ -148,8 +150,9 @@ The device the data lives on, given either as:</p><ul><li><p>a <em>device string
 <code>"cuda:&lt;n&gt;"</code>), which is resolved against the backend in use, or</p></li>
 <li><p>a <em>device object</em> as returned by <code><a href="nv_device.html">nv_device()</a></code>: a
 <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code> for the <code>"pjrt"</code> backend or a
-<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
-is backend-specific, it also determines the backend.</p></li>
+<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. It must belong to the
+active backend (<code><a href="active_backend.html">active_backend()</a></code>); a device of another backend is an
+error.</p></li>
 </ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>.</p></dd>
 
 
@@ -175,8 +178,9 @@ Defaults to <code>1</code> when <code>data</code> is a scalar.</p></dd>
 
 
 <dt id="arg-like">like<a class="anchor" aria-label="anchor" href="#arg-like"></a></dt>
-<dd><p>(<code>AnvlArray</code>)<br>
-An existing array. Any of <code>shape</code>, <code>dtype</code> and <code>device</code> that are <code>NULL</code>
+<dd><p>(<code>AnvlArray</code> | <code><a href="GraphBox.html">GraphBox</a></code>)<br>
+An existing array; an R value is an error. Any of <code>shape</code> (which
+<code>nv_scalar_like()</code> does not take), <code>dtype</code> and <code>device</code> that are <code>NULL</code>
 (the default) are taken from <code>like</code>.</p></dd>
 
 </dl></div>
@@ -214,8 +218,8 @@ overloaded as it is used to refer to both the axis and its size.</p>
 
 
 <p>Arrays can be serialized to and from the
-<a href="https://huggingface.co/docs/safetensors/index" class="external-link">safetensors</a> format:</p><ul><li><p><code><a href="nv_save.html">nv_save()</a></code> / <code><a href="nv_read.html">nv_read()</a></code>: Save/load arrays to/from a file.</p></li>
-<li><p><code><a href="nv_serialize.html">nv_serialize()</a></code> / <code><a href="nv_unserialize.html">nv_unserialize()</a></code>:
+<a href="https://huggingface.co/docs/safetensors/index" class="external-link">safetensors</a> format:</p><ul><li><p><code><a href="nv_save.html">nv_save()</a></code> / <code><a href="nv_save.html">nv_read()</a></code>: Save/load arrays to/from a file.</p></li>
+<li><p><code><a href="nv_serialize.html">nv_serialize()</a></code> / <code><a href="nv_serialize.html">nv_unserialize()</a></code>:
 Serialize/deserialize arrays to/from raw vectors.</p></li>
 </ul></div>
     <div class="section level2">
@@ -237,7 +241,7 @@ presence of such values.
 <code>NA</code>s are always rejected, except when:</p><ol><li><p>Creating <code>float</code> arrays where we convert the <code>NA</code> to <code>NaN</code>.</p></li>
 <li><p>When creating an <code>i32</code> from an R <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>.
 There, we throw a warning, but the resulting <code>AnvlArray</code> gets the bit
-representation of <code>NAinteger_</code>, which is <code>-INT_MIN</code>.
+representation of <code>NA_integer_</code>, which is <code>INT_MIN</code> (<code>-2147483648</code>).
 Disallowing this would prevent round-trips between the data types.</p></li>
 </ol><p>See the <a href="https://r-xla.github.io/anvl/articles/gotchas.html">Gotchas</a> article for more information.</p>
     </div>
@@ -301,9 +305,8 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span>shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1e+45 *</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 5.6052 0.0000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.0000 0.0000 0.0000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>
@@ -320,14 +323,14 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cpu"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Transforming arrays with jit ---</span></span></span>
-<span class="r-in"><span><span class="va">add_one</span> <span class="op">&lt;-</span> <span class="fu"><a href="jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">add_one</span> <span class="op">&lt;-</span> <span class="fu"><a href="jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">add_one</span><span class="op">(</span><span class="fu">nv_array</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{4} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{4} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Eager mode (calling operations directly) ---</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="nv_add.html">nv_add</a></span><span class="op">(</span><span class="fu">nv_array</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span>, <span class="fu">nv_array</span><span class="op">(</span><span class="fl">4</span><span class="op">:</span><span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>

@@ -15,9 +15,7 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 - f:
 
   (`function`)  
-  Function to compile. Must accept and return
-  [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)s
-  (and/or static arguments).
+  Function to compile.
 
 - static:
 
@@ -28,12 +26,11 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
   compilation is triggered whenever a static value changes. For example
   useful when you want R control flow in your function.
 
-  Note that the values that are passed to static arguments must not have
-  reference semantics. Such a value can be mutated in place while the
-  cache key stays equal, which would silently reuse a program compiled
-  from its old contents. One exception are closures, but there you need
-  to ensure that their enclosing environment does not change in a way
-  that modifies their behavior.
+  A static value must not have reference semantics: an environment or an
+  external pointer, also inside a `list`, is an error, since it could be
+  mutated in place while the cache key stays equal. Closures are
+  allowed, but their enclosing environment must not change in a way that
+  modifies their behavior.
 
 - cache_size:
 
@@ -43,7 +40,7 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 - device:
 
   (`NULL` \| `character(1)` \|
-  [`nv_device`](https://r-xla.github.io/anvl/dev/reference/nv_device.md))  
+  [device](https://r-xla.github.io/anvl/dev/reference/nv_device.md))  
   Target device, of the active backend. When a device is specified, all
   arrays are moved to it.
 
@@ -62,11 +59,7 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 ## Value
 
 (`JitFunction`)  
-A `function` with the same formals as `f`. The returned wrapper expects
-[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-inputs and returns
-[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-values.
+A `function` with the same formals as `f`.
 
 ## Backend and device
 
@@ -86,18 +79,14 @@ enforces that the function always uses it, e.g. `"cuda:0"`, and copies
 every array input to it. With `device = NULL` (default) the device is
 inferred from the input arrays and the constants within the program;
 conflicting devices are an error, and with no array to read a device
-from the default device is used. A constructor that has no array to name
-a device declares the one it was asked for itself, see
-[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)'s
-`device` argument.
+from the default device is used.
 
 ## Default Data Types
 
 It is possible to configure the default data types for `float`s and
 `int`s via the `anvl.default_dtypes` option, see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
-Note that the defaults will be read at *call-time*\* and not when
-`jit()` is called.
+The defaults are read at *call time*, not when `jit()` is called.
 
 To pin a jitted function to a pair of data types instead of letting it
 follow the configured defaults, wrap it in

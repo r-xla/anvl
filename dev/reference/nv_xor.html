@@ -98,10 +98,11 @@ For <em>logical</em> inputs, you can also use <code>xor</code>.</p>
 <dl><dt id="arg-x-y">x, y<a class="anchor" aria-label="anchor" href="#arg-x-y"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Two inputs with a <a href="common_dtype.html">common data type</a>. Can be
-any integerish data type. Scalars are broadcast, and R values assume the other
-operand's data type within their <a href="dtypes.html">data type category</a>,
-otherwise falling back to their <a href="default_dtypes.html">default data type</a> and
-being converted to the common data type.</p></dd>
+any integerish data type. Scalars are broadcast. An R value takes the other
+operand's data type when that is in its own or a higher
+<a href="dtypes.html">category</a>. Otherwise it
+settles on its <a href="default_dtypes.html">default data type</a>, and the operands meet
+at their common data type.</p></dd>
 
 </dl></div>
     <div class="section level2">

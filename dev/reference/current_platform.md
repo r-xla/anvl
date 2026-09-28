@@ -44,3 +44,16 @@ platform.
 ## See also
 
 [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
+
+## Examples
+
+``` r
+current_platform()
+#> NULL
+f <- function() {
+  local_platform("cuda")
+  current_platform()
+}
+f()
+#> [1] "cuda"
+```

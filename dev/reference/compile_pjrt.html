@@ -125,7 +125,7 @@ Names of the arguments whose buffers should be donated.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
-<dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code>PJRTDevice</code>)<br>
 Target device (e.g. <code>"cpu"</code>, <code>"cuda"</code>). If <code>NULL</code>, inferred from <code>arg_devices</code>
 and traced arrays.</p></dd>
 
@@ -166,6 +166,9 @@ it is. The R data has no dtype of its own, so the program is the only
 thing that knows what it is uploaded as – pjrt's dispatcher therefore
 requires an entry for every bare R input and rejects a dtype declared
 for an array one. <code>NULL</code> for a call whose inputs are all arrays.</p></li>
+<li><p><code>device</code>: The <code>PJRTDevice</code> the executable was compiled for.</p></li>
+<li><p><code>phantom_specs</code>: One <code>list(dtype, shape)</code> per phantom donated input the
+executor must allocate for an output (see <code><a href="stablehlo.html">stablehlo()</a></code>).</p></li>
 </ul></div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

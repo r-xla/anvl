@@ -91,10 +91,10 @@ Accelerated array computing and code transformations for R. Numerical programs o
 <ul><li><p><code>anvl.backend</code> (<code>character(1)</code>, default <code>"pjrt"</code>): the backend every
 operation runs on – <code>"pjrt"</code> or <code>"quickr"</code>. Arrays are allocated with it
 and jitted functions are compiled for it.
-Also see  <code><a href="active_backend.html">active_backend()</a></code>, <code><a href="local_backend.html">local_backend()</a></code> and <code><a href="with_backend.html">with_backend()</a></code>.</p></li>
+Also see <code><a href="active_backend.html">active_backend()</a></code>, <code><a href="local_backend.html">local_backend()</a></code> and <code><a href="with_backend.html">with_backend()</a></code>.</p></li>
 <li><p><code>anvl.default_dtypes</code> (named <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> | named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>): the data
-types an R double and integer materialize at when it cannot be inferred from
-another operand.
+types an R double and an R integer settle on when they meet no typed
+array.
 See <code><a href="default_dtypes.html">default_dtypes()</a></code> for more details.</p></li>
 <li><p><code>anvl.default_device</code> (<code>character(1)</code> | device object): the device a call
 that names none allocates on.

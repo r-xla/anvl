@@ -2,11 +2,8 @@
 
 The default data types for the [active
 backend](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
-They decide the data type an R value is materialized at when it cannot
-be inferred from another operand.
-
-This includes array creation via (`nv_array(1)`) or passing R values to
-unary functions (`prim_exp(1)`).
+They are the data types an R value settles on when it meets no typed
+array, e.g. `nv_array(1)` or `prim_exp(1)`.
 
 `default_dtypes()` reports both categories at once; `default_float()`
 and `default_int()` report one each.
@@ -19,8 +16,8 @@ and
 [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
 set the option for a scope.
 
-Below, we configure any backend to use the default `f64` for floats and
-`i64` for integers:
+Below, we configure every backend to use the default `f64` for floats
+and `i64` for integers:
 
     options(anvl.default_dtypes = c(float = "f64", int = "i64"))
 
@@ -29,11 +26,13 @@ integer dtype unchanged:
 
     options(anvl.default_dtypes = c(float = "f64"))
 
-It is also possible to specify the defaults per-backend:
+It is also possible to specify the defaults per backend. Below, every
+backend uses `f64` for floats, and `"pjrt"` also uses `i64` for
+integers:
 
     options(anvl.default_dtypes = list(
-      pjrt = list(float = "f64", int = "i64"),
-      quickr = list(int = "i32")
+      float = "f64",
+      pjrt = list(int = "i64")
     ))
 
 An entry that names a backend wins over the categories beside it.
@@ -71,9 +70,13 @@ default_int()
 
 ## Value
 
-`default_dtypes()` returns a named `list` with elements `float` and
-`int`, each a
-[`DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+`default_dtypes()`: (named `list`)  
+Elements `float` and `int`, each a
+[`DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
+
+`default_float()`, `default_int()`:
+([`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+The default of one category.
 
 ## See also
 

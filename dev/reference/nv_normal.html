@@ -107,21 +107,19 @@ standard deviation <code>sd</code>.</p>
 <dl><dt id="arg-x-q">x, q<a class="anchor" aria-label="anchor" href="#arg-x-q"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Quantiles at which to evaluate the density (<code>x</code>) or the distribution
-function (<code>q</code>). <code>x</code> can be any float data type; <code>q</code> must be <code>f32</code> or <code>f64</code>
-(see "Details"). An R <code>double</code> is materialized at its <a href="default_dtypes.html">default data type</a>.</p></dd>
+function (<code>q</code>).</p></dd>
 
 
 <dt id="arg-mean">mean<a class="anchor" aria-label="anchor" href="#arg-mean"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Mean of the distribution, scalar or the same shape as <code>x</code>/<code>q</code>/<code>p</code>.
-Converted to the argument's data type.</p></dd>
+Mean of the distribution. Either a scalar, or an array of exactly the
+shape of <code>x</code>/<code>q</code>/<code>p</code> (or the sample, for <code>nv_rnorm</code>).</p></dd>
 
 
 <dt id="arg-sd">sd<a class="anchor" aria-label="anchor" href="#arg-sd"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Standard deviation of the distribution, scalar or the same shape as
-<code>x</code>/<code>q</code>/<code>p</code>. Converted to the argument's data type.
-Must be positive, otherwise results are invalid.</p></dd>
+Standard deviation of the distribution, shaped like <code>mean</code>. Must be
+positive, otherwise results are invalid.</p></dd>
 
 
 <dt id="arg-log-log-p">log, log_p<a class="anchor" aria-label="anchor" href="#arg-log-log-p"></a></dt>
@@ -139,9 +137,7 @@ If <code>TRUE</code> (default), probabilities are \(P(X \le x)\); otherwise,
 <dt id="arg-p">p<a class="anchor" aria-label="anchor" href="#arg-p"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Probabilities at which to evaluate the quantile function. Values outside
-\([0, 1]\) give <code>NaN</code>. Must be <code>f32</code> or <code>f64</code> (see "Details"); <code>mean</code>
-and <code>sd</code> are converted to it. An R value materializes at its
-<a href="default_dtypes.html">default data type</a>.</p></dd>
+\([0, 1]\) give <code>NaN</code>.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
@@ -158,8 +154,9 @@ default data types, and the returned <code>state</code> has them too.</p></dd>
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
-Floating point data type.
-The default (<code>NULL</code>) uses the <a href="default_dtypes.html">default float type</a>.</p></dd>
+Floating point data type of the sample. The default (<code>NULL</code>) uses the
+common data type of <code>mean</code> and <code>sd</code>, and the
+<a href="default_dtypes.html">default float type</a> when both are R values.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -183,6 +180,16 @@ left tail when <code>log_p = TRUE</code> to maintain accuracy.</p>
 Moshier (1989) (this is <code>ndtri</code> in the Cephes
 library as used by JAX) for <code>f64</code>, and uses a new lower degree Remez minimax
 rational approximation on the same intervals for <code>f32</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="data-types">Data Types<a class="anchor" aria-label="anchor" href="#data-types"></a></h2>
+
+
+<p><code>nv_dnorm()</code>, <code>nv_pnorm()</code> and <code>nv_qnorm()</code> compute at
+the data type of <code>x</code>/<code>q</code>/<code>p</code>, which must be float; an R value settles on the
+<a href="default_dtypes.html">default float</a>. An R value for <code>mean</code> or <code>sd</code> takes this data
+type. An array is promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code>
+<code>x</code>) is an error.</p>
     </div>
     <div class="section level2">
     <h2 id="random-generation">Random generation<a class="anchor" aria-label="anchor" href="#random-generation"></a></h2>

@@ -46,7 +46,7 @@ sort(x, decreasing = FALSE, ..., axis = NULL)
 
 - ...:
 
-  No additional arguments.
+  Passed on to `nv_sort()`, e.g. `stable`.
 
 ## Value
 

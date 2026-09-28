@@ -27,7 +27,7 @@ for:
   [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md). They
   are special because they do not have a data type.
 
-To convert a
+To convert an
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 value to an abstract array, use
 [`to_abstract()`](https://r-xla.github.io/anvl/dev/reference/to_abstract.md).
@@ -46,15 +46,25 @@ AbstractArray(dtype, shape)
 
   ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
   \| `character(1)`)  
-  The data type of the array. To create an
-  [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md) object,
-  specify `"double"`, `"integer"`, or `"logical"`.
+  The data type of the array. For `nv_aval()` only, `"double"`,
+  `"integer"` or `"logical"` create an
+  [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md)
+  instead.
 
 - shape:
 
   ([`stablehlo::Shape`](https://r-xla.github.io/stablehlo/reference/Shape.html)
   \| [`integer()`](https://rdrr.io/r/base/integer.html))  
   The shape of the array. Can be provided as an integer vector.
+
+## Value
+
+`AbstractArray()`: (`AbstractArray`)
+
+`nv_aval()`: (`AbstractArray` \|
+[`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md))  
+An [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md) when
+`dtype` names an R storage type.
 
 ## Extractors
 
@@ -100,15 +110,14 @@ nv_aval("double", c(2L, 3L))
 #> RData(double, (2,3)) 
 
 # how AbstractArrays appear in an AnvlGraph
-graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
+graph <- trace_fn(function(x) x + 1L, list(x = nv_aval("i32", 4L)))
 graph
 #> <AnvlGraph> (%x1: i32[4]) {
-#>   %1: f32[4] = convert [dtype = f32] (%x1)
-#>   %2: f32[4] = broadcast_in_axes [
+#>   %1: i32[4] = broadcast_in_axes [
 #>     shape = 4, broadcast_axes = integer(0)
-#>   ] (1:f32)
-#>   %3: f32[4] = add(%1, %2)
-#>   return %3
+#>   ] (1:i32)
+#>   %2: i32[4] = add(%x1, %1)
+#>   return %2
 #> }
 graph$inputs[[1]]$aval
 #> AbstractArray(dtype=i32, shape=4) 

@@ -46,9 +46,18 @@ as_anvl_arrays(..., .promote = NULL)
 
 ## Value
 
-(One or more
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-values).
+`as_anvl_array()`:
+([`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+\|
+[`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md))  
+An
+[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+in eager code and a
+[`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md)
+inside a trace.
+
+`as_anvl_arrays()`: (`list`)  
+One such value per input, named like `...`.
 
 ## See also
 

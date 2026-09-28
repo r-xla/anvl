@@ -110,7 +110,11 @@ the <a href="https://r-xla.github.io/anvl/articles/subsetting.html">Subsetting</
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
-The value is converted to the data type of <code>x</code>.</p></dd>
+It is brought to <code>x</code>'s data type: an R value is built at it when its
+category can reach it (<code>0L</code> serves an integer and a float <code>x</code> alike, while
+<code>1.5</code> into an <code>i32</code> <code>x</code> is an error), and an array is converted unless that
+would narrow it or leave its category (an <code>f64</code> value for an <code>f32</code> <code>x</code> is
+an error).</p></dd>
 
 
 <dt id="arg-inplace">inplace<a class="anchor" aria-label="anchor" href="#arg-inplace"></a></dt>

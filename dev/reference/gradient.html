@@ -115,7 +115,10 @@ arguments (which must all be arrayish in that case).</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code>function</code>)</p>
+    <p>(<code>function</code>)<br>
+Has the same formals as <code>f</code> and must be called inside <code><a href="jit.html">jit()</a></code>. Returns a
+named <code>list</code> of gradients, one per argument of <code>f</code> (or per <code>wrt</code> entry),
+each structured like that argument.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

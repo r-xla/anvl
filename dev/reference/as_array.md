@@ -39,7 +39,7 @@ as_array(x, ...)
 
 - ...:
 
-  Additional arguments passed to methods (unused).
+  Passed on to methods.
 
 ## Value
 

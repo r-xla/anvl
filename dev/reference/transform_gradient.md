@@ -20,8 +20,9 @@ transform_gradient(graph, wrt)
 
 - wrt:
 
-  (`character`)  
-  Names of the graph inputs to differentiate with respect to.
+  (`NULL` \| [`character()`](https://rdrr.io/r/base/character.html))  
+  Names of the graph inputs to differentiate with respect to. `NULL`
+  differentiates with respect to all inputs.
 
 ## Value
 
@@ -55,7 +56,7 @@ directly.
 ## Examples
 
 ``` r
-graph <- trace_fn(prim_mul, list(nv_aval("f32", c()), nv_aval("f32", c())))
+graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
 graph
 #> <AnvlGraph> (%x1: f32[], %x2: f32[]) {
 #>   %1: f32[] = mul(%x1, %x2)

@@ -12,8 +12,15 @@ dtype(x, ...)
 
 - x:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  An array-like object.
+  ([`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  \|
+  [`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md)
+  \|
+  [`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))  
+  An array. An R value has no data type of its own, so it is an error
+  here; use
+  [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
+  for the data type it would take.
 
 - ...:
 
@@ -30,7 +37,8 @@ This is implemented via the generic
 
 ## See also
 
-[`tengen::dtype()`](https://r-xla.github.io/tengen/reference/dtype.html)
+[`tengen::dtype()`](https://r-xla.github.io/tengen/reference/dtype.html),
+[`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
 
 ## Examples
 

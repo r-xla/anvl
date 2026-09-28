@@ -30,8 +30,12 @@ graph_desc_add(
 - args:
 
   (`list` of
-  [`GraphNode`](https://r-xla.github.io/anvl/dev/reference/GraphNode.md))  
-  The arguments to the primitive.
+  [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  The arguments to the primitive:
+  [`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md)es,
+  [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)s
+  (registered as constants of the graph) or R values (materialized at
+  their default data type).
 
 - params:
 

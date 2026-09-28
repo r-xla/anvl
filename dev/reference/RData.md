@@ -77,7 +77,8 @@ graph$inputs
 #> [[1]]
 #> GraphValue(AbstractArray(dtype=f64, shape=)) 
 #> 
-# the data types of the R values; AnvlArrays get NA here
+# the R storage types of the inputs passed as R values; NA for inputs passed
+# as AnvlArrays
 graph$rdata_types
 #> [1] "double"
 ```

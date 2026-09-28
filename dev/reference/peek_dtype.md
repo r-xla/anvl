@@ -1,8 +1,7 @@
 # Peek at a Data Type
 
-The data type `x` would take if it was converted to an `AnvlArray`.
-Relevant for R objects and their
-[`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md)
+The data type `x` would take if it materialized. Relevant for R objects
+and their [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md)
 trace-time analogon: for those it is the default of the active backend
 (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),

@@ -1,6 +1,6 @@
 # Array-like Objects
 
-A `arrayish` value is anything that represents an
+An `arrayish` value is anything that represents an
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 or can be converted to one.
 
@@ -86,14 +86,7 @@ of them with a single word:
 is_arrayish(nv_array(1:4))
 #> [1] TRUE
 
-# scalar R literals are arrayish by default
-is_arrayish(1.5)
-#> [1] TRUE
-# R arrays are arrayish by default
-is_arrayish(array(1.5))
-#> [1] TRUE
-
-# R arrays
+# R arrays and literals are arrayish by default
 is_arrayish(array(1:4), convert_ok = TRUE)
 #> [1] TRUE
 is_arrayish(array(1:4), convert_ok = FALSE)

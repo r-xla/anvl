@@ -104,25 +104,28 @@
 
 
 <dl><dt id="arg-new-data">new_data<a class="anchor" aria-label="anchor" href="#arg-new-data"></a></dt>
-<dd><p>(<code>function</code>)<br> Constructs an AnvlArray from R data.
-This should be a <code><a href="https://rdrr.io/r/base/structure.html" class="external-link">structure()</a></code> with at least a <code>$data</code> field that contains the actual
-underlying data (<code>PJRTBuffer</code> for <code>"pjrt"</code> backend, <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code> for <code>"quickr"</code> backend).
-Receives <code>row_major</code> (<code>logical(1)</code>, default <code>FALSE</code>), which gives the
-element order of raw byte payloads; backends that do not support raw
-<code>data</code> should abort on it.</p></dd>
+<dd><p>(<code>function(data, dtype, shape, device, row_major = FALSE)</code>)<br>
+Constructs an AnvlArray from R data. Must return
+<code>structure(list(data = , backend = &lt;name&gt;, ...), class = "AnvlArray")</code>, where
+<code>data</code> holds the underlying data (a <code>PJRTBuffer</code> for the <code>"pjrt"</code> backend, an
+R <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code> for the <code>"quickr"</code> backend) and <code>backend</code> is the name the
+backend is registered under. <code>row_major</code> gives the element order of raw
+byte payloads; a backend that does not support raw <code>data</code> should abort on
+it.</p></dd>
 
 
 <dt id="arg-new-empty">new_empty<a class="anchor" aria-label="anchor" href="#arg-new-empty"></a></dt>
-<dd><p>(<code>function</code>)<br> Constructs an AnvlArray of the given
-<code>dtype</code> and <code>shape</code> with unspecified contents. Called by <code><a href="AnvlArray.html">nv_empty()</a></code>.</p></dd>
+<dd><p>(<code>function(dtype, shape, device)</code>)<br>
+Constructs an AnvlArray of the given <code>dtype</code> and <code>shape</code> with unspecified
+contents. Called by <code><a href="AnvlArray.html">nv_empty()</a></code>.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
-<dd><p>(<code>function</code>)<br> Extracts the dtype from an AnvlArray.</p></dd>
+<dd><p>(<code>function(x)</code>)<br> Extracts the dtype from an AnvlArray.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
-<dd><p>(<code>function</code>)<br> Extracts the shape from an AnvlArray.</p></dd>
+<dd><p>(<code>function(x)</code>)<br> Extracts the shape from an AnvlArray.</p></dd>
 
 
 <dt id="arg-as-array">as_array<a class="anchor" aria-label="anchor" href="#arg-as-array"></a></dt>
@@ -133,32 +136,38 @@ wrapping through <code><a href="https://bit64.r-lib.org/reference/bit64-package.
 
 
 <dt id="arg-as-raw">as_raw<a class="anchor" aria-label="anchor" href="#arg-as-raw"></a></dt>
-<dd><p>(<code>function</code>)<br> Converts an AnvlArray to raw bytes.</p></dd>
+<dd><p>(<code>function(x, row_major)</code>)<br> Converts an AnvlArray to raw
+bytes.</p></dd>
 
 
 <dt id="arg-platform">platform<a class="anchor" aria-label="anchor" href="#arg-platform"></a></dt>
-<dd><p>(<code>function</code>)<br> Returns the platform name (e.g. <code>"cpu"</code>).</p></dd>
+<dd><p>(<code>function(x)</code>)<br> Returns the platform name (e.g. <code>"cpu"</code>).</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
-<dd><p>(<code>function</code>)<br> Returns the device object for an AnvlArray.</p></dd>
+<dd><p>(<code>function(x)</code>)<br> Returns the device object for an AnvlArray.</p></dd>
 
 
 <dt id="arg-new-device">new_device<a class="anchor" aria-label="anchor" href="#arg-new-device"></a></dt>
-<dd><p>(<code>function</code>)<br> Constructs a backend-specific device
-object from a device type string (e.g. <code>"cpu"</code>). Called by <code><a href="nv_device.html">nv_device()</a></code>.</p></dd>
+<dd><p>(<code>function(x)</code>)<br> Constructs a backend-specific device
+object from a device identifier (e.g. <code>"cpu"</code> or <code>"cuda:1"</code>). Called by
+<code><a href="nv_device.html">nv_device()</a></code>.</p></dd>
 
 
 <dt id="arg-print-data">print_data<a class="anchor" aria-label="anchor" href="#arg-print-data"></a></dt>
-<dd><p>(<code>function</code>)<br> Prints the array data with a footer.</p></dd>
+<dd><p>(<code>function(x, footer)</code>)<br> Prints the array data with a
+footer.</p></dd>
 
 
 <dt id="arg-jit">jit<a class="anchor" aria-label="anchor" href="#arg-jit"></a></dt>
-<dd><p>(<code>function</code>)<br> Creates a JIT-compiled function implementation.</p></dd>
+<dd><p>(<code>function(f, static, cache_size, &lt;options&gt;, device = NULL)</code>)<br>
+Creates the backend's implementation of a JIT-compiled function and returns
+it as a <code>function</code>. The formals in place of <code>&lt;options&gt;</code> are the
+backend-specific options <code><a href="jit.html">jit()</a></code> accepts through <code>...</code>.</p></dd>
 
 
 <dt id="arg-await-data">await_data<a class="anchor" aria-label="anchor" href="#arg-await-data"></a></dt>
-<dd><p>(<code>function</code>)<br> Blocks until the array's underlying data
+<dd><p>(<code>function(x)</code>)<br> Blocks until the array's underlying data
 is ready. Called by <code><a href="await.html">await()</a></code> for <code>AnvlArray</code>s; a no-op for backends
 without async execution.</p></dd>
 

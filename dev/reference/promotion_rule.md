@@ -6,8 +6,9 @@ Most commonly used via the `.promote` argument of
 
 `promotion_common()` brings every input to their common data type
 ([`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)).
-R values always yield within the type category (such as float) and
-otherwise contribute their default data type.
+An R value takes the data type the arrays meet at when that is in its
+own or a higher category, and otherwise contributes its default data
+type.
 
 `promotion_like()` brings the inputs to the data type of a selected
 input. If the selected input is an R value, its default data type is
@@ -15,12 +16,13 @@ used.
 
 `promotion_dtype()` brings the inputs to the specified data type.
 
-`promotion_rdata_common()` brings the *R values* to the common data
-type, as long as it is within their category (a `double` can e.g. *not*
-become an integer). `AnvlArray` inputs are left as they are and the
-function throws an error if not all of them have exactly the same data
-type. This rule is commonly used in primitives expecting homogenous
-inputs for one or more argument subsets.
+`promotion_rdata_common()` brings the *R values* to the data type of the
+arrays among the inputs, which must all have the same one. An R value
+must be in that data type's category (a `double` can e.g. *not* become
+an integer). When all inputs are R values, they settle on their shared
+default data type; R values of different storage types are an error.
+This rule is commonly used in primitives expecting homogeneous inputs
+for one or more argument subsets.
 
 `promotion_grouped()` applies several rules to disjoint subsets.
 
@@ -52,7 +54,10 @@ promotion_rule(fn, kind, on = NULL, ...)
   (`NULL` \| [`character()`](https://rdrr.io/r/base/character.html) \|
   [`numeric()`](https://rdrr.io/r/base/numeric.html))  
   Subset of arguments to apply a rule to. Indicated either via position
-  or argument name.
+  or argument name. For `promotion_rule()`, `on` only declares which
+  arguments the rule covers (which `promotion_grouped()` needs to check
+  that its rules are disjoint); `fn` itself must restrict itself to
+  them.
 
 - fallback:
 
@@ -89,8 +94,12 @@ promotion_rule(fn, kind, on = NULL, ...)
 
 - ...:
 
-  (`PromotionRule`)  
+  For `promotion_grouped()`: (`PromotionRule`)  
   The rules to apply to disjoint argument subsets.
+
+  For `promotion_rule()`: (any)  
+  Further fields stored in the rule's `spec` attribute next to `on`,
+  e.g. for [`format()`](https://rdrr.io/r/base/format.html) to show.
 
 - fn:
 
@@ -105,8 +114,7 @@ promotion_rule(fn, kind, on = NULL, ...)
 
 ## Value
 
-(`function(args) -> list()`) A function returning data types for those
-inputs to be converted and `NULL` for those to be left unchanged.
+(`PromotionRule`)
 
 ## See also
 
@@ -153,6 +161,42 @@ try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 #> Error : Cannot bring `..2` to data type "f32".
 #> ✖ "f64" is not promotable to "f32".
 #> ℹ Convert it explicitly with `nv_convert()`.
+promotion_dtype("f64")(list(1, nv_scalar(2, "f32")))
+#> [[1]]
+#> <f64>
+#> 
+#> [[2]]
+#> <f64>
+#> 
+promotion_rdata_common()(list(nv_scalar(1, "f64"), 2))
+#> [[1]]
+#> <f64>
+#> 
+#> [[2]]
+#> <f64>
+#> 
+try(promotion_rdata_common()(list(nv_scalar(1L, "i32"), 2.5)))
+#> Error : `..2` is an R double, which cannot be used at the "i32" data type here.
+#> ℹ A literal is only ever built at a data type of its own category: a double
+#>   becomes a float, an integer an integer, a logical a "bool".
+#> ℹ Use an operation that promotes across categories, or convert explicitly with
+#>   `nv_convert()`.
+rule <- promotion_grouped(
+  promotion_dtype("f64", on = "x"),
+  promotion_like("x", on = "y")
+)
+rule
+#> <promotion_grouped(<promotion_dtype(f64) on "x">, <promotion_like("x") on "y">) on "x", "y"> 
+rule(list(x = 1, y = nv_scalar(2L, "i32"), z = 3L))
+#> [[1]]
+#> <f64>
+#> 
+#> [[2]]
+#> <f32>
+#> 
+#> [[3]]
+#> NULL
+#> 
 # every input at the widest float in the call, and never below f32.
 widest_float <- promotion_rule(
   function(args) {

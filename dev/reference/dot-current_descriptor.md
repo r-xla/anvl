@@ -19,4 +19,6 @@ Get the current graph being built (via
 
 ## Value
 
-([`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md))
+([`GraphDescriptor`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
+\| `NULL`)  
+`NULL` only when `silent = TRUE` and no graph is being built.

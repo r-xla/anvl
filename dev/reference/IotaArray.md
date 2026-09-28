@@ -2,7 +2,8 @@
 
 An
 [`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md)
-representing an integer sequence. Usually created by
+representing an arithmetic sequence with step 1 along one axis. Usually
+created by
 [`nv_iota()`](https://r-xla.github.io/anvl/dev/reference/nv_iota.md) /
 [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md),
 which both call
@@ -38,6 +39,10 @@ IotaArray(shape, dtype, axis, start = 1L)
 
   (`integer(1)`)  
   The starting value.
+
+## Value
+
+(`IotaArray`)
 
 ## Lowering
 

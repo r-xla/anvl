@@ -19,6 +19,10 @@ ConcreteArray(data)
   ([`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))  
   The actual array data.
 
+## Value
+
+(`ConcreteArray`)
+
 ## Lowering
 
 When lowering to XLA, these become inputs to the executable instead of

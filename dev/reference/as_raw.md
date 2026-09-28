@@ -13,8 +13,8 @@ as_raw(x, ...)
 
 - x:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  An array-like object.
+  ([`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))  
+  An array.
 
 - ...:
 

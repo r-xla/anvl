@@ -20,8 +20,7 @@ returning the gradient of a function as another R function.
 - `anvl.default_dtypes` (named
   [`character()`](https://rdrr.io/r/base/character.html) \| named
   [`list()`](https://rdrr.io/r/base/list.html)): the data types an R
-  double and integer materialize at when it cannot be inferred from
-  another operand. See
+  double and an R integer settle on when they meet no typed array. See
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   for more details.
 

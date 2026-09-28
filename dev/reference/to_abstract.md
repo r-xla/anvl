@@ -13,7 +13,9 @@ to_abstract(x, pure = FALSE)
 
 - x:
 
-  (`any`)  
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+  \|
+  [`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))  
   Object to convert.
 
 - pure:
@@ -24,7 +26,18 @@ to_abstract(x, pure = FALSE)
 
 ## Value
 
-([`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))
+([`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))  
+A
+[`ConcreteArray`](https://r-xla.github.io/anvl/dev/reference/ConcreteArray.md)
+for an
+[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+an [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md) for an
+R value, the abstract array of a
+[`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md),
+and `x` itself for an
+[`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md).
+With `pure = TRUE`, a plain `AbstractArray` of the same shape and data
+type.
 
 ## Examples
 

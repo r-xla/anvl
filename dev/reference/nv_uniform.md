@@ -92,8 +92,7 @@ described under `dtype`.
 
 The Uniform distribution has probability density function: \$\$f(x) =
 \frac{1}{b - a}, \quad a \le x \le b\$\$ and zero elsewhere, where \\a\\
-is `min` and \\b\\ is `max`. For `nv_dunif`, `nv_punif`, and `nv_qunif`,
-the `min` and `max` are converted to the data type of `x`/`q`/`p`.
+is `min` and \\b\\ is `max`.
 
 All four are univariate functions evaluated elementwise, returning one
 value per element of `x`/`q`/`p` (or of the sample). Non-scalar
@@ -102,6 +101,14 @@ value per element of `x`/`q`/`p` (or of the sample). Non-scalar
 b_i\]\\. For that, reduce over the result:
 `nv_prod(nv_dunif(x, min, max))`, or
 `nv_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
+
+## Data Types
+
+`nv_dunif()`, `nv_punif()` and `nv_qunif()` compute at the data type of
+`x`/`q`/`p`, which must be float; an R value settles on the [default
+float](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md). An
+R value for `min` or `max` takes this data type. An array is promoted to
+it, so a wider one (e.g. `f64` for an `f32` `x`) is an error.
 
 ## Random generation
 

@@ -5,29 +5,29 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Reverse Rule — rule_reverse"><meta name="description" content="Construct a reverse-mode autodiff rule for a primitive.
-The backward argument should be provided if the forward call for
-the primitive should run un-modified.
-This covers most use-cases.
-The backward argument should have this signature:
-function(inputs, outputs, grads, params, required) -&amp;gt; list(input_grads).
-In some scenarios, it can be beneficial to perform a slightly different forward pass
-to enable a more efficient backward pass.
-In this case, pass the forward argument.
-It should return a list containing the results from the forward pass, as well as
-closure that has the same signature as the one above.
-It can make use of intermediate values computed in the forward pass via lexical scoping."><meta property="og:description" content="Construct a reverse-mode autodiff rule for a primitive.
-The backward argument should be provided if the forward call for
-the primitive should run un-modified.
-This covers most use-cases.
-The backward argument should have this signature:
-function(inputs, outputs, grads, params, required) -&amp;gt; list(input_grads).
-In some scenarios, it can be beneficial to perform a slightly different forward pass
-to enable a more efficient backward pass.
-In this case, pass the forward argument.
-It should return a list containing the results from the forward pass, as well as
-closure that has the same signature as the one above.
-It can make use of intermediate values computed in the forward pass via lexical scoping."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Reverse Rule — rule_reverse"><meta name="description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
+of backward and forward.
+Pass backward when the primitive's forward call can run unmodified, which
+covers most use cases. It has the signature
+function(inputs, outputs, grads, params, required) and returns a list
+with one entry per input: that input's gradient, or NULL where
+required says it is not needed.
+Pass forward when a slightly different forward pass enables a more
+efficient backward pass. It has the signature function(inputs, params)
+and returns list(outputs = , backward = ): the forward results and a
+closure with the signature of backward above, which can use intermediate
+values of the forward pass via lexical scoping."><meta property="og:description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
+of backward and forward.
+Pass backward when the primitive's forward call can run unmodified, which
+covers most use cases. It has the signature
+function(inputs, outputs, grads, params, required) and returns a list
+with one entry per input: that input's gradient, or NULL where
+required says it is not needed.
+Pass forward when a slightly different forward pass enables a more
+efficient backward pass. It has the signature function(inputs, params)
+and returns list(outputs = , backward = ): the forward results and a
+closure with the signature of backward above, which can use intermediate
+values of the forward pass via lexical scoping."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -99,18 +99,18 @@ It can make use of intermediate values computed in the forward pass via lexical 
     </div>
 
     <div class="ref-description section level2">
-    <p>Construct a reverse-mode autodiff rule for a primitive.
-The <code>backward</code> argument should be provided if the <code>forward</code> call for
-the primitive should run un-modified.
-This covers most use-cases.
-The <code>backward</code> argument should have this signature:
-<code>function(inputs, outputs, grads, params, required) -&gt; list(input_grads)</code>.</p>
-<p>In some scenarios, it can be beneficial to perform a slightly different forward pass
-to enable a more efficient backward pass.
-In this case, pass the <code>forward</code> argument.
-It should return a list containing the results from the forward pass, as well as
-closure that has the same signature as the one above.
-It can make use of intermediate values computed in the forward pass via lexical scoping.</p>
+    <p>Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
+of <code>backward</code> and <code>forward</code>.</p>
+<p>Pass <code>backward</code> when the primitive's forward call can run unmodified, which
+covers most use cases. It has the signature
+<code>function(inputs, outputs, grads, params, required)</code> and returns a <code>list</code>
+with one entry per input: that input's gradient, or <code>NULL</code> where
+<code>required</code> says it is not needed.</p>
+<p>Pass <code>forward</code> when a slightly different forward pass enables a more
+efficient backward pass. It has the signature <code>function(inputs, params)</code>
+and returns <code>list(outputs = , backward = )</code>: the forward results and a
+closure with the signature of <code>backward</code> above, which can use intermediate
+values of the forward pass via lexical scoping.</p>
     </div>
 
     <div class="section level2">
@@ -123,13 +123,14 @@ It can make use of intermediate values computed in the forward pass via lexical 
 
 
 <dl><dt id="arg-backward">backward<a class="anchor" aria-label="anchor" href="#arg-backward"></a></dt>
-<dd><p>(<code>function</code>)<br>
-Backward hook for default case.</p></dd>
+<dd><p>(<code>NULL</code> | <code>function</code>)<br>
+Backward hook for the default case.</p></dd>
 
 
 <dt id="arg-forward">forward<a class="anchor" aria-label="anchor" href="#arg-forward"></a></dt>
-<dd><p>(<code>function</code>)<br>
-Alternative-forward hook that returns both primals and backward closure.</p></dd>
+<dd><p>(<code>NULL</code> | <code>function</code>)<br>
+Alternative forward hook that returns both the outputs and a backward
+closure.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -141,6 +142,26 @@ Alternative-forward hook that returns both primals and backward closure.</p></dd
     <div class="dont-index"><p><code><a href="transform_gradient.html">transform_gradient()</a></code></p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the rule of prim_negate()</span></span></span>
+<span class="r-in"><span><span class="fu">rule_reverse</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">outputs</span>, <span class="va">grads</span>, <span class="va">params</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="kw">if</span> <span class="op">(</span><span class="va">required</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> <span class="fu"><a href="prim_negate.html">prim_negate</a></span><span class="op">(</span><span class="va">grads</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $forward</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $backward</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> function (inputs, outputs, grads, params, required) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     list(if (required[[1L]]) prim_negate(grads[[1L]]))</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5598056f36f0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "anvl_rule_reverse"</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

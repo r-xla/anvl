@@ -9,8 +9,8 @@ can be serialized to MLIR text via
 and subsequently compiled to an XLA executable with
 [`pjrt::pjrt_compile()`](https://r-xla.github.io/pjrt/reference/pjrt_compile.html).
 
-The rules for translating to stablehlo are stored in
-`$rules[["stablehlo"]]` of the primitives.
+The rule for translating a primitive to stablehlo is
+`prim_<name>[["stablehlo"]]`.
 
 This is a low-level function; most users should use
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) instead.
@@ -95,10 +95,12 @@ Of length 3:
 - the
   [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)
 
-- The list of
+- The graph's constants: the
   [`GraphValue`](https://r-xla.github.io/anvl/dev/reference/GraphValue.md)s
   holding
-  [`ConcreteArray`](https://r-xla.github.io/anvl/dev/reference/ConcreteArray.md)s.
+  [`ConcreteArray`](https://r-xla.github.io/anvl/dev/reference/ConcreteArray.md)s,
+  whose data must be passed as the leading inputs at execution time when
+  `constants_as_inputs = TRUE`.
 
 - A list of phantom-output specs, one per phantom donated input appended
   when `donate_unaliased_outputs = TRUE`. Each entry is a
