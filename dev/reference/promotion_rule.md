@@ -24,7 +24,8 @@ default data type; R values of different storage types are an error.
 This rule is commonly used in primitives expecting homogeneous inputs
 for one or more argument subsets.
 
-`promotion_grouped()` applies several rules to disjoint subsets.
+`promotion_grouped()` applies several rules to disjoint subsets. The
+rules must all refer to arguments by name, or all by position.
 
 `promotion_rule()` creates a new promotion rule. It takes in
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)

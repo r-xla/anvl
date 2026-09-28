@@ -140,6 +140,7 @@ g(nv_array(3), FALSE)
 #>  6
 #> [ CPUf32{1} ] 
 # the same function runs on whichever backend is active when it is called
+f <- jit(function(x, y) x + y)
 with_backend("quickr", f(nv_array(1), nv_array(2)))
 #> AnvlArray
 #> [1] 3
