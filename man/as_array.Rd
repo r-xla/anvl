@@ -2,16 +2,10 @@
 % Please edit documentation in R/array.R, R/reexports.R
 \name{as_array.AnvlArray}
 \alias{as_array.AnvlArray}
-\alias{as.array.AnvlArray}
-\alias{as.matrix.AnvlArray}
 \alias{as_array}
 \title{Convert to an R Array}
 \usage{
 \method{as_array}{AnvlArray}(x, check = "warn", ...)
-
-\method{as.array}{AnvlArray}(x, check = "warn", ...)
-
-\method{as.matrix}{AnvlArray}(x, check = "warn", ...)
 
 as_array(x, ...)
 }
@@ -32,8 +26,7 @@ See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} artic
 \value{
 (\code{\link[base:array]{array}} | \code{vector(1)})\cr
 An R array with the input's shape, or -- for a scalar, which R cannot
-represent as an array -- a vector of length 1. \code{as.array()} returns an
-array of shape \code{1} for a scalar.
+represent as an array -- a vector of length 1.
 }
 \description{
 Transfers array data to R and returns it as an R \code{\link[base:array]{array}}.
@@ -41,10 +34,6 @@ Only in the case of scalars is the result a vector of length 1, as R \code{array
 }
 \details{
 This is implemented via the generic \code{\link[tengen:as_array]{tengen::as_array()}}.
-
-\code{as.array()} and \code{as.matrix()} follow their base R contracts instead:
-\code{as.array()} always returns an R array, so a scalar becomes a 1-D array
-of one entry, and \code{as.matrix()} requires a 2-D array.
 }
 \section{Data types}{
 
@@ -79,7 +68,5 @@ as_array(x)
 y <- nv_scalar(1L)
 # R arrays can't have 0 axes:
 as_array(y)
-as.array(y)
-as.matrix(nv_array(1:6, shape = c(2, 3)))
 \dontshow{\}) # examplesIf}
 }

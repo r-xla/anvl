@@ -585,26 +585,20 @@ assert_check_level <- function(check) {
   ))
 }
 
-#' @rdname as_array
 #' @method as.array AnvlArray
 #' @export
-as.array.AnvlArray <- function(x, check = "warn", ...) {
-  out <- as_array(x, check = check)
-  if (is.null(dim(out))) {
-    dim(out) <- length(out)
-  }
-  out
+as.array.AnvlArray <- function(x, ...) {
+  as_array(x)
 }
 
-#' @rdname as_array
 #' @method as.matrix AnvlArray
 #' @export
-as.matrix.AnvlArray <- function(x, check = "warn", ...) {
+as.matrix.AnvlArray <- function(x, ...) {
   nd <- naxes(x)
   if (nd != 2L) {
     cli_abort("{.fn as.matrix} requires a 2-D array, but got a {nd}-D array.")
   }
-  as_array(x, check = check)
+  as_array(x)
 }
 
 #' @export
@@ -631,9 +625,6 @@ await.AnvlArray <- function(x, ...) {
 #'   `2^63` becomes `NA`); that is warned about, and `check = "err"` makes it
 #'   an error.
 #' * `as.logical()`: `bool`.
-#' * `as.raw()`: signed or unsigned integer dtypes. Like [base::as.raw()] it
-#'   converts the values, so a value outside `0` to `255` becomes `00` with a
-#'   warning. Use [`as_raw()`] for the bytes the array is stored as.
 #' * `as.vector()`: any dtype; the R type is chosen by the dtype. For the
 #'   dtypes R has no native type for (`i64`, `ui64`, `ui32`) that is the
 #'   [`bit64::integer64`] [`as_array()`] returns, since a bare double could
@@ -642,9 +633,9 @@ await.AnvlArray <- function(x, ...) {
 #'
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
-#' The signatures of `as.vector()` and `as.raw()` are fixed by their generics,
-#' so they take no `check` argument and always report at the default level;
-#' call [`as_array()`] directly to pick another one.
+#' `as.vector()`'s signature is fixed by the generic, so it takes no `check`
+#' argument and always reports at the default level; call [`as_array()`]
+#' directly to pick another one.
 #' @param x ([`AnvlArray`])\cr
 #'   Array to coerce.
 #' @param mode (`character(1)`)\cr
@@ -654,7 +645,7 @@ await.AnvlArray <- function(x, ...) {
 #' @param check (`character(1)` | `FALSE`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
-#' @return (`double()` | `integer()` | `logical()` | `raw()` | [`bit64::integer64`])\cr
+#' @return (`double()` | `integer()` | `logical()` | [`bit64::integer64`])\cr
 #'   The elements of `x` in column-major order, without a shape.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
@@ -662,7 +653,6 @@ await.AnvlArray <- function(x, ...) {
 #' as.integer(nv_array(1:6, shape = c(2L, 3L)))
 #' bit64::as.integer64(nv_array(1:6, shape = c(2L, 3L), dtype = "i64"))
 #' as.logical(nv_array(c(TRUE, FALSE), dtype = "bool"))
-#' as.raw(nv_array(c(1L, 255L), dtype = "ui8"))
 #' as.vector(x)
 #' @name as-AnvlArray
 NULL
@@ -712,17 +702,6 @@ as.logical.AnvlArray <- function(x, check = "warn", ...) {
     cli_abort("{.fn as.logical} requires a {.val bool} dtype, but got {.val {as.character(dtype(x))}}.")
   }
   as.logical(as_array(x, check = check))
-}
-
-#' @rdname as-AnvlArray
-#' @method as.raw AnvlArray
-#' @export
-as.raw.AnvlArray <- function(x) {
-  dt <- dtype(x)
-  if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
-    cli_abort("{.fn as.raw} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
-  }
-  as.raw(as.integer(as_array(x)))
 }
 
 #' @rdname as-AnvlArray

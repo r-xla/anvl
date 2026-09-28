@@ -65,10 +65,6 @@ tengen::device
 #' @details
 #' This is implemented via the generic [`tengen::as_array()`].
 #'
-#' `as.array()` and `as.matrix()` follow their base R contracts instead:
-#' `as.array()` always returns an R array, so a scalar becomes a 1-D array
-#' of one entry, and `as.matrix()` requires a 2-D array.
-#'
 #' @section Data types:
 #' R has fewer data types than anvl, so the values are converted to the R
 #' type that can represent them:
@@ -96,16 +92,13 @@ tengen::device
 #' @param ... Passed on to methods.
 #' @returns ([`array`][base::array] | `vector(1)`)\cr
 #'   An R array with the input's shape, or -- for a scalar, which R cannot
-#'   represent as an array -- a vector of length 1. `as.array()` returns an
-#'   array of shape `1` for a scalar.
+#'   represent as an array -- a vector of length 1.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' as_array(x)
 #' y <- nv_scalar(1L)
 #' # R arrays can't have 0 axes:
 #' as_array(y)
-#' as.array(y)
-#' as.matrix(nv_array(1:6, shape = c(2, 3)))
 #' @name as_array
 NULL
 

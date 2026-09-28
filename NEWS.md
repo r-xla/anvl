@@ -164,10 +164,6 @@
 * `nv_subset_assign()` and `[<-` gain `inplace`, which writes into the memory of
   `x` instead of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
 * New `axes()` returns the axis indices of an array, `seq_len(naxes(x))`.
-* `as.raw()` converts an `AnvlArray` of an integer data type to a raw vector,
-  like `base::as.raw()`; `as_raw()` still returns its bytes.
-* `as.array()` on a scalar `AnvlArray` returns a 1-D array, like
-  `base::as.array()`; `as.array()` and `as.matrix()` gain `check`.
 * New `local_default_device()` and `with_default_device()` set the
   `anvl.default_device` option, which names the device a call that names none
   allocates on in place of the first CPU device.

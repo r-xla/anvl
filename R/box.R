@@ -61,12 +61,6 @@ as.logical.GraphBox <- function(x, ...) {
   abort_box_to_r(x, "as.logical")
 }
 
-#' @method as.raw GraphBox
-#' @export
-as.raw.GraphBox <- function(x) {
-  abort_box_to_r(x, "as.raw")
-}
-
 #' @method as.character GraphBox
 #' @export
 as.character.GraphBox <- function(x, ...) {
