@@ -28,7 +28,7 @@ Tree structure of the inputs.}
 \item{donate}{(\code{character()})\cr
 Names of the arguments whose buffers should be donated.}
 
-\item{device}{(\code{NULL} | \code{character(1)})\cr
+\item{device}{(\code{NULL} | \code{character(1)} | \code{PJRTDevice})\cr
 Target device (e.g. \code{"cpu"}, \code{"cuda"}). If \code{NULL}, inferred from \code{arg_devices}
 and traced arrays.}
 
@@ -63,6 +63,9 @@ it is. The R data has no dtype of its own, so the program is the only
 thing that knows what it is uploaded as -- pjrt's dispatcher therefore
 requires an entry for every bare R input and rejects a dtype declared
 for an array one. \code{NULL} for a call whose inputs are all arrays.
+\item \code{device}: The \code{PJRTDevice} the executable was compiled for.
+\item \code{phantom_specs}: One \code{list(dtype, shape)} per phantom donated input the
+executor must allocate for an output (see \code{\link[=stablehlo]{stablehlo()}}).
 }
 }
 \description{

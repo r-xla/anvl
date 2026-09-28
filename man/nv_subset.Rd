@@ -5,6 +5,8 @@
 \alias{nv_subset}
 \title{Subset an Array}
 \usage{
+\method{[}{AnvlArray}(x, ...)
+
 nv_subset(x, ...)
 }
 \arguments{
@@ -23,7 +25,7 @@ that axis. A mask that is the only subscript and has the same shape as
 values come from an array only work in eager mode, because the number of
 selected elements determines the output shape.
 
-See \code{vignette("subsetting")} for details.}
+See the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -57,6 +59,7 @@ x[x > 6]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset_assign]{nv_subset_assign()}} for updating subsets, \code{vignette("subsetting")}
+\code{\link[=nv_subset_assign]{nv_subset_assign()}} for updating subsets,
+the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article
 for a comprehensive guide.
 }

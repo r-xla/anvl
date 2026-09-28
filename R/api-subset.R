@@ -680,7 +680,7 @@ parse_subset_spec <- function(quo, axis_size, axis) {
   cli_abort(c(
     "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
     x = detail,
-    i = "See {.code vignette(\"subsetting\")}."
+    i = "See {.url {article_url(\"subsetting\")}}."
   ))
 }
 
@@ -703,12 +703,13 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #'   values come from an array only work in eager mode, because the number of
 #'   selected elements determines the output shape.
 #'
-#'   See `vignette("subsetting")` for details.
+#'   See `r roxy_article("subsetting")` for details.
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type, and the shape the specifications select --
 #'   a scalar index drops its axis, a range, an index array or an axis mask
 #'   keeps it, and a whole-array mask yields a 1-D result.
-#' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
+#' @seealso [nv_subset_assign()] for updating subsets,
+#'   `r roxy_article("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
@@ -861,7 +862,11 @@ subset_scatter_core_inplace <- local({
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
 #'   values must match it.
-#'   The value is converted to the data type of `x`.
+#'   It is brought to `x`'s data type: an R value is built at it when its
+#'   category can reach it (`0L` serves an integer and a float `x` alike, while
+#'   `1.5` into an `i32` `x` is an error), and an array is converted unless that
+#'   would narrow it or leave its category (an `f64` value for an `f32` `x` is
+#'   an error).
 #' @param inplace (`logical(1)`)\cr
 #'   Whether to write into the memory of `x` instead of allocating a new array.
 #'   This avoids the copy of `x` that an eager subset assignment otherwise
@@ -875,7 +880,8 @@ subset_scatter_core_inplace <- local({
 #'   Default is `FALSE`.
 #' @return ([`arrayish`])\cr
 #'   Has `x`'s data type and shape, with the subset replaced.
-#' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
+#' @seealso [nv_subset()], `r roxy_article("subsetting")` for a
+#'   comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
 #' # set row 1 to zeros

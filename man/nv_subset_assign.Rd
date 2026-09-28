@@ -5,6 +5,8 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
+\method{[}{AnvlArray}(x, ...) <- value
+
 nv_subset_assign(x, ..., value, inplace = FALSE)
 }
 \arguments{
@@ -23,12 +25,16 @@ that axis. A mask that is the only subscript and has the same shape as
 values come from an array only work in eager mode, because the number of
 selected elements determines the output shape.
 
-See \code{vignette("subsetting")} for details.}
+See the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
-The value is converted to the data type of \code{x}.}
+It is brought to \code{x}'s data type: an R value is built at it when its
+category can reach it (\code{0L} serves an integer and a float \code{x} alike, while
+\code{1.5} into an \code{i32} \code{x} is an error), and an array is converted unless that
+would narrow it or leave its category (an \code{f64} value for an \code{f32} \code{x} is
+an error).}
 
 \item{inplace}{(\code{logical(1)})\cr
 Whether to write into the memory of \code{x} instead of allocating a new array.
@@ -68,5 +74,6 @@ x
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset]{nv_subset()}}, \code{vignette("subsetting")} for a comprehensive guide.
+\code{\link[=nv_subset]{nv_subset()}}, the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for a
+comprehensive guide.
 }

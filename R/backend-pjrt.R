@@ -109,7 +109,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Tree structure of the inputs.
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
-#' @param device (`NULL` | `character(1)`)\cr
+#' @param device (`NULL` | `character(1)` | `PJRTDevice`)\cr
 #'   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from `arg_devices`
 #'   and traced arrays.
 #' @param arg_devices (`list`)\cr
@@ -138,6 +138,9 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'     thing that knows what it is uploaded as -- pjrt's dispatcher therefore
 #'     requires an entry for every bare R input and rejects a dtype declared
 #'     for an array one. `NULL` for a call whose inputs are all arrays.
+#'   - `device`: The `PJRTDevice` the executable was compiled for.
+#'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
+#'     executor must allocate for an output (see [`stablehlo()`]).
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -265,8 +268,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' @section Data representation:
 #' An [`AnvlArray`] with `backend = "pjrt"` wraps a [`pjrt::pjrt_buffer()`]
 #' stored in the `$data` field. The buffer owns the memory holding the array
-#' values and may live on any device supported by PJRT (CPU, CUDA, Metal,
-#' ...). Calling [`as_array()`] transfers the buffer contents back to an R
+#' values and may live on any device supported by PJRT (CPU, CUDA, ...).
+#' Calling [`as_array()`] transfers the buffer contents back to an R
 #' array; calling [`nv_array()`] on an R object uploads it to the requested
 #' device.
 #'
@@ -290,7 +293,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' a mode that replaces subnormal inputs and results with zero. The exact
 #' behavior depends on the platform, backend, and operation.
 #'
-#' See `vignette("gotchas", package = "anvl")` for an explanation and examples.
+#' See `r roxy_article("gotchas")` for an explanation and examples.
 #'
 #' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose

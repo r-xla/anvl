@@ -6,6 +6,8 @@
 \title{Arc Sine}
 \usage{
 nv_asin(x)
+
+\method{asin}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

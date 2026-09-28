@@ -1,10 +1,5 @@
 ---
 title: "Static Shape Restriction"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Static Shape Restriction}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -14,7 +9,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette covers the static shape restriction within `jit()`.
+This article covers the static shape restriction within `jit()`.
 First, we describe what this means and then we discuss how to work around it.
 
 Whenever the XLA compiler that underpins `jit()` compiles a program, it must know the shape of every intermediate value at compile time.
@@ -24,10 +19,10 @@ Other examples are `which(x > 0)` or `x[x > 0]`.
 While this restriction is less ergonomic, it means the compiler knows more about your program and your compiled executable will run faster.
 The cost is that some operations require rethinking, and a few cannot currently be expressed inside `jit()` at all.
 
-For many operations, you can work around the restriction by keeping shapes fixed and using a logical mask -- the same idea presented in the *Padding* section of the efficiency vignette.
+For many operations, you can work around the restriction by keeping shapes fixed and using a logical mask -- the same idea presented in the [padding inputs to avoid recompilation](efficiency.html#padding-inputs-to-avoid-recompilation) section of the efficiency article.
 We cover some common patterns below.
 For operations we cannot yet handle in-graph (such as `which()` or `unique()`), you currently need to convert the `AnvlArray` back to R, apply the operation there, and then convert the result back to an `AnvlArray` to resume the computation.
-We hope to lift the static-shape restriction in the long term and add functions like `which()` and `unique()` to {anvl}'s eager API to make this more ergonomic.
+We hope to lift the static-shape restriction in the long term.
 
 ## The masking pattern
 

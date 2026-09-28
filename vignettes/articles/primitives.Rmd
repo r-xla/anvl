@@ -1,10 +1,5 @@
 ---
 title: "Primitives Reference"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Primitives Reference}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -32,8 +27,8 @@ primitives_list <- lapply(prims, function(p) {
   data.frame(
     Name = p_meta$name,
     StableHLO = if (has_stablehlo) "\u2713" else "\u2717",
-    Quickr = if (has_quickr) "\u2713" else "\u2717",
-    Reverse = if (has_reverse) "\u2713" else "\u2717"
+    Reverse = if (has_reverse) "\u2713" else "\u2717",
+    Quickr = if (has_quickr) "\u2713" else "\u2717"
   )
 })
 

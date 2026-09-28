@@ -7,29 +7,37 @@
 rule_reverse(backward = NULL, forward = NULL)
 }
 \arguments{
-\item{backward}{(\code{function})\cr
-Backward hook for default case.}
+\item{backward}{(\code{NULL} | \code{function})\cr
+Backward hook for the default case.}
 
-\item{forward}{(\code{function})\cr
-Alternative-forward hook that returns both primals and backward closure.}
+\item{forward}{(\code{NULL} | \code{function})\cr
+Alternative forward hook that returns both the outputs and a backward
+closure.}
 }
 \value{
 (\code{anvl_rule_reverse})
 }
 \description{
-Construct a reverse-mode autodiff rule for a primitive.
-The \code{backward} argument should be provided if the \code{forward} call for
-the primitive should run un-modified.
-This covers most use-cases.
-The \code{backward} argument should have this signature:
-\verb{function(inputs, outputs, grads, params, required) -> list(input_grads)}.
+Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
+of \code{backward} and \code{forward}.
 
-In some scenarios, it can be beneficial to perform a slightly different forward pass
-to enable a more efficient backward pass.
-In this case, pass the \code{forward} argument.
-It should return a list containing the results from the forward pass, as well as
-closure that has the same signature as the one above.
-It can make use of intermediate values computed in the forward pass via lexical scoping.
+Pass \code{backward} when the primitive's forward call can run unmodified, which
+covers most use cases. It has the signature
+\verb{function(inputs, outputs, grads, params, required)} and returns a \code{list}
+with one entry per input: that input's gradient, or \code{NULL} where
+\code{required} says it is not needed.
+
+Pass \code{forward} when a slightly different forward pass enables a more
+efficient backward pass. It has the signature \verb{function(inputs, params)}
+and returns \code{list(outputs = , backward = )}: the forward results and a
+closure with the signature of \code{backward} above, which can use intermediate
+values of the forward pass via lexical scoping.
+}
+\examples{
+# the rule of prim_negate()
+rule_reverse(function(inputs, outputs, grads, params, required) {
+  list(if (required[[1L]]) prim_negate(grads[[1L]]))
+})
 }
 \seealso{
 \code{\link[=transform_gradient]{transform_gradient()}}

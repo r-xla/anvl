@@ -1,14 +1,15 @@
 #' @title AnvlPrimitive
 #' @description
-#' Primitive interpretation rule.
+#' Metadata object of a primitive: its name, sub-graph parameters and
+#' interpretation rules.
 #' Note that `[[` and `[[<-` access the interpretation rules.
 #' To access other fields, use `$` and `$<-`.
 #'
-#' A primitive is considered higher-order if it contains subgraphs.
-#' @param name (`character()`)\cr
-#'   The name of the primitive.
+#' A primitive is considered higher-order if it has subgraphs.
+#' @param name (`character(1)`)\cr
+#'   The name of the primitive, without the `prim_` prefix.
 #' @param subgraphs (`character()`)\cr
-#'   Names of parameters that are subgraphs. Only used if `higher_order = TRUE`.
+#'   Names of parameters that are subgraphs.
 #' @return (`AnvlPrimitive`)
 #' @export
 AnvlPrimitive <- function(name, subgraphs = character()) {
@@ -80,7 +81,7 @@ print.AnvlPrimitive <- function(x, ...) {
 #' For details on how to do this, see the article on *Adding a Primitive*.
 #' Like every jitted function it runs on the active backend when called.
 #' @param name (`character(1)`)\cr
-#'   Primitive name.
+#'   Primitive name, without the `prim_` prefix (`"add"` for `prim_add()`).
 #' @param fn (`function`)\cr
 #'   Body of the primitive. Its formals become the formals of the returned
 #'   JIT-compiled callable. Inside `fn`, the primitive is accessible via
@@ -90,7 +91,6 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
-
 #' @param register (`logical(1)`)\cr
 #'   If `TRUE` (default), register the result under `name` in the primitive
 #'   registry.
