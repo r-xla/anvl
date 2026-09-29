@@ -88,6 +88,18 @@ test_that("trace_fn can deduplicate constants", {
   expect_identical(graph$constants[[1]]$aval$data, x)
 })
 
+test_that("an array both a graph and its sub-graphs close over is one constant", {
+  x <- nv_array(c(1, 2))
+  f <- function(p, y) {
+    z <- y + x
+    nv_if(p, function() nv_sum(z * x), function() nv_sum(x))
+  }
+  graph <- trace_fn(f, list(p = nv_scalar(TRUE), y = nv_array(c(3, 4))))
+  expect_length(graph$constants, 1L)
+  expect_equal(as.numeric(jit(f)(nv_scalar(TRUE), nv_array(c(3, 4)))), 16)
+  expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(nv_scalar(TRUE), nv_array(c(3, 4)))[[1L]]), c(1, 2))
+})
+
 test_that("trace_fn works without arguments", {
   # For this it is necessary to also box outputs in trace_fn()
   x <- nv_scalar(1)

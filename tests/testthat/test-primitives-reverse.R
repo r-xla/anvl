@@ -388,6 +388,40 @@ describe("prim_if", {
     grad <- jit(gradient(g, wrt = "x"))(true_, nv_array(c(3, 1, 2), dtype = "f64"))[[1L]]
     expect_equal(as.numeric(grad), c(6, 2, 4))
   })
+
+  it("does not rerun the forward branch in the backward pass", {
+    # The forward `if` returns what the backward one reads -- here `sin(x)` --
+    # alongside its result, so the backward branch computes no `sin()`.
+    g <- trace_fn(
+      function(p, x) nv_if(p, function() nv_sum(sin(x) * x), function() nv_sum(x)),
+      list(p = true_, x = x)
+    )
+    grad <- transform_gradient(g, "x")
+    ifs <- Filter(function(s) s$primitive$name == "if", grad$statements)
+    expect_length(ifs, 2L)
+    prims_of <- function(graph) vapply(graph$statements, function(s) s$primitive$name, character(1L))
+    expect_true("sin" %in% prims_of(ifs[[1L]]$params$true))
+    expect_false("sin" %in% prims_of(ifs[[2L]]$params$true))
+
+    f <- function(p, x) nv_if(p, function() nv_sum(sin(x) * x), function() nv_sum(x))
+    expect_equal(
+      as.numeric(jit(gradient(f, wrt = "x"))(true_, x)[[1L]]),
+      cos(c(1, 2, 3)) * c(1, 2, 3) + sin(c(1, 2, 3))
+    )
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
+  })
+
+  it("differentiates a scan inside a branch", {
+    f <- function(p, x) {
+      nv_if(
+        p,
+        function() nv_scan(nv_scalar(1, "f64"), x, function(carry, x) list(carry = carry * x, out = NULL))$carry,
+        function() nv_sum(x)
+      )
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(true_, x)[[1L]]), c(6, 3, 2))
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
+  })
 })
 
 test_that("prim_log reverse", {

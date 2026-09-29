@@ -65,7 +65,10 @@ prepare_gradient_args <- function(args, wrt) {
 #' efficient backward pass. It has the signature `function(inputs, params)`
 #' and returns `list(outputs = , backward = )`: the forward results and a
 #' closure with the signature of `backward` above, which can use intermediate
-#' values of the forward pass via lexical scoping.
+#' values of the forward pass via lexical scoping. A `forward` that also takes
+#' `required`, as in `function(inputs, params, required)`, is told which inputs
+#' need a gradient, so that it keeps only what the backward pass needs for
+#' them.
 #'
 #' @param backward (`NULL` | `function`)\cr
 #'   Backward hook for the default case.
@@ -279,6 +282,14 @@ graph_vjp <- function(graph, targets, out_grads, inputs) {
   required_env <- requirements_from(graph, targets)
   rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env, replay = TRUE)
 
+  pull_back(graph, rebuilt$backwards, required_env, targets, out_grads)
+}
+
+# The backward half of `graph_vjp()`: seeds `graph`'s outputs with `out_grads`,
+# runs the reverse rules `backwards` in the current descriptor, and returns the
+# cotangent of each value in `targets` -- a zero where the target did not reach
+# any output.
+pull_back <- function(graph, backwards, required_env, targets, out_grads) {
   grad_env <- hashtab()
   for (i in seq_along(graph$outputs)) {
     out <- graph$outputs[[i]]
@@ -288,10 +299,69 @@ graph_vjp <- function(graph, targets, out_grads, inputs) {
     }
   }
 
-  grad_env <- run_backward_pass(graph, rebuilt$backwards, required_env, grad_env)
+  grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
   lapply(targets, function(target) {
     grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
   })
+}
+
+# Splits the reverse of a sub-graph into two closed graphs, so that its
+# backward pass does not have to rerun the forward one, as JAX's partial
+# evaluation of a `cond` does:
+#   - fwd: `graph`'s forward pass, taking the same inputs, returning its
+#     outputs and then the residuals -- the values computed by the forward
+#     pass that `bwd` reads.
+#   - bwd: taking a cotangent per output of `graph`, then `graph`'s inputs,
+#     then the residuals, and returning the cotangents of
+#     `graph$inputs[needed]`.
+#   - residuals: the avals of the residuals.
+linearize_graph <- function(graph, needed) {
+  targets <- graph$inputs[needed]
+  required_env <- requirements_from(graph, targets)
+
+  desc_fwd <- local_descriptor()
+  rebuilt <- rebuild_forward_into(graph, desc_fwd, required_env = required_env)
+  bwd <- trace_pull_back(graph, rebuilt$backwards, required_env, targets)
+
+  # What the backward pass read of the forward one, it captured. An input of
+  # `graph` it reads as an input of its own; the rest are the residuals. An
+  # array it closed over stays a constant.
+  map <- hashtab()
+  inputs <- lapply(graph$inputs, function(g) {
+    map[[g]] <- GraphValue(aval = g$aval)
+  })
+  captured <- Filter(\(g) !is_concrete_array(g$aval), bwd$constants)
+  residuals <- Filter(\(g) is.null(map[[g]]), captured)
+  for (g in residuals) {
+    map[[g]] <- GraphValue(aval = g$aval)
+    # A no-op for a value of the forward pass; one from further out is
+    # captured by it like any other.
+    get_box_or_register_const(desc_fwd, g)
+  }
+  substitute_gnodes(bwd, map)
+  bwd$inputs <- c(bwd$inputs, inputs, lapply(residuals, \(g) map[[g]]))
+  bwd$constants <- Filter(\(g) is_concrete_array(g$aval), bwd$constants)
+
+  outputs <- lapply(graph$outputs, \(g) if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
+  desc_fwd$outputs <- c(outputs, residuals)
+  list(
+    fwd = descriptor_to_graph(desc_fwd),
+    bwd = bwd,
+    residuals = lapply(residuals, \(g) g$aval)
+  )
+}
+
+# The backward pass of `linearize_graph()`, traced into a graph of its own
+# whose inputs are the cotangents of `graph`'s outputs. The values of the
+# forward pass the reverse rules read become its constants.
+trace_pull_back <- function(graph, backwards, required_env, targets) {
+  desc <- local_descriptor()
+  out_grads <- lapply(graph$outputs, function(out) {
+    register_input(desc, GraphValue(aval = AbstractArray(dtype = out$aval$dtype, shape = out$aval$shape)))
+  })
+  cts <- pull_back(graph, backwards, required_env, targets, out_grads)
+  desc$outputs <- lapply(cts, \(ct) maybe_box_arrayish(ct, desc)$gnode)
+  descriptor_to_graph(desc)
 }
 
 # `compute_requirements()` reads the set to differentiate with respect to off
@@ -335,9 +405,10 @@ propagate_requirements <- function(graph, required_env) {
 # traced into the descriptor it is called in.
 #
 # Returns:
-#   - trans: hashtab(original gval -> new gval) for every replaced output and
-#     every input `inputs` binds. Constants and literals are not added (they
-#     fall through).
+#   - trans: hashtab(original gval -> new gval) for every replaced output,
+#     every input `inputs` binds, and every constant whose array `desc` already
+#     holds under a GraphValue of its own. Other constants and literals are not
+#     added (they fall through).
 #   - backwards: ordered list that needs to be traversed in reverse for the
 #     backward pass.
 #
@@ -360,7 +431,6 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     # belongs to -- is captured by `desc` like any other value from outside.
     inputs <- lapply(inputs, maybe_box_arrayish, desc = desc)
   }
-  register_consts(desc, graph$constants)
 
   # Existing GraphValues are reused where possible to minimize cloning.
   # If an alternative forward pass is called, this possibly invalidates
@@ -375,6 +445,13 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
   }
   for (i in seq_along(inputs)) {
     trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
+  }
+  # An array `desc` already holds is read from the GraphValue it has for it.
+  for (const in graph$constants) {
+    box <- get_box_or_register_const(desc, const)
+    if (!identical(box$gnode, const)) {
+      trans[[const]] <- box$gnode
+    }
   }
   # Get/create the box for a translated gval. Literals reach this branch
   # only when used as a call input; mint a box on demand (GraphBox has value semantics)
@@ -437,7 +514,16 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
       # Here, new GraphValue outputs are generated and subsequent GraphStatements that
       # referenced the old ones need to be rewired
       input_boxes <- lapply(call$inputs, box_for)
-      fwd_result <- rule$forward(input_boxes, call$params)
+      fwd_result <- if ("required" %in% names(formals(rule$forward))) {
+        required <- vapply(
+          call$inputs,
+          \(x) is.null(required_env) || (!is_graph_literal(x) && isTRUE(required_env[[x]])),
+          logical(1L)
+        )
+        rule$forward(input_boxes, call$params, required)
+      } else {
+        rule$forward(input_boxes, call$params)
+      }
       for (j in seq_along(call$outputs)) {
         trans[[call$outputs[[j]]]] <- fwd_result$outputs[[j]]$gnode
       }

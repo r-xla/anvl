@@ -531,6 +531,15 @@ get_box_or_register_const <- function(desc, x) {
   if (!is.null(box)) {
     return(box)
   }
+  # Every graph that closes over an array mints a GraphValue of its own for
+  # it, so an array `desc` already holds is matched by itself: the box returned
+  # may then be of another GraphValue than `x`.
+  if (is_concrete_array(x$aval)) {
+    known <- desc$array_to_gval[[x$aval$data]]
+    if (!is.null(known)) {
+      return(desc$gval_to_box[[known]])
+    }
+  }
 
   # Now, we create the new box and register it, so if we see it again, we can return it immediately.
   new_box <- GraphBox(x, desc)
@@ -626,12 +635,6 @@ substitute_gnodes <- function(graph, map) {
 register_inputs <- function(desc, inputs) {
   for (input in inputs) {
     register_input(desc, input)
-  }
-}
-
-register_consts <- function(desc, consts) {
-  for (const in consts) {
-    get_box_or_register_const(desc, const)
   }
 }
 

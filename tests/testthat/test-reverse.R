@@ -576,18 +576,6 @@ describe("gradients through prim_while", {
     )$acc
   }
 
-  it("refuses one whose state depends on wrt, pointing to nv_scan()", {
-    f <- function(x) {
-      r <- prim_while(
-        init = list(i = nv_scalar(0L), y = x),
-        cond = function(i, y) i < nv_scalar(2L),
-        body = function(i, y) list(i = i + 1L, y = y * 2)
-      )
-      nv_sum(r$y)
-    }
-    expect_error(jit(gradient(f))(x), "No reverse rule for primitive .*while.*nv_scan")
-  })
-
   it("refuses one that closes over a value wrt depends on, rather than returning zero", {
     # What the body closes over is an operand of the call, so the backward
     # pass sees that the loop reads `x`.

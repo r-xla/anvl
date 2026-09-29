@@ -552,29 +552,46 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
-# The branches are differentiated where they run: the backward pass is itself a
-# `prim_if()` on the same predicate, whose branches compute the cotangents of
-# the captured values through the corresponding forward branch. Only the taken
-# branch's backward runs, as only the taken branch's forward did, and a value
-# used by one branch alone gets a zero from the other.
+# The branches are differentiated where they run: the forward pass is a
+# `prim_if()` whose branches also return the residuals their backward pass
+# reads, and the backward pass is a `prim_if()` on the same predicate whose
+# branches pull the cotangents back from those residuals, without rerunning the
+# forward branch. Each branch returns zeros in place of the other one's
+# residuals, so that both return the same. Only the taken branch's backward
+# runs, as only the taken branch's forward did, and a value used by one branch
+# alone gets a zero from the other.
 #
 # `pred` is a bool and carries no gradient; the other operands are the
 # branches' inputs.
-prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  grads_in <- vector("list", length(inputs))
-  needed <- which(unlist(required[-1L]))
-  if (!length(needed)) {
-    return(grads_in)
+prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+  pred <- inputs[[1L]]
+  operands <- inputs[-1L]
+  needed <- which(required[-1L])
+  n_out <- length(params$true$outputs)
+  lin <- lapply(list(params$true, params$false), linearize_graph, needed = needed)
+
+  branch_forward <- function(k) {
+    function() {
+      outs <- graph_apply(lin[[k]]$fwd, operands)
+      res <- lapply(seq_along(lin), function(j) {
+        if (j == k) outs[-seq_len(n_out)] else lapply(lin[[j]]$residuals, \(a) zeros(a$dtype, shape(a)))
+      })
+      list(out = outs[seq_len(n_out)], res = res)
+    }
   }
-  branch_vjp <- function(graph) {
-    function() graph_vjp(graph, graph$inputs[needed], grads, inputs = inputs[-1L])
-  }
-  grads_in[needed + 1L] <- prim_if(
-    inputs[[1L]],
-    branch_vjp(params$true),
-    branch_vjp(params$false)
+  fwd <- prim_if(pred, branch_forward(1L), branch_forward(2L))
+
+  list(
+    outputs = fwd$out,
+    backward = function(inputs, outputs, grads, params, required) {
+      branch_backward <- function(k) {
+        function() graph_apply(lin[[k]]$bwd, c(grads, operands, fwd$res[[k]]))
+      }
+      grads_in <- vector("list", length(inputs))
+      grads_in[needed + 1L] <- prim_if(pred, branch_backward(1L), branch_backward(2L))
+      grads_in
+    }
   )
-  grads_in
 })
 
 # The forward is rerun with the carry each step starts from stacked as extra

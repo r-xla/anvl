@@ -31,7 +31,10 @@ Pass \code{forward} when a slightly different forward pass enables a more
 efficient backward pass. It has the signature \verb{function(inputs, params)}
 and returns \code{list(outputs = , backward = )}: the forward results and a
 closure with the signature of \code{backward} above, which can use intermediate
-values of the forward pass via lexical scoping.
+values of the forward pass via lexical scoping. A \code{forward} that also takes
+\code{required}, as in \verb{function(inputs, params, required)}, is told which inputs
+need a gradient, so that it keeps only what the backward pass needs for
+them.
 }
 \examples{
 # the rule of prim_negate()
