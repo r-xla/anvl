@@ -568,13 +568,17 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
   operands <- inputs[-1L]
   needed <- which(required[-1L])
   n_out <- length(params$true$outputs)
-  lin <- lapply(list(params$true, params$false), linearize_graph, needed = needed)
+  vjps <- lapply(list(params$true, params$false), split_vjp, needed = needed)
 
   branch_forward <- function(k) {
     function() {
-      outs <- graph_apply(lin[[k]]$fwd, operands)
-      res <- lapply(seq_along(lin), function(j) {
-        if (j == k) outs[-seq_len(n_out)] else lapply(lin[[j]]$residuals, \(a) zeros(a$dtype, shape(a)))
+      outs <- graph_apply(vjps[[k]]$fwd, operands)
+      res <- lapply(seq_along(vjps), function(j) {
+        if (j == k) {
+          outs[n_out + seq_along(vjps[[k]]$residuals)]
+        } else {
+          lapply(vjps[[j]]$residuals, \(a) zeros(a$dtype, shape(a)))
+        }
       })
       list(out = outs[seq_len(n_out)], res = res)
     }
@@ -585,7 +589,7 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
     outputs = fwd$out,
     backward = function(inputs, outputs, grads, params, required) {
       branch_backward <- function(k) {
-        function() graph_apply(lin[[k]]$bwd, c(grads, operands, fwd$res[[k]]))
+        function() graph_apply(vjps[[k]]$bwd, c(grads, operands, fwd$res[[k]]))
       }
       grads_in <- vector("list", length(inputs))
       grads_in[needed + 1L] <- prim_if(pred, branch_backward(1L), branch_backward(2L))

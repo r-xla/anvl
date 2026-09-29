@@ -315,7 +315,7 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
 #     then the residuals, and returning the cotangents of
 #     `graph$inputs[needed]`.
 #   - residuals: the avals of the residuals.
-linearize_graph <- function(graph, needed) {
+split_vjp <- function(graph, needed) {
   targets <- graph$inputs[needed]
   required_env <- requirements_from(graph, targets)
 
@@ -351,7 +351,7 @@ linearize_graph <- function(graph, needed) {
   )
 }
 
-# The backward pass of `linearize_graph()`, traced into a graph of its own
+# The backward pass of `split_vjp()`, traced into a graph of its own
 # whose inputs are the cotangents of `graph`'s outputs. The values of the
 # forward pass the reverse rules read become its constants.
 trace_pull_back <- function(graph, backwards, required_env, targets) {

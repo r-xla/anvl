@@ -417,40 +417,37 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
 }
 
 # Called only by trace_fn() to wire up each flat arg as an input of `desc`,
-# the same way for jit's outermost trace and for a trace inside another one
-# (`parent`): the sub-graphs of a higher-order primitive (prim_if/prim_while/
-# ...), and the function gradient() differentiates.
+# the same way for jit's outermost trace and for a trace inside another one:
+# the sub-graphs of a higher-order primitive (prim_if/prim_while/...), and the
+# function gradient() differentiates.
 #
 # Each arrayish arg becomes a fresh input gval. In a trace inside another one it
 # is bound only later to a box of the parent: by the call's operands, or by
 # gradient() replaying the graph into the parent. An R value with no data type
 # yet -- bare R data jit was called with, which the dispatcher describes as an
-# `RData`, or an argument the parent has not given a data type -- becomes an
-# input whose data type the body decides, as finalize_rdata_inputs() settles.
-# An R value of a trace further out materializes at its default, as any R value
-# reaching another graph does (see `maybe_box_arrayish()`).
+# `RData`, or an argument of a trace further out that has not been given a data
+# type -- becomes an input whose data type the body decides, as
+# finalize_rdata_inputs() settles. Whoever binds the input then materializes the
+# outer value at that data type, which records the use in the descriptor the
+# value belongs to (see `materialize_rdata()`); that descriptor is finalized
+# last, so it sees every use, however deeply nested.
 #
 # Anything else, a bare R value included, passes through as a static arg: for
 # jit it is one of the args declared static (R data it was called with arrives
 # as an `RData`), a primitive whose sub-graph takes its operands (prim_while's
 # state, prim_scan's carry) materializes them itself, and gradient() does not
 # know which of its args are static.
-maybe_box_input <- function(x, desc, parent) {
+maybe_box_input <- function(x, desc) {
   if (is_anvl_array(x)) {
     desc$devices <- c(desc$devices, placement_device(x))
     return(register_input(desc, GraphValue(aval = to_abstract(x, pure = TRUE))))
   }
-  if (is_rdata(x)) {
-    return(register_rdata_input(desc, x))
-  }
+  # An open R value keeps its `RData` aval, so it stays open here too.
   if (is_graph_box(x)) {
-    if (is_rdata_box(x) && identical(x$desc, parent)) {
-      return(register_rdata_input(desc, x$gnode$aval))
-    }
-    x <- materialize_rdata_box(x)
     return(register_input(desc, GraphValue(aval = abstract_aval(x$gnode$aval))))
   }
-  # e.g. prim_reduce() and prim_scatter() trace their scalar functions with avals.
+  # An `RData` from the dispatcher is an abstract array too; prim_reduce() and
+  # prim_scatter() trace their scalar functions with avals.
   if (is_abstract_array(x)) {
     return(register_input(desc, GraphValue(aval = x)))
   }
@@ -561,61 +558,84 @@ materialize_operand <- function(x, desc) {
   materialize_rdata_box(maybe_box_arrayish(x, desc))
 }
 
-# Closes the sub-graphs `graphs` of one higher-order call over what they
-# capture, and returns the boxes the call passes for it.
-#
-# While a sub-graph is traced, a value from outside it -- the output of a call
-# of an enclosing graph, or an array closed over -- is recorded among its
-# `constants`. Here each of them becomes an input instead: every graph in
-# `graphs` gets one fresh input per value any of them captured, appended to its
-# own inputs in the same order, and its calls read that input in place of the
-# outer value. A sub-graph is then a pure function of its inputs, and a call of
-# it lists everything it reads among its operands: the call's own arguments
-# first, then the captures. The lowerings bind the inputs to the operands by
-# position, and a transform that rewires the operands has nothing else to
-# rewire. The graphs do not record which of their inputs are captures: the
-# call does, as its `n_captures` param, which is `length()` of what this
-# returns.
-#
-# The graphs are modified in place (an `AnvlGraph` has reference semantics).
-# Returns the boxes of the captured values in `desc`, which in turn captures
-# them if it is itself a sub-graph that is being traced.
-close_subgraphs <- function(desc, graphs) {
-  # `slot` maps each captured GraphValue to its position among the captures.
-  # Two sub-graphs that closed over the same array each minted a GraphValue for
-  # it, so an array is matched by itself rather than by its GraphValue, and is
-  # passed once.
-  slot <- hashtab()
-  slot_of_array <- hashtab()
+# Makes the sub-graphs `graphs` of one higher-order call pure functions of
+# their inputs: what they captured from outside (recorded as their `constants`
+# while traced) becomes trailing inputs, the same ones in the same order for
+# every graph. Modifies the graphs
+# in place and returns the boxes in `desc` the call passes for the captures,
+# after its own operands; its `n_captures` param is their number.
+purify_subgraphs <- function(desc, graphs) {
+  # Collect the captures of all graphs, each once. `capture_index_of_gval`
+  # maps a captured GraphValue to its position among them. A value computed by
+  # an enclosing graph is captured as that graph's own GraphValue, so sibling
+  # sub-graphs share it and identity suffices. A closed-over array is not:
+  # every sub-graph mints a GraphValue of its own for it, so an array is
+  # matched by itself, via `capture_index_of_array`.
+  capture_index_of_gval <- hashtab()
+  capture_index_of_array <- hashtab()
   captures <- list()
   for (graph in graphs) {
     for (gval in graph$constants) {
-      if (!is.null(slot[[gval]])) {
+      if (!is.null(capture_index_of_gval[[gval]])) {
         next
       }
       array <- if (is_concrete_array(gval$aval)) gval$aval$data
-      k <- if (!is.null(array)) slot_of_array[[array]]
-      if (is.null(k)) {
+      index <- if (!is.null(array)) capture_index_of_array[[array]]
+      if (is.null(index)) {
         captures[[length(captures) + 1L]] <- gval
-        k <- length(captures)
+        index <- length(captures)
         if (!is.null(array)) {
-          slot_of_array[[array]] <- k
+          capture_index_of_array[[array]] <- index
         }
       }
-      slot[[gval]] <- k
+      capture_index_of_gval[[gval]] <- index
     }
   }
   for (graph in graphs) {
+    # Every graph gets an input per capture, also for those only another graph
+    # uses, so that all of them take the call's operands the same way.
     fresh <- lapply(captures, function(gval) GraphValue(aval = abstract_aval(gval$aval)))
+    # Its calls read that input in place of the outer value, which makes the
+    # graph a pure function of its inputs.
     map <- hashtab()
     for (gval in graph$constants) {
-      map[[gval]] <- fresh[[slot[[gval]]]]
+      map[[gval]] <- fresh[[capture_index_of_gval[[gval]]]]
     }
     substitute_gnodes(graph, map)
     graph$inputs <- c(graph$inputs, fresh)
     graph$constants <- list()
   }
+  # The outer values as boxes of `desc`. If `desc` is itself a sub-graph being
+  # traced, this is where it captures them in turn.
   lapply(captures, function(gval) get_box_or_register_const(desc, gval))
+}
+
+# Readies `graph`, the sub-graph of `prim_reduce()` or `prim_scatter()`, for
+# `purify_subgraphs()`. It lowers to a StableHLO region that, unlike an `if`
+# or `while` region, cannot read a value of the function around it, so it must
+# not capture anything. A scalar array it closes over is inlined as a literal
+# of its own; any other value it closes over is refused. `fn` names the
+# argument `graph` was traced from, for the error.
+inline_region_captures <- function(graph, fn) {
+  map <- hashtab()
+  for (gval in graph$constants) {
+    if (is_concrete_array(gval$aval) && nelts(gval$aval) == 1L) {
+      map[[gval]] <- GraphLiteral(LiteralArray(
+        gval$aval$data,
+        shape = shape(gval$aval),
+        dtype = dtype(gval$aval)
+      ))
+    }
+  }
+  substitute_gnodes(graph, map)
+  graph$constants <- Filter(\(gval) is.null(map[[gval]]), graph$constants)
+  if (length(graph$constants)) {
+    cli_abort(c(
+      "{.arg {fn}} must not close over a traced value or a non-scalar array.",
+      i = "Only scalar arrays and R literals can be used inside {.arg {fn}}."
+    ))
+  }
+  invisible(graph)
 }
 
 # Replaces, in place, every node of `graph`'s calls and outputs that `map` has
@@ -722,7 +742,7 @@ trace_fn <- function(
   parent_desc <- maybe_previous_descriptor()
 
   # box arrays and add them as inputs to the current graph
-  inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, parent = parent_desc)
+  inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
   # A higher-order primitive traces its sub-graphs here and then goes on to
@@ -751,9 +771,9 @@ trace_fn <- function(
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
   # A still-open R argument becomes an input at the data type the body settled
   # it at. For a toplevel trace that is the dtype the caller uploads it at; for
-  # a sub-graph, the one whoever binds the input materializes the parent's
-  # value at -- in `gradient()`, the parent's own finalize then takes it into
-  # account like any other use there.
+  # a sub-graph, the one whoever binds the input materializes the outer value
+  # at -- in `gradient()`, the finalize of the trace the value belongs to then
+  # takes it into account like any other use there.
   finalize_rdata_inputs(desc)
   if (!is.null(desc$is_static_flat) && isTRUE(any(desc$is_static_flat))) {
     desc$static_args_flat <- args_flat[desc$is_static_flat]

@@ -980,7 +980,8 @@ prim_reduce <- new_primitive(
       nv_aval(op_dtype, integer())
     )
     reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red)
-    captures <- close_subgraphs(current_desc, list(reducer_graph))
+    inline_region_captures(reducer_graph, "reducer")
+    captures <- purify_subgraphs(current_desc, list(reducer_graph))
 
     graph_desc_add(
       self,
@@ -2490,17 +2491,11 @@ prim_ifelse <- new_primitive(
 #'   Zero-argument functions for the true and false branches. Both must return
 #'   outputs of the same structure, data types and shapes. As with
 #'   [prim_ifelse()], whose two values must already agree, nothing is promoted:
-#'   branches that disagree are an error. They take no arguments and reach the
-#'   values they use by closing over them; those values are recorded as
-#'   operands of the call, so a gradient flows back through them.
+#'   branches that disagree are an error.
 #' @return ([`arrayish`] | `list`)\cr
 #'   Result of the executed branch: an array, or a tree of them in the sense
 #'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
 #'   the structure, data types and shapes both branches share.
-#' @section Gradients:
-#' The backward pass is itself a [prim_if()] on the same predicate, so only the
-#' taken branch's gradient is computed. A value that only the other branch uses
-#' gets a zero.
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2546,7 +2541,7 @@ prim_if <- new_primitive(
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
-    captures <- close_subgraphs(current_desc, list(true_graph, false_graph))
+    captures <- purify_subgraphs(current_desc, list(true_graph, false_graph))
 
     out <- graph_desc_add(
       self,
@@ -2638,7 +2633,7 @@ prim_while <- new_primitive(
 
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
-    captures <- close_subgraphs(current_desc, list(cond_graph, body_graph))
+    captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
@@ -2681,10 +2676,6 @@ prim_while <- new_primitive(
 #'   `xs` at its own position and writes its output there.
 #' @return `list(carry = , out = )`: the final carry and the stacked
 #'   outputs, each leaf of `out` gaining a leading axis of size `steps`.
-#' @section Gradients:
-#' The forward pass keeps the carry each step starts from, and the backward pass
-#' is a scan in the opposite direction over them, so a gradient costs time and
-#' memory linear in `steps`. Values `body` closes over are differentiated too.
 #' @templateVar primitive_id scan
 #' @template section_rules
 #' @section StableHLO:
@@ -2774,7 +2765,7 @@ prim_scan <- new_primitive(
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
-    captures <- close_subgraphs(current_desc, list(body_graph))
+    captures <- purify_subgraphs(current_desc, list(body_graph))
 
     infer_fn <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
       ins <- list(...)
@@ -3215,7 +3206,8 @@ prim_scatter <- new_primitive(
     )
 
     update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update)
-    captures <- close_subgraphs(current_desc, list(update_fn_graph))
+    inline_region_captures(update_fn_graph, "update_fn")
+    captures <- purify_subgraphs(current_desc, list(update_fn_graph))
 
     out <- graph_desc_add(
       self,

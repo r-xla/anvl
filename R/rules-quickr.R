@@ -1783,8 +1783,9 @@ local({
       cond_graph <- params$cond
       body_graph <- params$body
       # The operands past the state are the sub-graphs' captures.
-      state_idx <- seq_len(length(inputs) - params$n_captures)
-      captured <- inputs[-state_idx]
+      n_state <- length(inputs) - params$n_captures
+      state_idx <- seq_len(n_state)
+      captured <- inputs[n_state + seq_len(params$n_captures)]
       inputs <- inputs[state_idx]
 
       if (length(out_syms) != length(inputs)) {

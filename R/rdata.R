@@ -318,17 +318,6 @@ has_no_dtype <- function(x) {
 
 # Input slots -----------------------------------------------------------------
 
-# Reserve `desc`'s next input slot for an R argument: an input like any other,
-# except that its aval is an `RData` and so has no data type yet. The slot holds
-# it until finalize_rdata_inputs() replaces it with the value the body
-# materialized, which keeps the input order the same as the argument order (the
-# caller supplies its inputs in that order).
-register_rdata_input <- function(desc, aval) {
-  gval <- GraphValue(aval)
-  desc$inputs <- c(desc$inputs, list(gval))
-  GraphBox(gval, desc)
-}
-
 # Which of a descriptor's inputs are R arguments whose data type is still open.
 is_open_rdata_input <- function(gval) {
   is_rdata(gval$aval)

@@ -743,8 +743,9 @@ prim_if[["stablehlo"]] <- function(pred, ..., true, false, n_captures) {
 # above.
 prim_while[["stablehlo"]] <- function(..., cond, body, n_captures) {
   args <- list(...)
-  state_idx <- seq_len(length(args) - n_captures)
-  captured <- args[-state_idx]
+  n_state <- length(args) - n_captures
+  state_idx <- seq_len(n_state)
+  captured <- args[n_state + seq_len(n_captures)]
   body_func <- stablehlo(body, id = "", captured = captured)[[1L]]
   cond_func <- stablehlo(cond, id = "", captured = captured)[[1L]]
   rlang::exec(hlo_while, !!!args[state_idx], cond = cond_func, body = body_func, simplify = FALSE)
@@ -823,7 +824,7 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   })
 
   env <- HloEnv()
-  ins <- c(carry_in, slices, args[-seq_len(n_carry + n_xs)])
+  ins <- c(carry_in, slices, args[n_carry + n_xs + seq_len(n_captures)])
   for (k in seq_along(body$inputs)) {
     env_add(env, body$inputs[[k]], ins[[k]])
   }

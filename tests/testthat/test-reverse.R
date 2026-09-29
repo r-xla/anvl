@@ -603,3 +603,12 @@ describe("gradients through prim_while", {
     expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(x, nv_scalar(1, "f64"))$y), 12)
   })
 })
+
+test_that("gradient() inside a sub-graph takes an R argument at the data type its body uses", {
+  # `b` belongs to the outermost trace, two levels up; the product settles it
+  # at f64, so it is uploaded at f64 rather than at its default and converted.
+  f <- jit(function(a, b) {
+    nv_if(TRUE, function() gradient(function(p, q) p * q, wrt = "p")(a, b)$p, function() a)
+  })
+  expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
+})
