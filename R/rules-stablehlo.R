@@ -94,18 +94,18 @@ prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {
 # and the two agree once every axis is reversed: the row-major linear index of
 # the reversed operand is its column-major one. So the operand is reversed,
 # reshaped to the reversed shape and reversed back; XLA folds the transposes
-# into the layout, and a rank <= 1 side has nothing to reverse.
+# into the layout, and a side with at most one axis has nothing to reverse.
 prim_reshape[["stablehlo"]] <- function(x, shape, output_types) {
-  rank_in <- length(shape(x))
-  rank_out <- length(shape)
-  if (rank_in > 1L) {
-    x <- hlo_transpose(x, rev(seq_len(rank_in)) - 1L)
+  n_axes_in <- length(shape(x))
+  n_axes_out <- length(shape)
+  if (n_axes_in > 1L) {
+    x <- hlo_transpose(x, rev(seq_len(n_axes_in)) - 1L)
   }
-  if (rank_out <= 1L) {
+  if (n_axes_out <= 1L) {
     return(list(hlo_reshape(x, shape, output_types = output_types)))
   }
   out <- hlo_reshape(x, rev(shape))
-  list(hlo_transpose(out, rev(seq_len(rank_out)) - 1L, output_types = output_types))
+  list(hlo_transpose(out, rev(seq_len(n_axes_out)) - 1L, output_types = output_types))
 }
 
 prim_concatenate[["stablehlo"]] <- function(..., axis, output_types) {
@@ -467,15 +467,15 @@ prim_bitcast_convert[["stablehlo"]] <- function(x, dtype, output_types) {
   lane <- bitcast_lane(dtype(x), dtype)
   if (lane$joins) {
     # anvl's leading lane axis is the trailing one stablehlo consumes
-    rank <- length(shape(x))
-    x <- hlo_transpose(x, c(seq_len(rank - 1L), 0L))
+    n_axes <- length(shape(x))
+    x <- hlo_transpose(x, c(seq_len(n_axes - 1L), 0L))
   }
   if (!lane$splits) {
     return(list(hlo_bitcast_convert(x, dtype, output_types = output_types)))
   }
-  rank_out <- length(shape(x)) + 1L
+  n_axes_out <- length(shape(x)) + 1L
   out <- hlo_bitcast_convert(x, dtype)
-  list(hlo_transpose(out, c(rank_out - 1L, seq_len(rank_out - 1L) - 1L), output_types = output_types))
+  list(hlo_transpose(out, c(n_axes_out - 1L, seq_len(n_axes_out - 1L) - 1L), output_types = output_types))
 }
 
 # unary simple math jit rules ---------------------------------------------------
@@ -877,14 +877,14 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
     return(hlo_top_k(x, k = k)[[1L]])
   }
   shp <- shape(x$value_type)
-  rank <- length(shp)
+  n_axes <- length(shp)
   sorted <- hlo_sort(
     x,
-    dimension = rank - 1L,
+    dimension = n_axes - 1L,
     is_stable = FALSE,
     comparator = .build_sort_comparator(list(x), decreasing = TRUE, canonicalize = FALSE)
   )
-  hlo_slice(sorted[[1L]], rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
+  hlo_slice(sorted[[1L]], rep(0L, n_axes), replace(shp, n_axes, k), rep(1L, n_axes))
 }
 
 prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
