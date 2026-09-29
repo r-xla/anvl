@@ -17,7 +17,7 @@ triangle of an existing array instead."><meta property="og:image" content="https
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,22 +31,23 @@ triangle of an existing array instead."><meta property="og:image" content="https
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -75,7 +76,7 @@ triangle of an existing array instead."><meta property="og:image" content="https
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Lower Triangular Mask</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-like.R" class="external-link"><code>R/api-like.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-like.R" class="external-link"><code>R/api-like.R</code></a></small>
       <div class="d-none name"><code>nv_lower_tri.Rd</code></div>
     </div>
 
@@ -89,7 +90,7 @@ triangle of an existing array instead.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_lower_tri</span><span class="op">(</span><span class="va">shape</span>, diagonal <span class="op">=</span> <span class="op">-</span><span class="fl">1L</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_lower_tri_like</span><span class="op">(</span><span class="va">like</span>, diagonal <span class="op">=</span> <span class="op">-</span><span class="fl">1L</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_lower_tri_like</span><span class="op">(</span><span class="va">like</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, diagonal <span class="op">=</span> <span class="op">-</span><span class="fl">1L</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -98,7 +99,7 @@ triangle of an existing array instead.</p>
 
 <dl><dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Shape.</p></dd>
+Shape of the result: exactly two axis sizes, since the result is a matrix.</p></dd>
 
 
 <dt id="arg-diagonal">diagonal<a class="anchor" aria-label="anchor" href="#arg-diagonal"></a></dt>
@@ -114,10 +115,10 @@ The device the data lives on, given either as:</p><ul><li><p>a <em>device string
 <code>"cuda:&lt;n&gt;"</code>), which is resolved against the backend in use, or</p></li>
 <li><p>a <em>device object</em> as returned by <code><a href="nv_device.html">nv_device()</a></code>: a
 <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code> for the <code>"pjrt"</code> backend or a
-<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
-is backend-specific, it also determines the backend.</p></li>
-</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>: the CPU, or the platform
-named by the <code>PJRT_PLATFORM</code> environment variable on the <code>"pjrt"</code> backend.</p></dd>
+<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. It must belong to the
+active backend (<code><a href="active_backend.html">active_backend()</a></code>); a device of another backend is an
+error.</p></li>
+</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>.</p></dd>
 
 
 <dt id="arg-like">like<a class="anchor" aria-label="anchor" href="#arg-like"></a></dt>
@@ -128,8 +129,10 @@ Existing array whose attributes are used as defaults
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the given <code>shape</code> and dtype <code>bool</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the given <code>shape</code> and boolean data type. It is a mask over positions,
+so no array data enters it – pass it to <code><a href="nv_ifelse.html">nv_ifelse()</a></code> or multiply by it
+to use it.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -138,7 +141,8 @@ Has the given <code>shape</code> and dtype <code>bool</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">nv_lower_tri</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># a boolean mask, whatever the array it is later used with</span></span></span>
+<span class="r-in"><span><span class="fu">nv_lower_tri</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 0 0</span>

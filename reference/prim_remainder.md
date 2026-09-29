@@ -1,29 +1,34 @@
 # Primitive Remainder
 
-Element-wise remainder. Result has sign of the divident, which differs
-from base R's `%%`, which is available via
-[`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md) and has
-sign of divisor.
+Element-wise remainder. The result has the sign of the dividend, which
+is what StableHLO's `remainder` does. Base R's `%%` takes the sign of
+the divisor instead and is available via
+[`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md).
 
 ## Usage
 
 ``` r
-prim_remainder(lhs, rhs)
+prim_remainder(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish values of data type integer, unsigned integer, or
-  floating-point. Must have the same shape.
+  Two inputs of the same data type and shape. Can be any numeric data
+  type. R values take the other operand's data type when it is in their
+  [data type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and their [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  neither operand has one. An R value outside the other operand's
+  category is an error, as are two R values of different storage types.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' shape and data type.
 
 ## Implemented Rules
 
@@ -34,7 +39,9 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_remainder()`](https://r-xla.github.io/stablehlo/reference/hlo_remainder.html).
+[`hlo_remainder()`](https://r-xla.github.io/stablehlo/reference/hlo_remainder.html),
+specified under
+[remainder](https://openxla.org/stablehlo/spec#remainder).
 
 ## See also
 
@@ -43,10 +50,19 @@ Lowers to
 ## Examples
 
 ``` r
+# two R values: both take an R double's default data type
 prim_remainder(1, -3)
 #> AnvlArray
 #>  1
-#> [ CPUf32?{} ] 
+#> [ CPUf32{} ] 
+
+# the R value is built at the array's data type instead
+prim_remainder(1, nv_scalar(-3, "f64"))
+#> AnvlArray
+#>  1
+#> [ CPUf64{} ] 
+
+# the sign follows the dividend, where base R's %% follows the divisor
 1 %% -3
 #> [1] -2
 ```

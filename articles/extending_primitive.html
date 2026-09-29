@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,16 +47,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -65,8 +67,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -110,14 +111,14 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Adding a Primitive</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/vignettes/extending_primitive.Rmd" class="external-link"><code>vignettes/extending_primitive.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/extending_primitive.Rmd" class="external-link"><code>vignettes/articles/extending_primitive.Rmd</code></a></small>
       <div class="d-none name"><code>extending_primitive.Rmd</code></div>
     </div>
 
     
     
 <p>This guide explains how to implement a new primitive. It will
-primarily focus on <em>how</em> to do this. See the <a href="internals.html">internals vignette</a> for more information on how
+primarily focus on <em>how</em> to do this. See the <a href="internals.html">internals article</a> for more information on how
 primitives work.</p>
 <p>In general, there are two main reasons to add a new primitive:</p>
 <ol style="list-style-type: decimal">
@@ -154,13 +155,14 @@ StableHLO, because:
 <p>It requires shape dynamism (output shape depends on data, such as
 using boolean values for subsetting):</p>
 <p><span class="math inline">\(\rightarrow\)</span> This is currently
-not possible, but we hope we can add support for this in the future,
-e.g. via a second, dynamic Fortran backend.</p>
+not possible, but we hope we can add support for this in the
+future.</p>
 </li>
 <li>
-<p>It cannot be expressed or can only expressed inefficiently:</p>
+<p>It cannot be expressed or can only be expressed
+inefficiently:</p>
 <p><span class="math inline">\(\rightarrow\)</span> You can implement a
-stableHLO custom call, see the custom print operation in <a href="https://github.com/r-xla/pjrt" class="external-link">pjrt</a>. The {pjrt} package has a
+StableHLO custom call, see the custom print operation in <a href="https://github.com/r-xla/pjrt" class="external-link">pjrt</a>. The {pjrt} package has a
 dedicated <a href="https://r-xla.github.io/pjrt/dev/articles/ffi.html" class="external-link">“Adding Custom
 Calls”</a> tutorial. This mechanism is used, for example, to implement
 some of the linear algebra primitives such as SVD: on CPU these call
@@ -187,35 +189,35 @@ axis).</p>
 <h3 id="step-1-define-the-primitive">Step 1: Define the Primitive<a class="anchor" aria-label="anchor" href="#step-1-define-the-primitive"></a>
 </h3>
 <p>Primitives are created with <code><a href="../reference/new_primitive.html">new_primitive()</a></code>: it builds
-the <code>AnvlPrimitive</code> metadata object that holds the rules,
-wraps the body with <code><a href="../reference/jit.html">jit()</a></code>, attaches the metadata, and
-registers the result in the internal primitive registry. The returned
-callable becomes the primitive and is bound to a
-<code>prim_&lt;name&gt;</code> R symbol.</p>
+the <code>AnvlPrimitiveDef</code> metadata object that holds the rules,
+wraps the body with <code><a href="../reference/jit.html">jit()</a></code>, and attaches the metadata. The
+returned callable becomes the primitive and is bound to a
+<code>prim_&lt;name&gt;</code> R symbol. The name passed to
+<code><a href="../reference/new_primitive.html">new_primitive()</a></code> is that same <code>&lt;name&gt;</code>, not
+the StableHLO op the primitive lowers to, so an error or a printed graph
+naming a primitive names a function the reader can look up.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="va">prim_repeat_along</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span></span>
 <span>  <span class="st">"repeat_along"</span>,</span>
 <span>  <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">times</span>, <span class="va">axis</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="co"># type of `x` is checked by graph_desc_add()</span></span>
 <span>    <span class="va">infer_fn</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">times</span>, <span class="va">axis</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu">checkmate</span><span class="fu">::</span><span class="fu"><a href="https://mllg.github.io/checkmate/reference/checkIntegerish.html" class="external-link">test_integerish</a></span><span class="op">(</span><span class="va">axis</span>, lower <span class="op">=</span> <span class="fl">1</span>, upper <span class="op">=</span> <span class="fu"><a href="../reference/naxes.html">naxes</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, len <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>        <span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_abort</a></span><span class="op">(</span><span class="st">"{.arg axis} must be between 1 and {naxes(x)}, but is {.val axis}"</span><span class="op">)</span></span>
+<span>        <span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_abort</a></span><span class="op">(</span><span class="st">"{.arg axis} must be between 1 and {naxes(x)}, but is {.val {axis}}."</span><span class="op">)</span></span>
 <span>      <span class="op">}</span></span>
 <span>      <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu">checkmate</span><span class="fu">::</span><span class="fu"><a href="https://mllg.github.io/checkmate/reference/checkIntegerish.html" class="external-link">test_integerish</a></span><span class="op">(</span><span class="va">times</span>, lower <span class="op">=</span> <span class="fl">1</span>, len <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>        <span class="fu">cli_abort</span><span class="op">(</span><span class="st">"times must be a positive integer, but is {times}"</span><span class="op">)</span></span>
+<span>        <span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_abort</a></span><span class="op">(</span><span class="st">"{.arg times} must be a positive integer, but is {.val {times}}."</span><span class="op">)</span></span>
 <span>      <span class="op">}</span></span>
 <span>      <span class="va">new_shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>      <span class="va">new_shape</span><span class="op">[</span><span class="va">axis</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">new_shape</span><span class="op">[</span><span class="va">axis</span><span class="op">]</span> <span class="op">*</span> <span class="va">times</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">AbstractArray</a></span><span class="op">(</span></span>
 <span>        dtype <span class="op">=</span> <span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
-<span>        shape <span class="op">=</span> <span class="fu"><a href="../reference/Shape-constructor.html">Shape</a></span><span class="op">(</span><span class="va">new_shape</span><span class="op">)</span>,</span>
-<span>        ambiguous <span class="op">=</span> <span class="va">x</span><span class="op">$</span><span class="va">ambiguous</span></span>
+<span>        shape <span class="op">=</span> <span class="fu"><a href="../reference/Shape-constructor.html">Shape</a></span><span class="op">(</span><span class="va">new_shape</span><span class="op">)</span></span>
 <span>      <span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span></span>
 <span>    <span class="fu"><a href="../reference/graph_desc_add.html">graph_desc_add</a></span><span class="op">(</span></span>
-<span>      <span class="va">self</span>,                       <span class="co"># lexically bound to the AnvlPrimitive</span></span>
+<span>      <span class="va">self</span>,                       <span class="co"># lexically bound to the AnvlPrimitiveDef</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span><span class="op">)</span>,                <span class="co"># Dynamic inputs (arrays)</span></span>
 <span>      params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>              <span class="co"># Static parameters</span></span>
 <span>        times <span class="op">=</span> <span class="va">times</span>,</span>
@@ -231,7 +233,7 @@ callable becomes the primitive and is bound to a
 <p>Key points:</p>
 <ul>
 <li>Pass the lexically-bound <code>self</code> (the
-[<code>AnvlPrimitive</code>]) as the first argument to
+[<code>AnvlPrimitiveDef</code>]) as the first argument to
 <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>. <code><a href="../reference/new_primitive.html">new_primitive()</a></code> installs
 <code>self</code> into the enclosing environment of the body, so this is
 always available inside a primitive.</li>
@@ -242,29 +244,60 @@ clear error messages — {anvl} programs are otherwise hard to debug.</li>
 <li>
 <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> returns a list of outputs; use
 <code>[[1L]]</code> for single-output primitives.</li>
-<li>Propagate the <code>ambiguous</code> flag from inputs to outputs,
-see <a href="type-promotion.html">type promotion</a> for what this
-means.</li>
 </ul>
 <p>Every argument that is <em>not</em> a dynamic array must be listed in
 <code>static</code>. <code>new_primitive</code> calls <code><a href="../reference/jit.html">jit()</a></code>
-with <code>backend = "auto"</code> internally, which defers the choice
-of backend to call time.</p>
-<p>If the primitive is a wrapper around a stablehlo operation, it is
-possible to use the corresponding inference function from the stablehlo
-package (such as <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html" class="external-link">stablehlo::infer_types_concatenate</a></code>). When
-doing so, you need to:</p>
-<ol style="list-style-type: decimal">
-<li>Convert the abstract arrays to stablehlo <code>ValueType</code>s
-using <code><a href="../reference/at2vt.html">at2vt()</a></code>.</li>
-<li>Call the stablehlo inference function and obtain a list of
-<code>ValueType</code>s.</li>
-<li>Convert the <code>ValueType</code>s back to abstract arrays using
-<code><a href="../reference/vt2at.html">vt2at()</a></code>.</li>
-<li>Set the <code>ambiguous</code> flag of the output depending on the
-inputs (<code>ambiguity</code> is strictly an {anvl} concept, not a
-stablehlo concept).</li>
-</ol>
+internally, so the primitive runs on whichever backend is active when it
+is called.</p>
+<p>Here we define the inference function inline to keep the example
+self-contained. Inside {anvl}, inference rules live together in
+<code>R/rules-inference.R</code>, named
+<code>infer_&lt;primitive&gt;()</code>. Its formals are the primitive’s
+own – every operand and <em>every</em> static parameter, including ones
+the rule has no use for – because <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> calls it
+as <code>do.call(infer_fn, c(avals_in, params))</code>. It returns a
+plain <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> of abstract arrays, named when the primitive
+has named outputs.</p>
+<p>If your primitive lowers to a StableHLO operation, implement the
+constraints from the <a href="https://openxla.org/stablehlo/spec" class="external-link">StableHLO specification</a>
+directly, in {anvl}’s vocabulary: arrays rather than tensors, axes
+rather than dimensions, and axis numbers 1-based. Many rules need
+nothing of their own – an elementwise operation reuses
+<code>infer_generic_biv()</code>, <code>infer_float_uni()</code> and the
+like.</p>
+<div class="section level4">
+<h4 id="handling-of-r-inputs">Handling of R inputs<a class="anchor" aria-label="anchor" href="#handling-of-r-inputs"></a>
+</h4>
+<p>One question that the primitive needs to answer is how it
+materializes R inputs: The default rule is to materialize an R input at
+its default data type, which on pjrt is <code>f32</code> for doubles and
+<code>i32</code> for integers, and <code>bool</code> for logicals
+everywhere (see <code><a href="../reference/default_dtypes.html">default_dtypes()</a></code>).</p>
+<p>For functions taking a single dynamic input, as does
+<code>prim_repeat_along</code> from above, this is almost always the
+right thing to do. The inputs section of the printed graph shows both
+halves of it: the input’s data type is the default the value
+materialized at, and the <code>&lt;- double</code> records that the
+caller supplies an R double rather than an array that already had
+one.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">prim_repeat_along</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[2,3] &lt;- double) {</span></span>
+<span><span class="co">#&gt;   %1: f32[4,3] = repeat_along [times = 2, axis = 1] (%x1)</span></span>
+<span><span class="co">#&gt;   return %1</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
+<p>Where the default goes wrong is when a primitive has several operands
+that must agree. Materializing each at its own default would make
+<code>prim_add(1, nv_scalar(2, "f64"))</code> an error – the literal
+would become the default float and could meet an <code>f64</code> –
+where it should give <code>f64</code>. In such cases, you should call
+<code><a href="../reference/apply_promotion.html">apply_promotion()</a></code> in the primitive and pass the rules you
+want to apply. This needs to be done before calling
+<code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>. These should <em>not</em> change the data
+type of any <code>AnvlArray</code> inputs, which is what the
+<code><a href="../reference/promotion_rule.html">promotion_rdata_common()</a></code> rule is for. See the <a href="type-promotion.html">Data Types and Promotion Rules</a> article
+for more information on these rules.</p>
+</div>
 <div class="section level4">
 <h4 id="special-case-primitives-with-0-dynamic-inputs">Special case: primitives with 0 dynamic inputs<a class="anchor" aria-label="anchor" href="#special-case-primitives-with-0-dynamic-inputs"></a>
 </h4>
@@ -278,26 +311,25 @@ Otherwise {anvl} would try to interpret a scalar argument like
 <code>value</code> or <code>shape</code> as an <code>AnvlArray</code>
 input.</li>
 <li>
-<strong><code>backend = "auto"</code> cannot infer a device from
-inputs</strong>, because there are no array inputs. Instead, add a
-<code>device</code> formal to the function and pass
-<code>device = device_arg("device")</code> to
-<code><a href="../reference/new_primitive.html">new_primitive()</a></code>. At call time, the user-supplied device is
-read from that argument and used to determine both the backend (via
-[<code><a href="../reference/backend.html">backend()</a></code>] dispatch) and the compilation device.</li>
+<strong>The device cannot be inferred from inputs</strong>, because
+there are no array inputs. Instead, add a <code>device</code> formal to
+the function (it goes in <code>static</code> like every other one) and
+pass it on to <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>, which declares it into the
+trace. The device the caller asked for – a device of the active backend,
+or a device name – then counts for device inference exactly like the
+device of an array input.</li>
 </ol>
 <p>For example, the real definition of <code>prim_fill</code> looks like
 this:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_fill</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span></span>
 <span>  <span class="st">"fill"</span>,</span>
-<span>  <span class="kw">function</span><span class="op">(</span><span class="va">value</span>, <span class="va">shape</span>, <span class="va">dtype</span>, <span class="va">ambiguous</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">device</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="co"># ... graph_desc_add(self, ...) ...</span></span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">value</span>, <span class="va">shape</span>, <span class="va">dtype</span>, <span class="va">device</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="co"># ... graph_desc_add(self, ..., device = device) ...</span></span>
 <span>  <span class="op">}</span>,</span>
-<span>  static <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,</span>
-<span>  device <span class="op">=</span> <span class="fu"><a href="../reference/device_arg.html">device_arg</a></span><span class="op">(</span><span class="st">"device"</span><span class="op">)</span></span>
+<span>  static <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>See [<code><a href="../reference/device_arg.html">device_arg()</a></code>] for the detailed semantics.</p>
+<p>See <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> for the detailed semantics.</p>
 </div>
 <div class="section level4">
 <h4 id="shortcut-helpers-for-common-shapes">Shortcut helpers for common shapes<a class="anchor" aria-label="anchor" href="#shortcut-helpers-for-common-shapes"></a>
@@ -309,26 +341,26 @@ ops, reductions, and comparisons all share a standard shape.
 you:</p>
 <ul>
 <li>
-<code>make_unary_op(stablehlo_infer)</code> – elementwise unary
+<code>make_unary_op(infer_fn)</code> – elementwise unary
 (e.g. <code>prim_abs</code>, <code>prim_negate</code>).</li>
 <li>
-<code>make_binary_op(stablehlo_infer)</code> – elementwise binary
+<code>make_binary_op(infer_fn)</code> – elementwise binary
 (e.g. <code>prim_add</code>, <code>prim_mul</code>).</li>
 <li>
 <code>make_reduce_op(infer_fn)</code> – reductions with
 <code>axes</code> / <code>drop</code> parameters
-(e.g. <code>prim_reduce_sum</code>).</li>
+(e.g. <code>prim_sum</code>).</li>
 <li>
 <code>make_compare_op(direction)</code> – comparison ops with a
 fixed <code>direction</code> string (e.g. <code>prim_eq</code>,
 <code>prim_lt</code>).</li>
 </ul>
-<p>Used together with the corresponding stablehlo inference function,
-the primitive definition collapses to a one-liner:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">prim_add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="fu">make_binary_op</span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_add.html" class="external-link">infer_types_add</a></span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">prim_negate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"negate"</span>, <span class="fu">make_unary_op</span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_negate.html" class="external-link">infer_types_negate</a></span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">prim_reduce_sum</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"reduce_sum"</span>, <span class="fu">make_reduce_op</span><span class="op">(</span><span class="op">)</span>, static <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<p>Used together with the matching inference rule, the primitive
+definition collapses to a one-liner:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prim_add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="fu">make_binary_op</span><span class="op">(</span><span class="va">infer_generic_biv</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">prim_negate</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"negate"</span>, <span class="fu">make_unary_op</span><span class="op">(</span><span class="va">infer_numeric_uni</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">prim_sum</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span><span class="st">"sum"</span>, <span class="fu">make_reduce_op</span><span class="op">(</span><span class="op">)</span>, static <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <p>Reach for the manual <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> form when the
 primitive has extra static parameters, a custom inference function, or
 multiple outputs.</p>
@@ -340,7 +372,7 @@ multiple outputs.</p>
 <p>The StableHLO rule defines how to lower this primitive to actual
 operations, which is used in the <code><a href="../reference/stablehlo.html">stablehlo()</a></code> lowering pass.
 We implement <code>repeat_along</code> using concatenation:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_repeat_along</span><span class="op">[[</span><span class="st">"stablehlo"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">times</span>, <span class="va">axis</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">xs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">times</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/exec.html" class="external-link">exec</a></span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html" class="external-link">hlo_concatenate</a></span>, <span class="op">!</span><span class="op">!</span><span class="op">!</span><span class="va">xs</span>, dimension <span class="op">=</span> <span class="va">axis</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
@@ -354,9 +386,11 @@ We implement <code>repeat_along</code> using concatenation:</p>
 there is only one output.</p>
 <p><strong>Important</strong>: StableHLO uses 0-based indexing, while
 {anvl} uses R’s 1-based indexing. Always convert axis indices by
-subtracting 1. Also note that in <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code> we are
-converting the error messages from stablehlo to our 1-based indexing, so
-you do not have to worry about that here.</p>
+subtracting 1. Nothing translates StableHLO’s error messages back into
+{anvl}’s terms: an input that only StableHLO rejects surfaces as an MLIR
+error in its own vocabulary, with 0-based axes. This is why the
+inference function has to check every constraint the StableHLO operation
+imposes, so that the lowering rule only ever sees valid inputs.</p>
 </div>
 <div class="section level3">
 <h3 id="step-3-add-the-reverse-rule">Step 3: Add the Reverse Rule<a class="anchor" aria-label="anchor" href="#step-3-add-the-reverse-rule"></a>
@@ -365,7 +399,7 @@ you do not have to worry about that here.</p>
 reverse rule built with <code><a href="../reference/rule_reverse.html">rule_reverse()</a></code>. The idea here is
 the following, where we assume the input <code>x</code> has shape
 <code>(s_1, ..., s_n)</code>, which means that the output (and therefore
-it’s gradient) has shape
+its gradient) has shape
 <code>(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)</code>.</p>
 <ol style="list-style-type: decimal">
 <li>Reshape the gradient to
@@ -373,7 +407,7 @@ it’s gradient) has shape
 <li>Sum over the <code>times</code> axis and drop the <code>times</code>
 axis.</li>
 </ol>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_repeat_along</span><span class="op">[[</span><span class="st">"reverse"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rule_reverse.html">rule_reverse</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">outputs</span>, <span class="va">grads</span>, <span class="va">params</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="va">required</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span><span class="op">)</span></span>
@@ -389,10 +423,10 @@ axis.</li>
 <span></span>
 <span>  <span class="va">new_shape</span> <span class="op">&lt;-</span> <span class="va">grad_shape</span></span>
 <span>  <span class="va">new_shape</span><span class="op">[</span><span class="va">axis</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">old_shape</span><span class="op">[</span><span class="va">axis</span><span class="op">]</span></span>
-<span>  <span class="va">new_shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/append.html" class="external-link">append</a></span><span class="op">(</span><span class="va">new_shape</span>, <span class="va">times</span>, after <span class="op">=</span> <span class="va">axis</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="va">new_shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/append.html" class="external-link">append</a></span><span class="op">(</span><span class="va">new_shape</span>, <span class="va">times</span>, after <span class="op">=</span> <span class="va">axis</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">grad_reshaped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_reshape.html">prim_reshape</a></span><span class="op">(</span><span class="va">grad</span>, <span class="va">new_shape</span><span class="op">)</span></span>
-<span>  <span class="va">grad_summed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_reduce_sum.html">prim_reduce_sum</a></span><span class="op">(</span><span class="va">grad_reshaped</span>, axes <span class="op">=</span> <span class="va">axis</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">grad_summed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_sum.html">prim_sum</a></span><span class="op">(</span><span class="va">grad_reshaped</span>, axes <span class="op">=</span> <span class="va">axis</span> <span class="op">+</span> <span class="fl">1L</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">grad_summed</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>The wrapped backward receives:</p>
@@ -407,7 +441,7 @@ forward pass</li>
 <code>grads</code>: Gradients flowing back from downstream (one per
 output)</li>
 <li>
-<code>params</code>: Named list of the call’s static parameters
+<code>params</code>: Named list of the statement’s static parameters
 (here: <code>params$axis</code>, <code>params$times</code>)</li>
 <li>
 <code>required</code>: Logical vector indicating which input
@@ -425,28 +459,29 @@ gradient computation can be made significantly more efficient by running
 an alternative forward pass that exposes intermediate values for reuse,
 use the alternative-forward form:
 <code>rule_reverse(forward = ...)</code>. The forward hook receives
-<code>(inputs, params)</code>, emits whatever forward primitives it
+<code>(inputs, params, required)</code> – <code>required</code> says
+which inputs need a gradient –, emits whatever forward primitives it
 likes via the normal <code>prim_*</code> callables, and returns a list
 with the primal outputs and a <code>backward</code> closure.
 Intermediates flow from forward to backward via R’s lexical scoping:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>prim_<span class="sc">&lt;</span>name<span class="sc">&gt;</span>[[<span class="st">"reverse"</span>]] <span class="ot">&lt;-</span> <span class="fu">rule_reverse</span>(<span class="at">forward =</span> <span class="cf">function</span>(inputs, params) {</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  x <span class="ot">&lt;-</span> inputs[[<span class="dv">1</span><span class="dt">L</span>]]</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  y <span class="ot">&lt;-</span> <span class="fu">prim_some_op</span>(x)        <span class="co"># forward emit 1</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  z <span class="ot">&lt;-</span> <span class="fu">prim_other_op</span>(x, y)    <span class="co"># forward emit 2; both `x` and `y` captured</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="fu">list</span>(</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="at">outputs  =</span> <span class="fu">list</span>(z),       <span class="co"># one box per original call output</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    <span class="at">backward =</span> <span class="cf">function</span>(inputs, outputs, grads, params, required) {</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>      <span class="co"># `x` is also available via `inputs`; what lexical capture buys us is</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>      <span class="co"># access to intermediates like `y` that the framework doesn't pass in.</span></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>      ...</span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>    }</span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>  )</span>
-<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>})</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>prim_<span class="sc">&lt;</span>name<span class="sc">&gt;</span>[[<span class="st">"reverse"</span>]] <span class="ot">&lt;-</span> <span class="fu">rule_reverse</span>(<span class="at">forward =</span> <span class="cf">function</span>(inputs, params, required) {</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  x <span class="ot">&lt;-</span> inputs[[<span class="dv">1</span><span class="dt">L</span>]]</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  y <span class="ot">&lt;-</span> <span class="fu">prim_some_op</span>(x)        <span class="co"># forward emit 1</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  z <span class="ot">&lt;-</span> <span class="fu">prim_other_op</span>(x, y)    <span class="co"># forward emit 2; both `x` and `y` captured</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>    <span class="at">outputs  =</span> <span class="fu">list</span>(z),       <span class="co"># one box per output of the original statement</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    <span class="at">backward =</span> <span class="cf">function</span>(inputs, outputs, grads, params, required) {</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>      <span class="co"># `x` is also available via `inputs`; what lexical capture buys us is</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>      <span class="co"># access to intermediates like `y` that the framework doesn't pass in.</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>      ...</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>    }</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>  )</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>})</span></code></pre></div>
 <p>The <code>backward</code> closure shares the same signature as the
 backward-only form. Intermediates that aren’t passed in (like
 <code>y</code> above) flow in via lexical capture. The forward must
-return one output box per original call output, with matching
-shape/dtype.</p>
+return one output box per output of the original statement, with
+matching shape/dtype.</p>
 </div>
 <div class="section level4">
 <h4 id="optional-a-quickr-rule">Optional: a quickr rule<a class="anchor" aria-label="anchor" href="#optional-a-quickr-rule"></a>
@@ -461,59 +496,7 @@ you skip it, the primitive will still work on the pjrt backend.</p>
 </div>
 </div>
 <div class="section level3">
-<h3 id="step-4-verify-the-registration">Step 4: Verify the Registration<a class="anchor" aria-label="anchor" href="#step-4-verify-the-registration"></a>
-</h3>
-<p><code><a href="../reference/new_primitive.html">new_primitive()</a></code> returns the callable directly and also
-registers the primitive in the internal registry used by the graph
-machinery, so no separate registration step is needed:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">prim_repeat_along</span></span>
-<span><span class="co">#&gt; function (x, times, axis) </span></span>
-<span><span class="co">#&gt; {</span></span>
-<span><span class="co">#&gt;     if (currently_tracing()) {</span></span>
-<span><span class="co">#&gt;         cl &lt;- match.call()</span></span>
-<span><span class="co">#&gt;         cl[[1L]] &lt;- f</span></span>
-<span><span class="co">#&gt;         return(eval.parent(cl))</span></span>
-<span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;     args &lt;- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())</span></span>
-<span><span class="co">#&gt;     be &lt;- if (!is.null(device_argname) &amp;&amp; !is.null(args[[device_argname]])) {</span></span>
-<span><span class="co">#&gt;         dev_val &lt;- args[[device_argname]]</span></span>
-<span><span class="co">#&gt;         if (is.character(dev_val)) </span></span>
-<span><span class="co">#&gt;             default_backend()</span></span>
-<span><span class="co">#&gt;         else backend(dev_val)</span></span>
-<span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;     else {</span></span>
-<span><span class="co">#&gt;         jit_auto_detect_backend(args, static)</span></span>
-<span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;     run &lt;- jit_runs[[be]]</span></span>
-<span><span class="co">#&gt;     if (is.null(run)) {</span></span>
-<span><span class="co">#&gt;         if (is.null(jit_fns[[be]])) {</span></span>
-<span><span class="co">#&gt;             jit_fns[[be]] &lt;&lt;- do.call(jit_with_backend, c(list(f = f, </span></span>
-<span><span class="co">#&gt;                 static = static, cache_size = cache_size, backend = be), </span></span>
-<span><span class="co">#&gt;                 if (!is.null(device_argname)) {</span></span>
-<span><span class="co">#&gt;                   list(device = device_arg(device_argname))</span></span>
-<span><span class="co">#&gt;                 } else if (!is.null(device)) {</span></span>
-<span><span class="co">#&gt;                   list(device = device)</span></span>
-<span><span class="co">#&gt;                 }, dots))</span></span>
-<span><span class="co">#&gt;         }</span></span>
-<span><span class="co">#&gt;         run &lt;- attr(jit_fns[[be]], "jit_run_args")</span></span>
-<span><span class="co">#&gt;         if (is.null(run)) {</span></span>
-<span><span class="co">#&gt;             run &lt;- function(args) do.call(jit_fns[[be]], args)</span></span>
-<span><span class="co">#&gt;         }</span></span>
-<span><span class="co">#&gt;         jit_runs[[be]] &lt;&lt;- run</span></span>
-<span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;     run(args)</span></span>
-<span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55d02a0f25c0&gt;</span></span>
-<span><span class="co">#&gt; attr(,"class")</span></span>
-<span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
-<span><span class="co">#&gt; attr(,"backend")</span></span>
-<span><span class="co">#&gt; [1] "auto"</span></span>
-<span><span class="co">#&gt; attr(,"primitive")</span></span>
-<span><span class="co">#&gt; &lt;AnvlPrimitive:repeat_along&gt;</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="step-5-add-an-nv_-api-function">Step 5: Add an <code>nv_</code> API Function<a class="anchor" aria-label="anchor" href="#step-5-add-an-nv_-api-function"></a>
+<h3 id="step-4-add-an-nv_-api-function">Step 4: Add an <code>nv_</code> API Function<a class="anchor" aria-label="anchor" href="#step-4-add-an-nv_-api-function"></a>
 </h3>
 <p>In {anvl}, we also offer convenience wrappers around the primitives.
 An example is <code>prim_add</code> vs <code>nv_add</code>, where the
@@ -528,26 +511,20 @@ inputs:</p>
 <span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `prim_add()`:</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> `lhs` and `rhs` must have the same array type.</span></span>
-<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> Got <span style="color: #0000BB;">tensor&lt;i32&gt;</span> and <span style="color: #0000BB;">tensor&lt;2xi32&gt;</span>.</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> Got i32[] and i32[2].</span></span></code></pre></div>
 <p>In our case, no such convenience is needed and the functionality is
 not too low-level (for it to be generally useful), so we can just
 reassign the <code>prim_*</code> function to an <code>nv_*</code>
 function:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_repeat_along</span> <span class="op">&lt;-</span> <span class="va">prim_repeat_along</span></span></code></pre></div>
-<p>Note that in the <code>nv_*</code> wrapper function, you can only
-access certain properties of the input arrayish values via:</p>
-<ul>
-<li><code><a href="../reference/abstract_properties.html">shape_abstract()</a></code></li>
-<li><code><a href="../reference/abstract_properties.html">naxes_abstract()</a></code></li>
-<li><code><a href="../reference/abstract_properties.html">dtype_abstract()</a></code></li>
-<li><code><a href="../reference/abstract_properties.html">ambiguous_abstract()</a></code></li>
-</ul>
-<p>If you, for example, use <code><a href="../reference/shape.html">shape()</a></code> instead of
-<code><a href="../reference/abstract_properties.html">shape_abstract()</a></code>, your function won’t work with R literals.
-I.e., <code>&lt;extract&gt;_abstract()</code> first converts the input
-to an <code>AbstractArray</code> (if possible) and then extracts the
-property.</p>
+<p>Note that in the <code>nv_*</code> wrapper function, the input may
+still be a bare R value – one that has no data type yet (see
+<code><a href="../reference/RData.html">?RData</a></code>). <code><a href="../reference/shape.html">shape()</a></code> and <code><a href="../reference/naxes.html">naxes()</a></code>
+answer for it as they do for an array. For the data type there is
+<code><a href="../reference/peek_dtype.html">peek_dtype()</a></code>, which reports the type the value
+<em>would</em> materialize at; <code><a href="../reference/dtype.html">dtype()</a></code> errors on an R
+value, because there is nothing to report until it is used.</p>
 </div>
 <div class="section level3">
 <h3 id="using-your-primitive">Using Your Primitive<a class="anchor" aria-label="anchor" href="#using-your-primitive"></a>
@@ -600,6 +577,10 @@ additional things to be aware of.</p>
 <code>prim_*</code> primitive via <code><a href="../reference/new_primitive.html">new_primitive()</a></code>
 </li>
 <li>
+<strong><code>R/rules-inference.R</code></strong>: Add the inference
+rule <code>infer_&lt;primitive&gt;()</code> (unless an existing one can
+be reused)</li>
+<li>
 <strong><code>R/rules-stablehlo.R</code></strong>: Add the StableHLO
 lowering rule</li>
 <li>
@@ -629,7 +610,7 @@ torch as a dependency.</li>
 torch counterpart.</li>
 </ol>
 <p><strong>Important</strong>: the <code>describe()</code> /
-<code>test_that()</code> label must contain the full primitive name,
+<code>test_that()</code> label must start with the full primitive name,
 e.g. <code>describe("prim_repeat_along", { ... })</code>. The meta tests
 in <code>tests/testthat/test-primitives-meta.R</code> verify that every
 primitive has corresponding stablehlo and reverse tests, and flag any
@@ -641,14 +622,14 @@ we would add manual tests in:</p>
 <li><code>tests/testthat/test-primitives-reverse.R</code></li>
 </ul>
 <p>Also, ensure that no linter errors are present,
-<code>devtools::check()</code> passes, and format the code using
+<code><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">devtools::check()</a></code> passes, and format the code using
 <code>make format</code>.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="higher-order-primitives">Higher-Order Primitives<a class="anchor" aria-label="anchor" href="#higher-order-primitives"></a>
 </h2>
-<p>Higher-Order Primitives are primitives that parameterized by an R
+<p>Higher-Order Primitives are primitives that are parameterized by an R
 function or expression. Examples include <code>prim_if</code> and
 <code>prim_while</code>. These are generally much more complex to
 handle, so we don’t cover them here in detail (for now). The general

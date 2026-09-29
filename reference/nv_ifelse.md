@@ -1,56 +1,59 @@
 # Conditional Element Selection
 
-Selects elements from `true_value` or `false_value` based on `pred`,
-analogous to R's [`ifelse()`](https://rdrr.io/r/base/ifelse.html).
+Selects elements from `yes` or `no` based on `test`, mirroring R's
+[`ifelse()`](https://rdrr.io/r/base/ifelse.html).
+
+[`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md) is the
+other conditional: it mirrors R's `if` construct and branches between
+two *functions*, evaluating only the selected one.
 
 ## Usage
 
 ``` r
-nv_ifelse(pred, true_value, false_value)
+nv_ifelse(test, yes, no)
 ```
 
 ## Arguments
 
-- pred:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
-  boolean type)  
-  Predicate array. Must be scalar or have the same shape as the
-  non-scalar arguments.
-
-- true_value, false_value:
+- test:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Values to return where `pred` is `TRUE` / `FALSE`. `true_value` and
-  `false_value` are [promoted to a common data
+  Predicate array. Must be a boolean or an R logical, and scalar or the
+  same shape as the non-scalar arguments.
+
+- yes, no:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Values to return where `test` is `TRUE` / `FALSE`. Can be of any data
+  type; the two are [promoted to a common data
   type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
-  Scalars (including `pred`) are
+  Scalars (including `test`) are
   [broadcast](https://r-xla.github.io/anvl/reference/nv_broadcast_scalars.md)
   to the shape of the non-scalar arguments.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the common data type of `true_value` and `false_value` and the shape
-of the non-scalar arguments.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the common data type of `yes` and `no`, and their broadcast shape.
 
 ## See also
 
 [`prim_ifelse()`](https://r-xla.github.io/anvl/reference/prim_ifelse.md)
-for the underlying primitive.
+for the underlying primitive,
+[`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md).
 
 ## Examples
 
 ``` r
-pred <- nv_array(c(TRUE, FALSE, TRUE))
-nv_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+test <- nv_array(c(TRUE, FALSE, TRUE))
+nv_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 #> AnvlArray
 #>  1
 #>  5
 #>  3
 #> [ CPUf32{3} ] 
-# scalar branches are broadcast and promoted to a common dtype
-nv_ifelse(pred, nv_scalar(1L), nv_scalar(0.5))
+# scalar branches are broadcast and promoted to a common data type
+nv_ifelse(test, nv_scalar(1L), nv_scalar(0.5))
 #> AnvlArray
 #>  1.0000
 #>  0.5000

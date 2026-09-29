@@ -7,6 +7,9 @@ Element-wise truncation (round toward zero). You can also use
 
 ``` r
 nv_trunc(x)
+
+# S3 method for class 'AnvlArray'
+trunc(x, ...)
 ```
 
 ## Arguments
@@ -14,12 +17,20 @@ nv_trunc(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Input array.
+  One input. Can be any numeric data type: a float is rounded and keeps
+  its own, and an integer one is already whole and is returned
+  unchanged. An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) and is
+  treated in the same way.
+
+- ...:
+
+  Not used; must be empty.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## See also
 
@@ -30,6 +41,7 @@ Has the same shape and data type as the input.
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 trunc(x)
 #> AnvlArray
@@ -37,4 +49,10 @@ trunc(x)
 #>   2
 #>  -1
 #> [ CPUf32{3} ] 
+trunc(nv_array(1:3)) # an integer array is already whole
+#> AnvlArray
+#>  1
+#>  2
+#>  3
+#> [ CPUi32{3} ] 
 ```

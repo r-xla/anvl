@@ -3,30 +3,26 @@
 Creates an array filled with a scalar value. More memory-efficient than
 `nv_array(value, shape = shape)` for large arrays.
 
-`nv_fill_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
-`device` default to those of `like`.
+`nv_fill_like()` is a variant where `dtype`, `shape`, and `device`
+default to those of `like`.
 
 ## Usage
 
 ``` r
-nv_fill(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL)
+nv_fill(value, shape, dtype = NULL, device = NULL)
 
-nv_fill_like(
-  like,
-  value,
-  shape = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
 
 - value:
 
-  (`numeric(1)`)  
-  Scalar value to fill the array with.
+  (`numeric(1)` \| `logical(1)`)  
+  Scalar value to fill the array with. It has to be something `dtype`
+  can hold: a whole number in its range for an integer data type, a
+  non-negative one for an unsigned integer, and a logical or `0` / `1`
+  for `bool`.
 
 - shape:
 
@@ -35,17 +31,11 @@ nv_fill_like(
 
 - dtype:
 
-  (`character(1)` \| `NULL`)  
-  Data type.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for more details.
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Data type of the result. The default (`NULL`) uses the [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) for
+  `nv_fill` and `dtype(like)` for `nv_fill_like`.
 
 - device:
 
@@ -62,13 +52,12 @@ nv_fill_like(
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 - like:
 
@@ -78,7 +67,7 @@ nv_fill_like(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Has the given `shape` and `dtype`.
 
 ## See also
@@ -89,11 +78,14 @@ the underlying primitive.
 ## Examples
 
 ``` r
+# the R double settles the data type, the shape is given
 nv_fill(0, shape = c(2, 3))
 #> AnvlArray
 #>  0 0 0
 #>  0 0 0
 #> [ CPUf32{2,3} ] 
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_matrix(1:6, nrow = 2)
 nv_fill_like(x, 0)
 #> AnvlArray

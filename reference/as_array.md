@@ -1,4 +1,4 @@
-# Convert to an R array
+# Convert to an R Array
 
 Transfers array data to R and returns it as an R
 [`array`](https://rdrr.io/r/base/array.html). Only in the case of
@@ -9,7 +9,7 @@ axes.
 
 ``` r
 # S3 method for class 'AnvlArray'
-as_array(x, check = FALSE, ...)
+as_array(x, check = "warn", ...)
 
 as_array(x, ...)
 ```
@@ -23,30 +23,58 @@ as_array(x, ...)
 
 - check:
 
-  (`logical(1)`)  
-  If `TRUE`, sanity-check the materialized R vector against losing
-  information across the device-to-host boundary, and abort if any
-  problematic value is detected. Forwarded to the backend; for the
-  `pjrt` backend the relevant cases are `i32`/`i64` values colliding
-  with the `NA` bit pattern and `ui64` values `>= 2^63` wrapping through
-  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
-  See
-  [`pjrt::as_array.PJRTBuffer()`](https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html)
-  for the full list. Defaults to `FALSE`. See the "Gotchas" vignette.
+  (`character(1)` \| `FALSE`)  
+  How to report a materialized value that the R type cannot hold:
+  `"warn"` (the default) warns and returns it anyway, `"err"` aborts,
+  and `FALSE` skips the scan. Problematic values are the
+  bit-representations reserved for R's `NA` values, as well as
+  out-of-range values. See the
+  [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html) article
+  for more.
 
 - ...:
 
-  Additional arguments passed to methods (unused).
+  Passed on to methods.
 
 ## Value
 
-An R [`array`](https://rdrr.io/r/base/array.html) or `vector` of length
-1.
+([`array`](https://rdrr.io/r/base/array.html) \| `vector(1)`)  
+An R array with the input's shape, or – for a scalar, which R cannot
+represent as an array – a vector of length 1.
 
 ## Details
 
 This is implemented via the generic
-[`tengen::as_array()`](https://r-xla.github.io/tengen/reference/as_array.html).
+[`xlamisc::as_array()`](https://r-xla.github.io/xlamisc/reference/as_array.html).
+
+## Data types
+
+R has fewer data types than anvl, so the values are converted to the R
+type that can represent them:
+
+|  |  |
+|----|----|
+| Data type | R type |
+| `f32`, `f64` | `double` |
+| `i8`, `i16`, `i32`, `ui8`, `ui16` | `integer` |
+| `i64`, `ui32`, `ui64` | [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html) |
+| `bool` | `logical` |
+
+This has two consequences:
+
+- An `f32` value is widened to a `double` and keeps the rounding error
+  of the 32-bit float, e.g. `as_array(nv_scalar(0.1))` is not exactly
+  `0.1`.
+
+- Some integer values cannot be represented in R: an `i32` or `i64`
+  value equal to the smallest representable integer is read as `NA`, and
+  a `ui64` value `>= 2^63` wraps to a negative number. The `check`
+  argument decides whether this is reported.
+
+To obtain a different R type, convert the array with
+[`nv_convert()`](https://r-xla.github.io/anvl/reference/nv_convert.md)
+first, or use the coercion functions described in
+[`as.double()`](https://r-xla.github.io/anvl/reference/as-AnvlArray.md).
 
 ## Examples
 

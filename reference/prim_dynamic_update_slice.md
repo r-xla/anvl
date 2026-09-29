@@ -17,27 +17,38 @@ prim_dynamic_update_slice(x, update, ...)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of any data type.
+  The array to write into. Can be any data type. `x` and `update` must
+  have the same data type. An R value among them assumes the data type
+  of the others when it is in its [data type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  none of them has one.
 
 - update:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  The values to write at the specified position. Must have the same data
-  type and number of axes as `x`, with `nv_shape(update) <= nv_shape(x)`
-  per axis.
+  The values to write at the specified position. Must have the same
+  number of axes as `x`, with `shape(update) <= shape(x)` per axis.
+  Shares `x`'s data type.
 
 - ...:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
-  integer type)  
-  Scalar start indices, one per axis of `x`. Each must be a scalar
-  array.
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Scalar start indices of an integer data type, one per axis of `x`.
+  They are brought to one data type among themselves, never `x`'s.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type and shape as `x`. It is ambiguous if the input is
-ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the same data type and shape as `x`.
+
+## Out of Bounds Behavior
+
+Start indices are clamped before the update is written:
+`adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)`.
+This means that out-of-bounds indices will not cause an error, but the
+effective start position may differ from the requested one.
 
 ## Implemented Rules
 
@@ -50,14 +61,9 @@ ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_dynamic_update_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_update_slice.html).
-
-## Out Of Bounds Behavior
-
-Start indices are clamped before the slice is extracted:
-`adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)`.
-This means that out-of-bounds indices will not cause an error, but the
-effective start position may differ from the requested one.
+[`hlo_dynamic_update_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_update_slice.html),
+specified under
+[dynamic_update_slice](https://openxla.org/stablehlo/spec#dynamic_update_slice).
 
 ## See also
 

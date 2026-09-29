@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,22 +27,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -71,15 +72,32 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="logo.svg" class="logo" alt=""><h1>NA</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/AGENTS.md" class="external-link"><code>AGENTS.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/AGENTS.md" class="external-link"><code>AGENTS.md</code></a></small>
     </div>
 
 
 <p>@../claude-config/CLAUDE.md</p>
 <div class="section level2">
 <h2 id="package-overview">Package Overview<a class="anchor" aria-label="anchor" href="#package-overview"></a></h2>
-<p><code>anvl</code> is a code transformation framework for R, similar to JAX. It provides JIT compilation (<code><a href="reference/jit.html">jit()</a></code>) and automatic differentiation (<code><a href="reference/gradient.html">gradient()</a></code>, <code><a href="reference/value_and_gradient.html">value_and_gradient()</a></code>).</p>
+<p><code>anvl</code> is a code transformation framework for R, similar to JAX. It provides JIT compilation (<code><a href="reference/jit.html">jit()</a></code>) and automatic differentiation (<code><a href="reference/gradient.html">gradient()</a></code>, <code><a href="reference/gradient.html">value_and_gradient()</a></code>).</p>
 </div>
+<div class="section level2">
+<h2 id="commands">Commands<a class="anchor" aria-label="anchor" href="#commands"></a></h2>
+<p>The generic R workflow (<code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>, <code>make format</code>, <code>jarl check .</code>, …) is in the shared config above. anvl-specific:</p>
+<ul><li>
+<strong>Tests are gated behind <code>ANVL_TEST=1</code></strong> – <code>tests/testthat.R</code> only calls <code>test_check()</code> when it is set, so <code>R CMD check</code> in a shell without it runs <em>no</em> tests. <code>.Renviron</code> sets it (together with <code>PJRT_INSTALL=1</code>) for work inside the package.</li>
+<li>Single file: <code>testthat::test_active_file("tests/testthat/test-reverse.R")</code>, or <code>devtools::test(filter = "reverse")</code>.</li>
+<li>
+<code>ANVL_TEST_SKIP_QUICKR=1</code> skips the (slow) quickr tests. <code>setup.R</code> sets <code>PJRT_CPU_DEVICE_COUNT=2</code> so multi-device tests have something to spread over.</li>
+<li>
+<code>ANVL_DEFAULT_DEVICE</code> / <code>ANVL_DEFAULT_DTYPES</code> are package-level: anvl reads them once when it is loaded and falls back to them when the <code>anvl.default_device</code> / <code>anvl.default_dtypes</code> options are not set. The suite uses them to run on another configuration, and <code>setup.R</code> skips quickr for such a run:
+<ul><li>
+<code>ANVL_DEFAULT_DEVICE=cuda</code> runs the suite on the CUDA plugin (<code>is_cpu()</code> / <code>is_cuda()</code> in <code>helper.R</code> branch on it). <code>ANVL_DEFAULT_DEVICE=cpu:1</code> runs it on the second CPU device, so anything allocating on the first CPU device where it should have followed the trace or its operands lands on a device of its own, which jit’s autodetect reports; the <code>default-device</code> workflow runs it on the <code>full-test</code> PR label. A test that asserts the unset default calls <code>local_unset_default_device()</code> (<code>helper.R</code>) to clear both.</li>
+<li>
+<code>ANVL_DEFAULT_DTYPES="float=f64,int=i64"</code> runs the suite at another pair of default data types; the <code>default-dtypes</code> workflow runs it so that anything hardcoding <code>f32</code> / <code>i32</code> where it should read <code><a href="reference/default_dtypes.html">default_dtypes()</a></code> fails in CI. A test that asserts the <em>registered</em> pair calls <code>local_registered_default_dtypes()</code> (<code>helper.R</code>) to clear the override.</li>
+</ul></li>
+<li>anvl tracks the <strong>dev</strong> versions of its r-xla dependencies: <code>pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))</code>.</li>
+</ul></div>
 <div class="section level2">
 <h2 id="two-layer-api">Two-Layer API<a class="anchor" aria-label="anchor" href="#two-layer-api"></a></h2>
 <ul><li>
@@ -87,7 +105,10 @@
 <li>
 <strong><code>prim_*</code> functions</strong> (e.g. <code><a href="reference/prim_fill.html">prim_fill()</a></code>, <code><a href="reference/prim_mul.html">prim_mul()</a></code>) – low-level primitives in <code>R/primitives.R</code>, exported directly under their <code>prim_&lt;name&gt;</code> R symbols. Calling a primitive records an operation into the computation graph during tracing (or executes it eagerly).</li>
 </ul><p>When adding new functionality, decide which layer it belongs to. Most new operations need both: a <code>prim_*</code> primitive with rules, and an <code>nv_*</code> wrapper with R-idiomatic semantics.</p>
-<p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>.</p>
+<p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>. The literal takes the dtype of the operands it meets. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction’s <code>init</code>). For an elementwise primitive, broadcast first with <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code>.</p>
+<p>The two spellings of a whole number are not symmetric here. An R integer widens into whatever category it meets, while a plain <code>1</code> is an R <em>double</em> and pulls an integer array into the float category – <code>x_i32 - 1</code> is <code>f32</code>, where <code>x_i32 - 1L</code> is <code>i32</code>. So a whole number keeps its <code>L</code> even when it meets a float array: <code>nv_ifelse(mask, 0L, x)</code>, <code>prim_fill(1L, dtype = dtype(x), ...)</code>, <code>hlo_scalar(0L, dtype = dtype(x), ...)</code>, <code>U - 1L</code>.</p>
+<p>Drop the <code>L</code> only where the value is genuinely a real number that happens to be whole – a distribution parameter, a probability bound, a threshold, a coefficient: <code>sd = 1</code>, <code>lower = 0, upper = 1</code>, <code>nv_pmax(-d, 1)</code>, <code>2 / sqrt(pi)</code>, <code>base::log(2 * pi)</code>.</p>
+<p>That distinction bites hardest on a literal that meets <em>nothing</em>, where it decides a data type outright by settling on the default of its own category. <code>nv_rnorm(mean = 0, sd = 1)</code> has to stay plain: written <code>0L</code> / <code>1L</code>, a call that names no dtype returns the sample at the default <em>integer</em>.</p>
 </div>
 <div class="section level2">
 <h2 id="terminology">Terminology<a class="anchor" aria-label="anchor" href="#terminology"></a></h2>
@@ -99,14 +120,39 @@
 <li>Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of “dimensions”, so calls into them keep those argument names (e.g. <code>hlo_reduce(dimensions = axes - 1L)</code>, <code>array(dim = ...)</code>) with the anvl-side axis variable on the right.</li>
 <li>
 <strong>Arrays, not tensors.</strong> In anvl-facing docs, messages, and identifiers, say <em>array</em> rather than <em>tensor</em>. The primary array argument of <code>nv_*</code> / <code>prim_*</code> functions is called <code>x</code>.</li>
+<li>
+<strong>Materialize, take, canonicalize.</strong> Three words for the R value -&gt; <code>AnvlArray</code> story, one each:
+<ul><li>
+<em>materialize</em> is the <strong>event</strong> – an R value becoming an array at a data type. An R value <em>materializes at</em> a data type and <em>materializes as</em> an array; before that it is <em>unmaterialized</em>. <code>materialize_at()</code> and <code>materialize_rdata()</code> are the functions that do it.</li>
+<li>
+<em>takes</em> / <em>settles on</em> is <strong>which</strong> data type it gets: a value <em>takes</em> the data type of the array it meets, and <em>settles on</em> the default when it meets nothing. <code><a href="reference/peek_dtype.html">peek_dtype()</a></code> reports the data type a value <em>would take</em>.</li>
+<li>
+<em>canonicalize</em> is the <strong>code discipline</strong> of calling <code><a href="reference/as_anvl_array.html">as_anvl_array()</a></code> / <code><a href="reference/as_anvl_array.html">as_anvl_arrays()</a></code> at the top of an <code>nv_*</code> function so it works eagerly and under <code><a href="reference/jit.html">jit()</a></code>.</li>
+</ul>
+Don’t reach for a synonym (<em>commit</em>, <em>realize</em>, <em>standardize</em>) for any of the three.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="supported-dtypes">Supported dtypes<a class="anchor" aria-label="anchor" href="#supported-dtypes"></a></h2>
-<ul><li>there is currently no support for complex numbers.</li>
+<p>The data types and the words the docs use for groups of them are in <code><a href="reference/dtype_categories.html">?dtype_categories</a></code> (<code>R/promotion.R</code>) and <code>man-roxygen/section_dtype_words.R</code>: <em>any</em> / <em>numeric</em> / <em>integer</em> / <em>integerish</em> / <em>signed numeric</em> / <em>float</em> / <em>boolean</em>. Two things to keep in mind:</p>
+<ul><li>There is currently no support for complex numbers.</li>
+<li>We currently do not worry about any float type other than <code>f32</code> and <code>f64</code>.</li>
 </ul></div>
 <div class="section level2">
+<h2 id="type-promotion">Type Promotion<a class="anchor" aria-label="anchor" href="#type-promotion"></a></h2>
+<p>An R value entering a program is not converted at the boundary – it is built into the program at the dtype its use site needs, which is what makes <code>x_f64 / sqrt(2)</code> exact. The Data Types and Promotion Rules article (<code>vignettes/articles/type-promotion.Rmd</code>) is the reference for how this works and for the <code>.promote</code> rules (<code><a href="reference/promotion_rule.html">promotion_common()</a></code>, <code><a href="reference/promotion_rule.html">promotion_like()</a></code>, <code><a href="reference/promotion_rule.html">promotion_dtype()</a></code>, <code><a href="reference/promotion_rule.html">promotion_rdata_common()</a></code>) that <code>nv_*</code> functions pass to <code><a href="reference/as_anvl_array.html">as_anvl_arrays()</a></code>. Two rules that bite while writing code:</p>
+<ul><li>Never call <code><a href="reference/dtype.html">dtype()</a></code> on an argument that may still be a bare R value – it errors. Use <code><a href="reference/peek_dtype.html">peek_dtype()</a></code> to ask what it <em>would</em> materialize at.</li>
+<li>A primitive promotes nothing unless its body says so: one whose operands must agree calls <code><a href="reference/apply_promotion.html">apply_promotion()</a></code> on them before anything else reads them.</li>
+<li>A trace output that met nothing materializes at the default float / integer of the active backend, which <code><a href="reference/default_dtypes.html">default_dtypes()</a></code> reports (<code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code> for one category) and the option <code>anvl.default_dtypes</code> overrides. A trace is pinned to the pair the dispatcher keyed its program on (<code>GraphDescriptor$default_dtypes</code>); name a category with <code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code>, never hardcode <code>"f32"</code> / <code>"i32"</code> as a default. <code>default_dtype_r()</code> is for the few places that map an R storage type chosen at run time, and <code>current_default_dtypes()</code> for the whole pair.</li>
+<li>
+<strong>One backend at a time.</strong> The backend is the option <code>anvl.backend</code> (<code><a href="reference/active_backend.html">active_backend()</a></code>, <code><a href="reference/local_backend.html">local_backend()</a></code>, <code><a href="reference/local_backend.html">with_backend()</a></code>). Every jitted function runs on it, reading it at call time; nothing infers a backend from an argument, no array operation or <code><a href="reference/jit.html">jit()</a></code> takes a <code>backend</code> argument, and an array or device of another backend is an error. This is what makes the default dtypes unambiguous in eager code. (A handful of helpers about the backend itself do name one: <code><a href="reference/install_anvl.html">install_anvl()</a></code>, <code><a href="reference/default_device.html">default_device()</a></code>, <code><a href="reference/local_default_dtypes.html">local_default_dtypes()</a></code> / <code><a href="reference/local_default_dtypes.html">with_default_dtypes()</a></code>.)</li>
+</ul></div>
+<div class="section level2">
+<h2 id="one-backend-at-a-time">One Backend at a Time<a class="anchor" aria-label="anchor" href="#one-backend-at-a-time"></a></h2>
+<p>The backend is the option <code>anvl.backend</code> (<code><a href="reference/active_backend.html">active_backend()</a></code>, <code><a href="reference/local_backend.html">local_backend()</a></code>, <code><a href="reference/local_backend.html">with_backend()</a></code>). Every jitted function runs on it, reading it at call time; nothing infers a backend from an argument, no array operation or <code><a href="reference/jit.html">jit()</a></code> takes a <code>backend</code> argument, and an array or device of another backend is an error. Only helpers <em>about</em> the backend name one (<code><a href="reference/install_anvl.html">install_anvl()</a></code>, <code><a href="reference/default_device.html">default_device()</a></code>, <code><a href="reference/local_default_dtypes.html">local_default_dtypes()</a></code> / <code><a href="reference/local_default_dtypes.html">with_default_dtypes()</a></code>).</p>
+</div>
+<div class="section level2">
 <h2 id="primitive-system">Primitive System<a class="anchor" aria-label="anchor" href="#primitive-system"></a></h2>
-<p>Primitives are <code>JitPrimitive</code> callables constructed by <code><a href="reference/new_primitive.html">new_primitive()</a></code> (defined in <code>R/primitive.R</code>). The returned object is both callable (it wraps <code>fn</code> with <code><a href="reference/jit.html">jit()</a></code>) and carries an <code>AnvlPrimitive</code> metadata object via <code>attr(., "primitive")</code>. Primitives are stored as <code>prim_&lt;name&gt;</code> variables. <code><a href="reference/new_primitive.html">new_primitive()</a></code> lexically binds <code>self</code> (the <code>AnvlPrimitive</code>) into the body’s enclosing environment, so inside a primitive body you write <code>graph_desc_add(self, ...)</code> — never the primitive name as a string. Interpretation rules are accessed via <code>prim_&lt;name&gt;[["&lt;rule_type&gt;"]]</code>:</p>
+<p>Primitives are <code>AnvlPrimitive</code> callables constructed by <code><a href="reference/new_primitive.html">new_primitive()</a></code> (defined in <code>R/primitive.R</code>). The returned object is both callable (it wraps <code>fn</code> with <code><a href="reference/jit.html">jit()</a></code>) and carries an <code>AnvlPrimitiveDef</code> metadata object via <code>attr(., "definition")</code>. Primitives are stored as <code>prim_&lt;name&gt;</code> variables, and the string passed to <code><a href="reference/new_primitive.html">new_primitive()</a></code> is that same <code>&lt;name&gt;</code> – not the StableHLO op it lowers to – so printed graphs and error messages name a function the reader can look up. <code>test-primitives-meta.R</code> enforces this. <code><a href="reference/new_primitive.html">new_primitive()</a></code> lexically binds <code>self</code> (the <code>AnvlPrimitiveDef</code>) into the body’s enclosing environment, so inside a primitive body you write <code>graph_desc_add(self, ...)</code> — never the primitive name as a string. Interpretation rules are accessed via <code>prim_&lt;name&gt;[["&lt;rule_type&gt;"]]</code>:</p>
 <ul><li>
 <strong><code>stablehlo</code></strong> – JIT lowering rules in <code>R/rules-stablehlo.R</code>. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.</li>
 <li>
@@ -114,6 +160,15 @@
 <li>
 <strong><code>quickr</code></strong> – R-native lowering rules in <code>R/rules-quickr.R</code> for the quickr backend.</li>
 </ul></div>
+<div class="section level2">
+<h2 id="jit-wrapping">Jit-wrapping<a class="anchor" aria-label="anchor" href="#jit-wrapping"></a></h2>
+<p>API functions are wrapped in <code><a href="reference/jit.html">jit()</a></code> at the definition itself, with <code>static</code> after the function so the signature reads on its own line:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">nv_foo</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">axis</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">}</span>, static <span class="op">=</span> <span class="st">"axis"</span><span class="op">)</span></span></code></pre></div>
+<p>Wrap every function whose body issues <strong>more than one operation</strong>.</p>
+</div>
 <div class="section level2">
 <h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>
 <p>Anvl’s elementwise binary operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>nv_add</code>, <code>nv_mul</code>, …) only <strong>auto-broadcast scalars</strong> — i.e. operands with <code>shape = integer()</code>. They do <strong>not</strong> do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code> errors like <em>“All non-scalar arrays must have the same shape, … Use <code><a href="reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> for general broadcasting.”</em></p>
@@ -138,7 +193,7 @@
 <code>tests/testthat/test-primitives-reverse.R</code> – sources <code>inst/extra-tests/test-primitives-reverse-torch.R</code>
 </li>
 </ul><p>Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.</p>
-<p>Tests that use the quickr backend must call <code>skip_if_no_quickr()</code> at the top of the test body. This helper skips when quickr is not installed, and also when the <code>ANVL_SKIP_QUICKR</code> environment variable is set (quickr tests can be slow and are often skipped locally). To test a different backend, use <code><a href="reference/local_backend.html">local_backend()</a></code> (not <code><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">withr::local_options()</a></code> directly).</p>
+<p>Tests that use the quickr backend must call <code>skip_if_no_quickr()</code> at the top of the test body. This helper skips when quickr is not installed, and also when the <code>ANVL_TEST_SKIP_QUICKR</code> environment variable is set (quickr tests can be slow and are often skipped locally). To test a different backend, use <code><a href="reference/local_backend.html">local_backend()</a></code> (not <code><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">withr::local_options()</a></code> directly).</p>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a></h2>

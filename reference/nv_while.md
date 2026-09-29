@@ -12,8 +12,12 @@ nv_while(init, cond, body)
 
 - init:
 
-  ([`list()`](https://rdrr.io/r/base/list.html))  
-  Named list of initial state values.
+  (`named list()`)  
+  Named list of initial state values, a tree in the sense of pjrt's
+  [`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html).
+  Each leaf becomes a parameter of the loop's sub-graphs. R values are
+  materialized at their [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 - cond:
 
@@ -25,11 +29,24 @@ nv_while(init, cond, body)
 
   (`function`)  
   Body function returning the updated state as a named list with the
-  same structure as `init`.
+  same structure, data types and shapes as `init`. Nothing is promoted:
+  a loop-carried state is meant to be heterogeneous, so each member
+  keeps its own data type across iterations.
 
 ## Value
 
-Final state after the loop terminates (same structure as `init`).
+(named `list`)  
+A tree of the loop-carried arrays – see
+[`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html) – in
+its final state after the loop terminates, with `init`'s structure, data
+types and shapes.
+
+## Gradients
+
+[`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+cannot differentiate a while loop: its trip count is only known at run
+time, so there is no static size for the per-iteration states the
+backward pass needs.
 
 ## See also
 
@@ -39,6 +56,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# the loop state is a named list, and each member keeps its data type
 nv_while(
   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
   cond = function(i, total) i < 5L,

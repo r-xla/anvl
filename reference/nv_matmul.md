@@ -7,16 +7,24 @@ than 2 axes.
 ## Usage
 
 ``` r
-nv_matmul(lhs, rhs, precision = "highest")
+nv_matmul(x, y, precision = "highest")
+
+# S3 method for class 'AnvlArray'
+x %*% y
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrays with at least 2 axes. Operands are [promoted to a common data
+  Numeric arrays with at least 2 axes. Can be any numeric data type; the
+  two are [promoted to a common data
   type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
+  An R value assumes the data type of the other operand, and
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  that has none either.
 
 - precision:
 
@@ -28,13 +36,14 @@ nv_matmul(lhs, rhs, precision = "highest")
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the operands' common data type and the shape given under Shapes.
 
 ## Shapes
 
-- `lhs`: `(b1, ..., bk, m, n)`
+- `x`: `(b1, ..., bk, m, n)`
 
-- `rhs`: `(b1, ..., bk, n, p)`
+- `y`: `(b1, ..., bk, n, p)`
 
 - output: `(b1, ..., bk, m, p)`
 
@@ -46,8 +55,14 @@ for the underlying primitive.
 ## Examples
 
 ``` r
+# a 2x3 times a 3x2 gives a 2x2 at the operands' common data type
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
+nv_matmul(x, y)
+#> AnvlArray
+#>  22 49
+#>  28 64
+#> [ CPUi32{2,2} ] 
 x %*% y
 #> AnvlArray
 #>  22 49

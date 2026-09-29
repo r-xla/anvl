@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,22 +27,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -71,7 +72,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Convert to Abstract Array</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/array.R" class="external-link"><code>R/array.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/array.R" class="external-link"><code>R/array.R</code></a></small>
       <div class="d-none name"><code>to_abstract.Rd</code></div>
     </div>
 
@@ -89,31 +90,35 @@
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>(<code>any</code>)<br>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code> | <code><a href="AbstractArray.html">AbstractArray</a></code>)<br>
 Object to convert.</p></dd>
 
 
 <dt id="arg-pure">pure<a class="anchor" aria-label="anchor" href="#arg-pure"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>LiteralArray</code> or <code>ConcreteArray</code>.</p></dd>
+Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>RData</code> or <code>ConcreteArray</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="AbstractArray.html">AbstractArray</a></code></p>
+    <p>(<code><a href="AbstractArray.html">AbstractArray</a></code>)<br>
+A <code><a href="ConcreteArray.html">ConcreteArray</a></code> for an <code><a href="AnvlArray.html">AnvlArray</a></code>, an <code><a href="RData.html">RData</a></code> for an R value,
+the abstract array of a <code><a href="GraphBox.html">GraphBox</a></code>, and <code>x</code> itself for an
+<code><a href="AbstractArray.html">AbstractArray</a></code>. With <code>pure = TRUE</code>, a plain <code>AbstractArray</code> of the same
+shape and data type.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># R literals become LiteralArrays (ambiguous by default, except logicals)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># an R value becomes `RData`: it has no data type of its own yet</span></span></span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fl">1.5</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(1.5, f32?, ()) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> RData(double, ()) </span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(1, i32?, ()) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> RData(integer, ()) </span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(TRUE, i1, ()) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> RData(logical, ()) </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># AnvlArrays become ConcreteArrays</span></span></span>
+<span class="r-in"><span><span class="co"># an AnvlArray becomes a ConcreteArray</span></span></span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ConcreteArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
@@ -122,7 +127,7 @@ Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>Liter
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{4} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Use pure = TRUE to strip subclass info</span></span></span>
+<span class="r-in"><span><span class="co"># use pure = TRUE to strip subclass info</span></span></span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span>, pure <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AbstractArray(dtype=i32, shape=4) </span>
 </code></pre></div>

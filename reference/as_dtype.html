@@ -15,7 +15,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,7 +74,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Convert to a DataType</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/reexports.R" class="external-link"><code>R/reexports.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/reexports.R" class="external-link"><code>R/reexports.R</code></a></small>
       <div class="d-none name"><code>as_dtype.Rd</code></div>
     </div>
 
@@ -97,15 +98,15 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>DataType</code> object.</p>
+    <p>(<code>DataType</code>)</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>This is implemented via the generic <code><a href="https://r-xla.github.io/tengen/reference/as_dtype.html" class="external-link">tengen::as_dtype()</a></code>.</p>
+    <p>This is implemented via the generic <code><a href="https://r-xla.github.io/xlamisc/reference/as_dtype.html" class="external-link">xlamisc::as_dtype()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="is_dtype.html">is_dtype()</a></code>, <code><a href="https://r-xla.github.io/tengen/reference/as_dtype.html" class="external-link">tengen::as_dtype()</a></code>, <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code></p></div>
+    <div class="dont-index"><p><code><a href="is_dtype.html">is_dtype()</a></code>, <code><a href="https://r-xla.github.io/xlamisc/reference/as_dtype.html" class="external-link">xlamisc::as_dtype()</a></code>, <code><a href="https://r-xla.github.io/xlamisc/reference/DataType.html" class="external-link">xlamisc::DataType</a></code></p></div>
     </div>
 
     <div class="section level2">

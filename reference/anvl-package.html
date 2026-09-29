@@ -6,8 +6,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="anvl: Accelerated Array Computing and Automatic Differentiation — anvl-package"><meta name="description" content="
-Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:description" content="
-Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:description" content="
+Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -15,7 +15,7 @@ Accelerated array computing and code transformations for R. Numerical programs o
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@ Accelerated array computing and code transformations for R. Numerical programs o
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,16 +74,53 @@ Accelerated array computing and code transformations for R. Numerical programs o
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>anvl: Accelerated Array Computing and Automatic Differentiation</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/aaa.R" class="external-link"><code>R/aaa.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/aaa.R" class="external-link"><code>R/aaa.R</code></a></small>
       <div class="d-none name"><code>anvl-package.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p></p>
-<p>Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.</p>
+<p>Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' – the same compiler that powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.</p>
     </div>
 
 
+    <div class="section level2">
+    <h2 id="options">Options<a class="anchor" aria-label="anchor" href="#options"></a></h2>
+
+
+<ul><li><p><code>anvl.backend</code> (<code>character(1)</code>): the backend every
+operation runs on.
+Must be one of <code>"pjrt"</code> and <code>"quickr"</code>. If not set, <code>"pjrt"</code> is used.
+Also see <code><a href="active_backend.html">active_backend()</a></code>, <code><a href="local_backend.html">local_backend()</a></code> and <code><a href="local_backend.html">with_backend()</a></code>.</p></li>
+<li><p><code>anvl.default_dtypes</code> (named <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> | named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>): the data
+types an R double and an R integer settle on when they meet no typed
+array.
+See <code><a href="default_dtypes.html">default_dtypes()</a></code> for more details.</p></li>
+<li><p><code>anvl.default_device</code> (<code>character(1)</code> | device object): the device a call
+that names none allocates on.
+Also see <code><a href="default_device.html">default_device()</a></code>, <code><a href="local_default_device.html">local_default_device()</a></code> and
+<code><a href="local_default_device.html">with_default_device()</a></code>.</p></li>
+</ul></div>
+    <div class="section level2">
+    <h2 id="environment-variables">Environment variables<a class="anchor" aria-label="anchor" href="#environment-variables"></a></h2>
+
+
+<ul><li><p><code>ANVL_DEFAULT_DTYPES</code>: <code>category=dtype</code> pairs such as
+<code>"float=f64,int=i64"</code>, used for every backend when the
+<code>anvl.default_dtypes</code> option is not set.</p></li>
+<li><p><code>ANVL_DEFAULT_DEVICE</code>: a device identifier such as <code>"cuda"</code> or <code>"cuda:0"</code>,
+used when the <code>anvl.default_device</code> option is not set.</p></li>
+</ul><p>Both are read once, when anvl is loaded, and kept as fallbacks for the
+options rather than set as them: <code>getOption("anvl.default_device")</code> stays
+<code>NULL</code>, and an option set later takes precedence. Changing a variable after
+anvl is loaded has no effect until the package is loaded again, e.g. in a
+new R session.</p>
+<p>The remaining ones, all prefixed <code>ANVL_TEST</code>, affect only anvl's own test
+suite, not the package:</p><ul><li><p><code>ANVL_TEST</code>: <code>tests/testthat.R</code> runs the tests only when this is <code>"1"</code>,
+so <code>R CMD check</code> in a shell without it runs none of them.</p></li>
+<li><p><code>ANVL_TEST_SKIP_QUICKR</code>: when set to anything non-empty, the tests that need
+the quickr backend are skipped – they are comparatively slow.</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="third-party-licenses">Third-Party Licenses<a class="anchor" aria-label="anchor" href="#third-party-licenses"></a></h2>
 
@@ -90,7 +128,7 @@ Accelerated array computing and code transformations for R. Numerical programs o
 <p>The <code>anvl</code> package itself is MIT-licensed. The CUDA backend dynamically
 loads NVIDIA software which is not bundled with <code>anvl</code>, but downloaded
 from NVIDIA's official redistributable channels by the CUDA toolkit R
-package (e.g. <code>cuda12.8</code>) at install time. Its use is governed by the
+package (e.g. <code>pjrt.cuda</code>) at install time. Its use is governed by the
 <a href="https://docs.nvidia.com/cuda/eula/" class="external-link">NVIDIA CUDA Toolkit EULA</a>, with the
 exception of cuDNN, which is covered by the
 <a href="https://docs.nvidia.com/deeplearning/cudnn/sla/index.html" class="external-link">NVIDIA cuDNN SLA</a>,
@@ -112,6 +150,7 @@ By installing or using the CUDA backend you accept those terms.</p>
 <li><p>Tomasz Kalinowski <a href="mailto:tomasz@posit.co">tomasz@posit.co</a></p></li>
 <li><p>Nikolai German <a href="mailto:niko.german@gmail.com">niko.german@gmail.com</a> (<a href="https://orcid.org/0009-0001-7394-8367" class="external-link">ORCID</a>)</p></li>
 </ul><p>Other contributors:</p><ul><li><p>Louis Aslett <a href="mailto:louis.aslett@durham.ac.uk">louis.aslett@durham.ac.uk</a> (<a href="https://orcid.org/0000-0003-2211-233X" class="external-link">ORCID</a>) [contributor]</p></li>
+<li><p>Hugh Graham <a href="mailto:hugh@belian.earth">hugh@belian.earth</a> (<a href="https://orcid.org/0000-0001-9451-5010" class="external-link">ORCID</a>) [contributor]</p></li>
 </ul></div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

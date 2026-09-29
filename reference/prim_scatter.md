@@ -2,9 +2,9 @@
 
 Produces a result array identical to `x` except that slices at positions
 specified by `scatter_indices` are updated with values from the `update`
-array. When multiple indices point to the same location, the
-`update_computation` function determines how to combine the values (by
-default the new value replaces the old one).
+array. When multiple indices point to the same location, the `update_fn`
+function determines how to combine the values (by default the new value
+replaces the old one).
 
 This is the inverse of
 [`prim_gather()`](https://r-xla.github.io/anvl/reference/prim_gather.md):
@@ -26,7 +26,7 @@ prim_scatter(
   index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
-  update_computation = NULL
+  update_fn = NULL
 )
 ```
 
@@ -35,20 +35,26 @@ prim_scatter(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of any data type. The base array to scatter into.
+  The base array to scatter into. Can be any data type. `x` and `update`
+  must have the same data type. An R value among them assumes the data
+  type of the others when it is in its [data type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  none of them has one.
 
 - scatter_indices:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
-  integer type)  
-  Array of indices. Contains index vectors that map to positions in `x`
-  via `scatter_axes_to_x_axes`. The axis specified by
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Array of indices, of an integer data type, which it keeps – the
+  indices take no part in `x`'s. Contains index vectors that map to
+  positions in `x` via `scatter_axes_to_x_axes`. The axis specified by
   `index_vector_axis` holds the index vectors.
 
 - update:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Update values array. Must have the same data type as `x`.
+  Update values array. Shares `x`'s data type – see `x`.
 
 - update_window_axes:
 
@@ -78,9 +84,11 @@ prim_scatter(
 - scatter_axes_to_x_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Maps each component of the index vector to an `x` axis. For example,
-  `scatter_axes_to_x_axes = c(1L)` means each index vector indexes into
-  the first axis of `x`.
+  Maps each component of an index vector in `scatter_indices` to an axis
+  of `x`. For example, `scatter_axes_to_x_axes = 1L` means each index
+  vector indexes into the first axis of `x`. This is
+  [`prim_gather()`](https://r-xla.github.io/anvl/reference/prim_gather.md)'s
+  `start_index_map`.
 
 - index_vector_axis:
 
@@ -103,7 +111,7 @@ prim_scatter(
   to `TRUE` may improve performance but produces undefined behavior if
   the indices are not actually unique. Default `FALSE`.
 
-- update_computation:
+- update_fn:
 
   (`function`)  
   Binary function `f(old, new)` that combines the existing value in `x`
@@ -112,11 +120,10 @@ prim_scatter(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type and shape as `x`. It is ambiguous if `x` is
-ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the same data type and shape as `x`.
 
-## Out Of Bounds Behavior
+## Out of Bounds Behavior
 
 If a computed result index falls outside the bounds of `x`, the update
 for that index is silently ignored.
@@ -124,8 +131,8 @@ for that index is silently ignored.
 ## Update Order
 
 When multiple indices in `scatter_indices` map to the same element of
-`x`, the order in which `update_computation` is applied is
-implementation-defined and may vary between plugins ("cpu", "cuda").
+`x`, the order in which `update_fn` is applied is implementation-defined
+and may vary between plugins ("cpu", "cuda").
 
 ## Implemented Rules
 
@@ -138,7 +145,10 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 ## StableHLO
 
 Lowers to
-[`hlo_scatter()`](https://r-xla.github.io/stablehlo/reference/hlo_scatter.html).
+[`hlo_scatter()`](https://r-xla.github.io/stablehlo/reference/hlo_scatter.html),
+specified under [scatter](https://openxla.org/stablehlo/spec#scatter).
+The axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.
 
 ## See also
 
@@ -150,7 +160,7 @@ Lowers to
 ## Examples
 
 ``` r
-# Scatter values 10 and 30 into positions 1 and 3 of a zero vector
+# scatter values 10 and 30 into positions 1 and 3 of a zero vector
 x <- nv_array(c(0, 0, 0, 0, 0))
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))

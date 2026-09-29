@@ -1,5 +1,123 @@
 # Changelog
 
+## anvl 0.5.0
+
+This release contained many breaking changes. From now on, the API will
+be more stable. Because of the amount of changes in this release, we
+only list some highlights and top-level overviews here.
+
+### Breaking changes
+
+- Many internal functions and classes were renamed, some no longer
+  needed ones removed.
+- The main API functions and primitives, as well as their parameters
+  were renamed to be more consistent with base R.
+- The package now uses col-major semantics to be more consistent with
+  base R. This is e.g. noticeable in `prim_flatten`, the broadcasting
+  functions, `prim_bitcast_convert`, and the `prim_cum*` primitives.
+- The `@jit` roxygen tag was removed; wrap functions in
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) at the
+  definition instead.
+- The type system of {anvl} was changed to avoid the problems reported
+  in issue [\#373](https://github.com/r-xla/anvl/issues/373).
+  Specifically, the ambiguity system was replaced with the `RData`
+  system and a new system of rules for type promotions. With it, also
+  the promotion behavior of various primitives and API functions was
+  improved.
+- When creating an `AnvlArray` from R data, the inputs are now always
+  checked for `NA`s, as well as out-of-range issues.
+- [`as_array()`](https://r-xla.github.io/anvl/reference/as_array.md) and
+  the [`as.double()`](https://rdrr.io/r/base/double.html) /
+  [`as.integer()`](https://rdrr.io/r/base/integer.html) /
+  [`bit64::as.integer64()`](https://bit64.r-lib.org/reference/as.integer64.character.html)
+  / [`as.logical()`](https://rdrr.io/r/base/logical.html) methods take
+  `check = "warn"`, `"err"` or `FALSE` instead of a flag, following
+  {pjrt}, and warn by default about a value R’s type cannot hold. Write
+  `check = "err"` where you wrote `check = TRUE`, and `check = FALSE` to
+  materialize silently.
+- [`common_dtype()`](https://r-xla.github.io/anvl/reference/common_dtype.md)
+  now errors for `ui64` and a signed integer instead of returning `i64`,
+  which could not hold every `ui64` value. Convert one of them with
+  [`nv_convert()`](https://r-xla.github.io/anvl/reference/nv_convert.md).
+- There is now exactly one backend used at a time and it is configured
+  via the `anvl.backend` option. With this change the `device_arg`
+  parameter was removed from
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) as it is no
+  longer needed.
+- The internal graph representation is now pure. Only the top-level
+  graph can now have constants.
+
+### Features
+
+- Many new API functions and extensions to existing ones.
+- Some new primitives (including `prim_scan`).
+- Added support for configuring the default device.
+- Added support for configuring the default data types.
+- [`as_anvl_array()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
+  gained a `.promote` argument, naming the data type the input is
+  brought to, as
+  [`as_anvl_arrays()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
+  already had.
+- Error messages are improved across the package.
+- [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  now accepts a [`raw()`](https://rdrr.io/r/base/raw.html) vector.
+- [`as.vector()`](https://rdrr.io/r/base/vector.html) now returns a
+  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
+  for integer data types that do not fit into R’s 32 bit integers.
+- Added support for more base R generics.
+- Improved documentation of API functions and primitives.
+
+### Performance
+
+- [`nv_quantile()`](https://r-xla.github.io/anvl/reference/nv_quantile.md)
+  and
+  [`nv_median()`](https://r-xla.github.io/anvl/reference/nv_median.md)
+  select the needed order statistics with `top_k` instead of a full
+  sort.
+- [`prim_top_k()`](https://r-xla.github.io/anvl/reference/prim_top_k.md)
+  gained `indices`; without them the CUDA lowering uses an unstable sort
+  of the values and a slice instead of the CHLO op, which costs no more
+  than a full sort there. `nv_top_k(indices = FALSE)` and the quantile
+  fast path use it.
+
+### Bug fixes
+
+- Many bugs in the API functions and primitives have been fixed.
+- [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md) now
+  handles values that
+  [`prim_if()`](https://r-xla.github.io/anvl/reference/prim_if.md) /
+  [`prim_scan()`](https://r-xla.github.io/anvl/reference/prim_scan.md)
+  sub-graphs close over, and treats values the differentiated function
+  closes over as constants, as in JAX. Several individual gradient rules
+  were fixed, too.
+- [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) no longer
+  evaluates its arguments a second time.
+- Arrays created inside a trace or loaded from disk are now placed on
+  the right device.
+- Type promotion was fixed in several API functions, and floating-point
+  functions now refuse boolean inputs.
+- Input validation was tightened across the API and primitives, so
+  invalid arguments now give a clear error instead of failing inside the
+  backend, aborting the R session, or silently returning a wrong result.
+- Edge cases of subsetting, such as empty selections and ranges that
+  count down, now work.
+- Improved the numerics of some functions,
+  e.g. [`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md)
+  and
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md).
+
+### Tests
+
+- The environment variables that configure only the test suite are now
+  spelled with an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`.
+  `ANVL_TEST` itself is unchanged.
+- The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes
+  anything allocating on the first CPU device rather than following the
+  trace land on a device of its own instead of agreeing with everything
+  else by accident. The `default-device` workflow runs it that way on
+  the `full-test` label.
+- Moved some of pjrt’s dispatcher tests into anvl.
+
 ## anvl 0.4.0
 
 ### Breaking changes
@@ -15,12 +133,19 @@
 - `nv_rdunif()` has been renamed to
   [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
   mirroring R’s [`sample.int()`](https://rdrr.io/r/base/sample.html).
-- [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md)’s
+- [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_uniform.md)’s
   `lower`/`upper` arguments are now `min`/`max`,
   [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)’s
   `mu`/`sigma` are now `mean`/`sd`, and
   [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md)’s
   `n` is now `size`, matching the corresponding R functions.
+
+### Bug fixes
+
+- [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
+  (formerly `nv_rdunif()`) was off by one: the first integer was drawn
+  twice as often as it should have been, and the last integer was never
+  drawn at all.
 
 ### Features
 
@@ -83,24 +208,16 @@
 
 ### Bug fixes
 
-- [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
-  (formerly `nv_rdunif()`) was off by one: the first integer was drawn
-  twice as often as it should have been, and the last integer was never
-  drawn at all.
 - Reductions now reject dimensions that are out of range for the operand
   instead of silently ignoring them.
 - `NULL` is now treated as an empty node when flattening and
   unflattening trees.
-- [`nv_argmax()`](https://r-xla.github.io/anvl/reference/nv_argmax.md) /
-  [`nv_argmin()`](https://r-xla.github.io/anvl/reference/nv_argmin.md)
-  and
+- `nv_argmax()` / `nv_argmin()` and
   [`nv_cummax()`](https://r-xla.github.io/anvl/reference/nv_cummax.md) /
   [`nv_cummin()`](https://r-xla.github.io/anvl/reference/nv_cummin.md)
   now break ties order-independently, so they return the same result on
   GPU as on CPU ([\#368](https://github.com/r-xla/anvl/issues/368)).
-  [`nv_argmax()`](https://r-xla.github.io/anvl/reference/nv_argmax.md) /
-  [`nv_argmin()`](https://r-xla.github.io/anvl/reference/nv_argmin.md)
-  prefer the smallest index;
+  `nv_argmax()` / `nv_argmin()` prefer the smallest index;
   [`nv_cummax()`](https://r-xla.github.io/anvl/reference/nv_cummax.md) /
   [`nv_cummin()`](https://r-xla.github.io/anvl/reference/nv_cummin.md)
   prefer the last occurrence.
@@ -201,12 +318,11 @@
   [`prim_sort()`](https://r-xla.github.io/anvl/reference/prim_sort.md),
   [`prim_top_k()`](https://r-xla.github.io/anvl/reference/prim_top_k.md),
   [`prim_reduce()`](https://r-xla.github.io/anvl/reference/prim_reduce.md),
-  [`prim_argmax()`](https://r-xla.github.io/anvl/reference/prim_argmax.md),
-  [`prim_argmin()`](https://r-xla.github.io/anvl/reference/prim_argmin.md).
+  `prim_argmax()`, `prim_argmin()`.
 - New API functions:
   - [`nv_sort()`](https://r-xla.github.io/anvl/reference/nv_sort.md) /
-    [`nv_argsort()`](https://r-xla.github.io/anvl/reference/nv_argsort.md)
-    – sort along a dimension, or return the permutation that does.
+    `nv_argsort()` – sort along a dimension, or return the permutation
+    that does.
   - [`nv_top_k()`](https://r-xla.github.io/anvl/reference/nv_top_k.md) –
     the `k` largest values along a dimension.
   - [`nv_median()`](https://r-xla.github.io/anvl/reference/nv_median.md)
@@ -215,11 +331,8 @@
     – median / quantiles along a dimension.
     [`median()`](https://rdrr.io/r/stats/median.html) dispatches to
     [`nv_median()`](https://r-xla.github.io/anvl/reference/nv_median.md).
-  - [`nv_argmax()`](https://r-xla.github.io/anvl/reference/nv_argmax.md)
-    /
-    [`nv_argmin()`](https://r-xla.github.io/anvl/reference/nv_argmin.md)
-    – index of the maximum / minimum along a dimension (ties broken by
-    smallest index).
+  - `nv_argmax()` / `nv_argmin()` – index of the maximum / minimum along
+    a dimension (ties broken by smallest index).
   - [`nv_select()`](https://r-xla.github.io/anvl/reference/nv_select.md)
     – select a slice along a dimension by index.
 
@@ -252,37 +365,30 @@
   [`await()`](https://r-xla.github.io/anvl/reference/await.md) that
   blocks until the underlying computation has finished.
 - New tree utilities
-  [`map_tree()`](https://r-xla.github.io/pjrt/reference/map_tree.html)
-  and
-  [`pmap_tree()`](https://r-xla.github.io/pjrt/reference/pmap_tree.html)
+  [`map_tree()`](https://r-xla.github.io/anvl/reference/map_tree.md) and
+  [`pmap_tree()`](https://r-xla.github.io/anvl/reference/map_tree.md)
   for applying functions leaf-wise over (possibly nested) lists.
 - Added support for `range` generic.
 - Improved NaN handling across various primitives and API functions.
 
 ### Other
 
-- [`nv_reduce_sum()`](https://r-xla.github.io/anvl/reference/nv_reduce_sum.md),
-  [`nv_reduce_prod()`](https://r-xla.github.io/anvl/reference/nv_reduce_prod.md),
-  [`nv_reduce_max()`](https://r-xla.github.io/anvl/reference/nv_reduce_max.md),
-  [`nv_reduce_min()`](https://r-xla.github.io/anvl/reference/nv_reduce_min.md),
-  [`nv_reduce_any()`](https://r-xla.github.io/anvl/reference/nv_reduce_any.md),
-  [`nv_reduce_all()`](https://r-xla.github.io/anvl/reference/nv_reduce_all.md)
-  and [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md)
-  now default `dims = NULL`, which reduces over all dimensions and
-  returns a scalar. Previously, `dims` was required.
+- `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_reduce_max()`,
+  `nv_reduce_min()`, `nv_reduce_any()`, `nv_reduce_all()` and
+  [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md) now
+  default `dims = NULL`, which reduces over all dimensions and returns a
+  scalar. Previously, `dims` was required.
 
 ### Bug Fixes
 
 - The overloaded `%%` operator now calls the new
   [`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md) to be
   consistent with base R.
-- The reverse rule for
-  [`prim_reduce_prod()`](https://r-xla.github.io/anvl/reference/prim_reduce_prod.md)
-  no longer produces `NaN` / `Inf` gradients when the input contains
-  zeros.
+- The reverse rule for `prim_reduce_prod()` no longer produces `NaN` /
+  `Inf` gradients when the input contains zeros.
 - The CI now actually runs the torch-comparison tests.
-- [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md) not
-  properly respects the `lower` argument.
+- [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
+  not properly respects the `lower` argument.
 
 ## anvl 0.2.0
 
@@ -389,9 +495,8 @@
 
 - +-Inf/NaN are correctly created for `f64` when inlined into the XLA
   exectuable ([\#182](https://github.com/r-xla/anvl/issues/182)). This
-  caused wrong results with
-  e.g. [`nv_reduce_max()`](https://r-xla.github.io/anvl/reference/nv_reduce_max.md)
-  when working with `f64`.
+  caused wrong results with e.g. `nv_reduce_max()` when working with
+  `f64`.
 - Corrected argument checks in
   [`nv_iota()`](https://r-xla.github.io/anvl/reference/nv_iota.md).
 - Fix check that `wrt` arguments in

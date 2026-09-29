@@ -5,11 +5,13 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Conditional Branching — nv_if"><meta name="description" content="Conditional execution of two branches.
-Unlike nv_ifelse(), which selects elements, this executes only one
-of the two branches depending on a scalar predicate."><meta property="og:description" content="Conditional execution of two branches.
-Unlike nv_ifelse(), which selects elements, this executes only one
-of the two branches depending on a scalar predicate."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Conditional Branching — nv_if"><meta name="description" content="Conditional execution of two branches, mirroring R's if construct: it
+branches between two functions and evaluates only the selected one. Its
+arguments are named after that construct, where nv_ifelse() – which
+selects element-wise between two arrays – is named after ifelse()."><meta property="og:description" content="Conditional execution of two branches, mirroring R's if construct: it
+branches between two functions and evaluates only the selected one. Its
+arguments are named after that construct, where nv_ifelse() – which
+selects element-wise between two arrays – is named after ifelse()."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -17,7 +19,7 @@ of the two branches depending on a scalar predicate."><meta property="og:image" 
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,22 +33,23 @@ of the two branches depending on a scalar predicate."><meta property="og:image" 
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -75,14 +78,15 @@ of the two branches depending on a scalar predicate."><meta property="og:image" 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Conditional Branching</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
       <div class="d-none name"><code>nv_if.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Conditional execution of two branches.
-Unlike <code><a href="nv_ifelse.html">nv_ifelse()</a></code>, which selects elements, this executes only one
-of the two branches depending on a scalar predicate.</p>
+    <p>Conditional execution of two branches, mirroring R's <code>if</code> construct: it
+branches between two <em>functions</em> and evaluates only the selected one. Its
+arguments are named after that construct, where <code><a href="nv_ifelse.html">nv_ifelse()</a></code> – which
+selects element-wise between two <em>arrays</em> – is named after <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>.</p>
     </div>
 
     <div class="section level2">
@@ -95,8 +99,8 @@ of the two branches depending on a scalar predicate.</p>
 
 
 <dl><dt id="arg-pred">pred<a class="anchor" aria-label="anchor" href="#arg-pred"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code> of boolean type, scalar)<br>
-Predicate.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Predicate. Must be a scalar of the boolean data type, or an R logical.</p></dd>
 
 
 <dt id="arg-true">true<a class="anchor" aria-label="anchor" href="#arg-true"></a></dt>
@@ -107,12 +111,24 @@ Zero-argument function for the true branch.</p></dd>
 <dt id="arg-false">false<a class="anchor" aria-label="anchor" href="#arg-false"></a></dt>
 <dd><p>(<code>function()</code>)<br>
 Zero-argument function for the false branch.
-Must return outputs with the same shapes as the true branch.</p></dd>
+Must return the same structure, data types and shapes as the true
+branch; nothing is promoted.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Result of the executed branch.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code> | <code>list</code>)<br>
+Result of the executed branch: an array, or a tree of them in the sense
+of pjrt's <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code> – a <code>list</code>, nested arbitrarily – with
+the structure, data types and shapes both branches share.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="gradients">Gradients<a class="anchor" aria-label="anchor" href="#gradients"></a></h2>
+
+
+<p><code><a href="gradient.html">gradient()</a></code> differentiates through the branch the predicate selects, including
+the values the branches close over; a value only the other branch uses gets a
+zero. See <code><a href="prim_if.html">prim_if()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -122,10 +138,22 @@ element-wise selection.</p></div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">nv_if</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># both branches must return the same structure, data types and shapes</span></span></span>
+<span class="r-in"><span><span class="fu">nv_if</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># the gradient flows through the branch that is taken</span></span></span>
+<span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">p</span>, <span class="va">x</span><span class="op">)</span> <span class="fu">nv_if</span><span class="op">(</span><span class="va">p</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span> <span class="op">*</span> <span class="va">x</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="gradient.html">gradient</a></span><span class="op">(</span><span class="va">f</span>, wrt <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $x</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

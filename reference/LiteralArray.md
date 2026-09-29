@@ -2,15 +2,16 @@
 
 An
 [`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md)
-where all elements have the same constant value. This either arises when
-using literals in traced code (e.g. `x + 1`) or when using
-[`nv_fill()`](https://r-xla.github.io/anvl/reference/nv_fill.md) to
-create a constant.
+where all elements have the same constant value. This arises from a
+literal in traced code (`x + 1`, say). A
+[`nv_fill()`](https://r-xla.github.io/anvl/reference/nv_fill.md) is a
+recorded operation rather than a constant, so its output is an ordinary
+[`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md).
 
 ## Usage
 
 ``` r
-LiteralArray(data, shape, dtype = default_dtype(data), ambiguous)
+LiteralArray(data, shape, dtype = default_dtype(data))
 ```
 
 ## Arguments
@@ -19,7 +20,10 @@ LiteralArray(data, shape, dtype = default_dtype(data), ambiguous)
 
   (`double(1)` \| `integer(1)` \| `logical(1)` \|
   [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md))  
-  The scalar value or scalarish AnvlArray (contains 1 element).
+  The scalar value, or a one-element
+  [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md) –
+  for which `dtype` has to be named, since the default takes it from an
+  R value's storage type.
 
 - shape:
 
@@ -29,66 +33,47 @@ LiteralArray(data, shape, dtype = default_dtype(data), ambiguous)
 
 - dtype:
 
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  The data type. Defaults to the current backend's default floating
-  dtype, `i32` for integer, and `bool` for logical.
+  ([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  The data type. For the default, see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
-- ambiguous:
+## Value
 
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for more details.
-
-## Type Ambiguity
-
-When arising from R literals, the resulting `LiteralArray` is ambiguous
-because no type information was available. See the
-[`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-for more details.
+(`LiteralArray`)
 
 ## Lowering
 
-`LiteralArray`s become constants inlined into the stableHLO program.
+`LiteralArray`s become constants inlined into the StableHLO program.
 I.e., they lower to
 [`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
 
 ## Examples
 
 ``` r
-x <- LiteralArray(1L, shape = integer(), ambiguous = TRUE)
+x <- LiteralArray(1L, shape = integer())
 x
-#> LiteralArray(1, i32?, ()) 
-ambiguous(x)
-#> [1] TRUE
+#> LiteralArray(1, i32, ()) 
 shape(x)
 #> integer(0)
 naxes(x)
 #> [1] 0
 dtype(x)
 #> <i32>
-# How it appears during tracing:
-# 1. via R literals
+# how it appears during tracing: an R literal that meets nothing
 graph <- trace_fn(function() 1, list())
 graph
-#> <AnvlGraph>
-#>   Inputs: (none)
-#>   Body: (empty)
-#>   Outputs:
-#>     1:f32? 
+#> <AnvlGraph> () {
+#>   return 1:f32
+#> }
 graph$outputs[[1]]$aval
-#> LiteralArray(1, f32?, ()) 
-# 2. via nv_fill()
+#> LiteralArray(1, f32, ()) 
+# a `nv_fill()`, by contrast, is a recorded operation
 graph <- trace_fn(function() nv_fill(2L, shape = c(2, 2)), list())
 graph
-#> <AnvlGraph>
-#>   Inputs: (none)
-#>   Body:
-#>     %1: i32[2, 2] = fill [value = 2, dtype = i32, shape = c(2, 2), ambiguous = FALSE] ()
-#>   Outputs:
-#>     %1: i32[2, 2] 
+#> <AnvlGraph> () {
+#>   %1: i32[2,2] = fill [value = 2, dtype = i32, shape = c(2, 2)] ()
+#>   return %1
+#> }
 graph$outputs[[1]]$aval
 #> AbstractArray(dtype=i32, shape=2x2) 
 ```

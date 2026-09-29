@@ -2,10 +2,20 @@
 
 Divides two arrays element-wise. You can also use the `/` operator.
 
+Like base R's `/`, this is a true division: integer and boolean operands
+are converted to the [default
+float](https://r-xla.github.io/anvl/reference/default_dtypes.md) before
+dividing, so `7L / 2L` is `3.5`. Use
+[`nv_floor_div()`](https://r-xla.github.io/anvl/reference/nv_floor_div.md)
+(`%/%`) for integer division.
+
 ## Usage
 
 ``` r
 nv_div(lhs, rhs)
+
+# S3 method for class 'AnvlArray'
+e1/e2
 ```
 
 ## Arguments
@@ -13,31 +23,67 @@ nv_div(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs with a [common data
+  type](https://r-xla.github.io/anvl/reference/common_dtype.md). Can be
+  any numeric data type. Scalars are broadcast. An R value takes the
+  other operand's data type when that is in its own or a higher
+  [category](https://r-xla.github.io/anvl/reference/dtype_categories.md).
+  Otherwise it settles on its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md), and
+  the operands meet at their common data type.
+
+- e1, e2:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  The operands of the operator, which it passes on as `lhs` and `rhs`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' broadcast shape and their common data type, or the
+default float when that is not a float type.
 
 ## See also
 
 [`prim_div()`](https://r-xla.github.io/anvl/reference/prim_div.md) for
-the underlying primitive.
+the underlying primitive, which divides integers with truncation.
 
 ## Examples
 
 ``` r
 x <- nv_array(c(10, 20, 30))
 y <- nv_array(c(2, 5, 10))
+nv_div(x, y)
+#> AnvlArray
+#>  5
+#>  4
+#>  3
+#> [ CPUf32{3} ] 
 x / y
 #> AnvlArray
 #>  5
 #>  4
 #>  3
 #> [ CPUf32{3} ] 
+
+# different data types are promoted to their common one
+nv_div(nv_scalar(10, "f32"), nv_scalar(4, "f64"))
+#> AnvlArray
+#>  2.5000
+#> [ CPUf64{} ] 
+
+# a scalar is broadcast and an R integer is converted to a float
+x / 2L
+#> AnvlArray
+#>   5
+#>  10
+#>  15
+#> [ CPUf32{3} ] 
+
+# integers are divided as floats
+nv_array(c(7L, -7L)) / 2L
+#> AnvlArray
+#>   3.5000
+#>  -3.5000
+#> [ CPUf32{2} ] 
 ```

@@ -15,7 +15,7 @@ Supports batched matrix multiplication when inputs have more than 2 axes."><meta
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@ Supports batched matrix multiplication when inputs have more than 2 axes."><meta
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,7 +74,7 @@ Supports batched matrix multiplication when inputs have more than 2 axes."><meta
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Matrix Multiplication</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_matmul.Rd</code></div>
     </div>
 
@@ -84,17 +85,22 @@ Supports batched matrix multiplication when inputs have more than 2 axes.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_matmul</span><span class="op">(</span><span class="va">lhs</span>, <span class="va">rhs</span>, precision <span class="op">=</span> <span class="st">"highest"</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_matmul</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, precision <span class="op">=</span> <span class="st">"highest"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'AnvlArray'</span></span>
+<span><span class="va">x</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">y</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-lhs-rhs">lhs, rhs<a class="anchor" aria-label="anchor" href="#arg-lhs-rhs"></a></dt>
+<dl><dt id="arg-x-y">x, y<a class="anchor" aria-label="anchor" href="#arg-x-y"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Arrays with at least 2 axes.
-Operands are <a href="nv_promote_to_common.html">promoted to a common data type</a>.</p></dd>
+Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
+<a href="nv_promote_to_common.html">promoted to a common data type</a>. An R value
+assumes the data type of the other operand, and materializes at its
+<a href="default_dtypes.html">default data type</a> when that has none either.</p></dd>
 
 
 <dt id="arg-precision">precision<a class="anchor" aria-label="anchor" href="#arg-precision"></a></dt>
@@ -106,14 +112,15 @@ See <code><a href="prim_dot_general.html">prim_dot_general()</a></code> for deta
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code></p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the operands' common data type and the shape given under Shapes.</p>
     </div>
     <div class="section level2">
     <h2 id="shapes">Shapes<a class="anchor" aria-label="anchor" href="#shapes"></a></h2>
 
 
-<ul><li><p><code>lhs</code>: <code>(b1, ..., bk, m, n)</code></p></li>
-<li><p><code>rhs</code>: <code>(b1, ..., bk, n, p)</code></p></li>
+<ul><li><p><code>x</code>: <code>(b1, ..., bk, m, n)</code></p></li>
+<li><p><code>y</code>: <code>(b1, ..., bk, n, p)</code></p></li>
 <li><p>output: <code>(b1, ..., bk, m, p)</code></p></li>
 </ul></div>
     <div class="section level2">
@@ -123,8 +130,14 @@ See <code><a href="prim_dot_general.html">prim_dot_general()</a></code> for deta
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># a 2x3 times a 3x2 gives a 2x2 at the operands' common data type</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_matmul</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  22 49</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  28 64</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,2} ] </span>
 <span class="r-in"><span><span class="va">x</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">y</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  22 49</span>

@@ -7,6 +7,9 @@ Element-wise base-2 logarithm. You can also use
 
 ``` r
 nv_log2(x)
+
+# S3 method for class 'AnvlArray'
+log2(x)
 ```
 
 ## Arguments
@@ -14,12 +17,20 @@ nv_log2(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Input array.
+  One input. Can be any numeric data type: a float keeps its own, and an
+  integer one is converted to the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
+  An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) and is
+  converted in the same way.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's shape, and its data type – or the default float data
+type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md))
+where the input was an integer one.
 
 ## See also
 
@@ -29,6 +40,7 @@ Has the same shape and data type as the input.
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(1, 2, 4, 8))
 nv_log2(x)
 #> AnvlArray
@@ -37,4 +49,10 @@ nv_log2(x)
 #>  2
 #>  3
 #> [ CPUf32{4} ] 
+
+# an R value materializes at its default data type
+nv_log2(8)
+#> AnvlArray
+#>  3
+#> [ CPUf32{} ] 
 ```

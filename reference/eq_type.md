@@ -2,12 +2,18 @@
 
 Compare two abstract arrays for type equality.
 
+An [`RData`](https://r-xla.github.io/anvl/reference/RData.md) has no
+data type to compare, so it is an error here, just as
+[`dtype()`](https://r-xla.github.io/xlamisc/reference/dtype.html) is.
+Give it a data type first, e.g. with
+[`nv_convert()`](https://r-xla.github.io/anvl/reference/nv_convert.md).
+
 ## Usage
 
 ``` r
-eq_type(e1, e2, ambiguity)
+eq_type(e1, e2)
 
-neq_type(e1, e2, ambiguity)
+neq_type(e1, e2)
 ```
 
 ## Arguments
@@ -15,23 +21,18 @@ neq_type(e1, e2, ambiguity)
 - e1:
 
   ([`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md))  
-  First array to compare.
+  First array to compare. Must not be an
+  [`RData`](https://r-xla.github.io/anvl/reference/RData.md).
 
 - e2:
 
   ([`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md))  
-  Second array to compare.
-
-- ambiguity:
-
-  (`logical(1)`)  
-  Whether to consider the ambiguous field when comparing. If `TRUE`,
-  arrays with different ambiguity are not equal. If `FALSE`, only dtype
-  and shape are compared.
+  Second array to compare. Must not be an
+  [`RData`](https://r-xla.github.io/anvl/reference/RData.md).
 
 ## Value
 
-`logical(1)` - `TRUE` if the arrays are equal, `FALSE` otherwise.
+(`logical(1)`)
 
 ## Examples
 
@@ -39,26 +40,32 @@ neq_type(e1, e2, ambiguity)
 a <- nv_aval("f32", c(2L, 3L))
 b <- nv_aval("f32", c(2L, 3L))
 
-# Same dtype and shape
-eq_type(a, b, ambiguity = FALSE)
+# same dtype and shape
+eq_type(a, b)
 #> [1] TRUE
 
-# Different dtype
-eq_type(a, nv_aval("i32", c(2L, 3L)), ambiguity = FALSE)
+# different dtype
+eq_type(a, nv_aval("i32", c(2L, 3L)))
 #> [1] FALSE
 
-# Different shape
-eq_type(a, nv_aval("f32", c(3L, 2L)), ambiguity = FALSE)
-#> [1] FALSE
-
-# ambiguity parameter controls whether ambiguous field is compared
-c <- nv_aval("f32", c(2L, 3L), ambiguous = TRUE)
-eq_type(a, c, ambiguity = FALSE)
-#> [1] TRUE
-eq_type(a, c, ambiguity = TRUE)
+# different shape
+eq_type(a, nv_aval("f32", c(3L, 2L)))
 #> [1] FALSE
 
 # neq_type is the negation of eq_type
-neq_type(a, b, ambiguity = FALSE)
+neq_type(a, b)
 #> [1] FALSE
+
+# an RData has no data type, so it cannot be compared
+r <- RData(c(2L, 3L), "double")
+try(eq_type(a, r))
+#> Error : `eq_type()` is undefined for an <RData>.
+#> ℹ An R value has no data type of its own until it is used, so there is nothing
+#>   to compare.
+#> ℹ Give it one explicitly with `nv_convert()`.
+try(neq_type(r, r))
+#> Error : `eq_type()` is undefined for an <RData>.
+#> ℹ An R value has no data type of its own until it is used, so there is nothing
+#>   to compare.
+#> ℹ Give it one explicitly with `nv_convert()`.
 ```

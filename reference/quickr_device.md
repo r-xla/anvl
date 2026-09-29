@@ -1,4 +1,4 @@
-# Quickr device
+# Quickr Device
 
 Device descriptor for the quickr backend. The only supported `type` is
 `"cpu"`.
@@ -18,7 +18,7 @@ quickr_device(x = "cpu")
 
 ## Value
 
-A `QuickrDevice` object.
+(`QuickrDevice`)
 
 ## See also
 

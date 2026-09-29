@@ -3,23 +3,15 @@
 Creates an array with values increasing along the specified axis,
 starting from `start`.
 
-`nv_iota_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
-`device` default to those of `like`.
+`nv_iota_like()` is a variant where `shape`, `dtype`, and `device`
+default to those of `like`.
 
 ## Usage
 
 ``` r
-nv_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+nv_iota(axis, shape, dtype, start = 1L, device = NULL)
 
-nv_iota_like(
-  like,
-  axis,
-  shape = NULL,
-  start = 1L,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 ```
 
 ## Arguments
@@ -28,32 +20,24 @@ nv_iota_like(
 
   (`integer(1)`)  
   Axis along which values increase. Negative values count from the end
-  of `shape`, i.e. `-1` refers to the last axis.
-
-- dtype:
-
-  (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  of `shape`, i.e. `-1L` refers to the last axis.
 
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result.
+
+- dtype:
+
+  (`character(1)` \|
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Data type of the result, required here. Can be any numeric data type.
+  For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
 
 - start:
 
   (`integer(1)`)  
   Starting value (default 1).
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for more details.
 
 - device:
 
@@ -70,13 +54,12 @@ nv_iota_like(
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 - like:
 
@@ -86,20 +69,23 @@ nv_iota_like(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Has the given `dtype` and `shape`.
 
 ## See also
 
 [`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md) for a
 simpler 1-D sequence,
+[`nv_linspace()`](https://r-xla.github.io/anvl/reference/nv_linspace.md)
+for evenly spaced values,
 [`prim_iota()`](https://r-xla.github.io/anvl/reference/prim_iota.md) for
 the underlying primitive.
 
 ## Examples
 
 ``` r
-nv_iota(axis = 1L, dtype = "i32", shape = 5L)
+# the sequence is built at the requested data type
+nv_iota(axis = 1L, shape = 5L, dtype = "i32")
 #> AnvlArray
 #>  1
 #>  2
@@ -107,6 +93,8 @@ nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 #>  4
 #>  5
 #> [ CPUi32{5} ] 
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_fill(0L, shape = c(2, 3))
 nv_iota_like(x, axis = 1L)
 #> AnvlArray

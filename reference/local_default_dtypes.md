@@ -1,0 +1,93 @@
+# Set the Default Data Types
+
+Set the default data types (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md))
+for a scope: `local_default_dtypes()` until the calling frame exits,
+`with_default_dtypes()` for the duration of `code`. Both write the
+`anvl.default_dtypes` option for one backend, and change only the
+categories they name.
+
+## Usage
+
+``` r
+local_default_dtypes(dtypes, backend = NULL, envir = parent.frame())
+
+with_default_dtypes(dtypes, code, backend = NULL)
+```
+
+## Arguments
+
+- dtypes:
+
+  (named [`character()`](https://rdrr.io/r/base/character.html) \| named
+  [`list()`](https://rdrr.io/r/base/list.html))  
+  A mapping of the data type categories (`float` and `int`) to data
+  types, e.g. `c(float = "f64", int = "i32")`. Each may be a string or a
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html).
+  Can also be a partial override, such as `c(float = "f64")`, in which
+  case the category it does not name is left as it is.
+
+- backend:
+
+  (`NULL` \| `character(1)`)  
+  The backend whose defaults to set. Uses
+  [`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md)
+  by default.
+
+- envir:
+
+  (`environment`)  
+  The environment to scope the change to.
+
+- code:
+
+  An expression to evaluate with the given defaults.
+
+## Value
+
+`local_default_dtypes()` returns the previous values of the options it
+set, invisibly. `with_default_dtypes()` returns the result of evaluating
+`code`.
+
+## Details
+
+Inside a [`jit()`](https://r-xla.github.io/anvl/reference/jit.md)ted
+body the defaults the program was keyed on are the *baseline* and an
+override applies to its scope, so one program can use different
+precisions in different parts of itself.
+
+## See also
+
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md),
+[`local_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md),
+[`with_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md)
+
+## Examples
+
+``` r
+with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
+#> <f64>
+# A value that meets a typed array still takes that array's data type
+with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
+#> <f32>
+# untyped values in one program can materialize at different precisions: one at
+# whatever the default is, one at the `f64` the override asks for
+jit(function() {
+  list(
+    at_default = nv_fill(0, 2),
+    forced_f64 = with_default_dtypes(c(float = "f64"), nv_fill(0, 2))
+  )
+})()
+#> $at_default
+#> AnvlArray
+#>  0
+#>  0
+#> [ CPUf32{2} ] 
+#> 
+#> $forced_f64
+#> AnvlArray
+#>  0
+#>  0
+#> [ CPUf64{2} ] 
+#> 
+```

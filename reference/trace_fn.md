@@ -1,4 +1,4 @@
-# Trace an R function into a Graph
+# Trace an R Function into a Graph
 
 Executes `f` with abstract array arguments and records every primitive
 operation into an
@@ -16,7 +16,6 @@ trace_fn(
   f,
   args = NULL,
   desc = NULL,
-  mode = NULL,
   args_flat = NULL,
   in_tree = NULL,
   optimize = FALSE
@@ -45,20 +44,6 @@ trace_fn(
   Optional descriptor. When `NULL` (default), a new descriptor is
   created.
 
-- mode:
-
-  (`character(1)`)  
-  How to handle the inputs. Options are:
-
-  - `"toplevel"`: Used for jit(). Default.
-
-  - `"subgraph"`: Use for tracing subgraphs in higher-order primitives
-    like
-    [`prim_while()`](https://r-xla.github.io/anvl/reference/prim_while.md).
-
-  - `"inline"`: Use for transformations like jit, where the graph is
-    later inlined into the parent graph.
-
 - args_flat:
 
   (`list`)  
@@ -66,7 +51,7 @@ trace_fn(
 
 - in_tree:
 
-  (`Node`)  
+  ([`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   Tree structure describing how `args_flat` maps back to `f`'s
   arguments.
 
@@ -89,8 +74,8 @@ trace_fn(
 
 ## Value
 
-An [`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md)
-containing the traced operations.
+([`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md))
+Contains the traced operations.
 
 ## See also
 
@@ -105,12 +90,8 @@ compilation.
 graph <- trace_fn(function(x, y) x + y,
   args = list(x = nv_array(1, dtype = "f32"), y = nv_array(2, dtype = "f32")))
 graph
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[1]
-#>     %x2: f32[1]
-#>   Body:
-#>     %1: f32[1] = add(%x1, %x2)
-#>   Outputs:
-#>     %1: f32[1] 
+#> <AnvlGraph> (%x1: f32[1], %x2: f32[1]) {
+#>   %1: f32[1] = add(%x1, %x2)
+#>   return %1
+#> }
 ```

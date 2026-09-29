@@ -7,24 +7,27 @@ instead.
 ## Usage
 
 ``` r
-nv_remainder(lhs, rhs)
+nv_remainder(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs with a [common data
+  type](https://r-xla.github.io/anvl/reference/common_dtype.md). Can be
+  any numeric data type. Scalars are broadcast. An R value takes the
+  other operand's data type when that is in its own or a higher
+  [category](https://r-xla.github.io/anvl/reference/dtype_categories.md).
+  Otherwise it settles on its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md), and
+  the operands meet at their common data type.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' broadcast shape and common data type.
 
 ## See also
 
@@ -43,5 +46,19 @@ nv_remainder(x, y)
 #>  1
 #>  2
 #>  1
+#> [ CPUf32{3} ] 
+
+# different data types are promoted to their common one
+nv_remainder(nv_scalar(7, "f32"), nv_scalar(3, "f64"))
+#> AnvlArray
+#>  1
+#> [ CPUf64{} ] 
+
+# a scalar is broadcast and an R integer is converted to a float
+nv_remainder(x, 3L)
+#> AnvlArray
+#>  1
+#>  2
+#>  0
 #> [ CPUf32{3} ] 
 ```

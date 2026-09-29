@@ -1,4 +1,4 @@
-# Quickr backend
+# Quickr Backend
 
 Constructs the quickr backend, which stores array data as plain R arrays
 and compiles jitted functions to R code via the
@@ -12,19 +12,16 @@ AnvlBackendQuickr()
 
 ## Value
 
-An
-[`AnvlBackend`](https://r-xla.github.io/anvl/reference/AnvlBackend.md)
-object with subclass `"AnvlBackendQuickr"`.
+([`AnvlBackend`](https://r-xla.github.io/anvl/reference/AnvlBackend.md))  
+With subclass `"AnvlBackendQuickr"`.
 
 ## Details
-
-To use it, the `"quickr"` package needs to be installed.
 
 Registered automatically under the name `"quickr"` when the package is
 loaded; call
 [`local_backend("quickr")`](https://r-xla.github.io/anvl/reference/local_backend.md)
 or
-[`with_backend("quickr", ...)`](https://r-xla.github.io/anvl/reference/with_backend.md)
+[`with_backend("quickr", ...)`](https://r-xla.github.io/anvl/reference/local_backend.md)
 to use it. Requires the quickr package to be installed.
 
 ## Data representation
@@ -38,8 +35,7 @@ returns the underlying vector/array directly without copying, and
 simply wraps an R vector/array. Data always lives in R's memory and
 computation always runs on the CPU, so the only device is
 [`quickr_device("cpu")`](https://r-xla.github.io/anvl/reference/quickr_device.md);
-every array still carries it in `$device`, as arrays of every backend
-do.
+every array still carries it in `$device`.
 
 ## Status
 
@@ -50,21 +46,17 @@ This backend is **experimental** and has a number of limitations:
   one-time compilation cost is amortized.
 
 - Only a subset of the primitives that the PJRT backend supports are
-  currently lowered to quickr code. See
-  [`vignette("primitives")`](https://r-xla.github.io/anvl/articles/primitives.md)
-  for an overview.
-
-- Only the data types `f64`, `i32`, and `bool` are supported.
+  currently lowered to quickr code. See the [Primitives
+  Reference](https://r-xla.github.io/anvl/articles/primitives.html)
+  article for an overview.
 
 - Only CPU execution is supported.
 
-## Quickr JIT arguments
+- Only three data types are supported; see the section below.
 
-- `unwrap` (`logical(1)`, default `FALSE`): if `TRUE`, the compiled
-  function returns plain R arrays instead of
-  [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)s.
-  Useful when the jitted function's output is consumed by non-anvl R
-  code and the extra wrapping would only get stripped again.
+## Supported data types
+
+`f64`, `i32` and `bool` – the three R storage types.
 
 ## See also
 

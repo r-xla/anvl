@@ -2,7 +2,7 @@
 
 This guide explains how to implement a new primitive. It will primarily
 focus on *how* to do this. See the [internals
-vignette](https://r-xla.github.io/anvl/articles/internals.md) for more
+article](https://r-xla.github.io/anvl/articles/internals.md) for more
 information on how primitives work.
 
 In general, there are two main reasons to add a new primitive:
@@ -37,12 +37,11 @@ are various scenarios:
         as using boolean values for subsetting):
 
         \\\rightarrow\\ This is currently not possible, but we hope we
-        can add support for this in the future, e.g. via a second,
-        dynamic Fortran backend.
+        can add support for this in the future.
 
-    2.  It cannot be expressed or can only expressed inefficiently:
+    2.  It cannot be expressed or can only be expressed inefficiently:
 
-        \\\rightarrow\\ You can implement a stableHLO custom call, see
+        \\\rightarrow\\ You can implement a StableHLO custom call, see
         the custom print operation in
         [pjrt](https://github.com/r-xla/pjrt). The {pjrt} package has a
         dedicated [“Adding Custom
@@ -71,12 +70,15 @@ parameters (how many times to repeat and which axis).
 
 Primitives are created with
 [`new_primitive()`](https://r-xla.github.io/anvl/reference/new_primitive.md):
-it builds the `AnvlPrimitive` metadata object that holds the rules,
+it builds the `AnvlPrimitiveDef` metadata object that holds the rules,
 wraps the body with
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md), attaches the
-metadata, and registers the result in the internal primitive registry.
-The returned callable becomes the primitive and is bound to a
-`prim_<name>` R symbol.
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md), and attaches
+the metadata. The returned callable becomes the primitive and is bound
+to a `prim_<name>` R symbol. The name passed to
+[`new_primitive()`](https://r-xla.github.io/anvl/reference/new_primitive.md)
+is that same `<name>`, not the StableHLO op the primitive lowers to, so
+an error or a printed graph naming a primitive names a function the
+reader can look up.
 
 ``` r
 
@@ -84,25 +86,23 @@ library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
   function(x, times, axis) {
-    # type of `x` is checked by graph_desc_add()
     infer_fn <- function(x, times, axis) {
       if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(x), len = 1L)) {
-        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val axis}")
+        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val {axis}}.")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
-        cli_abort("times must be a positive integer, but is {times}")
+        cli::cli_abort("{.arg times} must be a positive integer, but is {.val {times}}.")
       }
       new_shape <- shape(x)
       new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
         dtype = dtype(x),
-        shape = Shape(new_shape),
-        ambiguous = x$ambiguous
+        shape = Shape(new_shape)
       ))
     }
 
     graph_desc_add(
-      self,                       # lexically bound to the AnvlPrimitive
+      self,                       # lexically bound to the AnvlPrimitiveDef
       list(x = x),                # Dynamic inputs (arrays)
       params = list(              # Static parameters
         times = times,
@@ -120,8 +120,8 @@ The primitive is now callable directly as
 
 Key points:
 
-- Pass the lexically-bound `self` (the \[`AnvlPrimitive`\]) as the first
-  argument to
+- Pass the lexically-bound `self` (the \[`AnvlPrimitiveDef`\]) as the
+  first argument to
   [`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md).
   [`new_primitive()`](https://r-xla.github.io/anvl/reference/new_primitive.md)
   installs `self` into the enclosing environment of the body, so this is
@@ -132,31 +132,69 @@ Key points:
   clear error messages — {anvl} programs are otherwise hard to debug.
 - [`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md)
   returns a list of outputs; use `[[1L]]` for single-output primitives.
-- Propagate the `ambiguous` flag from inputs to outputs, see [type
-  promotion](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for what this means.
 
 Every argument that is *not* a dynamic array must be listed in `static`.
 `new_primitive` calls
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) with
-`backend = "auto"` internally, which defers the choice of backend to
-call time.
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) internally, so
+the primitive runs on whichever backend is active when it is called.
 
-If the primitive is a wrapper around a stablehlo operation, it is
-possible to use the corresponding inference function from the stablehlo
-package (such as
-[`stablehlo::infer_types_concatenate`](https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html)).
-When doing so, you need to:
+Here we define the inference function inline to keep the example
+self-contained. Inside {anvl}, inference rules live together in
+`R/rules-inference.R`, named `infer_<primitive>()`. Its formals are the
+primitive’s own – every operand and *every* static parameter, including
+ones the rule has no use for – because
+[`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md)
+calls it as `do.call(infer_fn, c(avals_in, params))`. It returns a plain
+[`list()`](https://rdrr.io/r/base/list.html) of abstract arrays, named
+when the primitive has named outputs.
 
-1.  Convert the abstract arrays to stablehlo `ValueType`s using
-    [`at2vt()`](https://r-xla.github.io/anvl/reference/at2vt.md).
-2.  Call the stablehlo inference function and obtain a list of
-    `ValueType`s.
-3.  Convert the `ValueType`s back to abstract arrays using
-    [`vt2at()`](https://r-xla.github.io/anvl/reference/vt2at.md).
-4.  Set the `ambiguous` flag of the output depending on the inputs
-    (`ambiguity` is strictly an {anvl} concept, not a stablehlo
-    concept).
+If your primitive lowers to a StableHLO operation, implement the
+constraints from the [StableHLO
+specification](https://openxla.org/stablehlo/spec) directly, in {anvl}’s
+vocabulary: arrays rather than tensors, axes rather than dimensions, and
+axis numbers 1-based. Many rules need nothing of their own – an
+elementwise operation reuses `infer_generic_biv()`, `infer_float_uni()`
+and the like.
+
+#### Handling of R inputs
+
+One question that the primitive needs to answer is how it materializes R
+inputs: The default rule is to materialize an R input at its default
+data type, which on pjrt is `f32` for doubles and `i32` for integers,
+and `bool` for logicals everywhere (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
+
+For functions taking a single dynamic input, as does `prim_repeat_along`
+from above, this is almost always the right thing to do. The inputs
+section of the printed graph shows both halves of it: the input’s data
+type is the default the value materialized at, and the `<- double`
+records that the caller supplies an R double rather than an array that
+already had one.
+
+``` r
+
+trace_fn(prim_repeat_along, list(nv_aval("double", c(2, 3)), 2, 1))
+#> <AnvlGraph> (%x1: f32[2,3] <- double) {
+#>   %1: f32[4,3] = repeat_along [times = 2, axis = 1] (%x1)
+#>   return %1
+#> }
+```
+
+Where the default goes wrong is when a primitive has several operands
+that must agree. Materializing each at its own default would make
+`prim_add(1, nv_scalar(2, "f64"))` an error – the literal would become
+the default float and could meet an `f64` – where it should give `f64`.
+In such cases, you should call
+[`apply_promotion()`](https://r-xla.github.io/anvl/reference/apply_promotion.md)
+in the primitive and pass the rules you want to apply. This needs to be
+done before calling
+[`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md).
+These should *not* change the data type of any `AnvlArray` inputs, which
+is what the
+[`promotion_rdata_common()`](https://r-xla.github.io/anvl/reference/promotion_rule.md)
+rule is for. See the [Data Types and Promotion
+Rules](https://r-xla.github.io/anvl/articles/type-promotion.md) article
+for more information on these rules.
 
 #### Special case: primitives with 0 dynamic inputs
 
@@ -166,14 +204,13 @@ array inputs – every argument is static. Two things change in this case:
 1.  **All formals must be listed in `static`**. Otherwise {anvl} would
     try to interpret a scalar argument like `value` or `shape` as an
     `AnvlArray` input.
-2.  **`backend = "auto"` cannot infer a device from inputs**, because
-    there are no array inputs. Instead, add a `device` formal to the
-    function and pass `device = device_arg("device")` to
-    [`new_primitive()`](https://r-xla.github.io/anvl/reference/new_primitive.md).
-    At call time, the user-supplied device is read from that argument
-    and used to determine both the backend (via
-    \[[`backend()`](https://r-xla.github.io/anvl/reference/backend.md)\]
-    dispatch) and the compilation device.
+2.  **The device cannot be inferred from inputs**, because there are no
+    array inputs. Instead, add a `device` formal to the function (it
+    goes in `static` like every other one) and pass it on to
+    [`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md),
+    which declares it into the trace. The device the caller asked for –
+    a device of the active backend, or a device name – then counts for
+    device inference exactly like the device of an array input.
 
 For example, the real definition of `prim_fill` looks like this:
 
@@ -181,16 +218,15 @@ For example, the real definition of `prim_fill` looks like this:
 
 prim_fill <- new_primitive(
   "fill",
-  function(value, shape, dtype, ambiguous = FALSE, device = NULL) {
-    # ... graph_desc_add(self, ...) ...
+  function(value, shape, dtype, device = NULL) {
+    # ... graph_desc_add(self, ..., device = device) ...
   },
-  static = 1:5,
-  device = device_arg("device")
+  static = 1:4
 )
 ```
 
 See
-\[[`device_arg()`](https://r-xla.github.io/anvl/reference/device_arg.md)\]
+[`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md)
 for the detailed semantics.
 
 #### Shortcut helpers for common shapes
@@ -200,23 +236,23 @@ primitives are simpler – elementwise unary or binary ops, reductions,
 and comparisons all share a standard shape. `R/primitives.R` exposes
 factories that generate the body for you:
 
-- `make_unary_op(stablehlo_infer)` – elementwise unary (e.g. `prim_abs`,
+- `make_unary_op(infer_fn)` – elementwise unary (e.g. `prim_abs`,
   `prim_negate`).
-- `make_binary_op(stablehlo_infer)` – elementwise binary
-  (e.g. `prim_add`, `prim_mul`).
+- `make_binary_op(infer_fn)` – elementwise binary (e.g. `prim_add`,
+  `prim_mul`).
 - `make_reduce_op(infer_fn)` – reductions with `axes` / `drop`
-  parameters (e.g. `prim_reduce_sum`).
+  parameters (e.g. `prim_sum`).
 - `make_compare_op(direction)` – comparison ops with a fixed `direction`
   string (e.g. `prim_eq`, `prim_lt`).
 
-Used together with the corresponding stablehlo inference function, the
-primitive definition collapses to a one-liner:
+Used together with the matching inference rule, the primitive definition
+collapses to a one-liner:
 
 ``` r
 
-prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
-prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
-prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
+prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
+prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
+prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3)
 ```
 
 Reach for the manual
@@ -250,11 +286,12 @@ It must return a list of
 even if there is only one output.
 
 **Important**: StableHLO uses 0-based indexing, while {anvl} uses R’s
-1-based indexing. Always convert axis indices by subtracting 1. Also
-note that in
-[`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md)
-we are converting the error messages from stablehlo to our 1-based
-indexing, so you do not have to worry about that here.
+1-based indexing. Always convert axis indices by subtracting 1. Nothing
+translates StableHLO’s error messages back into {anvl}’s terms: an input
+that only StableHLO rejects surfaces as an MLIR error in its own
+vocabulary, with 0-based axes. This is why the inference function has to
+check every constraint the StableHLO operation imposes, so that the
+lowering rule only ever sees valid inputs.
 
 ### Step 3: Add the Reverse Rule
 
@@ -262,7 +299,7 @@ If the operation should support automatic differentiation, attach a
 reverse rule built with
 [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md).
 The idea here is the following, where we assume the input `x` has shape
-`(s_1, ..., s_n)`, which means that the output (and therefore it’s
+`(s_1, ..., s_n)`, which means that the output (and therefore its
 gradient) has shape
 `(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
 
@@ -287,10 +324,10 @@ prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
 
   new_shape <- grad_shape
   new_shape[axis] <- old_shape[axis]
-  new_shape <- append(new_shape, times, after = axis - 1L)
+  new_shape <- append(new_shape, times, after = axis)
 
   grad_reshaped <- prim_reshape(grad, new_shape)
-  grad_summed <- prim_reduce_sum(grad_reshaped, axes = axis, drop = TRUE)
+  grad_summed <- prim_sum(grad_reshaped, axes = axis + 1L, drop = TRUE)
   list(grad_summed)
 })
 ```
@@ -300,7 +337,7 @@ The wrapped backward receives:
 - `inputs`: Input `GraphValue`s from the forward pass
 - `outputs`: Output `GraphValue`s from the forward pass
 - `grads`: Gradients flowing back from downstream (one per output)
-- `params`: Named list of the call’s static parameters (here:
+- `params`: Named list of the statement’s static parameters (here:
   `params$axis`, `params$times`)
 - `required`: Logical vector indicating which input gradients are needed
 
@@ -316,18 +353,19 @@ For most primitives the backward-only form above is enough. If the
 gradient computation can be made significantly more efficient by running
 an alternative forward pass that exposes intermediate values for reuse,
 use the alternative-forward form: `rule_reverse(forward = ...)`. The
-forward hook receives `(inputs, params)`, emits whatever forward
-primitives it likes via the normal `prim_*` callables, and returns a
-list with the primal outputs and a `backward` closure. Intermediates
-flow from forward to backward via R’s lexical scoping:
+forward hook receives `(inputs, params, required)` – `required` says
+which inputs need a gradient –, emits whatever forward primitives it
+likes via the normal `prim_*` callables, and returns a list with the
+primal outputs and a `backward` closure. Intermediates flow from forward
+to backward via R’s lexical scoping:
 
 ``` r
-prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   x <- inputs[[1L]]
   y <- prim_some_op(x)        # forward emit 1
   z <- prim_other_op(x, y)    # forward emit 2; both `x` and `y` captured
   list(
-    outputs  = list(z),       # one box per original call output
+    outputs  = list(z),       # one box per output of the original statement
     backward = function(inputs, outputs, grads, params, required) {
       # `x` is also available via `inputs`; what lexical capture buys us is
       # access to intermediates like `y` that the framework doesn't pass in.
@@ -339,8 +377,8 @@ prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 
 The `backward` closure shares the same signature as the backward-only
 form. Intermediates that aren’t passed in (like `y` above) flow in via
-lexical capture. The forward must return one output box per original
-call output, with matching shape/dtype.
+lexical capture. The forward must return one output box per output of
+the original statement, with matching shape/dtype.
 
 #### Optional: a quickr rule
 
@@ -351,62 +389,7 @@ rules you almost always want. A primitive can optionally also carry a
 the primitive to run under `local_backend("quickr")`; if you skip it,
 the primitive will still work on the pjrt backend.
 
-### Step 4: Verify the Registration
-
-[`new_primitive()`](https://r-xla.github.io/anvl/reference/new_primitive.md)
-returns the callable directly and also registers the primitive in the
-internal registry used by the graph machinery, so no separate
-registration step is needed:
-
-``` r
-
-prim_repeat_along
-#> function (x, times, axis) 
-#> {
-#>     if (currently_tracing()) {
-#>         cl <- match.call()
-#>         cl[[1L]] <- f
-#>         return(eval.parent(cl))
-#>     }
-#>     args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-#>     be <- if (!is.null(device_argname) && !is.null(args[[device_argname]])) {
-#>         dev_val <- args[[device_argname]]
-#>         if (is.character(dev_val)) 
-#>             default_backend()
-#>         else backend(dev_val)
-#>     }
-#>     else {
-#>         jit_auto_detect_backend(args, static)
-#>     }
-#>     run <- jit_runs[[be]]
-#>     if (is.null(run)) {
-#>         if (is.null(jit_fns[[be]])) {
-#>             jit_fns[[be]] <<- do.call(jit_with_backend, c(list(f = f, 
-#>                 static = static, cache_size = cache_size, backend = be), 
-#>                 if (!is.null(device_argname)) {
-#>                   list(device = device_arg(device_argname))
-#>                 } else if (!is.null(device)) {
-#>                   list(device = device)
-#>                 }, dots))
-#>         }
-#>         run <- attr(jit_fns[[be]], "jit_run_args")
-#>         if (is.null(run)) {
-#>             run <- function(args) do.call(jit_fns[[be]], args)
-#>         }
-#>         jit_runs[[be]] <<- run
-#>     }
-#>     run(args)
-#> }
-#> <environment: 0x55d02a0f25c0>
-#> attr(,"class")
-#> [1] "JitPrimitive" "JitFunction" 
-#> attr(,"backend")
-#> [1] "auto"
-#> attr(,"primitive")
-#> <AnvlPrimitive:repeat_along>
-```
-
-### Step 5: Add an `nv_` API Function
+### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives. An
 example is `prim_add` vs `nv_add`, where the latter calls into the
@@ -422,7 +405,7 @@ nv_add(1L, nv_array(2:3))
 prim_add(1L, nv_array(2:3))
 #> Error in `prim_add()`:
 #> ! `lhs` and `rhs` must have the same array type.
-#> ✖ Got tensor<i32> and tensor<2xi32>.
+#> ✖ Got i32[] and i32[2].
 ```
 
 In our case, no such convenience is needed and the functionality is not
@@ -434,20 +417,16 @@ the `prim_*` function to an `nv_*` function:
 nv_repeat_along <- prim_repeat_along
 ```
 
-Note that in the `nv_*` wrapper function, you can only access certain
-properties of the input arrayish values via:
-
-- [`shape_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
-- [`naxes_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
-- [`dtype_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
-- [`ambiguous_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
-
-If you, for example, use
-[`shape()`](https://r-xla.github.io/anvl/reference/shape.md) instead of
-[`shape_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md),
-your function won’t work with R literals. I.e., `<extract>_abstract()`
-first converts the input to an `AbstractArray` (if possible) and then
-extracts the property.
+Note that in the `nv_*` wrapper function, the input may still be a bare
+R value – one that has no data type yet (see
+[`?RData`](https://r-xla.github.io/anvl/reference/RData.md)).
+[`shape()`](https://r-xla.github.io/anvl/reference/shape.md) and
+[`naxes()`](https://r-xla.github.io/anvl/reference/naxes.md) answer for
+it as they do for an array. For the data type there is
+[`peek_dtype()`](https://r-xla.github.io/anvl/reference/peek_dtype.md),
+which reports the type the value *would* materialize at;
+[`dtype()`](https://r-xla.github.io/anvl/reference/dtype.md) errors on
+an R value, because there is nothing to report until it is used.
 
 ### Using Your Primitive
 
@@ -500,6 +479,8 @@ additional things to be aware of.
 
 - **`R/primitives.R`**: Define the `prim_*` primitive via
   [`new_primitive()`](https://r-xla.github.io/anvl/reference/new_primitive.md)
+- **`R/rules-inference.R`**: Add the inference rule
+  `infer_<primitive>()` (unless an existing one can be reused)
 - **`R/rules-stablehlo.R`**: Add the StableHLO lowering rule
 - **`R/rules-reverse.R`**: Add the reverse rule (if differentiable)
 - **`R/rules-quickr.R`**: Add the quickr lowering rule (optional; only
@@ -515,11 +496,11 @@ Tests can go in two places:
     live in `inst/` to avoid listing torch as a dependency.
 2.  **`tests/testthat/`**: For tests without a torch counterpart.
 
-**Important**: the `describe()` / `test_that()` label must contain the
-full primitive name, e.g. `describe("prim_repeat_along", { ... })`. The
-meta tests in `tests/testthat/test-primitives-meta.R` verify that every
-primitive has corresponding stablehlo and reverse tests, and flag any
-that are missing.
+**Important**: the `describe()` / `test_that()` label must start with
+the full primitive name, e.g. `describe("prim_repeat_along", { ... })`.
+The meta tests in `tests/testthat/test-primitives-meta.R` verify that
+every primitive has corresponding stablehlo and reverse tests, and flag
+any that are missing.
 
 Since no torch counterpart exists for `prim_repeat_along`, we would add
 manual tests in:
@@ -527,12 +508,13 @@ manual tests in:
 - `tests/testthat/test-primitives-stablehlo.R`
 - `tests/testthat/test-primitives-reverse.R`
 
-Also, ensure that no linter errors are present, `devtools::check()`
+Also, ensure that no linter errors are present,
+[`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
 passes, and format the code using `make format`.
 
 ## Higher-Order Primitives
 
-Higher-Order Primitives are primitives that parameterized by an R
+Higher-Order Primitives are primitives that are parameterized by an R
 function or expression. Examples include `prim_if` and `prim_while`.
 These are generally much more complex to handle, so we don’t cover them
 here in detail (for now). The general idea, however, is that the

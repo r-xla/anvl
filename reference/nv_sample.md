@@ -12,7 +12,7 @@ and never an overload of `x`.
 ## Usage
 
 ``` r
-nv_sample(shape, initial_state, x)
+nv_sample(shape, state, x)
 ```
 
 ## Arguments
@@ -20,24 +20,29 @@ nv_sample(shape, initial_state, x)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result.
 
-- initial_state:
+- state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  RNG state (`ui64[2]`).
+  RNG state: a 1-D array of two `ui64` elements, as
+  [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
+  returns. The data type and length are fixed by the generator, not by
+  the default data types, and the returned `state` has them too.
 
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  The population to sample from, a 1-D array.
+  The population vector to sample from. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value
 
-([`list()`](https://rdrr.io/r/base/list.html) of
+(named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-List of two elements: the updated RNG state and the sampled values, of
-shape `shape` and with the data type of `x`.
+Elements `state`, the updated RNG state, and `values`, the sample of
+shape `shape` and `x`'s data type.
 
 ## See also
 
@@ -48,16 +53,17 @@ Other rng:
 [`nv_normal`](https://r-xla.github.io/anvl/reference/nv_normal.md),
 [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md),
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
-[`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md),
-[`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
+[`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
+[`nv_uniform`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
 
 ## Examples
 
 ``` r
+# the sample takes the population's data type
 state <- nv_rng_state(42L)
 pop <- nv_array(c(10, 20, 30))
 result <- nv_sample(5, state, pop)
-result[[2]]
+result$values
 #> AnvlArray
 #>  20
 #>  30

@@ -6,10 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Static Slice — prim_static_slice"><meta name="description" content="Extracts a slice from an array using static (compile-time) indices.
-All indices, limits, and strides are fixed R integers.
+All indices and strides are fixed R integers, and both ends are inclusive.
 Use prim_dynamic_slice() instead when the start position must be
 computed at runtime (e.g. depends on array values)."><meta property="og:description" content="Extracts a slice from an array using static (compile-time) indices.
-All indices, limits, and strides are fixed R integers.
+All indices and strides are fixed R integers, and both ends are inclusive.
 Use prim_dynamic_slice() instead when the start position must be
 computed at runtime (e.g. depends on array values)."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -19,7 +19,7 @@ computed at runtime (e.g. depends on array values)."><meta property="og:image" c
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,22 +33,23 @@ computed at runtime (e.g. depends on array values)."><meta property="og:image" c
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -77,20 +78,20 @@ computed at runtime (e.g. depends on array values)."><meta property="og:image" c
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Primitive Static Slice</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
       <div class="d-none name"><code>prim_static_slice.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>Extracts a slice from an array using static (compile-time) indices.
-All indices, limits, and strides are fixed R integers.</p>
+All indices and strides are fixed R integers, and both ends are inclusive.</p>
 <p>Use <code><a href="prim_dynamic_slice.html">prim_dynamic_slice()</a></code> instead when the start position must be
 computed at runtime (e.g. depends on array values).</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, <span class="va">start_indices</span>, <span class="va">limit_indices</span>, <span class="va">strides</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, <span class="va">start_indices</span>, <span class="va">end_indices</span>, <span class="va">strides</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -99,19 +100,22 @@ computed at runtime (e.g. depends on array values).</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Arrayish value of any data type.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-start-indices">start_indices<a class="anchor" aria-label="anchor" href="#arg-start-indices"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 Start indices (inclusive), one per axis. Must satisfy
-<code>1 &lt;= start_indices &lt;= limit_indices</code> per axis.</p></dd>
+<code>1 &lt;= start_indices &lt;= end_indices + 1</code> per axis, where
+<code>start_indices == end_indices + 1</code> selects an empty axis.</p></dd>
 
 
-<dt id="arg-limit-indices">limit_indices<a class="anchor" aria-label="anchor" href="#arg-limit-indices"></a></dt>
+<dt id="arg-end-indices">end_indices<a class="anchor" aria-label="anchor" href="#arg-end-indices"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 End indices (inclusive), one per axis. Must satisfy
-<code>limit_indices &lt;= nv_shape(x)</code> per axis.</p></dd>
+<code>end_indices &lt;= shape(x)</code> per axis. Unlike StableHLO's exclusive
+<code>limit_indices</code>, the element at <code>end_indices</code> is part of the slice.</p></dd>
 
 
 <dt id="arg-strides">strides<a class="anchor" aria-label="anchor" href="#arg-strides"></a></dt>
@@ -122,10 +126,9 @@ selects every element; a stride of <code>2</code> selects every other element, e
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has the same data type as the input and shape
-<code>ceiling((limit_indices - start_indices + 1) / strides)</code>.
-It is ambiguous if the input is ambiguous.</p>
+<code>ceiling((end_indices - start_indices + 1) / strides)</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -139,7 +142,8 @@ It is ambiguous if the input is ambiguous.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_slice.html" class="external-link">hlo_slice()</a></code>.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_slice.html" class="external-link">hlo_slice()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#slice" class="external-link">slice</a>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -148,9 +152,9 @@ It is ambiguous if the input is ambiguous.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># 1-D: extract elements 2 through 4 (limit is exclusive)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># 1-D: extract elements 2 through 5, the end being inclusive</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">2L</span>, limit_indices <span class="op">=</span> <span class="fl">5L</span>, strides <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">2L</span>, end_indices <span class="op">=</span> <span class="fl">5L</span>, strides <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
@@ -160,7 +164,7 @@ It is ambiguous if the input is ambiguous.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># 1-D: every other element using strides</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">1L</span>, limit_indices <span class="op">=</span> <span class="fl">10L</span>, strides <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>, start_indices <span class="op">=</span> <span class="fl">1L</span>, end_indices <span class="op">=</span> <span class="fl">10L</span>, strides <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
@@ -169,12 +173,12 @@ It is ambiguous if the input is ambiguous.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  9</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{5} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 2-D: extract a submatrix (rows 1-2, columns 2-3)</span></span></span>
+<span class="r-in"><span><span class="co"># 2-D: extract the submatrix of rows 1-3 and columns 2-4</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, ncol <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_static_slice</span><span class="op">(</span><span class="va">x</span>,</span></span>
 <span class="r-in"><span>  start_indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  limit_indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">4L</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  strides       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  end_indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">4L</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  strides <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   4  7 10</span>

@@ -15,7 +15,7 @@ You can also use sort() directly."><meta property="og:image" content="https://r-
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@ You can also use sort() directly."><meta property="og:image" content="https://r-
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,7 +74,7 @@ You can also use sort() directly."><meta property="og:image" content="https://r-
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Sort</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_sort.Rd</code></div>
     </div>
 
@@ -96,14 +97,15 @@ You can also use sort() directly."><meta property="og:image" content="https://r-
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
 <dd><p>(<code>integer(1)</code> | <code>NULL</code>)<br>
 Axis along which to sort. Negative values count from the end,
-i.e. <code>-1</code> refers to the last axis. If <code>NULL</code> (default), uses the last
-axis.</p></dd>
+i.e. <code>-1</code> refers to the last axis. If <code>NULL</code> (default), the input is
+first flattened to a 1-D array, like <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">base::sort()</a></code>.</p></dd>
 
 
 <dt id="arg-decreasing">decreasing<a class="anchor" aria-label="anchor" href="#arg-decreasing"></a></dt>
@@ -120,13 +122,13 @@ values the result is identical either way.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>No additional arguments.</p></dd>
+<dd><p>Passed on to <code>nv_sort()</code>, e.g. <code>stable</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Same shape and data type as <code>x</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's shape and data type.</p>
     </div>
     <div class="section level2">
     <h2 id="nan-handling">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling"></a></h2>
@@ -136,15 +138,27 @@ Same shape and data type as <code>x</code>.</p>
 (descending), regardless of sign. <code>+0</code> and <code>-0</code> compare equal.</p>
     </div>
     <div class="section level2">
+    <h2 id="the-sort-generic">The <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-sort-generic"></a></h2>
+
+
+<p>Like <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">base::sort()</a></code>, <code>nv_sort()</code> with <code>axis = NULL</code> flattens a multi-axis
+array into one sorted vector, so <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> on an anvl array agrees with base
+R (the flatten order does not matter once the elements are sorted). It
+differs in one respect: base R drops <code>NA</code> by default, whereas <code>NaN</code> is kept
+and sorted to the end. Pass <code>axis</code> to sort each slice along one axis
+instead, which keeps the shape.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="prim_sort.html">prim_sort()</a></code> for the underlying primitive,
-<code><a href="nv_argsort.html">nv_argsort()</a></code>, <code><a href="nv_top_k.html">nv_top_k()</a></code>, <code><a href="nv_median.html">nv_median()</a></code>,
-<code><a href="nv_argmax.html">nv_argmax()</a></code>, <code><a href="nv_argmin.html">nv_argmin()</a></code>.</p></div>
+<code><a href="nv_order.html">nv_order()</a></code>, <code><a href="nv_top_k.html">nv_top_k()</a></code>, <code><a href="nv_median.html">nv_median()</a></code>,
+<code><a href="nv_which_max.html">nv_which_max()</a></code>, <code><a href="nv_which_min.html">nv_which_min()</a></code>.</p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span>, <span class="fl">2</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># sorting moves elements, so the data type and shape stay</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span>, <span class="fl">2</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
@@ -180,7 +194,16 @@ Same shape and data type as <code>x</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{8} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">m</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="co"># one sorted vector, like base R</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{6} ] </span>
+<span class="r-in"><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">m</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span> <span class="co"># each row sorted, shape kept</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 3 5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0 2 4</span>

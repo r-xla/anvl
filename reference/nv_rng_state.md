@@ -6,7 +6,7 @@ random sampling functions and is updated after each call.
 ## Usage
 
 ``` r
-nv_rng_state(seed, device = default_device())
+nv_rng_state(seed, device = NULL)
 ```
 
 ## Arguments
@@ -14,7 +14,9 @@ nv_rng_state(seed, device = default_device())
 - seed:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Scalar `i32` seed value.
+  Scalar seed. Must be a signed or unsigned integer; it is brought to
+  `i32`, so a wider one is narrowed to its low 32 bits. An R integer is
+  built at `i32` directly, whatever the default integer data type is.
 
 - device:
 
@@ -31,27 +33,26 @@ nv_rng_state(seed, device = default_device())
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 ## Value
 
-[`nv_array`](https://r-xla.github.io/anvl/reference/AnvlArray.md) of
-dtype `ui64` and shape `(2)`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+A `ui64` array of length 2, whatever `seed`'s data type was.
 
 ## See also
 
 Other rng:
 [`nv_normal`](https://r-xla.github.io/anvl/reference/nv_normal.md),
 [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md),
-[`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md),
 [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md),
-[`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
+[`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
+[`nv_uniform`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
 
 ## Examples
 

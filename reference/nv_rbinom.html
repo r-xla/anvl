@@ -15,7 +15,7 @@ When size = 1 (the default), this is a Bernoulli distribution."><meta property="
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@ When size = 1 (the default), this is a Bernoulli distribution."><meta property="
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,7 +74,7 @@ When size = 1 (the default), this is a Bernoulli distribution."><meta property="
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Sample from a Binomial Distribution</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-rng.R" class="external-link"><code>R/api-rng.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api-rng.R" class="external-link"><code>R/api-rng.R</code></a></small>
       <div class="d-none name"><code>nv_rbinom.Rd</code></div>
     </div>
 
@@ -84,7 +85,7 @@ When <code>size = 1</code> (the default), this is a Bernoulli distribution.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_rbinom</span><span class="op">(</span><span class="va">shape</span>, <span class="va">initial_state</span>, size <span class="op">=</span> <span class="fl">1L</span>, prob <span class="op">=</span> <span class="fl">0.5</span>, dtype <span class="op">=</span> <span class="st">"i32"</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_rbinom</span><span class="op">(</span><span class="va">shape</span>, <span class="va">state</span>, size <span class="op">=</span> <span class="fl">1L</span>, prob <span class="op">=</span> <span class="fl">0.5</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -93,12 +94,14 @@ When <code>size = 1</code> (the default), this is a Bernoulli distribution.</p>
 
 <dl><dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Shape.</p></dd>
+Shape of the result.</p></dd>
 
 
-<dt id="arg-initial-state">initial_state<a class="anchor" aria-label="anchor" href="#arg-initial-state"></a></dt>
+<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-RNG state (<code>ui64[2]</code>).</p></dd>
+RNG state: a 1-D array of two <code>ui64</code> elements, as <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned <code>state</code> has them too.</p></dd>
 
 
 <dt id="arg-size">size<a class="anchor" aria-label="anchor" href="#arg-size"></a></dt>
@@ -112,34 +115,37 @@ Probability of success on each trial.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
-<dd><p>(<code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
-Data type.</p></dd>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/xlamisc/reference/DataType.html" class="external-link">DataType</a></code>)<br>
+Numeric type of the sample.
+<code>NULL</code> (default) uses the <a href="default_dtypes.html">default integer type</a>.
+The number of successes are converted to it.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> of <code><a href="arrayish.html">arrayish</a></code>)<br>
-List of two elements: the updated RNG state and the sampled values.</p>
+    <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
+Elements <code>state</code>, the updated RNG state, and <code>values</code>, the sample of shape
+<code>shape</code> and data type <code>dtype</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Other rng:
 <code><a href="nv_normal.html">nv_normal</a></code>,
 <code><a href="nv_rng_state.html">nv_rng_state()</a></code>,
-<code><a href="nv_runif.html">nv_runif()</a></code>,
 <code><a href="nv_sample.html">nv_sample()</a></code>,
-<code><a href="nv_sample_int.html">nv_sample_int()</a></code></p></div>
+<code><a href="nv_sample_int.html">nv_sample_int()</a></code>,
+<code><a href="nv_uniform.html">nv_uniform</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># Bernoulli samples</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Bernoulli samples; `state` is the updated RNG state</span></span></span>
+<span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_rbinom</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0 1 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,3} ] </span>
 </code></pre></div>
     </div>

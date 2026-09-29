@@ -1,23 +1,23 @@
-# Array-like Objects
+# Array-Like Objects
 
-A `arrayish` value is any object that can be input to a primitive such
-as [`prim_add`](https://r-xla.github.io/anvl/reference/prim_add.md).
+An `arrayish` value is anything that represents an
+[`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md) or
+can be converted to one.
 
-During runtime of a JIT-compiled function, these are
-[`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
-objects.
-
-The following types are arrayish (during tracing):
+Specifically, these values are `arrayish`:
 
 - [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md): a
   concrete array holding data on a device.
 
-- [`GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md): a
-  boxed abstract array representing a value in a graph.
+- [`GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md): the
+  representation of an array during tracing, e.g. inside a
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md)ted function.
 
-- Length-1 vectors: `numeric(1)` and `logical(1)`
+- R objects:
 
-- R arrays of types: `numeric` and `logical`.
+  - `numeric(1)` and `logical(1)` which represent scalars.
+
+  - `numeric` and `logical` R arrays.
 
 Use `is_arrayish()` to check whether a value is arrayish.
 
@@ -42,7 +42,8 @@ is_arrayish(x, convert_ok = TRUE)
 
 ## Value
 
-`logical(1)`
+(`logical(1)`)  
+Whether `x` is arrayish.
 
 ## See also
 
@@ -52,24 +53,17 @@ is_arrayish(x, convert_ok = TRUE)
 ## Examples
 
 ``` r
-# AnvlArrays are arrayish
+# AnvlArray objects are arrayish
 is_arrayish(nv_array(1:4))
 #> [1] TRUE
 
-# Scalar R literals are arrayish by default
-is_arrayish(1.5)
-#> [1] TRUE
-# R arrays are arrayish by default
-is_arrayish(array(1.5))
-#> [1] TRUE
-
-# R arrays
+# R arrays and literals are arrayish by default
 is_arrayish(array(1:4), convert_ok = TRUE)
 #> [1] TRUE
 is_arrayish(array(1:4), convert_ok = FALSE)
 #> [1] FALSE
 
-# Length 1 vectors
+# length 1 vectors
 is_arrayish(1.5, convert_ok = FALSE)
 #> [1] FALSE
 is_arrayish(1.5, convert_ok = TRUE)

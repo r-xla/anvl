@@ -1,6 +1,7 @@
-# Primitive Or
+# Primitive Bitwise Or
 
-Element-wise logical OR.
+Element-wise bitwise OR – a logical OR on a boolean input, and a
+bit-by-bit one on an integer.
 
 ## Usage
 
@@ -13,14 +14,19 @@ prim_or(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish values of data type boolean, integer, or unsigned integer.
-  Must have the same shape.
+  Two inputs of the same data type and shape. Can be any integerish data
+  type. R values take the other operand's data type when it is in their
+  [data type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and their [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  neither operand has one. An R value outside the other operand's
+  category is an error, as are two R values of different storage types.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' shape and data type.
 
 ## Implemented Rules
 
@@ -33,7 +39,8 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_or()`](https://r-xla.github.io/stablehlo/reference/hlo_or.html).
+[`hlo_or()`](https://r-xla.github.io/stablehlo/reference/hlo_or.html),
+specified under [or](https://openxla.org/stablehlo/spec#or).
 
 ## See also
 
@@ -42,12 +49,15 @@ Lowers to
 ## Examples
 
 ``` r
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-prim_or(x, y)
+# two R values: both take an R integer's default data type
+prim_or(12L, 10L)
 #> AnvlArray
-#>  1
-#>  1
-#>  1
-#> [ CPUbool{3} ] 
+#>  14
+#> [ CPUi32{} ] 
+
+# the R value is built at the array's data type instead
+prim_or(12L, nv_scalar(10L, "i64"))
+#> AnvlArray
+#>  14
+#> [ CPUi64{} ] 
 ```

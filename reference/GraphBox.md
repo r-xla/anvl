@@ -1,7 +1,6 @@
 # Graph Box
 
-An [`AnvlBox`](https://r-xla.github.io/anvl/reference/AnvlBox.md)
-subclass that wraps a
+Wraps a
 [`GraphNode`](https://r-xla.github.io/anvl/reference/GraphNode.md)
 during graph construction (tracing). When a function is traced via
 [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md), each
@@ -35,18 +34,7 @@ GraphBox(gnode, desc)
 
 (`GraphBox`)
 
-## Extractors
-
-- [`dtype()`](https://r-xla.github.io/tengen/reference/dtype.html)
-
-- [`shape()`](https://r-xla.github.io/tengen/reference/shape.html)
-
-- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html)
-
-- [`ambiguous()`](https://r-xla.github.io/anvl/reference/ambiguous.md)
-
 ## See also
 
-[AnvlBox](https://r-xla.github.io/anvl/reference/AnvlBox.md),
 [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md),
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md)

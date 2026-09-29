@@ -1,0 +1,28 @@
+# Get Active Backend
+
+Retrieves the active backend (option `anvl.backend`), falling back to
+the default `"pjrt"` backend.
+
+## Usage
+
+``` r
+active_backend()
+```
+
+## Value
+
+(`character(1)`)  
+The backend name (e.g. `"pjrt"`, `"quickr"`).
+
+## See also
+
+[`local_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md),
+[`with_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md),
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)
+
+## Examples
+
+``` r
+active_backend()
+#> [1] "pjrt"
+```

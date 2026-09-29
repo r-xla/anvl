@@ -1,14 +1,12 @@
 # Create a Primitive
 
-Builds an
-[`AnvlPrimitive`](https://r-xla.github.io/anvl/reference/AnvlPrimitive.md)
-metadata object, wraps `fn` with
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md), attaches the
-metadata via `attr(., "primitive")`, prepends class `"JitPrimitive"`,
-and (by default) registers the result under `name` in the primitive
-registry.
-
-The backend is always `"auto"` and cannot be configured.
+`new_primitive()` creates a new primitive: an `AnvlPrimitive`, the
+function the primitive is called through (e.g.
+[`prim_add()`](https://r-xla.github.io/anvl/reference/prim_add.md)). For
+details on how to do this, see the [Adding a
+Primitive](https://r-xla.github.io/anvl/articles/extending_primitive.html)
+article. Like every jitted function it runs on the active backend when
+called.
 
 ## Usage
 
@@ -18,7 +16,6 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
-  device = NULL,
   register = TRUE
 )
 ```
@@ -28,7 +25,8 @@ new_primitive(
 - name:
 
   (`character(1)`)  
-  Primitive name.
+  Primitive name, without the `prim_` prefix (`"add"` for
+  [`prim_add()`](https://r-xla.github.io/anvl/reference/prim_add.md)).
 
 - fn:
 
@@ -36,7 +34,7 @@ new_primitive(
   Body of the primitive. Its formals become the formals of the returned
   JIT-compiled callable. Inside `fn`, the primitive is accessible via
   the lexically-bound symbol `self` (an
-  [`AnvlPrimitive`](https://r-xla.github.io/anvl/reference/AnvlPrimitive.md));
+  [`AnvlPrimitiveDef`](https://r-xla.github.io/anvl/reference/AnvlPrimitiveDef.md));
   pass it as the first argument to
   [`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md).
 
@@ -51,20 +49,22 @@ new_primitive(
   [`integer()`](https://rdrr.io/r/base/integer.html))  
   Passed to [`jit()`](https://r-xla.github.io/anvl/reference/jit.md).
 
-- device:
-
-  (`NULL` \| `character(1)` \|
-  [`device_arg()`](https://r-xla.github.io/anvl/reference/device_arg.md))  
-  Passed to [`jit()`](https://r-xla.github.io/anvl/reference/jit.md).
-  Useful for primitives with no array inputs (e.g. `prim_fill`) where
-  the device must come from an explicit argument.
-
 - register:
 
   (`logical(1)`)  
-  If `TRUE` (default), register the result under `name` in the primitive
-  registry.
+  Whether to add the primitive to anvl's internal registry of
+  primitives, under `name`, replacing one registered under the same
+  name. The quickr backend reads that registry to know which primitives
+  it can lower, so a primitive created with `register = FALSE` is
+  rejected on quickr even if it has a `quickr` rule. The other backends
+  only read the rules of the primitive itself. This does not bind the
+  result to a `prim_<name>` variable; assign it yourself.
 
 ## Value
 
-A callable of class `c("JitPrimitive", "JitFunction")`.
+(`AnvlPrimitive`)  
+The function the primitive is called through, of class
+`c("AnvlPrimitive", "JitFunction")`. Its
+[`AnvlPrimitiveDef`](https://r-xla.github.io/anvl/reference/AnvlPrimitiveDef.md)
+is `attr(<fn>, "definition")`, and `[[` / `[[<-` on it access the rules
+of that definition.

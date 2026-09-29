@@ -1,10 +1,11 @@
-# Get the default device
+# Get the Default Device
 
-Returns a device object for the default backend and platform. For the
-`"pjrt"` backend, the platform is determined by the `PJRT_PLATFORM`
-environment variable (defaulting to `"cpu"`). Other backends (e.g.
-`"quickr"`) only support CPU. The backend defaults to
-[`default_backend()`](https://r-xla.github.io/anvl/reference/default_backend.md).
+Returns the default device of the active backend: the device the
+`anvl.default_device` option names (see
+[`local_default_device()`](https://r-xla.github.io/anvl/reference/local_default_device.md)),
+else the one the `ANVL_DEFAULT_DEVICE` environment variable names (e.g.
+`ANVL_DEFAULT_DEVICE=cuda`, read once when anvl is loaded), else the
+first CPU device.
 
 ## Usage
 
@@ -18,14 +19,23 @@ default_device(backend = NULL)
 
   (`NULL` \| `character(1)`)  
   Backend. Defaults to
-  [`default_backend()`](https://r-xla.github.io/anvl/reference/default_backend.md)
+  [`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md)
   when `NULL`.
 
 ## Value
 
-A backend-specific device object.
+(device object)  
+Backend-specific.
 
 ## See also
 
 [`nv_device()`](https://r-xla.github.io/anvl/reference/nv_device.md),
-[`default_backend()`](https://r-xla.github.io/anvl/reference/default_backend.md)
+[`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md),
+[`local_default_device()`](https://r-xla.github.io/anvl/reference/local_default_device.md)
+
+## Examples
+
+``` r
+default_device()
+#> <CpuDevice(id=0)>
+```

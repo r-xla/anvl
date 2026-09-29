@@ -1,7 +1,7 @@
 # Extending the API
 
-In this vignette we will cover some general guidelines that ensure your
-anvl functions come without surprises. This is primarily intended for
+In this article we will cover some general guidelines that ensure your
+{anvl} functions come without surprises. This is primarily intended for
 extending the API – either in your own package or contributing to {anvl}
 itself – but is also helpful when writing your own scripts.
 
@@ -16,99 +16,115 @@ The general guidelines are:
 4.  The function should (unless there are specific reasons) work in
     eager and jit mode.
 5.  Use static arguments when you require data-dependent input checks.
-6.  Tag the function with `#' @jit` so it is jit-wrapped at package
-    build time (see *Jit-wrapping API Functions* below).
+6.  Wrap the function in
+    [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) (see
+    [jit-wrapping API functions](#jit-wrapping-api-functions) below).
 
 ## Pure Functions
 
-This is extensively covered in the *JIT Deep Dive*, so we won’t repeat
-it here. While the subsequent sections mostly address issues that are
-relevant in eager mode, purity is the primary requirement to enable
-usage of [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) with
-your function.
+This is extensively covered in the [JIT Deep
+Dive](https://r-xla.github.io/anvl/articles/jit.html#the-tracing-contract),
+so we won’t repeat it here. While the subsequent sections mostly address
+issues that are relevant in eager mode, purity is the primary
+requirement to enable usage of
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) with your
+function.
 
 ## Consistent Input and Output Types
 
-Functions in anvl have dynamic (arrayish) and static (standard R values)
-inputs. However, it can also be convenient to pass R objects as dynamic
-inputs and let anvl convert them. To enable this, there are the
-[`as_anvl_array()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
-and
+Functions in {anvl} have `AnvlArray` inputs and R data inputs. R data
+can be used dynamically, when it is passed to an argument that expects
+an `AnvlArray`, or statically, when it is passed to an argument that
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) marked as
+static. To make this work, you should call
 [`as_anvl_arrays()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
-converters. You should call them at the top of your function. Not only
-will these functions convert the inputs, they will also check them for
-compatibility, specifically w.r.t. their device and backend. If they
-don’t live on the same device, an error will be thrown.
+on all dynamic input values. If there is only a single one, you can also
+use
+[`as_anvl_array()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md).
 
-Note that this is only really necessary for using your function in eager
-mode (i.e. without
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md)). This is
-because when a function is wrapped in
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md), {anvl} itself
-can perform these checks automatically.
+[`as_anvl_arrays()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
+makes two decisions *across* the whole argument set, which is why a
+function with several arrayish arguments should canonicalize them in
+**one**
+[`as_anvl_arrays()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
+call rather than one
+[`as_anvl_array()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
+per argument:
 
-The advantage of this input standardization is best illustrated with an
-example.
+1.  Every input is put on one device, and a call mixing devices or
+    backends is rejected.
+2.  The promotion rule passed as `.promote` is applied. It decides both
+    the data type R values materialize at and conversions between
+    `AnvlArray`s, e.g. to make
+    `nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))` work.
 
-Consider the naive implementation of reshaping, which will fail when
-called on an R vector:
+Afterwards, [`dtype()`](https://r-xla.github.io/anvl/reference/dtype.md)
+is well defined, so the remaining body does not have to distinguish
+between R value inputs and `AnvlArray` inputs. Canonicalizing also
+removes differences between eager and jit mode, see [canonicalization
+and eager mode](#canonicalization-and-eager-mode) below.
+
+Below, we add a function that performs the addition after coercing all
+inputs to `f32`:
 
 ``` r
 
-library(anvl)
-# x: dynamic, shape: static
-nv_reshape_naive <- function(x, shape) {
-  if (!identical(shape(x), shape)) {
-    prim_reshape(x, shape)
-  } else {
-    x
-  }
+nv_add_f32 <- function(x, y) {
+  args <- as_anvl_arrays(x, y, .promote = promotion_dtype("f32", coerce = TRUE))
+  do.call(prim_add, args)
 }
-nv_reshape_naive(1L, c(2, 2))
-#> Error in `UseMethod()`:
-#> ! no applicable method for 'shape' applied to an object of class "c('integer', 'numeric')"
+nv_add_f32(1, nv_scalar(1, "f64"))
+#> AnvlArray
+#>  2
+#> [ CPUf32{} ]
 ```
 
-This is because the attribute-getters such as
-[`shape()`](https://r-xla.github.io/anvl/reference/shape.md),
-[`dtype()`](https://r-xla.github.io/anvl/reference/dtype.md), etc. are
-only implemented for `AnvlArray`s, not for R vectors, so canonicalizing
-inputs at the top ensures the function works correctly.
+### Canonicalization and Eager Mode
 
-Also, consider this function that converts an input to a specific dtype
-(or keeps it as-is if `dtype` is `NULL`). The problem is that in the
-no-op case, we return a static R object instead of (as intended) an
-`AnvlArray`.
+A function that does not canonicalize its inputs can behave differently
+in eager and in jit mode. Below, the untyped `1` materializes at the
+default float when the function is jitted, so under the default `f32`
+the jitted result is rounded, while the eager one computes `1 + pi` in
+R, at double precision. At an `f64` default the two would agree, which
+is exactly the problem: the answer depends on a default rather than on
+the code.
 
 ``` r
 
-# x: dynamic, dtype: static
-nv_convert_naive <- function(x, dtype) {
-  if (is.null(dtype)) {
-    return(x)
-  }
-  prim_convert(x, dtype)
+add_pi <- function(x) {
+  x + pi
 }
-nv_convert_naive(1L, "i16")
+as.numeric(jit(add_pi)(1)) == add_pi(1)
+#> [1] FALSE
+```
+
+Canonicalizing the input fixes this:
+
+``` r
+
+add_pi2 <- function(x) {
+  x <- as_anvl_array(x)
+  x + pi
+}
+jit(add_pi2)(1) == add_pi2(1)
 #> AnvlArray
 #>  1
-#> [ CPUi16{} ]
-nv_convert_naive(1L, NULL)
-#> [1] 1
+#> [ CPUbool{} ]
 ```
 
-By canonicalizing inputs, such pitfalls can be avoided.
+Not canonicalizing inputs can also be a problem for device placement. If
+the function below is called as
+`threeway_add(1, 2, nv_scalar(3, device = "cuda"))`, the inner addition
+places `1` and `2` on the default device (the CPU by default), and the
+outer addition then fails, because it combines arrays on different
+devices.
 
-Finally, note that primitives such as
-[`prim_convert()`](https://r-xla.github.io/anvl/reference/prim_convert.md)
-already canonicalize their inputs, so if you are only wrapping
-primitives (or other `nv_<op>` functions that already canonicalize), you
-might not have to do this yourself.
+``` r
 
-When a function takes multiple arrayish inputs, normalize them in a
-single `as_anvl_arrays(...)` call covering all of them, so R
-literals/arrays adopt the device of their AnvlArray siblings instead of
-landing on the default device.
+threeway_add <- function(x, y, z) {
+  nv_add(nv_add(x, y), z)
+}
+```
 
 ## Arbitrary Devices
 
@@ -138,6 +154,7 @@ One way to achieve this is to simply pass the input’s device to
 ``` r
 
 nv_add_one1 <- function(x) {
+  # Converting is what gives the value a device to read back here.
   x <- as_anvl_array(x)
   x + nv_fill(1L, shape(x), device = device(x))
 }
@@ -166,49 +183,46 @@ to place it on the correct device.
 One restriction of the XLA compiler is that it does not really allow for
 runtime checks. Let’s say you want to sample from a Bernoulli
 distribution with probability `p`. If you make `p` a dynamic input, you
-can’t check that it is within `[0, 1]`, so you need to make it a static
-input. Don’t convert it to an `AnvlArray` before checking its value.
-Later in the function, it will actually be converted, but from XLA’s
-point of view, it will just be a constant within the compiled program
-and not a dynamic input.
+can’t check that it is within `[0, 1]`, because under
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) it is an
+abstract value without data; so you need to make it a static input.
+Don’t convert it to an `AnvlArray` before checking its value. Later in
+the function, it will actually be converted, but from XLA’s point of
+view, it will just be a constant within the compiled program and not a
+dynamic input.
 
 ``` r
 
-nv_rbernoulli <- function(initial_state, p) {
-  initial_state <- as_anvl_array(initial_state)
+nv_rbernoulli <- jit(function(state, p) {
   stopifnot((p >= 0) && (p <= 1))
-
-  # returns: (state, sample)
-  out <- nv_runif(1L, initial_state)
-  out_state <- out[[1L]]
-  x <- nv_convert(out[[2L]] <= p, "i32")
-  list(out_state, x)
-}
-nv_rbernoulli(nv_rng_state(1), 0.2)[[2L]]
+  out <- nv_runif(1L, state)
+  list(state = out$state, values = nv_convert(out$values <= p, default_int()))
+}, static = "p")
+nv_rbernoulli(nv_rng_state(1L), 0.2)$values
 #> AnvlArray
 #>  0
 #> [ CPUi32{1} ]
 ```
 
+Each distinct value of `p` compiles its own program, which is the price
+of checking it.
+
 ## Jit-wrapping API Functions
 
-Most user-facing API functions in anvl are wrapped in
-`jit(f, backend = "auto", ...)` so that calling them traces and compiles
-a single program instead of executing each operation eagerly. The
-wrapping is driven by the `@jit` roclet (see
-[`?jit_roclet`](https://r-xla.github.io/anvl/reference/jit_roclet.md)).
-
-In `R/api*.R`, tag any function that performs more than one primitive
-operation with `#' @jit`:
+Most user-facing API functions in {anvl} are wrapped in `jit(f, ...)` so
+that calling them traces and compiles a single program instead of
+executing each operation eagerly. In `R/api*.R`, wrap any function that
+performs more than one primitive operation in
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) at the
+definition itself:
 
 ``` r
 
 #' @export
-#' @jit
-nv_log2 <- function(x) {
+nv_log2 <- jit(function(x) {
   x <- as_anvl_array(x)
   nv_log(x) / log(2)
-}
+})
 ```
 
 If the function has static arguments (anything that is not an arrayish
@@ -219,33 +233,12 @@ argument names:
 ``` r
 
 #' @export
-#' @jit static = c(2L, 3L)
-nv_mean <- function(x, axes = NULL, drop = TRUE) {
+nv_mean <- jit(function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   ...
-}
+}, static = 2:4)
 
 #' @export
-#' @jit static = c("axis")
-nv_concatenate <- function(..., axis = NULL) {
+nv_concatenate <- jit(function(..., axis = NULL) {
   ...
-}
+}, static = "axis")
 ```
-
-Use names rather than positions whenever an argument lives after `...`,
-since `...` has no fixed position.
-
-**When to skip `#' @jit`.** Don’t tag a function whose body is
-essentially a single primitive call – direct aliases
-(`nv_log <- prim_log`), `make_do_binary(prim_X)` factories, or thin
-wrappers that just validate and forward to one primitive. The underlying
-primitive is already jit-wrapped, so adding another
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) layer adds
-tracing overhead without fusing anything new. Also skip pure I/O
-(`nv_save`, `nv_serialize`), backend constructors (`nv_array`,
-`nv_scalar`, `nv_matrix`), and device/state objects (`nv_device`,
-`nv_rng_state`).
-
-The roclet writes the list of tagged functions to `R/jit-registry.R` on
-every `devtools::document()` run, and `R/zzz.R` applies that registry at
-package source time so the wrapped functions are byte-compiled with the
-rest of the package.

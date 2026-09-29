@@ -1,4 +1,4 @@
-# Trace, lower, and compile a function to an XLA executable
+# Trace, Lower, and Compile a Function to an XLA Executable
 
 Takes a function, traces it into a computational graph, lowers it to
 StableHLO, and compiles it to a PJRT executable. Returns the compiled
@@ -13,8 +13,9 @@ compile_pjrt(
   in_tree,
   donate = character(),
   device = NULL,
-  arg_devices = list(),
-  fallback_device = NULL
+  arg_device = NULL,
+  fallback_device = NULL,
+  default_dtypes = NULL
 )
 ```
 
@@ -32,7 +33,7 @@ compile_pjrt(
 
 - in_tree:
 
-  (`Node`)  
+  ([`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   Tree structure of the inputs.
 
 - donate:
@@ -42,16 +43,16 @@ compile_pjrt(
 
 - device:
 
-  (`NULL` \| `character(1)`)  
+  (`NULL` \| `character(1)` \| `PJRTDevice`)  
   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from
-  `arg_devices` and traced arrays.
+  `arg_device` and traced arrays.
 
-- arg_devices:
+- arg_device:
 
-  (`list`)  
-  Devices of the concrete (non-static) input arguments, extracted before
-  converting to abstract values. Used together with traced devices for
-  device inference when `device` is `NULL`.
+  (`NULL` \| device)  
+  The device the array inputs live on, or `NULL` when there are none.
+  Used together with traced devices for device inference when `device`
+  is `NULL`.
 
 - fallback_device:
 
@@ -62,9 +63,17 @@ compile_pjrt(
   with no dispatcher in front of it) falls back to
   [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
+- default_dtypes:
+
+  (`NULL` \| `list(float, int)`)  
+  The data types the traced R values materialize at when nothing else
+  decides one (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
+
 ## Value
 
-A `list` with elements:
+(`list`)  
+With elements:
 
 - `exec`: The compiled PJRT executable.
 
@@ -72,5 +81,19 @@ A `list` with elements:
 
 - `const_arrays`: Constants needed at execution time.
 
-- `out_avals`: One `list(dtype, shape, ambiguous)` per output leaf;
-  pjrt's dispatcher builds the output wrappers from these.
+- `out_avals`: One `list(dtype, shape)` per output leaf; pjrt's
+  dispatcher builds the output wrappers from these.
+
+- `input_dtypes`: One entry per input: the dtype an input built from
+  bare R data is uploaded at, and `NA` for an array input, which is
+  supplied as it is. The R data has no dtype of its own, so the program
+  is the only thing that knows what it is uploaded as – pjrt's
+  dispatcher therefore requires an entry for every bare R input and
+  rejects a dtype declared for an array one. `NULL` for a call whose
+  inputs are all arrays.
+
+- `device`: The `PJRTDevice` the executable was compiled for.
+
+- `phantom_specs`: One `list(dtype, shape)` per phantom donated input
+  the executor must allocate for an output (see
+  [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)).

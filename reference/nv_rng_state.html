@@ -15,7 +15,7 @@ random sampling functions and is updated after each call."><meta property="og:im
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@ random sampling functions and is updated after each call."><meta property="og:im
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,7 +74,7 @@ random sampling functions and is updated after each call."><meta property="og:im
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Generate RNG State</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-utilities.R" class="external-link"><code>R/api-utilities.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api-utilities.R" class="external-link"><code>R/api-utilities.R</code></a></small>
       <div class="d-none name"><code>nv_rng_state.Rd</code></div>
     </div>
 
@@ -84,7 +85,7 @@ random sampling functions and is updated after each call.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_rng_state</span><span class="op">(</span><span class="va">seed</span>, device <span class="op">=</span> <span class="fu"><a href="default_device.html">default_device</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_rng_state</span><span class="op">(</span><span class="va">seed</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -93,7 +94,9 @@ random sampling functions and is updated after each call.</p>
 
 <dl><dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Scalar <code>i32</code> seed value.</p></dd>
+Scalar seed. Must be a signed or unsigned integer; it is brought to <code>i32</code>,
+so a wider one is narrowed to its low 32 bits. An R integer is built at
+<code>i32</code> directly, whatever the default integer data type is.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
@@ -102,24 +105,25 @@ The device the data lives on, given either as:</p><ul><li><p>a <em>device string
 <code>"cuda:&lt;n&gt;"</code>), which is resolved against the backend in use, or</p></li>
 <li><p>a <em>device object</em> as returned by <code><a href="nv_device.html">nv_device()</a></code>: a
 <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code> for the <code>"pjrt"</code> backend or a
-<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
-is backend-specific, it also determines the backend.</p></li>
-</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>: the CPU, or the platform
-named by the <code>PJRT_PLATFORM</code> environment variable on the <code>"pjrt"</code> backend.</p></dd>
+<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. It must belong to the
+active backend (<code><a href="active_backend.html">active_backend()</a></code>); a device of another backend is an
+error.</p></li>
+</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="AnvlArray.html">nv_array</a></code> of dtype <code>ui64</code> and shape <code>(2)</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+A <code>ui64</code> array of length 2, whatever <code>seed</code>'s data type was.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Other rng:
 <code><a href="nv_normal.html">nv_normal</a></code>,
 <code><a href="nv_rbinom.html">nv_rbinom()</a></code>,
-<code><a href="nv_runif.html">nv_runif()</a></code>,
 <code><a href="nv_sample.html">nv_sample()</a></code>,
-<code><a href="nv_sample_int.html">nv_sample_int()</a></code></p></div>
+<code><a href="nv_sample_int.html">nv_sample_int()</a></code>,
+<code><a href="nv_uniform.html">nv_uniform</a></code></p></div>
     </div>
 
     <div class="section level2">

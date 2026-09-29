@@ -9,7 +9,7 @@ efficiently represented in the compiled program, while the latter uses
 ## Usage
 
 ``` r
-prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
+prim_fill(value, shape, dtype, device = NULL)
 ```
 
 ## Arguments
@@ -17,7 +17,10 @@ prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
 - value:
 
   (`numeric(1)`)  
-  Scalar value to fill the array with.
+  Scalar value to fill the array with. It has to be something `dtype`
+  can hold: a whole number in its range for an integer data type, a
+  non-negative one for an unsigned integer, and a logical or `0` / `1`
+  for `bool`.
 
 - shape:
 
@@ -27,17 +30,8 @@ prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for more details.
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Data type of the result.
 
 - device:
 
@@ -54,17 +48,16 @@ prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Has the given `shape` and `dtype`.
 
 ## Implemented Rules
@@ -76,7 +69,9 @@ Has the given `shape` and `dtype`.
 ## StableHLO
 
 Lowers to
-[`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
+[`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html),
+stablehlo's constant builder, specified under
+[constant](https://openxla.org/stablehlo/spec#constant).
 
 ## See also
 
@@ -85,6 +80,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the R double is built at the requested data type
 prim_fill(3.14, shape = c(2, 3), dtype = "f32")
 #> AnvlArray
 #>  3.1400 3.1400 3.1400

@@ -1,0 +1,131 @@
+# Evenly Spaced Sequence
+
+Creates a 1-D array with `length_out` evenly spaced values from `from`
+to `to` (both inclusive), like R's
+`seq(from, to, length.out = length_out)`.
+
+The spacing `(to - from) / (length_out - 1)` is generally not a whole
+number, so the result is a float.
+
+`nv_linspace_like()` is a variant where `dtype` and `device` default to
+those of `like`.
+
+## Usage
+
+``` r
+nv_linspace(from, to, length_out, dtype = NULL, device = NULL)
+
+nv_linspace_like(like, from, to, length_out, dtype = NULL, device = NULL)
+```
+
+## Arguments
+
+- from, to:
+
+  (`numeric(1)`)  
+  First and last value of the sequence. `to` may lie below `from`, in
+  which case the values decrease.
+
+- length_out:
+
+  (`integer(1)`)  
+  Number of values to generate. Must be at least 1; for `length_out = 1`
+  the result is `from`.
+
+- dtype:
+
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Data type of the result. Must be a float data type; `NULL` (default)
+  uses the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)),
+  since the spacing is fractional. For `nv_linspace_like()`, `NULL` uses
+  `dtype(like)`, which must then be a float too.
+
+- device:
+
+  (`NULL` \| `character(1)` \|
+  [device](https://r-xla.github.io/anvl/reference/nv_device.md))  
+  The device the data lives on, given either as:
+
+  - a *device string* naming the platform (e.g. `"cpu"`, `"cuda"`,
+    `"cuda:<n>"`), which is resolved against the backend in use, or
+
+  - a *device object* as returned by
+    [`nv_device()`](https://r-xla.github.io/anvl/reference/nv_device.md):
+    a
+    [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
+    for the `"pjrt"` backend or a
+    [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
+
+  The default (`NULL`) uses
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
+
+- like:
+
+  ([`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md))  
+  Existing array whose attributes are used as defaults (only for
+  `nv_linspace_like()`).
+
+## Value
+
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has `dtype` and shape `length_out`.
+
+## See also
+
+[`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md) for
+consecutive integers,
+[`nv_iota()`](https://r-xla.github.io/anvl/reference/nv_iota.md) for
+values increasing along an axis of any shape,
+[`dtype_categories`](https://r-xla.github.io/anvl/reference/dtype_categories.md)
+for the data type categories.
+
+## Examples
+
+``` r
+nv_linspace(0, 1, length_out = 5L)
+#> AnvlArray
+#>  0.0000
+#>  0.2500
+#>  0.5000
+#>  0.7500
+#>  1.0000
+#> [ CPUf32{5} ] 
+
+# to below from counts down
+nv_linspace(1, 0, length_out = 3L)
+#> AnvlArray
+#>  1.0000
+#>  0.5000
+#>  0.0000
+#> [ CPUf32{3} ] 
+
+# length_out = 1 gives from alone
+nv_linspace(2.5, 10, length_out = 1L)
+#> AnvlArray
+#>  2.5000
+#> [ CPUf32{1} ] 
+
+# the data type must be a float; convert afterwards for integers
+nv_convert(nv_linspace(0, 10, length_out = 5L), "i32")
+#> AnvlArray
+#>   0
+#>   2
+#>   5
+#>   7
+#>  10
+#> [ CPUi32{5} ] 
+
+# nv_linspace_like() takes the data type and device from an existing array
+x <- nv_array(c(1, 2, 3), dtype = "f64")
+nv_linspace_like(x, 0, 1, length_out = 3L)
+#> AnvlArray
+#>  0.0000
+#>  0.5000
+#>  1.0000
+#> [ CPUf64{3} ] 
+```

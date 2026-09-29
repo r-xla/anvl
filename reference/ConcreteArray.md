@@ -19,6 +19,10 @@ ConcreteArray(data)
   ([`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md))  
   The actual array data.
 
+## Value
+
+(`ConcreteArray`)
+
 ## Lowering
 
 When lowering to XLA, these become inputs to the executable instead of
@@ -35,8 +39,6 @@ x
 #>  0.5000
 #>  0.6000
 #> [ CPUf32{2} ] 
-ambiguous(x)
-#> [1] FALSE
 shape(x)
 #> [1] 2
 naxes(x)
@@ -44,16 +46,12 @@ naxes(x)
 dtype(x)
 #> <f32>
 
-# How it appears during tracing
+# how it appears during tracing
 graph <- trace_fn(function() y, list())
 graph
-#> <AnvlGraph>
-#>   Inputs: (none)
-#>   Constants:
-#>     %c1: f32[2]
-#>   Body: (empty)
-#>   Outputs:
-#>     %c1: f32[2] 
+#> <AnvlGraph> [%c1: f32[2]] () {
+#>   return %c1
+#> }
 graph$outputs[[1]]$aval
 #> ConcreteArray
 #>  0.5000

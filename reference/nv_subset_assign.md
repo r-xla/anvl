@@ -9,7 +9,7 @@ array. You can also use the `[<-` operator.
 # S3 method for class 'AnvlArray'
 x[...] <- value
 
-nv_subset_assign(x, ..., value)
+nv_subset_assign(x, ..., value, inplace = FALSE)
 ```
 
 ## Arguments
@@ -17,41 +17,101 @@ nv_subset_assign(x, ..., value)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Input array.
+  The array to update. Can be any data type. An R object is materialized
+  at its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 - ...:
 
-  Subset specifications, one per axis. See
-  [`vignette("subsetting")`](https://r-xla.github.io/anvl/articles/subsetting.md)
-  for details.
+  Subset specifications, one per axis. Omitted trailing axes select all
+  elements.
+
+  A boolean mask (an R logical array such as `arr(TRUE, FALSE)`, or an
+  arrayish value of dtype `bool`) selects the elements at the `TRUE`
+  positions. A mask for one axis must have as many elements as the size
+  of that axis. A mask that is the only subscript and has the same shape
+  as `x` selects across the whole array, yielding a 1-D result. Under
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md), the values
+  of a mask must be known at compile time, because the number of
+  selected elements determines the output shape: R logical arrays and
+  arrays created in or closed over by the function work, a mask computed
+  from the function's inputs does not.
+
+  See the
+  [Subsetting](https://r-xla.github.io/anvl/articles/subsetting.html)
+  article for details.
 
 - value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Replacement values. Scalars are broadcast to the subset shape.
-  Non-scalar values must match the subset shape.
+  Replacement values. Scalars are broadcast to the subset shape and
+  non-scalar values must match it. It is brought to `x`'s data type: an
+  R value is built at it when its category can reach it (`0L` serves an
+  integer and a float `x` alike, while `1.5` into an `i32` `x` is an
+  error), and an array is converted unless that would narrow it or leave
+  its category (an `f64` value for an `f32` `x` is an error).
+
+- inplace:
+
+  (`logical(1)`)  
+  Whether to write into the memory of `x` instead of allocating a new
+  array. This avoids the copy of `x` that an eager subset assignment
+  otherwise makes, but it consumes `x`: its buffer is
+  [donated](https://r-xla.github.io/anvl/reference/jit.md), so `x` – and
+  any other R variable referring to the same array – can no longer be
+  used afterwards. With `[<-`, pass it among the subscripts, e.g.
+  `x[1, inplace = TRUE] <- 0`, which rebinds `x` to the result. It is an
+  error inside a jitted function: there, other references to `x` would
+  stay valid, so the same code would behave differently in eager and in
+  jit mode. Inside
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md), the compiler
+  already avoids the copy anyway. Default is `FALSE`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-A new array with the same shape as `x` and the subset replaced.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has `x`'s data type and shape, with the subset replaced.
 
 ## See also
 
 [`nv_subset()`](https://r-xla.github.io/anvl/reference/nv_subset.md),
-[`vignette("subsetting")`](https://r-xla.github.io/anvl/articles/subsetting.md)
-for a comprehensive guide.
+the [Subsetting](https://r-xla.github.io/anvl/articles/subsetting.html)
+article for a comprehensive guide.
 
 ## Examples
 
 ``` r
 x <- nv_matrix(1:12, nrow = 3)
-# Set row 1 to zeros
+# set row 1 to zeros
+nv_subset_assign(x, 1, value = nv_scalar(0L))
+#> AnvlArray
+#>   0  0  0  0
+#>   2  5  8 11
+#>   3  6  9 12
+#> [ CPUi32{3,4} ] 
 x[1, ] <- nv_scalar(0L)
 x
 #> AnvlArray
 #>   0  0  0  0
 #>   2  5  8 11
 #>   3  6  9 12
+#> [ CPUi32{3,4} ] 
+
+# Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)
+x[x > 6] <- 0L
+x
+#> AnvlArray
+#>  0 0 0 0
+#>  2 5 0 0
+#>  3 6 0 0
+#> [ CPUi32{3,4} ] 
+
+# write into the memory of `x` instead of copying it
+x[2, inplace = TRUE] <- nv_scalar(1L)
+x
+#> AnvlArray
+#>  0 0 0 0
+#>  1 1 1 1
+#>  3 6 0 0
 #> [ CPUi32{3,4} ] 
 ```

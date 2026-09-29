@@ -1,66 +1,45 @@
 # Sequence
 
-Creates a 1-D array with values from `start` to `end` (inclusive).
+Creates a 1-D array with the values from `from` to `to` in steps of
+`by`, like R's [`seq()`](https://rdrr.io/r/base/seq.html). The sequence
+counts down when `to` lies below `from`, and stops before `to` when `to`
+is not reachable in whole steps: `nv_seq(0, 9, by = 2)` ends at `8`.
 
-Without `steps`, behaves like R's `seq(start, end)` producing integer
-values. With `steps`, produces `steps` evenly spaced values (like
-`seq(start, end, length.out = steps)`).
-
-`nv_seq_like()` is a variant where `dtype`, `ambiguous`, and `device`
-default to those of `like`.
+`nv_seq_like()` is a variant where `dtype` and `device` default to those
+of `like`.
 
 ## Usage
 
 ``` r
-nv_seq(
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = FALSE,
-  device = NULL
-)
+nv_seq(from, to, by = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(
-  like,
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_seq_like(like, from, to, by = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
 
-- start, end:
+- from, to:
 
-  (`numeric(1)`)  
-  Start and end values. When `steps` is `NULL`, must satisfy
-  `start <= end`.
+  (`integer(1)`)  
+  First value and upper (or, when counting down, lower) limit of the
+  sequence.
 
-- steps:
+- by:
 
-  (`integer(1)` or `NULL`)  
-  Number of evenly spaced values to generate. Must be at least 1. When
-  `NULL` (default), generates consecutive integer values from `start` to
-  `end`.
+  (`NULL` \| `integer(1)`)  
+  Step size, which must be a non-zero whole number pointing from `from`
+  towards `to`. `NULL` (default) uses `-1` if `from > to` and `1`
+  otherwise.
 
 - dtype:
 
-  (`character(1)`)  
-  Data type. Default `"i32"` when `steps` is `NULL`, `"f32"` when
-  `steps` is given. For `nv_seq_like()`, `NULL` uses `dtype(like)`.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for more details.
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Data type of the result. Can be any numeric data type. `NULL`
+  (default) uses the default integer data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)),
+  since the values are whole. For `nv_seq_like()`, `NULL` uses
+  `dtype(like)`.
 
 - device:
 
@@ -77,13 +56,12 @@ nv_seq_like(
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 - like:
 
@@ -93,8 +71,17 @@ nv_seq_like(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-1-D array of length `end - start + 1`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has `dtype` and shape `(to - from) %/% by + 1`.
+
+## See also
+
+[`nv_linspace()`](https://r-xla.github.io/anvl/reference/nv_linspace.md)
+for a given number of evenly spaced values,
+[`nv_iota()`](https://r-xla.github.io/anvl/reference/nv_iota.md) for
+values increasing along an axis of any shape,
+[`prim_iota()`](https://r-xla.github.io/anvl/reference/prim_iota.md) for
+the underlying primitive.
 
 ## Examples
 
@@ -107,6 +94,38 @@ nv_seq(3, 7)
 #>  6
 #>  7
 #> [ CPUi32{5} ] 
+
+# a range that counts down needs no `by`
+nv_seq(7, 3)
+#> AnvlArray
+#>  7
+#>  6
+#>  5
+#>  4
+#>  3
+#> [ CPUi32{5} ] 
+
+# `to` is only reached where a whole number of steps lands on it
+nv_seq(0, 9, by = 2)
+#> AnvlArray
+#>  0
+#>  2
+#>  4
+#>  6
+#>  8
+#> [ CPUi32{5} ] 
+
+# a float data type gives the same values as floats
+nv_seq(3, 7, dtype = "f32")
+#> AnvlArray
+#>  3
+#>  4
+#>  5
+#>  6
+#>  7
+#> [ CPUf32{5} ] 
+
+# nv_seq_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 #> AnvlArray

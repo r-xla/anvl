@@ -1,6 +1,6 @@
 # Gaussian Process
 
-In this vignette, we implement a Gaussian Process (GP) regression model
+In this article, we implement a Gaussian Process (GP) regression model
 from scratch.
 
 A Gaussian Process is a collection of random variables, any finite
@@ -20,7 +20,7 @@ Gaussian:
 
 where \\\mathbf{m}\_i = m(\mathbf{x}^{(i)})\\ and \\\mathbf{K}\_{ij} =
 k(\mathbf{x}^{(i)}, \mathbf{x}^{(j)})\\. We assume a zero mean function
-\\m(\mathbf{x}) = 0\\ throughout this vignette (which is standard
+\\m(\mathbf{x}) = 0\\ throughout this article (which is standard
 practice, since the kernel already provides enough flexibility).
 
 ## Kernel
@@ -51,14 +51,15 @@ rbf_kernel_matrix <- function(X1, X2, lengthscale, signal_var) {
     nv_reshape(X2, c(1L, m, d))
   )
   diff <- diff[[1L]] - diff[[2L]]
-  sq_dist <- nv_reduce_sum(diff * diff, axes = 3L)
+  sq_dist <- nv_sum(diff * diff, axes = 3L)
   signal_var * exp(-sq_dist / (2 * lengthscale^2))
 }
 ```
 
-Because `anvl` jit-compiles the code, there is no performance penalty
-for custom kernels, other than if we would use a C++ library that has a
-number of hard-coded kernels available.
+Because {anvl} compiles the whole computation, a custom kernel like this
+one runs as fast as a built-in one would. This is different from
+libraries that ship a fixed set of kernels implemented in C++, where a
+custom kernel written in R would be considerably slower.
 
 ## Joint Distribution
 
@@ -149,12 +150,12 @@ than explicitly inverting the kernel matrix.
 chol_solve <- function(L, b) {
   # solves K_y x = b where K_y = L L^T (L lower triangular)
   y <- nv_triangular_solve(L, b,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = FALSE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = FALSE
   )
   nv_triangular_solve(L, y,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = TRUE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = TRUE
   )
 }
 
@@ -206,7 +207,7 @@ marginal likelihood.
 ## Marginal Likelihood
 
 With \\\pmb{\theta} = (\ell, \sigma_f^2, \sigma^2)\\, we can write down
-the log marginal likelihood as follows:
+the marginal likelihood as follows:
 
 \\p(\mathbf{y} \mid \mathbf{X}, \pmb{\theta}) = \int p(\mathbf{y} \mid
 \mathbf{f}, \mathbf{X}) \\ p(\mathbf{f} \mid \mathbf{X}, \pmb{\theta})
@@ -256,20 +257,20 @@ neg_log_marginal_likelihood <- function(kernel, X, y, lengthscale, signal_var, n
 
   # alpha = K_y^{-1} y, computed via L L^T x = y
   z <- nv_triangular_solve(L, y,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = FALSE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = FALSE
   )
   alpha <- nv_triangular_solve(L, z,
-    left_side = TRUE, lower = TRUE,
-    unit_diagonal = FALSE, transpose_a = TRUE
+    left = TRUE, lower = TRUE,
+    unit_diag = FALSE, transpose = TRUE
   )
 
   # Data fit term: 0.5 * y^T %*% alpha
-  data_fit <- 0.5 * nv_reduce_sum(y * alpha, axes = c(1L, 2L))
+  data_fit <- 0.5 * nv_sum(y * alpha, axes = c(1L, 2L))
 
   # Log determinant: sum(log(diag(L)))
-  diag_L <- nv_reduce_sum(L * eye, axes = 2L)
-  log_det <- nv_reduce_sum(log(diag_L), axes = 1L)
+  diag_L <- nv_sum(L * eye, axes = 2L)
+  log_det <- nv_sum(log(diag_L), axes = 1L)
 
   data_fit + log_det
 }
@@ -281,7 +282,7 @@ We optimize the hyperparameters using gradient descent. Since \\\ell\\,
 \\\sigma_f^2\\, and \\\sigma^2\\ must be positive, we optimize on the
 log scale to allow unconstrained updates. `anvl` computes the gradients
 via [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
-and the entire training loop is JIT-compiled with `nv_while`.
+and the entire fitting loop is JIT-compiled with `nv_while`.
 
 ``` r
 
@@ -293,7 +294,7 @@ nll_grad <- gradient(\(X, y, log_lengthscale, log_signal_var, log_noise_var) {
   )
 }, wrt = params)
 
-train_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
+fit_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
   n_steps, learning_rate) {
   result <- nv_while(
     list(
@@ -323,7 +324,7 @@ train_gp <- jit(function(X, y, lengthscale, signal_var, noise_var,
 
 ``` r
 
-result <- train_gp(
+result <- fit_gp(
   X_t, y_t,
   lengthscale = nv_scalar(1),
   signal_var = nv_scalar(1),

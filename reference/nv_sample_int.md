@@ -10,7 +10,7 @@ To sample from a population other than `1:n`, use
 ## Usage
 
 ``` r
-nv_sample_int(shape, initial_state, n, dtype = "i32")
+nv_sample_int(shape, state, n, dtype = NULL)
 ```
 
 ## Arguments
@@ -18,12 +18,15 @@ nv_sample_int(shape, initial_state, n, dtype = "i32")
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result.
 
-- initial_state:
+- state:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  RNG state (`ui64[2]`).
+  RNG state: a 1-D array of two `ui64` elements, as
+  [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
+  returns. The data type and length are fixed by the generator, not by
+  the default data types, and the returned `state` has them too.
 
 - n:
 
@@ -32,16 +35,18 @@ nv_sample_int(shape, initial_state, n, dtype = "i32")
 
 - dtype:
 
-  (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sampled integers.
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Numeric type of the sampled integers. The sampled values are converted
+  to it. `NULL` (default) uses the [default integer
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value
 
-([`list()`](https://rdrr.io/r/base/list.html) of
+(named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-List of two elements: the updated RNG state and the sampled integers, of
-shape `shape`.
+Elements `state`, the updated RNG state, and `values`, the sampled
+integers of shape `shape` and data type `dtype`.
 
 ## See also
 
@@ -52,16 +57,16 @@ Other rng:
 [`nv_normal`](https://r-xla.github.io/anvl/reference/nv_normal.md),
 [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md),
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
-[`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md),
-[`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md)
+[`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md),
+[`nv_uniform`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
 
 ## Examples
 
 ``` r
+# roll six dice; `state` is the updated RNG state
 state <- nv_rng_state(42L)
-# Roll 6 dice
 result <- nv_sample_int(6, state, 6L)
-result[[2]]
+result$values
 #> AnvlArray
 #>  4
 #>  6

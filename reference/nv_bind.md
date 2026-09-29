@@ -1,12 +1,10 @@
-# Combine arrays by rows or columns
+# Combine Arrays by Rows or Columns
 
 Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
-Arguments are first promoted to a common data type (see
-[`nv_promote_to_common()`](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md)).
 
-Each input is then handled according to its rank:
+Each input is handled according to its rank:
 
-- 0-D: broadcast to match the non-stacked axes of the other inputs.
+- a scalar: broadcast to match the non-stacked axes of the other inputs.
 
 - 1-D: treated as a single row/column.
 
@@ -20,10 +18,10 @@ nv_rbind(...)
 nv_cbind(...)
 
 # S3 method for class 'AnvlArray'
-rbind(..., deparse.level = 1)
+rbind(..., deparse.level = 1L)
 
 # S3 method for class 'AnvlArray'
-cbind(..., deparse.level = 1)
+cbind(..., deparse.level = 1L)
 ```
 
 ## Arguments
@@ -31,7 +29,12 @@ cbind(..., deparse.level = 1)
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrays to combine. Inputs are promoted to a common data type.
+  Arrays to combine. Can be of any data type; they are [promoted to a
+  common data
+  type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md),
+  and a scalar is
+  [broadcast](https://r-xla.github.io/anvl/reference/nv_broadcast_scalars.md)
+  to match the non-stacked axes.
 
 - deparse.level:
 
@@ -41,7 +44,10 @@ cbind(..., deparse.level = 1)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' common data type. The stacked axis is the sum of their
+sizes along it – rows for `nv_rbind()`, columns for `nv_cbind()` – and
+every other axis is theirs unchanged.
 
 ## Differences from base R
 
@@ -60,7 +66,7 @@ produces a `c(4, 3, 4)` array, and with `nv_cbind` a `c(2, 6, 4)` array.
 ## Examples
 
 ``` r
-# Vectors as rows / columns
+# vectors as rows / columns
 nv_rbind(nv_array(1:3), nv_array(4:6))
 #> AnvlArray
 #>  1 2 3
@@ -73,7 +79,7 @@ nv_cbind(nv_array(1:3), nv_array(4:6))
 #>  3 6
 #> [ CPUi32{3,2} ] 
 
-# Scalar broadcasting
+# scalar broadcasting
 nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #> AnvlArray
 #>  1 3 5
@@ -81,7 +87,7 @@ nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #>  0 0 0
 #> [ CPUf32{3,3} ] 
 
-# Rank-3 arrays preserve trailing axes
+# rank-3 arrays preserve trailing axes
 a <- nv_array(1:24, shape = c(2, 3, 4))
 shape(nv_rbind(a, a)) # c(4, 3, 4)
 #> [1] 4 3 4

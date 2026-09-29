@@ -1,25 +1,39 @@
-# Primitive Maximum
+# Primitive Max Reduction
 
-Element-wise maximum of two arrays.
+Finds the maximum of array elements along the specified axes.
 
 ## Usage
 
 ``` r
-prim_max(lhs, rhs)
+prim_max(x, axes, drop = TRUE)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish values of any data type. Must have the same shape.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
+
+- axes:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis.
+
+- drop:
+
+  (`logical(1)`)  
+  Whether to drop the reduced axes: removed from the output shape if
+  `TRUE`, set to 1 if `FALSE`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's data type. The shape is the input's with the reduced
+axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Implemented Rules
 
@@ -32,6 +46,9 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html),
+specified under [reduce](https://openxla.org/stablehlo/spec#reduce). The
+reducer is
 [`hlo_maximum()`](https://r-xla.github.io/stablehlo/reference/hlo_maximum.html).
 
 ## See also
@@ -41,12 +58,24 @@ Lowers to
 ## Examples
 
 ``` r
-x <- nv_array(c(1, 5, 3))
-y <- nv_array(c(4, 2, 6))
-prim_max(x, y)
+x <- nv_matrix(1:6, nrow = 2)
+# reducing axis 1 removes it from the shape, and the data type is kept
+prim_max(x, axes = 1L)
 #> AnvlArray
+#>  2
 #>  4
-#>  5
 #>  6
-#> [ CPUf32{3} ] 
+#> [ CPUi32{3} ] 
+
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_max(x, axes = 1L, drop = FALSE)
+#> AnvlArray
+#>  2 4 6
+#> [ CPUi32{1,3} ] 
+
+# reducing every axis gives a scalar
+prim_max(x, axes = c(1L, 2L))
+#> AnvlArray
+#>  6
+#> [ CPUi32{} ] 
 ```

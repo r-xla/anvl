@@ -1,7 +1,7 @@
 # 2D Convolution
 
 Torch-style 2D convolution in NCHW layout: `x` is
-`[batch, in_channels, height, width]`, `weight` is
+`[batch, in_channels, height, width]`, `kernel` is
 `[out_channels, in_channels / groups, kh, kw]`, output is
 `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
 
@@ -10,7 +10,7 @@ Torch-style 2D convolution in NCHW layout: `x` is
 ``` r
 nv_conv2d(
   x,
-  weight,
+  kernel,
   stride = 1L,
   padding = 0L,
   dilation = 1L,
@@ -24,12 +24,19 @@ nv_conv2d(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  `[N, C_in, H, W]`.
+  `[N, C_in, H, W]`. Can be any data type; `x` and `kernel` are
+  [promoted to a common data
+  type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
+  An R value assumes the other operand's data type, and materializes at
+  its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  that has none either.
 
-- weight:
+- kernel:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  `[C_out, C_in / groups, kH, kW]`.
+  `[C_out, C_in / groups, kH, kW]`. Promoted together with `x` – see
+  `x`.
 
 - stride:
 
@@ -58,7 +65,8 @@ nv_conv2d(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the operands' common data type, and shape
 `[N, C_out, out_H, out_W]`.
 
 ## See also
@@ -66,3 +74,22 @@ nv_conv2d(
 [`nv_conv1d()`](https://r-xla.github.io/anvl/reference/nv_conv1d.md),
 [`nv_conv3d()`](https://r-xla.github.io/anvl/reference/nv_conv3d.md),
 [`prim_convolution()`](https://r-xla.github.io/anvl/reference/prim_convolution.md).
+
+## Examples
+
+``` r
+# one batch, one channel, 4x4, convolved with a 3x3 kernel
+x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
+kernel <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+nv_conv2d(x, kernel)
+#> AnvlArray
+#> (1,1,.,.) =
+#>  54 90
+#>  63 99
+#> [ CPUf32{1,1,2,2} ] 
+
+# two output channels give a result with two channels
+kernel2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
+shape(nv_conv2d(x, kernel2))
+#> [1] 1 2 2 2
+```

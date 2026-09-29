@@ -7,6 +7,9 @@ Element-wise absolute value. You can also use
 
 ``` r
 nv_abs(x)
+
+# S3 method for class 'AnvlArray'
+abs(x)
 ```
 
 ## Arguments
@@ -14,12 +17,14 @@ nv_abs(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Input array.
+  One input. Can be any signed numeric data type. An R value
+  materializes at its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the input.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## See also
 
@@ -29,6 +34,7 @@ the underlying primitive.
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(-1, 2, -3))
 abs(x)
 #> AnvlArray
@@ -36,4 +42,10 @@ abs(x)
 #>  2
 #>  3
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+nv_abs(-1)
+#> AnvlArray
+#>  1
+#> [ CPUf32{} ] 
 ```

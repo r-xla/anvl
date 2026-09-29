@@ -2,7 +2,7 @@
 
 Repeatedly executes `body` while `cond` returns `TRUE`, like R's `while`
 loop. The loop state is initialized with `init` and passed through each
-iteration. Otherwise, no state is maintained between iterations.
+iteration; it is the only thing carried from one iteration to the next.
 
 ## Usage
 
@@ -15,7 +15,11 @@ prim_while(init, cond, body)
 - init:
 
   (`named list()`)  
-  Named list of initial state values.
+  Named list of initial state values, a tree in the sense of pjrt's
+  [`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html).
+  Each leaf becomes a parameter of the loop's sub-graphs. R values are
+  materialized at their [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 - cond:
 
@@ -27,11 +31,17 @@ prim_while(init, cond, body)
 
   (`function`)  
   Body function that receives the current state as arguments and returns
-  a named list with the same structure, dtypes, and shapes as `init`.
+  a named list with the same structure, data types and shapes as `init`.
+  Nothing is promoted: a loop-carried state is meant to be
+  heterogeneous, so each member keeps its own data type across
+  iterations.
 
 ## Value
 
-Named list with the same structure as `init` containing the final state
+(named `list`)  
+A tree of the loop-carried arrays – see
+[`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html) – with
+the same structure, data types and shapes as `init`, in its final state
 after the loop terminates.
 
 ## Implemented Rules
@@ -43,7 +53,8 @@ after the loop terminates.
 ## StableHLO
 
 Lowers to
-[`hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html).
+[`hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html),
+specified under [while](https://openxla.org/stablehlo/spec#while).
 
 ## See also
 
@@ -52,6 +63,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the loop state is a named list, and each member keeps its data type
 prim_while(
   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
   cond = function(i, total) i <= 5L,

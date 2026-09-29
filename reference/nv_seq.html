@@ -5,14 +5,16 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Sequence — nv_seq"><meta name="description" content="Creates a 1-D array with values from start to end (inclusive).
-Without steps, behaves like R's seq(start, end) producing integer values.
-With steps, produces steps evenly spaced values (like seq(start, end, length.out = steps)).
-nv_seq_like() is a variant where dtype, ambiguous, and device
-default to those of like."><meta property="og:description" content="Creates a 1-D array with values from start to end (inclusive).
-Without steps, behaves like R's seq(start, end) producing integer values.
-With steps, produces steps evenly spaced values (like seq(start, end, length.out = steps)).
-nv_seq_like() is a variant where dtype, ambiguous, and device
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Sequence — nv_seq"><meta name="description" content="Creates a 1-D array with the values from from to to in steps of by,
+like R's seq(). The sequence counts down when to lies below from,
+and stops before to when to is not reachable in whole steps:
+nv_seq(0, 9, by = 2) ends at 8.
+nv_seq_like() is a variant where dtype and device
+default to those of like."><meta property="og:description" content="Creates a 1-D array with the values from from to to in steps of by,
+like R's seq(). The sequence counts down when to lies below from,
+and stops before to when to is not reachable in whole steps:
+nv_seq(0, 9, by = 2) ends at 8.
+nv_seq_like() is a variant where dtype and device
 default to those of like."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -21,7 +23,7 @@ default to those of like."><meta property="og:image" content="https://r-xla.gith
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,22 +37,23 @@ default to those of like."><meta property="og:image" content="https://r-xla.gith
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -79,66 +82,49 @@ default to those of like."><meta property="og:image" content="https://r-xla.gith
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Sequence</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-like.R" class="external-link"><code>R/api-like.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-like.R" class="external-link"><code>R/api-like.R</code></a></small>
       <div class="d-none name"><code>nv_seq.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Creates a 1-D array with values from <code>start</code> to <code>end</code> (inclusive).</p>
-<p>Without <code>steps</code>, behaves like R's <code>seq(start, end)</code> producing integer values.
-With <code>steps</code>, produces <code>steps</code> evenly spaced values (like <code>seq(start, end, length.out = steps)</code>).</p>
-<p><code>nv_seq_like()</code> is a variant where <code>dtype</code>, <code>ambiguous</code>, and <code>device</code>
+    <p>Creates a 1-D array with the values from <code>from</code> to <code>to</code> in steps of <code>by</code>,
+like R's <code><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq()</a></code>. The sequence counts down when <code>to</code> lies below <code>from</code>,
+and stops before <code>to</code> when <code>to</code> is not reachable in whole steps:
+<code>nv_seq(0, 9, by = 2)</code> ends at <code>8</code>.</p>
+<p><code>nv_seq_like()</code> is a variant where <code>dtype</code> and <code>device</code>
 default to those of <code>like</code>.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_seq</span><span class="op">(</span></span>
-<span>  <span class="va">start</span>,</span>
-<span>  <span class="va">end</span>,</span>
-<span>  steps <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  device <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_seq</span><span class="op">(</span><span class="va">from</span>, <span class="va">to</span>, by <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_seq_like</span><span class="op">(</span></span>
-<span>  <span class="va">like</span>,</span>
-<span>  <span class="va">start</span>,</span>
-<span>  <span class="va">end</span>,</span>
-<span>  steps <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  device <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_seq_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">from</span>, <span class="va">to</span>, by <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-start-end">start, end<a class="anchor" aria-label="anchor" href="#arg-start-end"></a></dt>
-<dd><p>(<code>numeric(1)</code>)<br>
-Start and end values. When <code>steps</code> is <code>NULL</code>, must satisfy <code>start &lt;= end</code>.</p></dd>
+<dl><dt id="arg-from-to">from, to<a class="anchor" aria-label="anchor" href="#arg-from-to"></a></dt>
+<dd><p>(<code>integer(1)</code>)<br>
+First value and upper (or, when counting down, lower) limit of the
+sequence.</p></dd>
 
 
-<dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>
-<dd><p>(<code>integer(1)</code> or <code>NULL</code>)<br>
-Number of evenly spaced values to generate. Must be at least 1.
-When <code>NULL</code> (default), generates consecutive integer values from <code>start</code> to <code>end</code>.</p></dd>
+<dt id="arg-by">by<a class="anchor" aria-label="anchor" href="#arg-by"></a></dt>
+<dd><p>(<code>NULL</code> | <code>integer(1)</code>)<br>
+Step size, which must be a non-zero whole number pointing from <code>from</code>
+towards <code>to</code>. <code>NULL</code> (default) uses <code>-1</code> if <code>from &gt; to</code> and <code>1</code>
+otherwise.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
-<dd><p>(<code>character(1)</code>)<br>
-Data type. Default <code>"i32"</code> when <code>steps</code> is <code>NULL</code>, <code>"f32"</code> when <code>steps</code> is given.
-For <code>nv_seq_like()</code>, <code>NULL</code> uses <code>dtype(like)</code>.</p></dd>
-
-
-<dt id="arg-ambiguous">ambiguous<a class="anchor" aria-label="anchor" href="#arg-ambiguous"></a></dt>
-<dd><p>(<code>logical(1)</code>)<br>
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., <code>1L</code>, <code>1.0</code>) and follow special promotion rules.
-See the <code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for more details.</p></dd>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/xlamisc/reference/DataType.html" class="external-link">DataType</a></code>)<br>
+Data type of the result. Can be any numeric data type.
+<code>NULL</code> (default) uses the default integer data
+type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>), since the values are whole. For
+<code>nv_seq_like()</code>, <code>NULL</code> uses <code>dtype(like)</code>.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
@@ -147,10 +133,10 @@ The device the data lives on, given either as:</p><ul><li><p>a <em>device string
 <code>"cuda:&lt;n&gt;"</code>), which is resolved against the backend in use, or</p></li>
 <li><p>a <em>device object</em> as returned by <code><a href="nv_device.html">nv_device()</a></code>: a
 <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code> for the <code>"pjrt"</code> backend or a
-<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
-is backend-specific, it also determines the backend.</p></li>
-</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>: the CPU, or the platform
-named by the <code>PJRT_PLATFORM</code> environment variable on the <code>"pjrt"</code> backend.</p></dd>
+<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. It must belong to the
+active backend (<code><a href="active_backend.html">active_backend()</a></code>); a device of another backend is an
+error.</p></li>
+</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>.</p></dd>
 
 
 <dt id="arg-like">like<a class="anchor" aria-label="anchor" href="#arg-like"></a></dt>
@@ -161,8 +147,14 @@ Existing array whose attributes are used as defaults
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-1-D array of length <code>end - start + 1</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has <code>dtype</code> and shape <code>(to - from) %/% by + 1</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="nv_linspace.html">nv_linspace()</a></code> for a given number of evenly spaced values,
+<code><a href="nv_iota.html">nv_iota()</a></code> for values increasing along an axis of any shape,
+<code><a href="prim_iota.html">prim_iota()</a></code> for the underlying primitive.</p></div>
     </div>
 
     <div class="section level2">
@@ -175,6 +167,38 @@ Existing array whose attributes are used as defaults
 <span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  7</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{5} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># a range that counts down needs no `by`</span></span></span>
+<span class="r-in"><span><span class="fu">nv_seq</span><span class="op">(</span><span class="fl">7</span>, <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{5} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># `to` is only reached where a whole number of steps lands on it</span></span></span>
+<span class="r-in"><span><span class="fu">nv_seq</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">9</span>, by <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{5} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># a float data type gives the same values as floats</span></span></span>
+<span class="r-in"><span><span class="fu">nv_seq</span><span class="op">(</span><span class="fl">3</span>, <span class="fl">7</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{5} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># nv_seq_like() takes the data type and device from an existing array</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_seq_like</span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>

@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,22 +27,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -118,6 +119,13 @@
 
         <dt>
 
+          <code><a href="nv_linspace.html">nv_linspace()</a></code> <code><a href="nv_linspace.html">nv_linspace_like()</a></code>
+
+        </dt>
+        <dd>Evenly Spaced Sequence</dd>
+
+        <dt>
+
           <code><a href="nv_diag.html">nv_diag()</a></code>
 
         </dt>
@@ -151,49 +159,49 @@
           <code><a href="backend.html">backend()</a></code>
 
         </dt>
-        <dd>Get Backend of an Array</dd>
-
-        <dt>
-
-          <code><a href="ambiguous.html">ambiguous()</a></code>
-
-        </dt>
-        <dd>Get Ambiguity of an Array</dd>
+        <dd>Get Backend Name of an Array</dd>
 
         <dt>
 
           <code><a href="dtype.html">dtype()</a></code>
 
         </dt>
-        <dd>Get the data type of an array</dd>
+        <dd>Get the Data Type of an Array</dd>
 
         <dt>
 
           <code><a href="shape.html">shape()</a></code>
 
         </dt>
-        <dd>Get the shape of an array</dd>
+        <dd>Get the Shape of an Array</dd>
 
         <dt>
 
           <code><a href="naxes.html">naxes()</a></code>
 
         </dt>
-        <dd>Get the number of axes of an array</dd>
+        <dd>Get the Number of Axes of an Array</dd>
+
+        <dt>
+
+          <code><a href="axes.html">axes()</a></code>
+
+        </dt>
+        <dd>Get the Axes of an Array</dd>
 
         <dt>
 
           <code><a href="device.html">device()</a></code>
 
         </dt>
-        <dd>Get the device of an array</dd>
+        <dd>Get the Device of an Array</dd>
 
         <dt>
 
           <code><a href="platform.html">platform()</a></code>
 
         </dt>
-        <dd>Get the platform of an array or buffer</dd>
+        <dd>Get the Platform Name of an Array or Buffer</dd>
       </dl></div><div class="section level2">
 
       <h3 id="converters">Converters<a class="anchor" aria-label="anchor" href="#converters"></a></h3>
@@ -209,42 +217,21 @@
           <code><a href="as_array.html">as_array()</a></code>
 
         </dt>
-        <dd>Convert to an R array</dd>
+        <dd>Convert to an R Array</dd>
 
         <dt>
 
           <code><a href="as_raw.html">as_raw()</a></code>
 
         </dt>
-        <dd>Convert an array to a raw vector</dd>
+        <dd>Convert an Array to a Raw Vector</dd>
 
         <dt>
 
-          <code><a href="as_dtype.html">as_dtype()</a></code>
-
-        </dt>
-        <dd>Convert to a DataType</dd>
-
-        <dt>
-
-          <code><a href="is_dtype.html">is_dtype()</a></code>
-
-        </dt>
-        <dd>Check if an object is a DataType</dd>
-
-        <dt>
-
-          <code><a href="as-AnvlArray.html">as.double(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="as-AnvlArray.html">as.integer(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="as-AnvlArray.html">as.logical(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="as-AnvlArray.html">as.vector(<i>&lt;AnvlArray&gt;</i>)</a></code>
+          <code><a href="as-AnvlArray.html">as.double(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="as-AnvlArray.html">as.integer(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="as-AnvlArray.html">as.integer64(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="as-AnvlArray.html">as.logical(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="as-AnvlArray.html">as.vector(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Coerce AnvlArray to an R Vector</dd>
-
-        <dt>
-
-          <code><a href="await.html">await()</a></code>
-
-        </dt>
-        <dd>Block until an async operation completes</dd>
       </dl></div><div class="section level2">
 
       <h3 id="serialization">Serialization<a class="anchor" aria-label="anchor" href="#serialization"></a></h3>
@@ -257,31 +244,63 @@
 
       <dl><dt>
 
-          <code><a href="nv_save.html">nv_save()</a></code>
+          <code><a href="nv_save.html">nv_save()</a></code> <code><a href="nv_save.html">nv_read()</a></code>
 
         </dt>
-        <dd>Save arrays to a file</dd>
+        <dd>Save and Read Arrays in a File</dd>
 
         <dt>
 
-          <code><a href="nv_read.html">nv_read()</a></code>
+          <code><a href="nv_serialize.html">nv_serialize()</a></code> <code><a href="nv_serialize.html">nv_unserialize()</a></code>
 
         </dt>
-        <dd>Read arrays from a file</dd>
+        <dd>Serialize Arrays to Raw Bytes</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="miscellaneous">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous"></a></h3>
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="arrayish.html">is_arrayish()</a></code>
+
+        </dt>
+        <dd>Array-Like Objects</dd>
 
         <dt>
 
-          <code><a href="nv_serialize.html">nv_serialize()</a></code>
+          <code><a href="await.html">await()</a></code>
 
         </dt>
-        <dd>Serialize arrays to raw bytes</dd>
+        <dd>Block Until an Async Operation Completes</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="base-r-generics">Base R Generics<a class="anchor" aria-label="anchor" href="#base-r-generics"></a></h3>
+      <div class="section-desc"><p>Methods for base R generics that have no <code>nv_*</code> twin. Every other generic is documented together with the <code>nv_*</code> function it delegates to.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="dim.AnvlArray.html">dim(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Shape of an Array</dd>
 
         <dt>
 
-          <code><a href="nv_unserialize.html">nv_unserialize()</a></code>
+          <code><a href="length.AnvlArray.html">length(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
-        <dd>Deserialize arrays from raw bytes</dd>
+        <dd>Number of Elements</dd>
       </dl></div><div class="section level2">
       <h2 id="api-functions">API Functions<a class="anchor" aria-label="anchor" href="#api-functions"></a></h2>
 
@@ -290,7 +309,7 @@
       <dl></dl></div><div class="section level2">
 
       <h3 id="type-conversion-and-broadcasting">Type Conversion and Broadcasting<a class="anchor" aria-label="anchor" href="#type-conversion-and-broadcasting"></a></h3>
-      <div class="section-desc"><p>Functions for type conversion, promotion, and broadcasting</p></div>
+      <div class="section-desc"><p>Functions for converting data types and broadcasting shapes</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -313,13 +332,6 @@
 
         <dt>
 
-          <code><a href="nv_promote_to_common.html">nv_promote_to_common()</a></code>
-
-        </dt>
-        <dd>Promote Arrays to a Common Dtype</dd>
-
-        <dt>
-
           <code><a href="nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code>
 
         </dt>
@@ -338,13 +350,6 @@
 
         </dt>
         <dd>Broadcast to Shape</dd>
-
-        <dt>
-
-          <code><a href="common_dtype.html">common_dtype()</a></code>
-
-        </dt>
-        <dd>Type Promotion Rules</dd>
       </dl></div><div class="section level2">
 
       <h3 id="array-manipulation">Array Manipulation<a class="anchor" aria-label="anchor" href="#array-manipulation"></a></h3>
@@ -367,18 +372,18 @@
           <code><a href="nv_flatten.html">nv_flatten()</a></code>
 
         </dt>
-        <dd>Flatte</dd>
+        <dd>Flatten</dd>
 
         <dt>
 
-          <code><a href="nv_transpose.html">nv_transpose()</a></code> <code><a href="nv_transpose.html">t(<i>&lt;AnvlArray&gt;</i>)</a></code>
+          <code><a href="nv_aperm.html">nv_aperm()</a></code> <code><a href="nv_aperm.html">nv_transpose()</a></code> <code><a href="nv_aperm.html">t(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="nv_aperm.html">aperm(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Transpose</dd>
 
         <dt>
 
-          <code><a href="nv_concatenate.html">nv_concatenate()</a></code>
+          <code><a href="nv_concatenate.html">nv_concatenate()</a></code> <code><a href="nv_concatenate.html">c(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Concatenate</dd>
@@ -388,7 +393,7 @@
           <code><a href="nv_bind.html">nv_rbind()</a></code> <code><a href="nv_bind.html">nv_cbind()</a></code> <code><a href="nv_bind.html">rbind(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="nv_bind.html">cbind(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
-        <dd>Combine arrays by rows or columns</dd>
+        <dd>Combine Arrays by Rows or Columns</dd>
 
         <dt>
 
@@ -413,14 +418,14 @@
 
         <dt>
 
-          <code><a href="nv_reverse.html">nv_reverse()</a></code>
+          <code><a href="nv_rev.html">nv_rev()</a></code> <code><a href="nv_rev.html">rev(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Reverse</dd>
 
         <dt>
 
-          <code><a href="nv_squeeze.html">nv_squeeze()</a></code>
+          <code><a href="nv_squeeze.html">nv_squeeze()</a></code> <code><a href="nv_squeeze.html">nv_drop()</a></code>
 
         </dt>
         <dd>Squeeze</dd>
@@ -457,35 +462,35 @@
 
       <dl><dt>
 
-          <code><a href="nv_add.html">nv_add()</a></code>
+          <code><a href="nv_add.html">nv_add()</a></code> <code><a href="nv_add.html">`+`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Addition</dd>
 
         <dt>
 
-          <code><a href="nv_sub.html">nv_sub()</a></code>
+          <code><a href="nv_sub.html">nv_sub()</a></code> <code><a href="nv_sub.html">`-`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Subtraction</dd>
 
         <dt>
 
-          <code><a href="nv_mul.html">nv_mul()</a></code>
+          <code><a href="nv_mul.html">nv_mul()</a></code> <code><a href="nv_mul.html">`*`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Multiplication</dd>
 
         <dt>
 
-          <code><a href="nv_div.html">nv_div()</a></code>
+          <code><a href="nv_div.html">nv_div()</a></code> <code><a href="nv_div.html">`/`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Division</dd>
 
         <dt>
 
-          <code><a href="nv_pow.html">nv_pow()</a></code>
+          <code><a href="nv_pow.html">nv_pow()</a></code> <code><a href="nv_pow.html">`^`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Power</dd>
@@ -506,10 +511,17 @@
 
         <dt>
 
-          <code><a href="nv_mod.html">nv_mod()</a></code>
+          <code><a href="nv_mod.html">nv_mod()</a></code> <code><a href="nv_mod.html">`%%`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Modulo (Flooring Remainder)</dd>
+
+        <dt>
+
+          <code><a href="nv_floor_div.html">nv_floor_div()</a></code> <code><a href="nv_floor_div.html">`%/%`(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Flooring Division</dd>
       </dl></div><div class="section level2">
 
       <h3 id="comparison-operations">Comparison Operations<a class="anchor" aria-label="anchor" href="#comparison-operations"></a></h3>
@@ -522,42 +534,42 @@
 
       <dl><dt>
 
-          <code><a href="nv_eq.html">nv_eq()</a></code>
+          <code><a href="nv_eq.html">nv_eq()</a></code> <code><a href="nv_eq.html">`==`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Equal</dd>
 
         <dt>
 
-          <code><a href="nv_ne.html">nv_ne()</a></code>
+          <code><a href="nv_ne.html">nv_ne()</a></code> <code><a href="nv_ne.html">`!=`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Not Equal</dd>
 
         <dt>
 
-          <code><a href="nv_gt.html">nv_gt()</a></code>
+          <code><a href="nv_gt.html">nv_gt()</a></code> <code><a href="nv_gt.html">`&gt;`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Greater Than</dd>
 
         <dt>
 
-          <code><a href="nv_ge.html">nv_ge()</a></code>
+          <code><a href="nv_ge.html">nv_ge()</a></code> <code><a href="nv_ge.html">`&gt;=`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Greater Than or Equal</dd>
 
         <dt>
 
-          <code><a href="nv_lt.html">nv_lt()</a></code>
+          <code><a href="nv_lt.html">nv_lt()</a></code> <code><a href="nv_lt.html">`&lt;`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Less Than</dd>
 
         <dt>
 
-          <code><a href="nv_le.html">nv_le()</a></code>
+          <code><a href="nv_le.html">nv_le()</a></code> <code><a href="nv_le.html">`&lt;=`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Less Than or Equal</dd>
@@ -573,14 +585,14 @@
 
       <dl><dt>
 
-          <code><a href="nv_abs.html">nv_abs()</a></code>
+          <code><a href="nv_abs.html">nv_abs()</a></code> <code><a href="nv_abs.html">abs(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Absolute Value</dd>
 
         <dt>
 
-          <code><a href="nv_sqrt.html">nv_sqrt()</a></code>
+          <code><a href="nv_sqrt.html">nv_sqrt()</a></code> <code><a href="nv_sqrt.html">sqrt(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Square Root</dd>
@@ -601,84 +613,105 @@
 
         <dt>
 
-          <code><a href="nv_exp.html">nv_exp()</a></code>
+          <code><a href="nv_exp.html">nv_exp()</a></code> <code><a href="nv_exp.html">exp(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Exponential</dd>
 
         <dt>
 
-          <code><a href="nv_expm1.html">nv_expm1()</a></code>
+          <code><a href="nv_expm1.html">nv_expm1()</a></code> <code><a href="nv_expm1.html">expm1(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Exponential Minus One</dd>
 
         <dt>
 
-          <code><a href="nv_log.html">nv_log()</a></code>
+          <code><a href="nv_log.html">nv_log()</a></code> <code><a href="nv_log.html">log(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Natural Logarithm</dd>
 
         <dt>
 
-          <code><a href="nv_log1p.html">nv_log1p()</a></code>
+          <code><a href="nv_log1p.html">nv_log1p()</a></code> <code><a href="nv_log1p.html">log1p(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Log Plus One</dd>
 
         <dt>
 
-          <code><a href="nv_log2.html">nv_log2()</a></code>
+          <code><a href="nv_log2.html">nv_log2()</a></code> <code><a href="nv_log2.html">log2(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Base-2 Logarithm</dd>
 
         <dt>
 
-          <code><a href="nv_log10.html">nv_log10()</a></code>
+          <code><a href="nv_log10.html">nv_log10()</a></code> <code><a href="nv_log10.html">log10(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Base-10 Logarithm</dd>
 
         <dt>
 
-          <code><a href="nv_sin.html">nv_sin()</a></code>
+          <code><a href="nv_sin.html">nv_sin()</a></code> <code><a href="nv_sin.html">sin(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Sine</dd>
 
         <dt>
 
-          <code><a href="nv_cos.html">nv_cos()</a></code>
+          <code><a href="nv_cos.html">nv_cos()</a></code> <code><a href="nv_cos.html">cos(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Cosine</dd>
 
         <dt>
 
-          <code><a href="nv_tan.html">nv_tan()</a></code>
+          <code><a href="nv_tan.html">nv_tan()</a></code> <code><a href="nv_tan.html">tan(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Tangent</dd>
 
         <dt>
 
-          <code><a href="nv_asin.html">nv_asin()</a></code>
+          <code><a href="nv_sinpi.html">nv_sinpi()</a></code> <code><a href="nv_sinpi.html">sinpi(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Sine of a Multiple of Pi</dd>
+
+        <dt>
+
+          <code><a href="nv_cospi.html">nv_cospi()</a></code> <code><a href="nv_cospi.html">cospi(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Cosine of a Multiple of Pi</dd>
+
+        <dt>
+
+          <code><a href="nv_tanpi.html">nv_tanpi()</a></code> <code><a href="nv_tanpi.html">tanpi(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Tangent of a Multiple of Pi</dd>
+
+        <dt>
+
+          <code><a href="nv_asin.html">nv_asin()</a></code> <code><a href="nv_asin.html">asin(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Arc Sine</dd>
 
         <dt>
 
-          <code><a href="nv_acos.html">nv_acos()</a></code>
+          <code><a href="nv_acos.html">nv_acos()</a></code> <code><a href="nv_acos.html">acos(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Arc Cosine</dd>
 
         <dt>
 
-          <code><a href="nv_atan.html">nv_atan()</a></code>
+          <code><a href="nv_atan.html">nv_atan()</a></code> <code><a href="nv_atan.html">atan(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Arc Tangent</dd>
@@ -692,70 +725,70 @@
 
         <dt>
 
-          <code><a href="nv_sinh.html">nv_sinh()</a></code>
+          <code><a href="nv_sinh.html">nv_sinh()</a></code> <code><a href="nv_sinh.html">sinh(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Hyperbolic Sine</dd>
 
         <dt>
 
-          <code><a href="nv_cosh.html">nv_cosh()</a></code>
+          <code><a href="nv_cosh.html">nv_cosh()</a></code> <code><a href="nv_cosh.html">cosh(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Hyperbolic Cosine</dd>
 
         <dt>
 
-          <code><a href="nv_tanh.html">nv_tanh()</a></code>
+          <code><a href="nv_tanh.html">nv_tanh()</a></code> <code><a href="nv_tanh.html">tanh(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Hyperbolic Tangent</dd>
 
         <dt>
 
-          <code><a href="nv_asinh.html">nv_asinh()</a></code>
+          <code><a href="nv_asinh.html">nv_asinh()</a></code> <code><a href="nv_asinh.html">asinh(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Inverse Hyperbolic Sine</dd>
 
         <dt>
 
-          <code><a href="nv_acosh.html">nv_acosh()</a></code>
+          <code><a href="nv_acosh.html">nv_acosh()</a></code> <code><a href="nv_acosh.html">acosh(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Inverse Hyperbolic Cosine</dd>
 
         <dt>
 
-          <code><a href="nv_atanh.html">nv_atanh()</a></code>
+          <code><a href="nv_atanh.html">nv_atanh()</a></code> <code><a href="nv_atanh.html">atanh(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Inverse Hyperbolic Tangent</dd>
 
         <dt>
 
-          <code><a href="nv_sign.html">nv_sign()</a></code>
+          <code><a href="nv_sign.html">nv_sign()</a></code> <code><a href="nv_sign.html">sign(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Sign</dd>
 
         <dt>
 
-          <code><a href="nv_floor.html">nv_floor()</a></code>
+          <code><a href="nv_floor.html">nv_floor()</a></code> <code><a href="nv_floor.html">floor(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Floor</dd>
 
         <dt>
 
-          <code><a href="nv_ceiling.html">nv_ceiling()</a></code>
+          <code><a href="nv_ceiling.html">nv_ceiling()</a></code> <code><a href="nv_ceiling.html">ceiling(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Ceiling</dd>
 
         <dt>
 
-          <code><a href="nv_trunc.html">nv_trunc()</a></code>
+          <code><a href="nv_trunc.html">nv_trunc()</a></code> <code><a href="nv_trunc.html">trunc(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Truncate</dd>
@@ -769,7 +802,7 @@
 
         <dt>
 
-          <code><a href="nv_logistic.html">nv_logistic()</a></code>
+          <code><a href="nv_plogis.html">nv_plogis()</a></code>
 
         </dt>
         <dd>Logistic (Sigmoid)</dd>
@@ -797,24 +830,31 @@
 
         <dt>
 
-          <code><a href="nv_digamma.html">nv_digamma()</a></code>
+          <code><a href="nv_gamma.html">nv_gamma()</a></code> <code><a href="nv_gamma.html">gamma(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Gamma Function</dd>
+
+        <dt>
+
+          <code><a href="nv_digamma.html">nv_digamma()</a></code> <code><a href="nv_digamma.html">digamma(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Digamma</dd>
 
         <dt>
 
-          <code><a href="nv_lgamma.html">nv_lgamma()</a></code>
+          <code><a href="nv_lgamma.html">nv_lgamma()</a></code> <code><a href="nv_lgamma.html">lgamma(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Log-Gamma</dd>
 
         <dt>
 
-          <code><a href="nv_polygamma.html">nv_polygamma()</a></code>
+          <code><a href="nv_psigamma.html">nv_psigamma()</a></code> <code><a href="nv_psigamma.html">trigamma(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
-        <dd>Polygamma</dd>
+        <dd>Psigamma</dd>
 
         <dt>
 
@@ -848,42 +888,49 @@
 
       <dl><dt>
 
-          <code><a href="nv_reduce_sum.html">nv_reduce_sum()</a></code>
+          <code><a href="nv_sum.html">nv_sum()</a></code> <code><a href="nv_sum.html">sum(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Sum Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_prod.html">nv_reduce_prod()</a></code>
+          <code><a href="nv_prod.html">nv_prod()</a></code> <code><a href="nv_prod.html">prod(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Product Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_max.html">nv_reduce_max()</a></code>
+          <code><a href="nv_max.html">nv_max()</a></code> <code><a href="nv_max.html">max(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Max Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_min.html">nv_reduce_min()</a></code>
+          <code><a href="nv_min.html">nv_min()</a></code> <code><a href="nv_min.html">min(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Min Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_any.html">nv_reduce_any()</a></code>
+          <code><a href="nv_range.html">nv_range()</a></code> <code><a href="nv_range.html">range(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Range Reduction</dd>
+
+        <dt>
+
+          <code><a href="nv_any.html">nv_any()</a></code> <code><a href="nv_any.html">any(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Any Reduction</dd>
 
         <dt>
 
-          <code><a href="nv_reduce_all.html">nv_reduce_all()</a></code>
+          <code><a href="nv_all.html">nv_all()</a></code> <code><a href="nv_all.html">all(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>All Reduction</dd>
@@ -913,7 +960,7 @@
 
         <dt>
 
-          <code><a href="nv_quantile.html">nv_quantile()</a></code>
+          <code><a href="nv_quantile.html">nv_quantile()</a></code> <code><a href="nv_quantile.html">quantile(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Quantile</dd>
@@ -943,28 +990,28 @@
 
       <dl><dt>
 
-          <code><a href="nv_cumsum.html">nv_cumsum()</a></code>
+          <code><a href="nv_cumsum.html">nv_cumsum()</a></code> <code><a href="nv_cumsum.html">cumsum(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Cumulative Sum</dd>
 
         <dt>
 
-          <code><a href="nv_cumprod.html">nv_cumprod()</a></code>
+          <code><a href="nv_cumprod.html">nv_cumprod()</a></code> <code><a href="nv_cumprod.html">cumprod(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Cumulative Product</dd>
 
         <dt>
 
-          <code><a href="nv_cummax.html">nv_cummax()</a></code>
+          <code><a href="nv_cummax.html">nv_cummax()</a></code> <code><a href="nv_cummax.html">cummax(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Cumulative Maximum</dd>
 
         <dt>
 
-          <code><a href="nv_cummin.html">nv_cummin()</a></code>
+          <code><a href="nv_cummin.html">nv_cummin()</a></code> <code><a href="nv_cummin.html">cummin(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Cumulative Minimum</dd>
@@ -980,7 +1027,7 @@
 
       <dl><dt>
 
-          <code><a href="nv_matmul.html">nv_matmul()</a></code>
+          <code><a href="nv_matmul.html">nv_matmul()</a></code> <code><a href="nv_matmul.html">`%*%`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Matrix Multiplication</dd>
@@ -1053,7 +1100,7 @@
           <code><a href="nv_determinant.html">nv_determinant()</a></code> <code><a href="nv_determinant.html">determinant(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
-        <dd>Determinant in modulus/sign form</dd>
+        <dd>Determinant in Modulus/Sign Form</dd>
 
         <dt>
 
@@ -1159,31 +1206,31 @@
 
       <dl><dt>
 
-          <code><a href="nv_and.html">nv_and()</a></code>
+          <code><a href="nv_and.html">nv_and()</a></code> <code><a href="nv_and.html">`&amp;`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
-        <dd>Logical And</dd>
+        <dd>Bitwise AND</dd>
 
         <dt>
 
-          <code><a href="nv_or.html">nv_or()</a></code>
+          <code><a href="nv_or.html">nv_or()</a></code> <code><a href="nv_or.html">`|`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
-        <dd>Logical Or</dd>
+        <dd>Bitwise OR</dd>
 
         <dt>
 
           <code><a href="nv_xor.html">nv_xor()</a></code>
 
         </dt>
-        <dd>Logical Xor</dd>
+        <dd>Bitwise XOR</dd>
 
         <dt>
 
-          <code><a href="nv_not.html">nv_not()</a></code>
+          <code><a href="nv_not.html">nv_not()</a></code> <code><a href="nv_not.html">`!`(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
-        <dd>Logical Not</dd>
+        <dd>Bitwise Not</dd>
 
         <dt>
 
@@ -1224,17 +1271,17 @@
 
       <dl><dt>
 
-          <code><a href="nv_min.html">nv_min()</a></code>
+          <code><a href="nv_pmin.html">nv_pmin()</a></code>
 
         </dt>
-        <dd>Minimum</dd>
+        <dd>Parallel Minimum</dd>
 
         <dt>
 
-          <code><a href="nv_max.html">nv_max()</a></code>
+          <code><a href="nv_pmax.html">nv_pmax()</a></code>
 
         </dt>
-        <dd>Maximum</dd>
+        <dd>Parallel Maximum</dd>
 
         <dt>
 
@@ -1261,10 +1308,10 @@
 
         <dt>
 
-          <code><a href="nv_argsort.html">nv_argsort()</a></code>
+          <code><a href="nv_order.html">nv_order()</a></code>
 
         </dt>
-        <dd>Argsort</dd>
+        <dd>Sort Order</dd>
 
         <dt>
 
@@ -1275,14 +1322,14 @@
 
         <dt>
 
-          <code><a href="nv_argmax.html">nv_argmax()</a></code>
+          <code><a href="nv_which_max.html">nv_which_max()</a></code>
 
         </dt>
         <dd>Index of the Maximum</dd>
 
         <dt>
 
-          <code><a href="nv_argmin.html">nv_argmin()</a></code>
+          <code><a href="nv_which_min.html">nv_which_min()</a></code>
 
         </dt>
         <dd>Index of the Minimum</dd>
@@ -1312,6 +1359,13 @@
 
         <dt>
 
+          <code><a href="nv_scan.html">nv_scan()</a></code>
+
+        </dt>
+        <dd>Scan (Loop with Per-Step Outputs)</dd>
+
+        <dt>
+
           <code><a href="nv_ifelse.html">nv_ifelse()</a></code>
 
         </dt>
@@ -1335,10 +1389,10 @@
 
         <dt>
 
-          <code><a href="nv_runif.html">nv_runif()</a></code>
+          <code><a href="nv_uniform.html">nv_dunif()</a></code> <code><a href="nv_uniform.html">nv_punif()</a></code> <code><a href="nv_uniform.html">nv_qunif()</a></code> <code><a href="nv_uniform.html">nv_runif()</a></code>
 
         </dt>
-        <dd>Sample from a Uniform Distribution</dd>
+        <dd>The Uniform Distribution</dd>
 
         <dt>
 
@@ -1376,6 +1430,113 @@
 
         </dt>
         <dd>Generate RNG State</dd>
+
+        <dt>
+
+          <code><a href="nv_print.html">nv_print()</a></code>
+
+        </dt>
+        <dd>Print Array</dd>
+      </dl></div><div class="section level2">
+      <h2 id="data-types-and-promotion">Data Types and Promotion<a class="anchor" aria-label="anchor" href="#data-types-and-promotion"></a></h2>
+
+      <div class="section-desc"><p>Data types, their defaults, and the rules for promoting inputs to a common one</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+      <h3 id="data-types">Data Types<a class="anchor" aria-label="anchor" href="#data-types"></a></h3>
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="dtype_categories.html">dtype_categories</a></code>
+
+        </dt>
+        <dd>Data Type Categories</dd>
+
+        <dt>
+
+          <code><a href="as_dtype.html">as_dtype()</a></code>
+
+        </dt>
+        <dd>Convert to a DataType</dd>
+
+        <dt>
+
+          <code><a href="is_dtype.html">is_dtype()</a></code>
+
+        </dt>
+        <dd>Check If an Object Is a DataType</dd>
+
+        <dt>
+
+          <code><a href="common_dtype.html">common_dtype()</a></code>
+
+        </dt>
+        <dd>Common Data Type</dd>
+
+        <dt>
+
+          <code><a href="peek_dtype.html">peek_dtype()</a></code>
+
+        </dt>
+        <dd>Peek at a Data Type</dd>
+
+        <dt>
+
+          <code><a href="default_dtypes.html">default_dtypes()</a></code> <code><a href="default_dtypes.html">default_float()</a></code> <code><a href="default_dtypes.html">default_int()</a></code>
+
+        </dt>
+        <dd>Default Data Types</dd>
+
+        <dt>
+
+          <code><a href="local_default_dtypes.html">local_default_dtypes()</a></code> <code><a href="local_default_dtypes.html">with_default_dtypes()</a></code>
+
+        </dt>
+        <dd>Set the Default Data Types</dd>
+
+        <dt>
+
+          <code><a href="with_dtypes.html">with_dtypes()</a></code>
+
+        </dt>
+        <dd>Run a Function at Given Data Types</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="promotion-rules">Promotion Rules<a class="anchor" aria-label="anchor" href="#promotion-rules"></a></h3>
+      <div class="section-desc"><p>How <code>nv_*</code> functions promote their inputs; see the <a href="../articles/type-promotion.html">Data Types and Promotion Rules</a> article for how they are used.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="nv_promote_to_common.html">nv_promote_to_common()</a></code>
+
+        </dt>
+        <dd>Promote Arrays to a Common Data Type</dd>
+
+        <dt>
+
+          <code><a href="apply_promotion.html">apply_promotion()</a></code>
+
+        </dt>
+        <dd>Bring a Primitive's Operands to One Data Type</dd>
+
+        <dt>
+
+          <code><a href="promotion_rule.html">promotion_common()</a></code> <code><a href="promotion_rule.html">promotion_like()</a></code> <code><a href="promotion_rule.html">promotion_dtype()</a></code> <code><a href="promotion_rule.html">promotion_rdata_common()</a></code> <code><a href="promotion_rule.html">promotion_grouped()</a></code> <code><a href="promotion_rule.html">promotion_rule()</a></code>
+
+        </dt>
+        <dd>Promotion Rules</dd>
       </dl></div><div class="section level2">
       <h2 id="transformations">Transformations<a class="anchor" aria-label="anchor" href="#transformations"></a></h2>
 
@@ -1391,37 +1552,14 @@
           <code><a href="jit.html">jit()</a></code>
 
         </dt>
-        <dd>JIT compile a function</dd>
+        <dd>JIT Compile a Function</dd>
 
         <dt>
 
-          <code><a href="gradient.html">gradient()</a></code>
+          <code><a href="gradient.html">gradient()</a></code> <code><a href="gradient.html">value_and_gradient()</a></code>
 
         </dt>
-        <dd>Gradient</dd>
-
-        <dt>
-
-          <code><a href="value_and_gradient.html">value_and_gradient()</a></code>
-
-        </dt>
-        <dd>Value and Gradient</dd>
-      </dl></div><div class="section level2">
-      <h2 id="debugging">Debugging<a class="anchor" aria-label="anchor" href="#debugging"></a></h2>
-
-      <div class="section-desc"><p>Debugging utilities and tools</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="nv_print.html">nv_print()</a></code>
-
-        </dt>
-        <dd>Print Array</dd>
+        <dd>Gradients</dd>
       </dl></div><div class="section level2">
       <h2 id="backend">Backend<a class="anchor" aria-label="anchor" href="#backend"></a></h2>
 
@@ -1437,44 +1575,39 @@
           <code><a href="backend.html">backend()</a></code>
 
         </dt>
-        <dd>Get Backend of an Array</dd>
+        <dd>Get Backend Name of an Array</dd>
 
         <dt>
 
-          <code><a href="default_backend.html">default_backend()</a></code>
+          <code><a href="local_backend.html">local_backend()</a></code> <code><a href="local_backend.html">with_backend()</a></code>
 
         </dt>
-        <dd>Get the default backend</dd>
+        <dd>Temporarily Set the Backend</dd>
 
         <dt>
 
-          <code><a href="local_backend.html">local_backend()</a></code>
+          <code><a href="AnvlBackendPjrt.html">AnvlBackendPjrt()</a></code>
 
         </dt>
-        <dd>Temporarily set the default backend</dd>
+        <dd>PJRT Backend</dd>
 
         <dt>
 
-          <code><a href="with_backend.html">with_backend()</a></code>
+          <code><a href="AnvlBackendQuickr.html">AnvlBackendQuickr()</a></code>
 
         </dt>
-        <dd>Run code with a specific backend</dd>
+        <dd>Quickr Backend</dd>
+      </dl></div><div class="section level2">
+      <h2 id="device">Device<a class="anchor" aria-label="anchor" href="#device"></a></h2>
 
-        <dt>
+      <div class="section-desc"><p>Devices of the active backend and the default device</p></div>
 
-          <code><a href="install_anvl.html">install_anvl()</a></code>
+      <dl></dl></div><div class="section level2">
 
-        </dt>
-        <dd>Install what a backend needs to run</dd>
 
-        <dt>
 
-          <code><a href="device_arg.html">device_arg()</a></code>
 
-        </dt>
-        <dd>Select JIT device from a function argument</dd>
-
-        <dt>
+      <dl><dt>
 
           <code><a href="nv_device.html">nv_device()</a></code>
 
@@ -1486,44 +1619,30 @@
           <code><a href="default_device.html">default_device()</a></code>
 
         </dt>
-        <dd>Get the default device</dd>
+        <dd>Get the Default Device</dd>
+
+        <dt>
+
+          <code><a href="local_default_device.html">local_default_device()</a></code> <code><a href="local_default_device.html">with_default_device()</a></code>
+
+        </dt>
+        <dd>Temporarily Set the Default Device</dd>
 
         <dt>
 
           <code><a href="is_device.html">is_device()</a></code>
 
         </dt>
-        <dd>Test whether an object is a device</dd>
+        <dd>Test Whether an Object Is a Device</dd>
 
         <dt>
 
           <code><a href="quickr_device.html">quickr_device()</a></code>
 
         </dt>
-        <dd>Quickr device</dd>
-
-        <dt>
-
-          <code><a href="AnvlBackend.html">AnvlBackend()</a></code>
-
-        </dt>
-        <dd>Create a backend</dd>
-
-        <dt>
-
-          <code><a href="AnvlBackendPjrt.html">AnvlBackendPjrt()</a></code>
-
-        </dt>
-        <dd>PJRT backend</dd>
-
-        <dt>
-
-          <code><a href="AnvlBackendQuickr.html">AnvlBackendQuickr()</a></code>
-
-        </dt>
-        <dd>Quickr backend</dd>
+        <dd>Quickr Device</dd>
       </dl></div><div class="section level2">
-      <h2 id="miscellaneous">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous"></a></h2>
+      <h2 id="miscellaneous-1">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous-1"></a></h2>
 
       <div class="section-desc"><p>General-purpose helpers</p></div>
 
@@ -1537,7 +1656,7 @@
           <code><a href="arr.html">arr()</a></code>
 
         </dt>
-        <dd>Create an R array</dd>
+        <dd>Create an R Array</dd>
 
         <dt>
 
@@ -1545,6 +1664,13 @@
 
         </dt>
         <dd>Compare AbstractArray Types</dd>
+
+        <dt>
+
+          <code><a href="map_tree.html">map_tree()</a></code> <code><a href="map_tree.html">pmap_tree()</a></code>
+
+        </dt>
+        <dd>Map a Function over Trees</dd>
       </dl></div><div class="section level2">
       <h2 id="internals">Internals<a class="anchor" aria-label="anchor" href="#internals"></a></h2>
 
@@ -1565,7 +1691,7 @@
           <code><a href="AnvlGraph.html">AnvlGraph()</a></code>
 
         </dt>
-        <dd>Graph of Primitive Calls</dd>
+        <dd>Graph of Statements</dd>
 
         <dt>
 
@@ -1604,31 +1730,24 @@
 
         <dt>
 
-          <code><a href="AnvlBox.html">AnvlBox</a></code>
+          <code><a href="GraphStatement.html">GraphStatement()</a></code>
 
         </dt>
-        <dd>AnvlBox</dd>
-
-        <dt>
-
-          <code><a href="graph_desc_add.html">graph_desc_add()</a></code>
-
-        </dt>
-        <dd>Add a Primitive Call to a Graph Descriptor</dd>
+        <dd>Graph Statement</dd>
 
         <dt>
 
           <code><a href="local_descriptor.html">local_descriptor()</a></code>
 
         </dt>
-        <dd>Create a graph</dd>
+        <dd>Create a Graph</dd>
 
         <dt>
 
-          <code><a href="dot-current_descriptor.html">.current_descriptor()</a></code>
+          <code><a href="current_descriptor.html">current_descriptor()</a></code>
 
         </dt>
-        <dd>Get the current graph</dd>
+        <dd>Get the Current Graph</dd>
 
         <dt>
 
@@ -1636,36 +1755,6 @@
 
         </dt>
         <dd>Get Subgraphs from Higher-Order Primitive</dd>
-      </dl></div><div class="section level2">
-
-      <h3 id="primitives">Primitives<a class="anchor" aria-label="anchor" href="#primitives"></a></h3>
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="new_primitive.html">new_primitive()</a></code>
-
-        </dt>
-        <dd>Create a Primitive</dd>
-
-        <dt>
-
-          <code><a href="AnvlPrimitive.html">AnvlPrimitive()</a></code>
-
-        </dt>
-        <dd>AnvlPrimitive</dd>
-
-        <dt>
-
-          <code><a href="PrimitiveCall.html">PrimitiveCall()</a></code>
-
-        </dt>
-        <dd>Primitive Call</dd>
       </dl></div><div class="section level2">
 
       <h3 id="abstract-types">Abstract Types<a class="anchor" aria-label="anchor" href="#abstract-types"></a></h3>
@@ -1699,17 +1788,17 @@
 
         <dt>
 
+          <code><a href="RData.html">RData()</a></code>
+
+        </dt>
+        <dd>R Data Class</dd>
+
+        <dt>
+
           <code><a href="IotaArray.html">IotaArray()</a></code>
 
         </dt>
         <dd>Iota Array Class</dd>
-
-        <dt>
-
-          <code><a href="abstract_properties.html">shape_abstract()</a></code> <code><a href="abstract_properties.html">naxes_abstract()</a></code> <code><a href="abstract_properties.html">dtype_abstract()</a></code> <code><a href="abstract_properties.html">ambiguous_abstract()</a></code>
-
-        </dt>
-        <dd>Abstract Properties</dd>
 
         <dt>
 
@@ -1723,7 +1812,7 @@
           <code><a href="arrayish.html">is_arrayish()</a></code>
 
         </dt>
-        <dd>Array-like Objects</dd>
+        <dd>Array-Like Objects</dd>
       </dl></div><div class="section level2">
 
       <h3 id="transformations-1">Transformations<a class="anchor" aria-label="anchor" href="#transformations-1"></a></h3>
@@ -1736,66 +1825,38 @@
 
       <dl><dt>
 
-          <code><a href="jit_roclet.html">jit_roclet()</a></code>
-
-        </dt>
-        <dd><code>@jit</code> roxygen roclet</dd>
-
-        <dt>
-
-          <code><a href="apply_jit_registry.html">apply_jit_registry()</a></code>
-
-        </dt>
-        <dd>Apply a <code>@jit</code> registry</dd>
-
-        <dt>
-
           <code><a href="trace_fn.html">trace_fn()</a></code>
 
         </dt>
-        <dd>Trace an R function into a Graph</dd>
+        <dd>Trace an R Function into a Graph</dd>
 
         <dt>
 
           <code><a href="transform_gradient.html">transform_gradient()</a></code>
 
         </dt>
-        <dd>Transform a graph to its gradient</dd>
-
-        <dt>
-
-          <code><a href="rule_reverse.html">rule_reverse()</a></code>
-
-        </dt>
-        <dd>Reverse Rule</dd>
+        <dd>Transform a Graph to Its Gradient</dd>
 
         <dt>
 
           <code><a href="graph_to_quickr_r_function.html">graph_to_quickr_r_function()</a></code>
 
         </dt>
-        <dd>Convert an AnvlGraph to a plain R function</dd>
-
-        <dt>
-
-          <code><a href="jit_eval.html">jit_eval()</a></code>
-
-        </dt>
-        <dd>JIT-compile and evaluate an expression</dd>
+        <dd>Convert an AnvlGraph to a Plain R Function</dd>
 
         <dt>
 
           <code><a href="compile_pjrt.html">compile_pjrt()</a></code>
 
         </dt>
-        <dd>Trace, lower, and compile a function to an XLA executable</dd>
+        <dd>Trace, Lower, and Compile a Function to an XLA Executable</dd>
 
         <dt>
 
           <code><a href="stablehlo.html">stablehlo()</a></code>
 
         </dt>
-        <dd>Lower a graph to StableHLO</dd>
+        <dd>Lower a Graph to StableHLO</dd>
 
         <dt>
 
@@ -1815,13 +1876,13 @@
 
       <dl><dt>
 
-          <code><a href="reexports.html">reexports</a></code> <code><a href="reexports.html">flatten</a></code> <code><a href="reexports.html">build_tree</a></code> <code><a href="reexports.html">unflatten</a></code> <code><a href="reexports.html">tree_size</a></code> <code><a href="reexports.html">tree_path</a></code> <code><a href="reexports.html">map_tree</a></code> <code><a href="reexports.html">pmap_tree</a></code>
+          <code><a href="reexports.html">reexports</a></code> <code><a href="reexports.html">flatten</a></code> <code><a href="reexports.html">build_tree</a></code> <code><a href="reexports.html">unflatten</a></code> <code><a href="reexports.html">tree_size</a></code> <code><a href="reexports.html">tree_path</a></code>
 
         </dt>
         <dd>Objects exported from other packages</dd>
       </dl></div><div class="section level2">
 
-      <h3 id="miscellaneous-1">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous-1"></a></h3>
+      <h3 id="miscellaneous-2">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous-2"></a></h3>
 
 
       <dl></dl></div><div class="section level2">
@@ -1831,42 +1892,77 @@
 
       <dl><dt>
 
-          <code><a href="at2vt.html">at2vt()</a></code>
+          <code><a href="AnvlBackend.html">AnvlBackend()</a></code>
 
         </dt>
-        <dd>Convert AbstractArray to ValueType</dd>
+        <dd>Create a Backend</dd>
 
         <dt>
 
-          <code><a href="vt2at.html">vt2at()</a></code>
+          <code><a href="active_backend.html">active_backend()</a></code>
 
         </dt>
-        <dd>Convert ValueType to AbstractArray</dd>
+        <dd>Get Active Backend</dd>
 
         <dt>
 
-          <code><a href="vt.html">vt()</a></code>
+          <code><a href="jit_cache_size.html">jit_cache_size()</a></code>
 
         </dt>
-        <dd>Construct a stablehlo ValueType</dd>
-
-        <dt>
-
-          <code><a href="arrayish.html">is_arrayish()</a></code>
-
-        </dt>
-        <dd>Array-like Objects</dd>
+        <dd>Number of Cached Programs of a Jitted Function</dd>
 
         <dt>
 
           <code><a href="Shape-constructor.html">Shape()</a></code>
 
         </dt>
-        <dd>Create a Shape object</dd>
+        <dd>Create a Shape Object</dd>
       </dl></div><div class="section level2">
-      <h2 id="primitives-1">Primitives<a class="anchor" aria-label="anchor" href="#primitives-1"></a></h2>
+      <h2 id="primitives">Primitives<a class="anchor" aria-label="anchor" href="#primitives"></a></h2>
 
       <div class="section-desc"><p>Low-level primitive operations (prim_* functions)</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+      <h3 id="construction-1">Construction<a class="anchor" aria-label="anchor" href="#construction-1"></a></h3>
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="new_primitive.html">new_primitive()</a></code>
+
+        </dt>
+        <dd>Create a Primitive</dd>
+
+        <dt>
+
+          <code><a href="AnvlPrimitiveDef.html">AnvlPrimitiveDef()</a></code>
+
+        </dt>
+        <dd>Primitive Definition</dd>
+
+        <dt>
+
+          <code><a href="graph_desc_add.html">graph_desc_add()</a></code>
+
+        </dt>
+        <dd>Add a Statement to a Graph Descriptor</dd>
+
+        <dt>
+
+          <code><a href="rule_reverse.html">rule_reverse()</a></code>
+
+        </dt>
+        <dd>Reverse Rule</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="implemented-primitives">Implemented Primitives<a class="anchor" aria-label="anchor" href="#implemented-primitives"></a></h3>
+
 
       <dl></dl></div><div class="section level2">
 
@@ -1903,24 +1999,24 @@
 
         <dt>
 
+          <code><a href="prim_all.html">prim_all()</a></code>
+
+        </dt>
+        <dd>Primitive All Reduction</dd>
+
+        <dt>
+
           <code><a href="prim_and.html">prim_and()</a></code>
 
         </dt>
-        <dd>Primitive And</dd>
+        <dd>Primitive Bitwise And</dd>
 
         <dt>
 
-          <code><a href="prim_argmax.html">prim_argmax()</a></code>
+          <code><a href="prim_any.html">prim_any()</a></code>
 
         </dt>
-        <dd>Primitive Argmax</dd>
-
-        <dt>
-
-          <code><a href="prim_argmin.html">prim_argmin()</a></code>
-
-        </dt>
-        <dd>Primitive Argmin</dd>
+        <dd>Primitive Any Reduction</dd>
 
         <dt>
 
@@ -1948,7 +2044,7 @@
           <code><a href="prim_atan2.html">prim_atan2()</a></code>
 
         </dt>
-        <dd>Primitive Atan2</dd>
+        <dd>Primitive Arctangent 2</dd>
 
         <dt>
 
@@ -1962,7 +2058,7 @@
           <code><a href="prim_bitcast_convert.html">prim_bitcast_convert()</a></code>
 
         </dt>
-        <dd>Primitive Bitcast Convert</dd>
+        <dd>Primitive Bitcast Conversion</dd>
 
         <dt>
 
@@ -1980,7 +2076,7 @@
 
         <dt>
 
-          <code><a href="prim_ceil.html">prim_ceil()</a></code>
+          <code><a href="prim_ceiling.html">prim_ceiling()</a></code>
 
         </dt>
         <dd>Primitive Ceiling</dd>
@@ -2011,7 +2107,7 @@
           <code><a href="prim_convert.html">prim_convert()</a></code>
 
         </dt>
-        <dd>Primitive Convert</dd>
+        <dd>Primitive Convert Data Type</dd>
 
         <dt>
 
@@ -2172,7 +2268,7 @@
           <code><a href="prim_ge.html">prim_ge()</a></code>
 
         </dt>
-        <dd>Primitive Greater Equal</dd>
+        <dd>Primitive Greater Than or Equal</dd>
 
         <dt>
 
@@ -2214,7 +2310,7 @@
           <code><a href="prim_le.html">prim_le()</a></code>
 
         </dt>
-        <dd>Primitive Less Equal</dd>
+        <dd>Primitive Less Than or Equal</dd>
 
         <dt>
 
@@ -2239,13 +2335,6 @@
 
         <dt>
 
-          <code><a href="prim_logistic.html">prim_logistic()</a></code>
-
-        </dt>
-        <dd>Primitive Logistic (Sigmoid)</dd>
-
-        <dt>
-
           <code><a href="prim_lt.html">prim_lt()</a></code>
 
         </dt>
@@ -2263,14 +2352,14 @@
           <code><a href="prim_max.html">prim_max()</a></code>
 
         </dt>
-        <dd>Primitive Maximum</dd>
+        <dd>Primitive Max Reduction</dd>
 
         <dt>
 
           <code><a href="prim_min.html">prim_min()</a></code>
 
         </dt>
-        <dd>Primitive Minimum</dd>
+        <dd>Primitive Min Reduction</dd>
 
         <dt>
 
@@ -2298,14 +2387,14 @@
           <code><a href="prim_not.html">prim_not()</a></code>
 
         </dt>
-        <dd>Primitive Not</dd>
+        <dd>Primitive Bitwise Not</dd>
 
         <dt>
 
           <code><a href="prim_or.html">prim_or()</a></code>
 
         </dt>
-        <dd>Primitive Or</dd>
+        <dd>Primitive Bitwise Or</dd>
 
         <dt>
 
@@ -2316,10 +2405,24 @@
 
         <dt>
 
-          <code><a href="prim_polygamma.html">prim_polygamma()</a></code>
+          <code><a href="prim_plogis.html">prim_plogis()</a></code>
 
         </dt>
-        <dd>Primitive Polygamma</dd>
+        <dd>Primitive Logistic (Sigmoid)</dd>
+
+        <dt>
+
+          <code><a href="prim_pmax.html">prim_pmax()</a></code>
+
+        </dt>
+        <dd>Primitive Parallel Maximum</dd>
+
+        <dt>
+
+          <code><a href="prim_pmin.html">prim_pmin()</a></code>
+
+        </dt>
+        <dd>Primitive Parallel Minimum</dd>
 
         <dt>
 
@@ -2344,6 +2447,20 @@
 
         <dt>
 
+          <code><a href="prim_prod.html">prim_prod()</a></code>
+
+        </dt>
+        <dd>Primitive Product Reduction</dd>
+
+        <dt>
+
+          <code><a href="prim_psigamma.html">prim_psigamma()</a></code>
+
+        </dt>
+        <dd>Primitive Psigamma</dd>
+
+        <dt>
+
           <code><a href="prim_qr.html">prim_qr()</a></code>
 
         </dt>
@@ -2355,48 +2472,6 @@
 
         </dt>
         <dd>Primitive Generic Reduce</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_all.html">prim_reduce_all()</a></code>
-
-        </dt>
-        <dd>Primitive All Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_any.html">prim_reduce_any()</a></code>
-
-        </dt>
-        <dd>Primitive Any Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_max.html">prim_reduce_max()</a></code>
-
-        </dt>
-        <dd>Primitive Max Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_min.html">prim_reduce_min()</a></code>
-
-        </dt>
-        <dd>Primitive Min Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_prod.html">prim_reduce_prod()</a></code>
-
-        </dt>
-        <dd>Primitive Product Reduction</dd>
-
-        <dt>
-
-          <code><a href="prim_reduce_sum.html">prim_reduce_sum()</a></code>
-
-        </dt>
-        <dd>Primitive Sum Reduction</dd>
 
         <dt>
 
@@ -2414,7 +2489,7 @@
 
         <dt>
 
-          <code><a href="prim_reverse.html">prim_reverse()</a></code>
+          <code><a href="prim_rev.html">prim_rev()</a></code>
 
         </dt>
         <dd>Primitive Reverse</dd>
@@ -2439,6 +2514,13 @@
 
         </dt>
         <dd>Primitive Reciprocal Square Root</dd>
+
+        <dt>
+
+          <code><a href="prim_scan.html">prim_scan()</a></code>
+
+        </dt>
+        <dd>Primitive Scan</dd>
 
         <dt>
 
@@ -2519,6 +2601,13 @@
 
         <dt>
 
+          <code><a href="prim_sum.html">prim_sum()</a></code>
+
+        </dt>
+        <dd>Primitive Sum Reduction</dd>
+
+        <dt>
+
           <code><a href="prim_svd.html">prim_svd()</a></code>
 
         </dt>
@@ -2561,6 +2650,20 @@
 
         <dt>
 
+          <code><a href="prim_which_max.html">prim_which_max()</a></code>
+
+        </dt>
+        <dd>Primitive Index of the Maximum</dd>
+
+        <dt>
+
+          <code><a href="prim_which_min.html">prim_which_min()</a></code>
+
+        </dt>
+        <dd>Primitive Index of the Minimum</dd>
+
+        <dt>
+
           <code><a href="prim_while.html">prim_while()</a></code>
 
         </dt>
@@ -2571,7 +2674,7 @@
           <code><a href="prim_xor.html">prim_xor()</a></code>
 
         </dt>
-        <dd>Primitive Xor</dd>
+        <dd>Primitive Bitwise Xor</dd>
       </dl></div><div class="section level2">
       <h2 id="package">Package<a class="anchor" aria-label="anchor" href="#package"></a></h2>
 
@@ -2588,6 +2691,13 @@
 
         </dt>
         <dd>anvl: Accelerated Array Computing and Automatic Differentiation</dd>
+
+        <dt>
+
+          <code><a href="install_anvl.html">install_anvl()</a></code>
+
+        </dt>
+        <dd>Install What a Backend Needs to Run</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

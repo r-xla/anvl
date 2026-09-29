@@ -1,30 +1,14 @@
 # AnvlArray
 
-The main array object. Its type is determined by a data type and a
-shape.
+The main array object. Its type is determined by a data type and a shape
+and lives on a device, which can be a CPU or a GPU.
 
 ## Usage
 
 ``` r
-nv_array(
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  ambiguous = NULL,
-  backend = NULL,
-  byrow = FALSE,
-  check = FALSE
-)
+nv_array(data, shape = NULL, dtype = NULL, device = NULL, byrow = FALSE)
 
-nv_scalar(
-  data,
-  dtype = NULL,
-  device = NULL,
-  ambiguous = NULL,
-  backend = NULL,
-  check = FALSE
-)
+nv_scalar(data, dtype = NULL, device = NULL)
 
 nv_matrix(
   data,
@@ -32,39 +16,16 @@ nv_matrix(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  ambiguous = NULL,
-  backend = NULL,
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, ambiguous = FALSE, backend = NULL)
+nv_empty(shape, dtype, device = NULL)
 
-nv_array_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  ambiguous = NULL,
-  backend = NULL
-)
+nv_array_like(like, data, shape = NULL, dtype = NULL, device = NULL)
 
-nv_scalar_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  ambiguous = NULL,
-  backend = NULL
-)
+nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
-nv_empty_like(
-  like,
-  dtype = NULL,
-  shape = NULL,
-  device = NULL,
-  ambiguous = NULL
-)
+nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -75,17 +36,36 @@ nv_empty_like(
   [`integer()`](https://rdrr.io/r/base/integer.html),
   [`double()`](https://rdrr.io/r/base/double.html), or
   [`logical()`](https://rdrr.io/r/base/logical.html) scalar, vector, or
-  array.
+  array. Alternatively a [`raw()`](https://rdrr.io/r/base/raw.html)
+  vector holding the native little-endian byte payload of `prod(shape)`
+  elements of `dtype`; both `dtype` and `shape` are then required (only
+  supported on the `"pjrt"` backend). Raw payloads are read in
+  column-major element order, or row-major with `byrow = TRUE`. An
+  existing `AnvlArray` is returned unchanged if the `shape`, `dtype` and
+  `device` given agree with it, and is an error otherwise.
+
+- shape:
+
+  (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
+  The output shape of the array. The default (`NULL`) is to infer it
+  from the data if possible. Note that `nv_array` interprets length 1
+  vectors as having shape `(1)`. Empty data has no shape to infer – `0`,
+  `c(2, 0)` and `c(0, 3)` all hold no elements – so `shape` is required
+  there. To create a "scalar" with no axes (shape `()`), use `nv_scalar`
+  or explicitly specify `shape = integer()`.
 
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
-  The default (`NULL`) uses the current backend's default dtype: `f32`
-  for numeric data on `"pjrt"`, `f64` for numeric data on `"quickr"`,
-  `i32` for integer data, and `bool` for logical data.
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  The data type at which to create the array: a
+  [`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html)
+  or one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. A
+  value it cannot hold at all is an error
+  (`nv_array(3e9, dtype = "i32")` overflows). A `double` at an integer
+  data type is truncated. The default (`NULL`) uses the [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) of
+  `data`'s category. `nv_empty()`, which has no `data`, requires it.
 
 - device:
 
@@ -102,56 +82,20 @@ nv_empty_like(
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
-
-- shape:
-
-  (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
-  The output shape of the array. The default (`NULL`) is to infer it
-  from the data if possible. Note that `nv_array` interprets length 1
-  vectors as having shape `(1)`. To create a "scalar" with no axes
-  (shape `()`), use `nv_scalar` or explicitly specify `shape = c()`.
-
-- ambiguous:
-
-  (`NULL` \| `logical(1)`)  
-  Whether the dtype should be marked as ambiguous. Defaults to `FALSE`
-  for new arrays.
-
-- backend:
-
-  (`NULL` \| `character(1)`)  
-  Backend the array belongs to (`"pjrt"` or `"quickr"`). The default
-  (`NULL`) is inferred from `device` when `device` is a backend-specific
-  device object, and otherwise falls back to
-  [`default_backend()`](https://r-xla.github.io/anvl/reference/default_backend.md).
-  Must not be specified inside
-  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md).
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 - byrow:
 
   (`logical(1)`)  
   When constructing from an R object and the result has at least two
   axes, fill the array in row-major order rather than the default
-  column-major order, mirroring
-  [`base::matrix()`](https://rdrr.io/r/base/matrix.html)'s `byrow`. Only
-  allowed when `data` is an R object — passing an existing `AnvlArray`
-  together with `byrow = TRUE` is an error.
-
-- check:
-
-  (`logical(1)`)  
-  If `TRUE`, error when `data` contains any `NA` values. XLA has no
-  representation for missing values, so they are otherwise silently
-  coerced to the closest available value of the target dtype (e.g. `NaN`
-  for floats, the bit pattern `-2147483648` for `i32`, `TRUE` for
-  `bool`). Defaults to `FALSE`. See the "Gotchas" vignette.
+  column-major order. Only allowed when `data` is an R object — passing
+  an existing `AnvlArray` together with `byrow = TRUE` is an error.
 
 - nrow:
 
@@ -167,9 +111,11 @@ nv_empty_like(
 
 - like:
 
-  (`AnvlArray`)  
-  An existing array. Any of `dtype`, `device`, `shape`, `ambiguous`, and
-  `backend` that are `NULL` (the default) are taken from `like`.
+  (`AnvlArray` \|
+  [`GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md))  
+  An existing array; an R value is an error. Any of `shape` (which
+  `nv_scalar_like()` does not take), `dtype` and `device` that are
+  `NULL` (the default) are taken from `like`.
 
 ## Value
 
@@ -183,35 +129,37 @@ the extent along that axis, and the **shape** is the vector of all axis
 sizes. For example, `nv_array(1:6, shape = c(2, 3))` has two axes; the
 size of axis `1` is `2` and the size of axis `2` is `3`, so its shape is
 `c(2, 3)`. Use
-[`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html) for the
-number of axes and
-[`shape()`](https://r-xla.github.io/tengen/reference/shape.html) for the
-axis sizes. We speak of the *size of an axis* rather than an array's
+[`naxes()`](https://r-xla.github.io/xlamisc/reference/naxes.html) for
+the number of axes,
+[`axes()`](https://r-xla.github.io/anvl/reference/axes.md) for the axis
+indices, and
+[`shape()`](https://r-xla.github.io/xlamisc/reference/shape.html) for
+the axis sizes. We speak of the *size of an axis* rather than an array's
 "dimensions", as the latter is generally overloaded as it is used to
-refer to both the axis and it's size.
+refer to both the axis and its size.
 
 ## Extractors
 
 The following generic functions can be used to extract information from
 an `AnvlArray`:
 
-- [`dtype()`](https://r-xla.github.io/tengen/reference/dtype.html): Get
+- [`dtype()`](https://r-xla.github.io/xlamisc/reference/dtype.html): Get
   the data type of the array.
 
-- [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
+- [`shape()`](https://r-xla.github.io/xlamisc/reference/shape.html): Get
   the shape (axis sizes) of the array.
 
-- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
+- [`naxes()`](https://r-xla.github.io/xlamisc/reference/naxes.html): Get
   the number of axes.
 
-- [`device()`](https://r-xla.github.io/tengen/reference/device.html):
+- [`axes()`](https://r-xla.github.io/anvl/reference/axes.md): Get the
+  axis indices.
+
+- [`device()`](https://r-xla.github.io/xlamisc/reference/device.html):
   Get the device of the array.
 
 - [`platform()`](https://r-xla.github.io/anvl/reference/platform.md):
   Get the platform (e.g. `"cpu"`, `"cuda"`).
-
-- [`ambiguous()`](https://r-xla.github.io/anvl/reference/ambiguous.md):
-  Get whether the dtype is ambiguous.
 
 ## Serialization
 
@@ -219,12 +167,12 @@ Arrays can be serialized to and from the
 [safetensors](https://huggingface.co/docs/safetensors/index) format:
 
 - [`nv_save()`](https://r-xla.github.io/anvl/reference/nv_save.md) /
-  [`nv_read()`](https://r-xla.github.io/anvl/reference/nv_read.md):
+  [`nv_read()`](https://r-xla.github.io/anvl/reference/nv_save.md):
   Save/load arrays to/from a file.
 
 - [`nv_serialize()`](https://r-xla.github.io/anvl/reference/nv_serialize.md)
   /
-  [`nv_unserialize()`](https://r-xla.github.io/anvl/reference/nv_unserialize.md):
+  [`nv_unserialize()`](https://r-xla.github.io/anvl/reference/nv_serialize.md):
   Serialize/deserialize arrays to/from raw vectors.
 
 ## Backend
@@ -232,6 +180,38 @@ Arrays can be serialized to and from the
 An `AnvlArray` is backend-dependent: it belongs to exactly one backend
 (`"pjrt"` or the experimental `"quickr"`) and lives on a device of that
 backend. The supported data types and devices differ between backends.
+
+## Missing values
+
+XLA, the compiler that is used by the `"pjrt"` (the default) backend has
+no notion of a missing (`NA`) value. When creating a new `AnvlArray`,
+the input is therefore checked for the presence of such values. `NA`s
+are always rejected, except when:
+
+1.  Creating `float` arrays where we convert the `NA` to `NaN`.
+
+2.  When creating an `i32` from an R
+    [`integer()`](https://rdrr.io/r/base/integer.html). There, we throw
+    a warning, but the resulting `AnvlArray` gets the bit representation
+    of `NA_integer_`, which is `INT_MIN` (`-2147483648`). Disallowing
+    this would prevent round-trips between the data types.
+
+See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html)
+article for more information.
+
+## Out of Range values
+
+Because base R has fewer data types than anvl, creating `AnvlArray`s
+from R often involves type conversions. When such conversions are
+performed, anvl performs a scan of the inputs to ensure that the
+requested data type can actually hold the input data. For example,
+trying to create an unsigned integer from a negative R
+[`integer()`](https://rdrr.io/r/base/integer.html) fails. The same holds
+where an R value takes its data type from the array it meets rather than
+from an argument: `nv_scalar(1L, "ui8") + (-2L)` is refused, where
+converting an array with
+[`nv_convert()`](https://r-xla.github.io/anvl/reference/nv_convert.md)
+wraps around.
 
 ## See also
 
@@ -244,7 +224,7 @@ backend. The supported data types and devices differ between backends.
 ## Examples
 
 ``` r
-# A 1-d array (vector) with shape (4). Default type for integers is `i32`
+# a 1-d array (vector) with shape (4), at the default data type for integers
 nv_array(1:4)
 #> AnvlArray
 #>  1
@@ -253,7 +233,7 @@ nv_array(1:4)
 #>  4
 #> [ CPUi32{4} ] 
 
-# Specify a dtype
+# specify a dtype
 nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #> AnvlArray
 #>  1.5000
@@ -261,31 +241,31 @@ nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #>  3.5000
 #> [ CPUf64{3} ] 
 
-# A 2x3 matrix
+# a 2x3 matrix
 nv_array(1:6, shape = c(2L, 3L))
 #> AnvlArray
 #>  1 3 5
 #>  2 4 6
 #> [ CPUi32{2,3} ] 
 
-# A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+# a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 #> AnvlArray
 #>  1 2 3
 #>  4 5 6
 #> [ CPUi32{2,3} ] 
 
-# A scalar array.
+# a scalar array
 nv_scalar(3.14)
 #> AnvlArray
 #>  3.1400
 #> [ CPUf32{} ] 
 
-# An uninitialized 2x3 array (contents are unspecified)
-nv_empty("f32", shape = c(2L, 3L))
+# an uninitialized 2x3 array (contents are unspecified)
+nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  -2.6386e-22  3.0702e-41 -6.5407e-22
-#>   3.0702e-41 -3.4884e-22  3.0702e-41
+#>  nan nan nan
+#>  nan nan nan
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
@@ -300,18 +280,16 @@ device(x)
 #> <CpuDevice(id=0)>
 platform(x)
 #> [1] "cpu"
-ambiguous(x)
-#> [1] FALSE
 
 # --- Transforming arrays with jit ---
-add_one <- jit(function(x) x + 1)
+add_one <- jit(function(x) x + 1L)
 add_one(nv_array(1:4))
 #> AnvlArray
 #>  2
 #>  3
 #>  4
 #>  5
-#> [ CPUf32?{4} ] 
+#> [ CPUi32{4} ] 
 
 # --- Eager mode (calling operations directly) ---
 nv_add(nv_array(1:3), nv_array(4:6))

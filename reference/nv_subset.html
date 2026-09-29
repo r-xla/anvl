@@ -7,11 +7,11 @@
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Subset an Array — [.AnvlArray"><meta name="description" content="Extracts a subset from an array. You can also use the [ operator.
 Supports R-style indexing including scalar indices (which drop axes),
-ranges (a:b), and array(c(...)) for selecting multiple elements along a
-axis."><meta property="og:description" content="Extracts a subset from an array. You can also use the [ operator.
+ranges (a:b), array(c(...)) for selecting multiple elements along an
+axis, and boolean masks."><meta property="og:description" content="Extracts a subset from an array. You can also use the [ operator.
 Supports R-style indexing including scalar indices (which drop axes),
-ranges (a:b), and array(c(...)) for selecting multiple elements along a
-axis."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+ranges (a:b), array(c(...)) for selecting multiple elements along an
+axis, and boolean masks."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -19,7 +19,7 @@ axis."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,22 +33,23 @@ axis."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -77,15 +78,15 @@ axis."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Subset an Array</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-subset.R" class="external-link"><code>R/api-subset.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-subset.R" class="external-link"><code>R/api-subset.R</code></a></small>
       <div class="d-none name"><code>nv_subset.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>Extracts a subset from an array. You can also use the <code>[</code> operator.
 Supports R-style indexing including scalar indices (which drop axes),
-ranges (<code>a:b</code>), and <code>array(c(...))</code> for selecting multiple elements along a
-axis.</p>
+ranges (<code>a:b</code>), <code>array(c(...))</code> for selecting multiple elements along an
+axis, and boolean masks.</p>
     </div>
 
     <div class="section level2">
@@ -102,21 +103,36 @@ axis.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Subset specifications, one per axis. Omitted trailing
-axes select all elements. See <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for details.</p></dd>
+axes select all elements.</p>
+<p>A boolean mask (an R logical array such as <code>arr(TRUE, FALSE)</code>, or an
+arrayish value of dtype <code>bool</code>) selects the elements at the <code>TRUE</code>
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+<code>x</code> selects across the whole array, yielding a 1-D result. Under <code><a href="jit.html">jit()</a></code>,
+the values of a mask must be known at compile time, because the number of
+selected elements determines the output shape: R logical arrays and
+arrays created in or closed over by the function work, a mask computed
+from the function's inputs does not.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/subsetting.html">Subsetting</a> article for details.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code></p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's data type, and the shape the specifications select –
+a scalar index drops its axis, a range, an index array or an axis mask
+keeps it, and a whole-array mask yields a 1-D result.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="nv_subset_assign.html">nv_subset_assign()</a></code> for updating subsets, <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code>
+    <div class="dont-index"><p><code><a href="nv_subset_assign.html">nv_subset_assign()</a></code> for updating subsets,
+the <a href="https://r-xla.github.io/anvl/articles/subsetting.html">Subsetting</a> article
 for a comprehensive guide.</p></div>
     </div>
 
@@ -129,7 +145,14 @@ for a comprehensive guide.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  8 11</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
-<span class="r-in"><span><span class="co"># Select row 2</span></span></span>
+<span class="r-in"><span><span class="co"># select row 2</span></span></span>
+<span class="r-in"><span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{4} ] </span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span>, <span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   2</span>
@@ -138,12 +161,35 @@ for a comprehensive guide.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  11</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{4} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Select rows 1 to 2, all columns</span></span></span>
+<span class="r-in"><span><span class="co"># select rows 1 to 2, all columns</span></span></span>
+<span class="r-in"><span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1  4  7 10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  8 11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,4} ] </span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, <span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1  4  7 10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  8 11</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,4} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Select rows 1 and 3 with a mask</span></span></span>
+<span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="arr.html">arr</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span>, <span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1  4  7 10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,4} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Select all elements greater than 6 (not in `jit()`, see above)</span></span></span>
+<span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">6</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   9</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{6} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

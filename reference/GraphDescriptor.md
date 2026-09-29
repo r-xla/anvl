@@ -1,15 +1,31 @@
 # Graph Descriptor
 
-Descriptor of an
-[`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md). This
-is a mutable class.
+The in-progress representation of an
+[`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md)
+during tracing. This is a mutable class.
+
+While [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md)
+runs a function, every primitive call is recorded as a
+[`GraphStatement`](https://r-xla.github.io/anvl/reference/GraphStatement.md)
+into the current descriptor (see
+[`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md)
+and
+[`current_descriptor()`](https://r-xla.github.io/anvl/reference/current_descriptor.md)).
+The descriptor also does the book-keeping the trace needs: which
+[`GraphValue`](https://r-xla.github.io/anvl/reference/GraphValue.md) an
+`AnvlArray` or
+[`GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md) stands
+for, the constants and devices encountered, and the default data types
+the trace is pinned to. Once tracing finishes, it is converted to an
+[`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md),
+which only keeps what is needed to lower and run the program.
 
 ## Usage
 
 ``` r
 GraphDescriptor(
-  calls = list(),
-  tensor_to_gval = NULL,
+  statements = list(),
+  array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -18,18 +34,20 @@ GraphDescriptor(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character()
+  devices = character(),
+  default_dtypes = NULL,
+  backend
 )
 ```
 
 ## Arguments
 
-- calls:
+- statements:
 
-  (`list(PrimitiveCall)`)  
-  The primitive calls that make up the graph.
+  (`list(GraphStatement)`)  
+  The statements that make up the graph.
 
-- tensor_to_gval:
+- array_to_gval:
 
   (`hashtab`)  
   Mapping: `AnvlArray` -\> `GraphValue`
@@ -46,14 +64,16 @@ GraphDescriptor(
 
 - in_tree:
 
-  (`NULL | Node`)  
+  (`NULL` \|
+  [`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   The tree of inputs. May contain leaves for both array inputs and
   static (non-array) arguments. Only the array leaves correspond to
   entries in `inputs`; use `is_static_flat` to distinguish them.
 
 - out_tree:
 
-  (`NULL | Node`)  
+  (`NULL` \|
+  [`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   The tree of outputs.
 
 - inputs:
@@ -80,9 +100,28 @@ GraphDescriptor(
 
 - devices:
 
-  ([`character()`](https://rdrr.io/r/base/character.html))  
-  Device platforms encountered during tracing (e.g. `"cpu"`, `"cuda"`).
-  Populated automatically as arrays are registered.
+  ([`list()`](https://rdrr.io/r/base/list.html))  
+  Devices encountered during tracing: the device of every concrete array
+  registered in the graph, plus the ones declared by
+  [`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md).
+
+- default_dtypes:
+
+  (`NULL` \| `list(float, int)`)  
+  The data types every R value in this trace materializes at when
+  nothing else decides one (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
+
+- backend:
+
+  (`character(1)`)  
+  The backend this trace is compiled for. Required: it decides which
+  entry of the `anvl.default_dtypes` option applies to the trace, so
+  switching the active backend inside a traced body changes nothing.
+  [`local_descriptor()`](https://r-xla.github.io/anvl/reference/local_descriptor.md)
+  fills it in from
+  [`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md),
+  so only a direct call has to name it.
 
 ## Value
 

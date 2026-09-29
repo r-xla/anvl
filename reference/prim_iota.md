@@ -5,7 +5,7 @@ Creates an array with values increasing along the specified axis.
 ## Usage
 
 ``` r
-prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+prim_iota(axis, shape, dtype, start = 1L, device = NULL)
 ```
 
 ## Arguments
@@ -16,30 +16,22 @@ prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
   Axis along which values increase. Negative values count from the end
   of `shape`, i.e. `-1` refers to the last axis.
 
-- dtype:
-
-  (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
-
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Shape of the output array.
 
+- dtype:
+
+  (`character(1)` \|
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Data type of the result. Can be any numeric data type, boolean being
+  the one exception.
+
 - start:
 
   (`integer(1)`)  
   Starting value.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for more details.
 
 - device:
 
@@ -56,17 +48,16 @@ prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Has the given `dtype` and `shape`.
 
 ## Implemented Rules
@@ -78,7 +69,8 @@ Has the given `dtype` and `shape`.
 ## StableHLO
 
 Lowers to
-[`hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html).
+[`hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html),
+specified under [iota](https://openxla.org/stablehlo/spec#iota).
 
 ## See also
 
@@ -87,7 +79,8 @@ Lowers to
 ## Examples
 
 ``` r
-prim_iota(axis = 1L, dtype = "i32", shape = 5L)
+# the sequence is built at the requested data type
+prim_iota(axis = 1L, shape = 5L, dtype = "i32")
 #> AnvlArray
 #>  1
 #>  2

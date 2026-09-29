@@ -5,22 +5,29 @@ Element-wise arithmetic right bit shift.
 ## Usage
 
 ``` r
-prim_shift_right_arithmetic(lhs, rhs)
+prim_shift_right_arithmetic(x, shift)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish values of data type boolean, integer, or unsigned integer.
-  Must have the same shape.
+  The array whose bits are shifted. Can be any integer data type.
+
+- shift:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  By how many bits to shift each element of `x`. Has the same data type
+  and shape as `x`. An R value takes the other operand's data type, and
+  its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  neither operand has one.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' shape and data type.
 
 ## Implemented Rules
 
@@ -31,7 +38,9 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_shift_right_arithmetic()`](https://r-xla.github.io/stablehlo/reference/hlo_shift_right_arithmetic.html).
+[`hlo_shift_right_arithmetic()`](https://r-xla.github.io/stablehlo/reference/hlo_shift_right_arithmetic.html),
+specified under
+[shift_right_arithmetic](https://openxla.org/stablehlo/spec#shift_right_arithmetic).
 
 ## See also
 
@@ -40,12 +49,15 @@ Lowers to
 ## Examples
 
 ``` r
-x <- nv_array(c(8L, -16L, 32L))
-y <- nv_array(c(1L, 2L, 3L))
-prim_shift_right_arithmetic(x, y)
+# two R values: both take an R integer's default data type
+prim_shift_right_arithmetic(-32L, 2L)
 #> AnvlArray
-#>   4
-#>  -4
-#>   4
-#> [ CPUi32{3} ] 
+#>  -8
+#> [ CPUi32{} ] 
+
+# the R value is built at the array's data type instead
+prim_shift_right_arithmetic(-32L, nv_scalar(2L, "i64"))
+#> AnvlArray
+#>  -8
+#> [ CPUi64{} ] 
 ```

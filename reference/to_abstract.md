@@ -13,31 +13,43 @@ to_abstract(x, pure = FALSE)
 
 - x:
 
-  (`any`)  
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) \|
+  [`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md))  
   Object to convert.
 
 - pure:
 
   (`logical(1)`)  
-  Whether to convert to a pure `AbstractArray` and not e.g.
-  `LiteralArray` or `ConcreteArray`.
+  Whether to convert to a pure `AbstractArray` and not e.g. `RData` or
+  `ConcreteArray`.
 
 ## Value
 
-[`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md)
+([`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md))  
+A
+[`ConcreteArray`](https://r-xla.github.io/anvl/reference/ConcreteArray.md)
+for an
+[`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md), an
+[`RData`](https://r-xla.github.io/anvl/reference/RData.md) for an R
+value, the abstract array of a
+[`GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md), and
+`x` itself for an
+[`AbstractArray`](https://r-xla.github.io/anvl/reference/AbstractArray.md).
+With `pure = TRUE`, a plain `AbstractArray` of the same shape and data
+type.
 
 ## Examples
 
 ``` r
-# R literals become LiteralArrays (ambiguous by default, except logicals)
+# an R value becomes `RData`: it has no data type of its own yet
 to_abstract(1.5)
-#> LiteralArray(1.5, f32?, ()) 
+#> RData(double, ()) 
 to_abstract(1L)
-#> LiteralArray(1, i32?, ()) 
+#> RData(integer, ()) 
 to_abstract(TRUE)
-#> LiteralArray(TRUE, i1, ()) 
+#> RData(logical, ()) 
 
-# AnvlArrays become ConcreteArrays
+# an AnvlArray becomes a ConcreteArray
 to_abstract(nv_array(1:4))
 #> ConcreteArray
 #>  1
@@ -46,7 +58,7 @@ to_abstract(nv_array(1:4))
 #>  4
 #> [ CPUi32{4} ] 
 
-# Use pure = TRUE to strip subclass info
+# use pure = TRUE to strip subclass info
 to_abstract(nv_array(1:4), pure = TRUE)
 #> AbstractArray(dtype=i32, shape=4) 
 ```

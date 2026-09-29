@@ -1,7 +1,9 @@
-# Get the platform of an array or buffer
+# Get the Platform Name of an Array or Buffer
 
-Returns the platform name (e.g. `"cpu"`, `"cuda"`) identifying the
-compute backend.
+Returns the name of the hardware platform (e.g. `"cpu"`, `"cuda"`) the
+data lives on. This is not the backend; see
+[`backend()`](https://r-xla.github.io/anvl/reference/backend.md) for
+that.
 
 ## Usage
 
@@ -16,8 +18,9 @@ platform(x, ...)
 
 - x:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  An array-like object.
+  ([`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md) \|
+  [`PJRTBuffer`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html))  
+  An array or buffer.
 
 - ...:
 
@@ -25,7 +28,7 @@ platform(x, ...)
 
 ## Value
 
-`character(1)`
+(`character(1)`)
 
 ## Details
 

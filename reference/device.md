@@ -1,4 +1,4 @@
-# Get the device of an array
+# Get the Device of an Array
 
 Returns the device on which an array is allocated.
 
@@ -21,12 +21,17 @@ device(x, ...)
 
 ## Value
 
-[`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
+(device object)  
+Backend-dependent device object. One of:
+
+- [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
+
+- [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
 
 ## Details
 
 This is implemented via the generic
-[`tengen::device()`](https://r-xla.github.io/tengen/reference/device.html).
+[`xlamisc::device()`](https://r-xla.github.io/xlamisc/reference/device.html).
 
 ## Examples
 

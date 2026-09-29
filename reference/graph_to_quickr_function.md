@@ -1,4 +1,4 @@
-# Convert an AnvlGraph to a quickr-compiled function
+# Convert an AnvlGraph to a Quickr-Compiled Function
 
 Lowers a supported subset of `AnvlGraph` objects to a plain R function
 and compiles it with
@@ -49,19 +49,21 @@ outputs by default, or plain R values when `unwrap = TRUE`.
 If the graph returns multiple outputs (e.g. a nested list), the compiled
 function returns the same structure by rebuilding the output tree in R.
 
-For a list of supported primitives see
-[`vignette("primitives")`](https://r-xla.github.io/anvl/articles/primitives.md).
+For a list of supported primitives see the [Primitives
+Reference](https://r-xla.github.io/anvl/articles/primitives.html)
+article.
 
-Supported dtypes are `f64`, `i32`, and `pred`. The code generator
+Supported data types are `f64`, `i32` and `bool`. The code generator
 currently supports arrays up to rank 5. Some primitives are more
 restricted (e.g. `transpose` currently only handles rank-2 arrays).
 
 Most users will prefer
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) with
-`backend = "quickr"`. This function is the lower-level graph API.
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) under
+`with_backend("quickr", ...)`. This function is the lower-level graph
+API.
 
 ## See also
 
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) with
-`backend = "quickr"` for tracing and compiling a regular R function in
-one step.
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) under
+`with_backend("quickr", ...)` for tracing and compiling a regular R
+function in one step.

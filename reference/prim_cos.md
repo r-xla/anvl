@@ -13,13 +13,14 @@ prim_cos(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the input. It is ambiguous if the
-input is ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -32,7 +33,8 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_cosine()`](https://r-xla.github.io/stablehlo/reference/hlo_cosine.html).
+[`hlo_cosine()`](https://r-xla.github.io/stablehlo/reference/hlo_cosine.html),
+specified under [cosine](https://openxla.org/stablehlo/spec#cosine).
 
 ## See also
 
@@ -42,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(0, pi / 2, pi))
 prim_cos(x)
 #> AnvlArray
@@ -49,4 +52,10 @@ prim_cos(x)
 #>  -4.3711e-08
 #>  -1.0000e+00
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_cos(0)
+#> AnvlArray
+#>  1
+#> [ CPUf32{} ] 
 ```

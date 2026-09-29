@@ -1,6 +1,6 @@
-# Get the number of axes of an array
+# Get the Number of Axes of an Array
 
-Returns the number of axes (sometimes also refered to as rank) of an
+Returns the number of axes (sometimes also referred to as rank) of an
 array. Equivalent to `length(shape(x))`.
 
 ## Usage
@@ -18,11 +18,11 @@ naxes(x)
 
 ## Value
 
-`integer(1)`
+(`integer(1)`)
 
 ## See also
 
-[`tengen::naxes()`](https://r-xla.github.io/tengen/reference/naxes.html)
+[`xlamisc::naxes()`](https://r-xla.github.io/xlamisc/reference/naxes.html)
 
 ## Examples
 

@@ -1,20 +1,17 @@
 # HloEnv
 
 Environment for storing graph value to func value mappings. This is a
-mutable class.
+mutable class. Every graph is lowered against an environment of its own:
+a sub-graph reads nothing of the graph around it except through its
+inputs.
 
 ## Usage
 
 ``` r
-HloEnv(parent = NULL, gval_to_fval = NULL)
+HloEnv(gval_to_fval = NULL)
 ```
 
 ## Arguments
-
-- parent:
-
-  (`HloEnv` \| `NULL`)  
-  Parent environment for lookups.
 
 - gval_to_fval:
 

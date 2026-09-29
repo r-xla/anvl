@@ -1,4 +1,4 @@
-# Transform a graph to its gradient
+# Transform a Graph to Its Gradient
 
 Low-level graph transformation that transforms a graph into its
 gradient. The function `f` represented by `graph` must return a single
@@ -20,13 +20,14 @@ transform_gradient(graph, wrt)
 
 - wrt:
 
-  (`character`)  
-  Names of the graph inputs to differentiate with respect to.
+  (`NULL` \| [`character()`](https://rdrr.io/r/base/character.html))  
+  Names of the graph inputs to differentiate with respect to. `NULL`
+  differentiates with respect to all inputs.
 
 ## Value
 
-An [`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md)
-whose outputs are the requested gradients.
+([`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md))  
+Its outputs are the requested gradients.
 
 ## Details
 
@@ -39,41 +40,31 @@ See
 [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
 for more information.
 
-This is the building block used by
 [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md) and
-[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/value_and_gradient.md);
-prefer those higher-level wrappers unless you need to operate on graphs
-directly.
+[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+differentiate the same way, but into the trace they are called in rather
+than into a graph of its own; prefer them unless you need to operate on
+graphs directly.
 
 ## See also
 
 [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
-[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/value_and_gradient.md),
+[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
 [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
 
 ## Examples
 
 ``` r
-graph <- trace_fn(prim_mul, list(nv_aval("f32", c()), nv_aval("f32", c())))
+graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
 graph
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>     %x2: f32[]
-#>   Body:
-#>     %1: f32[] = mul(%x1, %x2)
-#>   Outputs:
-#>     %1: f32[] 
+#> <AnvlGraph> (%x1: f32[], %x2: f32[]) {
+#>   %1: f32[] = mul(%x1, %x2)
+#>   return %1
+#> }
 transform_gradient(graph, "lhs")
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>     %x2: f32[]
-#>   Constants:
-#>     %c1: f32[]
-#>   Body:
-#>     %1: f32[] = mul(%x1, %x2)
-#>     %2: f32[] = mul(%c1, %x2)
-#>   Outputs:
-#>     %2: f32[] 
+#> <AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
+#>   %1: f32[] = mul(%x1, %x2)
+#>   %2: f32[] = mul(%c1, %x2)
+#>   return %2
+#> }
 ```

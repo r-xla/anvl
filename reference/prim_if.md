@@ -1,9 +1,12 @@
 # Primitive If
 
 Conditional execution of one of two branches based on a scalar boolean
-predicate. Unlike
+predicate, mirroring R's `if` construct: it branches between two
+*functions* and evaluates only the selected one. Its arguments are named
+after that construct, where
 [`prim_ifelse()`](https://r-xla.github.io/anvl/reference/prim_ifelse.md)
-which operates element-wise, this evaluates only the selected branch.
+– which selects element-wise between two *arrays* – is named after
+[`ifelse()`](https://rdrr.io/r/base/ifelse.html).
 
 ## Usage
 
@@ -16,18 +19,27 @@ prim_if(pred, true, false)
 - pred:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Scalar boolean predicate that determines which branch to execute.
+  Predicate deciding which branch to execute. Must be a scalar of the
+  boolean data type, or an R logical.
 
 - true, false:
 
   (`function()`)  
   Zero-argument functions for the true and false branches. Both must
-  return outputs with the same structure, dtypes, and shapes.
+  return outputs of the same structure, data types and shapes. As with
+  [`prim_ifelse()`](https://r-xla.github.io/anvl/reference/prim_ifelse.md),
+  whose two values must already agree, nothing is promoted: branches
+  that disagree are an error.
 
 ## Value
 
-Result of the executed branch.  
-An output is ambiguous if it is ambiguous in both branches.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) \|
+`list`)  
+Result of the executed branch: an array, or a tree of them in the sense
+of pjrt's
+[`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html) – a
+`list`, nested arbitrarily – with the structure, data types and shapes
+both branches share.
 
 ## Implemented Rules
 
@@ -40,7 +52,8 @@ An output is ambiguous if it is ambiguous in both branches.
 ## StableHLO
 
 Lowers to
-[`hlo_if()`](https://r-xla.github.io/stablehlo/reference/hlo_if.html).
+[`hlo_if()`](https://r-xla.github.io/stablehlo/reference/hlo_if.html),
+specified under [if](https://openxla.org/stablehlo/spec#if).
 
 ## See also
 
@@ -50,6 +63,7 @@ Lowers to
 ## Examples
 
 ``` r
+# both branches must return the same structure, data types and shapes
 prim_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 #> AnvlArray
 #>  1

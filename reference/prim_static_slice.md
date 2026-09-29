@@ -1,7 +1,7 @@
 # Primitive Static Slice
 
 Extracts a slice from an array using static (compile-time) indices. All
-indices, limits, and strides are fixed R integers.
+indices and strides are fixed R integers, and both ends are inclusive.
 
 Use
 [`prim_dynamic_slice()`](https://r-xla.github.io/anvl/reference/prim_dynamic_slice.md)
@@ -11,7 +11,7 @@ depends on array values).
 ## Usage
 
 ``` r
-prim_static_slice(x, start_indices, limit_indices, strides)
+prim_static_slice(x, start_indices, end_indices, strides)
 ```
 
 ## Arguments
@@ -19,19 +19,23 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 - start_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Start indices (inclusive), one per axis. Must satisfy
-  `1 <= start_indices <= limit_indices` per axis.
+  `1 <= start_indices <= end_indices + 1` per axis, where
+  `start_indices == end_indices + 1` selects an empty axis.
 
-- limit_indices:
+- end_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   End indices (inclusive), one per axis. Must satisfy
-  `limit_indices <= nv_shape(x)` per axis.
+  `end_indices <= shape(x)` per axis. Unlike StableHLO's exclusive
+  `limit_indices`, the element at `end_indices` is part of the slice.
 
 - strides:
 
@@ -41,10 +45,9 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Has the same data type as the input and shape
-`ceiling((limit_indices - start_indices + 1) / strides)`. It is
-ambiguous if the input is ambiguous.
+`ceiling((end_indices - start_indices + 1) / strides)`.
 
 ## Implemented Rules
 
@@ -57,7 +60,8 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html).
+[`hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html),
+specified under [slice](https://openxla.org/stablehlo/spec#slice).
 
 ## See also
 
@@ -70,9 +74,9 @@ Lowers to
 ## Examples
 
 ``` r
-# 1-D: extract elements 2 through 4 (limit is exclusive)
+# 1-D: extract elements 2 through 5, the end being inclusive
 x <- nv_array(1:10)
-prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
+prim_static_slice(x, start_indices = 2L, end_indices = 5L, strides = 1L)
 #> AnvlArray
 #>  2
 #>  3
@@ -82,7 +86,7 @@ prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 
 # 1-D: every other element using strides
 x <- nv_array(1:10)
-prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
+prim_static_slice(x, start_indices = 1L, end_indices = 10L, strides = 2L)
 #> AnvlArray
 #>  1
 #>  3
@@ -91,12 +95,12 @@ prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
 #>  9
 #> [ CPUi32{5} ] 
 
-# 2-D: extract a submatrix (rows 1-2, columns 2-3)
+# 2-D: extract the submatrix of rows 1-3 and columns 2-4
 x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 prim_static_slice(x,
   start_indices = c(1L, 2L),
-  limit_indices = c(3L, 4L),
-  strides       = c(1L, 1L)
+  end_indices = c(3L, 4L),
+  strides = c(1L, 1L)
 )
 #> AnvlArray
 #>   4  7 10

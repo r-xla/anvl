@@ -1,6 +1,7 @@
-# Primitive Not
+# Primitive Bitwise Not
 
-Element-wise logical NOT.
+Element-wise bitwise NOT – a logical NOT on a boolean input, and a
+bit-by-bit one on an integer.
 
 ## Usage
 
@@ -13,13 +14,14 @@ prim_not(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of data type boolean, integer, or unsigned integer.
+  One input. Can be any integerish data type. An R value materializes at
+  its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the input. It is ambiguous if the
-input is ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -32,7 +34,8 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_not()`](https://r-xla.github.io/stablehlo/reference/hlo_not.html).
+[`hlo_not()`](https://r-xla.github.io/stablehlo/reference/hlo_not.html),
+specified under [not](https://openxla.org/stablehlo/spec#not).
 
 ## See also
 
@@ -41,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# on a boolean this is a logical negation
 x <- nv_array(c(TRUE, FALSE, TRUE))
 prim_not(x)
 #> AnvlArray
@@ -48,4 +52,10 @@ prim_not(x)
 #>  1
 #>  0
 #> [ CPUbool{3} ] 
+
+# on an integer it complements every bit, so `12L` becomes `-13`
+prim_not(nv_array(12L))
+#> AnvlArray
+#>  -13
+#> [ CPUi32{1} ] 
 ```

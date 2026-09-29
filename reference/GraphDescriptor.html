@@ -5,7 +5,25 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Graph Descriptor — GraphDescriptor"><meta name="description" content="Descriptor of an AnvlGraph. This is a mutable class."><meta property="og:description" content="Descriptor of an AnvlGraph. This is a mutable class."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Graph Descriptor — GraphDescriptor"><meta name="description" content="The in-progress representation of an AnvlGraph during tracing. This is
+a mutable class.
+While trace_fn() runs a function, every primitive call is recorded as a
+GraphStatement into the current descriptor (see graph_desc_add() and
+current_descriptor()). The descriptor also does the book-keeping the
+trace needs: which GraphValue an AnvlArray or GraphBox stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+AnvlGraph, which only keeps what is needed to lower and run the
+program."><meta property="og:description" content="The in-progress representation of an AnvlGraph during tracing. This is
+a mutable class.
+While trace_fn() runs a function, every primitive call is recorded as a
+GraphStatement into the current descriptor (see graph_desc_add() and
+current_descriptor()). The descriptor also does the book-keeping the
+trace needs: which GraphValue an AnvlArray or GraphBox stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+AnvlGraph, which only keeps what is needed to lower and run the
+program."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -13,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,22 +45,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -71,19 +90,28 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Graph Descriptor</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/graph.R" class="external-link"><code>R/graph.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/graph.R" class="external-link"><code>R/graph.R</code></a></small>
       <div class="d-none name"><code>GraphDescriptor.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Descriptor of an <code><a href="AnvlGraph.html">AnvlGraph</a></code>. This is a mutable class.</p>
+    <p>The in-progress representation of an <code><a href="AnvlGraph.html">AnvlGraph</a></code> during tracing. This is
+a mutable class.</p>
+<p>While <code><a href="trace_fn.html">trace_fn()</a></code> runs a function, every primitive call is recorded as a
+<code><a href="GraphStatement.html">GraphStatement</a></code> into the current descriptor (see <code><a href="graph_desc_add.html">graph_desc_add()</a></code> and
+<code><a href="current_descriptor.html">current_descriptor()</a></code>). The descriptor also does the book-keeping the
+trace needs: which <code><a href="GraphValue.html">GraphValue</a></code> an <code>AnvlArray</code> or <code><a href="GraphBox.html">GraphBox</a></code> stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+<code><a href="AnvlGraph.html">AnvlGraph</a></code>, which only keeps what is needed to lower and run the
+program.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">GraphDescriptor</span><span class="op">(</span></span>
-<span>  calls <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  tensor_to_gval <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  statements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  array_to_gval <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gval_to_box <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  constants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  in_tree <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -92,7 +120,9 @@
 <span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  is_static_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  static_args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  default_dtypes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">backend</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -100,12 +130,12 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-calls">calls<a class="anchor" aria-label="anchor" href="#arg-calls"></a></dt>
-<dd><p>(<code>list(PrimitiveCall)</code>)<br>
-The primitive calls that make up the graph.</p></dd>
+<dl><dt id="arg-statements">statements<a class="anchor" aria-label="anchor" href="#arg-statements"></a></dt>
+<dd><p>(<code>list(GraphStatement)</code>)<br>
+The statements that make up the graph.</p></dd>
 
 
-<dt id="arg-tensor-to-gval">tensor_to_gval<a class="anchor" aria-label="anchor" href="#arg-tensor-to-gval"></a></dt>
+<dt id="arg-array-to-gval">array_to_gval<a class="anchor" aria-label="anchor" href="#arg-array-to-gval"></a></dt>
 <dd><p>(<code>hashtab</code>)<br>
 Mapping: <code>AnvlArray</code> -&gt; <code>GraphValue</code></p></dd>
 
@@ -121,14 +151,14 @@ The constants of the graph.</p></dd>
 
 
 <dt id="arg-in-tree">in_tree<a class="anchor" aria-label="anchor" href="#arg-in-tree"></a></dt>
-<dd><p>(<code>NULL | Node</code>)<br>
+<dd><p>(<code>NULL</code> | <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>)<br>
 The tree of inputs. May contain leaves for both array inputs and static
 (non-array) arguments. Only the array leaves correspond to entries in
 <code>inputs</code>; use <code>is_static_flat</code> to distinguish them.</p></dd>
 
 
 <dt id="arg-out-tree">out_tree<a class="anchor" aria-label="anchor" href="#arg-out-tree"></a></dt>
-<dd><p>(<code>NULL | Node</code>)<br>
+<dd><p>(<code>NULL</code> | <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>)<br>
 The tree of outputs.</p></dd>
 
 
@@ -154,9 +184,24 @@ Flattened traced values for the static arguments indicated by <code>is_static_fl
 
 
 <dt id="arg-devices">devices<a class="anchor" aria-label="anchor" href="#arg-devices"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>)<br>
-Device platforms encountered during tracing (e.g. <code>"cpu"</code>, <code>"cuda"</code>).
-Populated automatically as arrays are registered.</p></dd>
+<dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
+Devices encountered during tracing: the device of every concrete array
+registered in the graph, plus the ones declared by <code><a href="graph_desc_add.html">graph_desc_add()</a></code>.</p></dd>
+
+
+<dt id="arg-default-dtypes">default_dtypes<a class="anchor" aria-label="anchor" href="#arg-default-dtypes"></a></dt>
+<dd><p>(<code>NULL</code> | <code>list(float, int)</code>)<br>
+The data types every R value in this trace materializes at when nothing
+else decides one (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p></dd>
+
+
+<dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
+<dd><p>(<code>character(1)</code>)<br>
+The backend this trace is compiled for. Required: it decides which entry
+of the <code>anvl.default_dtypes</code> option applies to the trace, so switching the
+active backend inside a traced body changes nothing.
+<code><a href="local_descriptor.html">local_descriptor()</a></code> fills it in from <code><a href="active_backend.html">active_backend()</a></code>, so only a
+direct call has to name it.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -20,31 +20,31 @@ prim_dynamic_slice(x, ..., slice_sizes)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of any data type.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 - ...:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
-  integer type)  
-  Scalar start indices, one per axis. Each must be a scalar array. Pass
-  one scalar per axis of `x`.
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Scalar start indices of an integer data type, one per axis of `x`.
+  They are brought to one data type among themselves, never `x`'s.
 
 - slice_sizes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Size of the slice in each axis. Must have length equal to `naxes(x)`
-  and satisfy `1 <= slice_sizes <= nv_shape(x)` per axis.
+  and satisfy `1 <= slice_sizes <= shape(x)` per axis.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type as the input and shape `slice_sizes`. It is
-ambiguous if the input is ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's data type and shape `slice_sizes`.
 
-## Out Of Bounds Behavior
+## Out of Bounds Behavior
 
 Start indices are clamped before the slice is extracted:
-`adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)`.
+`adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)`.
 This means that out-of-bounds indices will not cause an error, but the
 effective start position may differ from the requested one.
 
@@ -59,7 +59,9 @@ effective start position may differ from the requested one.
 ## StableHLO
 
 Lowers to
-[`hlo_dynamic_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_slice.html).
+[`hlo_dynamic_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_slice.html),
+specified under
+[dynamic_slice](https://openxla.org/stablehlo/spec#dynamic_slice).
 
 ## See also
 

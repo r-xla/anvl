@@ -1,15 +1,17 @@
-# Temporarily set the default backend
+# Temporarily Set the Backend
 
-Sets the `anvl.default_backend` option for the duration of the calling
-scope. This affects
-[`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md),
-[`nv_scalar()`](https://r-xla.github.io/anvl/reference/AnvlArray.md),
-and [`jit()`](https://r-xla.github.io/anvl/reference/jit.md).
+Set the `anvl.backend` option for a scope: `local_backend()` until the
+calling frame exits, `with_backend()` for the duration of `code`. Every
+array built and every operation run in that scope uses the backend, and
+R values materialize at its default data types (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
 
 ## Usage
 
 ``` r
 local_backend(backend, envir = parent.frame())
+
+with_backend(backend, code)
 ```
 
 ## Arguments
@@ -21,8 +23,35 @@ local_backend(backend, envir = parent.frame())
 
 - envir:
 
+  (`environment`)  
   The environment to scope the change to.
+
+- code:
+
+  (any)  
+  An expression to evaluate with the given backend.
 
 ## Value
 
-The previous value of the option (invisibly).
+`local_backend()` returns the previous value of the option, as
+`list(anvl.backend = )`, invisibly. `with_backend()` returns the result
+of evaluating `code`.
+
+## See also
+
+[`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md)
+
+## Examples
+
+``` r
+f <- function() {
+  local_backend("quickr")
+  active_backend()
+}
+f()
+#> [1] "quickr"
+active_backend()
+#> [1] "pjrt"
+with_backend("quickr", active_backend())
+#> [1] "quickr"
+```

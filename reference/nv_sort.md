@@ -18,13 +18,17 @@ sort(x, decreasing = FALSE, ..., axis = NULL)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Input array.
+  One input. Can be any data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 - axis:
 
   (`integer(1)` \| `NULL`)  
   Axis along which to sort. Negative values count from the end, i.e.
-  `-1` refers to the last axis. If `NULL` (default), uses the last axis.
+  `-1` refers to the last axis. If `NULL` (default), the input is first
+  flattened to a 1-D array, like
+  [`base::sort()`](https://rdrr.io/r/base/sort.html).
 
 - decreasing:
 
@@ -42,31 +46,42 @@ sort(x, decreasing = FALSE, ..., axis = NULL)
 
 - ...:
 
-  No additional arguments.
+  Passed on to `nv_sort()`, e.g. `stable`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Same shape and data type as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## NaN handling
 
 `NaN` values sort to the **end** (ascending) or **beginning**
 (descending), regardless of sign. `+0` and `-0` compare equal.
 
+## The [`sort()`](https://rdrr.io/r/base/sort.html) generic
+
+Like [`base::sort()`](https://rdrr.io/r/base/sort.html), `nv_sort()`
+with `axis = NULL` flattens a multi-axis array into one sorted vector,
+so [`sort()`](https://rdrr.io/r/base/sort.html) on an anvl array agrees
+with base R (the flatten order does not matter once the elements are
+sorted). It differs in one respect: base R drops `NA` by default,
+whereas `NaN` is kept and sorted to the end. Pass `axis` to sort each
+slice along one axis instead, which keeps the shape.
+
 ## See also
 
 [`prim_sort()`](https://r-xla.github.io/anvl/reference/prim_sort.md) for
 the underlying primitive,
-[`nv_argsort()`](https://r-xla.github.io/anvl/reference/nv_argsort.md),
+[`nv_order()`](https://r-xla.github.io/anvl/reference/nv_order.md),
 [`nv_top_k()`](https://r-xla.github.io/anvl/reference/nv_top_k.md),
 [`nv_median()`](https://r-xla.github.io/anvl/reference/nv_median.md),
-[`nv_argmax()`](https://r-xla.github.io/anvl/reference/nv_argmax.md),
-[`nv_argmin()`](https://r-xla.github.io/anvl/reference/nv_argmin.md).
+[`nv_which_max()`](https://r-xla.github.io/anvl/reference/nv_which_max.md),
+[`nv_which_min()`](https://r-xla.github.io/anvl/reference/nv_which_min.md).
 
 ## Examples
 
 ``` r
+# sorting moves elements, so the data type and shape stay
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_sort(x)
 #> AnvlArray
@@ -103,7 +118,16 @@ nv_sort(x, decreasing = TRUE)
 #> [ CPUf32{8} ] 
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_sort(m, axis = 2L)
+nv_sort(m) # one sorted vector, like base R
+#> AnvlArray
+#>  0
+#>  1
+#>  2
+#>  3
+#>  4
+#>  5
+#> [ CPUf32{6} ] 
+nv_sort(m, axis = 2L) # each row sorted, shape kept
 #> AnvlArray
 #>  1 3 5
 #>  0 2 4

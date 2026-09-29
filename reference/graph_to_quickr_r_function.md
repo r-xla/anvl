@@ -1,4 +1,4 @@
-# Convert an AnvlGraph to a plain R function
+# Convert an AnvlGraph to a Plain R Function
 
 Lowers a supported subset of `AnvlGraph` objects to a plain R function
 (no compilation) suitable for
@@ -21,16 +21,18 @@ graph_to_quickr_r_function(graph)
 
 ## Value
 
-(`function`)
+(`function`)  
+Takes one plain R value per graph input and returns plain R values.
 
 ## Details
 
 Most users will prefer
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) with
-`backend = "quickr"`. This function is the lower-level graph API.
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) under
+`with_backend("quickr", ...)`. This function is the lower-level graph
+API.
 
 ## See also
 
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) with
-`options(anvl.backend = "quickr")` for tracing and compiling a regular R
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) under
+`with_backend("quickr", ...)` for tracing and compiling a regular R
 function in one step.

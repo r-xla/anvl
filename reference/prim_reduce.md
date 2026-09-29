@@ -1,12 +1,13 @@
 # Primitive Generic Reduce
 
 Reduces an array along the specified axes using a user-supplied
-associative reducer.
+associative reducer. `reducer` and `init` must satisfy the constraints
+in the "Associativity Requirement" section below.
 
 ## Usage
 
 ``` r
-prim_reduce(x, init, axes, drop = TRUE, reductor)
+prim_reduce(x, init, axes, reducer, drop = TRUE)
 ```
 
 ## Arguments
@@ -14,13 +15,19 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of any data type.
+  The array to reduce. Can be any data type. `x` and `init` must have
+  the same data type. An R value among them assumes the data type of the
+  others when it is in its [data type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  none of them has one.
 
 - init:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Scalar (0-dimensional) initial value. Must have the same data type as
-  `x` and be the neutral element w.r.t. `reductor`.
+  Scalar initial value, with no axes. Must be the neutral element w.r.t.
+  `reducer`, and shares `x`'s data type – see `x`.
 
 - axes:
 
@@ -28,32 +35,33 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
   Axes to reduce over. Negative values count from the end, i.e. `-1`
   refers to the last axis.
 
+- reducer:
+
+  (`function(lhs, rhs)`)  
+  Binary reducer producing a scalar of the same data type as `x`. Its
+  two arguments are passed by position, so they may carry any names.
+  Must be associative (see "Associativity Requirement").
+
 - drop:
 
   (`logical(1)`)  
   If `TRUE` (default) the reduced axes are removed; if `FALSE` they are
   kept with size 1.
 
-- reductor:
-
-  (`function(lhs, rhs)`)  
-  Binary reducer producing a scalar of the same dtype as `x`. Must be
-  associative (see "Associativity Requirement").
-
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Same data type as `x`. Shape is `x` with `axes` removed (or set to 1 if
-`drop = FALSE`).
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's data type. The shape is the input's with the reduced
+axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 ## Associativity Requirement
 
-The order in which `reductor` is applied across the reduction window is
-implementation-defined. If the reductor is not associative, the result
-is ill-defined. Furthermore, `init` must be the neutral element for this
-reductor. Because floating point math is non-associative, the output of
-the reduction can differ between backends (GPU, CPU), even if the
-underlying mathematical function (like `+`) is associative.
+The order in which `reducer` is applied across the reduction window is
+implementation-defined. If the reducer is not associative, the result is
+ill-defined. Furthermore, `init` must be the neutral element for this
+reducer. Because arithmetic in a float data type is non-associative, the
+output of the reduction can differ between backends (GPU, CPU), even if
+the underlying mathematical function (like `+`) is associative.
 
 ## Implemented Rules
 
@@ -62,23 +70,25 @@ underlying mathematical function (like `+`) is associative.
 ## StableHLO
 
 Lowers to
-[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
-with `reductor` as the body.
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html),
+specified under [reduce](https://openxla.org/stablehlo/spec#reduce). The
+body is `reducer`.
 
 ## See also
 
-[`prim_reduce_sum()`](https://r-xla.github.io/anvl/reference/prim_reduce_sum.md),
-[`prim_reduce_max()`](https://r-xla.github.io/anvl/reference/prim_reduce_max.md)
+[`prim_sum()`](https://r-xla.github.io/anvl/reference/prim_sum.md),
+[`prim_max()`](https://r-xla.github.io/anvl/reference/prim_max.md)
 
 ## Examples
 
 ``` r
+# `init` shares `x`'s data type, and the reduced axis disappears
 x <- nv_array(c(1, 2, 3, 4))
-prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
+prim_reduce(x, init = nv_scalar(0), axes = 1L, reducer = prim_add)
 #> AnvlArray
 #>  10
 #> [ CPUf32{} ] 
-prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)
+prim_reduce(x, init = nv_scalar(1), axes = 1L, reducer = prim_mul)
 #> AnvlArray
 #>  24
 #> [ CPUf32{} ] 

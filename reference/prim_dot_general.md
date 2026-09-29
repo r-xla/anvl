@@ -20,11 +20,15 @@ prim_dot_general(
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs of the same data type whose shapes are constrained by
+  `contracting_axes` and `batching_axes` rather than having to match.
+  Can be any data type. R values take the other operand's data type when
+  it is in their [data type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and their [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  neither operand has one. An R value outside the other operand's
+  category is an error, as are two R values of different storage types.
 
 - contracting_axes:
 
@@ -48,9 +52,10 @@ prim_dot_general(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-The output shape is the batch axes followed by the remaining
-(non-contracted, non-batched) axes of `lhs`, then `rhs`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the data type the operands agreed on. The output shape is the batch
+axes followed by the remaining (non-contracted, non-batched) axes of
+`lhs`, then `rhs`.
 
 ## Implemented Rules
 
@@ -63,7 +68,9 @@ The output shape is the batch axes followed by the remaining
 ## StableHLO
 
 Lowers to
-[`hlo_dot_general()`](https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html).
+[`hlo_dot_general()`](https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html),
+specified under
+[dot_general](https://openxla.org/stablehlo/spec#dot_general).
 
 ## See also
 
@@ -73,6 +80,7 @@ Lowers to
 ## Examples
 
 ``` r
+# contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,

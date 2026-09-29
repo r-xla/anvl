@@ -1,4 +1,4 @@
-# JIT compile a function
+# JIT Compile a Function
 
 Wraps a function so that it is traced and compiled on first call.
 Subsequent calls with the same input structure, shapes, and dtypes hit
@@ -7,14 +7,7 @@ an LRU cache and skip recompilation.
 ## Usage
 
 ``` r
-jit(
-  f,
-  static = character(),
-  cache_size = 100L,
-  backend = NULL,
-  device = NULL,
-  ...
-)
+jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 ```
 
 ## Arguments
@@ -22,9 +15,7 @@ jit(
 - f:
 
   (`function`)  
-  Function to compile. Must accept and return
-  [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)s
-  (and/or static arguments).
+  Function to compile.
 
 - static:
 
@@ -35,124 +26,92 @@ jit(
   compilation is triggered whenever a static value changes. For example
   useful when you want R control flow in your function.
 
-  Note that the values that are passed to static arguments must not have
-  reference semantics. Such a value can be mutated in place while the
-  cache key stays equal, which would silently reuse a program compiled
-  from its old contents. One exception are closures, but there you need
-  to ensure that their enclosing environment does not change in a way
-  that modifies their behavior.
+  A static value must not have reference semantics: an environment or an
+  external pointer, also inside a `list`, is an error, since it could be
+  mutated in place while the cache key stays equal. Closures are
+  allowed, but their enclosing environment must not change in a way that
+  modifies their behavior.
 
 - cache_size:
 
   (`integer(1)`)  
   Maximum number of compiled executables to keep in the LRU cache.
 
-- backend:
-
-  (`NULL` \| `character(1)`)  
-  Compilation backend (e.g. `"pjrt"`, `"quickr"`). The special value
-  `"auto"` defers backend selection to call-time. `NULL` (default)
-  respects `device` and otherwise falls back to
-  [`default_backend()`](https://r-xla.github.io/anvl/reference/default_backend.md).
-
 - device:
 
   (`NULL` \| `character(1)` \|
-  [`nv_device`](https://r-xla.github.io/anvl/reference/nv_device.md) \|
-  [`device_arg()`](https://r-xla.github.io/anvl/reference/device_arg.md))  
-  Target device. When a concrete device is specified, all arrays are
-  moved to it.
+  [device](https://r-xla.github.io/anvl/reference/nv_device.md))  
+  Target device, of the active backend. When a device is specified, all
+  arrays are moved to it.
 
-  The default (`NULL`) infers the device at call time, falling back to
+  The default (`NULL`) infers the device at call time from the array
+  inputs, falling back to
   [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
-
-  In order to use dynamic device selection with the `"auto"` backend
-  (e.g. for functions without dynamic inputs such as constant creation),
-  set `device = device_arg("<arg>")`.
 
 - ...:
 
-  Backend-specific options. Passing an option that is not supported by
-  the selected backend raises an error. See the **PJRT JIT arguments**
-  and **Quickr JIT arguments** sections below for the options accepted
-  by each backend.
+  Backend-specific options:
+
+  - `donate` ([`character()`](https://rdrr.io/r/base/character.html),
+    default [`character()`](https://rdrr.io/r/base/character.html)),
+    `"pjrt"` only: names of arguments whose buffers the compiled program
+    may reuse for its outputs. A donated array must not be used again
+    after the call; this can save memory and copies for large inputs.
+    Must not overlap with `static`.
+
+  - `unwrap` (`logical(1)`, default `FALSE`), `"quickr"` only: if
+    `TRUE`, the compiled function returns plain R arrays instead of
+    [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)s,
+    which is useful when the output is consumed by non-anvl R code.
+
+  An option no backend takes is rejected here; one that only another
+  backend takes is rejected when the function is called on a backend
+  that does not, since the backend is not known until then.
 
 ## Value
 
-A `JitFunction` (a `function` with the same formals as `f`). The
-returned wrapper expects
-[`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
-inputs and returns
-[`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
-values.
+(`JitFunction`)  
+A `function` with the same formals as `f`.
 
-## Device and Backend selection
+## Backend and device
 
-There are various ways to specify which device and which backend to use.
+A jitted function runs on the active backend *when it is called*
+([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md),
+set with
+[`with_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md)
+/
+[`local_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md)),
+so one `JitFunction` serves every backend, and a function created under
+one backend and called under another runs on the latter. Array inputs
+must belong to that backend; an array of another backend is rejected.
+Each backend keeps its own compilation cache.
 
-**Concrete backend**: In the case where we fix a concrete backend
-(backend is not `"auto"`), the device can be inferred or set explicitly.
-Setting the device explicitly allows you to enforce that the function
-always uses the specified device, e.g. `"cuda:0"`. If the `device`
-argument is set, all encountered arrays are copied to it.
+The device is a choice within that backend. Setting `device` explicitly
+enforces that the function always uses it, e.g. `"cuda:0"`, and copies
+every array input to it. With `device = NULL` (default) the device is
+inferred from the input arrays and the constants within the program;
+conflicting devices are an error, and with no array to read a device
+from the default device is used.
 
-If the device is not specified (`NULL`; default) the device will be
-inferred from the input arrays and the constants within the program. If
-conflicting devices are found, an error is thrown. If no array with a
-device is found, we fall back to the default device.
+## Default Data Types
 
-**Auto backend**: When setting `backend = "auto"`, the backend will be
-inferred from the array inputs and otherwise fall back to the default
-backend. If you want to `jit()` a function without array inputs but make
-it work with different devices, set `device = device_arg("<argname>")`
-where `<argname>` is the name of the argument specifying the device.
-Note that this is only necessary with the `"auto"` backend. When using a
-concrete backend, you can just specify the device via a static argument.
+It is possible to configure the default data types for `float`s and
+`int`s via the `anvl.default_dtypes` option, see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md).
+The defaults are read at *call time*, not when `jit()` is called.
 
-## Jitting in a Package
-
-To `jit()` a function defined in an R package, prefer the `@jit` roxygen
-tag over a top-level `jit()` call:
-
-    #' @export
-    #' @jit static = c("flag")
-    my_fun <- function(x, flag) if (flag) x + 1 else x * 2
-
-This delegates the wrapping to
-[`jit_roclet()`](https://r-xla.github.io/anvl/reference/jit_roclet.md),
-which records the tagged functions in `R/jit-registry.R`. The wrapping
-itself happens at package build time via
-[`apply_jit_registry()`](https://r-xla.github.io/anvl/reference/apply_jit_registry.md)
-in `R/zzz.R`, so the resulting `JitFunction` is byte-compiled with the
-rest of the package instead of being rebuilt on every `.onLoad`.
-
-See
-[`jit_roclet()`](https://r-xla.github.io/anvl/reference/jit_roclet.md)
-for the one-time setup of the roclet in your package.
-
-## PJRT JIT arguments
-
-- `donate` ([`character()`](https://rdrr.io/r/base/character.html),
-  default [`character()`](https://rdrr.io/r/base/character.html)): names
-  of arguments whose underlying buffers may be donated to (i.e.,
-  reused/consumed by) the compiled XLA executable. Donated buffers must
-  not be used again by the caller after the call; this can reduce memory
-  usage and copies for large inputs. Must not overlap with `static`.
-
-## Quickr JIT arguments
-
-- `unwrap` (`logical(1)`, default `FALSE`): if `TRUE`, the compiled
-  function returns plain R arrays instead of
-  [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)s.
-  Useful when the jitted function's output is consumed by non-anvl R
-  code and the extra wrapping would only get stripped again.
+To pin a jitted function to a pair of data types instead of letting it
+follow the configured defaults, wrap it in
+[`with_dtypes()`](https://r-xla.github.io/anvl/reference/with_dtypes.md):
+the wrapper converts the array arguments and results of a category it
+names, and sets the defaults for the duration of the call, so
+`f_f64 <- with_dtypes(f, c(float = "f64"))` runs `f` at `f64`, unless
+`f` itself changes the default data types.
 
 ## See also
 
-[`jit_eval()`](https://r-xla.github.io/anvl/reference/jit_eval.md) for
-evaluating an expression once,
-[`jit_roclet()`](https://r-xla.github.io/anvl/reference/jit_roclet.md)
-for the `@jit` tag used inside R packages.
+[`jit_cache_size()`](https://r-xla.github.io/anvl/reference/jit_cache_size.md)
+for how many programs a jitted function has cached.
 
 ## Examples
 
@@ -163,7 +122,43 @@ f(nv_array(1), nv_array(2))
 #>  3
 #> [ CPUf32{1} ] 
 
-# Static arguments enable data-dependent control flow
+# A non-static R value is an input of the program, just like an array: a
+# new value reuses the compiled program
+scale <- jit(function(x, n) x * n)
+scale(nv_array(1:3), 2)
+#> AnvlArray
+#>  2
+#>  4
+#>  6
+#> [ CPUf32{3} ] 
+scale(nv_array(1:3), 3)
+#> AnvlArray
+#>  3
+#>  6
+#>  9
+#> [ CPUf32{3} ] 
+jit_cache_size(scale)
+#> [1] 1
+
+# A static R value is embedded as a constant, so each new value compiles a
+# new program
+scale_static <- jit(function(x, n) x * n, static = "n")
+scale_static(nv_array(1:3), 2)
+#> AnvlArray
+#>  2
+#>  4
+#>  6
+#> [ CPUf32{3} ] 
+scale_static(nv_array(1:3), 3)
+#> AnvlArray
+#>  3
+#>  6
+#>  9
+#> [ CPUf32{3} ] 
+jit_cache_size(scale_static)
+#> [1] 2
+
+# static arguments enable data-dependent control flow
 g <- jit(function(x, flag) {
   if (flag) x + 1 else x * 2
 }, static = "flag")
@@ -175,10 +170,40 @@ g(nv_array(3), FALSE)
 #> AnvlArray
 #>  6
 #> [ CPUf32{1} ] 
-with_backend("quickr", {
-  h <- jit(function(x, y) x + y)
-  h(nv_array(1), nv_array(2))
-})
+
+# R values that meet no typed array take the default data types, which are
+# read when the function is called
+half <- jit(function(x) x / 2)
+half(1)
+#> AnvlArray
+#>  0.5000
+#> [ CPUf32{} ] 
+with_default_dtypes(c(float = "f64"), half(1))
+#> AnvlArray
+#>  0.5000
+#> [ CPUf64{} ] 
+# or pin the data types of a function with `with_dtypes()`
+half_f64 <- with_dtypes(half, c(float = "f64"))
+half_f64(nv_array(1, dtype = "f32"))
+#> AnvlArray
+#>  0.5000
+#> [ CPUf64{1} ] 
+
+# a donated input's buffer is reused for the output, so the input must not
+# be used afterwards
+step <- jit(function(x) x + 1L, donate = "x")
+x <- nv_array(1:3)
+step(x)
+#> AnvlArray
+#>  2
+#>  3
+#>  4
+#> [ CPUi32{3} ] 
+try(as_array(x))
+#> Error : called on deleted or donated buffer
+# the same function runs on whichever backend is active when it is called
+f <- jit(function(x, y) x + y)
+with_backend("quickr", f(nv_array(1), nv_array(2)))
 #> AnvlArray
 #> [1] 3
 #> [ CPUf64{1} ] 

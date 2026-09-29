@@ -6,8 +6,12 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Cumulative Sum — prim_cumsum"><meta name="description" content="Cumulative sum of array elements along a single axis.
-Output position j along axis equals the sum of input positions 1:j."><meta property="og:description" content="Cumulative sum of array elements along a single axis.
-Output position j along axis equals the sum of input positions 1:j."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+Output position j along axis equals the sum of input positions 1:j.
+A boolean input is accumulated with a logical OR, so the result is a running
+OR rather than a running count. nv_cumsum() counts instead."><meta property="og:description" content="Cumulative sum of array elements along a single axis.
+Output position j along axis equals the sum of input positions 1:j.
+A boolean input is accumulated with a logical OR, so the result is a running
+OR rather than a running count. nv_cumsum() counts instead."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -15,7 +19,7 @@ Output position j along axis equals the sum of input positions 1:j."><meta prope
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +33,23 @@ Output position j along axis equals the sum of input positions 1:j."><meta prope
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,13 +78,15 @@ Output position j along axis equals the sum of input positions 1:j."><meta prope
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Primitive Cumulative Sum</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
       <div class="d-none name"><code>prim_cumsum.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>Cumulative sum of array elements along a single axis.
 Output position <code>j</code> along <code>axis</code> equals the sum of input positions <code>1:j</code>.</p>
+<p>A boolean input is accumulated with a logical OR, so the result is a running
+OR rather than a running count. <code><a href="nv_cumsum.html">nv_cumsum()</a></code> counts instead.</p>
     </div>
 
     <div class="section level2">
@@ -93,7 +100,8 @@ Output position <code>j</code> along <code>axis</code> equals the sum of input p
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Arrayish value of any data type.</p></dd>
+One input. Can be any data type. An R value materializes at its
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
@@ -104,9 +112,8 @@ Negative values count from the end, i.e. <code>-1</code> refers to the last axis
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the input's shape and data type.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -119,7 +126,9 @@ It is ambiguous if the input is ambiguous.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html" class="external-link">hlo_reduce_window()</a></code> with <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_add.html" class="external-link">hlo_add()</a></code> as the reducer.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html" class="external-link">hlo_reduce_window()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#reduce_window" class="external-link">reduce_window</a>.
+The reducer is <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_add.html" class="external-link">hlo_add()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -128,7 +137,8 @@ It is ambiguous if the input is ambiguous.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the accumulation keeps the input's data type</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_cumsum</span><span class="op">(</span><span class="va">x</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1  3  5</span>

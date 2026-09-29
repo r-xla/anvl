@@ -17,7 +17,7 @@ Inherits from AbstractArray."><meta property="og:image" content="https://r-xla.g
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,22 +31,23 @@ Inherits from AbstractArray."><meta property="og:image" content="https://r-xla.g
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -75,7 +76,7 @@ Inherits from AbstractArray."><meta property="og:image" content="https://r-xla.g
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Concrete Array Class</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/array.R" class="external-link"><code>R/array.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/array.R" class="external-link"><code>R/array.R</code></a></small>
       <div class="d-none name"><code>ConcreteArray.Rd</code></div>
     </div>
 
@@ -100,6 +101,10 @@ The actual array data.</p></dd>
 
 </dl></div>
     <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p>(<code>ConcreteArray</code>)</p>
+    </div>
+    <div class="section level2">
     <h2 id="lowering">Lowering<a class="anchor" aria-label="anchor" href="#lowering"></a></h2>
 
 
@@ -117,8 +122,6 @@ This is to avoid increasing compilation time and bloating the size of the execut
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.5000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.6000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2} ] </span>
-<span class="r-in"><span><span class="fu"><a href="ambiguous.html">ambiguous</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-in"><span><span class="fu"><a href="shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
 <span class="r-in"><span><span class="fu"><a href="naxes.html">naxes</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
@@ -126,16 +129,12 @@ This is to avoid increasing compilation time and bloating the size of the execut
 <span class="r-in"><span><span class="fu"><a href="dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># How it appears during tracing</span></span></span>
+<span class="r-in"><span><span class="co"># how it appears during tracing</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Inputs: (none)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Constants:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %c1: f32[2]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Body: (empty)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %c1: f32[2] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; [%c1: f32[2]] () {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return %c1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">outputs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">aval</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ConcreteArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.5000</span>

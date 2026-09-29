@@ -15,7 +15,7 @@ You can also use the [&amp;lt;- operator."><meta property="og:image" content="ht
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@ You can also use the [&amp;lt;- operator."><meta property="og:image" content="ht
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,7 +74,7 @@ You can also use the [&amp;lt;- operator."><meta property="og:image" content="ht
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Update Subset</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-subset.R" class="external-link"><code>R/api-subset.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-subset.R" class="external-link"><code>R/api-subset.R</code></a></small>
       <div class="d-none name"><code>nv_subset_assign.Rd</code></div>
     </div>
 
@@ -87,7 +88,7 @@ You can also use the <code>[&lt;-</code> operator.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="va">x</span><span class="op">[</span><span class="va">...</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">value</span></span>
 <span></span>
-<span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">value</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">value</span>, inplace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,40 +97,95 @@ You can also use the <code>[&lt;-</code> operator.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Input array.</p></dd>
+The array to update. Can be any data type.
+An R object is materialized at its <a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Subset specifications, one per axis. See
-<code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for details.</p></dd>
+<dd><p>Subset specifications, one per axis. Omitted trailing
+axes select all elements.</p>
+<p>A boolean mask (an R logical array such as <code>arr(TRUE, FALSE)</code>, or an
+arrayish value of dtype <code>bool</code>) selects the elements at the <code>TRUE</code>
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+<code>x</code> selects across the whole array, yielding a 1-D result. Under <code><a href="jit.html">jit()</a></code>,
+the values of a mask must be known at compile time, because the number of
+selected elements determines the output shape: R logical arrays and
+arrays created in or closed over by the function work, a mask computed
+from the function's inputs does not.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/subsetting.html">Subsetting</a> article for details.</p></dd>
 
 
 <dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Replacement values. Scalars are broadcast to the subset shape.
-Non-scalar values must match the subset shape.</p></dd>
+Replacement values. Scalars are broadcast to the subset shape and non-scalar
+values must match it.
+It is brought to <code>x</code>'s data type: an R value is built at it when its
+category can reach it (<code>0L</code> serves an integer and a float <code>x</code> alike, while
+<code>1.5</code> into an <code>i32</code> <code>x</code> is an error), and an array is converted unless that
+would narrow it or leave its category (an <code>f64</code> value for an <code>f32</code> <code>x</code> is
+an error).</p></dd>
+
+
+<dt id="arg-inplace">inplace<a class="anchor" aria-label="anchor" href="#arg-inplace"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+Whether to write into the memory of <code>x</code> instead of allocating a new array.
+This avoids the copy of <code>x</code> that an eager subset assignment otherwise
+makes, but it consumes <code>x</code>: its buffer is <a href="jit.html">donated</a>, so <code>x</code> – and
+any other R variable referring to the same array – can no longer be used
+afterwards. With <code>[&lt;-</code>, pass it among the subscripts, e.g.
+<code>x[1, inplace = TRUE] &lt;- 0</code>, which rebinds <code>x</code> to the result.
+It is an error inside a jitted function: there, other references to <code>x</code>
+would stay valid, so the same code would behave differently in eager and
+in jit mode. Inside <code><a href="jit.html">jit()</a></code>, the compiler already avoids the copy anyway.
+Default is <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-A new array with the same shape as <code>x</code> and the subset replaced.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has <code>x</code>'s data type and shape, with the subset replaced.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="nv_subset.html">nv_subset()</a></code>, <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for a comprehensive guide.</p></div>
+    <div class="dont-index"><p><code><a href="nv_subset.html">nv_subset()</a></code>, the <a href="https://r-xla.github.io/anvl/articles/subsetting.html">Subsetting</a> article for a
+comprehensive guide.</p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># Set row 1 to zeros</span></span></span>
+<span class="r-in"><span><span class="co"># set row 1 to zeros</span></span></span>
+<span class="r-in"><span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span>, value <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   0  0  0  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  8 11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">x</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   0  0  0  0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  8 11</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)</span></span></span>
+<span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">6</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span></span>
+<span class="r-in"><span><span class="va">x</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2 5 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3 6 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># write into the memory of `x` instead of copying it</span></span></span>
+<span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span>, inplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">x</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1 1 1 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3 6 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
 </code></pre></div>
     </div>

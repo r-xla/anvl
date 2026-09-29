@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,22 +27,23 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -71,7 +72,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>While Loop</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
       <div class="d-none name"><code>nv_while.Rd</code></div>
     </div>
 
@@ -89,8 +90,11 @@
 
 
 <dl><dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
-Named list of initial state values.</p></dd>
+<dd><p>(<code>named list()</code>)<br>
+Named list of initial state values, a tree in the sense of pjrt's
+<code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>. Each leaf becomes a parameter of the loop's
+sub-graphs. R values are materialized at their
+<a href="default_dtypes.html">default data type</a>.</p></dd>
 
 
 <dt id="arg-cond">cond<a class="anchor" aria-label="anchor" href="#arg-cond"></a></dt>
@@ -101,13 +105,26 @@ Receives the state values as arguments.</p></dd>
 
 <dt id="arg-body">body<a class="anchor" aria-label="anchor" href="#arg-body"></a></dt>
 <dd><p>(<code>function</code>)<br>
-Body function returning the updated state as a named list
-with the same structure as <code>init</code>.</p></dd>
+Body function returning the updated state as a named list with the same
+structure, data types and shapes as <code>init</code>. Nothing is promoted: a
+loop-carried state is meant to be heterogeneous, so each member keeps its
+own data type across iterations.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Final state after the loop terminates (same structure as <code>init</code>).</p>
+    <p>(named <code>list</code>)<br>
+A tree of the loop-carried arrays – see <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code> – in its
+final state after the loop terminates, with <code>init</code>'s structure, data
+types and shapes.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="gradients">Gradients<a class="anchor" aria-label="anchor" href="#gradients"></a></h2>
+
+
+<p><code><a href="gradient.html">gradient()</a></code> cannot differentiate a while loop: its trip count is only known
+at run time, so there is no static size for the per-iteration states the
+backward pass needs.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -116,7 +133,8 @@ with the same structure as <code>init</code>.</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">nv_while</span><span class="op">(</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the loop state is a named list, and each member keeps its data type</span></span></span>
+<span class="r-in"><span><span class="fu">nv_while</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>i <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span>, total <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  cond <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span>, <span class="va">total</span><span class="op">)</span> <span class="va">i</span> <span class="op">&lt;</span> <span class="fl">5L</span>,</span></span>
 <span class="r-in"><span>  body <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span>, <span class="va">total</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>

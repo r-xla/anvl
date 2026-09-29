@@ -11,7 +11,7 @@ out the other triangle of an existing array instead.
 ``` r
 nv_upper_tri(shape, diagonal = 1L, device = NULL)
 
-nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
+nv_upper_tri_like(like, shape = NULL, diagonal = 1L, device = NULL)
 ```
 
 ## Arguments
@@ -19,7 +19,8 @@ nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
+  Shape of the result: exactly two axis sizes, since the result is a
+  matrix.
 
 - diagonal:
 
@@ -45,13 +46,12 @@ nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 - like:
 
@@ -61,8 +61,8 @@ nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the given `shape` and dtype `bool`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the given `shape` and boolean data type.
 
 ## See also
 
@@ -74,6 +74,7 @@ the underlying primitive.
 ## Examples
 
 ``` r
+# a boolean mask, whatever the array it is later used with
 nv_upper_tri(c(3, 3))
 #> AnvlArray
 #>  0 1 1

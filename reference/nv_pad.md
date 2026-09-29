@@ -6,13 +6,7 @@ elements.
 ## Usage
 
 ``` r
-nv_pad(
-  x,
-  padding_value,
-  edge_padding_low,
-  edge_padding_high,
-  interior_padding = NULL
-)
+nv_pad(x, value, low, high, interior = NULL)
 ```
 
 ## Arguments
@@ -20,24 +14,29 @@ nv_pad(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Input array.
+  The array to pad. Can be any data type; `value` is brought to it.
 
-- padding_value:
+- value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Scalar value to use for padding. Must have the same dtype as `x`.
+  Scalar value to use for padding. It is brought to `x`'s data type: an
+  R value is built at it when its category can reach it (`0L` serves an
+  integer and a float `x` alike, `0` only a float one), and a value that
+  already has a data type is converted unless that would narrow it – an
+  `f64` padding value for an `f32` `x` is an error rather than a silent
+  narrowing.
 
-- edge_padding_low:
+- low:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Amount of padding to add at the start of each axis.
 
-- edge_padding_high:
+- high:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Amount of padding to add at the end of each axis.
 
-- interior_padding:
+- interior:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
   Amount of padding to add between elements in each axis. If `NULL`
@@ -45,8 +44,9 @@ nv_pad(
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type as `x`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has `x`'s data type. Each axis grows by `low + high`, plus `interior`
+between every pair of elements; negative edge padding trims.
 
 ## See also
 
@@ -56,8 +56,9 @@ the underlying primitive.
 ## Examples
 
 ``` r
+# two zeros in front, one behind
 x <- nv_array(c(1, 2, 3))
-nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
+nv_pad(x, nv_scalar(0), low = 2L, high = 1L)
 #> AnvlArray
 #>  0
 #>  0

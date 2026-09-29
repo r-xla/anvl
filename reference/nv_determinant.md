@@ -1,4 +1,4 @@
-# Determinant in modulus/sign form
+# Determinant in Modulus/Sign Form
 
 Computes the determinant of a square matrix in the modulus / sign
 decomposition matching base R's
@@ -20,7 +20,13 @@ determinant(x, logarithm = TRUE, ...)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Square matrix of floating-point data type.
+  One input, a square matrix with exactly 2 axes. Can be any numeric
+  data type: a float keeps its own, and an integer one is converted to
+  the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
+  An R value materializes at its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) and is
+  converted in the same way.
 
 - logarithm:
 
@@ -33,11 +39,15 @@ determinant(x, logarithm = TRUE, ...)
 
 ## Value
 
-Named `list` with elements `modulus` and `sign`, both scalar
+(named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Elements `modulus` and `sign`, both scalar
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) with
-the same dtype as `x`. The full determinant is `sign * exp(modulus)`
-(with `logarithm = TRUE`) or `sign * modulus` (with
-`logarithm = FALSE`).
+`x`'s data type – or the default float data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md))
+where `x` was an integer one. The full determinant is
+`sign * exp(modulus)` (with `logarithm = TRUE`) or `sign * modulus`
+(with `logarithm = FALSE`).
 
 ## Details
 
@@ -58,6 +68,7 @@ product when `logarithm = FALSE` (\\\prod_i \|U\_{ii}\|\\).
 ## Examples
 
 ``` r
+# `modulus` and `sign` are scalars with the matrix's data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_determinant(a)
 #> $modulus

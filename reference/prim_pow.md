@@ -1,26 +1,31 @@
 # Primitive Power
 
-Raises lhs to the power of rhs element-wise.
+Raises `x` to the power of `y` element-wise.
 
 ## Usage
 
 ``` r
-prim_pow(lhs, rhs)
+prim_pow(x, y)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- x, y:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish values of data type integer, unsigned integer, or
-  floating-point. Must have the same shape.
+  Two inputs of the same data type and shape. Can be any numeric data
+  type. R values take the other operand's data type when it is in their
+  [data type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and their [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  neither operand has one. An R value outside the other operand's
+  category is an error, as are two R values of different storage types.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' shape and data type.
 
 ## Implemented Rules
 
@@ -33,7 +38,8 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_power()`](https://r-xla.github.io/stablehlo/reference/hlo_power.html).
+[`hlo_power()`](https://r-xla.github.io/stablehlo/reference/hlo_power.html),
+specified under [power](https://openxla.org/stablehlo/spec#power).
 
 ## See also
 
@@ -42,12 +48,15 @@ Lowers to
 ## Examples
 
 ``` r
-x <- nv_array(c(2, 3, 4))
-y <- nv_array(c(3, 2, 1))
-prim_pow(x, y)
+# two R values: both take an R double's default data type
+prim_pow(2, 3)
 #> AnvlArray
 #>  8
-#>  9
-#>  4
-#> [ CPUf32{3} ] 
+#> [ CPUf32{} ] 
+
+# the R value is built at the array's data type instead
+prim_pow(2, nv_scalar(3, "f64"))
+#> AnvlArray
+#>  8
+#> [ CPUf64{} ] 
 ```

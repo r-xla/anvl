@@ -18,13 +18,22 @@ solve(a, b, ...)
 - a:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Coefficient matrix.
+  Square non-singular matrix with exactly 2 axes. Can be any numeric
+  data type: `a` and `b` are [promoted to a common data
+  type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md)
+  and that is then converted to the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md))
+  where it is not a float already, since the decomposition is a float
+  one. An R value assumes the other operand's data type within its [data
+  type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and settles on the default float when neither has one.
 
 - b:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Right-hand side. If missing, returns
-  [`nv_inv()`](https://r-xla.github.io/anvl/reference/nv_inv.md) of `a`.
+  Right-hand side, vector of length `n` or matrix with `n` rows.
+  Promoted together with `a` – see `a`.
 
 - ...:
 
@@ -32,8 +41,11 @@ solve(a, b, ...)
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-The solution `x` such that `a %*% x = b`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+The solution `x` such that `a %*% x = b`, with `b`'s shape and the
+operands' common data type – or the default float data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md))
+where that was an integer one.
 
 ## Details
 
@@ -57,6 +69,7 @@ The solution `x` such that `a %*% x = b`.
 ## Examples
 
 ``` r
+# the solution has `b`'s shape and the operands' common data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 b <- nv_matrix(c(1, 2), nrow = 2, dtype = "f64")
 nv_solve(a, b)
@@ -64,4 +77,11 @@ nv_solve(a, b)
 #>   1.5000
 #>  -0.8333
 #> [ CPUf64{2,1} ] 
+
+# an integer system is solved at the default float data type
+nv_solve(nv_matrix(c(3L, 1L, 1L, 2L), nrow = 2), nv_array(c(9L, 8L)))
+#> AnvlArray
+#>  2.0000
+#>  3.0000
+#> [ CPUf32{2} ] 
 ```

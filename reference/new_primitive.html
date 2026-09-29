@@ -5,15 +5,13 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Primitive — new_primitive"><meta name="description" content='Builds an AnvlPrimitive metadata object, wraps fn with jit(),
-attaches the metadata via attr(., "primitive"), prepends class
-"JitPrimitive", and (by default) registers the result under name in
-the primitive registry.
-The backend is always "auto" and cannot be configured.'><meta property="og:description" content='Builds an AnvlPrimitive metadata object, wraps fn with jit(),
-attaches the metadata via attr(., "primitive"), prepends class
-"JitPrimitive", and (by default) registers the result under name in
-the primitive registry.
-The backend is always "auto" and cannot be configured.'><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Primitive — new_primitive"><meta name="description" content="new_primitive() creates a new primitive: an AnvlPrimitive, the function
+the primitive is called through (e.g. prim_add()).
+For details on how to do this, see the Adding a Primitive article.
+Like every jitted function it runs on the active backend when called."><meta property="og:description" content="new_primitive() creates a new primitive: an AnvlPrimitive, the function
+the primitive is called through (e.g. prim_add()).
+For details on how to do this, see the Adding a Primitive article.
+Like every jitted function it runs on the active backend when called."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -21,7 +19,7 @@ The backend is always "auto" and cannot be configured.'><meta property="og:image
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,22 +33,23 @@ The backend is always "auto" and cannot be configured.'><meta property="og:image
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -79,16 +78,15 @@ The backend is always "auto" and cannot be configured.'><meta property="og:image
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Create a Primitive</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/primitive.R" class="external-link"><code>R/primitive.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitive.R" class="external-link"><code>R/primitive.R</code></a></small>
       <div class="d-none name"><code>new_primitive.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Builds an <code><a href="AnvlPrimitive.html">AnvlPrimitive</a></code> metadata object, wraps <code>fn</code> with <code><a href="jit.html">jit()</a></code>,
-attaches the metadata via <code>attr(., "primitive")</code>, prepends class
-<code>"JitPrimitive"</code>, and (by default) registers the result under <code>name</code> in
-the primitive registry.</p>
-<p>The backend is always <code>"auto"</code> and cannot be configured.</p>
+    <p><code>new_primitive()</code> creates a new primitive: an <code>AnvlPrimitive</code>, the function
+the primitive is called through (e.g. <code><a href="prim_add.html">prim_add()</a></code>).
+For details on how to do this, see the <a href="https://r-xla.github.io/anvl/articles/extending_primitive.html">Adding a Primitive</a> article.
+Like every jitted function it runs on the active backend when called.</p>
     </div>
 
     <div class="section level2">
@@ -98,7 +96,6 @@ the primitive registry.</p>
 <span>  <span class="va">fn</span>,</span>
 <span>  subgraphs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  static <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  register <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -109,14 +106,14 @@ the primitive registry.</p>
 
 <dl><dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
 <dd><p>(<code>character(1)</code>)<br>
-Primitive name.</p></dd>
+Primitive name, without the <code>prim_</code> prefix (<code>"add"</code> for <code><a href="prim_add.html">prim_add()</a></code>).</p></dd>
 
 
 <dt id="arg-fn">fn<a class="anchor" aria-label="anchor" href="#arg-fn"></a></dt>
 <dd><p>(<code>function</code>)<br>
 Body of the primitive. Its formals become the formals of the returned
 JIT-compiled callable. Inside <code>fn</code>, the primitive is accessible via
-the lexically-bound symbol <code>self</code> (an <code><a href="AnvlPrimitive.html">AnvlPrimitive</a></code>); pass it as
+the lexically-bound symbol <code>self</code> (an <code><a href="AnvlPrimitiveDef.html">AnvlPrimitiveDef</a></code>); pass it as
 the first argument to <code><a href="graph_desc_add.html">graph_desc_add()</a></code>.</p></dd>
 
 
@@ -130,21 +127,24 @@ Names of parameters that are subgraphs (for higher-order primitives).</p></dd>
 Passed to <code><a href="jit.html">jit()</a></code>.</p></dd>
 
 
-<dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
-<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="device_arg.html">device_arg()</a></code>)<br>
-Passed to <code><a href="jit.html">jit()</a></code>. Useful for primitives with no array inputs
-(e.g. <code>prim_fill</code>) where the device must come from an explicit argument.</p></dd>
-
-
 <dt id="arg-register">register<a class="anchor" aria-label="anchor" href="#arg-register"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
-If <code>TRUE</code> (default), register the result under <code>name</code> in the primitive
-registry.</p></dd>
+Whether to add the primitive to anvl's internal registry of primitives,
+under <code>name</code>, replacing one registered under the same name. The quickr
+backend reads that registry to know which primitives it can lower, so a
+primitive created with <code>register = FALSE</code> is rejected on quickr even if
+it has a <code>quickr</code> rule. The other backends only read the rules of the
+primitive itself. This does not bind the result to a <code>prim_&lt;name&gt;</code>
+variable; assign it yourself.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A callable of class <code>c("JitPrimitive", "JitFunction")</code>.</p>
+    <p>(<code>AnvlPrimitive</code>)<br>
+The function the primitive is called through, of class
+<code>c("AnvlPrimitive", "JitFunction")</code>. Its <code><a href="AnvlPrimitiveDef.html">AnvlPrimitiveDef</a></code> is
+<code>attr(&lt;fn&gt;, "definition")</code>, and <code>[[</code> / <code>[[&lt;-</code> on it access the rules of
+that definition.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

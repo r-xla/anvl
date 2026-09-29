@@ -1,4 +1,4 @@
-# Check if an object is a DataType
+# Check If an Object Is a DataType
 
 Tests whether `x` is a `DataType` object.
 
@@ -16,12 +16,12 @@ is_dtype(x)
 
 ## Value
 
-`TRUE` or `FALSE`.
+(`logical(1)`)
 
 ## See also
 
 [`as_dtype()`](https://r-xla.github.io/anvl/reference/as_dtype.md),
-[`tengen::is_dtype()`](https://r-xla.github.io/tengen/reference/is_dtype.html)
+[`xlamisc::is_dtype()`](https://r-xla.github.io/xlamisc/reference/is_dtype.html)
 
 ## Examples
 

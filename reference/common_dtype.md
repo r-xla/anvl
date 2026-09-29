@@ -1,44 +1,50 @@
-# Type Promotion Rules
+# Common Data Type
 
-Computes the common dtype for a set of abstract types, respecting
-whether a type is ambiguous or not. A type is ambiguous if it comes from
-a literal (like 1 or 1.0) or was promoted to an ambiguous type.
-Promoting to an ambiguous type can happen in scenarios like `x + 1.2`,
-where `x` is a bool or an int.
+Compute the common data type of two data types.
+
+Two integer data types meet at one that holds every value of both: a
+signed and an unsigned one at the narrowest signed data type wide enough
+for the unsigned side (`ui8` and `i8` at `i16`, `ui32` and `i32` at
+`i64`). `ui64` is the exception – no signed data type holds it, and an
+integer does not become a float on its own – so `ui64` and a signed
+integer have no common data type and the pair is an error. Convert one
+side with
+[`nv_convert()`](https://r-xla.github.io/anvl/reference/nv_convert.md)
+to decide what they meet at.
+
+See the [Data Types and Promotion
+Rules](https://r-xla.github.io/anvl/articles/type-promotion.html)
+article for more information.
 
 ## Usage
 
 ``` r
-common_dtype(
-  lhs_dtype,
-  rhs_dtype,
-  lhs_ambiguous = FALSE,
-  rhs_ambiguous = FALSE
-)
+common_dtype(lhs_dtype, rhs_dtype)
 ```
 
 ## Arguments
 
-- lhs_dtype:
+- lhs_dtype, rhs_dtype:
 
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  The left-hand side type.
-
-- rhs_dtype:
-
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  The right-hand side type.
-
-- lhs_ambiguous:
-
-  (`logical(1)`)  
-  Whether the left-hand side type is ambiguous.
-
-- rhs_ambiguous:
-
-  (`logical(1)`)  
-  Whether the right-hand side type is ambiguous.
+  ([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  The two data types.
 
 ## Value
 
-(`list(dtype = [`tengen::DataType`], ambiguous = `logical(1)\`)  
+([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+The narrowest common data type.
+
+## Examples
+
+``` r
+common_dtype("i32", "f32")
+#> <f32>
+common_dtype("i32", "i64")
+#> <i64>
+try(common_dtype("ui64", "i8"))
+#> Error : "ui64" and "i8" have no common data type.
+#> ✖ No integer data type holds every value of both, and an integer does not
+#>   become a float on its own.
+#> ℹ Convert one of them with `nv_convert()` -- "f64" holds both, exactly up to
+#>   2^53.
+```

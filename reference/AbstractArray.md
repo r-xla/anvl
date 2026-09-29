@@ -1,14 +1,6 @@
 # Abstract Array Class
 
-Representation of an abstract array type. During tracing, it is wrapped
-in a [`GraphNode`](https://r-xla.github.io/anvl/reference/GraphNode.md)
-held by a
-[`GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md). In the
-lowered
-[`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md) it is
-also part of
-[`GraphNode`](https://r-xla.github.io/anvl/reference/GraphNode.md)s
-representing the values in the program.
+Representation of an abstract array type.
 
 The base class represents an *unknown* value, but child classes exist
 for:
@@ -22,7 +14,10 @@ for:
 - sequence patterns:
   [`IotaArray`](https://r-xla.github.io/anvl/reference/IotaArray.md)
 
-To convert a
+- R values [`RData`](https://r-xla.github.io/anvl/reference/RData.md).
+  They are special because they do not have a data type.
+
+To convert an
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) value
 to an abstract array, use
 [`to_abstract()`](https://r-xla.github.io/anvl/reference/to_abstract.md).
@@ -30,18 +25,20 @@ to an abstract array, use
 ## Usage
 
 ``` r
-nv_aval(dtype, shape, ambiguous = FALSE)
+nv_aval(dtype, shape)
 
-AbstractArray(dtype, shape, ambiguous = FALSE)
+AbstractArray(dtype, shape)
 ```
 
 ## Arguments
 
 - dtype:
 
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+  ([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html)
   \| `character(1)`)  
-  The data type of the array.
+  The data type of the array. For `nv_aval()` only, `"double"`,
+  `"integer"` or `"logical"` create an
+  [`RData`](https://r-xla.github.io/anvl/reference/RData.md) instead.
 
 - shape:
 
@@ -49,36 +46,21 @@ AbstractArray(dtype, shape, ambiguous = FALSE)
   \| [`integer()`](https://rdrr.io/r/base/integer.html))  
   The shape of the array. Can be provided as an integer vector.
 
-- ambiguous:
+## Value
 
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/articles/type-promotion.md)
-  for more details.
+`AbstractArray()`: (`AbstractArray`)
 
-## Extractors
-
-The following extractors are available on `AbstractArray` objects:
-
-- [`dtype()`](https://r-xla.github.io/tengen/reference/dtype.html): Get
-  the data type of the array.
-
-- [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
-  the shape (axis sizes) of the array.
-
-- [`ambiguous()`](https://r-xla.github.io/anvl/reference/ambiguous.md):
-  Get whether the dtype is ambiguous.
-
-- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
-  the number of axes.
+`nv_aval()`: (`AbstractArray` \|
+[`RData`](https://r-xla.github.io/anvl/reference/RData.md))  
+An [`RData`](https://r-xla.github.io/anvl/reference/RData.md) when
+`dtype` names an R storage type.
 
 ## See also
 
 [LiteralArray](https://r-xla.github.io/anvl/reference/LiteralArray.md),
 [ConcreteArray](https://r-xla.github.io/anvl/reference/ConcreteArray.md),
 [IotaArray](https://r-xla.github.io/anvl/reference/IotaArray.md),
+[RData](https://r-xla.github.io/anvl/reference/RData.md),
 [GraphValue](https://r-xla.github.io/anvl/reference/GraphValue.md),
 [`to_abstract()`](https://r-xla.github.io/anvl/reference/to_abstract.md),
 [GraphBox](https://r-xla.github.io/anvl/reference/GraphBox.md)
@@ -94,25 +76,25 @@ dtype(a)
 #> <f32>
 shape(a)
 #> [1] 2 3
-ambiguous(a)
-#> [1] FALSE
 
-# Shorthand
+# shorthand
 nv_aval("f32", c(2L, 3L))
 #> AbstractArray(dtype=f32, shape=2x3) 
 
-# How AbstractArrays appear in an AnvlGraph
-graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
+# an R value, which has no dtype until it is used
+nv_aval("double", c(2L, 3L))
+#> RData(double, (2,3)) 
+
+# how AbstractArrays appear in an AnvlGraph
+graph <- trace_fn(function(x) x + 1L, list(x = nv_aval("i32", 4L)))
 graph
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: i32[4]
-#>   Body:
-#>     %1: f32?[4] = convert [dtype = f32, ambiguous = TRUE] (%x1)
-#>     %2: f32?[4] = broadcast_in_axes [shape = 4, broadcast_axes = <any>] (1:f32?)
-#>     %3: f32?[4] = add(%1, %2)
-#>   Outputs:
-#>     %3: f32?[4] 
+#> <AnvlGraph> (%x1: i32[4]) {
+#>   %1: i32[4] = broadcast_in_axes [
+#>     shape = 4, broadcast_axes = integer(0)
+#>   ] (1:i32)
+#>   %2: i32[4] = add(%x1, %1)
+#>   return %2
+#> }
 graph$inputs[[1]]$aval
 #> AbstractArray(dtype=i32, shape=4) 
 ```

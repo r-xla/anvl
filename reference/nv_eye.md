@@ -8,7 +8,7 @@ of `like`.
 ## Usage
 
 ``` r
-nv_eye(n, dtype = "f32", device = NULL)
+nv_eye(n, dtype = NULL, device = NULL)
 
 nv_eye_like(like, n, dtype = NULL, device = NULL)
 ```
@@ -22,9 +22,12 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 
 - dtype:
 
-  (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
+  Data type of the result. Can be any data type; `NULL` (default) uses
+  the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
+  For `nv_eye_like()`, `NULL` uses `dtype(like)`.
 
 - device:
 
@@ -41,24 +44,24 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
     [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
     for the `"pjrt"` backend or a
     [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-    for the `"quickr"` backend. Because a device object is
-    backend-specific, it also determines the backend.
+    for the `"quickr"` backend. It must belong to the active backend
+    ([`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md));
+    a device of another backend is an error.
 
   The default (`NULL`) uses
-  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
-  the CPU, or the platform named by the `PJRT_PLATFORM` environment
-  variable on the `"pjrt"` backend.
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md).
 
 - like:
 
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  ([`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md))  
   Existing array whose attributes are used as defaults (only for
   `nv_eye_like()`).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-An `n x n` identity matrix.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the given `dtype` and shape `(n, n)`: ones on the diagonal, zeros
+elsewhere.
 
 ## See also
 
@@ -68,12 +71,15 @@ general diagonal matrices.
 ## Examples
 
 ``` r
+# a 3x3 identity matrix
 nv_eye(3L)
 #> AnvlArray
 #>  1 0 0
 #>  0 1 0
 #>  0 0 1
 #> [ CPUf32{3,3} ] 
+
+# `_like` takes the data type and device from an existing array
 x <- nv_fill(0, shape = c(3, 3), dtype = "f64")
 nv_eye_like(x, 3L)
 #> AnvlArray

@@ -5,7 +5,7 @@
 There can be many reasons why an {anvl} program is not as fast as one
 might expect. See the
 [Efficiency](https://r-xla.github.io/anvl/articles/efficiency.md)
-vignette which explains various pitfals and levers for optimizing
+article which explains various pitfalls and levers for optimizing
 program runtime.
 
 ## Why does timing my function show suspiciously fast results?
@@ -51,21 +51,26 @@ x <- nv_array(rnorm(1e8))
 # Ensure buffer creation is finished
 await(x)
 
-# Bad (does not capture the whole computation):
+# Bad:
+# 1. Does not await the result
+# 2. Includes compilation time
 system.time(mul_n(x, 20))
 ```
 
     ##    user  system elapsed 
-    ##   1.261   0.499   0.868
+    ##   1.366   0.336   0.985
 
 ``` r
 
-# Good (also measures actual computation):
+# Good:
+# 1. Awaits the computation
+# 2. Excludes compilation time, as the program was
+#    already compiled above.
 system.time(await(mul_n(x, 20)))
 ```
 
     ##    user  system elapsed 
-    ##   0.712   0.607   0.520
+    ##   0.808   0.418   0.501
 
 ## How do I control the number of threads used by XLA?
 

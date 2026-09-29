@@ -1,18 +1,67 @@
 # anvl: Accelerated Array Computing and Automatic Differentiation
 
 Accelerated array computing and code transformations for R. Numerical
-programs operating on multi-dimensional arrays can be just-in-time
-compiled to optimized executables via 'XLA' – the same compiler that
-powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the
-same source. Also provides reverse-mode automatic differentiation,
-returning the gradient of a function as another R function.
+programs operating on arrays can be just-in-time compiled to optimized
+executables via 'XLA' – the same compiler that powers 'JAX' and
+'TensorFlow' – and run on CPU or NVIDIA GPU from the same source. Also
+provides reverse-mode automatic differentiation, returning the gradient
+of a function as another R function.
+
+## Options
+
+- `anvl.backend` (`character(1)`): the backend every operation runs on.
+  Must be one of `"pjrt"` and `"quickr"`. If not set, `"pjrt"` is used.
+  Also see
+  [`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md),
+  [`local_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md)
+  and
+  [`with_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md).
+
+- `anvl.default_dtypes` (named
+  [`character()`](https://rdrr.io/r/base/character.html) \| named
+  [`list()`](https://rdrr.io/r/base/list.html)): the data types an R
+  double and an R integer settle on when they meet no typed array. See
+  [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)
+  for more details.
+
+- `anvl.default_device` (`character(1)` \| device object): the device a
+  call that names none allocates on. Also see
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md),
+  [`local_default_device()`](https://r-xla.github.io/anvl/reference/local_default_device.md)
+  and
+  [`with_default_device()`](https://r-xla.github.io/anvl/reference/local_default_device.md).
+
+## Environment variables
+
+- `ANVL_DEFAULT_DTYPES`: `category=dtype` pairs such as
+  `"float=f64,int=i64"`, used for every backend when the
+  `anvl.default_dtypes` option is not set.
+
+- `ANVL_DEFAULT_DEVICE`: a device identifier such as `"cuda"` or
+  `"cuda:0"`, used when the `anvl.default_device` option is not set.
+
+Both are read once, when anvl is loaded, and kept as fallbacks for the
+options rather than set as them: `getOption("anvl.default_device")`
+stays `NULL`, and an option set later takes precedence. Changing a
+variable after anvl is loaded has no effect until the package is loaded
+again, e.g. in a new R session.
+
+The remaining ones, all prefixed `ANVL_TEST`, affect only anvl's own
+test suite, not the package:
+
+- `ANVL_TEST`: `tests/testthat.R` runs the tests only when this is
+  `"1"`, so `R CMD check` in a shell without it runs none of them.
+
+- `ANVL_TEST_SKIP_QUICKR`: when set to anything non-empty, the tests
+  that need the quickr backend are skipped – they are comparatively
+  slow.
 
 ## Third-Party Licenses
 
 The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
 loads NVIDIA software which is not bundled with `anvl`, but downloaded
 from NVIDIA's official redistributable channels by the CUDA toolkit R
-package (e.g. `cuda12.8`) at install time. Its use is governed by the
+package (e.g. `pjrt.cuda`) at install time. Its use is governed by the
 [NVIDIA CUDA Toolkit EULA](https://docs.nvidia.com/cuda/eula/), with the
 exception of cuDNN, which is covered by the [NVIDIA cuDNN
 SLA](https://docs.nvidia.com/deeplearning/cudnn/sla/index.html), and
@@ -52,3 +101,6 @@ Other contributors:
 
 - Louis Aslett <louis.aslett@durham.ac.uk>
   ([ORCID](https://orcid.org/0000-0003-2211-233X)) \[contributor\]
+
+- Hugh Graham <hugh@belian.earth>
+  ([ORCID](https://orcid.org/0000-0001-9451-5010)) \[contributor\]

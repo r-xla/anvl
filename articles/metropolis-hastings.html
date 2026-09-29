@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,16 +47,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -65,8 +67,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -110,13 +111,13 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Metropolis-Hastings</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/vignettes/metropolis-hastings.Rmd" class="external-link"><code>vignettes/metropolis-hastings.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/metropolis-hastings.Rmd" class="external-link"><code>vignettes/articles/metropolis-hastings.Rmd</code></a></small>
       <div class="d-none name"><code>metropolis-hastings.Rmd</code></div>
     </div>
 
     
     
-<p>In this vignette, we show how to implement a random-walk
+<p>In this article, we show how to implement a random-walk
 Metropolis-Hastings sampler using {anvl} <span class="citation">(Hastings 1970)</span>. Metropolis-Hastings is a well
 known MCMC algorithm that generates samples from a target distribution
 by proposing moves and accepting or rejecting them based on the density
@@ -185,8 +186,8 @@ need to know the log-density up to an additive constant.</p>
 <span><span class="op">}</span></span></code></pre></div>
 <p>There are a few things to note in the code below:</p>
 <ol style="list-style-type: lower-alpha">
-<li>the accept/reject decision uses the primitive <code><a href="../reference/nv_if.html">nv_if()</a></code>
-and not a native R conditional.</li>
+<li>the accept/reject decision uses <code><a href="../reference/nv_if.html">nv_if()</a></code> and not a
+native R conditional.</li>
 <li>we sample a scalar uniform random number by setting
 <code>shape = integer()</code>
 </li>
@@ -202,7 +203,7 @@ and not a native R conditional.</li>
 <span>  <span class="va">log_proposed</span> <span class="op">&lt;-</span> <span class="fu">log_density</span><span class="op">(</span><span class="va">proposal</span>, <span class="va">b</span><span class="op">)</span></span>
 <span>  <span class="va">log_accept</span> <span class="op">&lt;-</span> <span class="va">log_proposed</span> <span class="op">-</span> <span class="va">log_current</span></span>
 <span></span>
-<span>  <span class="va">rng_out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_runif.html">nv_runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>, <span class="va">rng_state</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span></span>
+<span>  <span class="va">rng_out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>, <span class="va">rng_state</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span></span>
 <span>  <span class="va">rng_state</span> <span class="op">&lt;-</span> <span class="va">rng_out</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
 <span>  <span class="va">u</span> <span class="op">&lt;-</span> <span class="va">rng_out</span><span class="op">[[</span><span class="fl">2L</span><span class="op">]</span><span class="op">]</span></span>
 <span></span>
@@ -281,8 +282,8 @@ successive draws are nearly independent:</p>
 </li>
 </ul>
 <pre><code><span><span class="co">##   Parameter     MH_Mean True_Mean    MH_SD   True_SD</span></span>
-<span><span class="co">## 1    theta1  0.03383964         0 9.928612 10.000000</span></span>
-<span><span class="co">## 2    theta2 -0.01169006         0 1.703516  1.732051</span></span></code></pre>
+<span><span class="co">## 1    theta1 0.032508472         0 9.977817 10.000000</span></span>
+<span><span class="co">## 2    theta2 0.008427101         0 1.720547  1.732051</span></span></code></pre>
 <p>The Metropolis-Hastings estimates closely match the analytical
 moments, confirming the correctness of our implementation.</p>
 <p>We can visualize the samples against the true density contours:</p>

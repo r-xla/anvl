@@ -7,6 +7,9 @@ equals the sign of `rhs`, matching base R's `%%` operator.
 
 ``` r
 nv_mod(lhs, rhs)
+
+# S3 method for class 'AnvlArray'
+e1%%e2
 ```
 
 ## Arguments
@@ -14,21 +17,31 @@ nv_mod(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
-  type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
-  Scalars are
-  [broadcast](https://r-xla.github.io/anvl/reference/nv_broadcast_scalars.md)
-  to the shape of the other operand.
+  Two inputs with a [common data
+  type](https://r-xla.github.io/anvl/reference/common_dtype.md). Can be
+  any numeric data type. Scalars are broadcast. An R value takes the
+  other operand's data type when that is in its own or a higher
+  [category](https://r-xla.github.io/anvl/reference/dtype_categories.md).
+  Otherwise it settles on its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md), and
+  the operands meet at their common data type.
+
+- e1, e2:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  The operands of the operator, which it passes on as `lhs` and `rhs`.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and the promoted common data type of the inputs.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' broadcast shape and common data type.
 
 ## See also
 
 [`nv_remainder()`](https://r-xla.github.io/anvl/reference/nv_remainder.md)
 for truncating remainder,
+[`nv_floor_div()`](https://r-xla.github.io/anvl/reference/nv_floor_div.md)
+for the matching division,
 [`prim_remainder()`](https://r-xla.github.io/anvl/reference/prim_remainder.md)
 for the underlying primitive.
 
@@ -44,4 +57,17 @@ nv_mod(x, y)
 #> [ CPUi32{2} ] 
 as.vector(x) %% as.vector(y)
 #> [1] -2  2
+
+# different data types are promoted to their common one
+nv_mod(nv_scalar(1L, "i32"), nv_scalar(-3L, "i64"))
+#> AnvlArray
+#>  -2
+#> [ CPUi64{} ] 
+
+# a scalar is broadcast
+x %% 2L
+#> AnvlArray
+#>  1
+#>  1
+#> [ CPUi32{2} ] 
 ```

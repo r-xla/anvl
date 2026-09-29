@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,16 +47,18 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started">
 <li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul>
 </li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide">
-<li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+<li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
@@ -65,8 +67,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+<li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul>
 </li>
@@ -110,13 +111,13 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Static Shape Restriction</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/vignettes/static_shapes.Rmd" class="external-link"><code>vignettes/static_shapes.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/static_shapes.Rmd" class="external-link"><code>vignettes/articles/static_shapes.Rmd</code></a></small>
       <div class="d-none name"><code>static_shapes.Rmd</code></div>
     </div>
 
     
     
-<p>This vignette covers the static shape restriction within
+<p>This article covers the static shape restriction within
 <code><a href="../reference/jit.html">jit()</a></code>. First, we describe what this means and then we
 discuss how to work around it.</p>
 <p>Whenever the XLA compiler that underpins <code><a href="../reference/jit.html">jit()</a></code> compiles
@@ -133,15 +134,14 @@ The cost is that some operations require rethinking, and a few cannot
 currently be expressed inside <code><a href="../reference/jit.html">jit()</a></code> at all.</p>
 <p>For many operations, you can work around the restriction by keeping
 shapes fixed and using a logical mask – the same idea presented in the
-<em>Padding</em> section of the efficiency vignette. We cover some
-common patterns below. For operations we cannot yet handle in-graph
-(such as <code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code> or <code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code>), you currently
-need to convert the <code>AnvlArray</code> back to R, apply the
-operation there, and then convert the result back to an
+<a href="efficiency.html#padding-inputs-to-avoid-recompilation">padding
+inputs to avoid recompilation</a> section of the efficiency article. We
+cover some common patterns below. For operations we cannot yet handle
+in-graph (such as <code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code> or <code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code>), you
+currently need to convert the <code>AnvlArray</code> back to R, apply
+the operation there, and then convert the result back to an
 <code>AnvlArray</code> to resume the computation. We hope to lift the
-static-shape restriction in the long term and add functions like
-<code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code> and <code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code> to {anvl}’s eager API to
-make this more ergonomic.</p>
+static-shape restriction in the long term.</p>
 <div class="section level2">
 <h2 id="the-masking-pattern">The masking pattern<a class="anchor" aria-label="anchor" href="#the-masking-pattern"></a>
 </h2>
@@ -165,7 +165,7 @@ whole vector. Because adding <code>0</code> does nothing, the masked-out
 positions don’t contribute to the total:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sum_positive</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="va">x</span>, <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/nv_sum.html">nv_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="va">x</span>, <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">sum_positive</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
@@ -227,14 +227,14 @@ summing the boolean mask, and then divide separately:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mean_positive</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">mask</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">&gt;</span> <span class="fl">0</span></span>
-<span>  <span class="va">total</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">mask</span>, <span class="va">x</span>, <span class="fl">0</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">mask</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="va">total</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_sum.html">nv_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">mask</span>, <span class="va">x</span>, <span class="fl">0</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_sum.html">nv_sum</a></span><span class="op">(</span><span class="va">mask</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span>  <span class="va">total</span> <span class="op">/</span> <span class="va">n</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">mean_positive</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  11</span></span>
+<span><span class="co">#&gt;  2.7500</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
 <p>Note that the divisor is the matching count, not
 <code>length(x)</code>. This is the workaround for

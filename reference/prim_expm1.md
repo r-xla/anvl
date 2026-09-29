@@ -13,13 +13,14 @@ prim_expm1(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of data type floating-point.
+  One input. Can be any float data type. An R value materializes at its
+  [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the input. It is ambiguous if the
-input is ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the input's shape and data type.
 
 ## Implemented Rules
 
@@ -32,7 +33,9 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_exponential_minus_one()`](https://r-xla.github.io/stablehlo/reference/hlo_exponential_minus_one.html).
+[`hlo_exponential_minus_one()`](https://r-xla.github.io/stablehlo/reference/hlo_exponential_minus_one.html),
+specified under
+[exponential_minus_one](https://openxla.org/stablehlo/spec#exponential_minus_one).
 
 ## See also
 
@@ -41,6 +44,7 @@ Lowers to
 ## Examples
 
 ``` r
+# the input's data type carries through
 x <- nv_array(c(0, 0.001, 1))
 prim_expm1(x)
 #> AnvlArray
@@ -48,4 +52,10 @@ prim_expm1(x)
 #>  0.0010
 #>  1.7183
 #> [ CPUf32{3} ] 
+
+# an R value materializes at its default data type
+prim_expm1(0.001)
+#> AnvlArray
+#>  0.0010
+#> [ CPUf32{} ] 
 ```

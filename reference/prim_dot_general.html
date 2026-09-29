@@ -15,7 +15,7 @@ axes and batching."><meta property="og:image" content="https://r-xla.github.io/a
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,22 +29,23 @@ axes and batching."><meta property="og:image" content="https://r-xla.github.io/a
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-get-started" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Get started</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-get-started"><li><a class="dropdown-item" href="../articles/installation.html">Installation</a></li>
     <li><a class="dropdown-item" href="../articles/anvl.html">Get Started</a></li>
+    <li><a class="dropdown-item" href="../articles/next_steps.html">Next Steps</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-user-guide" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">User guide</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
+    <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
+    <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
-    <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
     <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
   </ul></li>
 <li class="nav-item dropdown">
@@ -73,7 +74,7 @@ axes and batching."><meta property="og:image" content="https://r-xla.github.io/a
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Primitive Dot General</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
       <div class="d-none name"><code>prim_dot_general.Rd</code></div>
     </div>
 
@@ -99,9 +100,12 @@ axes and batching.</p>
 
 <dl><dt id="arg-lhs-rhs">lhs, rhs<a class="anchor" aria-label="anchor" href="#arg-lhs-rhs"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Left and right operand.
-Operands are <a href="nv_promote_to_common.html">promoted to a common data type</a>.
-Scalars are <a href="nv_broadcast_scalars.html">broadcast</a> to the shape of the other operand.</p></dd>
+Two inputs of the same data type whose shapes are constrained by <code>contracting_axes</code> and <code>batching_axes</code> rather than having to match. Can be any data type. R
+values take the other operand's data type when it is in their
+<a href="dtype_categories.html">data type category</a>, and their
+<a href="default_dtypes.html">default data type</a> when neither operand has one. An R
+value outside the other operand's category is an error, as are two R
+values of different storage types.</p></dd>
 
 
 <dt id="arg-contracting-axes">contracting_axes<a class="anchor" aria-label="anchor" href="#arg-contracting-axes"></a></dt>
@@ -125,8 +129,9 @@ Only the StableHLO backend honors this; it is ignored by the quickr backend.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code><br>
-The output shape is the batch axes followed by the remaining
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+Has the data type the operands agreed on. The output shape is the batch
+axes followed by the remaining
 (non-contracted, non-batched) axes of <code>lhs</code>, then <code>rhs</code>.</p>
     </div>
     <div class="section level2">
@@ -141,7 +146,8 @@ The output shape is the batch axes followed by the remaining
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html" class="external-link">hlo_dot_general()</a></code>.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html" class="external-link">hlo_dot_general()</a></code>, specified under
+<a href="https://openxla.org/stablehlo/spec#dot_general" class="external-link">dot_general</a>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -150,7 +156,8 @@ The output shape is the batch axes followed by the remaining
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_dot_general</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>,</span></span>
 <span class="r-in"><span>  contracting_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">1L</span><span class="op">)</span>,</span></span>

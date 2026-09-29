@@ -1,25 +1,36 @@
-# Primitive Atan2
+# Primitive Arctangent 2
 
-Element-wise atan2 operation.
+Element-wise atan2 operation: the angle (in radians) between the
+positive x-axis and the point `(x, y)`.
+
+The operands are named `y` and `x`, in that order, after
+[`base::atan2()`](https://rdrr.io/r/base/Trig.html), rather than `lhs` /
+`rhs`.
 
 ## Usage
 
 ``` r
-prim_atan2(lhs, rhs)
+prim_atan2(y, x)
 ```
 
 ## Arguments
 
-- lhs, rhs:
+- y, x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish values of data type floating-point. Must have the same shape.
+  Ordinate and abscissa of the point, of the same shape. Can be any
+  float data type. `y` and `x` must have the same data type. An R value
+  among them assumes the data type of the others when it is in its [data
+  type
+  category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
+  and its [default data
+  type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
+  none of them has one.
 
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+Has the inputs' shape and data type.
 
 ## Implemented Rules
 
@@ -30,7 +41,8 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`hlo_atan2()`](https://r-xla.github.io/stablehlo/reference/hlo_atan2.html).
+[`hlo_atan2()`](https://r-xla.github.io/stablehlo/reference/hlo_atan2.html),
+specified under [atan2](https://openxla.org/stablehlo/spec#atan2).
 
 ## See also
 
@@ -39,12 +51,15 @@ Lowers to
 ## Examples
 
 ``` r
-y <- nv_array(c(1, 0, -1))
-x <- nv_array(c(0, 1, 0))
-prim_atan2(y, x)
+# two R values: both take an R double's default data type
+prim_atan2(1, 1)
 #> AnvlArray
-#>   1.5708
-#>   0.0000
-#>  -1.5708
-#> [ CPUf32{3} ] 
+#>  0.7854
+#> [ CPUf32{} ] 
+
+# the R value is built at the array's data type instead
+prim_atan2(1, nv_scalar(1, "f64"))
+#> AnvlArray
+#>  0.7854
+#> [ CPUf64{} ] 
 ```

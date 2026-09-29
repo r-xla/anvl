@@ -1,4 +1,4 @@
-# PJRT backend
+# PJRT Backend
 
 Constructs the PJRT backend, which stores array data in PJRT buffers
 (via
@@ -16,9 +16,8 @@ AnvlBackendPjrt()
 
 ## Value
 
-An
-[`AnvlBackend`](https://r-xla.github.io/anvl/reference/AnvlBackend.md)
-object with subclass `"AnvlBackendPjrt"`.
+([`AnvlBackend`](https://r-xla.github.io/anvl/reference/AnvlBackend.md))  
+With subclass `"AnvlBackendPjrt"`.
 
 ## Data representation
 
@@ -26,8 +25,8 @@ An [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
 with `backend = "pjrt"` wraps a
 [`pjrt::pjrt_buffer()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html)
 stored in the `$data` field. The buffer owns the memory holding the
-tensor values and may live on any device supported by PJRT (CPU, CUDA,
-Metal, ...). Calling
+array values and may live on any device supported by PJRT (CPU, CUDA,
+...). Calling
 [`as_array()`](https://r-xla.github.io/anvl/reference/as_array.md)
 transfers the buffer contents back to an R array; calling
 [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md) on
@@ -41,18 +40,28 @@ object (e.g. the platform `"cpu"` or `"cuda"`, optionally with an index
 such as `"cuda:1"`). When `device` is `NULL` in
 [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md) or
 the [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) wrapper,
-the device defaults to the `PJRT_PLATFORM` environment variable (falling
-back to `"cpu"`), or is inferred from the existing inputs of a jitted
-call. Operations require all inputs to live on the same device.
+the device defaults to
+[`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md),
+or is inferred from the existing inputs of a jitted call. Operations
+require all inputs to live on the same device.
 
-## PJRT JIT arguments
+## Supported data types
 
-- `donate` ([`character()`](https://rdrr.io/r/base/character.html),
-  default [`character()`](https://rdrr.io/r/base/character.html)): names
-  of arguments whose underlying buffers may be donated to (i.e.,
-  reused/consumed by) the compiled XLA executable. Donated buffers must
-  not be used again by the caller after the call; this can reduce memory
-  usage and copies for large inputs. Must not overlap with `static`.
+`bool`; the signed integers `i8`, `i16`, `i32` and `i64`; the unsigned
+integers `ui8`, `ui16`, `ui32` and `ui64`; and the floats `f32` and
+`f64`. An R double materializes at `f32` on this backend and an R
+integer at `i32` unless the defaults say otherwise (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
+
+## Floating-point behavior
+
+Subnormal floating-point values may be preserved when stored in an array
+and read back into R, yet treated as zero in calculations. On CPUs, XLA
+enables a mode that replaces subnormal inputs and results with zero. The
+exact behavior depends on the platform, backend, and operation.
+
+See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html)
+article for an explanation and examples.
 
 ## See also
 
