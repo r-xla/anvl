@@ -1757,15 +1757,19 @@ test_that("prim_sort takes a list of arrays, not an array", {
 
 describe("a reducer or update_fn that closes over a value", {
   x <- nv_array(c(1, 2, 3), dtype = "f64")
-  w <- nv_scalar(2, "f64")
+  w <- nv_scalar(5, "f64")
 
   it("inlines a scalar array as a literal", {
-    f <- function(x) prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reducer = function(a, b) a + b * w)
+    # the reducer must be associative and commutative: backends such as CUDA
+    # reduce as a tree and also apply the reducer to partial results
+    f <- function(x) {
+      prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reducer = function(a, b) nv_pmax(nv_pmax(a, b), w))
+    }
     graph <- trace_fn(f, list(x = x))
     reducer <- graph$statements[[length(graph$statements)]]$params$reducer
     expect_length(reducer$constants, 0L)
     expect_length(reducer$inputs, 2L)
-    expect_equal(as.numeric(jit(f)(x)), 12)
+    expect_equal(as.numeric(jit(f)(x)), 5)
   })
 
   it("refuses a traced value", {
