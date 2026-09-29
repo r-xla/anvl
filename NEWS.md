@@ -5,6 +5,8 @@
 * `PrimitiveCall` is now `GraphStatement`, and the `calls` field of `AnvlGraph`
   and `GraphDescriptor` is now `statements`.
 * `AnvlBox` is gone; `GraphBox` is the class of a traced value.
+* `trace_fn()` loses its `mode` argument: a trace inside another one is
+  recognized as such, and takes its inputs the same way as the outermost one.
 * `at2vt()` and `vt()` are no longer exported.
 * `.current_descriptor()` is now `current_descriptor()`.
 * The primitive classes are renamed: the definition that holds the rules is
@@ -297,6 +299,9 @@
   of it, even where the same value is also passed for one of its arguments,
   as in JAX: `gradient(\(x) sum(y * 2))(y)` is zero. It used to be
   differentiated as if it were the argument.
+* A sub-graph that returns an R argument of the jitted function untouched,
+  e.g. `jit(\(p, b) nv_if(p, \() b, \() b))(TRUE, 2)`, no longer fails to
+  compile with "GraphValue not found in environment".
 * A bare R integer start index of `prim_dynamic_slice()` /
   `prim_dynamic_update_slice()` takes the data type of the other start indices,
   so `prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)` no longer fails.

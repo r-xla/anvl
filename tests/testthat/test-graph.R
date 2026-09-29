@@ -240,22 +240,7 @@ test_that("can print GraphLiteral if it holds scalar array", {
   expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer())))
 })
 
-test_that("trace_fn(mode = 'toplevel') errors when called inside an existing descriptor", {
-  parent <- local_descriptor()
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "toplevel"),
-    "must not have a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'subgraph') errors without a parent descriptor", {
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "subgraph"),
-    "requires a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'toplevel') passes non-arrayish R values through as static args", {
+test_that("trace_fn() passes non-arrayish R values through as static args", {
   f <- function(x, flag) x
   graph <- trace_fn(f, list(x = nv_scalar(1), flag = TRUE))
   expect_equal(length(graph$inputs), 1L)
@@ -263,13 +248,13 @@ test_that("trace_fn(mode = 'toplevel') passes non-arrayish R values through as s
   expect_equal(graph$static_args_flat, list(TRUE))
 })
 
-test_that("trace_fn(mode = 'subgraph') gives arrays fresh inputs and passes R values through as static args", {
+test_that("trace_fn() inside another trace gives a box of it a fresh input", {
   parent <- local_descriptor()
-  x <- nv_array(c(2, 3), dtype = "f32")
-  graph <- trace_fn(function(x, n, flag) x, list(x = x, n = 1, flag = "a"), mode = "subgraph")
+  box <- maybe_box_arrayish(nv_array(c(2, 3), dtype = "f32"), parent)
+  graph <- trace_fn(function(x, n, flag) x, list(x = box, n = 1, flag = "a"))
   expect_length(graph$inputs, 1L)
+  expect_false(identical(graph$inputs[[1L]], box$gnode))
   expect_shape(graph$inputs[[1L]], 2L)
-  expect_equal(graph$is_static_flat, c(FALSE, TRUE, TRUE))
   expect_equal(graph$static_args_flat, list(1, "a"))
 })
 

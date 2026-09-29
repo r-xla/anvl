@@ -112,7 +112,7 @@ compile_quickr <- function(
   default_dtypes = NULL
 ) {
   desc <- local_descriptor(default_dtypes = default_dtypes, backend = "quickr")
-  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, mode = "toplevel")
+  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree)
   check_single_backend(graph, expected = "quickr")
   list(fun = graph_to_quickr_function(graph, unwrap = unwrap, flat = flat))
 }

@@ -979,7 +979,7 @@ prim_reduce <- new_primitive(
       nv_aval(op_dtype, integer()),
       nv_aval(op_dtype, integer())
     )
-    reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red, mode = "subgraph")
+    reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red)
     captures <- close_subgraphs(current_desc, list(reducer_graph))
 
     graph_desc_add(
@@ -2536,9 +2536,9 @@ prim_if <- new_primitive(
     current_desc <- current_descriptor(silent = TRUE)
 
     desc_true <- local_descriptor()
-    true_graph <- trace_fn(true, list(), desc = desc_true, mode = "subgraph")
+    true_graph <- trace_fn(true, list(), desc = desc_true)
     desc_false <- local_descriptor()
-    false_graph <- trace_fn(false, list(), desc = desc_false, mode = "subgraph")
+    false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
@@ -2624,9 +2624,9 @@ prim_while <- new_primitive(
     init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     desc_cond <- local_descriptor()
-    cond_graph <- trace_fn(cond, init, desc = desc_cond, mode = "subgraph")
+    cond_graph <- trace_fn(cond, init, desc = desc_cond)
     desc_body <- local_descriptor()
-    body_graph <- trace_fn(body, init, desc = desc_body, mode = "subgraph")
+    body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
       cli_abort("cond and body must have the same input structure")
@@ -2771,7 +2771,7 @@ prim_scan <- new_primitive(
     }
 
     desc_body <- local_descriptor()
-    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
+    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
     captures <- close_subgraphs(current_desc, list(body_graph))
@@ -3214,7 +3214,7 @@ prim_scatter <- new_primitive(
       AbstractArray(dtype = x_dtype, shape = Shape(integer()))
     )
 
-    update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update, mode = "subgraph")
+    update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update)
     captures <- close_subgraphs(current_desc, list(update_fn_graph))
 
     out <- graph_desc_add(

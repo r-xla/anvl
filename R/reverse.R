@@ -504,10 +504,7 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     if (is.null(bwd)) {
       cli_abort(c(
         "No reverse rule for primitive {.field {call$primitive$name}}.",
-        i = "Cannot compute gradient through this primitive.",
-        i = if (call$primitive$name == "while") {
-          "{.fn nv_scan} with a static number of {.arg steps} is differentiable."
-        }
+        i = "Cannot compute gradient through this primitive."
       ))
     }
 
@@ -618,7 +615,7 @@ gradient <- function(f, wrt = NULL) {
         i = "Wrap the result of {.fn gradient} in {.fn jit}, e.g. {.code jit(gradient(f))}."
       ))
     }
-    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, mode = "subgraph")
+    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
     res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
     unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
   }
@@ -645,7 +642,7 @@ value_and_gradient <- function(f, wrt = NULL) {
         i = "Wrap the result of {.fn value_and_gradient} in {.fn jit}, e.g. {.code jit(value_and_gradient(f))}."
       ))
     }
-    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, mode = "subgraph")
+    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
     res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
     list(
       value = unflatten(fwd_graph$out_tree, res$value),

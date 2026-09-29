@@ -155,8 +155,7 @@ compile_pjrt <- function(
     f,
     desc = desc,
     args_flat = args_flat,
-    in_tree = in_tree,
-    mode = "toplevel"
+    in_tree = in_tree
   )
 
   # Validate backends on the raw traced graph, before the optimization passes

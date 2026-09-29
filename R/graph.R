@@ -400,7 +400,7 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
     # An R value belongs to the graph it was written in, so one reaching
     # another graph has to materialize before it can be captured there.
     if (is_rdata_box(x) && !identical(x$desc, desc)) {
-      materialize_rdata(x, peek_dtype(x))
+      x <- materialize_rdata(x, peek_dtype(x))
     }
     if (identical(x$desc, desc)) {
       return(x)
@@ -416,62 +416,43 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
   cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
 }
 
-# Called only by trace_fn() to wire up each flat arg as an input of `desc`.
-# Behavior is fully determined by `mode`:
-# - "toplevel": jit's outermost trace. No parent descriptor exists. Arrayish
-#   args become fresh input gvals, bare R data an input whose data type the
-#   body decides; non-arrayish args pass through as static parameters.
-# - "subgraph": a closed trace inside another one -- the sub-graphs of a
-#   higher-order primitive (prim_if/prim_while/...), and the function
-#   gradient() differentiates. Each arrayish arg becomes a fresh input gval,
-#   bound only later to a box of the parent: by the call's operands, or by
-#   gradient() replaying the graph into the parent. An R value the parent
-#   has not given a data type yet stays open, so the body decides it, as it
-#   would under jit(); one of a trace further out materializes at its default,
-#   as any R value reaching another graph does (see `maybe_box_arrayish()`).
-#   A bare R value passes through as static: a primitive whose sub-graph
-#   takes its operands (prim_while's state, prim_scan's carry) materializes
-#   them itself, and gradient() does not know which of its args are static.
-maybe_box_input <- function(x, desc, mode) {
-  if (mode == "subgraph") {
-    if (is_anvl_array(x)) {
-      desc$devices <- c(desc$devices, placement_device(x))
-      return(register_input(desc, GraphValue(aval = to_abstract(x, pure = TRUE))))
-    }
-    if (is_graph_box(x)) {
-      if (is_rdata_box(x) && identical(x$desc, maybe_previous_descriptor())) {
-        return(register_rdata_input(desc, x$gnode$aval))
-      }
-      x <- materialize_rdata_box(x)
-      return(register_input(desc, GraphValue(aval = abstract_aval(x$gnode$aval))))
-    }
-    # prim_reduce() and prim_scatter() trace their scalar functions with avals.
-    if (is_abstract_array(x)) {
-      return(register_input(desc, GraphValue(aval = x)))
-    }
-    return(x)
-  }
-
-  # mode == "toplevel"
+# Called only by trace_fn() to wire up each flat arg as an input of `desc`,
+# the same way for jit's outermost trace and for a trace inside another one
+# (`parent`): the sub-graphs of a higher-order primitive (prim_if/prim_while/
+# ...), and the function gradient() differentiates.
+#
+# Each arrayish arg becomes a fresh input gval. In a trace inside another one it
+# is bound only later to a box of the parent: by the call's operands, or by
+# gradient() replaying the graph into the parent. An R value with no data type
+# yet -- bare R data jit was called with, which the dispatcher describes as an
+# `RData`, or an argument the parent has not given a data type -- becomes an
+# input whose data type the body decides, as finalize_rdata_inputs() settles.
+# An R value of a trace further out materializes at its default, as any R value
+# reaching another graph does (see `maybe_box_arrayish()`).
+#
+# Anything else, a bare R value included, passes through as a static arg: for
+# jit it is one of the args declared static (R data it was called with arrives
+# as an `RData`), a primitive whose sub-graph takes its operands (prim_while's
+# state, prim_scan's carry) materializes them itself, and gradient() does not
+# know which of its args are static.
+maybe_box_input <- function(x, desc, parent) {
   if (is_anvl_array(x)) {
     desc$devices <- c(desc$devices, placement_device(x))
-    gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
-    return(register_input(desc, gval))
+    return(register_input(desc, GraphValue(aval = to_abstract(x, pure = TRUE))))
   }
   if (is_rdata(x)) {
-    # Bare R data passed to a jitted function. It takes an input slot like any
-    # other argument -- the call has to supply the value -- but which dtype
-    # that input has is only known once the body has used it, so the slot is
-    # filled in by finalize_rdata_inputs().
     return(register_rdata_input(desc, x))
   }
   if (is_graph_box(x)) {
+    if (is_rdata_box(x) && identical(x$desc, parent)) {
+      return(register_rdata_input(desc, x$gnode$aval))
+    }
     x <- materialize_rdata_box(x)
-    return(register_input(desc, x$gnode))
+    return(register_input(desc, GraphValue(aval = abstract_aval(x$gnode$aval))))
   }
+  # e.g. prim_reduce() and prim_scatter() trace their scalar functions with avals.
   if (is_abstract_array(x)) {
-    gval <- GraphValue(aval = x)
-    return(register_input(desc, gval))
+    return(register_input(desc, GraphValue(aval = x)))
   }
   x
 }
@@ -693,15 +674,6 @@ name_failing_primitive <- function(e) {
 #'   `args_flat`/`in_tree` pair.
 #' @param desc (`NULL` | `GraphDescriptor`)\cr
 #'   Optional descriptor. When `NULL` (default), a new descriptor is created.
-#' @param mode (`NULL` | `character(1)`)\cr
-#'   How to handle the inputs.
-#'   Options are:
-#'   - `"toplevel"`: Used for [`jit()`]. Only allowed outside a trace.
-#'   - `"subgraph"`: Use for a closed trace inside another one: the subgraphs
-#'     of higher-order primitives like [`prim_while()`], and the function
-#'     [`gradient()`] differentiates.
-#'
-#'   `NULL` (default) means `"toplevel"` and is only allowed outside a trace.
 #' @param args_flat (`list`)\cr
 #'   Flattened arguments. Must be accompanied by `in_tree`.
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
@@ -720,15 +692,10 @@ trace_fn <- function(
   f,
   args = NULL,
   desc = NULL,
-  mode = NULL,
   args_flat = NULL,
   in_tree = NULL,
   optimize = FALSE
 ) {
-  if (is.null(mode) && !currently_tracing()) {
-    mode <- "toplevel"
-  }
-  mode <- assert_choice(mode, c("toplevel", "subgraph"))
   if (is.null(args)) {
     if (is.null(args_flat) || is.null(in_tree)) {
       cli_abort("args or args_flat and in_tree must be provided")
@@ -750,44 +717,28 @@ trace_fn <- function(
   }
 
   parent_desc <- maybe_previous_descriptor()
-  if (mode == "toplevel" && !is.null(parent_desc)) {
-    cli_abort('Internal error: trace_fn(mode = "toplevel") must not have a parent descriptor')
-  }
-  if (mode != "toplevel" && is.null(parent_desc)) {
-    cli_abort('Internal error: trace_fn(mode = "{mode}") requires a parent descriptor')
-  }
 
   # box arrays and add them as inputs to the current graph
-  inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
+  inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, parent = parent_desc)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  if (mode == "toplevel") {
-    globals[["INFER_PRIMITIVE"]] <- NULL
-    output <- tryCatch(
-      do.call(f_flat, inputs_flat),
-      error = function(e) {
-        e <- name_failing_primitive(e)
-        globals[["INFER_PRIMITIVE"]] <- NULL
-        rlang::cnd_signal(e)
-      }
-    )
-  } else {
-    # A higher-order primitive traces its sub-graphs here and then goes on to
-    # check them, so the primitive it named on the way in has to survive the
-    # sub-trace: every primitive *inside* the sub-graph names itself and clears
-    # the marker again on its way out. An error out of the sub-graph restores it
-    # too, but is named first, so it keeps the primitive that raised it.
-    prim <- globals[["INFER_PRIMITIVE"]]
-    output <- tryCatch(
-      do.call(f_flat, inputs_flat),
-      error = function(e) {
-        e <- name_failing_primitive(e)
-        globals[["INFER_PRIMITIVE"]] <- prim
-        rlang::cnd_signal(e)
-      }
-    )
-    globals[["INFER_PRIMITIVE"]] <- prim
-  }
+  # A higher-order primitive traces its sub-graphs here and then goes on to
+  # check them, so the primitive it named on the way in has to survive the
+  # sub-trace: every primitive *inside* the sub-graph names itself and clears
+  # the marker again on its way out. An error out of the sub-graph restores it
+  # too, but is named first, so it keeps the primitive that raised it. The
+  # outermost trace starts from no marker, whatever an earlier error left.
+  prim <- if (!is.null(parent_desc)) globals[["INFER_PRIMITIVE"]]
+  globals[["INFER_PRIMITIVE"]] <- prim
+  output <- tryCatch(
+    do.call(f_flat, inputs_flat),
+    error = function(e) {
+      e <- name_failing_primitive(e)
+      globals[["INFER_PRIMITIVE"]] <- prim
+      rlang::cnd_signal(e)
+    }
+  )
+  globals[["INFER_PRIMITIVE"]] <- prim
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant

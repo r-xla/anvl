@@ -298,6 +298,15 @@ describe("an R value at its use site", {
     expect_identical(as_array(g(3L, nv_scalar(2, dtype = "f64"))$i), 5)
   })
 
+  it("materializes at its default where a sub-graph returns it as it is", {
+    # Nothing in the branch meets the value, so it reaches the branch's outputs
+    # still open, and is captured there at the default of its category.
+    f <- jit(function(p, b) nv_if(p, function() b, function() b))
+    out <- f(nv_scalar(TRUE), 2)
+    expect_dtype(out, default_float())
+    expect_equal(as_array(out), 2)
+  })
+
   it("is built straight at a narrow or unsigned data type", {
     x <- nv_array(c(1L, 2L), dtype = "ui32")
     expect_equal(as.character(as_array(nv_add(x, 1L))), c("2", "3"))
