@@ -33,3 +33,4 @@ anvl.Rproj
 ^paper$
 ^assets$
 ^vignettes/articles$
+^TODOs\.md$

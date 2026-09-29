@@ -276,7 +276,9 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
     # Only an output that requires a gradient is seeded, so that no value
     # the reverse rules leave out gains a cotangent.
     if (!is_graph_literal(out) && isTRUE(required_env[[out]]) && !is.null(out_grads[[i]])) {
-      # An output repeated in the list accumulates, as any other reuse does.
+      # The same value can be returned more than once, e.g. a branch
+      # `\() list(s, s)`, or a branch returning one of its inputs in two
+      # places. Its cotangents accumulate, as for any other reuse.
       grad_env[[out]] <- if (is.null(grad_env[[out]])) out_grads[[i]] else prim_add(grad_env[[out]], out_grads[[i]])
     }
   }
