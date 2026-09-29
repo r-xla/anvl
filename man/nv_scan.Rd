@@ -60,12 +60,6 @@ for (t in order) \{
 list(carry = carry, out = out)
 }\if{html}{\out{</div>}}
 }
-\section{Gradients}{
-
-Unlike \code{\link[=nv_while]{nv_while()}}, a scan is differentiable with \code{\link[=gradient]{gradient()}}; see
-\code{\link[=prim_scan]{prim_scan()}}.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # cumulative sum along axis 1
@@ -75,10 +69,6 @@ nv_scan(
   xs = x,
   body = function(carry, x) list(carry = carry + x, out = carry + x)
 )$out
-
-# a scan is differentiable: the gradient of a cumulative product
-f <- function(x) nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
-jit(gradient(f))(nv_array(c(1, 2, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

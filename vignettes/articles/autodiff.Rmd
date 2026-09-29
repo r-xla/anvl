@@ -146,9 +146,8 @@ At these points, {anvl} follows the conventions of other frameworks such as PyTo
 
 ## Control Flow
 
-`gradient()` differentiates through the control-flow primitives `nv_if()` and `nv_scan()`.
-Values their functions close over are differentiated as well.
-For `nv_if()`, the gradient flows through the branch the predicate selects:
+`gradient()` differentiates through `nv_if()`, including the values its branches close over.
+The gradient flows through the branch the predicate selects:
 
 ```{r}
 f <- function(x, square) nv_if(square, \() sum(x^2), \() sum(x))
@@ -157,21 +156,7 @@ f_grad(nv_array(c(1, 2)), nv_scalar(TRUE))
 f_grad(nv_array(c(1, 2)), nv_scalar(FALSE))
 ```
 
-A loop with a fixed number of steps can be written with `nv_scan()`.
-Below, `x` takes three steps of gradient descent on $\sum_i x_i^2$, and we differentiate the loss it ends at with respect to the learning rate `lr`:
-
-```{r}
-loss_after_steps <- function(lr, x) {
-  step <- \(x, unused) list(carry = x - lr * 2 * x, out = NULL)
-  x_final <- nv_scan(x, body = step, steps = 3L)$carry
-  sum(x_final^2)
-}
-jit(gradient(loss_after_steps, wrt = "lr"))(nv_scalar(0.1), nv_array(c(1, 2)))
-```
-
 `nv_while()`, in contrast, cannot be differentiated.
-Its number of iterations is only known when the program runs, so there is no fixed size for the intermediate states that computing the gradient needs to keep.
-Where the number of iterations is known, use `nv_scan()` instead.
 
 ## Limitations
 

@@ -382,7 +382,7 @@ test_that("rule_reverse(forward = ...) emits multiple primitives and captures an
     register = FALSE
   )
 
-  my_exp[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+  my_exp[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
     x <- inputs[[1L]]
     y <- prim_exp(x)
     neg_y <- prim_negate(y)

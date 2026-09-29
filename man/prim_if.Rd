@@ -15,9 +15,7 @@ boolean data type, or an R logical.}
 Zero-argument functions for the true and false branches. Both must return
 outputs of the same structure, data types and shapes. As with
 \code{\link[=prim_ifelse]{prim_ifelse()}}, whose two values must already agree, nothing is promoted:
-branches that disagree are an error. They take no arguments and reach the
-values they use by closing over them; those values are recorded as
-operands of the call, so a gradient flows back through them.}
+branches that disagree are an error.}
 }
 \value{
 (\code{\link{arrayish}} | \code{list})\cr
@@ -32,13 +30,6 @@ predicate, mirroring R's \code{if} construct: it branches between two
 after that construct, where \code{\link[=prim_ifelse]{prim_ifelse()}} -- which selects
 element-wise between two \emph{arrays} -- is named after \code{\link[=ifelse]{ifelse()}}.
 }
-\section{Gradients}{
-
-The backward pass is itself a \code{\link[=prim_if]{prim_if()}} on the same predicate, so only the
-taken branch's gradient is computed. A value that only the other branch uses
-gets a zero.
-}
-
 \section{Implemented Rules}{
 
 \itemize{

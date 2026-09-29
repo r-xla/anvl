@@ -36,8 +36,7 @@ Executes a functional while loop.
 
 \code{\link[=gradient]{gradient()}} cannot differentiate a while loop: its trip count is only known
 at run time, so there is no static size for the per-iteration states the
-backward pass needs. \code{\link[=nv_scan]{nv_scan()}} with a static number of steps is
-differentiable.
+backward pass needs.
 }
 
 \examples{

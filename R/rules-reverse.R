@@ -598,120 +598,6 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
   )
 })
 
-# The forward is rerun with the carry each step starts from stacked as extra
-# outputs: that is the tape, `steps` copies of the carry. The backward pass is
-# a scan in the opposite direction over the tape, `xs` and the cotangents of the
-# stacked outputs, which pulls the carry's cotangent back through one step at a
-# time. Each step also yields the cotangent of its `xs` slice, stacked into the
-# gradient of `xs`, and one for every value the body captures, summed over the
-# steps. Linear in `steps` in time and in memory.
-#
-# Operands are the carry, then `xs`, then what the body captures.
-prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
-  body <- params$body
-  steps <- params$steps
-  reverse <- params$reverse
-  n_carry <- params$n_carry
-  n_xs <- params$n_xs
-  carry_idx <- seq_len(n_carry)
-  xs_idx <- n_carry + seq_len(n_xs)
-  # The operands and the body's inputs line up: carry, `xs`, captures.
-  cap_idx <- n_carry + n_xs + seq_len(params$n_captures)
-  caps <- inputs[cap_idx]
-  n_out <- length(body$outputs) - n_carry
-
-  taped <- prim_scan(
-    init = inputs[carry_idx],
-    xs = inputs[xs_idx],
-    body = function(carry, x) {
-      outs <- graph_apply(body, c(carry, x, caps))
-      list(carry = outs[carry_idx], out = c(outs[-carry_idx], carry))
-    },
-    steps = steps,
-    reverse = reverse
-  )
-  tape <- taped$out[n_out + carry_idx]
-
-  list(
-    outputs = c(taped$carry, taped$out[seq_len(n_out)]),
-    backward = function(inputs, outputs, grads, params, required) {
-      required <- unlist(required)
-      xs_needed <- xs_idx[required[xs_idx]]
-      cap_needed <- cap_idx[required[cap_idx]]
-      carry_needed <- which(scan_carry_requires(body, required, carry_idx))
-      n_xs_needed <- length(xs_needed)
-      n_cap <- length(cap_needed)
-      n_carry_needed <- length(carry_needed)
-      targets <- body$inputs[c(carry_needed, xs_needed, cap_needed)]
-
-      # A scan needs a carry; where only `xs` is differentiated there is none
-      # to thread, so a placeholder rides along.
-      placeholder <- if (!n_carry_needed && !n_cap) list(nv_scalar(FALSE))
-      pulled <- prim_scan(
-        init = list(
-          carry = grads[carry_needed],
-          caps = lapply(inputs[cap_needed], zeros_like),
-          placeholder = placeholder
-        ),
-        xs = list(tape = tape, xs = inputs[xs_idx], out = grads[n_carry + seq_len(n_out)]),
-        body = function(carry, x) {
-          out_grads <- vector("list", n_carry)
-          out_grads[carry_needed] <- carry$carry
-          ct <- graph_vjp(
-            body,
-            targets,
-            c(out_grads, x$out),
-            inputs = c(x$tape, x$xs, caps)
-          )
-          list(
-            carry = list(
-              carry = ct[seq_len(n_carry_needed)],
-              caps = Map(prim_add, carry$caps, ct[n_carry_needed + n_xs_needed + seq_len(n_cap)]),
-              placeholder = carry$placeholder
-            ),
-            out = ct[n_carry_needed + seq_len(n_xs_needed)]
-          )
-        },
-        steps = steps,
-        reverse = !reverse
-      )
-
-      grads_in <- vector("list", length(inputs))
-      grads_in[carry_needed] <- pulled$carry$carry
-      grads_in[xs_needed] <- pulled$out
-      grads_in[cap_needed] <- pulled$carry$caps
-      grads_in
-    }
-  )
-})
-
-# Which carry slots of a scan carry a gradient: a slot does if its `init`
-# requires one, or if the body makes it depend on something that does -- a
-# required `xs` or capture, or another such slot. The set only grows, so this
-# reaches its fixed point within `n_carry` rounds. A slot outside it, such as
-# an RNG state or a counter, is neither differentiated nor has to be.
-scan_carry_requires <- function(body, required, carry_idx) {
-  # The body's inputs line up with the call's operands.
-  seeds <- required
-  repeat {
-    seed <- hashtab()
-    for (k in seq_along(body$inputs)) {
-      seed[[body$inputs[[k]]]] <- seeds[[k]]
-    }
-    env <- propagate_requirements(body, seed)
-    out_req <- vapply(
-      body$outputs[carry_idx],
-      function(out) !is_graph_literal(out) && isTRUE(env[[out]]),
-      logical(1L)
-    )
-    grown <- seeds[carry_idx] | out_req
-    if (identical(grown, seeds[carry_idx])) {
-      return(grown)
-    }
-    seeds[carry_idx] <- grown
-  }
-}
-
 # Printing hands its argument back unchanged, so the cotangent passes through.
 prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   list(if (required[[1L]]) grads[[1L]])
@@ -919,7 +805,7 @@ prim_atan2[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
 # Implementation trick: instead of computing σ explicitly and gathering, sort
 # (π, grad) ascending — the second output is grad permuted by argsort(π) = σ,
 # which is exactly the input gradient.
-prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   axis <- params$axis
   decreasing <- params$decreasing
   stable <- params$stable
@@ -966,7 +852,7 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # the last axis.
 # The forward always runs with indices, even when the call asked for the values
 # only, so the backward has them without a second top_k.
-prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   x <- inputs[[1L]]
   out <- prim_top_k(x, k = params$k, indices = TRUE)
   indices <- out[[2L]]

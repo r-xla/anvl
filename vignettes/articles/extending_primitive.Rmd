@@ -238,11 +238,11 @@ Note that the reverse rule will only be called if at least one input gradient is
 
 For most primitives the backward-only form above is enough.
 If the gradient computation can be made significantly more efficient by running an alternative forward pass that exposes intermediate values for reuse, use the alternative-forward form: `rule_reverse(forward = ...)`.
-The forward hook receives `(inputs, params)`, emits whatever forward primitives it likes via the normal `prim_*` callables, and returns a list with the primal outputs and a `backward` closure.
+The forward hook receives `(inputs, params, required)` -- `required` says which inputs need a gradient --, emits whatever forward primitives it likes via the normal `prim_*` callables, and returns a list with the primal outputs and a `backward` closure.
 Intermediates flow from forward to backward via R's lexical scoping:
 
 ```r
-prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   x <- inputs[[1L]]
   y <- prim_some_op(x)        # forward emit 1
   z <- prim_other_op(x, y)    # forward emit 2; both `x` and `y` captured
