@@ -1,5 +1,5 @@
-# We interprete jitting directly as a transformation and not as a higher order primitive
-# because this seems simpler for now.
+# Jitting is interpreted directly as a transformation and not as a higher order
+# primitive because this is simpler.
 
 # S3 methods for stablehlo functions to handle AnvlArray
 
@@ -170,40 +170,27 @@ stablehlo <- function(
     rep(FALSE, length(inps))
   }
 
-  # Get output types for aliasing
-  out_types <- lapply(graph$outputs, function(out) {
-    at2vt(out$aval)
-  })
-
-  # Track which outputs have been aliased (0-based indices)
-  aliased_outputs <- integer()
+  out_types <- lapply(graph$outputs, \(out) at2vt(out$aval))
+  aliased <- rep(FALSE, length(out_types))
 
   for (i in seq_along(inps)) {
     node <- inps[[i]]
     vt <- at2vt(node$aval)
-    id <- stablehlo::ValueId()
+    value_id <- stablehlo::ValueId()
 
-    # Check if this input is donated and find a matching output
+    # A donated input is aliased with the first not yet aliased output of its type.
     alias <- NULL
     if (donate_flat[[i]]) {
-      # Find an output with matching type that hasn't been aliased yet
-      for (j in seq_along(out_types)) {
-        if ((j - 1L) %in% aliased_outputs) {
-          next
-        }
-        out_vt <- out_types[[j]]
-        if (vt == out_vt) {
-          alias <- j - 1L # 0-based index for stablehlo
-          aliased_outputs <- c(aliased_outputs, alias)
-          break
-        }
+      j <- match(TRUE, !aliased & vapply(out_types, \(out_vt) vt == out_vt, logical(1L)))
+      if (!is.na(j)) {
+        alias <- j - 1L # 0-based index for stablehlo
+        aliased[[j]] <- TRUE
       }
     }
 
-    fi <- stablehlo::FuncInput(id, vt, alias = alias)
+    fi <- stablehlo::FuncInput(value_id, vt, alias = alias)
     func$inputs <- stablehlo::FuncInputs(c(func$inputs, list(fi)))
-    fval <- stablehlo::FuncValue(id, vt, func)
-    env_add(env, node, fval)
+    env_add(env, node, stablehlo::FuncValue(value_id, vt, func))
   }
 
   # For each output that isn't already aliased to a user-donated input,
@@ -213,39 +200,32 @@ stablehlo <- function(
   # written into R-owned memory (gated on CPU because the trick only
   # gives us a host-visible RAWSXP on CPU). The phantom never appears in
   # the body — it exists purely as donated output storage.
-  phantom_specs <- list()
-  if (donate_unaliased_outputs && identical(current_platform(), "cpu")) {
-    for (j in seq_along(out_types)) {
-      if ((j - 1L) %in% aliased_outputs) {
-        next
-      }
-      out_vt <- out_types[[j]]
-      id <- stablehlo::ValueId()
-      fi <- stablehlo::FuncInput(id, out_vt, alias = j - 1L)
-      func$inputs <- stablehlo::FuncInputs(c(func$inputs, list(fi)))
-      aliased_outputs <- c(aliased_outputs, j - 1L)
-      out_aval <- graph$outputs[[j]]$aval
-      phantom_specs[[length(phantom_specs) + 1L]] <- list(
-        dtype = out_aval$dtype,
-        shape = shape(out_aval)
-      )
-    }
+  phantom_outputs <- if (donate_unaliased_outputs && identical(current_platform(), "cpu")) {
+    which(!aliased)
+  } else {
+    integer()
   }
+  for (j in phantom_outputs) {
+    fi <- stablehlo::FuncInput(stablehlo::ValueId(), out_types[[j]], alias = j - 1L)
+    func$inputs <- stablehlo::FuncInputs(c(func$inputs, list(fi)))
+  }
+  phantom_specs <- lapply(phantom_outputs, function(j) {
+    out_aval <- graph$outputs[[j]]$aval
+    list(dtype = out_aval$dtype, shape = shape(out_aval))
+  })
 
+  # A closure reads the constants from the enclosing lowering; `env_get()`
+  # errors for one that is missing.
   if (!constants_as_inputs) {
     for (const in graph$constants) {
-      if (is.null(env_get(env, const))) {
-        cli_abort("Internal error: constant not found in environment")
-      }
+      env_get(env, const)
     }
   }
 
   outputs <- lower_graph_calls(graph, env, func)
   func <- do.call(hlo_return, outputs)
 
-  constants <- graph$constants
-
-  list(func, constants, phantom_specs)
+  list(func, graph$constants, phantom_specs)
 }
 
 # Lower `graph`'s calls into `func`, reading its inputs and constants from `env`
@@ -263,18 +243,21 @@ lower_graph_calls <- function(graph, env, func) {
     }
   }
 
+  literal_to_fval <- function(literal) {
+    hlo_tensor(
+      value = unwrap_if_array(literal$aval$data),
+      dtype = literal$aval$dtype,
+      shape = shape(literal$aval),
+      func = func
+    )
+  }
+
   do_call <- function(call) {
     prim <- call$primitive
     params <- call$params
     inputs <- lapply(call$inputs, \(x) {
       if (is_graph_literal(x)) {
-        # need to add a literal to the program
-        fval <- hlo_tensor(
-          value = unwrap_if_array(x$aval$data),
-          dtype = x$aval$dtype,
-          shape = shape(x$aval),
-          func = func
-        )
+        fval <- literal_to_fval(x)
         env_add(env, x, fval)
         fval
       } else {
@@ -308,12 +291,8 @@ lower_graph_calls <- function(graph, env, func) {
   }
 
   lapply(graph$outputs, \(x) {
-    if (is_graph_literal(x)) {
-      # this only happens when a literal is directly returned
-      hlo_tensor(value = x$aval$data, dtype = x$aval$dtype, shape = shape(x$aval), func = func)
-    } else {
-      gnode_to_fval(x)
-    }
+    # an output is a literal only when the function returns one directly
+    if (is_graph_literal(x)) literal_to_fval(x) else gnode_to_fval(x)
   })
 }
 

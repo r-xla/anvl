@@ -50,15 +50,10 @@ subset_reversed_axes <- function(subsets) {
   which(reversed[surviving])
 }
 
+# The shape a subset selects: the sizes of the axes that no scalar index drops.
 subset_spec_to_shape <- function(specs) {
-  shp <- integer()
-  for (spec in specs) {
-    if (is_subset_index(spec)) {
-      next
-    }
-    shp <- c(shp, spec$size)
-  }
-  return(shp)
+  kept <- Filter(Negate(is_subset_index), specs)
+  unlist(lapply(kept, function(spec) spec$size)) %||% integer()
 }
 
 
@@ -66,7 +61,7 @@ subset_start_positions <- function(subsets) {
   subset_start_position <- function(s) {
     if (is_subset_index(s)) {
       s$index
-    } else if (inherits(s, "SubsetIndices")) {
+    } else if (is_subset_indices(s)) {
       s$indices
     } else if (is_subset_full(s)) {
       1L
@@ -91,8 +86,7 @@ dynamic_start_indices <- function(starts) {
   multi_index_axes <- which(sizes != 1L)
 
   if (length(multi_index_axes) == 0L) {
-    start <- do.call(nv_concatenate, c(starts, list(axis = 1L)))
-    return(start)
+    return(do.call(nv_concatenate, c(starts, list(axis = 1L))))
   }
 
   # Each "row" (last axis) is an index tuple [d1, d2, ..., d_rank].
@@ -105,15 +99,14 @@ dynamic_start_indices <- function(starts) {
   slices <- vector("list", rank)
   multi_index_i <- 1L
   for (d in seq_len(rank)) {
-    if (identical(shape(starts[[d]]), 1L)) {
+    if (sizes[[d]] == 1L) {
       slices[[d]] <- nv_broadcast_to(starts[[d]], c(multi_index_sizes, 1L))
     } else {
       slices[[d]] <- prim_broadcast_in_axes(starts[[d]], c(multi_index_sizes, 1L), multi_index_i)
       multi_index_i <- multi_index_i + 1L
     }
   }
-  out <- do.call(nv_concatenate, c(slices, list(axis = n_gather + 1L)))
-  out
+  do.call(nv_concatenate, c(slices, list(axis = n_gather + 1L)))
 }
 
 static_start_indices <- function(starts, like = NULL) {
@@ -152,11 +145,7 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
     # Convert R integers to 1D arrays, reshape 0D arrays to 1D
     starts <- lapply(starts, function(s) {
       if (is.numeric(s)) {
-        if (is.null(like)) {
-          nv_array(s, dtype = "i32")
-        } else {
-          nv_array_like(like, s, dtype = "i32", shape = length(s))
-        }
+        new_index_array(s, length(s), like = like)
       } else if (naxes(s) == 0L) {
         nv_reshape(s, 1L)
       } else {
@@ -177,16 +166,18 @@ new_index_array <- function(data, shape, like = NULL) {
   nv_array_like(like, data, dtype = "i32", shape = shape)
 }
 
-# the purpose is to check whether we have x[mask] or x[mask] <- val, where shape(mask) is shape(x)
-# We have to be careful with argument evaluation, because if arg is x[f(a)], we don't want to evaluate
-# f(a) twice, because this will append computation twice into the graph during tracing.
-# Otherwise the logic is simple: return mask = NULL if it's NOT a flat mask
+# Detect a whole-array mask, `x[mask]` or `x[mask] <- value` with
+# `shape(mask) == shape(x)`. Returns the mask as an R logical array, or
+# `mask = NULL` when the subscripts are not one, together with the quosures to
+# hand on to `parse_subset_specs()`.
+#
+# The check itself is simple (one bool subscript with the shape of `x`), but it
+# runs before `parse_subset_specs()` on unevaluated quosures: a missing
+# subscript or a range `a:b` must not be evaluated here, and a subscript that
+# is evaluated is spliced back so it is not evaluated (or read from the device)
+# a second time -- evaluating `x[f(a)]` twice would record `f(a)` twice in the
+# graph during tracing.
 resolve_flat_mask <- function(quos, x_shape) {
-  # The check itself is simple (one bool subscript with the shape of `x`), but it
-  # runs before `parse_subset_specs()` on unevaluated quosures: a missing
-  # subscript or a range `a:b` must not be evaluated here, and a subscript that
-  # is evaluated is spliced back so it is not evaluated (or read from the device)
-  # a second time.
   if (length(quos) != 1L || length(x_shape) < 2L) {
     return(list(mask = NULL, quos = quos))
   }
@@ -198,7 +189,6 @@ resolve_flat_mask <- function(quos, x_shape) {
   }
 
   e <- rlang::eval_tidy(quo)
-  # So we don't evaluate twice, which would append computation twice to the graph during tracing
   quos[[1L]] <- rlang::new_quosure(e)
 
   # an index subscript rather than a mask
@@ -286,65 +276,19 @@ flat_mask_to_scatter <- function(mask, like = NULL) {
 #'   - index_vector_axis: integer
 #'   - indices_are_sorted: logical
 #'   - unique_indices: logical
-#'   - multi_index_subset: logical
 #' @noRd
 subset_specs_to_gather <- function(subsets, like = NULL) {
-  rank <- length(subsets)
-
-  # Identify gather axes (SubsetIndices with multiple elements)
-  multi_index_axes <- which(vapply(
-    subsets,
-    function(s) {
-      is_subset_indices(s) && s$size != 1L
-    },
-    logical(1L)
-  ))
-
-  multi_index_subset <- length(multi_index_axes) > 0L
-
-  # slice_sizes: 1 for multi_index_axes, the size for others
-  slice_sizes <- vapply(
-    seq_len(rank),
-    function(i) {
-      if (i %in% multi_index_axes) 1L else subsets[[i]]$size
-    },
-    integer(1L)
-  )
-
-  collapsed_slice_axes <- sort(c(
-    multi_index_axes,
-    which(vapply(
-      seq_len(rank),
-      function(i) {
-        !(i %in% multi_index_axes) && is_subset_index(subsets[[i]])
-      },
-      logical(1L)
-    ))
-  ))
-
-  start_indices <- subset_specs_start_indices(subsets, like = like)
-
-  # offset_axes: positions in the output for non-collapsed axes of `x`.
-  # The output interleaves batch (gather) axes and offset (slice) axes
-  # in the order of the original axes of `x`.
-  subset_index_axes <- which(vapply(subsets, is_subset_index, logical(1L)))
-  surviving_axes <- setdiff(seq_len(rank), subset_index_axes)
-  multi_among_surviving <- which(surviving_axes %in% multi_index_axes)
-  offset_axes <- setdiff(seq_along(surviving_axes), multi_among_surviving)
-
-  index_vector_axis <- length(multi_index_axes) + 1L
-
+  layout <- subset_specs_layout(subsets)
   list(
-    start_indices = start_indices,
-    slice_sizes = slice_sizes,
-    offset_axes = offset_axes,
-    collapsed_slice_axes = collapsed_slice_axes,
-    start_index_map = seq_len(rank),
-    index_vector_axis = index_vector_axis,
-    indices_are_sorted = !multi_index_subset,
+    start_indices = subset_specs_start_indices(subsets, like = like),
+    slice_sizes = layout$slice_sizes,
+    offset_axes = layout$window_axes,
+    collapsed_slice_axes = layout$addressed_axes,
+    start_index_map = seq_along(subsets),
+    index_vector_axis = layout$index_vector_axis,
+    indices_are_sorted = !layout$multi_index_subset,
     # TODO: Could improve this
-    unique_indices = !multi_index_subset,
-    multi_index_subset = multi_index_subset
+    unique_indices = !layout$multi_index_subset
   )
 }
 
@@ -363,66 +307,48 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #'   - update_shape: integer vector (expected shape of the update array)
 #' @noRd
 subset_specs_to_scatter <- function(subsets, like = NULL) {
-  rank <- length(subsets)
+  layout <- subset_specs_layout(subsets)
+  list(
+    scatter_indices = subset_specs_start_indices(subsets, like = like),
+    update_window_axes = layout$window_axes,
+    inserted_window_axes = layout$addressed_axes,
+    scatter_axes_to_x_axes = seq_along(subsets),
+    index_vector_axis = layout$index_vector_axis,
+    # TODO: Could improve this
+    indices_are_sorted = !layout$multi_index_subset,
+    unique_indices = !layout$multi_index_subset,
+    update_shape = subset_spec_to_shape(subsets)
+  )
+}
 
+# The axis layout a gather and a scatter over the same subset share:
+# - `multi_index_subset`: whether any axis is addressed by several indices.
+#   The index arrays of those multi-index axes span the batch axes of the
+#   start indices (their cartesian product).
+# - `slice_sizes`: `1` along the multi-index axes (each index addresses one element) and
+#   the selected size along every other one.
+# - `addressed_axes`: the axes of `x` that do not appear in a slice, the
+#   multi-index axes and those a scalar index drops (a gather's
+#   `collapsed_slice_axes`, a scatter's `inserted_window_axes`).
+# - `window_axes`: the output positions of the other axes. The output
+#   interleaves the batch axes and these in the order of the axes of `x`.
+# - `index_vector_axis`: the axis of the start indices that holds an index
+#   tuple, which follows the batch axes.
+subset_specs_layout <- function(subsets) {
   multi_index_axes <- which(vapply(
     subsets,
-    function(s) {
-      is_subset_indices(s) && s$size != 1L
-    },
+    function(s) is_subset_indices(s) && s$size != 1L,
     logical(1L)
   ))
-
-  multi_index_subset <- length(multi_index_axes) > 0L
-
-  # slice_sizes: 1 for gather axes (individually addressed), normal for others
-  slice_sizes <- vapply(
-    seq_len(rank),
-    function(i) {
-      if (i %in% multi_index_axes) 1L else subsets[[i]]$size
-    },
-    integer(1L)
-  )
-
-  scatter_indices <- subset_specs_start_indices(subsets, like = like)
-
-  # SubsetIndex axes are individually addressed (dropped from update),
-  # just like collapsed_slice_axes in the gather path.
   index_axes <- which(vapply(subsets, is_subset_index, logical(1L)))
-  inserted_window_axes <- sort(c(multi_index_axes, index_axes))
-  surviving_axes <- setdiff(seq_len(rank), index_axes)
-
-  if (multi_index_subset) {
-    # scatter_indices shape: [gather_shape..., rank]
-    n_gather <- length(multi_index_axes)
-    multi_among_surviving <- which(surviving_axes %in% multi_index_axes)
-    update_window_axes <- setdiff(seq_along(surviving_axes), multi_among_surviving)
-    update_shape <- vapply(
-      surviving_axes,
-      function(i) {
-        if (i %in% multi_index_axes) subsets[[i]]$size else slice_sizes[i]
-      },
-      integer(1L)
-    )
-    index_vector_axis <- n_gather + 1L
-  } else {
-    # scatter_indices shape: [rank] (no batch axes)
-    update_window_axes <- seq_along(surviving_axes)
-    update_shape <- slice_sizes[surviving_axes]
-    index_vector_axis <- 1L
-  }
-
+  surviving_axes <- setdiff(seq_along(subsets), index_axes)
+  sizes <- vapply(subsets, function(s) s$size, integer(1L))
   list(
-    scatter_indices = scatter_indices,
-    update_window_axes = update_window_axes,
-    inserted_window_axes = inserted_window_axes,
-    scatter_axes_to_x_axes = seq_len(rank),
-    index_vector_axis = index_vector_axis,
-    # TODO: Could improve this
-    indices_are_sorted = !multi_index_subset,
-    unique_indices = !multi_index_subset,
-    update_shape = update_shape,
-    multi_index_subset = multi_index_subset
+    multi_index_subset = length(multi_index_axes) > 0L,
+    slice_sizes = replace(sizes, multi_index_axes, 1L),
+    addressed_axes = sort(c(multi_index_axes, index_axes)),
+    window_axes = setdiff(seq_along(surviving_axes), which(surviving_axes %in% multi_index_axes)),
+    index_vector_axis = length(multi_index_axes) + 1L
   )
 }
 
@@ -542,7 +468,7 @@ known_mask_array <- function(e) {
 #' @param axis_size Size of the axis being indexed
 #' @param axis Axis the subset applies to, used to name it in errors
 #' @return (`SubsetSpec`)\cr
-#'   One of `SubsetFull`, `SubsetRange` or `SubsetIndices`.
+#'   One of `SubsetFull`, `SubsetRange`, `SubsetIndex` or `SubsetIndices`.
 #' @noRd
 parse_subset_spec <- function(quo, axis_size, axis) {
   in_bounds <- "Axis {axis} has size {axis_size}, so indices must be between 1 and {axis_size}."
@@ -660,9 +586,8 @@ parse_subset_spec <- function(quo, axis_size, axis) {
     return(SubsetIndices(indices))
   }
 
-  # A dynamic range is not supported. This used to build a SubsetRange from
-  # `e$end`, which an IotaArray does not have, so the call failed further down
-  # with a length-0 slice size instead of saying what was wrong.
+  # A dynamic range is not supported; say so here rather than letting it fail
+  # further down.
   if (inherits(e, "IotaArray")) {
     cli_abort(c(
       "A dynamic range is not supported as a subset index.",

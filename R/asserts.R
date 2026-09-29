@@ -143,14 +143,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
 # and cannot serve `bf16` or `f16` even though those are float data types.
 # Returns the converted DataType.
 assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
-  dt <- as_dtype(x)
-  if (!is_dtype_float(dt)) {
-    cli_abort(c(
-      "{.arg {arg}} must be a float data type.",
-      "x" = "Got {.val {as.character(dt)}}.",
-      "i" = hint
-    ))
-  }
+  dt <- assert_float_dtype(x, arg = arg, hint = hint)
   if (!dtype_width(dt) %in% c(32L, 64L)) {
     cli_abort(c(
       "{.arg {arg}} must be a 32- or 64-bit float data type.",
@@ -300,8 +293,6 @@ assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
 # category. Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
-  # The float category, as `?dtype_categories` defines it, so this and `is_dtype_float()`
-  # agree on what counts as a float.
   if (!is_dtype_float(dt)) {
     cli_abort(c(
       "{.arg {arg}} must be a float data type.",
@@ -353,10 +344,11 @@ assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
       "x" = "Got shape {shape_repr(s)}."
     ))
   }
-  if (!is_dtype_float(peek_dtype(x))) {
+  dt <- peek_dtype(x)
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
       "{.arg {arg}} must have a float data type.",
-      "x" = "Got {.val {as.character(peek_dtype(x))}}."
+      "x" = "Got {.val {as.character(dt)}}."
     ))
   }
   invisible(NULL)

@@ -344,10 +344,9 @@ is_open_rdata_input <- function(gval) {
   is_rdata(gval$aval)
 }
 
-# modifies the descriptor in-place
-# and finalizes the rdata inputs by:
-# 1. Resolving the data type the input gets
-# 2. Appending pre_statements with the conversions.
+# Finalize a top-level trace's open R inputs, modifying `desc` in place: each
+# input takes the single data type it is uploaded at, and every other data type
+# the trace built it at is defined by a convert appended to the pre-statements.
 finalize_rdata_inputs <- function(desc) {
   inputs <- desc$inputs
   is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
@@ -367,14 +366,8 @@ finalize_rdata_inputs <- function(desc) {
     inputs[[i]] <- main$gnode
     r_types[[i]] <- aval$r_type
     for (other in setdiff(requested, resolved)) {
-      # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
-      # always results in the same value
-      pre_statements[[length(pre_statements) + 1L]] <- GraphStatement(
-        primitive = prim_convert,
-        inputs = list(main$gnode),
-        params = list(dtype = as_dtype(other)),
-        outputs = list(mat[[other]]$gnode)
-      )
+      convert <- rdata_convert_statement(main$gnode, other, mat[[other]]$gnode)
+      pre_statements[[length(pre_statements) + 1L]] <- convert
     }
   }
   desc$inputs <- inputs
@@ -383,7 +376,7 @@ finalize_rdata_inputs <- function(desc) {
   invisible(NULL)
 }
 
-# The dtypes a finished trace built `node`'s R value at directly. Only these
+# The dtypes a finished trace built an input's R value at directly. Only these
 # can be uploaded (or serve as a graph input); the memo also holds the results
 # of converting out of the value's category, which the program computes from
 # one of these.
@@ -394,8 +387,20 @@ rdata_requested_dtypes <- function(aval, mat) {
   )
 }
 
-# Finalize Rdata inputs of a sub-trace.
-# E.g. used with gradent()
+# A `prim_convert` statement defining `output` from `input` at `dtype`. The
+# upload dtype is resolved so that it holds every requested one, which is what
+# makes this convert give the value `output` would have been built at.
+rdata_convert_statement <- function(input, dtype, output) {
+  GraphStatement(
+    primitive = prim_convert,
+    inputs = list(input),
+    params = list(dtype = as_dtype(dtype)),
+    outputs = list(output)
+  )
+}
+
+# Finalize the open R inputs of an inline sub-trace, e.g. the one gradient()
+# traces inside a jitted function.
 finalize_inline_rdata_inputs <- function(desc) {
   inputs <- desc$inputs
   is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
@@ -404,14 +409,7 @@ finalize_inline_rdata_inputs <- function(desc) {
   }
   pre_statements <- list()
   add_convert <- function(input, dtype, output) {
-    # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
-    # always results in the same value
-    pre_statements[[length(pre_statements) + 1L]] <<- GraphStatement(
-      primitive = prim_convert,
-      inputs = list(input),
-      params = list(dtype = as_dtype(dtype)),
-      outputs = list(output)
-    )
+    pre_statements[[length(pre_statements) + 1L]] <<- rdata_convert_statement(input, dtype, output)
   }
   for (i in which(is_open)) {
     gval <- inputs[[i]]
@@ -514,15 +512,15 @@ resolve_upload_dtype <- function(aval, requested, defaults = current_default_dty
     return(as.character(default_dtype_r(aval$r_type, defaults)))
   }
   dtypes <- lapply(requested, as_dtype)
-  holds_all <- vapply(dtypes, function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d)), logical(1L))
+  holds_every_request <- function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d))
+  holds_all <- vapply(dtypes, holds_every_request, logical(1L))
   if (!any(holds_all)) {
     # None of them holds the others, so the upload has to widen -- but only as
     # far as it takes. The natural dtype would always do (`f64` holds every
     # float), and it is what the value would be built at on its own; taking it
     # here would put an `f64` input into a program that has no other `f64` in
     # it, purely because one argument was asked for at two narrow floats.
-    holds <- function(cand) all(vapply(dtypes, dtype_holds, logical(1L), dtype = as_dtype(cand)))
-    narrowest <- Find(holds, rdata_build_candidates(aval$r_type))
+    narrowest <- Find(function(cand) holds_every_request(as_dtype(cand)), rdata_build_candidates(aval$r_type))
     return(narrowest %||% as.character(rdata_natural_dtype(aval$r_type)))
   }
   # Several candidates hold them all only when they are equivalent; ordering by
@@ -537,7 +535,7 @@ resolve_upload_dtype <- function(aval, requested, defaults = current_default_dty
 # of the R value before handing it over.
 graph_input_dtypes <- function(graph) {
   r_types <- graph$rdata_types
-  if (is.null(r_types) || !any(!is.na(r_types))) {
+  if (is.null(r_types) || all(is.na(r_types))) {
     return(NULL)
   }
   ifelse(

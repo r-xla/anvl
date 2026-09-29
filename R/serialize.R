@@ -120,8 +120,7 @@ nv_unserialize <- function(con, device = NULL) {
 
   # The arrays are built on the active backend.
   backend <- active_backend()
-  result_wrapped <- lapply(names(result), function(name) {
-    buf <- result[[name]]
+  lapply(result, function(buf) {
     if (backend == "pjrt") {
       nv_array(buf)
     } else {
@@ -132,6 +131,4 @@ nv_unserialize <- function(con, device = NULL) {
       )
     }
   })
-  names(result_wrapped) <- names(result)
-  result_wrapped
 }

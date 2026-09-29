@@ -73,23 +73,10 @@ nv_unif_rand <- function(
 nv_runif <- jit(
   function(shape, state, min = 0, max = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
-
-    rule <- if (is.null(dtype)) {
-      promotion_common(fallback = default_float())
-    } else {
-      promotion_dtype(assert_rng_float_dtype(dtype))
-    }
-    args <- as_anvl_arrays(min = min, max = max, .promote = rule)
+    args <- promote_sample_params(shape, dtype, min = min, max = max)
     min <- args$min
     max <- args$max
-    dtype <- assert_rng_float_dtype(
-      dtype(min),
-      arg = "min/max",
-      hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
-    )
-    # a non-scalar `min`/`max` must have the sample's shape
-    assert_sample_param_shape(min, shape)
-    assert_sample_param_shape(max, shape)
+    dtype <- dtype(min)
 
     # generate samples in [0, 1)
     Unif <- nv_unif_rand(state = state, shape = shape, dtype = dtype)
@@ -122,6 +109,28 @@ nv_runif <- jit(
   },
   static = c(1L, 5L)
 )
+
+# Bring the two parameters of a sampler (`min`/`max`, `mean`/`sd`), passed
+# named in `...`, to the float data type the sample is drawn at: `dtype`, or
+# their common data type when it is `NULL`. Each must be a scalar or have the
+# sample's `shape`. Returns the promoted parameters as a named list.
+promote_sample_params <- function(shape, dtype, ...) {
+  rule <- if (is.null(dtype)) {
+    promotion_common(fallback = default_float())
+  } else {
+    promotion_dtype(assert_rng_float_dtype(dtype, arg = "dtype"))
+  }
+  args <- as_anvl_arrays(..., .promote = rule)
+  assert_rng_float_dtype(
+    dtype(args[[1L]]),
+    arg = paste(names(args), collapse = "/"),
+    hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
+  )
+  for (name in names(args)) {
+    assert_sample_param_shape(args[[name]], shape, arg = name)
+  }
+  args
+}
 
 # Error unless the sampler parameter `x` is a scalar or has the sample's shape.
 assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
@@ -163,47 +172,31 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
 nv_rnorm <- jit(
   function(shape, state, mean = 0, sd = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
-
-    rule <- if (is.null(dtype)) {
-      promotion_common(fallback = default_float())
-    } else {
-      promotion_dtype(assert_rng_float_dtype(dtype))
-    }
-    args <- as_anvl_arrays(mean = mean, sd = sd, .promote = rule)
+    args <- promote_sample_params(shape, dtype, mean = mean, sd = sd)
     mean <- args$mean
     sd <- args$sd
-    dtype <- assert_rng_float_dtype(
-      dtype(mean),
-      arg = "mean/sd",
-      hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
-    )
-    # a non-scalar `mean`/`sd` must have the sample's shape
-    assert_sample_param_shape(mean, shape)
-    assert_sample_param_shape(sd, shape)
+    dtype <- dtype(mean)
 
     # n: amount of rvs needed
     n <- prod(shape)
 
     # Box-Muller Method:
-    # from two random uniform variables u1 and u2 we can produce to normals z1, z2
+    # from two random uniform variables u1 and u2 we can produce two normals z1, z2
     # z1 = sqrt(-2 * log(u1)) * cos(2 * pi * u2)
     # z2 = sqrt(-2 * log(u1)) * sin(2 * pi * u2)
     # Box-Muller works via polar representation of coordinates.
-    # We scale this approach and genereate ceil(n/2) uniform rvs twice (U, Theta)
+    # We scale this approach and generate ceil(n/2) uniform rvs twice (U, Theta)
+    n_half <- as.integer(ceiling(n / 2L))
 
     # generate the first ceil(n/2) random uniform variables
-    U <- nv_unif_rand(
-      state = state,
-      dtype = dtype,
-      shape = as.integer(ceiling(n / 2L))
-    )
+    U <- nv_unif_rand(state = state, dtype = dtype, shape = n_half)
 
     # compute the radius R = sqrt(-2 * log(u1))
     R <- nv_mul(nv_log(U$values), -2L)
     sqrt_R <- nv_sqrt(R)
 
     # generate second batch of ceil(n/2) random uniform variables
-    Theta <- nv_unif_rand(state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2L)))
+    Theta <- nv_unif_rand(state = U$state, dtype = dtype, shape = n_half)
 
     # compute cos(2 * pi * u2) / sin(2 * pi * u2)
     Theta$values <- nv_mul(Theta$values, 2 * pi)
@@ -264,8 +257,7 @@ nv_rnorm <- jit(
 #' @export
 nv_rbinom <- jit(
   function(shape, state, size = 1L, prob = 0.5, dtype = NULL) {
-    # The sample counts successes, which `bool` cannot hold: it used to come back
-    # as `bool` for `size = 1` and silently as an integer for anything above.
+    # The sample counts successes, which `bool` cannot hold.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
       arg = "dtype",
@@ -279,8 +271,8 @@ nv_rbinom <- jit(
     n_trials <- n_samples * size
 
     # Generate uniform samples in [0, 1) and compare to prob
-    # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
-    # so we don't benefit from using runif w.r.t. unbiasedness
+    # `nv_runif()` would sample (0, 1), but only by moving a 0 to the smallest
+    # step, so it is no less biased than [0, 1) here.
     res <- nv_unif_rand(state, shape = n_trials, dtype = "f64")
     U <- res$values
 
@@ -290,7 +282,7 @@ nv_rbinom <- jit(
     result <- if (size == 1L) {
       nv_reshape(successes, shape = shape)
     } else {
-      successes <- nv_reshape(nv_convert(successes, dtype), shape = c(size, shape))
+      successes <- nv_reshape(successes, shape = c(size, shape))
       nv_sum(successes, axes = 1L, drop = TRUE)
     }
 
@@ -326,7 +318,7 @@ nv_rbinom <- jit(
 #' @export
 nv_sample_int <- jit(
   function(shape, state, n, dtype = NULL) {
-    # An index is a count too: at `bool` every draw collapsed to `TRUE`.
+    # An index is a count too: at `bool` every draw would collapse to `TRUE`.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
       arg = "dtype",

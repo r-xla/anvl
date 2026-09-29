@@ -159,14 +159,11 @@ nv_array <- function(
         i = "use {.fn nv_reshape} instead."
       ))
     }
-    if (!is.null(dtype)) {
-      if (dtype(data) != as_dtype(dtype)) {
-        cli_abort("Cannot change dtype of existing AnvlArray from {.val {dtype(data)}} to {.val {dtype}}")
-      }
+    if (!is.null(dtype) && dtype(data) != as_dtype(dtype)) {
+      cli_abort("Cannot change dtype of existing AnvlArray from {.val {dtype(data)}} to {.val {dtype}}")
     }
     return(data)
   }
-  # Keeping it simple for now. Might allow this in the future.
   if (is_rdata_box(data)) {
     cli_abort(c(
       "Cannot build an {.cls AnvlArray} from a traced R value.",
@@ -202,25 +199,39 @@ nv_array <- function(
     ))
   }
   if (byrow && !is_raw_payload) {
-    fill_shape <- shape %||% (if (!is.null(dim(data))) as.integer(dim(data)) else as.integer(length(data)))
+    fill_shape <- shape %||% r_data_shape(data)
     if (length(fill_shape) >= 2L) {
       # Fill column-major into the reversed shape, then permute axes back —
       # this is equivalent to placing `data` row-major into `fill_shape`.
       data <- aperm(array(data, dim = rev(fill_shape)), rev(seq_along(fill_shape)))
     }
   }
+  # Data that names no dtype materializes at the defaults -- inside a trace, the
+  # ones the trace is pinned to.
+  dtype <- resolve_default_dtype(data, dtype)
+  globals$backends[[creation_backend(device)]]$new_data(data, dtype, shape, device, row_major = byrow)
+}
+
+# The backend an array created on `device` belongs to. Inside a trace, an array
+# that names no device is a constant of the trace: it goes to the backend-agnostic
+# `"plain"` backend, because allocating one here would pin the graph to
+# whichever device this call happens to run on. Otherwise it is the active
+# backend, which a device object must belong to.
+creation_backend <- function(device) {
   if (currently_tracing() && is.null(device)) {
-    # A constant of the trace: it belongs to the backend being traced for, and
-    # materializes at the defaults the trace is pinned to.
-    dtype <- resolve_default_dtype(data, dtype)
-    return(globals$backends[["plain"]]$new_data(data, dtype, shape, device, row_major = byrow))
+    return("plain")
   }
   backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
-  dtype <- resolve_default_dtype(data, dtype, current_default_dtypes())
-  globals$backends[[backend]]$new_data(data, dtype, shape, device, row_major = byrow)
+  backend
+}
+
+# The shape of R data that does not name one: its `dim()`, or its length for a
+# vector (so a length-1 vector has shape `(1)`, as in `nv_array()`).
+r_data_shape <- function(data) {
+  if (is.null(dim(data))) length(data) else as.integer(dim(data))
 }
 
 #' @title Convert to AnvlArray
@@ -304,16 +315,18 @@ as_anvl_arrays <- function(..., .promote = NULL) {
   # Materialize directly at the target rather than at the default dtype and then
   # converting. This keeps the precision in `nv_add(nv_scalar(1, "f64"), pi)`
   # because `pi` does NOT round-trip through f32.
-  dtypes <- resolve_promote(.promote, args)
-  for (i in seq_along(args)) {
-    args[[i]] <- if (is.null(dtypes[[i]])) {
-      # No conversion/materialization requested
-      as_anvl_array(args[[i]], device = aligned$device)
-    } else {
-      materialize_at(args[[i]], dtype = dtypes[[i]], device = aligned$device)
-    }
-  }
-  args
+  Map(
+    function(arg, dtype) {
+      if (is.null(dtype)) {
+        # The rule leaves this one where it is.
+        as_anvl_array(arg, device = aligned$device)
+      } else {
+        materialize_at(arg, dtype = dtype, device = aligned$device)
+      }
+    },
+    args,
+    resolve_promote(.promote, args)
+  )
 }
 
 # The device every input of an operation shares. Nothing is converted here: an R
@@ -321,9 +334,9 @@ as_anvl_arrays <- function(..., .promote = NULL) {
 # settles on rather than at the default. Returns the arguments and that device
 # -- `NULL` while tracing, where jit places the inputs.
 align_arrayish <- function(args) {
-  for (i in seq_along(args)) {
-    if (!is_arrayish(args[[i]])) {
-      cli_abort("Expected arrayish input, but got {.cls {class(args[[i]])}}")
+  for (a in args) {
+    if (!is_arrayish(a)) {
+      cli_abort("Expected arrayish input, but got {.cls {class(a)}}")
     }
   }
   # While tracing, device placement is handled by jit.
@@ -332,28 +345,22 @@ align_arrayish <- function(args) {
   }
   # Target device is the first concrete input's device, else the default.
   dev <- default_device()
-  for (a in args) {
-    placed <- placement_device(a)
-    if (!is.null(placed)) {
-      dev <- placed
-      break
-    }
+  placed <- Filter(Negate(is.null), lapply(args, placement_device))
+  if (length(placed)) {
+    dev <- placed[[1L]]
   }
   # Every other concrete input must match that device/backend.
-  for (a in args) {
-    if (!is_anvl_array(a) || backend(a) == "plain") {
-      next
-    }
-    if (backend(a) != backend(dev)) {
+  for (d in placed) {
+    if (backend(d) != backend(dev)) {
       cli_abort(c(
         "Found inputs from multiple backends.",
-        i = "Found backends {.val {backend(dev)}} and {.val {backend(a)}}."
+        i = "Found backends {.val {backend(dev)}} and {.val {backend(d)}}."
       ))
     }
-    if (!eq_device(device(a), dev)) {
+    if (!eq_device(d, dev)) {
       cli_abort(c(
         "Found inputs living on multiple devices, which is currently not supported.",
-        i = "Found devices {.val {as.character(dev)}} and {.val {as.character(device(a))}}."
+        i = "Found devices {.val {as.character(dev)}} and {.val {as.character(d)}}."
       ))
     }
   }
@@ -365,13 +372,13 @@ align_arrayish <- function(args) {
 # arrives with every digit it had; anything that already has a dtype is
 # converted.
 materialize_at <- function(x, dtype, device = NULL) {
-  if (currently_tracing() && is_valid_r(x)) {
-    return(build_r_at(x, dtype))
-  }
   if (is_rdata_box(x)) {
     return(materialize_rdata(x, dtype))
   }
-  if (!is_anvl_array(x) && !is_graph_box(x) && is_valid_r(x)) {
+  if (is_valid_r(x)) {
+    if (currently_tracing()) {
+      return(build_r_at(x, dtype))
+    }
     # Outside a trace the same rule applies as inside it: build the R value
     # where it is exact, and let a conversion out of its category be the
     # program's, not R's (see `build_r_staged()`). The value needs no check of
@@ -419,7 +426,7 @@ nv_scalar <- function(data, dtype = NULL, device = NULL) {
   )
 }
 
-infer_matrix_dim <- function(n, other, given) {
+infer_matrix_axis_size <- function(n, other, given) {
   if (other == 0L) {
     if (n != 0L) {
       cli_abort("{.arg {given}} is 0 but {.arg data} has {n} element{?s}.")
@@ -472,9 +479,9 @@ nv_matrix <- function(
   }
   n <- if (is_anvl_array(data)) prod(shape(data)) else length(data)
   if (is.null(nrow)) {
-    nrow <- infer_matrix_dim(n, ncol, given = "ncol")
+    nrow <- infer_matrix_axis_size(n, ncol, given = "ncol")
   } else if (is.null(ncol)) {
-    ncol <- infer_matrix_dim(n, nrow, given = "nrow")
+    ncol <- infer_matrix_axis_size(n, nrow, given = "nrow")
   } else if (nrow * ncol != n) {
     cli_abort("Data length ({n}) does not match {.code nrow * ncol} ({nrow * ncol}).")
   }
@@ -490,19 +497,9 @@ nv_matrix <- function(
 #' @rdname AnvlArray
 #' @export
 nv_empty <- function(shape, dtype, device = NULL) {
-  shape <- as.integer(shape)
-  if (currently_tracing() && is.null(device)) {
-    # A constant of the trace, as in `nv_array()`: allocating one here would
-    # pin the graph to whichever device this call happens to run on.
-    return(globals$backends[["plain"]]$new_empty(dtype = dtype, shape = shape, device = device))
-  }
-  backend <- active_backend()
-  if (is_device(device)) {
-    check_device_backend(device, backend)
-  }
-  globals$backends[[backend]]$new_empty(
+  globals$backends[[creation_backend(device)]]$new_empty(
     dtype = dtype,
-    shape = shape,
+    shape = as.integer(shape),
     device = device
   )
 }
@@ -919,10 +916,8 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
   if (!is_valid_r_lit(data) && !inherits(data, "AnvlArray")) {
     cli_abort("{.arg data} must be a scalar or a one-element {.cls AnvlArray}.")
   }
-  if (inherits(data, "AnvlArray")) {
-    if (prod(shape(data)) != 1L) {
-      cli_abort("AnvlArray must contain exactly one element.")
-    }
+  if (is_anvl_array(data) && prod(shape(data)) != 1L) {
+    cli_abort("AnvlArray must contain exactly one element.")
   }
   shape <- as_shape(shape)
   dtype <- as_dtype(dtype)
@@ -1056,10 +1051,7 @@ eq_type <- function(e1, e2) {
       call = NULL
     )
   }
-  if (dtype(e1) != dtype(e2) || !identical(e1$shape, e2$shape)) {
-    return(FALSE)
-  }
-  TRUE
+  dtype(e1) == dtype(e2) && identical(e1$shape, e2$shape)
 }
 
 #' @rdname eq_type
@@ -1172,8 +1164,7 @@ to_abstract <- function(x, pure = FALSE) {
   } else if (test_atomic(x) && (is.logical(x) || is.numeric(x))) {
     RData(shape = shape(x), r_type = typeof(x))
   } else if (is_graph_box(x)) {
-    gnode <- x$gnode
-    gnode$aval
+    x$gnode$aval
   } else {
     cli_abort("internal error: {.cls {class(x)}} is not an array-like object")
   }
@@ -1239,17 +1230,10 @@ NULL
 #' @rdname arrayish
 #' @export
 is_arrayish <- function(x, convert_ok = TRUE) {
-  ok <- inherits(x, "AnvlArray") ||
-    is_graph_box(x)
-
-  if (ok) {
+  if (is_anvl_array(x) || is_graph_box(x)) {
     return(TRUE)
   }
-
-  if (!convert_ok) {
-    return(FALSE)
-  }
-  is_valid_r(x)
+  convert_ok && is_valid_r(x)
 }
 
 

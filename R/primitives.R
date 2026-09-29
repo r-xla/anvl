@@ -474,9 +474,7 @@ prim_static_slice <- new_primitive(
   function(x, start_indices, end_indices, strides) {
     graph_desc_add(
       self,
-      args = list(
-        x = x
-      ),
+      args = list(x = x),
       params = list(
         start_indices = start_indices,
         end_indices = end_indices,
@@ -981,9 +979,7 @@ prim_reduce <- new_primitive(
     )
     reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red, mode = "subgraph")
 
-    for (const in reducer_graph$constants) {
-      get_box_or_register_const(current_desc, const)
-    }
+    register_consts(current_desc, reducer_graph$constants)
 
     graph_desc_add(
       self,
@@ -997,16 +993,14 @@ prim_reduce <- new_primitive(
   static = c("axes", "reducer", "drop")
 )
 
-make_arg_extreme <- function() {
-  function(x, axis, drop = TRUE) {
-    axis <- resolve_axis(axis, naxes(x))
-    graph_desc_add(
-      self,
-      args = list(x = x),
-      params = list(axis = axis, drop = drop),
-      infer_fn = infer_arg_extreme
-    )[[1L]]
-  }
+arg_extreme_op <- function(x, axis, drop = TRUE) {
+  axis <- resolve_axis(axis, naxes(x))
+  graph_desc_add(
+    self,
+    args = list(x = x),
+    params = list(axis = axis, drop = drop),
+    infer_fn = infer_arg_extreme
+  )[[1L]]
 }
 
 #' @title Primitive Index of the Maximum
@@ -1036,7 +1030,7 @@ make_arg_extreme <- function() {
 #' # the index comes out at the default integer data type
 #' prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_max <- new_primitive("which_max", make_arg_extreme(), static = 2:3)
+prim_which_max <- new_primitive("which_max", arg_extreme_op, static = 2:3)
 
 #' @title Primitive Index of the Minimum
 #' @description
@@ -1063,7 +1057,7 @@ prim_which_max <- new_primitive("which_max", make_arg_extreme(), static = 2:3)
 #' # the index comes out at the default integer data type
 #' prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_min <- new_primitive("which_min", make_arg_extreme(), static = 2:3)
+prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3)
 
 # comparison primitives --------------------------------------------------------
 
@@ -2215,9 +2209,7 @@ prim_clamp <- new_primitive(
       operands,
       list(),
       infer_fn = infer_clamp
-    )[[
-      1L
-    ]]
+    )[[1L]]
   }
 )
 
@@ -2280,15 +2272,13 @@ prim_iota <- new_primitive(
   function(axis, shape, dtype, start = 1L, device = NULL) {
     shape <- assert_shapevec(shape)
     axis <- resolve_axis(axis, length(shape))
-    result <- graph_desc_add(
+    graph_desc_add(
       self,
       list(),
       list(axis = axis, shape = shape, dtype = dtype, start = start),
       infer_fn = infer_iota,
       device = device
     )[[1L]]
-
-    result
   },
   static = 1:5
 )
@@ -2415,10 +2405,9 @@ prim_round <- new_primitive(
 prim_convert <- new_primitive(
   "convert",
   function(x, dtype) {
-    # We need to be careful w.r.t. to handling R inputs so we prim_convert(pi, "f64")
-    # is faithful and does not round-trip through f32
     dtype <- assert_dtype_param(dtype, "dtype")
-    # Directly materialize
+    # An R value materializes directly at `dtype`, so that
+    # `prim_convert(pi, "f64")` is exact and does not round-trip through `f32`.
     if (currently_tracing() && is_valid_r(x)) {
       return(build_r_at(x, dtype))
     }
@@ -2471,9 +2460,7 @@ prim_ifelse <- new_primitive(
       self,
       c(list(test = test), operands),
       infer_fn = infer_select
-    )[[
-      1L
-    ]]
+    )[[1L]]
   }
 )
 
@@ -2530,9 +2517,9 @@ prim_if <- new_primitive(
       ))
     }
 
-    # Build sub-graphs for each branch (no inputs, just capture closed-over values)
-    # We need to ensure that constants that are captured in both branches receive the same
-    # GraphValue if they capture the same constant
+    # Each branch is traced without inputs and only captures closed-over values.
+    # Registering the true branch's constants in the false branch's descriptor
+    # gives a constant captured by both branches the same `GraphValue`.
 
     current_desc <- current_descriptor(silent = TRUE)
 
@@ -2984,7 +2971,7 @@ prim_print <- new_primitive(
     # HACK: the header and footer are pre-computed here and passed as "params",
     # although they are not really ones: stablehlo does not carry the dtype the
     # way anvl prints it.
-    # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
+    # TODO: We should also include the platform/device, but it is currently not available in GraphDescriptor
     #
     # Both are read off the operand *before* it is materialized, because a
     # print is not a use site that should get to name a data type. An R value
@@ -3004,13 +2991,13 @@ prim_print <- new_primitive(
     # header says `RData` for the same reason: what is on screen is an R value
     # that has not taken a data type, not an `AnvlArray`.
     aval <- to_abstract(x)
-    dims <- paste0(shape(aval), collapse = ",")
+    shape_str <- paste0(shape(aval), collapse = ",")
     if (is_rdata(aval)) {
       header <- "RData"
-      footer <- sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
+      footer <- sprintf("[ %s{%s} printed at %s ]", aval$r_type, shape_str, as.character(peek_dtype(aval)))
     } else {
       header <- "AnvlArray"
-      footer <- sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
+      footer <- sprintf("[ %s{%s} ]", as.character(dtype(aval)), shape_str)
     }
     # `x` is printed, not consumed: the call takes a rendering of it and the
     # original is handed straight back. Inserting a print therefore cannot
@@ -3185,7 +3172,7 @@ prim_scatter <- new_primitive(
     unique_indices = FALSE,
     update_fn = NULL
   ) {
-    # otherwise, delayed promise evaluation means they might be added to the update_descriptor
+    # Otherwise, delayed promise evaluation may add them to the update computation's descriptor.
     force(x)
     force(scatter_indices)
     force(update)
@@ -3203,11 +3190,10 @@ prim_scatter <- new_primitive(
 
     current_desc <- current_descriptor(silent = TRUE)
 
-    # Trace the update computation function
-    # For scatter, the update computation takes 2 scalar arguments (current, update)
+    # The update computation is traced with two scalars (the current value and
+    # the update) at `x`'s data type.
     desc_update <- local_descriptor()
 
-    # Create dummy arguments for tracing - use the input's dtype
     # `x` and `update` agree: the rule above brought them together or refused.
     x_dtype <- peek_dtype(x)
 
@@ -3218,10 +3204,9 @@ prim_scatter <- new_primitive(
 
     update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update, mode = "subgraph")
 
-    # Register constants from the update computation graph
     register_consts(current_desc, update_fn_graph$constants)
 
-    out <- graph_desc_add(
+    graph_desc_add(
       self,
       args = list(x = x, scatter_indices = scatter_indices, update = update),
       params = list(
@@ -3237,9 +3222,7 @@ prim_scatter <- new_primitive(
       ),
       infer_fn = infer_scatter,
       desc = current_desc
-    )
-
-    out[[1L]]
+    )[[1L]]
   },
   subgraphs = "update_fn",
   static = 4:12

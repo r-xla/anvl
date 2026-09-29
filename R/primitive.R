@@ -41,11 +41,10 @@ is_higher_order_primitive <- function(x) {
 #' @method [[<- AnvlPrimitiveDef
 #' @export
 `[[<-.AnvlPrimitiveDef` <- function(x, name, value) {
-  if (name %in% globals$interpretation_rules) {
-    x$rules[[name]] <- value
-  } else {
+  if (!(name %in% globals$interpretation_rules)) {
     cli_abort("Invalid field name {.field {name}} for primitive {.field {x$name}}")
   }
+  x$rules[[name]] <- value
   x
 }
 
@@ -147,16 +146,12 @@ new_primitive <- function(
 
 
 # Say which primitive is running, so that whatever it refuses reaches the caller
-# as coming from the `prim_*()` they wrote. `trace_fn()` already rewrites the
-# call of any error raised under a trace to the primitive this names; until now
-# `graph_desc_add()` set it, which is only reached once the wrapper's own checks
-# have passed -- so `resolve_axes()` and friends reported themselves
-# (`Error in resolve_axes()`), and a `cli_abort()` in a body reported the
-# anonymous function `jit()` wraps (`Error in (function (init, cond, body)`).
-#
-# This is one assignment into an environment, taken out of `graph_desc_add()`
-# rather than added to it, and no handler: an error is still caught in the one
-# place it always was.
+# as coming from the `prim_*()` they wrote. The marker is set first thing in the
+# body, before the wrapper's own checks run, so an error from a helper such as
+# `resolve_axes()` or from a `cli_abort()` in the body is reported as the
+# primitive (`Error in prim_sum()`) rather than as the helper or the anonymous
+# function `jit()` wraps. `trace_fn()` does the rewriting of the error's call,
+# and `graph_desc_add()` clears the marker once inference has passed.
 mark_primitive_body <- function(body) {
   rlang::expr({
     base::assign("INFER_PRIMITIVE", self, envir = utils::getFromNamespace("globals", "anvl"))
