@@ -2,7 +2,7 @@
 % Please edit documentation in R/reverse.R
 \name{transform_gradient}
 \alias{transform_gradient}
-\title{Transform a graph to its gradient}
+\title{Transform a Graph to Its Gradient}
 \usage{
 transform_gradient(graph, wrt)
 }

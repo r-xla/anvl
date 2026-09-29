@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend.R
 \name{AnvlBackend}
 \alias{AnvlBackend}
-\title{Create a backend}
+\title{Create a Backend}
 \usage{
 AnvlBackend(
   new_data,
@@ -74,6 +74,6 @@ Can be overwritten, see \code{\link[=default_dtypes]{default_dtypes()}}.}
 (\code{AnvlBackend})
 }
 \description{
-Create a backend
+Create a Backend
 }
 \keyword{internal}

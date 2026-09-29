@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{device}
 \alias{device}
-\title{Get the device of an array}
+\title{Get the Device of an Array}
 \usage{
 device(x, ...)
 }

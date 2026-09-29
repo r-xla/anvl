@@ -76,6 +76,6 @@ nv_linspace_like(x, 0, 1, length_out = 3L)
 }
 \seealso{
 \code{\link[=nv_seq]{nv_seq()}} for consecutive integers, \code{\link[=nv_iota]{nv_iota()}} for values
-increasing along an axis of any shape, \code{\link{dtypes}} for the data type
+increasing along an axis of any shape, \code{\link{dtype_categories}} for the data type
 categories.
 }

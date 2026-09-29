@@ -3,7 +3,7 @@
 \name{arrayish}
 \alias{arrayish}
 \alias{is_arrayish}
-\title{Array-like Objects}
+\title{Array-Like Objects}
 \usage{
 is_arrayish(x, convert_ok = TRUE)
 }
@@ -25,6 +25,8 @@ or can be converted to one.
 Specifically, these values are \code{arrayish}:
 \itemize{
 \item \code{\link{AnvlArray}}: a concrete array holding data on a device.
+\item \code{\link{GraphBox}}: the representation of an array during tracing, e.g. inside
+a \code{\link[=jit]{jit()}}ted function.
 \item R objects:
 \itemize{
 \item \code{numeric(1)} and \code{logical(1)} which represent scalars.
@@ -33,31 +35,7 @@ Specifically, these values are \code{arrayish}:
 }
 
 Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayish.
-
-The group words the parameter descriptions use are listed below;
-\code{\link{dtypes}} gives the categories they are built from, and
-\code{\link[=default_dtypes]{default_dtypes()}} the default an R value materializes at.
 }
-\details{
-During \code{jit()}, \code{\link{GraphBox}} is also arrayish, but it is simply the
-trace-time representation of an \code{AnvlArray}.
-}
-\section{Data Type Vocabulary}{
-
-Where a page says which data types an argument takes, it names a group of
-them with a single word:
-\itemize{
-\item \emph{any data type} -- all of them: \code{bool}, the signed and unsigned integers,
-and the floats.
-\item \emph{numeric} -- signed integer, unsigned integer and float.
-\item \emph{integer} -- signed and unsigned integer.
-\item \emph{integerish} -- boolean and integer, signed or unsigned.
-\item \emph{signed numeric} -- signed integer and float.
-\item \emph{float} -- the whole float category: \code{f32} and \code{f64}.
-\item \emph{boolean} -- \code{bool}, the only member of its category.
-}
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # AnvlArray objects are arrayish

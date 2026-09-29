@@ -12,7 +12,7 @@ nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
 Axis along which values increase.
-Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
+Negative values count from the end of \code{shape}, i.e. \code{-1L} refers to the
 last axis.}
 
 \item{shape}{(\code{integer()})\cr
@@ -23,7 +23,7 @@ Data type of the result, required here. Can be any numeric data type.
 For \code{nv_iota_like()} it may be \code{NULL}, which uses \code{dtype(like)}.}
 
 \item{start}{(\code{integer(1)})\cr
-Starting value (default 1). Built at \code{dtype}, as the increments are.}
+Starting value (default 1).}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

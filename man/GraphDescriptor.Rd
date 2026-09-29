@@ -5,7 +5,7 @@
 \title{Graph Descriptor}
 \usage{
 GraphDescriptor(
-  calls = list(),
+  statements = list(),
   array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
@@ -21,8 +21,8 @@ GraphDescriptor(
 )
 }
 \arguments{
-\item{calls}{(\code{list(PrimitiveCall)})\cr
-The primitive calls that make up the graph.}
+\item{statements}{(\code{list(GraphStatement)})\cr
+The statements that make up the graph.}
 
 \item{array_to_gval}{(\code{hashtab})\cr
 Mapping: \code{AnvlArray} -> \code{GraphValue}}
@@ -73,5 +73,15 @@ direct call has to name it.}
 (\code{GraphDescriptor})
 }
 \description{
-Descriptor of an \code{\link{AnvlGraph}}. This is a mutable class.
+The in-progress representation of an \code{\link{AnvlGraph}} during tracing. This is
+a mutable class.
+
+While \code{\link[=trace_fn]{trace_fn()}} runs a function, every primitive call is recorded as a
+\code{\link{GraphStatement}} into the current descriptor (see \code{\link[=graph_desc_add]{graph_desc_add()}} and
+\code{\link[=current_descriptor]{current_descriptor()}}). The descriptor also does the book-keeping the
+trace needs: which \code{\link{GraphValue}} an \code{AnvlArray} or \code{\link{GraphBox}} stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+\code{\link{AnvlGraph}}, which only keeps what is needed to lower and run the
+program.
 }

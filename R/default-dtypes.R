@@ -65,45 +65,18 @@ effective_default_dtypes <- function(backend) {
 #' [`local_default_dtypes()`] and [`with_default_dtypes()`] set the option for
 #' a scope.
 #'
-#' Below, we configure every backend to use the default `f64` for floats and `i64` for integers:
-#'
-#' ```
-#' options(anvl.default_dtypes = c(float = "f64", int = "i64"))
-#' ```
-#'
-#' You can also only change the float dtype, leaving
-#' the backend's default integer dtype unchanged:
-#'
-#' ```
-#' options(anvl.default_dtypes = c(float = "f64"))
-#' ```
-#'
-#' It is also possible to specify the defaults per backend. Below, every
-#' backend uses `f64` for floats, and `"pjrt"` also uses `i64` for integers:
-#'
-#' ```
-#' options(anvl.default_dtypes = list(
-#'   float = "f64",
-#'   pjrt = list(int = "i64")
-#' ))
-#' ```
-#'
-#' An entry that names a backend wins over the categories beside it.
+#' The option maps the categories `float` and `int` to data types, e.g.
+#' `c(float = "f64", int = "i64")`, and applies to every backend. It may name
+#' only one of them, like `c(float = "f64")`, in which case the other category
+#' keeps the backend's default. To set the defaults of a single backend, give
+#' a list with an entry named after that backend instead:
+#' `list(float = "f64", pjrt = list(int = "i64"))` sets `f64` for every
+#' backend and additionally `i64` for `"pjrt"`. An entry that names a backend
+#' wins over the categories beside it.
 #'
 #' When the option is not set, the `ANVL_DEFAULT_DTYPES` environment variable
 #' (read once, when anvl is loaded) is used instead, written as `category=dtype` pairs that apply to every
 #' backend, e.g. `ANVL_DEFAULT_DTYPES="float=f64,int=i64"`.
-#'
-#' The defaults decide only what a value becomes when *nothing else does*: an R
-#' value that meets a typed array of its own category still takes that array's
-#' data type, whatever the default (see `r roxy_article("type-promotion")`). The data
-#' type you name is taken on trust, so one that does not fit is an error where
-#' the data is allocated or the program compiled rather than where it is set.
-#' Which ones fit is the backend's own business -- see the *Supported data
-#' types* section of [`AnvlBackendPjrt()`] and of [`AnvlBackendQuickr()`],
-#' which has only `f64`, `i32` and `bool`, so both `"f32"` and `"i64"` are
-#' errors there. A compiled program is keyed on the defaults it was compiled
-#' under, so changing them never serves a stale program.
 #'
 #' @return `default_dtypes()`: (named `list`)\cr
 #'   Elements `float` and `int`, each a [`DataType`].
@@ -218,13 +191,7 @@ merged_default_dtypes <- function(dtypes, backend) {
 #' @details
 #' Inside a [`jit()`]ted body the defaults the program was keyed on are the
 #' *baseline* and an override applies to its scope, so one program can use
-#' different precisions in different parts of itself. Only that baseline is
-#' part of the compilation cache key, so **an override in a body must not
-#' change between calls: write it out literally rather than reading it from a
-#' variable.** `with_default_dtypes(c(float = prec), ...)` with a `prec` that
-#' later changes keeps serving the program traced at the first value, exactly
-#' as a changing `dtype` argument would -- and just as silently. Nothing
-#' checks this for you.
+#' different precisions in different parts of itself.
 #'
 #' @param dtypes (named `character()` | named `list()`)\cr
 #'   A mapping of the data type categories (`float` and `int`) to data types,
@@ -270,11 +237,8 @@ with_default_dtypes <- function(dtypes, code, backend = NULL) {
 #' names is converted to that data type, the defaults (see
 #' [`default_dtypes()`]) are set to the `float` / `int` entries for the
 #' duration of the call, and every returned array of a named category is
-#' converted as well.
-#'
-#' ```r
-#' nv_add_f64 <- with_dtypes(nv_add, c(float = "f64"))
-#' ```
+#' converted as well. For example, `with_dtypes(nv_add, c(float = "f64"))` is
+#' an `nv_add()` that computes floats at `f64`.
 #'
 #' A category `dtypes` does not name is left alone, in the arguments, in the
 #' body and in the result.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend-quickr.R
 \name{AnvlBackendQuickr}
 \alias{AnvlBackendQuickr}
-\title{Quickr backend}
+\title{Quickr Backend}
 \usage{
 AnvlBackendQuickr()
 }
@@ -49,16 +49,6 @@ the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Refe
 \section{Supported data types}{
 
 \code{f64}, \code{i32} and \code{bool} -- the three R storage types.
-}
-
-\section{Quickr JIT arguments}{
-
-\itemize{
-\item \code{unwrap} (\code{logical(1)}, default \code{FALSE}): if \code{TRUE}, the compiled function
-returns plain R arrays instead of \code{\link{AnvlArray}}s. Useful when the jitted
-function's output is consumed by non-anvl R code and the extra wrapping
-would only get stripped again.
-}
 }
 
 \seealso{

@@ -2,6 +2,15 @@
 
 ## Breaking changes
 
+* `PrimitiveCall` is now `GraphStatement`, and the `calls` field of `AnvlGraph`
+  and `GraphDescriptor` is now `statements`.
+* `AnvlBox` is gone; `GraphBox` is the class of a traced value.
+* `at2vt()` and `vt()` are no longer exported.
+* `.current_descriptor()` is now `current_descriptor()`.
+* The primitive classes are renamed: the definition that holds the rules is
+  now `AnvlPrimitiveDef` (was `AnvlPrimitive`), and the function a primitive
+  is called through is now `AnvlPrimitive` (was `JitPrimitive`). It carries
+  its definition as `attr(<fn>, "definition")` (was `"primitive"`).
 * `nv_div()` and `/` convert integer and boolean operands to the default float,
   like base R: `7L / 2L` is `3.5`. Use `%/%` for integer division.
 * The element-wise `nv_max()` / `nv_min()` and `prim_max()` / `prim_min()` are
@@ -282,8 +291,8 @@
 * `gradient()` no longer returns a zero gradient for a value that a
   `prim_if()` or `prim_scan()` sub-graph closes over, and refuses one that a
   `prim_while()` loop's result depends on. A sub-graph now takes what it closes
-  over as inputs, which its call passes as operands; printed graphs set them
-  apart with a `|`.
+  over as inputs, which its call passes as operands; printed graphs list them
+  in brackets, named after those operands.
 * A bare R integer start index of `prim_dynamic_slice()` /
   `prim_dynamic_update_slice()` takes the data type of the other start indices,
   so `prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)` no longer fails.

@@ -142,11 +142,11 @@ describe("format_param_parts()", {
   })
 })
 
-describe("format.PrimitiveCall()", {
+describe("format.GraphStatement()", {
   it("renders its params the way a graph body does", {
     local_registered_default_dtypes()
     graph <- trace_fn(function(x) nv_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
-    expect_snapshot(cat(format(graph$calls[[1L]])))
+    expect_snapshot(cat(format(graph$statements[[1L]])))
   })
 
   it("leaves out the bracket list of a call that carries no params", {
@@ -154,11 +154,11 @@ describe("format.PrimitiveCall()", {
       function(x, y) x + y,
       list(x = nv_scalar(1, dtype = "f32"), y = nv_scalar(2, dtype = "f32"))
     )
-    expect_snapshot(cat(format(graph$calls[[1L]])))
+    expect_snapshot(cat(format(graph$statements[[1L]])))
   })
 
   it("keeps a sub-graph param to its signature, having no graph to name it against", {
-    call <- Filter(\(cl) cl$primitive$name == "while", nested_graph()$calls)[[1L]]
+    call <- Filter(\(cl) cl$primitive$name == "while", nested_graph()$statements)[[1L]]
     expect_snapshot(cat(format(call)))
   })
 })
@@ -169,10 +169,25 @@ describe("format.AnvlGraph()", {
     expect_snapshot(nested_graph())
   })
 
-  it("gives every node in the tree exactly one name", {
+  it("gives every node its own name, except a captured input, which takes its operand's", {
     graph <- nested_graph()
-    ids <- unlist(hashvalues(build_node_ids(graph$inputs, graph$constants, graph$calls)))
-    expect_equal(anyDuplicated(ids), 0L)
+    node_ids <- build_node_ids(graph$inputs, graph$constants, graph$statements)
+    # The names captured inputs take, checked against their operands on the way.
+    captured_ids <- function(statements) {
+      unlist(lapply(statements, function(call) {
+        lapply(Filter(is_graph, call$params), function(sub) {
+          k <- sub$n_captures
+          inputs <- utils::tail(sub$inputs, k)
+          operands <- utils::tail(call$inputs, k)
+          ids <- vapply(inputs, \(node) node_ids[[node]], character(1L))
+          expect_equal(ids, vapply(operands, \(node) node_ids[[node]], character(1L)))
+          c(ids, captured_ids(sub$statements))
+        })
+      }))
+    }
+    shared <- captured_ids(graph$statements)
+    ids <- unlist(hashvalues(node_ids))
+    expect_true(all(ids[duplicated(ids)] %in% shared))
   })
 
   it("numbers a graph's own values without a gap where a sub-graph call sits", {
@@ -182,12 +197,12 @@ describe("format.AnvlGraph()", {
     expect_equal(sub("^  %([0-9]+):.*", "\\1", defs), c("1", "2", "3", "4"))
   })
 
-  it("shows what a sub-graph closes over as inputs after its own", {
+  it("shows what a sub-graph closes over in brackets, named after its operands", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
-    # `cond` and `body` take the state, then -- after the `|` -- `x`, `step`
-    # and `half`, which the call passes after the initial state.
-    expect_true(any(grepl("cond = (%x2: f32[] | %x3: f32[], %x4: f32[], %x5: f32[]) {", lines, fixed = TRUE)))
-    expect_true(any(grepl("] (%c2 | %x1, %2, %c1)", lines, fixed = TRUE)))
+    # `cond` and `body` take the state, and in brackets `x`, `step` and `half`,
+    # named after the operands the call passes for them after the state.
+    expect_true(any(grepl("cond = [%x1, %2, %c1] (%x2: f32[]) {", lines, fixed = TRUE)))
+    expect_true(any(grepl("] (%c2, %x1, %2, %c1)", lines, fixed = TRUE)))
   })
 
   it("leaves out the bracket list of a graph that captures nothing", {
@@ -221,7 +236,7 @@ describe("format.AnvlGraph()", {
 
   it("does not spill the internals of an array an optimization pass inlined", {
     out <- format(inline_scalarish_constants(nested_graph()))
-    expect_match(out, "] (0:f32 | %x1, %2, 0.5:f32)", fixed = TRUE)
+    expect_match(out, "] (0:f32, %x1, %2, 0.5:f32)", fixed = TRUE)
     expect_no_match(out, "pointer", fixed = TRUE)
   })
 
@@ -302,7 +317,7 @@ describe("format.AnvlGraph()", {
 
   it("spends a nested line's whole width budget, not a conservative part of it", {
     graph <- nested_param_graph()
-    target <- "broadcast_axes = integer(0)] (%x5)"
+    target <- "broadcast_axes = integer(0)] (%x3)"
     fits <- function(width) {
       any(grepl(target, strsplit(format(graph, width = width), "\n")[[1L]], fixed = TRUE))
     }
@@ -327,7 +342,7 @@ describe("format.GraphDescriptor()", {
     descriptor <- NULL
     trace_fn(
       function(x) {
-        descriptor <<- .current_descriptor()
+        descriptor <<- current_descriptor()
         x + 1
       },
       list(x = nv_scalar(1, dtype = "f32"))

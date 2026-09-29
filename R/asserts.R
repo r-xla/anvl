@@ -282,7 +282,7 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
 }
 
 # Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
-# sense `?dtypes` gives the word: integer or float, but not `bool`. Returns the
+# sense `?dtype_categories` gives the word: integer or float, but not `bool`. Returns the
 # converted DataType.
 assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
@@ -300,7 +300,7 @@ assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
 # category. Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
-  # The float category, as `?dtypes` defines it, so this and `is_dtype_float()`
+  # The float category, as `?dtype_categories` defines it, so this and `is_dtype_float()`
   # agree on what counts as a float.
   if (!is_dtype_float(dt)) {
     cli_abort(c(

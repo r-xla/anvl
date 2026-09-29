@@ -18,7 +18,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       in_tree = info$in_tree,
       donate = donate,
       device = device,
-      arg_devices = dispatch_arg_devices(info),
+      arg_device = dispatch_arg_device(info),
       fallback_device = info$default_device,
       default_dtypes = default_dtypes_from_key(info$context)
     )
@@ -96,7 +96,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   fn
 }
 
-#' @title Trace, lower, and compile a function to an XLA executable
+#' @title Trace, Lower, and Compile a Function to an XLA Executable
 #' @description
 #' Takes a function, traces it into a computational graph, lowers it to StableHLO,
 #' and compiles it to a PJRT executable. Returns the compiled executable along with
@@ -110,16 +110,14 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
 #' @param device (`NULL` | `character(1)` | `PJRTDevice`)\cr
-#'   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from `arg_devices`
-#'   and traced arrays.
-#' @param arg_devices (`list`)\cr
-#'   Devices of the concrete (non-static) input arguments, extracted before
-#'   converting to abstract values. Used together with traced devices for
-#'   device inference when `device` is `NULL`.
+#'   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from
+#'   `arg_device` and traced arrays.
+#' @param arg_device (`NULL` | device)\cr
+#'   The device the array inputs live on, or `NULL` when there are none. Used
+#'   together with traced devices for device inference when `device` is `NULL`.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
 #'   The data types the traced R values materialize at when nothing else decides
-#'   one (see [`default_dtypes()`]), read off `info$context` so the program
-#'   matches the cache key it is filed under. `NULL` uses the active pair.
+#'   one (see [`default_dtypes()`]).
 #' @param fallback_device (`NULL` | device)\cr
 #'   The device to compile for when `device` is `NULL` and nothing in the graph
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
@@ -148,7 +146,7 @@ compile_pjrt <- function(
   in_tree,
   donate = character(),
   device = NULL,
-  arg_devices = list(),
+  arg_device = NULL,
   fallback_device = NULL,
   default_dtypes = NULL
 ) {
@@ -165,7 +163,7 @@ compile_pjrt <- function(
   # below run: `inline_scalarish_constants()` inlines and drops scalar
   # constants, which would otherwise hide a closed-over constant from a foreign
   # backend and let `check_single_backend()` pass incorrectly.
-  check_single_backend(graph, arg_devices, expected = "pjrt")
+  check_single_backend(graph, expected = "pjrt")
 
   # jit() always runs the full set of graph optimization passes.
   graph <- optimize_graph(graph, optimize = TRUE)
@@ -173,7 +171,7 @@ compile_pjrt <- function(
   # if device is NULL, all devices from args_flat and the traced devices must be the same.
   # If device is specified, then we use the requested device.
 
-  unique_devices <- unique(c(desc$devices, arg_devices))
+  unique_devices <- unique(c(desc$devices, if (!is.null(arg_device)) list(arg_device)))
 
   if (is.null(device)) {
     # 0 input function and no allocated constants.
@@ -258,7 +256,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
   )
 }
 
-#' PJRT backend
+#' PJRT Backend
 #'
 #' Constructs the PJRT backend, which stores array data in PJRT buffers (via
 #' [`pjrt::pjrt_buffer()`]) and compiles jitted functions to XLA executables
@@ -294,13 +292,6 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' behavior depends on the platform, backend, and operation.
 #'
 #' See `r roxy_article("gotchas")` for an explanation and examples.
-#'
-#' @section PJRT JIT arguments:
-#' * `donate` (`character()`, default `character()`): names of arguments whose
-#'   underlying buffers may be donated to (i.e., reused/consumed by) the
-#'   compiled XLA executable. Donated buffers must not be used again by the
-#'   caller after the call; this can reduce memory usage and copies for large
-#'   inputs. Must not overlap with `static`.
 #'
 #' @return ([`AnvlBackend`])\cr
 #'   With subclass `"AnvlBackendPjrt"`.

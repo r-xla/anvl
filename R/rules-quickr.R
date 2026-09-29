@@ -1449,7 +1449,7 @@ quickr_emit_reshape <- function(out_sym, operand_expr, shape_in, shape_out, out_
 # Primitive lowering registry ---------------------------------------------------
 
 quickr_register_prim_lowerer <- function(primitive, fun) {
-  primitives <- if (inherits(primitive, "AnvlPrimitive") || inherits(primitive, "JitPrimitive")) {
+  primitives <- if (inherits(primitive, "AnvlPrimitiveDef") || inherits(primitive, "AnvlPrimitive")) {
     list(primitive)
   } else {
     primitive
@@ -1478,8 +1478,8 @@ quickr_register_elementwise_lowerer <- function(primitive, fun) {
 quickr_supported_prims <- function() {
   sort(unlist(
     eapply(primitive_env, function(primitive) {
-      if (inherits(primitive, "JitPrimitive")) {
-        primitive <- attr(primitive, "primitive")
+      if (inherits(primitive, "AnvlPrimitive")) {
+        primitive <- attr(primitive, "definition")
       }
       if (is.null(primitive$rules[["quickr"]])) {
         NULL
@@ -1496,7 +1496,7 @@ quickr_lower_graph_calls <- function(graph, ctx) {
   new_tmp_sym <- ctx$new_tmp_sym
 
   stmts <- list()
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     # quickr rejects NaN / +-Inf as literals, so a literal holding one is bound
     # to a temp that computes it at runtime and the call reads that instead.
     for (node in call$inputs) {
@@ -2289,7 +2289,7 @@ quickr_abort_unsupported_prims <- function(unsupported_prims, supported_prims) {
 quickr_find_unsupported_prims <- function(graph, supported_prims) {
   unsupported_prims <- character()
 
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     prim_name <- call$primitive$name
     if (!prim_name %in% supported_prims) {
       unsupported_prims <- c(unsupported_prims, prim_name)

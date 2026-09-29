@@ -4,16 +4,23 @@
 \alias{subgraphs}
 \title{Get Subgraphs from Higher-Order Primitive}
 \usage{
-subgraphs(call)
+subgraphs(statement)
 }
 \arguments{
-\item{call}{(\code{PrimitiveCall})\cr
-The primitive call.}
+\item{statement}{(\code{GraphStatement})\cr
+The statement.}
 }
 \value{
-(\code{list(AnvlGraph)})\cr
-List of subgraphs found in the parameters.
+(named \code{list(AnvlGraph)})\cr
+The subgraphs, named after the parameters that hold them. Empty for a
+primitive that is not higher-order.
 }
 \description{
-Extracts subgraphs from the parameters of a higher-order primitive call.
+Extracts the subgraphs from the parameters of a statement that applies a
+higher-order primitive, such as the branches of \code{\link[=prim_if]{prim_if()}} or the body
+of \code{\link[=prim_while]{prim_while()}}.
+
+This is not recursive: only the subgraphs held directly by \code{statement} are
+returned, not the ones nested in the statements of those subgraphs. Call
+\code{subgraphs()} on their statements to descend further.
 }

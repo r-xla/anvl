@@ -968,7 +968,7 @@ prim_reduce <- new_primitive(
     # `x` and `init` agree: the rule above brought them together or refused.
     op_dtype <- dtype(x)
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
     desc_red <- local_descriptor()
 
     # Unnamed, so the two scalars are matched positionally and `reducer` may
@@ -980,7 +980,7 @@ prim_reduce <- new_primitive(
       nv_aval(op_dtype, integer())
     )
     reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red, mode = "subgraph")
-    captures <- close_over(current_desc, list(desc_red), list(reducer_graph))
+    captures <- close_subgraphs(current_desc, list(reducer_graph))
 
     graph_desc_add(
       self,
@@ -2533,7 +2533,7 @@ prim_if <- new_primitive(
       ))
     }
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     desc_true <- local_descriptor()
     true_graph <- trace_fn(true, list(), desc = desc_true, mode = "subgraph")
@@ -2546,7 +2546,7 @@ prim_if <- new_primitive(
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
-    captures <- close_over(current_desc, list(desc_true, desc_false), list(true_graph, false_graph))
+    captures <- close_subgraphs(current_desc, list(true_graph, false_graph))
 
     out <- graph_desc_add(
       self,
@@ -2620,7 +2620,7 @@ prim_while <- new_primitive(
       cli_abort("{.arg init} must have only named arguments.")
     }
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     desc_cond <- local_descriptor()
     cond_graph <- trace_fn(cond, init, desc = desc_cond, mode = "subgraph")
@@ -2637,7 +2637,7 @@ prim_while <- new_primitive(
 
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
-    captures <- close_over(current_desc, list(desc_cond, desc_body), list(cond_graph, body_graph))
+    captures <- close_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
@@ -2714,7 +2714,7 @@ prim_scan <- new_primitive(
     steps <- assert_int(steps, lower = 0L, coerce = TRUE)
     assert_flag(reverse)
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     init_flat <- flatten(init)
     xs_flat <- flatten(xs)
@@ -2772,7 +2772,7 @@ prim_scan <- new_primitive(
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
-    captures <- close_over(current_desc, list(desc_body), list(body_graph))
+    captures <- close_subgraphs(current_desc, list(body_graph))
 
     infer_fn <- function(..., body, steps, reverse, n_carry, n_xs) {
       ins <- list(...)
@@ -3196,7 +3196,7 @@ prim_scatter <- new_primitive(
       cli_abort("update_fn must be a function")
     }
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     # Trace the update computation function
     # For scatter, the update computation takes 2 scalar arguments (current, update)
@@ -3212,7 +3212,7 @@ prim_scatter <- new_primitive(
     )
 
     update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update, mode = "subgraph")
-    captures <- close_over(current_desc, list(desc_update), list(update_fn_graph))
+    captures <- close_subgraphs(current_desc, list(update_fn_graph))
 
     out <- graph_desc_add(
       self,

@@ -10,7 +10,7 @@ nv_fill(value, shape, dtype = NULL, device = NULL)
 nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{value}{(\code{numeric(1)})\cr
+\item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
 Scalar value to fill the array with. It has to be something \code{dtype} can
 hold: a whole number in its range for an integer data type, a non-negative
 one for an unsigned integer, and a logical or \code{0} / \code{1} for \code{bool}.}

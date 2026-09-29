@@ -25,8 +25,6 @@ An \code{\link{RData}} when \code{dtype} names an R storage type.
 }
 \description{
 Representation of an abstract array type.
-During tracing, it is wrapped in a \code{\link{GraphNode}} held by a \code{\link{GraphBox}}.
-In the lowered \code{\link{AnvlGraph}} it is also part of \code{\link{GraphNode}}s representing the values in the program.
 
 The base class represents an \emph{unknown} value, but child classes exist for:
 \itemize{
@@ -38,16 +36,6 @@ The base class represents an \emph{unknown} value, but child classes exist for:
 
 To convert an \code{\link{arrayish}} value to an abstract array, use \code{\link[=to_abstract]{to_abstract()}}.
 }
-\section{Extractors}{
-
-The following extractors are available on \code{AbstractArray} objects:
-\itemize{
-\item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
-\item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
-}
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # -- Creating abstract arrays --

@@ -26,9 +26,9 @@ test_that("trace_fn: simple test", {
   graph <- trace_fn(f, list(x = nv_scalar(1), y = nv_scalar(2)))
   expect_true(is_graph(graph))
   expect_list(graph$inputs, len = 2L, types = "GraphValue")
-  expect_list(graph$calls, len = 1L, types = "PrimitiveCall")
+  expect_list(graph$statements, len = 1L, types = "GraphStatement")
   expect_list(graph$outputs, len = 1L, types = "GraphValue")
-  expect_true(identical(graph$outputs, graph$calls[[1]]$outputs))
+  expect_true(identical(graph$outputs, graph$statements[[1]]$outputs))
 })
 
 test_that("trace_fn: in- and outputs are reference identical to the outputs of the calls that produced them", {
@@ -36,8 +36,8 @@ test_that("trace_fn: in- and outputs are reference identical to the outputs of t
     prim_add(x, y)
   }
   graph <- trace_fn(f, list(x = nv_scalar(1), y = nv_scalar(2)))
-  expect_true(identical(graph$outputs, graph$calls[[1]]$outputs))
-  expect_true(identical(graph$inputs, graph$calls[[1]]$inputs))
+  expect_true(identical(graph$outputs, graph$statements[[1]]$outputs))
+  expect_true(identical(graph$inputs, graph$statements[[1]]$inputs))
 })
 
 test_that("trace_fn: nested inputs and outputs", {
@@ -47,7 +47,7 @@ test_that("trace_fn: nested inputs and outputs", {
 
   graph <- trace_fn(f, list(lst = list(nv_scalar(1), nv_scalar(2))))
   expect_list(graph$inputs, len = 2L, types = "GraphValue")
-  expect_list(graph$calls, len = 1L, types = "PrimitiveCall")
+  expect_list(graph$statements, len = 1L, types = "GraphStatement")
   expect_list(graph$outputs, len = 1L, types = "GraphValue")
   expect_equal(
     unflatten(graph$in_tree, list(1, 2)),
@@ -66,14 +66,14 @@ test_that("trace_fn: closed-over constants", {
   }
   graph <- trace_fn(f, list(y = nv_scalar(2)))
   expect_list(graph$inputs, len = 1L, types = "GraphValue")
-  expect_list(graph$calls, len = 1L, types = "PrimitiveCall")
+  expect_list(graph$statements, len = 1L, types = "GraphStatement")
   expect_list(graph$outputs, len = 1L, types = "GraphValue")
 
   # What do we expect here?
   # We want the resulting graph to have a constant and two inputs
 
-  expect_true(is_graph_value(graph$calls[[1]]$inputs[[1]]))
-  expect_true(is_graph_value(graph$calls[[1]]$inputs[[2]]))
+  expect_true(is_graph_value(graph$statements[[1]]$inputs[[1]]))
+  expect_true(is_graph_value(graph$statements[[1]]$inputs[[2]]))
   expect_true(identical(x, graph$constants[[1]]$aval$data))
   expect_equal(length(graph$constants), 1L)
 })
@@ -99,7 +99,7 @@ test_that("trace_fn works without arguments", {
   expect_equal(length(graph$outputs), 1L)
   expect_identical(graph$outputs[[1]]$aval$data, x)
   expect_equal(length(graph$outputs), 1L)
-  expect_equal(length(graph$calls), 0L)
+  expect_equal(length(graph$statements), 0L)
 })
 
 
@@ -116,15 +116,15 @@ test_that("local_descriptor restores previous graph", {
   inner_test <- function() {
     g2 <- local_descriptor()
     (function() local_descriptor())()
-    expect_equal(.current_descriptor(), g2)
+    expect_equal(current_descriptor(), g2)
   }
   inner_test()
-  expect_equal(g1, .current_descriptor())
+  expect_equal(g1, current_descriptor())
 })
 
-test_that(".current_descriptor errors when no graph exists", {
+test_that("current_descriptor errors when no graph exists", {
   globals[["CURRENT_DESCRIPTOR"]] <- NULL
-  expect_error(.current_descriptor(), "No graph is currently being built")
+  expect_error(current_descriptor(), "No graph is currently being built")
 })
 
 test_that("constants: same array is constant and input at the same time", {
@@ -182,9 +182,9 @@ test_that("trace_fn works with nv_aval inputs", {
   expect_equal(graph$inputs[[1L]]$aval, in_type)
   expect_equal(graph$inputs[[2L]]$aval, in_type)
   expect_equal(length(graph$inputs), 2L)
-  expect_equal(length(graph$calls), 1L)
+  expect_equal(length(graph$statements), 1L)
   expect_equal(length(graph$outputs), 1L)
-  expect_equal(graph$calls[[1L]]$primitive, attr(prim_add, "primitive"))
+  expect_equal(graph$statements[[1L]]$primitive, attr(prim_add, "definition"))
 })
 
 test_that("local_descriptor errors when run in the global environment", {

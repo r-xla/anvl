@@ -10,7 +10,7 @@ NULL
 # method carries its own documentation only where there is no twin (`dim()` and
 # `length()`).
 #
-# The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
+# The methods for `GraphBox` -- the traced values inside `jit()` -- are the same
 # functions, registered for the second class.
 
 # Arithmetic operators ---------------------------------------------------------
@@ -24,7 +24,7 @@ NULL
 }
 
 #' @export
-`+.AnvlBox` <- `+.AnvlArray`
+`+.GraphBox` <- `+.AnvlArray`
 
 #' @rdname nv_sub
 #' @template params_e1_e2
@@ -34,7 +34,7 @@ NULL
 }
 
 #' @export
-`-.AnvlBox` <- `-.AnvlArray`
+`-.GraphBox` <- `-.AnvlArray`
 
 #' @rdname nv_mul
 #' @template params_e1_e2
@@ -44,7 +44,7 @@ NULL
 }
 
 #' @export
-`*.AnvlBox` <- `*.AnvlArray`
+`*.GraphBox` <- `*.AnvlArray`
 
 #' @rdname nv_div
 #' @template params_e1_e2
@@ -54,7 +54,7 @@ NULL
 }
 
 #' @export
-`/.AnvlBox` <- `/.AnvlArray`
+`/.GraphBox` <- `/.AnvlArray`
 
 #' @rdname nv_pow
 #' @template params_e1_e2
@@ -64,7 +64,7 @@ NULL
 }
 
 #' @export
-`^.AnvlBox` <- `^.AnvlArray`
+`^.GraphBox` <- `^.AnvlArray`
 
 #' @rdname nv_mod
 #' @template params_e1_e2
@@ -74,7 +74,7 @@ NULL
 }
 
 #' @export
-`%%.AnvlBox` <- `%%.AnvlArray`
+`%%.GraphBox` <- `%%.AnvlArray`
 
 #' @rdname nv_floor_div
 #' @template params_e1_e2
@@ -84,7 +84,7 @@ NULL
 }
 
 #' @export
-`%/%.AnvlBox` <- `%/%.AnvlArray`
+`%/%.GraphBox` <- `%/%.AnvlArray`
 
 #' @rdname nv_matmul
 #' @export
@@ -93,7 +93,7 @@ NULL
 }
 
 #' @export
-`%*%.AnvlBox` <- `%*%.AnvlArray`
+`%*%.GraphBox` <- `%*%.AnvlArray`
 
 # Comparison operators ---------------------------------------------------------
 
@@ -105,7 +105,7 @@ NULL
 }
 
 #' @export
-`==.AnvlBox` <- `==.AnvlArray`
+`==.GraphBox` <- `==.AnvlArray`
 
 #' @rdname nv_ne
 #' @template params_e1_e2
@@ -115,7 +115,7 @@ NULL
 }
 
 #' @export
-`!=.AnvlBox` <- `!=.AnvlArray`
+`!=.GraphBox` <- `!=.AnvlArray`
 
 #' @rdname nv_lt
 #' @template params_e1_e2
@@ -125,7 +125,7 @@ NULL
 }
 
 #' @export
-`<.AnvlBox` <- `<.AnvlArray`
+`<.GraphBox` <- `<.AnvlArray`
 
 #' @rdname nv_le
 #' @template params_e1_e2
@@ -135,7 +135,7 @@ NULL
 }
 
 #' @export
-`<=.AnvlBox` <- `<=.AnvlArray`
+`<=.GraphBox` <- `<=.AnvlArray`
 
 #' @rdname nv_gt
 #' @template params_e1_e2
@@ -145,7 +145,7 @@ NULL
 }
 
 #' @export
-`>.AnvlBox` <- `>.AnvlArray`
+`>.GraphBox` <- `>.AnvlArray`
 
 #' @rdname nv_ge
 #' @template params_e1_e2
@@ -155,7 +155,7 @@ NULL
 }
 
 #' @export
-`>=.AnvlBox` <- `>=.AnvlArray`
+`>=.GraphBox` <- `>=.AnvlArray`
 
 # Logical operators ------------------------------------------------------------
 
@@ -188,7 +188,7 @@ bitwise_hint <- function(fn) {
 }
 
 #' @export
-`&.AnvlBox` <- `&.AnvlArray`
+`&.GraphBox` <- `&.AnvlArray`
 
 #' @rdname nv_or
 #' @template params_e1_e2
@@ -204,7 +204,7 @@ bitwise_hint <- function(fn) {
 }
 
 #' @export
-`|.AnvlBox` <- `|.AnvlArray`
+`|.GraphBox` <- `|.AnvlArray`
 
 #' @rdname nv_not
 #' @section The `!` operator:
@@ -216,7 +216,7 @@ bitwise_hint <- function(fn) {
 }
 
 #' @export
-`!.AnvlBox` <- `!.AnvlArray`
+`!.GraphBox` <- `!.AnvlArray`
 
 # Math generics ----------------------------------------------------------------
 
@@ -225,35 +225,35 @@ bitwise_hint <- function(fn) {
 abs.AnvlArray <- nv_abs
 
 #' @export
-abs.AnvlBox <- abs.AnvlArray
+abs.GraphBox <- abs.AnvlArray
 
 #' @rdname nv_sign
 #' @export
 sign.AnvlArray <- nv_sign
 
 #' @export
-sign.AnvlBox <- sign.AnvlArray
+sign.GraphBox <- sign.AnvlArray
 
 #' @rdname nv_sqrt
 #' @export
 sqrt.AnvlArray <- nv_sqrt
 
 #' @export
-sqrt.AnvlBox <- sqrt.AnvlArray
+sqrt.GraphBox <- sqrt.AnvlArray
 
 #' @rdname nv_exp
 #' @export
 exp.AnvlArray <- nv_exp
 
 #' @export
-exp.AnvlBox <- exp.AnvlArray
+exp.GraphBox <- exp.AnvlArray
 
 #' @rdname nv_expm1
 #' @export
 expm1.AnvlArray <- nv_expm1
 
 #' @export
-expm1.AnvlBox <- expm1.AnvlArray
+expm1.GraphBox <- expm1.AnvlArray
 
 #' @rdname nv_log
 #' @param base (`numeric(1)` | [`arrayish`])\cr
@@ -271,153 +271,153 @@ log.AnvlArray <- function(x, base = exp(1)) {
 }
 
 #' @export
-log.AnvlBox <- log.AnvlArray
+log.GraphBox <- log.AnvlArray
 
 #' @rdname nv_log2
 #' @export
 log2.AnvlArray <- nv_log2
 
 #' @export
-log2.AnvlBox <- log2.AnvlArray
+log2.GraphBox <- log2.AnvlArray
 
 #' @rdname nv_log10
 #' @export
 log10.AnvlArray <- nv_log10
 
 #' @export
-log10.AnvlBox <- log10.AnvlArray
+log10.GraphBox <- log10.AnvlArray
 
 #' @rdname nv_log1p
 #' @export
 log1p.AnvlArray <- nv_log1p
 
 #' @export
-log1p.AnvlBox <- log1p.AnvlArray
+log1p.GraphBox <- log1p.AnvlArray
 
 #' @rdname nv_cos
 #' @export
 cos.AnvlArray <- nv_cos
 
 #' @export
-cos.AnvlBox <- cos.AnvlArray
+cos.GraphBox <- cos.AnvlArray
 
 #' @rdname nv_sin
 #' @export
 sin.AnvlArray <- nv_sin
 
 #' @export
-sin.AnvlBox <- sin.AnvlArray
+sin.GraphBox <- sin.AnvlArray
 
 #' @rdname nv_tan
 #' @export
 tan.AnvlArray <- nv_tan
 
 #' @export
-tan.AnvlBox <- tan.AnvlArray
+tan.GraphBox <- tan.AnvlArray
 
 #' @rdname nv_acos
 #' @export
 acos.AnvlArray <- nv_acos
 
 #' @export
-acos.AnvlBox <- acos.AnvlArray
+acos.GraphBox <- acos.AnvlArray
 
 #' @rdname nv_asin
 #' @export
 asin.AnvlArray <- nv_asin
 
 #' @export
-asin.AnvlBox <- asin.AnvlArray
+asin.GraphBox <- asin.AnvlArray
 
 #' @rdname nv_atan
 #' @export
 atan.AnvlArray <- nv_atan
 
 #' @export
-atan.AnvlBox <- atan.AnvlArray
+atan.GraphBox <- atan.AnvlArray
 
 #' @rdname nv_cosh
 #' @export
 cosh.AnvlArray <- nv_cosh
 
 #' @export
-cosh.AnvlBox <- cosh.AnvlArray
+cosh.GraphBox <- cosh.AnvlArray
 
 #' @rdname nv_sinh
 #' @export
 sinh.AnvlArray <- nv_sinh
 
 #' @export
-sinh.AnvlBox <- sinh.AnvlArray
+sinh.GraphBox <- sinh.AnvlArray
 
 #' @rdname nv_tanh
 #' @export
 tanh.AnvlArray <- nv_tanh
 
 #' @export
-tanh.AnvlBox <- tanh.AnvlArray
+tanh.GraphBox <- tanh.AnvlArray
 
 #' @rdname nv_acosh
 #' @export
 acosh.AnvlArray <- nv_acosh
 
 #' @export
-acosh.AnvlBox <- acosh.AnvlArray
+acosh.GraphBox <- acosh.AnvlArray
 
 #' @rdname nv_asinh
 #' @export
 asinh.AnvlArray <- nv_asinh
 
 #' @export
-asinh.AnvlBox <- asinh.AnvlArray
+asinh.GraphBox <- asinh.AnvlArray
 
 #' @rdname nv_atanh
 #' @export
 atanh.AnvlArray <- nv_atanh
 
 #' @export
-atanh.AnvlBox <- atanh.AnvlArray
+atanh.GraphBox <- atanh.AnvlArray
 
 #' @rdname nv_sinpi
 #' @method sinpi AnvlArray
 #' @export
 sinpi.AnvlArray <- nv_sinpi
 
-#' @method sinpi AnvlBox
+#' @method sinpi GraphBox
 #' @export
-sinpi.AnvlBox <- sinpi.AnvlArray
+sinpi.GraphBox <- sinpi.AnvlArray
 
 #' @rdname nv_cospi
 #' @method cospi AnvlArray
 #' @export
 cospi.AnvlArray <- nv_cospi
 
-#' @method cospi AnvlBox
+#' @method cospi GraphBox
 #' @export
-cospi.AnvlBox <- cospi.AnvlArray
+cospi.GraphBox <- cospi.AnvlArray
 
 #' @rdname nv_tanpi
 #' @method tanpi AnvlArray
 #' @export
 tanpi.AnvlArray <- nv_tanpi
 
-#' @method tanpi AnvlBox
+#' @method tanpi GraphBox
 #' @export
-tanpi.AnvlBox <- tanpi.AnvlArray
+tanpi.GraphBox <- tanpi.AnvlArray
 
 #' @rdname nv_lgamma
 #' @export
 lgamma.AnvlArray <- nv_lgamma
 
 #' @export
-lgamma.AnvlBox <- lgamma.AnvlArray
+lgamma.GraphBox <- lgamma.AnvlArray
 
 #' @rdname nv_digamma
 #' @export
 digamma.AnvlArray <- nv_digamma
 
 #' @export
-digamma.AnvlBox <- digamma.AnvlArray
+digamma.GraphBox <- digamma.AnvlArray
 
 #' @rdname nv_psigamma
 #' @section The `trigamma()` generic:
@@ -428,16 +428,16 @@ trigamma.AnvlArray <- function(x) {
 }
 
 #' @export
-trigamma.AnvlBox <- trigamma.AnvlArray
+trigamma.GraphBox <- trigamma.AnvlArray
 
 #' @rdname nv_gamma
 #' @method gamma AnvlArray
 #' @export
 gamma.AnvlArray <- nv_gamma
 
-#' @method gamma AnvlBox
+#' @method gamma GraphBox
 #' @export
-gamma.AnvlBox <- gamma.AnvlArray
+gamma.GraphBox <- gamma.AnvlArray
 
 # Rounding ---------------------------------------------------------------------
 
@@ -446,14 +446,14 @@ gamma.AnvlBox <- gamma.AnvlArray
 floor.AnvlArray <- nv_floor
 
 #' @export
-floor.AnvlBox <- floor.AnvlArray
+floor.GraphBox <- floor.AnvlArray
 
 #' @rdname nv_ceiling
 #' @export
 ceiling.AnvlArray <- nv_ceiling
 
 #' @export
-ceiling.AnvlBox <- ceiling.AnvlArray
+ceiling.GraphBox <- ceiling.AnvlArray
 
 #' @rdname nv_trunc
 #' @param ... Not used; must be empty.
@@ -464,7 +464,7 @@ trunc.AnvlArray <- function(x, ...) {
 }
 
 #' @export
-trunc.AnvlBox <- trunc.AnvlArray
+trunc.GraphBox <- trunc.AnvlArray
 
 #' @rdname nv_cumsum
 #' @export
@@ -473,7 +473,7 @@ cumsum.AnvlArray <- function(x) {
 }
 
 #' @export
-cumsum.AnvlBox <- cumsum.AnvlArray
+cumsum.GraphBox <- cumsum.AnvlArray
 
 #' @rdname nv_cumprod
 #' @export
@@ -482,7 +482,7 @@ cumprod.AnvlArray <- function(x) {
 }
 
 #' @export
-cumprod.AnvlBox <- cumprod.AnvlArray
+cumprod.GraphBox <- cumprod.AnvlArray
 
 #' @rdname nv_cummax
 #' @export
@@ -491,7 +491,7 @@ cummax.AnvlArray <- function(x) {
 }
 
 #' @export
-cummax.AnvlBox <- cummax.AnvlArray
+cummax.GraphBox <- cummax.AnvlArray
 
 #' @rdname nv_cummin
 #' @export
@@ -500,7 +500,7 @@ cummin.AnvlArray <- function(x) {
 }
 
 #' @export
-cummin.AnvlBox <- cummin.AnvlArray
+cummin.GraphBox <- cummin.AnvlArray
 
 # Summary generics -------------------------------------------------------------
 
@@ -549,7 +549,7 @@ sum.AnvlArray <- function(..., na.rm = FALSE) {
 }
 
 #' @export
-sum.AnvlBox <- sum.AnvlArray
+sum.GraphBox <- sum.AnvlArray
 
 #' @rdname nv_prod
 #' @templateVar fn nv_prod
@@ -572,7 +572,7 @@ prod.AnvlArray <- function(..., na.rm = FALSE) {
 }
 
 #' @export
-prod.AnvlBox <- prod.AnvlArray
+prod.GraphBox <- prod.AnvlArray
 
 #' @rdname nv_max
 #' @templateVar fn nv_max
@@ -595,7 +595,7 @@ max.AnvlArray <- function(..., na.rm = FALSE) {
 }
 
 #' @export
-max.AnvlBox <- max.AnvlArray
+max.GraphBox <- max.AnvlArray
 
 #' @rdname nv_min
 #' @templateVar fn nv_min
@@ -618,7 +618,7 @@ min.AnvlArray <- function(..., na.rm = FALSE) {
 }
 
 #' @export
-min.AnvlBox <- min.AnvlArray
+min.GraphBox <- min.AnvlArray
 
 #' @rdname nv_range
 #' @param ... ([`arrayish`])\cr
@@ -647,9 +647,9 @@ range.AnvlArray <- function(..., na.rm = FALSE) {
   )
 }
 
-#' @method range AnvlBox
+#' @method range GraphBox
 #' @export
-range.AnvlBox <- range.AnvlArray
+range.GraphBox <- range.AnvlArray
 
 #' @rdname nv_any
 #' @param ... ([`arrayish`])\cr
@@ -677,7 +677,7 @@ any.AnvlArray <- function(..., na.rm = FALSE) {
 }
 
 #' @export
-any.AnvlBox <- any.AnvlArray
+any.GraphBox <- any.AnvlArray
 
 #' @rdname nv_all
 #' @param ... ([`arrayish`])\cr
@@ -705,7 +705,7 @@ all.AnvlArray <- function(..., na.rm = FALSE) {
 }
 
 #' @export
-all.AnvlBox <- all.AnvlArray
+all.GraphBox <- all.AnvlArray
 
 # Other generics ---------------------------------------------------------------
 
@@ -722,36 +722,36 @@ mean.AnvlArray <- function(x, trim = 0, na.rm = FALSE, ..., axes = NULL, drop = 
   nv_mean(x, ..., axes = axes, drop = drop, nan_rm = na.rm)
 }
 
-#' @method mean AnvlBox
+#' @method mean GraphBox
 #' @export
-mean.AnvlBox <- mean.AnvlArray
+mean.GraphBox <- mean.AnvlArray
 
 #' @rdname nv_is_nan
 #' @method is.nan AnvlArray
 #' @export
 is.nan.AnvlArray <- nv_is_nan
 
-#' @method is.nan AnvlBox
+#' @method is.nan GraphBox
 #' @export
-is.nan.AnvlBox <- is.nan.AnvlArray
+is.nan.GraphBox <- is.nan.AnvlArray
 
 #' @rdname nv_is_infinite
 #' @method is.infinite AnvlArray
 #' @export
 is.infinite.AnvlArray <- nv_is_infinite
 
-#' @method is.infinite AnvlBox
+#' @method is.infinite GraphBox
 #' @export
-is.infinite.AnvlBox <- is.infinite.AnvlArray
+is.infinite.GraphBox <- is.infinite.AnvlArray
 
 #' @rdname nv_is_finite
 #' @method is.finite AnvlArray
 #' @export
 is.finite.AnvlArray <- nv_is_finite
 
-#' @method is.finite AnvlBox
+#' @method is.finite GraphBox
 #' @export
-is.finite.AnvlBox <- is.finite.AnvlArray
+is.finite.GraphBox <- is.finite.AnvlArray
 
 #' @rdname nv_aperm
 #' @section The `t()` generic:
@@ -768,9 +768,9 @@ t.AnvlArray <- function(x) {
   nv_aperm(x)
 }
 
-#' @method t AnvlBox
+#' @method t GraphBox
 #' @export
-t.AnvlBox <- t.AnvlArray
+t.GraphBox <- t.AnvlArray
 
 #' @rdname nv_aperm
 #' @param a ([`arrayish`])\cr
@@ -786,9 +786,9 @@ aperm.AnvlArray <- function(a, perm = NULL, ...) {
   nv_aperm(a, perm)
 }
 
-#' @method aperm AnvlBox
+#' @method aperm GraphBox
 #' @export
-aperm.AnvlBox <- aperm.AnvlArray
+aperm.GraphBox <- aperm.AnvlArray
 
 #' @rdname nv_rev
 #' @section The `rev()` generic:
@@ -801,9 +801,9 @@ rev.AnvlArray <- function(x) {
   nv_rev(x)
 }
 
-#' @method rev AnvlBox
+#' @method rev GraphBox
 #' @export
-rev.AnvlBox <- rev.AnvlArray
+rev.GraphBox <- rev.AnvlArray
 
 #' @rdname nv_concatenate
 #' @section The `c()` generic:
@@ -831,9 +831,9 @@ c.AnvlArray <- function(...) {
   do.call(nv_concatenate, c(args, list(axis = 1L)))
 }
 
-#' @method c AnvlBox
+#' @method c GraphBox
 #' @export
-c.AnvlBox <- c.AnvlArray
+c.GraphBox <- c.AnvlArray
 
 #' @rdname nv_median
 #' @param na.rm Forwarded to [nv_median()]'s `nan_rm` argument.
@@ -845,9 +845,9 @@ median.AnvlArray <- function(x, na.rm = FALSE, ..., axes = NULL, drop = TRUE, me
   nv_median(x, axes = axes, drop = drop, method = method, nan_rm = na.rm)
 }
 
-#' @method median AnvlBox
+#' @method median GraphBox
 #' @export
-median.AnvlBox <- median.AnvlArray
+median.GraphBox <- median.AnvlArray
 
 #' @rdname nv_quantile
 #' @param na.rm Forwarded to [nv_quantile()]'s `nan_rm` argument.
@@ -880,9 +880,9 @@ quantile.AnvlArray <- function(
   )
 }
 
-#' @method quantile AnvlBox
+#' @method quantile GraphBox
 #' @export
-quantile.AnvlBox <- quantile.AnvlArray
+quantile.GraphBox <- quantile.AnvlArray
 
 #' @rdname nv_sort
 #' @param decreasing (`logical(1)`)\cr If `TRUE`, sort in decreasing order.
@@ -893,9 +893,9 @@ sort.AnvlArray <- function(x, decreasing = FALSE, ..., axis = NULL) {
   nv_sort(x, decreasing = decreasing, ..., axis = axis)
 }
 
-#' @method sort AnvlBox
+#' @method sort GraphBox
 #' @export
-sort.AnvlBox <- sort.AnvlArray
+sort.GraphBox <- sort.AnvlArray
 
 #' @rdname nv_subset
 #' @method [ AnvlArray
@@ -919,9 +919,9 @@ sort.AnvlBox <- sort.AnvlArray
   rlang::inject(nv_subset(x, !!!quos))
 }
 
-#' @method [ AnvlBox
+#' @method [ GraphBox
 #' @export
-`[.AnvlBox` <- `[.AnvlArray`
+`[.GraphBox` <- `[.AnvlArray`
 
 #' @rdname nv_subset_assign
 #' @method [<- AnvlArray
@@ -942,9 +942,9 @@ sort.AnvlBox <- sort.AnvlArray
   rlang::inject(nv_subset_assign(x, !!!quos, value = value, inplace = inplace))
 }
 
-#' @method [<- AnvlBox
+#' @method [<- GraphBox
 #' @export
-`[<-.AnvlBox` <- `[<-.AnvlArray`
+`[<-.GraphBox` <- `[<-.AnvlArray`
 
 # `crossprod()`/`tcrossprod()` only became S3 generic in R 4.4.0 (`%*%` got
 # there in 4.3.0), so these methods are what sets the package's minimum R
@@ -959,9 +959,9 @@ crossprod.AnvlArray <- function(x, y = NULL, ...) {
   nv_crossprod(x, y)
 }
 
-#' @method crossprod AnvlBox
+#' @method crossprod GraphBox
 #' @export
-crossprod.AnvlBox <- crossprod.AnvlArray
+crossprod.GraphBox <- crossprod.AnvlArray
 
 #' @rdname nv_tcrossprod
 #' @param ... No additional arguments.
@@ -972,9 +972,9 @@ tcrossprod.AnvlArray <- function(x, y = NULL, ...) {
   nv_tcrossprod(x, y)
 }
 
-#' @method tcrossprod AnvlBox
+#' @method tcrossprod GraphBox
 #' @export
-tcrossprod.AnvlBox <- tcrossprod.AnvlArray
+tcrossprod.GraphBox <- tcrossprod.AnvlArray
 
 #' @title Shape of an Array
 #' @description
@@ -996,9 +996,9 @@ dim.AnvlArray <- function(x) {
   shape(x)
 }
 
-#' @method dim AnvlBox
+#' @method dim GraphBox
 #' @export
-dim.AnvlBox <- dim.AnvlArray
+dim.GraphBox <- dim.AnvlArray
 
 #' @title Number of Elements
 #' @description
@@ -1016,9 +1016,9 @@ length.AnvlArray <- function(x) {
   prod(shape(x))
 }
 
-#' @method length AnvlBox
+#' @method length GraphBox
 #' @export
-length.AnvlBox <- length.AnvlArray
+length.GraphBox <- length.AnvlArray
 
 #' @rdname nv_bind
 #' @param deparse.level Ignored. Kept for compatibility with [base::rbind()]
@@ -1029,9 +1029,9 @@ rbind.AnvlArray <- function(..., deparse.level = 1L) {
   nv_rbind(...)
 }
 
-#' @method rbind AnvlBox
+#' @method rbind GraphBox
 #' @export
-rbind.AnvlBox <- rbind.AnvlArray
+rbind.GraphBox <- rbind.AnvlArray
 
 #' @rdname nv_bind
 #' @method cbind AnvlArray
@@ -1040,9 +1040,9 @@ cbind.AnvlArray <- function(..., deparse.level = 1L) {
   nv_cbind(...)
 }
 
-#' @method cbind AnvlBox
+#' @method cbind GraphBox
 #' @export
-cbind.AnvlBox <- cbind.AnvlArray
+cbind.GraphBox <- cbind.AnvlArray
 
 #' @rdname nv_solve
 #' @param ... No additional arguments.
@@ -1052,9 +1052,9 @@ solve.AnvlArray <- function(a, b, ...) {
   if (missing(b)) nv_inv(a, ...) else nv_solve(a, b, ...)
 }
 
-#' @method solve AnvlBox
+#' @method solve GraphBox
 #' @export
-solve.AnvlBox <- solve.AnvlArray
+solve.GraphBox <- solve.AnvlArray
 
 #' @rdname nv_qr
 #' @param ... No additional arguments.
@@ -1064,9 +1064,9 @@ qr.AnvlArray <- function(x, ...) {
   nv_qr(x, ...)
 }
 
-#' @method qr AnvlBox
+#' @method qr GraphBox
 #' @export
-qr.AnvlBox <- qr.AnvlArray
+qr.GraphBox <- qr.AnvlArray
 
 #' @rdname nv_chol
 #' @param lower (`logical(1)`)\cr If `TRUE`, return the lower-triangular factor.
@@ -1077,9 +1077,9 @@ chol.AnvlArray <- function(x, ..., lower = FALSE) {
   nv_chol(x, lower = lower, ...)
 }
 
-#' @method chol AnvlBox
+#' @method chol GraphBox
 #' @export
-chol.AnvlBox <- chol.AnvlArray
+chol.GraphBox <- chol.AnvlArray
 
 #' @rdname nv_determinant
 #' @param logarithm (`logical(1)`)\cr If `TRUE` (default), return the log
@@ -1091,6 +1091,6 @@ determinant.AnvlArray <- function(x, logarithm = TRUE, ...) {
   nv_determinant(x, logarithm = logarithm, ...)
 }
 
-#' @method determinant AnvlBox
+#' @method determinant GraphBox
 #' @export
-determinant.AnvlBox <- determinant.AnvlArray
+determinant.GraphBox <- determinant.AnvlArray

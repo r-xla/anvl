@@ -1,7 +1,7 @@
 #' @include default-dtypes.R
 NULL
 
-#' Create a backend
+#' Create a Backend
 #'
 #' @param new_data (`function(data, dtype, shape, device, row_major = FALSE)`)\cr
 #'   Constructs an AnvlArray from R data. Must return
@@ -108,19 +108,18 @@ eq_device <- function(x, y) {
   identical(class(x), class(y)) && isTRUE(x == y)
 }
 
-# Error when a traced graph contains arrays/devices from a backend other than
-# `expected` (after accounting for `"plain"` constants, which are backend-agnostic).
-# Catches both call-time inputs (via arg_devices) and closed-over constants,
-# producing a clearer error than the downstream device-unification or
-# codegen failures.
-check_single_backend <- function(graph, arg_devices, expected) {
+# Error when a traced graph closes over arrays from a backend other than
+# `expected` (after accounting for `"plain"` constants, which are
+# backend-agnostic), producing a clearer error than the downstream
+# device-unification or codegen failures. The array inputs need no check here:
+# the dispatcher already rejects one of another backend.
+check_single_backend <- function(graph, expected) {
   const_backends <- vapply(
     graph$constants,
     function(const) if (is_concrete_array(const$aval)) backend(const$aval$data) else NA_character_,
     character(1L)
   )
-  arg_backends <- vapply(arg_devices, backend, character(1L))
-  found <- unique(c(const_backends, arg_backends))
+  found <- unique(const_backends)
   mismatches <- setdiff(found, c(expected, "plain", NA_character_))
   if (length(mismatches)) {
     cli_abort(c(
@@ -247,9 +246,10 @@ assert_backend <- function(backend) {
   assert_choice(backend, setdiff(names(globals$backends), "plain"))
 }
 
-#' Temporarily set the backend
+#' Temporarily Set the Backend
 #'
-#' Sets the `anvl.backend` option for the duration of the calling scope. Every
+#' Set the `anvl.backend` option for a scope: `local_backend()` until the
+#' calling frame exits, `with_backend()` for the duration of `code`. Every
 #' array built and every operation run in that scope uses the backend, and R
 #' values materialize at its default data types (see [`default_dtypes()`]).
 #'
@@ -257,9 +257,12 @@ assert_backend <- function(backend) {
 #'   Backend to use (`"pjrt"` or `"quickr"`).
 #' @param envir (`environment`)\cr
 #'   The environment to scope the change to.
-#' @return (named `list`)\cr
-#'   The previous value of the option, as `list(anvl.backend = )`, invisibly.
-#' @seealso [active_backend()], [with_backend()]
+#' @param code (any)\cr
+#'   An expression to evaluate with the given backend.
+#' @return `local_backend()` returns the previous value of the option, as
+#'   `list(anvl.backend = )`, invisibly. `with_backend()` returns the result
+#'   of evaluating `code`.
+#' @seealso [active_backend()]
 #' @examplesIf requireNamespace("quickr", quietly = TRUE)
 #' f <- function() {
 #'   local_backend("quickr")
@@ -267,34 +270,21 @@ assert_backend <- function(backend) {
 #' }
 #' f()
 #' active_backend()
+#' with_backend("quickr", active_backend())
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
   withr::local_options(anvl.backend = backend, .local_envir = envir)
 }
 
-#' Run code with a specific backend
-#'
-#' Sets the `anvl.backend` option for the duration of the expression. Every
-#' array built and every operation run in `code` uses the backend, and R values
-#' materialize at its default data types (see [`default_dtypes()`]).
-#'
-#' @param backend (`character(1)`)\cr
-#'   Backend to use (`"pjrt"` or `"quickr"`).
-#' @param code (any)\cr
-#'   An expression to evaluate with the given backend.
-#' @return (any)\cr
-#'   The result of evaluating `code`.
-#' @seealso [active_backend()], [local_backend()]
-#' @examplesIf requireNamespace("quickr", quietly = TRUE)
-#' with_backend("quickr", active_backend())
+#' @rdname local_backend
 #' @export
 with_backend <- function(backend, code) {
   backend <- assert_backend(backend)
   withr::with_options(list(anvl.backend = backend), code)
 }
 
-#' Install what a backend needs to run
+#' Install What a Backend Needs to Run
 #'
 #' A backend needs more than the packages anvl declares as dependencies: the
 #' `"pjrt"` backend runs on PJRT plugins that are downloaded rather than shipped
@@ -309,13 +299,14 @@ with_backend <- function(backend, code) {
 #' environment variable overrides the prompt: `"1"` always downloads without
 #' asking, `"0"` never downloads.
 #'
-#' Which plugins you get -- and whether CUDA is available at all -- is decided
-#' by the repository anvl was installed from, not by this call. See
-#' `r roxy_article("installation")`.
+#' For `"pjrt"`, the CPU plugin is always installed, and the CUDA plugin too
+#' when an NVIDIA GPU is detected on Linux (or `cuda = TRUE` is passed). The
+#' CUDA plugin additionally needs the CUDA libraries, which come in the
+#' `pjrt.cuda` R package from the r-xla r-universe; `install_anvl()` installs
+#' it along with the CUDA plugin. See [pjrt::install_pjrt()] for details.
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to install for. Defaults to [active_backend()]. The `"plain"`
-#'   backend has nothing to install and is not accepted.
+#'   Backend to install for. Defaults to [active_backend()].
 #' @param ... Passed to the underlying installer: [pjrt::install_pjrt()] for
 #'   `"pjrt"`, [utils::install.packages()] for `"quickr"`.
 #' @return (`NULL`)\cr

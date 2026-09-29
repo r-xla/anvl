@@ -14,8 +14,8 @@ shape as \code{yes}.}
 \item{yes, no}{(\code{\link{arrayish}})\cr
 Values to select from, of the same shape. Can be any data type.
 \code{yes} and \code{no} must have the same data type. An R value among them
-assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr

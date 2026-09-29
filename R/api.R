@@ -10,7 +10,7 @@
 #'
 #' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
-#' @param value (`numeric(1)`)\cr
+#' @param value (`numeric(1)` | `logical(1)`)\cr
 #'   Scalar value to fill the array with. It has to be something `dtype` can
 #'   hold: a whole number in its range for an integer data type, a non-negative
 #'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
@@ -1190,7 +1190,7 @@ nv_shift_right_arithmetic <- make_shift(prim_shift_right_arithmetic)
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, so the result is always a float. Scalars are
 #'   broadcast. An R value assumes the other operand's data type within its
-#'   [data type category][dtypes], and settles on the default float when
+#'   [data type category][dtype_categories], and settles on the default float when
 #'   neither operand has one.
 #' @return ([`arrayish`])\cr
 #'   Has the inputs' broadcast shape, and their common data type -- or the
@@ -1822,7 +1822,7 @@ nv_gamma <- jit(function(x) {
 #'   that is then converted to the default float data type (see
 #'   [`default_dtypes()`]) where it is not a float already, since a float is
 #'   all [prim_psigamma()] takes. An R value assumes the other operand's data
-#'   type within its [data type category][dtypes], and settles on the default
+#'   type within its [data type category][dtype_categories], and settles on the default
 #'   float when neither has one.
 #'   Scalars are [broadcast][nv_broadcast_scalars()] to the shape of the other,
 #'   so `nv_psigamma(x, 1)` works for any float `x`.
@@ -2004,7 +2004,7 @@ nv_rev <- function(x, axes = NULL) {
 #' `device` default to those of `like`.
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which values increase.
-#'   Negative values count from the end of `shape`, i.e. `-1` refers to the
+#'   Negative values count from the end of `shape`, i.e. `-1L` refers to the
 #'   last axis.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
@@ -2014,7 +2014,7 @@ nv_rev <- function(x, axes = NULL) {
 #'   Data type of the result, required here. Can be any numeric data type.
 #'   For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
 #' @param start (`integer(1)`)\cr
-#'   Starting value (default 1). Built at `dtype`, as the increments are.
+#'   Starting value (default 1).
 #' @template param_device
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and `shape`.
@@ -2132,7 +2132,7 @@ nv_seq <- jit(
 #' @return ([`arrayish`])\cr
 #'   Has `dtype` and shape `length_out`.
 #' @seealso [nv_seq()] for consecutive integers, [nv_iota()] for values
-#'   increasing along an axis of any shape, [`dtypes`] for the data type
+#'   increasing along an axis of any shape, [`dtype_categories`] for the data type
 #'   categories.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_linspace(0, 1, length_out = 5L)
@@ -2366,7 +2366,7 @@ nv_chol <- jit(
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, since the decomposition is a float one. An R
 #'   value assumes the other operand's data type within its
-#'   [data type category][dtypes], and settles on the default float when
+#'   [data type category][dtype_categories], and settles on the default float when
 #'   neither has one.
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side, vector of length `n` or matrix with `n` rows. Promoted
@@ -2439,7 +2439,7 @@ nv_solve <- jit(function(a, b) {
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, since the solve is a float one. An R value
 #'   assumes the other operand's data type within its
-#'   [data type category][dtypes], and settles on the default float when
+#'   [data type category][dtype_categories], and settles on the default float when
 #'   neither has one.
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
@@ -3451,7 +3451,7 @@ nv_if <- prim_if
 #' @export
 nv_while <- prim_while
 
-#' @title Scan (Loop With Per-Step Outputs)
+#' @title Scan (Loop with Per-Step Outputs)
 #' @description
 #' Runs a fixed-length loop that threads a carry through `body` while
 #' stacking each step's output into preallocated buffers.
@@ -4635,7 +4635,7 @@ nv_quantile <- jit(
 #' reduced elements with the default `"linear"` interpolation, the average of
 #' the two middle values is returned, matching base R's `median()`.
 #'
-#' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
+#' You can also use `median()` directly on an [`AnvlArray`] or [`GraphBox`];
 #' extra arguments (e.g. `method`) are forwarded via `...`.
 #' @section The `median()` generic:
 #' [stats::median()] reduces every axis of a multi-axis array, and so does
