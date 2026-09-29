@@ -34,7 +34,7 @@ other R vector is an error; use
 to make it an array.
 
 This is implemented via the generic
-[`tengen::shape()`](https://r-xla.github.io/tengen/reference/shape.html).
+[`xlamisc::shape()`](https://r-xla.github.io/xlamisc/reference/shape.html).
 
 ## Examples
 

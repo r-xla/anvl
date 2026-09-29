@@ -22,7 +22,7 @@ naxes(x)
 
 ## See also
 
-[`tengen::naxes()`](https://r-xla.github.io/tengen/reference/naxes.html)
+[`xlamisc::naxes()`](https://r-xla.github.io/xlamisc/reference/naxes.html)
 
 ## Examples
 

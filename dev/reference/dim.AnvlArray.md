@@ -3,7 +3,7 @@
 The shape of an array, i.e. its axis sizes – the generic
 [`base::dim()`](https://rdrr.io/r/base/dim.html) on an anvl array, and
 the same thing as
-[shape()](https://r-xla.github.io/tengen/reference/shape.html).
+[shape()](https://r-xla.github.io/xlamisc/reference/shape.html).
 
 Unlike base R, it also has a value for an array with a single axis,
 where [`dim()`](https://rdrr.io/r/base/dim.html) on an R vector is
@@ -30,7 +30,7 @@ dim(x)
 ## See also
 
 [length()](https://r-xla.github.io/anvl/dev/reference/length.AnvlArray.md),
-[shape()](https://r-xla.github.io/tengen/reference/shape.html)
+[shape()](https://r-xla.github.io/xlamisc/reference/shape.html)
 
 ## Examples
 

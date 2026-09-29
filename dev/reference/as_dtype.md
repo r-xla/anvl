@@ -23,13 +23,13 @@ as_dtype(x)
 ## Details
 
 This is implemented via the generic
-[`tengen::as_dtype()`](https://r-xla.github.io/tengen/reference/as_dtype.html).
+[`xlamisc::as_dtype()`](https://r-xla.github.io/xlamisc/reference/as_dtype.html).
 
 ## See also
 
 [`is_dtype()`](https://r-xla.github.io/anvl/dev/reference/is_dtype.md),
-[`tengen::as_dtype()`](https://r-xla.github.io/tengen/reference/as_dtype.html),
-[`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+[`xlamisc::as_dtype()`](https://r-xla.github.io/xlamisc/reference/as_dtype.html),
+[`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html)
 
 ## Examples
 

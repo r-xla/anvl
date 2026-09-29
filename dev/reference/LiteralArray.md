@@ -34,7 +34,7 @@ LiteralArray(data, shape, dtype = default_dtype(data))
 
 - dtype:
 
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  ([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   The data type. For the default, see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 

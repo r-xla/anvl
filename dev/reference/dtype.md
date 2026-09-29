@@ -25,7 +25,7 @@ dtype(x, ...)
 
 ## Value
 
-([`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))
+([`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))
 
 ## Details
 
@@ -41,11 +41,11 @@ that carries one during tracing. Use
 for the data type such a value would take.
 
 This is implemented via the generic
-[`tengen::dtype()`](https://r-xla.github.io/tengen/reference/dtype.html).
+[`xlamisc::dtype()`](https://r-xla.github.io/xlamisc/reference/dtype.html).
 
 ## See also
 
-[`tengen::dtype()`](https://r-xla.github.io/tengen/reference/dtype.html),
+[`xlamisc::dtype()`](https://r-xla.github.io/xlamisc/reference/dtype.html),
 [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md),
 [RData](https://r-xla.github.io/anvl/dev/reference/RData.md)
 

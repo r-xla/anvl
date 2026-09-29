@@ -23,7 +23,7 @@ with_default_dtypes(dtypes, code, backend = NULL)
   [`list()`](https://rdrr.io/r/base/list.html))  
   A mapping of the data type categories (`float` and `int`) to data
   types, e.g. `c(float = "f64", int = "i32")`. Each may be a string or a
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html).
   Can also be a partial override, such as `c(float = "f64")`, in which
   case the category it does not name is left as it is.
 

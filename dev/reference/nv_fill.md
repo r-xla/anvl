@@ -32,7 +32,7 @@ nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Data type of the result. The default (`NULL`) uses the [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   for `nv_fill` and `dtype(like)` for `nv_fill_like`.

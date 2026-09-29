@@ -26,12 +26,12 @@ common_dtype(lhs_dtype, rhs_dtype)
 
 - lhs_dtype, rhs_dtype:
 
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  ([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   The two data types.
 
 ## Value
 
-([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
 The narrowest common data type.
 
 ## Examples

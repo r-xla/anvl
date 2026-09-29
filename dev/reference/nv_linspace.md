@@ -35,7 +35,7 @@ nv_linspace_like(like, from, to, length_out, dtype = NULL, device = NULL)
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Data type of the result. Must be a float data type; `NULL` (default)
   uses the default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),

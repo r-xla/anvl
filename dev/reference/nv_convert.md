@@ -22,7 +22,7 @@ nv_convert(x, dtype)
 - dtype:
 
   (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Target data type.
 
 ## Value

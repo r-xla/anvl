@@ -12,7 +12,7 @@ ordered boolean \< integer \< float:
 
 These are the categories promotion works in, where signed and unsigned
 integers count as one.
-[`tengen::dtype_category()`](https://r-xla.github.io/tengen/reference/dtype_category.html)
+[`xlamisc::dtype_category()`](https://r-xla.github.io/xlamisc/reference/dtype_category.html)
 reports a finer split that names `int` and `uint` separately.
 
 ## Data Type Vocabulary

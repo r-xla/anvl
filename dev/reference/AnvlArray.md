@@ -57,9 +57,9 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   The data type at which to create the array: a
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+  [`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html)
   or one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. A
   value it cannot hold at all is an error
   (`nv_array(3e9, dtype = "i32")` overflows). A `double` at an integer
@@ -129,12 +129,12 @@ the extent along that axis, and the **shape** is the vector of all axis
 sizes. For example, `nv_array(1:6, shape = c(2, 3))` has two axes; the
 size of axis `1` is `2` and the size of axis `2` is `3`, so its shape is
 `c(2, 3)`. Use
-[`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html) for the
-number of axes,
+[`naxes()`](https://r-xla.github.io/xlamisc/reference/naxes.html) for
+the number of axes,
 [`axes()`](https://r-xla.github.io/anvl/dev/reference/axes.md) for the
 axis indices, and
-[`shape()`](https://r-xla.github.io/tengen/reference/shape.html) for the
-axis sizes. We speak of the *size of an axis* rather than an array's
+[`shape()`](https://r-xla.github.io/xlamisc/reference/shape.html) for
+the axis sizes. We speak of the *size of an axis* rather than an array's
 "dimensions", as the latter is generally overloaded as it is used to
 refer to both the axis and its size.
 
@@ -143,19 +143,19 @@ refer to both the axis and its size.
 The following generic functions can be used to extract information from
 an `AnvlArray`:
 
-- [`dtype()`](https://r-xla.github.io/tengen/reference/dtype.html): Get
+- [`dtype()`](https://r-xla.github.io/xlamisc/reference/dtype.html): Get
   the data type of the array.
 
-- [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
+- [`shape()`](https://r-xla.github.io/xlamisc/reference/shape.html): Get
   the shape (axis sizes) of the array.
 
-- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
+- [`naxes()`](https://r-xla.github.io/xlamisc/reference/naxes.html): Get
   the number of axes.
 
 - [`axes()`](https://r-xla.github.io/anvl/dev/reference/axes.md): Get
   the axis indices.
 
-- [`device()`](https://r-xla.github.io/tengen/reference/device.html):
+- [`device()`](https://r-xla.github.io/xlamisc/reference/device.html):
   Get the device of the array.
 
 - [`platform()`](https://r-xla.github.io/anvl/dev/reference/platform.md):
@@ -264,8 +264,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  1.7455e+09 3.0850e-41 5.3989e+07
-#>  3.0850e-41 5.6655e+07 3.0850e-41
+#>  -3.4775e+00  3.0889e-41 -1.6159e+00
+#>   3.0889e-41 -6.0575e-01  3.0889e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

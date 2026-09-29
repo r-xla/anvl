@@ -45,7 +45,7 @@ represent as an array – a vector of length 1.
 ## Details
 
 This is implemented via the generic
-[`tengen::as_array()`](https://r-xla.github.io/tengen/reference/as_array.html).
+[`xlamisc::as_array()`](https://r-xla.github.io/xlamisc/reference/as_array.html).
 
 ## Data types
 

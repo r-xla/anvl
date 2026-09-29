@@ -30,7 +30,7 @@ nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Data type of the result, required here. Can be any numeric data type.
   For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
 

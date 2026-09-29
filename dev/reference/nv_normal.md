@@ -70,7 +70,7 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Floating point data type of the sample. The default (`NULL`) uses the
   common data type of `mean` and `sd`, and the [default float
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)

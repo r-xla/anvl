@@ -24,7 +24,7 @@ peek_dtype(x)
 
 ## Value
 
-([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
 The data type `x` has, or the [default data
 type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md) it
 would materialize at if it is still a bare R value.
@@ -33,7 +33,7 @@ would materialize at if it is still a bare R value.
 
 [`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md),
 [RData](https://r-xla.github.io/anvl/dev/reference/RData.md),
-[shape()](https://r-xla.github.io/tengen/reference/shape.html)
+[shape()](https://r-xla.github.io/xlamisc/reference/shape.html)
 
 ## Examples
 

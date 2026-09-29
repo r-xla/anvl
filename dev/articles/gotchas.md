@@ -273,7 +273,7 @@ as_array(nv_scalar(NA_integer_, dtype = "i32"), check = "err")
     ##   way back.
     ## ℹ Use `suppressWarnings()` to silence this.
 
-    ## Error in `tengen::as_array()`:
+    ## Error in `xlamisc::as_array()`:
     ## ! Materialized <i32> buffer contains a value that R cannot distinguish
     ##   from "NA".
     ## ℹ "i32" reserves the bit pattern "-2147483648" (`INT_MIN`); "i64" reserves
@@ -409,7 +409,7 @@ as_array(big)
 as_array(big, check = "err")
 ```
 
-    ## Error in `tengen::as_array()`:
+    ## Error in `xlamisc::as_array()`:
     ## ! Materialized <ui64> buffer contains a value `>= 2^63` that wrapped
     ##   through R's signed <integer64>.
     ## ℹ Exactly `2^63` becomes `NA_integer64_`; larger values become negative

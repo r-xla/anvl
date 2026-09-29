@@ -32,7 +32,7 @@ as_raw(x, ...)
 ## Details
 
 This is implemented via the generic
-[`tengen::as_raw()`](https://r-xla.github.io/tengen/reference/as_raw.html).
+[`xlamisc::as_raw()`](https://r-xla.github.io/xlamisc/reference/as_raw.html).
 
 ## Examples
 

@@ -25,7 +25,7 @@ length(x)
 ## See also
 
 [dim()](https://r-xla.github.io/anvl/dev/reference/dim.AnvlArray.md),
-[nelts()](https://r-xla.github.io/tengen/reference/nelts.html)
+[nelts()](https://r-xla.github.io/xlamisc/reference/nelts.html)
 
 ## Examples
 

@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.4.0.9000</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.5.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -96,7 +96,7 @@
 <li>
 <code>ANVL_DEFAULT_DTYPES="float=f64,int=i64"</code> runs the suite at another pair of default data types; the <code>default-dtypes</code> workflow runs it so that anything hardcoding <code>f32</code> / <code>i32</code> where it should read <code><a href="reference/default_dtypes.html">default_dtypes()</a></code> fails in CI. A test that asserts the <em>registered</em> pair calls <code>local_registered_default_dtypes()</code> (<code>helper.R</code>) to clear the override.</li>
 </ul></li>
-<li>anvl tracks the <strong>dev</strong> versions of its r-xla dependencies: <code>pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))</code>.</li>
+<li>anvl tracks the <strong>dev</strong> versions of its r-xla dependencies: <code>pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))</code>.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="two-layer-api">Two-Layer API<a class="anchor" aria-label="anchor" href="#two-layer-api"></a></h2>

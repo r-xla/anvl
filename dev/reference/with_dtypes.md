@@ -33,7 +33,7 @@ with_dtypes(f, dtypes)
   A mapping of the data type categories (`float`, `int` and `uint`) to
   data types, e.g. `c(float = "f64", int = "i64")`. Each may be a string
   or a
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html).
   A category it does not name is left as it is.
 
 ## Value

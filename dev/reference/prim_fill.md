@@ -30,7 +30,7 @@ prim_fill(value, shape, dtype, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Data type of the result.
 
 - device:

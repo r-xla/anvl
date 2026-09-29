@@ -44,10 +44,10 @@ default_int()
 
 `default_dtypes()`: (named `list`)  
 Elements `float` and `int`, each a
-[`DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
+[`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html).
 
 `default_float()`, `default_int()`:
-([`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+([`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
 The default of one category.
 
 ## See also

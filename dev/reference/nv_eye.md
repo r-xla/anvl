@@ -23,7 +23,7 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Data type of the result. Can be any data type; `NULL` (default) uses
   the default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).

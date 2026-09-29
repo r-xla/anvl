@@ -31,7 +31,7 @@ Backend-dependent device object. One of:
 ## Details
 
 This is implemented via the generic
-[`tengen::device()`](https://r-xla.github.io/tengen/reference/device.html).
+[`xlamisc::device()`](https://r-xla.github.io/xlamisc/reference/device.html).
 
 ## Examples
 

@@ -21,7 +21,7 @@ prim_bitcast_convert(x, dtype)
 - dtype:
 
   (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Any target data type except `bool`. One of the same bit width as the
   input's leaves the shape unchanged; a narrower one adds a *leading*
   axis holding the pieces; a wider one consumes the first axis, whose

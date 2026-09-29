@@ -24,7 +24,7 @@ prim_iota(axis, shape, dtype, start = 1L, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Data type of the result. Can be any numeric data type, boolean being
   the one exception.
 

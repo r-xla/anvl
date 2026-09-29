@@ -27,7 +27,7 @@ prim_rng_bit_generator(state, rng_algorithm = "THREE_FRY", dtype, shape)
 - dtype:
 
   (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Data type of the generated random values. Can be any numeric data
   type.
 

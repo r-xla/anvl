@@ -35,7 +35,7 @@ AbstractArray(dtype, shape)
 
 - dtype:
 
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+  ([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html)
   \| `character(1)`)  
   The data type of the array. For `nv_aval()` only, `"double"`,
   `"integer"` or `"logical"` create an

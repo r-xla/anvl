@@ -38,7 +38,7 @@ nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Numeric type of the sample. `NULL` (default) uses the [default integer
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
   The number of successes are converted to it.

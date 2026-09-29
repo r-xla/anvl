@@ -53,7 +53,7 @@ no conversion."><meta property="og:image" content="https://r-xla.github.io/anvl/
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.4.0.9000</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.5.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -168,7 +168,7 @@ rules are disjoint); <code>fn</code> itself must restrict itself to them.</p></d
 
 
 <dt id="arg-fallback">fallback<a class="anchor" aria-label="anchor" href="#arg-fallback"></a></dt>
-<dd><p>(<code>NULL</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code> | <code>character(1)</code>)<br>
+<dd><p>(<code>NULL</code> | <code><a href="https://r-xla.github.io/xlamisc/reference/DataType.html" class="external-link">xlamisc::DataType</a></code> | <code>character(1)</code>)<br>
 The data type to settle on when <em>every</em> input is a bare R value, in place
 of the default those would materialize at on their own. <code>NULL</code> (default)
 leaves them their default.</p></dd>
@@ -191,7 +191,7 @@ hold (an <code>f64</code> array at <code>f32</code>). The default is <code>FALSE
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
-<dd><p>(<code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code> | <code>character(1)</code>)<br>
+<dd><p>(<code><a href="https://r-xla.github.io/xlamisc/reference/DataType.html" class="external-link">xlamisc::DataType</a></code> | <code>character(1)</code>)<br>
 The data type to bring the inputs to.</p></dd>
 
 
@@ -302,7 +302,7 @@ name of the function that builds it.</p></dd>
 <span class="r-in"><span>  <span class="kw">function</span><span class="op">(</span><span class="va">args</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="va">widths</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">args</span>, <span class="kw">function</span><span class="op">(</span><span class="va">a</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="va">dt</span> <span class="op">&lt;-</span> <span class="fu"><a href="peek_dtype.html">peek_dtype</a></span><span class="op">(</span><span class="fu"><a href="to_abstract.html">to_abstract</a></span><span class="op">(</span><span class="va">a</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="kw">if</span> <span class="op">(</span><span class="fu">tengen</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/tengen/reference/is_dtype_float.html" class="external-link">is_dtype_float</a></span><span class="op">(</span><span class="va">dt</span><span class="op">)</span><span class="op">)</span> <span class="fu">tengen</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/tengen/reference/dtype_width.html" class="external-link">dtype_width</a></span><span class="op">(</span><span class="va">dt</span><span class="op">)</span> <span class="kw">else</span> <span class="fl">0L</span></span></span>
+<span class="r-in"><span>      <span class="kw">if</span> <span class="op">(</span><span class="fu">xlamisc</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/xlamisc/reference/is_dtype_float.html" class="external-link">is_dtype_float</a></span><span class="op">(</span><span class="va">dt</span><span class="op">)</span><span class="op">)</span> <span class="fu">xlamisc</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/xlamisc/reference/dtype_width.html" class="external-link">dtype_width</a></span><span class="op">(</span><span class="va">dt</span><span class="op">)</span> <span class="kw">else</span> <span class="fl">0L</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="as_dtype.html">as_dtype</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"f"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">32L</span>, <span class="va">widths</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">args</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span>,</span></span>

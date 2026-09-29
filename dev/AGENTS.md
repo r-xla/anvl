@@ -50,7 +50,7 @@ anvl-specific:
     `local_registered_default_dtypes()` (`helper.R`) to clear the
     override.
 - anvl tracks the **dev** versions of its r-xla dependencies:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))`.
 
 ## Two-Layer API
 

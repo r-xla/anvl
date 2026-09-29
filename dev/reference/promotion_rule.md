@@ -63,7 +63,7 @@ promotion_rule(fn, kind, on = NULL, ...)
 - fallback:
 
   (`NULL` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+  [`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html)
   \| `character(1)`)  
   The data type to settle on when *every* input is a bare R value, in
   place of the default those would materialize at on their own. `NULL`
@@ -89,7 +89,7 @@ promotion_rule(fn, kind, on = NULL, ...)
 
 - dtype:
 
-  ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
+  ([`xlamisc::DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html)
   \| `character(1)`)  
   The data type to bring the inputs to.
 
@@ -203,7 +203,7 @@ widest_float <- promotion_rule(
   function(args) {
     widths <- vapply(args, function(a) {
       dt <- peek_dtype(to_abstract(a))
-      if (tengen::is_dtype_float(dt)) tengen::dtype_width(dt) else 0L
+      if (xlamisc::is_dtype_float(dt)) xlamisc::dtype_width(dt) else 0L
     }, integer(1))
     rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
   },
