@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 export ANVL_DEFAULT_DEVICE=cpu
 mkdir -p results
 OUT=results/cpu.csv
-rm -f "$OUT" results/overhead.csv
+rm -f "$OUT" results/overhead.csv results/cpu-tmb.csv results/overhead-tmb.csv
 CORE=$(taskset -cp $$ | awk -F': ' '{print $2}' | cut -d, -f1 | cut -d- -f1)
 lscpu > results/lscpu.txt
 Rscript bench-stan.R compile
@@ -25,4 +25,7 @@ TORCH_THREADS=1 taskset -c "$CORE" Rscript bench-torch.R cpu1 "$OUT" single
 TORCH_THREADS=1 taskset -c "$CORE" Rscript bench-torch.R cpu1 "$OUT" chains 64
 TORCH_THREADS=16 Rscript bench-torch.R cpu16 "$OUT" single
 TORCH_THREADS=16 Rscript bench-torch.R cpu16 "$OUT" chains 256
+TMB_THREADS=1 taskset -c "$CORE" Rscript bench-tmb.R cpu1 results/cpu-tmb.csv single 1
+TMB_THREADS=1 taskset -c "$CORE" Rscript bench-tmb.R cpu1 results/cpu-tmb.csv chains 1 16
+TMB_THREADS=1 Rscript bench-tmb.R cpu16 results/cpu-tmb.csv chains 16 256
 Rscript overhead.R results/overhead.csv

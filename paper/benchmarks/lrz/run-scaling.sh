@@ -25,6 +25,7 @@ for c in 1 2 4 8 16; do
   taskset -c "$set" Rscript bench-anvl.R "anvl-$c" "$OUT" scaling
   taskset -c "$set" Rscript bench-stan.R "stan_threads-$c" "$OUT" scaling "$c" threads
   TORCH_THREADS=$c taskset -c "$set" Rscript bench-torch.R "torch-$c" "$OUT" scaling
+  TMB_THREADS=$c taskset -c "$set" Rscript bench-tmb.R "tmb-$c" "$OUT" scaling 1
   taskset -c "$set" Rscript bench-anvl.R "anvl-$c" "$OUT" scaling_chains
   taskset -c "$set" Rscript bench-stan.R "stan-$c" "$OUT" scaling_chains "$c"
 done

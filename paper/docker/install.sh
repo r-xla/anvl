@@ -24,7 +24,7 @@ R -q -e "remotes::install_github(c(
   'r-xla/anvl@9d26362b8df4b526df98135fa30005e83ece5f53'
 ), upgrade = 'never', force = TRUE)"
 
-R -q -e "install.packages(c('withr', 'ggplot2', 'rmarkdown', 'rjtools', 'knitr', 'safetensors'))"
+R -q -e "install.packages(c('withr', 'ggplot2', 'rmarkdown', 'rjtools', 'knitr', 'safetensors', 'TMB'))"
 # torch 0.17.0: the R package is built from source (for this R version), and its
 # lib/ directory is replaced by the one of the pre-built binary for CUDA 12.8,
 # which contains LibTorch, Lantern and the CUDA libraries they need.
