@@ -81,7 +81,7 @@ test_that("from DataType", {
 
 test_that("nv_array from nv_array", {
   skip_if(!is_cuda())
-  x <- nv_array(1, device = "cuda")
+  x <- nv_array(1, dtype = "f32", device = "cuda")
   expect_equal(platform(x), "cuda")
   expect_error(nv_array(x, device = "cpu"))
   expect_error(nv_array(x, shape = c(1, 1)))
