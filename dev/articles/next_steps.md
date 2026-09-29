@@ -155,10 +155,13 @@ y[arr(1L, 3L), 2:3]
     ##  6 9
     ## [ CPUi32{2,2} ]
 
-Logical masks cannot be used for subsetting (see [shapes must be known
-in advance](#shapes-must-be-known-in-advance) below), and indices
-outside of the `AnvlArray` are moved to the nearest valid index instead
-of raising an error (see [compiled code cannot throw
+Logical masks work as well, but inside
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) their
+values must be known in advance, so a mask computed from the inputs,
+such as `x[x > 0]`, is an error (see [shapes must be known in
+advance](#shapes-must-be-known-in-advance) below). Indices outside of
+the `AnvlArray` are moved to the nearest valid index instead of raising
+an error (see [compiled code cannot throw
 errors](#compiled-code-cannot-throw-errors) below). See the
 [Subsetting](https://r-xla.github.io/anvl/dev/articles/subsetting.md)
 article for the details.
@@ -309,9 +312,9 @@ also be an option.
 ## Shapes Must Be Known in Advance
 
 The shape of every intermediate result must be known when compiling, so
-operations such as `x[x > 0]`,
+a jitted function cannot use operations such as `x[x > 0]`,
 [`which()`](https://rdrr.io/r/base/which.html), or
-[`unique()`](https://rdrr.io/r/base/unique.html) cannot be used. Often,
+[`unique()`](https://rdrr.io/r/base/unique.html) on its inputs. Often,
 one can instead keep all values and ignore the unwanted ones,
 e.g. `sum(nv_ifelse(x > 0, x, 0))` instead of `sum(x[x > 0])`. See the
 [Static Shape

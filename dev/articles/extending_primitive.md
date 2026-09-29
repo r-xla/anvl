@@ -34,7 +34,7 @@ are various scenarios:
 2.  The operation is not available/cannot be efficiently expressed in
     StableHLO, because:
     1.  It requires shape dynamism (output shape depends on data, such
-        as using boolean values for subsetting):
+        as subsetting with a boolean mask computed from the inputs):
 
         \\\rightarrow\\ This is currently not possible, but we hope we
         can add support for this in the future.

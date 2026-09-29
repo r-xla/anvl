@@ -246,9 +246,10 @@ numeric type and sum it.</p>
 <h3 id="subset-assignment">Subset assignment<a class="anchor" aria-label="anchor" href="#subset-assignment"></a>
 </h3>
 <p>The static shape restriction also prevents calls of the form
-<code>x[mask] &lt;- update</code>. In some cases, this can be replaced
-by <code><a href="../reference/nv_ifelse.html">nv_ifelse()</a></code>. For example, you might want to replace all
-values <code>&lt; 1</code> with 1:</p>
+<code>x[mask] &lt;- update</code> inside <code><a href="../reference/jit.html">jit()</a></code> when
+<code>mask</code> is computed from the inputs. In some cases, this can
+be replaced by <code><a href="../reference/nv_ifelse.html">nv_ifelse()</a></code>. For example, you might want to
+replace all values <code>&lt; 1</code> with 1:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">&lt;</span> <span class="fl">1</span>, <span class="fl">1</span>, <span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
