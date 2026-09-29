@@ -444,9 +444,9 @@ update <- jit(function(beta, X, y, lr) {
 X <- nv_array(matrix(rnorm(20), 10, 2))
 y <- X %*% matrix(c(1, 2))
 as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
-#>            [,1]
-#> [1,] 0.02904128
-#> [2,] 0.15508573
+#>           [,1]
+#> [1,] 0.2054687
+#> [2,] 0.4679737
 \end{verbatim}
 
 When \texttt{update()} is traced, the call to the gradient function traces \texttt{loss()} into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of \texttt{update()}.
@@ -744,7 +744,7 @@ The same code runs on a GPU when the arrays are allocated there, e.g., via \text
 \hypertarget{runtime}{%
 \section{Runtime evaluation}\label{runtime}}
 
-In this section, we compare the runtime of the HMC sampler from Section \ref{hmc} to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU \citep{ref-stanmath}, and to the same sampler written with \CRANpkg{torch}.
+In this section, we compare the runtime of the HMC sampler from Section \ref{hmc} to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU \citep{ref-stanmath}, to \CRANpkg{TMB} \citep{ref-tmb}, and to the same sampler written with \CRANpkg{torch}.
 We ask how the sampler compares on a single CPU core, how well it uses multiple cores and a GPU, both within one chain and across many chains, and how large the compilation overhead is.
 
 \hypertarget{setup}{%
@@ -756,6 +756,8 @@ We run this OpenCL variant on the same GPU as \pkg{anvl} and \CRANpkg{torch}; to
 On the GPU, Stan's chains run as separate processes that share the device, at most 8 at a time.
 The \CRANpkg{torch} sampler mirrors the \pkg{anvl} code: it obtains the gradient from \CRANpkg{torch}'s reverse-mode AD and runs the leapfrog and sampling loops as R loops, as \CRANpkg{torch} executes each operation eagerly.
 The number of threads \CRANpkg{torch} uses on the CPU is set via \texttt{torch\_set\_num\_threads()}.
+\CRANpkg{TMB} evaluates the log posterior and its gradient with CppAD from a C++ template, which we compile once.
+As \CRANpkg{TMB} does not provide an HMC sampler, we run the same static HMC loop in R around its compiled objective and gradient, as is common when custom algorithms are implemented with \CRANpkg{TMB}; for a single chain, \CRANpkg{TMB} can evaluate the likelihood with several OpenMP threads, and multiple chains run as separate processes, as for CmdStan.
 Both samplers work in double precision and start at \(\beta = 0\), and the data are simulated with standard normal features and \(\beta \sim \mathcal{N}(0, 0.25 I_p)\).
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
 Each configuration is repeated three times after a first call that includes compilation, and we report the median.
@@ -789,11 +791,13 @@ The \CRANpkg{torch} sampler needs about 28 seconds for \(n = 10^3\) on one core,
 Its runtime is dominated by the overhead of dispatching each of the operations of a gradient evaluation from R, which is also why additional threads and the GPU do not help: on 16 threads it is slightly slower than on one, and on the GPU it takes about 36 seconds for every \(n\), 110 to 220 times as long as \pkg{anvl} on the GPU.
 This is the per-operation overhead of eager execution discussed in the introduction.
 Stan's OpenCL backend, which evaluates the likelihood and its gradient on the GPU while the sampler runs on the CPU, needs 35 to 38 seconds for every \(n\), as each gradient evaluation involves transferring data and launching kernels; it is faster than Stan on the CPU only for \(n = 10^5\) (38 versus 48 seconds), and about 120 times slower than \pkg{anvl} on the GPU.
+\CRANpkg{TMB}, whose CppAD tape records every scalar operation of the likelihood, needs 5.2, 51, and 521 seconds, 11 to 13 times as long as CmdStan and 18 to 39 times as long as \pkg{anvl}; the R loop around it adds little, as each gradient evaluation takes several milliseconds.
 
 Figure \ref{fig:results-single-scaling} (right) shows how a single chain scales with the number of cores.
 Without any change to the code, \pkg{anvl} becomes 1.7, 2.8, and 4.6 times faster on 2, 4, and 8 cores, and does not improve further on 16 cores.
 With \texttt{reduce\_sum()}, Stan scales further at 16 cores (11 times faster than on one thread), but this requires rewriting the model, and the parallelized model is slower than the original on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
 Up to 8 cores, both scale similarly; beyond that, profiling suggests that \pkg{anvl} is limited by the fixed cost of distributing each operation of the gradient over the cores, as the individual operations are too small at this problem size to keep 16 cores busy.
+\CRANpkg{TMB}'s OpenMP parallelization scales well, becoming 18 times faster on 16 threads, but it starts from 522 seconds on one thread and still takes 29 seconds on 16.
 \CRANpkg{torch} is as fast as \pkg{anvl} on one core (37 seconds), as the operations are large enough at this problem size to hide its overhead, but it becomes only 1.7 times faster on 16 threads (22 seconds).
 On the GPU, the same run takes 0.28 seconds with \pkg{anvl}, 7 seconds with \CRANpkg{torch}, and 8.9 seconds with Stan's OpenCL backend.
 
@@ -807,6 +811,7 @@ Figure \ref{fig:results-chains} shows the results for multiple chains.
 On one core, all samplers scale approximately linearly in the number of chains, with \pkg{anvl} being 2.8 (one chain) to 5.9 (64 chains) times faster than CmdStan, as batching the chains turns the matrix-vector products of the individual chains into matrix-matrix products.
 \CRANpkg{torch} benefits from batching as well, as its overhead is shared by all chains: for 64 chains, it is slightly faster than CmdStan on one core (244 versus 263 seconds), but still 5.5 times slower than \pkg{anvl}, and on 16 threads and the GPU it takes 361 and 51 seconds for 256 chains, respectively; on the GPU, 1024 chains did not finish within our one-hour time limit.
 Stan's OpenCL backend, whose chains compete for the GPU as separate processes, takes 53 and 200 seconds for 4 and 16 chains, and 64 chains did not finish within the time limit.
+\CRANpkg{TMB}, run like CmdStan, takes 803 seconds for 16 chains on one core and 1575 seconds for 256 chains on 16 cores, 59 and 55 times as long as \pkg{anvl}.
 On 16 cores, both run the chains in parallel, and \pkg{anvl} is 2.6 times faster than CmdStan for 64 chains and 4.4 times faster for 1024 chains (101 versus 443 seconds).
 Running all chains as a single program on 16 cores is considerably slower than splitting them over devices, because each operation is again too small to be distributed efficiently.
 On the GPU, the time is almost constant up to 64 chains and grows sublinearly beyond that: 4096 chains with 1000 draws each take 10.8 seconds, which corresponds to about 380,000 draws per second, compared to about 2,300 draws per second for CmdStan on 16 cores.
@@ -815,7 +820,7 @@ All configurations of all samplers had an average acceptance rate between 0.97 a
 
 Finally, we measured the one-off costs for \(n = 10^4\) on 16 cores.
 Tracing the sampler, lowering it to StableHLO, and compiling it with XLA take 0.28, 0.21, and 0.24 seconds, respectively, so the first call is about half a second slower than later calls (2.1 versus 1.5 seconds).
-Compiling the Stan model takes about 11 seconds, and \CRANpkg{quickr} compiles the gradient in 1.2 seconds, compared to 0.11 seconds for XLA.
+Compiling the Stan model takes about 11 seconds, compiling the \CRANpkg{TMB} template about 35 seconds, and \CRANpkg{quickr} compiles the gradient in 1.2 seconds, compared to 0.11 seconds for XLA.
 Although compilation must be repeated for every new combination of input shapes and static arguments, its cost is small compared to the runtime of expensive methods and quickly amortized as the size of the data grows.
 
 \hypertarget{discussion}{%
