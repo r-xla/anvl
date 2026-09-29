@@ -549,11 +549,11 @@ nv_punif <- jit(
     # Ensure all branches have safe value for gradients
     q_int <- nv_ifelse(at_or_above | at_or_below, min, q)
 
-    u <- if (lower_tail) {
-      resolve_ends(1, 0, (q_int - min) / width)
-    } else {
-      resolve_ends(0, 1, (max - q_int) / width)
-    }
+    # The probability below and above `q`
+    p_below <- function() resolve_ends(1, 0, (q_int - min) / width)
+    p_above <- function() resolve_ends(0, 1, (max - q_int) / width)
+
+    u <- if (lower_tail) p_below() else p_above()
 
     # Reversed/non-finite interval is NaN to match base R: `valid` flag to track
     valid <- nv_is_finite(min) & nv_is_finite(max) & (max >= min)
@@ -563,11 +563,7 @@ nv_punif <- jit(
     }
 
     # To maintain accuracy of log near 1, switch to log1p in opposite tail mid way
-    v <- if (lower_tail) {
-      resolve_ends(0, 1, (max - q_int) / width)
-    } else {
-      resolve_ends(1, 0, (q_int - min) / width)
-    }
+    v <- if (lower_tail) p_above() else p_below()
     # So flag if can use log, else switch to log1p() of the opposite tail
     use_log <- u <= 0.5
     # Include inner clamp of a safe input on branch not taken for gradient calcs

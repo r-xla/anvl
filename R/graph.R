@@ -337,8 +337,6 @@ descriptor_to_graph <- function(descriptor) {
   graph
 }
 
-# Now the graph-building
-
 #' @title Graph Box
 #' @description
 #' Wraps a [`GraphNode`] during graph construction (tracing).
@@ -400,13 +398,13 @@ format.GraphBox <- function(x, ...) {
 
 maybe_box_arrayish <- function(x, desc = current_descriptor()) {
   if (is_graph_box(x)) {
-    # An R value belongs to the graph it was written in, so one reaching
-    # another graph has to materialize before it can be captured there.
-    if (is_rdata_box(x) && !identical(x$desc, desc)) {
-      materialize_rdata(x, peek_dtype(x))
-    }
     if (identical(x$desc, desc)) {
       return(x)
+    }
+    # An R value belongs to the graph it was written in, so one reaching
+    # another graph has to materialize before it can be captured there.
+    if (is_rdata_box(x)) {
+      materialize_rdata(x, peek_dtype(x))
     }
     return(get_box_or_register_const(desc, x$gnode))
   }
@@ -416,7 +414,7 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
   if (is_anvl_array(x)) {
     return(get_box_or_register_const(desc, x))
   }
-  cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
+  cli_abort("Expected arrayish value, but got {.cls {class(x)[1L]}}")
 }
 
 # Called only by trace_fn() to wire up each flat arg as an input of `desc`.
@@ -462,7 +460,7 @@ maybe_box_input <- function(x, desc, mode) {
       gval <- GraphValue(aval = x)
       return(register_input(desc, gval))
     }
-    cli_abort("In subgraph mode, all args must be arrayish; got {.cls {class(x)[1]}}")
+    cli_abort("In subgraph mode, all args must be arrayish; got {.cls {class(x)[1L]}}")
   }
 
   if (mode == "inline") {
@@ -474,10 +472,10 @@ maybe_box_input <- function(x, desc, mode) {
       return(register_input(desc, parent_box$gnode))
     }
     if (is_rdata_box(x)) {
-      # When we trace within a trace
-      # Keep it open here too, so the traced body decides
-      # which dtypes it is used at, exactly as it does under plain jit(). The
-      # input slot is settled by finalize_inline_rdata_inputs().
+      # An R argument still open in the enclosing trace stays open here too, so
+      # the traced body decides which dtypes it is used at, exactly as it does
+      # under plain jit(). The input slot is settled by
+      # finalize_inline_rdata_inputs().
       return(register_rdata_input(desc, x$gnode$aval, outer = x))
     }
     # \(x) gradient(f)(x)
@@ -718,33 +716,22 @@ trace_fn <- function(
   inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  if (mode == "toplevel") {
-    globals[["INFER_PRIMITIVE"]] <- NULL
-    output <- tryCatch(
-      do.call(f_flat, inputs_flat),
-      error = function(e) {
-        e <- name_failing_primitive(e)
-        globals[["INFER_PRIMITIVE"]] <- NULL
-        rlang::cnd_signal(e)
-      }
-    )
-  } else {
-    # A higher-order primitive traces its sub-graphs here and then goes on to
-    # check them, so the primitive it named on the way in has to survive the
-    # sub-trace: every primitive *inside* the sub-graph names itself and clears
-    # the marker again on its way out. An error out of the sub-graph restores it
-    # too, but is named first, so it keeps the primitive that raised it.
-    prim <- globals[["INFER_PRIMITIVE"]]
-    output <- tryCatch(
-      do.call(f_flat, inputs_flat),
-      error = function(e) {
-        e <- name_failing_primitive(e)
-        globals[["INFER_PRIMITIVE"]] <- prim
-        rlang::cnd_signal(e)
-      }
-    )
-    globals[["INFER_PRIMITIVE"]] <- prim
-  }
+  # A higher-order primitive traces its sub-graphs here and then goes on to
+  # check them, so the primitive it named on the way in has to survive the
+  # sub-trace: every primitive *inside* the sub-graph names itself and clears
+  # the marker again on its way out. An error is named before the marker is
+  # restored, so it keeps the primitive that raised it.
+  prev_prim <- globals[["INFER_PRIMITIVE"]]
+  on.exit(
+    {
+      globals[["INFER_PRIMITIVE"]] <- prev_prim
+    },
+    add = TRUE
+  )
+  output <- tryCatch(
+    do.call(f_flat, inputs_flat),
+    error = function(e) rlang::cnd_signal(name_failing_primitive(e))
+  )
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -760,21 +747,15 @@ trace_fn <- function(
   # transform_gradient() differentiates them. A sub-graph has none to settle:
   # its R values materialize when `maybe_box_input()` builds the parameter
   # slots.
-  # We might
   if (mode == "toplevel") {
-    # Standard case:
     finalize_rdata_inputs(desc)
   } else if (mode == "inline") {
-    # This e.g. happens in:  jit(\(x, y) gradient(\(x, y) x * y, wrt = "x")(x, y))(nv_scalar(1, "f64"), 2)
-    # There, the data type at which pi is materialized depends on the result of the sub-trace
-    # but it needs to be regsitered for the toplevel trace
+    # e.g. `jit(\(x, y) gradient(\(x, y) x * y, wrt = "x")(x, y))(nv_scalar(1, "f64"), 2)`:
+    # the data type `y` materializes at depends on the sub-trace, but it is an
+    # input of the toplevel trace.
     finalize_inline_rdata_inputs(desc)
   }
-  if (!is.null(desc$is_static_flat) && isTRUE(any(desc$is_static_flat))) {
-    desc$static_args_flat <- args_flat[desc$is_static_flat]
-  } else {
-    desc$static_args_flat <- NULL
-  }
+  desc$static_args_flat <- if (any(desc$is_static_flat)) args_flat[desc$is_static_flat]
 
   graph <- descriptor_to_graph(desc)
   optimize_graph(graph, optimize)
@@ -785,7 +766,7 @@ is_graph_value <- function(x) {
 }
 
 maybe_restore_previous_desc <- function(desc = NULL) {
-  if (!is.null(desc) && (!identical(desc, globals[["CURRENT_DESCRIPTOR"]]))) {
+  if (!is.null(desc) && !identical(desc, globals[["CURRENT_DESCRIPTOR"]])) {
     # graph has already been returned
     return()
   }
@@ -922,19 +903,11 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
     primitive <- attr(primitive, "definition")
   }
 
-  # Box each input and pull out its gnode + aval in one pass (`gnodes_in`
-  # unnamed for the GraphStatement; `avals_in` keeps arg names for infer_fn).
-  n_in <- length(args)
-  gnodes_in <- vector("list", n_in)
-  avals_in <- vector("list", n_in)
-  for (i in seq_len(n_in)) {
-    # Materialize R values at their default dtype, which happens when no
-    # promotion rule materialized them (default behavior)
-    gnode <- materialize_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
-    gnodes_in[[i]] <- gnode
-    avals_in[[i]] <- gnode$aval
-  }
-  names(avals_in) <- names(args)
+  # Box each input; an R value that no promotion rule materialized settles on
+  # its default dtype here. `gnodes_in` is unnamed for the GraphStatement,
+  # `avals_in` keeps the arg names for infer_fn.
+  gnodes_in <- lapply(unname(args), \(arg) materialize_rdata_box(maybe_box_arrayish(arg, desc))$gnode)
+  avals_in <- stats::setNames(lapply(gnodes_in, \(gnode) gnode$aval), names(args))
   # The primitive under way is named by its wrapper, on the way in; this clears
   # it again once inference has passed, so that a later error somewhere else in
   # the traced function is not attributed to the last primitive that ran.
@@ -943,13 +916,13 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gvals_out <- lapply(ats_out, GraphValue)
   call <- GraphStatement(primitive, gnodes_in, params, gvals_out)
   desc$statements$add(call)
-  lapply(gvals_out, register_gval, desc = desc)
+  register_gvals(desc, gvals_out)
 }
 
 # A primitive is named for the `prim_*()` that exports it, so the call an error
 # reports is that name with the prefix put back on.
 print_call_repr <- function(prim) {
-  rlang::exec(call, paste0("prim_", prim$name))
+  call(paste0("prim_", prim$name))
 }
 
 inline_graph_into_desc <- function(desc, graph) {

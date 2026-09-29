@@ -19,12 +19,12 @@ format_literal <- function(node, digits = getOption("digits")) {
   if (is_anvl_array(val)) {
     val <- as_array(val, check = FALSE)
   }
-  sprintf(
-    "%s:%s%s",
-    format(val, trim = TRUE, digits = digits),
-    as.character(dtype(node$aval)),
-    format_shape_suffix(shape(node$aval))
-  )
+  format_value_repr(val, dtype(node$aval), shape(node$aval), digits)
+}
+
+# A value as `<value>:<dtype>[<shape>]`, e.g. `2:i32` or `1:f32[1,1]`.
+format_value_repr <- function(val, dt, shp, digits = getOption("digits")) {
+  sprintf("%s:%s%s", format(val, trim = TRUE, digits = digits), as.character(dt), format_shape_suffix(shp))
 }
 
 # The `[2,3]` a value repr carries after its data type. A scalar carries none,
@@ -73,7 +73,7 @@ name_graph_nodes <- function(inputs, constants, statements, node_ids, counters) 
     counters[[counter]] <- counters[[counter]] + 1L
     node_ids[[node]] <- paste0(prefix, counters[[counter]])
   }
-  # don't use "i" for values, because i1 looks like a the boolean type
+  # don't use "i" for values, because i1 looks like the boolean type
   for (node in inputs) {
     name_node(node, "x", "x")
   }
@@ -171,16 +171,10 @@ format_param_parts <- function(
 # An array param: a scalar shows its value the way a literal does, a larger
 # array only its data type and shape.
 format_array_param <- function(x, digits = getOption("digits")) {
-  dt <- as.character(dtype(x))
   if (nelts(x) == 1L) {
-    sprintf(
-      "%s:%s%s",
-      format(as_array(x, check = FALSE), trim = TRUE, digits = digits),
-      dt,
-      format_shape_suffix(shape(x))
-    )
+    format_value_repr(as_array(x, check = FALSE), dtype(x), shape(x), digits)
   } else {
-    sprintf("%s[%s]", dt, shape2string(shape(x), parenthesize = FALSE))
+    format_aval_short(x)
   }
 }
 
@@ -343,8 +337,8 @@ format_call <- function(
 }
 
 # A graph as `[captures] (inputs) { <body> return <outputs> }`, headed by
-# `title` where it has one. The signature line carries what section headings
-# used to: the captures in brackets, the inputs in parens with their data types.
+# `title` where it has one. The signature line carries the captures in brackets
+# and the inputs in parens with their data types.
 #
 # `typed_captures` spells a captured node's data type too. Only a graph with
 # nothing around it needs that -- a sub-graph's captures are nodes of the graph
@@ -501,11 +495,9 @@ print.AnvlGraph <- function(x, ...) {
 
 #' @export
 format.GraphDescriptor <- function(x, ..., width = getOption("width", 80L), digits = getOption("digits")) {
-  # Convert hashtab constants to list
-  constants <- x$constants
   format_graph_body(
     inputs = x$inputs,
-    constants = constants,
+    constants = x$constants,
     statements = x$statements$as_list(),
     outputs = x$outputs,
     title = "GraphDescriptor",

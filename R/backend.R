@@ -119,8 +119,7 @@ check_single_backend <- function(graph, expected) {
     function(const) if (is_concrete_array(const$aval)) backend(const$aval$data) else NA_character_,
     character(1L)
   )
-  found <- unique(const_backends)
-  mismatches <- setdiff(found, c(expected, "plain", NA_character_))
+  mismatches <- setdiff(const_backends, c(expected, "plain", NA_character_))
   if (length(mismatches)) {
     cli_abort(c(
       "Cannot compile a {.val {expected}} program with inputs from other backends.",
@@ -144,6 +143,18 @@ print.PlainDeviceCpu <- function(x, ...) {
   invisible(x)
 }
 
+# The R storage mode the `"plain"` backend holds data of `dtype` in.
+plain_storage_mode <- function(dtype) {
+  switch(
+    substr(as.character(dtype), 1L, 1L),
+    "f" = "double",
+    "i" = ,
+    "u" = "integer",
+    "b" = "logical",
+    "double"
+  )
+}
+
 globals$backends <- new.env(parent = emptyenv())
 
 # The plain backend is merely for capturing constants during jitting in a backend-agnostic way.
@@ -158,24 +169,8 @@ register_backend(
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
-      if (is.null(shape)) {
-        shape <- if (!is.null(dim(data))) {
-          as.integer(dim(data))
-        } else if (length(data) == 1L) {
-          1L
-        } else {
-          as.integer(length(data))
-        }
-      }
-      dtype_chr <- as.character(dtype)
-      data <- switch(
-        substr(dtype_chr, 1L, 1L),
-        "f" = as.double(data),
-        "i" = ,
-        "u" = as.integer(data),
-        "b" = as.logical(data),
-        as.double(data)
-      )
+      shape <- shape %||% r_data_shape(data)
+      data <- as.vector(data, plain_storage_mode(dtype))
       structure(
         list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"
@@ -185,15 +180,7 @@ register_backend(
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
-      storage_mode <- switch(
-        substr(as.character(dtype), 1L, 1L),
-        "f" = "double",
-        "i" = ,
-        "u" = "integer",
-        "b" = "logical",
-        "double"
-      )
-      data <- array(vector(storage_mode, prod(shape)), dim = shape)
+      data <- array(vector(plain_storage_mode(dtype), prod(shape)), dim = shape)
       structure(
         list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"

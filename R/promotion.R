@@ -316,7 +316,7 @@ format.PromotionRule <- function(x, ...) {
 }
 
 format_rule <- function(x) {
-  if (inherits(x, "PromotionRule")) format(x) else "<promotion rule>"
+  if (is_promotion_rule(x)) format(x) else "<promotion rule>"
 }
 
 format_arg_ref <- function(x) {
@@ -624,15 +624,13 @@ common_dtype_of <- function(..., .fallback = NULL) {
       cdt_is_rdata <- arg_is_rdata
       next
     }
-    if (cdt_is_rdata && arg_is_rdata) {
+    if (cdt_is_rdata == arg_is_rdata) {
       cdt <- promote_dt_known(cdt, dt)
     } else if (cdt_is_rdata) {
       cdt <- promote_dt_rdata(cdt, dt)
       cdt_is_rdata <- FALSE
-    } else if (arg_is_rdata) {
-      cdt <- promote_dt_rdata(dt, cdt)
     } else {
-      cdt <- promote_dt_known(cdt, dt)
+      cdt <- promote_dt_rdata(dt, cdt)
     }
   }
   # `.fallback` is the data type the R values materialize at when nothing in the
@@ -744,11 +742,9 @@ promote_dt_known_or_null <- function(dt1, dt2) {
     }
     return(promote_dt_int_uint(dt1, dt2))
   }
+  # `dt1` is unsigned from here on.
   if (is_dtype_int(dt2)) {
-    if (is_dtype_uint(dt1)) {
-      return(promote_dt_int_uint(dt2, dt1))
-    }
-    cli_abort("internal error")
+    return(promote_dt_int_uint(dt2, dt1))
   }
   # both are unsigned
   as_dtype(paste0("ui", max(dtype_width(dt1), dtype_width(dt2))))

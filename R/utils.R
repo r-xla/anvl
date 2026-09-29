@@ -41,38 +41,32 @@ minmax_raw <- function(bits, signed = TRUE) {
 }
 
 
+# The smallest / largest value of a data type as a scalar: `-Inf` / `Inf` for a
+# float, `FALSE` / `TRUE` for `bool`, and the bounds of the integer range
+# otherwise.
 nv_minval <- function(dtype, device = NULL) {
-  dtype <- as.character(dtype)
-  if (grepl("^f", dtype)) {
-    nv_scalar(-Inf, dtype = dtype, device = device)
-  } else if (dtype == "bool") {
-    nv_scalar(FALSE, dtype = "bool", device = device)
-  } else {
-    nv_scalar(pjrt_buffer(
-      globals$ranges_raw[[dtype]]$min,
-      dtype = dtype,
-      device = device,
-      row_major = TRUE,
-      shape = integer()
-    ))
-  }
+  nv_extremal_value(dtype, "min", -Inf, FALSE, device)
 }
 
 nv_maxval <- function(dtype, device = NULL) {
+  nv_extremal_value(dtype, "max", Inf, TRUE, device)
+}
+
+nv_extremal_value <- function(dtype, which, float_value, bool_value, device) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
-    nv_scalar(Inf, dtype = dtype, device = device)
-  } else if (dtype == "bool") {
-    nv_scalar(TRUE, dtype = "bool", device = device)
-  } else {
-    nv_scalar(pjrt_buffer(
-      globals$ranges_raw[[dtype]]$max,
-      dtype = dtype,
-      device = device,
-      row_major = TRUE,
-      shape = integer()
-    ))
+    return(nv_scalar(float_value, dtype = dtype, device = device))
   }
+  if (dtype == "bool") {
+    return(nv_scalar(bool_value, dtype = "bool", device = device))
+  }
+  nv_scalar(pjrt_buffer(
+    globals$ranges_raw[[dtype]][[which]],
+    dtype = dtype,
+    device = device,
+    row_major = TRUE,
+    shape = integer()
+  ))
 }
 
 without <- function(x, indices) {
@@ -84,11 +78,8 @@ without <- function(x, indices) {
 }
 
 shape2string <- function(x, parenthesize = TRUE) {
-  if (parenthesize) {
-    sprintf("(%s)", paste0(x, collapse = ","))
-  } else {
-    paste0(x, collapse = ",")
-  }
+  s <- paste0(x, collapse = ",")
+  if (parenthesize) sprintf("(%s)", s) else s
 }
 
 # The shape spelling for user-facing messages: `(2x3)`, and `()` for a scalar.
@@ -111,9 +102,9 @@ shapes_repr <- function(shapes) {
   paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
-# `prim_fill()` takes a whole number at any data type -- `0` builds at `bool`,
+# `prim_fill()` takes a whole number at any data type -- `0L` builds at `bool`,
 # at an integer one and at a float one alike -- so the fills that do not know
-# their data type statically write a plain `0` / `1`.
+# their data type statically write `0L` / `1L`.
 zeros <- function(dtype, shape) {
   prim_fill(0L, dtype = dtype, shape = shape)
 }
@@ -157,55 +148,49 @@ gather_clamp_indices <- function(
   start_index_map,
   index_vector_axis
 ) {
-  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_index_map
   if (length(x_shape) != length(slice_sizes)) {
     cli_abort("{.arg x_shape} and {.arg slice_sizes} must have the same length")
   }
 
-  indices_shape <- shape(start_indices)
   n_index_coords <- length(start_index_map)
-
   if (n_index_coords == 0L) {
     return(start_indices)
   }
 
-  # Build max bounds for each coordinate
-  max_bounds <- integer(n_index_coords)
-  for (coord_idx in seq_len(n_index_coords)) {
-    x_axis <- start_index_map[coord_idx]
-    x_size <- x_shape[x_axis]
-    slice_size_for_axis <- slice_sizes[x_axis]
-    max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_axis + 1L)
-  }
+  # The largest valid start index of each coordinate. `slice_sizes` is in the
+  # order of `x_shape`, so it is read through `start_index_map`.
+  max_bounds <- pmax(1L, x_shape[start_index_map] - slice_sizes[start_index_map] + 1L)
 
-  if (index_vector_axis <= length(indices_shape)) {
-    # Explicit index vector axis - build bounds arrays
-    bounds_shape <- rep(1L, length(indices_shape))
-    bounds_shape[index_vector_axis] <- n_index_coords
-
-    min_bound <- prim_broadcast_in_axes(
-      prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
-      indices_shape,
-      integer()
-    )
-
-    # The max bound is the same for a given slice along the index_vector_axis
-    max_bound_vals <- prim_reshape(
-      prim_convert(
-        nv_array(max_bounds, dtype = default_int()),
-        dtype = dtype(start_indices)
-      ),
-      bounds_shape
-    )
-    max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
-
-    prim_clamp(start_indices, min_bound, max_bound)
-  } else {
+  indices_shape <- shape(start_indices)
+  index_dtype <- dtype(start_indices)
+  if (index_vector_axis > length(indices_shape)) {
     # Implicit index vector (single coordinate)
-    min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
-    max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(start_indices, min_bound, max_bound)
+    min_bound <- prim_fill(1L, dtype = index_dtype, shape = integer())
+    max_bound <- prim_fill(max_bounds[1L], dtype = index_dtype, shape = integer())
+    return(prim_clamp(start_indices, min_bound, max_bound))
   }
+
+  # Explicit index vector axis - build bounds arrays
+  bounds_shape <- rep(1L, length(indices_shape))
+  bounds_shape[index_vector_axis] <- n_index_coords
+
+  min_bound <- prim_broadcast_in_axes(
+    prim_fill(1L, dtype = index_dtype, shape = integer()),
+    indices_shape,
+    integer()
+  )
+
+  # The max bound is the same for a given slice along the index_vector_axis
+  max_bound_vals <- prim_reshape(
+    prim_convert(
+      nv_array(max_bounds, dtype = default_int()),
+      dtype = index_dtype
+    ),
+    bounds_shape
+  )
+  max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
+
+  prim_clamp(start_indices, min_bound, max_bound)
 }
 
 # Compute gather slice_sizes from scatter parameters.
@@ -221,9 +206,7 @@ scatter_to_gather_slice_sizes <- function(
   slice_sizes <- integer(length(x_shape))
   update_window_pos <- 1L
   for (i in seq_along(x_shape)) {
-    if (i %in% inserted_window_axes) {
-      slice_sizes[i] <- 1L
-    } else if (i %in% x_batching_axes) {
+    if (i %in% inserted_window_axes || i %in% x_batching_axes) {
       slice_sizes[i] <- 1L
     } else {
       slice_sizes[i] <- update_shape[update_window_axes[update_window_pos]]
@@ -234,7 +217,7 @@ scatter_to_gather_slice_sizes <- function(
 }
 
 col_major_layout <- function(naxes) {
-  as.integer(seq.int(0L, naxes - 1L))
+  seq_len(naxes) - 1L
 }
 
 col_major_layouts <- function(...) {

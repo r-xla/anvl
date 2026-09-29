@@ -63,19 +63,16 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   } else if (identical(shape_lhs, shape_rhs)) {
     return(shape_lhs)
   }
-  shape_out <- shape_lhs
-  for (i in seq_along(shape_lhs)) {
-    d_lhs <- shape_lhs[i]
-    d_rhs <- shape_rhs[i]
-    if (d_lhs != d_rhs && d_lhs != 1L && d_rhs != 1L) {
-      cli_abort(c(
-        "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
-        x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
-      ))
-    }
-    shape_out[i] <- max(d_lhs, d_rhs)
+  clash <- which(shape_lhs != shape_rhs & shape_lhs != 1L & shape_rhs != 1L)
+  if (length(clash)) {
+    d_lhs <- shape_lhs[clash[[1L]]]
+    d_rhs <- shape_rhs[clash[[1L]]]
+    cli_abort(c(
+      "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
+      x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
+    ))
   }
-  shape_out
+  pmax(shape_lhs, shape_rhs)
 }
 
 #' @title Broadcast Scalars to Common Shape
@@ -532,17 +529,23 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
   }
 }
 
+# Concatenate the already promoted `args` of `nv_rbind()` / `nv_cbind()` along
+# `stack_axis`, after bringing scalars and vectors to the other inputs' rank.
+bind_along <- function(args, stack_axis, fn_name) {
+  target_shape <- bind_target_shape(args, stack_axis = stack_axis, fn_name = fn_name)
+  args <- lapply(args, bind_reshape, stack_axis = stack_axis, target_shape = target_shape)
+  rlang::exec(nv_concatenate, !!!args, axis = stack_axis)
+}
+
 #' @rdname nv_bind
 #' @export
 nv_rbind <- jit(function(...) {
   assert_some_arrays(...)
-  # Promoted here rather than in `nv_concatenate()` below: an R value has to be
+  # Promoted here rather than in `nv_concatenate()`: an R value has to be
   # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
   args <- as_anvl_arrays(..., .promote = promotion_common())
-  target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
-  args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
-  rlang::exec(nv_concatenate, !!!args, axis = 1L)
+  bind_along(args, stack_axis = 1L, fn_name = "nv_rbind")
 })
 
 #' @rdname nv_bind
@@ -550,9 +553,7 @@ nv_rbind <- jit(function(...) {
 nv_cbind <- jit(function(...) {
   assert_some_arrays(...)
   args <- as_anvl_arrays(..., .promote = promotion_common())
-  target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
-  args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
-  rlang::exec(nv_concatenate, !!!args, axis = 2L)
+  bind_along(args, stack_axis = 2L, fn_name = "nv_cbind")
 })
 
 #' @title Static Slice
@@ -1453,7 +1454,8 @@ nv_cospi <- jit(function(x) {
 nv_tanpi <- jit(function(x) {
   x <- as_anvl_array(int_to_float(x))
   denominator <- nv_cospi(x)
-  # Otherwise we get (+-)inf depending on which side we land, which is bad
+  # Where the cosine is exactly 0 the quotient would be +-Inf, its sign depending
+  # on the rounding; the tangent is undefined there, so return NaN.
   nv_ifelse(denominator == 0L, NaN, nv_sinpi(x) / denominator)
 })
 
@@ -2083,7 +2085,7 @@ nv_seq <- jit(
     assert_int(to)
     by <- by %||% if (from > to) -1L else 1L
     assert_int(by)
-    if (by == 0) {
+    if (by == 0L) {
       cli_abort("{.arg by} must not be 0.")
     }
     if (from != to && sign(by) != sign(to - from)) {
@@ -2093,7 +2095,7 @@ nv_seq <- jit(
       ))
     }
     n <- as.integer((to - from) %/% by) + 1L
-    if (by == 1) {
+    if (by == 1L) {
       return(nv_iota(shape = n, dtype = dtype, axis = 1L, start = from, device = device))
     }
     # prim_iota has no step, so scale a 0-based iota; the literals are integers so
@@ -2203,13 +2205,8 @@ nv_pad <- function(x, value, low, high, interior = NULL) {
   # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
   # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
   args <- as_anvl_arrays(x = x, value = value, .promote = promotion_like("x"))
-  x <- args$x
-  value <- args$value
-  rank <- naxes(x)
-  if (is.null(interior)) {
-    interior <- rep(0L, rank)
-  }
-  prim_pad(x, value, low, high, interior)
+  interior <- interior %||% rep(0L, naxes(args$x))
+  prim_pad(args$x, args$value, low, high, interior)
 }
 
 #' @title Round
@@ -2535,9 +2532,9 @@ nv_triangular_solve <- jit(
   static = 3:6
 )
 
-# If we took a logarithm in nv_determinant(), the pivot sign is only part of the story
-# and we also have to compute the sign from taking the absolute values before the log
-# Every proper swap flips the sign
+# Sign of the row permutation that the LU `pivots` record: every pivot that
+# swaps a row with a different one flips it. `nv_determinant()` combines it with
+# the sign of the diagonal of U.
 lu_pivot_sign <- function(pivots, n, dt) {
   iota <- nv_seq_like(pivots, 1L, n)
   # Should be simpler after: https://github.com/r-xla/anvl/issues/343
@@ -2600,7 +2597,7 @@ nv_det <- jit(function(x) {
 nv_determinant <- jit(
   function(x, logarithm = TRUE) {
     x <- as_anvl_array(int_to_float(x))
-    # Adopted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
+    # Adapted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
     shp <- shape(x)
     if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
       cli_abort("{.arg x} must be a square 2-D matrix")
@@ -2824,11 +2821,9 @@ nv_diag <- jit(function(x) {
   }
   n <- shape(x)[1L]
   zeros <- nv_fill_like(x, 0L, shape = c(n, n))
-  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
-  indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
     zeros,
-    indices,
+    diag_indices(x, n),
     x,
     update_window_axes = integer(0L),
     inserted_window_axes = c(1L, 2L),
@@ -2839,6 +2834,13 @@ nv_diag <- jit(function(x) {
     unique_indices = TRUE
   )
 })
+
+# The `(n, 2)` index matrix whose row `i` is `c(i, i)`, addressing the first `n`
+# diagonal elements of a matrix; placed on the device of `x`.
+diag_indices <- function(x, n) {
+  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
+  nv_concatenate(idx, idx, axis = 2L)
+}
 
 #' @title Identity Matrix
 #' @description
@@ -2889,6 +2891,12 @@ nv_eye <- jit(
 
 .count_bool <- function(x) {
   if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int()) else x
+}
+
+# The `nan_rm = TRUE` treatment of a reduction: replace NaN by `value`, the
+# reduction's identity. A non-float array holds no NaN and is returned as is.
+.replace_nan <- function(x, value, nan_rm) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) nv_ifelse(nv_is_nan(x), value, x) else x
 }
 
 # Gather `axes` into a single trailing axis, so an operation that only ever
@@ -2962,10 +2970,7 @@ nv_sum <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0L, x)
-    }
-    prim_sum(x, axes = axes, drop = drop)
+    prim_sum(.replace_nan(x, 0L, nan_rm), axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3048,10 +3053,7 @@ nv_prod <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1L, x)
-    }
-    prim_prod(x, axes = axes, drop = drop)
+    prim_prod(.replace_nan(x, 1L, nan_rm), axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3264,12 +3266,7 @@ nv_cumsum <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    x <- cum$x
-    axis <- cum$axis
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0L, x)
-    }
-    prim_cumsum(x, axis = axis)
+    prim_cumsum(.replace_nan(cum$x, 0L, nan_rm), axis = cum$axis)
   },
   static = 2:3
 )
@@ -3296,12 +3293,7 @@ nv_cumprod <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    x <- cum$x
-    axis <- cum$axis
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1L, x)
-    }
-    prim_cumprod(x, axis = axis)
+    prim_cumprod(.replace_nan(cum$x, 1L, nan_rm), axis = cum$axis)
   },
   static = 2:3
 )
@@ -3366,17 +3358,12 @@ nv_cummin <- jit(
   static = 2:4
 )
 
-# NaN propagation for the default `nan_rm = FALSE` path is now handled in
-# `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
-# sanitize NaN → identity for `nan_rm = TRUE`.
+# Shared cummax/cummin. `prim_cummax()` / `prim_cummin()` propagate NaN
+# themselves, so only `nan_rm = TRUE` needs handling here: NaN is replaced by
+# the reduction's identity.
 .nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
   cum <- .resolve_cum_input(as_anvl_array(x), axis)
-  x <- cum$x
-  axis <- cum$axis
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    x <- nv_ifelse(nv_is_nan(x), identity_val, x)
-  }
-  out <- prim_cum(x, axis = axis)
+  out <- prim_cum(.replace_nan(cum$x, identity_val, nan_rm), axis = cum$axis)
   if (indices) out else out$values
 }
 
@@ -3737,10 +3724,10 @@ nv_squeeze <- function(x, axes = NULL) {
     new_shape <- shp[shp != 1L]
   } else {
     axes <- resolve_axes(axes, length(shp), unique = TRUE)
-    for (d in axes) {
-      if (shp[d] != 1L) {
-        cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
-      }
+    not_one <- axes[shp[axes] != 1L]
+    if (length(not_one)) {
+      d <- not_one[[1L]]
+      cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
     }
     new_shape <- shp[-axes]
   }
@@ -3839,13 +3826,9 @@ nv_extract_diag <- jit(function(x) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  shp <- shape(x)
-  n <- min(shp)
-  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
-  indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_gather(
     x,
-    start_indices = indices,
+    start_indices = diag_indices(x, min(shape(x))),
     offset_axes = integer(0L),
     collapsed_slice_axes = c(1L, 2L),
     x_batching_axes = integer(0L),
@@ -4045,15 +4028,8 @@ nv_triu <- jit(
 #' nv_crossprod(x)
 #' @export
 nv_crossprod <- jit(function(x, y = NULL) {
-  if (is.null(y)) {
-    x <- as_anvl_array(x)
-    y <- x
-  } else {
-    args <- as_anvl_arrays(x, y, .promote = promotion_common())
-    x <- args[[1L]]
-    y <- args[[2L]]
-  }
-  nv_matmul(transpose_matrix_axes(x), y)
+  args <- crossprod_operands(x, y)
+  nv_matmul(transpose_matrix_axes(args[[1L]]), args[[2L]])
 })
 
 #' @title Transpose Cross Product (Matrix)
@@ -4076,16 +4052,19 @@ nv_crossprod <- jit(function(x, y = NULL) {
 #' nv_tcrossprod(x)
 #' @export
 nv_tcrossprod <- jit(function(x, y = NULL) {
+  args <- crossprod_operands(x, y)
+  nv_matmul(args[[1L]], transpose_matrix_axes(args[[2L]]))
+})
+
+# The two operands of `nv_crossprod()` / `nv_tcrossprod()`: `x` twice when `y`
+# is `NULL`, and otherwise both at their common data type.
+crossprod_operands <- function(x, y) {
   if (is.null(y)) {
     x <- as_anvl_array(x)
-    y <- x
-  } else {
-    args <- as_anvl_arrays(x, y, .promote = promotion_common())
-    x <- args[[1L]]
-    y <- args[[2L]]
+    return(list(x, x))
   }
-  nv_matmul(x, transpose_matrix_axes(y))
-})
+  as_anvl_arrays(x, y, .promote = promotion_common())
+}
 
 # Sorting and searching --------------------------------------------------------
 
@@ -4161,6 +4140,21 @@ nv_select <- function(x, axis, index) {
   )
 }
 
+# Resolve the `axis` of `nv_sort()` / `nv_order()`. `NULL` sorts the flattened
+# array, so, like `.resolve_cum_input()`, this hands back the array as well as
+# the axis.
+.resolve_sort_input <- function(x, axis, call = rlang::caller_env()) {
+  x <- as_anvl_array(x)
+  if (naxes(x) == 0L) {
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.", call = call)
+  }
+  if (is.null(axis)) {
+    list(x = nv_flatten(x), axis = 1L)
+  } else {
+    list(x = x, axis = axis)
+  }
+}
+
 #' @title Sort
 #' @name nv_sort
 #' @description
@@ -4209,15 +4203,8 @@ nv_select <- function(x, axis, index) {
 #' @export
 nv_sort <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
-    x <- as_anvl_array(x)
-    if (naxes(x) == 0L) {
-      cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
-    }
-    if (is.null(axis)) {
-      x <- nv_flatten(x)
-      axis <- 1L
-    }
-    prim_sort(list(x), axis = axis, decreasing = decreasing, stable = stable)[[1L]]
+    input <- .resolve_sort_input(x, axis)
+    prim_sort(list(input$x), axis = input$axis, decreasing = decreasing, stable = stable)[[1L]]
   },
   static = 2:4
 )
@@ -4260,16 +4247,9 @@ nv_sort <- jit(
 #' @export
 nv_order <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
-    x <- as_anvl_array(x)
-    if (naxes(x) == 0L) {
-      cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
-    }
-    if (is.null(axis)) {
-      x <- nv_flatten(x)
-      axis <- 1L
-    }
-    idx <- nv_iota_like(x, axis = axis, dtype = default_int())
-    prim_sort(list(x, idx), axis = axis, decreasing = decreasing, stable = stable)[[2L]]
+    input <- .resolve_sort_input(x, axis)
+    idx <- nv_iota_like(input$x, axis = input$axis, dtype = default_int())
+    prim_sort(list(input$x, idx), axis = input$axis, decreasing = decreasing, stable = stable)[[2L]]
   },
   static = 2:4
 )
@@ -4906,7 +4886,7 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
   # Checked here so that the errors name this function's arguments, not
   # `prim_convolution()`'s axis parameters.
   for (nm in c("x", "kernel")) {
-    value <- get(nm)
+    value <- args[[nm]]
     if (naxes(value) != n + 2L) {
       cli_abort(c(
         "{.arg {nm}} must have {n + 2L} axes for a {n}-D convolution.",
