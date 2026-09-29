@@ -760,12 +760,9 @@ importFrom(tengen,
 importFrom(utils,
   capture.output,
   getFromNamespace,
-  gethash,
   hashtab,
   head,
   install.packages,
-  maphash,
-  numhash,
   tail
 )
 importFrom(xlamisc,
