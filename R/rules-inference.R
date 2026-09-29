@@ -1134,7 +1134,7 @@ reduced_shape <- function(x, axes, drop) {
   new_shape
 }
 
-infer_reduce <- function(x, init, ..., axes, drop, reducer) {
+infer_reduce <- function(x, init, ..., axes, drop, reducer, n_captures) {
   assert_arrays(x = x, init = init)
 
   if (length(shape(init)) != 0L) {
@@ -1460,7 +1460,8 @@ infer_scatter <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
-  update_fn
+  update_fn,
+  n_captures
 ) {
   assert_arrays(x = x, update = update)
   # (I2)
@@ -1975,7 +1976,7 @@ type_mismatches <- function(a, b) {
 
 # The operands after `pred` are the branches' inputs, which only the lowering
 # reads.
-infer_cond <- function(pred, ..., true, false) {
+infer_cond <- function(pred, ..., true, false, n_captures) {
   assert_array_dtype(pred, "bool", shape = integer())
   outs_true <- graph_output_avals(true)
   outs_false <- graph_output_avals(false)
@@ -2005,10 +2006,11 @@ infer_cond <- function(pred, ..., true, false) {
   outs_true
 }
 
-infer_while <- function(..., cond, body) {
+infer_while <- function(..., cond, body, n_captures) {
   # The operands and the body's inputs past the state are its captures.
-  state_idx <- seq_along(body$outputs)
-  outs <- list(...)[state_idx]
+  args <- list(...)
+  state_idx <- seq_len(length(args) - n_captures)
+  outs <- args[state_idx]
   outs_body <- graph_output_avals(body)
   inputs_body <- lapply(body$inputs[state_idx], function(inp) inp$aval)
   # The names of `init`, read off the body's input tree rather than passed as a

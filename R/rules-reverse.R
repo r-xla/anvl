@@ -595,7 +595,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   carry_idx <- seq_len(n_carry)
   xs_idx <- n_carry + seq_len(n_xs)
   # The operands and the body's inputs line up: carry, `xs`, captures.
-  cap_idx <- setdiff(seq_along(inputs), c(carry_idx, xs_idx))
+  cap_idx <- n_carry + n_xs + seq_len(params$n_captures)
   caps <- inputs[cap_idx]
   n_out <- length(body$outputs) - n_carry
 

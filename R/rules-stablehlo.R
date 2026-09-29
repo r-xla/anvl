@@ -328,7 +328,7 @@ prim_cummin[["stablehlo"]] <- function(x, axis, output_types) {
   .stablehlo_apply_cum_extreme(x, axis, is_max = FALSE, index_dtype = index_dtype_of(output_types, 2L))
 }
 
-prim_reduce[["stablehlo"]] <- function(x, init, ..., axes, drop, reducer) {
+prim_reduce[["stablehlo"]] <- function(x, init, ..., axes, drop, reducer, n_captures) {
   red_func <- stablehlo(reducer, id = "", captured = list(...))[[1L]]
   out <- hlo_reduce(
     inputs = list(x),
@@ -733,7 +733,7 @@ prim_print[["stablehlo"]] <- function(x, header, footer) {
 
 # The operands after `pred` are the branches' inputs. A StableHLO `if` region
 # takes no arguments, so the regions read them by capture.
-prim_if[["stablehlo"]] <- function(pred, ..., true, false) {
+prim_if[["stablehlo"]] <- function(pred, ..., true, false, n_captures) {
   true_func <- stablehlo(true, id = "", captured = list(...))[[1L]]
   false_func <- stablehlo(false, id = "", captured = list(...))[[1L]]
   hlo_if(pred, true_func, false_func, simplify = FALSE)
@@ -741,9 +741,9 @@ prim_if[["stablehlo"]] <- function(pred, ..., true, false) {
 
 # The regions take the state as arguments and read the captures past it from
 # above.
-prim_while[["stablehlo"]] <- function(..., cond, body) {
+prim_while[["stablehlo"]] <- function(..., cond, body, n_captures) {
   args <- list(...)
-  state_idx <- seq_along(body$outputs)
+  state_idx <- seq_len(length(args) - n_captures)
   captured <- args[-state_idx]
   body_func <- stablehlo(body, id = "", captured = captured)[[1L]]
   cond_func <- stablehlo(cond, id = "", captured = captured)[[1L]]
@@ -753,7 +753,7 @@ prim_while[["stablehlo"]] <- function(..., cond, body) {
 # A while loop over the state (i, carry..., out buffers..., xs...). Each
 # iteration slices step i of every xs leaf, runs the traced body inline, and
 # writes its outputs into the buffers at step i; xs ride along unchanged.
-prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs) {
+prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
   args <- list(...)
   outer <- args[[1L]]$func
   n <- as.integer(steps)
@@ -969,6 +969,7 @@ prim_scatter[["stablehlo"]] <- function(
   indices_are_sorted,
   unique_indices,
   update_fn,
+  n_captures,
   ...
 ) {
   update_func <- stablehlo(update_fn, id = "", captured = list(...))[[1L]]

@@ -363,7 +363,9 @@ describe("prim_if", {
     # the branch, so the branch has to capture them first.
     x <- nv_array(c(0.7, -1.3, 2.1))
     f <- jit(function(p, x, a) {
-      nv_if(p, function() nv_sum(gradient(function(y, a) nv_sum(y * y * a), wrt = "y")(x, a)[[1L]]), function() nv_sum(x))
+      nv_if(p, function() nv_sum(gradient(function(y, a) nv_sum(y * y * a), wrt = "y")(x, a)[[1L]]), function() {
+        nv_sum(x)
+      })
     })
     expect_equal(as.numeric(f(true_, x, 2)), sum(4 * c(0.7, -1.3, 2.1)), tolerance = 1e-6)
   })
@@ -1374,10 +1376,14 @@ describe("prim_print", {
 
   it("prints once where a differentiated branch runs", {
     f <- function(p, x) {
-      nv_if(p, function() {
-        prim_print(nv_scalar(7L))
-        nv_sum(x * x)
-      }, function() nv_sum(x))
+      nv_if(
+        p,
+        function() {
+          prim_print(nv_scalar(7L))
+          nv_sum(x * x)
+        },
+        function() nv_sum(x)
+      )
     }
     g <- jit(gradient(f, wrt = "x"))
     expect_equal(prints_of_seven(g(nv_scalar(TRUE), x)), 1L)

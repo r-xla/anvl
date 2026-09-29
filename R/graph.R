@@ -172,8 +172,7 @@ AnvlGraph <- function(
   constants = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  rdata_types = NULL,
-  n_captures = 0L
+  rdata_types = NULL
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -186,9 +185,6 @@ AnvlGraph <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$rdata_types <- rdata_types
-  # How many of `inputs`, at the end, are values a sub-graph closed over (see
-  # `close_subgraphs()`); only printing tells them apart.
-  env$n_captures <- n_captures
 
   structure(env, class = "AnvlGraph")
 }
@@ -627,7 +623,9 @@ get_box_or_register_const <- function(desc, x) {
 # it lists everything it reads among its operands: the call's own arguments
 # first, then the captures. The lowerings bind the inputs to the operands by
 # position, and a transform that rewires the operands has nothing else to
-# rewire.
+# rewire. The graphs do not record which of their inputs are captures: the
+# call does, as its `n_captures` param, which is `length()` of what this
+# returns.
 #
 # The graphs are modified in place (an `AnvlGraph` has reference semantics).
 # Returns the boxes of the captured values in `desc`, which in turn captures
@@ -665,7 +663,6 @@ close_subgraphs <- function(desc, graphs) {
     }
     substitute_gnodes(graph, map)
     graph$inputs <- c(graph$inputs, fresh)
-    graph$n_captures <- length(fresh)
     graph$constants <- list()
   }
   lapply(captures, function(gval) get_box_or_register_const(desc, gval))

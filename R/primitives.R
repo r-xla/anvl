@@ -985,7 +985,7 @@ prim_reduce <- new_primitive(
     graph_desc_add(
       self,
       args = c(operands, captures),
-      params = list(axes = axes, drop = drop, reducer = reducer_graph),
+      params = list(axes = axes, drop = drop, reducer = reducer_graph, n_captures = length(captures)),
       infer_fn = infer_reduce,
       desc = current_desc
     )[[1L]]
@@ -2551,7 +2551,7 @@ prim_if <- new_primitive(
     out <- graph_desc_add(
       self,
       c(list(pred = pred), captures),
-      params = list(true = true_graph, false = false_graph),
+      params = list(true = true_graph, false = false_graph, n_captures = length(captures)),
       infer_fn = infer_cond,
       desc = current_desc
     )
@@ -2642,7 +2642,7 @@ prim_while <- new_primitive(
     out <- graph_desc_add(
       self,
       args = c(flatten(init), captures),
-      params = list(cond = cond_graph, body = body_graph),
+      params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
@@ -2774,7 +2774,7 @@ prim_scan <- new_primitive(
     # call's operands are the carry, `xs`, then the same captures.
     captures <- close_subgraphs(current_desc, list(body_graph))
 
-    infer_fn <- function(..., body, steps, reverse, n_carry, n_xs) {
+    infer_fn <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
       ins <- list(...)
       outs_body <- lapply(body$outputs, \(out) out$aval)
       carry_in <- ins[seq_len(n_carry)]
@@ -2810,7 +2810,8 @@ prim_scan <- new_primitive(
         steps = steps,
         reverse = reverse,
         n_carry = n_carry,
-        n_xs = n_xs
+        n_xs = n_xs,
+        n_captures = length(captures)
       ),
       infer_fn = infer_fn,
       desc = current_desc
@@ -3226,7 +3227,8 @@ prim_scatter <- new_primitive(
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
-        update_fn = update_fn_graph
+        update_fn = update_fn_graph,
+        n_captures = length(captures)
       ),
       infer_fn = infer_scatter,
       desc = current_desc
