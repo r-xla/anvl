@@ -34,9 +34,8 @@ Imports:
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.5.0),
-    tengen (>= 0.3.0),
     withr,
-    xlamisc (>= 0.4.1)
+    xlamisc (>= 0.5.0)
 Suggests:
     bit64,
     knitr,
@@ -44,11 +43,6 @@ Suggests:
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
-Remotes:
-    r-xla/pjrt,
-    r-xla/tengen,
-    r-xla/stablehlo,
-    r-xla/xlamisc
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

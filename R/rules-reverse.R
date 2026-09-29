@@ -1324,7 +1324,7 @@ triangular_mask <- function(n, lower, unit_diagonal) {
 #' @name prim_chol
 #' @rdname prim_chol
 #' @references
-#' `r xlamisc::format_bib("murray2016differentiation", "walter2012structured")`
+#' `r format_bib("murray2016differentiation", "walter2012structured")`
 prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   lower <- params$lower
   if (length(shape(outputs[[1L]])) > 2L) {
@@ -1386,7 +1386,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
 #' @name prim_triangular_solve
 #' @rdname prim_triangular_solve
 #' @references
-#' `r xlamisc::format_bib("giles2008extended")`
+#' `r format_bib("giles2008extended")`
 prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   left_side <- params$left_side
   lower <- params$lower

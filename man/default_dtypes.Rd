@@ -14,9 +14,9 @@ default_int()
 }
 \value{
 \code{default_dtypes()}: (named \code{list})\cr
-Elements \code{float} and \code{int}, each a \code{\link[tengen:DataType]{DataType}}.
+Elements \code{float} and \code{int}, each a \code{\link[xlamisc:DataType]{DataType}}.
 
-\code{default_float()}, \code{default_int()}: (\code{\link[tengen:DataType]{DataType}})\cr
+\code{default_float()}, \code{default_int()}: (\code{\link[xlamisc:DataType]{DataType}})\cr
 The default of one category.
 }
 \description{

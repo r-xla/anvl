@@ -11,7 +11,7 @@ skip_if_no_jit <- function() {
   testthat::skip_if_not(pjrt::plugins_downloaded())
 }
 
-arr_of <- function(res) as.numeric(tengen::as_array(res))
+arr_of <- function(res) as.numeric(xlamisc::as_array(res))
 
 test_that("jit() dispatches, caches, and returns wrapped arrays", {
   skip_if_no_jit()
@@ -22,10 +22,10 @@ test_that("jit() dispatches, caches, and returns wrapped arrays", {
   r1 <- f(x, y)
   # The result is a fully wrapped array: the dispatcher built it natively.
   expect_s3_class(r1, "AnvlArray")
-  expect_identical(as.character(tengen::dtype(r1)), "f32")
-  expect_identical(tengen::shape(r1), 3L)
+  expect_identical(as.character(xlamisc::dtype(r1)), "f32")
+  expect_identical(xlamisc::shape(r1), 3L)
   expect_s3_class(r1$data, "PJRTBuffer")
-  expect_s3_class(tengen::device(r1), "PJRTDevice")
+  expect_s3_class(xlamisc::device(r1), "PJRTDevice")
   expect_identical(r1$backend, "pjrt")
   expect_equal(arr_of(r1), c(11, 22, 33))
 
@@ -78,8 +78,8 @@ test_that("a jitted call with no dynamic input dispatches on its statics alone",
   # Zero dynamic leaves: the whole call is the static `n`, and the entry's
   # device comes from the compile callback rather than from an input.
   f <- jit(function(n) nv_eye(n), static = "n")
-  expect_equal(tengen::as_array(f(2L)), diag(2))
-  expect_equal(tengen::as_array(f(2L)), diag(2))
+  expect_equal(xlamisc::as_array(f(2L)), diag(2))
+  expect_equal(xlamisc::as_array(f(2L)), diag(2))
   expect_equal(jit_cache_size(f), 1L)
 })
 
@@ -109,12 +109,12 @@ test_that("jit() uploads bare R literals and arrays", {
   # An R array leaf uploads column-major, like pjrt_buffer().
   g <- jit(function(x) x)
   m <- matrix(c(1, 2, 3, 4), nrow = 2)
-  expect_equal(tengen::as_array(g(m)), m)
+  expect_equal(xlamisc::as_array(g(m)), m)
 })
 
 test_that("every dtype is its own cache entry", {
   skip_if_no_jit()
-  # Every dtype an AnvlDtype names -- which is every dtype tengen can build.
+  # Every dtype an AnvlDtype names -- which is every dtype xlamisc can build.
   dtypes <- c("bool", "i8", "i16", "i32", "i64", "ui8", "ui16", "ui32", "ui64", "f32", "f64")
   f <- jit(function(x) x)
   for (dt in dtypes) {
@@ -168,7 +168,7 @@ test_that("jit(device = ) fixes the entry's device and moves inputs to it", {
   res <- f(x0)
   expect_equal(arr_of(res), c(2, 3))
   # Devices are interned, so the wrapped output carries the very object.
-  expect_identical(tengen::device(res), pjrt::pjrt_device("cpu:0"))
+  expect_identical(xlamisc::device(res), pjrt::pjrt_device("cpu:0"))
 
   # An input on another device is copied to the target rather than rejected,
   # and the device is not part of the key: one entry serves both.

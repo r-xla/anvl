@@ -95,7 +95,7 @@ verify_grad_uni_scalar <- function(
   expect_equal(to_abstract(grads_anvl[[1L]], TRUE), to_abstract(x_anvl, TRUE))
 
   testthat::expect_equal(
-    tengen::as_array(grads_anvl[[1L]]),
+    xlamisc::as_array(grads_anvl[[1L]]),
     as_array_torch(x_torch$grad),
     tolerance = tol
   )
@@ -145,7 +145,7 @@ verify_grad_uni_array <- function(
   expect_equal(to_abstract(grads_anvl[[1L]], TRUE), to_abstract(x_anvl, TRUE))
 
   testthat::expect_equal(
-    tengen::as_array(grads_anvl[[1L]]),
+    xlamisc::as_array(grads_anvl[[1L]]),
     as_array_torch(x_torch$grad),
     tolerance = tol
   )
@@ -208,13 +208,13 @@ verify_grad_biv_scalar <- function(
   expect_equal(to_abstract(grads_anvl[[2L]], TRUE), to_abstract(rhs_anvl, TRUE))
 
   testthat::expect_equal(
-    tengen::as_array(grads_anvl[[1L]]),
+    xlamisc::as_array(grads_anvl[[1L]]),
     as_array_torch(lhs_torch$grad), # nolint
     tolerance = tol
   )
 
   testthat::expect_equal(
-    tengen::as_array(grads_anvl[[2L]]),
+    xlamisc::as_array(grads_anvl[[2L]]),
     as_array_torch(rhs_torch$grad), # nolint
     tolerance = tol
   )
@@ -277,13 +277,13 @@ verify_grad_biv_array <- function(
   expect_equal(to_abstract(grads_anvl[[2L]], TRUE), to_abstract(rhs_anvl, TRUE))
 
   testthat::expect_equal(
-    tengen::as_array(grads_anvl[[1L]]),
+    xlamisc::as_array(grads_anvl[[1L]]),
     as_array_torch(lhs_torch$grad), # nolint
     tolerance = tol # nolint
   )
 
   testthat::expect_equal(
-    tengen::as_array(grads_anvl[[2L]]),
+    xlamisc::as_array(grads_anvl[[2L]]),
     as_array_torch(rhs_torch$grad),
     tolerance = tol
   )
@@ -408,14 +408,14 @@ test_that("prim_sum", {
     prim_sum(y, axes = 1L, drop = TRUE)
   }
   grads <- jit(gradient(f))(x)
-  expect_equal(tengen::as_array(grads[[1L]]), array(1, dim = c(2, 3)))
+  expect_equal(xlamisc::as_array(grads[[1L]]), array(1, dim = c(2, 3)))
   # TODO: Also test with drop = FALSE
   f <- function(a) {
     y <- prim_sum(a, axes = 2L, drop = FALSE)
     prim_sum(y, axes = 1:2, drop = TRUE)
   }
   grads <- jit(gradient(f))(x)
-  expect_equal(tengen::as_array(grads[[1L]]), array(1, dim = c(2, 3)))
+  expect_equal(xlamisc::as_array(grads[[1L]]), array(1, dim = c(2, 3)))
 })
 
 test_that("prim_transpose", {
@@ -493,8 +493,8 @@ test_that("prim_ifelse", {
   out_t <- torch::torch_where(x_torch, a_torch, b_torch)
   torch::torch_sum(out_t)$backward()
 
-  expect_equal(tengen::as_array(grads[[1L]]), as_array_torch(a_torch$grad), tolerance = 1e-6)
-  expect_equal(tengen::as_array(grads[[2L]]), as_array_torch(b_torch$grad), tolerance = 1e-6)
+  expect_equal(xlamisc::as_array(grads[[1L]]), as_array_torch(a_torch$grad), tolerance = 1e-6)
+  expect_equal(xlamisc::as_array(grads[[2L]]), as_array_torch(b_torch$grad), tolerance = 1e-6)
 })
 
 test_that("prim_reshape", {
@@ -616,7 +616,7 @@ test_that("prim_psigamma", {
     torch::torch_sum(torch::torch_polygamma(n_val, x_th))$backward()
 
     testthat::expect_equal(
-      tengen::as_array(grad_nv),
+      xlamisc::as_array(grad_nv),
       as_array_torch(x_th$grad),
       tolerance = 1e-4
     )
@@ -711,7 +711,7 @@ test_that("prim_clamp", {
   torch::torch_sum(out_th)$backward()
 
   expect_equal(
-    tengen::as_array(grads_nv[[1L]]),
+    xlamisc::as_array(grads_nv[[1L]]),
     as_array_torch(x_th$grad),
     tolerance = 1e-5
   )
@@ -765,7 +765,7 @@ test_that("prim_concatenate", {
 
     for (i in seq_len(n)) {
       testthat::expect_equal(
-        tengen::as_array(grads_nv[[i]]),
+        xlamisc::as_array(grads_nv[[i]]),
         as_array_torch(ths[[i]]$grad),
         tolerance = tol
       )
@@ -794,7 +794,7 @@ test_that("prim_prod", {
     out_th <- torch::torch_prod(x_th, dim = axis, keepdim = FALSE)
     torch::torch_sum(out_th)$backward()
 
-    expect_equal(tengen::as_array(grads_nv[[1L]]), as_array_torch(x_th$grad), tolerance = 1e-4)
+    expect_equal(xlamisc::as_array(grads_nv[[1L]]), as_array_torch(x_th$grad), tolerance = 1e-4)
   }
 
   x <- array(runif(6), dim = c(2, 3))
@@ -814,7 +814,7 @@ test_that("prim_prod", {
   f_multi <- function(x) prim_prod(x, axes = c(1L, 2L), drop = TRUE)
   grads_nv <- jit(gradient(f_multi))(x_nv)
   expected <- array(prod(x_multi) / x_multi, dim = dim(x_multi))
-  expect_equal(tengen::as_array(grads_nv[[1L]]), expected, tolerance = 1e-4)
+  expect_equal(xlamisc::as_array(grads_nv[[1L]]), expected, tolerance = 1e-4)
 })
 
 describe("prim_static_slice", {
@@ -833,7 +833,7 @@ describe("prim_static_slice", {
     out_th <- torch_slice_fn(x_th)
     torch::torch_sum(out_th)$backward()
 
-    testthat::expect_equal(tengen::as_array(grads_nv[[1L]]), as_array_torch(x_th$grad), tolerance = 1e-5)
+    testthat::expect_equal(xlamisc::as_array(grads_nv[[1L]]), as_array_torch(x_th$grad), tolerance = 1e-5)
   }
 
   it("works with unit strides", {

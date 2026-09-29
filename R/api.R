@@ -16,7 +16,7 @@
 #'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Data type of the result.
 #'   The default (`NULL`) uses the [default data type][default_dtypes] for `nv_fill` and
 #'   `dtype(like)` for `nv_fill_like`.

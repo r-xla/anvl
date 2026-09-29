@@ -55,7 +55,7 @@ nv_unif_rand <- function(
 #' @rdname nv_uniform
 #' @template param_shape
 #' @template param_state
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample.
 #'   The default (`NULL`) takes it from `min` and `max`, and uses the
 #'   [default float type][default_dtypes] where both are R values.
@@ -138,7 +138,7 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
 #' @rdname nv_normal
 #' @template param_shape
 #' @template param_state
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample. The default (`NULL`) uses the
 #'   common data type of `mean` and `sd`, and the
 #'   [default float type][default_dtypes] when both are R values.
@@ -248,7 +248,7 @@ nv_rnorm <- jit(
 #'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sample.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #'   The number of successes are converted to it.
@@ -309,7 +309,7 @@ nv_rbinom <- jit(
 #' @template param_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sampled integers.
 #'   The sampled values are converted to it.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].

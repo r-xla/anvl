@@ -19,7 +19,7 @@ Step size, which must be a non-zero whole number pointing from \code{from}
 towards \code{to}. \code{NULL} (default) uses \code{-1} if \code{from > to} and \code{1}
 otherwise.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result. Can be any numeric data type.
 \code{NULL} (default) uses the default integer data
 type (see \code{\link[=default_dtypes]{default_dtypes()}}), since the values are whole. For

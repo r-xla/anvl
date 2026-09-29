@@ -24,7 +24,7 @@ Backend-dependent device object. One of:
 Returns the device on which an array is allocated.
 }
 \details{
-This is implemented via the generic \code{\link[tengen:device]{tengen::device()}}.
+This is implemented via the generic \code{\link[xlamisc:device]{xlamisc::device()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

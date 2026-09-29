@@ -128,7 +128,7 @@ assert_dtype_param <- function(x, arg = rlang::as_label(substitute(x)), categori
     cli_abort(c(
       "{.arg {arg}} must name a data type.",
       x = "Got {value_repr(x)}.",
-      i = "See {.fn tengen::as_dtype} for the data types anvl knows."
+      i = "See {.fn xlamisc::as_dtype} for the data types anvl knows."
     ))
   }
   if (!is.null(categories) && !dtype_in_categories(out, categories)) {

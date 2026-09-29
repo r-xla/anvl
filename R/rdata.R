@@ -284,10 +284,10 @@ r_const_at <- function(x, dtype, desc) {
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
-#' @return ([`tengen::DataType`])\cr
+#' @return ([`xlamisc::DataType`])\cr
 #'   The data type `x` has, or the [default data type][default_dtypes] it would
 #'   materialize at if it is still a bare R value.
-#' @seealso [as_anvl_arrays()], [RData], [shape()][tengen::shape]
+#' @seealso [as_anvl_arrays()], [RData], [shape()][xlamisc::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)
 #' peek_dtype(1L)

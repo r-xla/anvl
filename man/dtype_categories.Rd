@@ -14,7 +14,7 @@ boolean < integer < float:
 }
 
 These are the categories promotion works in, where signed and unsigned
-integers count as one. \code{\link[tengen:dtype_category]{tengen::dtype_category()}} reports a finer split
+integers count as one. \code{\link[xlamisc:dtype_category]{xlamisc::dtype_category()}} reports a finer split
 that names \code{int} and \code{uint} separately.
 }
 \section{Data Type Vocabulary}{

@@ -13,7 +13,7 @@ The function to wrap.}
 \item{dtypes}{(named \code{character()} | named \code{list()})\cr
 A mapping of the data type categories (\code{float}, \code{int} and \code{uint}) to data
 types, e.g. \code{c(float = "f64", int = "i64")}. Each may be a string or a
-\code{\link[tengen:DataType]{DataType}}. A category it does not name is left as it is.}
+\code{\link[xlamisc:DataType]{DataType}}. A category it does not name is left as it is.}
 }
 \value{
 A \code{function} with the same arguments as \code{f}, a \code{JitFunction} if \code{f}

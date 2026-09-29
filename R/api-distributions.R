@@ -50,11 +50,11 @@ promote_distribution_args <- function(...) {
 #' where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
 #'
 #' `nv_pnorm` uses the asymptotic expansion from
-#' `r xlamisc::cite_bib("abramowitz1964handbook")`, equation 26.2.12, in the
+#' `r cite_bib("abramowitz1964handbook")`, equation 26.2.12, in the
 #' left tail when `log_p = TRUE` to maintain accuracy.
 #'
 #' `nv_qnorm` uses the same minimax rational approximation as
-#' `r xlamisc::cite_bib("moshier1989methods")` (this is `ndtri` in the Cephes
+#' `r cite_bib("moshier1989methods")` (this is `ndtri` in the Cephes
 #' library as used by JAX) for `f64`, and uses a new lower degree Remez minimax
 #' rational approximation on the same intervals for `f32`.
 #'
@@ -62,7 +62,7 @@ promote_distribution_args <- function(...) {
 #' @templateVar params `mean` or `sd`
 #' @template section_distribution_dtype
 #' @references
-#' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
+#' `r format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
 #' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
 #' `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an [`arrayish`] with the
