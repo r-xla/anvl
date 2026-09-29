@@ -652,6 +652,13 @@ substitute_gnodes <- function(graph, map) {
   invisible(graph)
 }
 
+# Registers each of `consts` in `desc` and returns their boxes. A box may be of
+# another GraphValue than the constant: one `desc` already holds for the same
+# array (see `get_box_or_register_const()`).
+register_consts <- function(desc, consts) {
+  lapply(consts, get_box_or_register_const, desc = desc)
+}
+
 register_inputs <- function(desc, inputs) {
   for (input in inputs) {
     register_input(desc, input)

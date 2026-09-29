@@ -552,17 +552,15 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
-# The branches are differentiated where they run: the forward pass is a
-# `prim_if()` whose branches also return the residuals their backward pass
-# reads, and the backward pass is a `prim_if()` on the same predicate whose
-# branches pull the cotangents back from those residuals, without rerunning the
-# forward branch. Each branch returns zeros in place of the other one's
-# residuals, so that both return the same. Only the taken branch's backward
-# runs, as only the taken branch's forward did, and a value used by one branch
-# alone gets a zero from the other.
-#
-# `pred` is a bool and carries no gradient; the other operands are the
-# branches' inputs.
+# In forward-mode, the two branches capture constants via lexical scoping
+# and they are turned into pure functions that receive these constants as arguments
+# (both true and false get the same arguments)
+# In reverse-mode, we could simply compute the forward-reverse graph and select
+# either branche's graph via prim_if
+# The problem with this is that it re-runs the forward pass and as both is part of
+# an if-condition we can't rely on XLA to optimize this away (?)
+# So now we instead run a modified forward pass that also outputs any intermediate
+# values (residuals) that are needed by the reverse pass
 prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   pred <- inputs[[1L]]
   operands <- inputs[-1L]
@@ -570,16 +568,30 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
   n_out <- length(params$true$outputs)
   vjps <- lapply(list(params$true, params$false), split_vjp, needed = needed)
 
+  # The function the forward `if` runs for branch `k` (1 = true, 2 = false).
+
+  # we return in the form of (outputs, true_residuals, false_residuals)
+  # During reverse, the true path returns 0 for false's residuals and
+  # the false path returns 0 for true's residuals
   branch_forward <- function(k) {
     function() {
+      # Run the branch's forward graph on the `if`'s operands: its outputs,
+      # then the residuals its backward pass reads.
       outs <- graph_apply(vjps[[k]]$fwd, operands)
+      # Both branches must return the same structure, so each returns a slot
+      # for every branch's residuals: its own values in its own slots, zeros
+      # of the right aval in the other branch's, which that branch's backward
+      # never runs to read.
       res <- lapply(seq_along(vjps), function(j) {
         if (j == k) {
-          outs[n_out + seq_along(vjps[[k]]$residuals)]
+          outs[n_out + seq_along(vjps[[k]]$residual_avals)]
         } else {
-          lapply(vjps[[j]]$residuals, \(a) zeros(a$dtype, shape(a)))
+          lapply(vjps[[j]]$residual_avals, \(a) zeros(a$dtype, shape(a)))
         }
       })
+      # `out` are the `if`'s results. `res[[k]]` holds branch k's residuals
+      # when branch k ran, which is exactly when the backward `if` runs branch
+      # k's backward to read them.
       list(out = outs[seq_len(n_out)], res = res)
     }
   }

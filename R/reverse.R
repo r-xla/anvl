@@ -139,20 +139,9 @@ transform_gradient <- function(graph, wrt) {
   descriptor_to_graph(desc)
 }
 
-# Differentiates `graph` in the descriptor currently being traced. Returns the
-# boxes of the graph's outputs (`value`) and of the gradients of the inputs
-# `wrt` names (`grad`), in the order of those inputs.
-#
-# To support alternative forward passes for more efficient backward passes, the
-# forward pass is replayed -- and possibly rewritten -- into the descriptor
-# (phase 1). Afterwards it is traversed backwards, calling the gradient rules
-# where necessary (phase 2).
-#
-# `inputs` binds the graph's inputs to boxes of the descriptor, as for
-# `graph_apply()`: this is how `gradient()` differentiates the closed graph it
-# traced where it is called, as JAX evaluates a jaxpr into the enclosing trace.
-# `NULL` registers the graph's own inputs, for a graph differentiated on its
-# own.
+# Here we compute the gradients of a graph and write it into the current descriptor
+# This can either be a call to the gradient (inputs are provided)
+# Or just the gradient itself, i.e. then the inputs are NULL (used for transform_gradient).
 graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
@@ -298,14 +287,14 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
 #   - bwd: taking a cotangent per output of `graph`, then `graph`'s inputs,
 #     then the residuals, and returning the cotangents of
 #     `graph$inputs[needed]`.
-#   - residuals: the avals of the residuals.
+#   - residual_avals: the avals of the residuals.
 split_vjp <- function(graph, needed) {
   targets <- graph$inputs[needed]
   required_env <- requirements_from(graph, targets)
 
   desc_fwd <- local_descriptor()
   rebuilt <- rebuild_forward_into(graph, desc_fwd, required_env = required_env)
-  bwd <- trace_pull_back(graph, rebuilt$backwards, required_env, targets)
+  bwd <- pull_back_graph(graph, rebuilt$backwards, required_env, targets)
 
   # What the backward pass read of the forward one, it captured. An input of
   # `graph` it reads as an input of its own; the rest are the residuals. An
@@ -317,10 +306,12 @@ split_vjp <- function(graph, needed) {
   captured <- Filter(\(g) !is_concrete_array(g$aval), bwd$constants)
   residuals <- Filter(\(g) is.null(map[[g]]), captured)
   for (g in residuals) {
+    # The branch is pure, so what its backward pass reads was computed by its
+    # forward pass.
+    if (is.null(desc_fwd$gval_to_box[[g]])) {
+      cli_abort("Internal error: the backward pass of a sub-graph read a value from outside it.")
+    }
     map[[g]] <- GraphValue(aval = g$aval)
-    # A no-op for a value of the forward pass; one from further out is
-    # captured by it like any other.
-    get_box_or_register_const(desc_fwd, g)
   }
   substitute_gnodes(bwd, map)
   bwd$inputs <- c(bwd$inputs, inputs, lapply(residuals, \(g) map[[g]]))
@@ -331,14 +322,14 @@ split_vjp <- function(graph, needed) {
   list(
     fwd = descriptor_to_graph(desc_fwd),
     bwd = bwd,
-    residuals = lapply(residuals, \(g) g$aval)
+    residual_avals = lapply(residuals, \(g) g$aval)
   )
 }
 
 # The backward pass of `split_vjp()`, traced into a graph of its own
 # whose inputs are the cotangents of `graph`'s outputs. The values of the
 # forward pass the reverse rules read become its constants.
-trace_pull_back <- function(graph, backwards, required_env, targets) {
+pull_back_graph <- function(graph, backwards, required_env, targets) {
   desc <- local_descriptor()
   out_grads <- lapply(graph$outputs, function(out) {
     register_input(desc, GraphValue(aval = AbstractArray(dtype = out$aval$dtype, shape = out$aval$shape)))
@@ -400,10 +391,19 @@ propagate_requirements <- function(graph, required_env) {
 # its plain forward even where its rule has a replacement: the backward pass
 # skips it, so what the replacement keeps for it -- an if's residuals -- would
 # be computed for nothing.
+
+# Because some primitives require an alternative forward pass for efficiency
+# we need a way to re-run the this alternative
+
+# Here we re-run a forward pass, selecting the alternative forward passes for
+# those primitives that need it for efficiency.
+# Inputs:
+# - graph: graph whose forward pass is replayed
+# - desc: descriptor the replay is written ino
+# - inputs: the arguments passed to the gradient function. If NULL, the gradient's arguments
+#           are added as inputs to the descriptor.
+# - required_env: maps each gval to whether it requires a gradient
 rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL) {
-  # consts and inputs keep their identity, only GraphValues created by GraphStatements
-  # get new identifier -- unless `inputs` binds the inputs to boxes of `desc`,
-  # in which case the graph is replayed as a function of them.
   if (is.null(inputs)) {
     register_inputs(desc, graph$inputs)
   } else {
@@ -423,14 +423,18 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     }
     trans[[g]] %||% g
   }
+  # When we call into a gradient graph within jit(), we need to do the wiring
+  # of the passed argumenbts to the gvals of the sub-graph
+  # In an earlier implementation we used the same gval for this, but we now use a purified IR
+  # (which is good for autodiff) so we now have to handle this wiring here.
   for (i in seq_along(inputs)) {
     trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
   }
   # An array `desc` already holds is read from the GraphValue it has for it.
-  for (const in graph$constants) {
-    box <- get_box_or_register_const(desc, const)
-    if (!identical(box$gnode, const)) {
-      trans[[const]] <- box$gnode
+  const_boxes <- register_consts(desc, graph$constants)
+  for (i in seq_along(const_boxes)) {
+    if (!identical(const_boxes[[i]]$gnode, graph$constants[[i]])) {
+      trans[[graph$constants[[i]]]] <- const_boxes[[i]]$gnode
     }
   }
   # Get/create the box for a translated gval. Literals reach this branch
