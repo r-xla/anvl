@@ -30,7 +30,7 @@ There are various scenarios:
       $\rightarrow$ You first need to implement the missing operations in the {stablehlo} R package.
       See [this issue](https://github.com/r-xla/stablehlo/issues/6) for which operations are missing and the [StableHLO specification](https://openxla.org/stablehlo/spec) for which are available.
 2. The operation is not available/cannot be efficiently expressed in StableHLO, because:
-   1. It requires shape dynamism (output shape depends on data, such as using boolean values for subsetting):
+   1. It requires shape dynamism (output shape depends on data, such as subsetting with a boolean mask computed from the inputs):
 
       $\rightarrow$ This is currently not possible, but we hope we can add support for this in the future.
 

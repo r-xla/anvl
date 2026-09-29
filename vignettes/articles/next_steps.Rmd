@@ -85,7 +85,8 @@ y <- nv_array(1:12, shape = c(3, 4))
 y[arr(1L, 3L), 2:3]
 ```
 
-Logical masks cannot be used for subsetting (see [shapes must be known in advance](#shapes-must-be-known-in-advance) below), and indices outside of the `AnvlArray` are moved to the nearest valid index instead of raising an error (see [compiled code cannot throw errors](#compiled-code-cannot-throw-errors) below).
+Logical masks work as well, but inside `jit()` their values must be known in advance, so a mask computed from the inputs, such as `x[x > 0]`, is an error (see [shapes must be known in advance](#shapes-must-be-known-in-advance) below).
+Indices outside of the `AnvlArray` are moved to the nearest valid index instead of raising an error (see [compiled code cannot throw errors](#compiled-code-cannot-throw-errors) below).
 See the [Subsetting](subsetting.html) article for the details.
 
 ## Value Semantics
@@ -157,7 +158,7 @@ Alternatively, an R loop around a jitted function, as in the [Get Started](anvl.
 
 ## Shapes Must Be Known in Advance
 
-The shape of every intermediate result must be known when compiling, so operations such as `x[x > 0]`, `which()`, or `unique()` cannot be used.
+The shape of every intermediate result must be known when compiling, so a jitted function cannot use operations such as `x[x > 0]`, `which()`, or `unique()` on its inputs.
 Often, one can instead keep all values and ignore the unwanted ones, e.g. `sum(nv_ifelse(x > 0, x, 0))` instead of `sum(x[x > 0])`.
 See the [Static Shape Restriction](static_shapes.html) article for more such patterns.
 
