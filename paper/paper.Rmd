@@ -655,7 +655,7 @@ res_files <- list.files("benchmarks/results", pattern = "\\.csv$", full.names = 
 have_results <- length(res_files) > 0L
 ```
 
-In this section, we compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath], and to the same sampler written with \CRANpkg{torch}.
+In this section, we compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath], to \CRANpkg{TMB} [@ref-tmb], and to the same sampler written with \CRANpkg{torch}.
 We ask how the sampler compares on a single CPU core, how well it uses multiple cores and a GPU, both within one chain and across many chains, and how large the compilation overhead is.
 
 ## Setup
@@ -666,6 +666,8 @@ We run this OpenCL variant on the same GPU as \pkg{anvl} and \CRANpkg{torch}; to
 On the GPU, Stan's chains run as separate processes that share the device, at most 8 at a time.
 The \CRANpkg{torch} sampler mirrors the \pkg{anvl} code: it obtains the gradient from \CRANpkg{torch}'s reverse-mode AD and runs the leapfrog and sampling loops as R loops, as \CRANpkg{torch} executes each operation eagerly.
 The number of threads \CRANpkg{torch} uses on the CPU is set via `torch_set_num_threads()`.
+\CRANpkg{TMB} evaluates the log posterior and its gradient with CppAD from a C++ template, which we compile once.
+As \CRANpkg{TMB} does not provide an HMC sampler, we run the same static HMC loop in R around its compiled objective and gradient, as is common when custom algorithms are implemented with \CRANpkg{TMB}; for a single chain, \CRANpkg{TMB} can evaluate the likelihood with several OpenMP threads, and multiple chains run as separate processes, as for CmdStan.
 Both samplers work in double precision and start at $\beta = 0$, and the data are simulated with standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
 Each configuration is repeated three times after a first call that includes compilation, and we report the median.
