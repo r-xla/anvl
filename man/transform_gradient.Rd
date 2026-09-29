@@ -31,8 +31,9 @@ Afterwards, we traverse it backwards and call the gradient rules where necessary
 
 See \code{\link[=rule_reverse]{rule_reverse()}} for more information.
 
-This is the building block used by \code{\link[=gradient]{gradient()}} and \code{\link[=value_and_gradient]{value_and_gradient()}}; prefer
-those higher-level wrappers unless you need to operate on graphs directly.
+\code{\link[=gradient]{gradient()}} and \code{\link[=value_and_gradient]{value_and_gradient()}} differentiate the same way, but
+into the trace they are called in rather than into a graph of its own;
+prefer them unless you need to operate on graphs directly.
 }
 \examples{
 graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))

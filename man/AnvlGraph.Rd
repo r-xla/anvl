@@ -13,8 +13,7 @@ AnvlGraph(
   constants = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  rdata_types = NULL,
-  n_captures = 0L
+  rdata_types = NULL
 )
 }
 \arguments{

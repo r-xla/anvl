@@ -922,7 +922,7 @@ describe("gather/scatter reverse via subset operators", {
     f2 <- function(x_subset, value) {
       x_subset <- rlang::inject(nv_subset(x, !!!quos))
       out <- gradient(\(x, value) {
-        mean(x_subset * value)
+        mean(x * value)
       })(x_subset, value)
       g1 <- nv_fill(0, shape = shape, dtype = dtype(x))
       out[[1L]] <- rlang::inject(nv_subset_assign(g1, !!!quos, value = out[[1]]))

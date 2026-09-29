@@ -109,8 +109,9 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #'
 #' See [`rule_reverse()`] for more information.
 #'
-#' This is the building block used by [`gradient()`] and [`value_and_gradient()`]; prefer
-#' those higher-level wrappers unless you need to operate on graphs directly.
+#' [`gradient()`] and [`value_and_gradient()`] differentiate the same way, but
+#' into the trace they are called in rather than into a graph of its own;
+#' prefer them unless you need to operate on graphs directly.
 #' @param graph ([`AnvlGraph`])\cr
 #'   The graph to transform. Must produce a single scalar float output.
 #' @param wrt (`NULL` | `character()`)\cr
@@ -125,48 +126,76 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #' graph
 #' transform_gradient(graph, "lhs")
 transform_gradient <- function(graph, wrt) {
-  transform_gradient_impl(graph, wrt)$graph
-}
-
-# Internal worker. Returns list(graph, fwd_translation) where fwd_translation
-# is a hashtab mapping each original forward gval (call output) to its cloned
-# counterpart in `graph`. `value_and_gradient` uses it to translate the
-# original forward outputs to gvals that exist in the gradient graph;
-# `gradient()` deliberately discards it.
-transform_gradient_impl <- function(graph, wrt) {
-  out <- validate_gradient_output(graph$outputs)
-  reqs <- compute_requirements(graph, wrt)
-
-  # Phase 1 -- rebuild the forward into a fresh descriptor. For each statement
-  # either clone it verbatim (default-reverse / no rule) or hand off to the
-  # general-form rule so it can emit its own forward primitives.
-  rebuilt <- rebuild_forward_pass(graph, reqs$required_env)
-  desc <- rebuilt$desc
-
-  # Phase 2 -- run backwards in reverse call order, seeded with d(out)/d(out).
-  grad_env <- hashtab()
-  grad_env[[out]] <- get_box_or_register_const(desc, nv_scalar(1L, dtype = out$aval$dtype))
-  grad_env <- run_backward_pass(
-    graph,
-    rebuilt$backwards,
-    reqs$required_env,
-    grad_env
-  )
-
-  # Phase 3 -- collect gradients for the inputs we differentiate w.r.t.
-  desc$outputs <- collect_input_grads(graph, desc, grad_env, reqs$requires_grad)
+  # `graph` may be a promise of a trace, which must not run inside `desc`.
+  force(graph)
+  desc <- local_descriptor()
+  res <- graph_value_and_grad(graph, wrt)
+  desc$outputs <- lapply(res$grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
   desc$is_static_flat <- graph$is_static_flat
   desc$static_args_flat <- graph$static_args_flat
-  desc$out_tree <- if (length(wrt)) {
+  desc$out_tree <- gradient_out_tree(graph, wrt)
+  descriptor_to_graph(desc)
+}
+
+# Differentiates `graph` in the descriptor currently being traced. Returns the
+# boxes of the graph's outputs (`value`) and of the gradients of the inputs
+# `wrt` names (`grad`), in the order of those inputs.
+#
+# To support alternative forward passes for more efficient backward passes, the
+# forward pass is replayed -- and possibly rewritten -- into the descriptor
+# (phase 1). Afterwards it is traversed backwards, calling the gradient rules
+# where necessary (phase 2).
+#
+# `inputs` binds the graph's inputs to boxes of the descriptor, as for
+# `graph_vjp()`: this is how `gradient()` differentiates the closed graph it
+# traced where it is called, as JAX evaluates a jaxpr into the enclosing trace.
+# `NULL` registers the graph's own inputs, for a graph differentiated on its
+# own.
+graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
+  desc <- current_descriptor()
+  out <- validate_gradient_output(graph$outputs)
+  reqs <- compute_requirements(graph, wrt)
+
+  rebuilt <- rebuild_forward_into(graph, desc, inputs, reqs$required_env)
+
+  grad_env <- hashtab()
+  grad_env[[out]] <- get_box_or_register_const(desc, nv_scalar(1L, dtype = out$aval$dtype))
+  grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
+
+  box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
+  list(
+    value = lapply(graph$outputs, function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)),
+    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
+  )
+}
+
+# The tree the gradients of `graph`'s inputs come back in: that of the inputs
+# `wrt` names, or of all of them.
+gradient_out_tree <- function(graph, wrt) {
+  if (length(wrt)) {
     pjrt::tree_filter_by_names(graph$in_tree, wrt)
   } else {
     graph$in_tree
   }
+}
 
-  list(
-    graph = descriptor_to_graph(desc),
-    fwd_translation = rebuilt$trans
+# The boxes of the current descriptor that the inputs of `graph` -- traced by
+# `gradient()` from `args_flat` -- are bound to, one per argument that is not
+# static. An R value the descriptor has not given a data type yet materializes
+# at the one the traced body settled it at, which the descriptor's own finalize
+# then takes into account like any other use of it there.
+gradient_operands <- function(graph, args_flat) {
+  desc <- current_descriptor()
+  Map(
+    function(x, input) {
+      if (is_rdata_box(x)) {
+        x <- materialize_rdata(x, input$aval$dtype)
+      }
+      maybe_box_arrayish(x, desc)
+    },
+    args_flat[!graph$is_static_flat],
+    graph$inputs
   )
 }
 
@@ -299,25 +328,18 @@ propagate_requirements <- function(graph, required_env) {
   required_env
 }
 
-# Set up a fresh descriptor, seed it with `graph`'s inputs/constants, and
-# rebuild the forward call by call. The descriptor is created via
-# `local_descriptor(envir = envir)` so its lifetime is tied to the caller's
-# frame -- it stays the current descriptor after this function returns, so
-# subsequent phases (and any prim_* emits inside backward closures) land in
-# it.
-# Returns:
-#   - desc: the fresh descriptor.
-#   - trans: hashtab(original gval -> new gval) for every replaced output.
-#     Inputs, constants, and literals are not added (they fall through).
-#   - backwards: ordered list that needs to be traversed in reverse for the backward pass.
-rebuild_forward_pass <- function(graph, required_env = NULL, envir = parent.frame()) {
-  desc <- local_descriptor(envir = envir)
-  c(list(desc = desc), rebuild_forward_into(graph, desc, required_env = required_env))
-}
 
-# The body of `rebuild_forward_pass()`, against a descriptor the caller already
-# has. `graph_vjp()` uses it to replay a sub-graph into the descriptor a branch
-# of the backward pass is being traced into, rather than into one of its own.
+# Replays `graph`'s forward pass into `desc`, call by call. `graph_vjp()` uses
+# it to replay a sub-graph into the descriptor a branch of the backward pass is
+# being traced into, `graph_value_and_grad()` to replay what `gradient()`
+# traced into the descriptor it is called in.
+#
+# Returns:
+#   - trans: hashtab(original gval -> new gval) for every replaced output and
+#     every input `inputs` binds. Constants and literals are not added (they
+#     fall through).
+#   - backwards: ordered list that needs to be traversed in reverse for the
+#     backward pass.
 #
 # With `required_env`, a call none of whose operands requires a gradient keeps
 # its plain forward even where its rule has a replacement: the backward pass
@@ -590,22 +612,15 @@ gradient <- function(f, wrt = NULL) {
     args <- lapply(args, eval, envir = parent.frame())
     prep <- prepare_gradient_args(args, wrt)
 
-    parent_desc <- current_descriptor(silent = TRUE)
-    if (is.null(parent_desc)) {
+    if (is.null(current_descriptor(silent = TRUE))) {
       cli_abort(c(
         "{.fn gradient} can only be called inside a {.fn jit}-compiled function.",
         i = "Wrap the result of {.fn gradient} in {.fn jit}, e.g. {.code jit(gradient(f))}."
       ))
     }
-    fwd_graph <- trace_fn(
-      f,
-      args_flat = prep$args_flat,
-      in_tree = prep$in_tree,
-      mode = "inline"
-    )
-    grad_graph <- transform_gradient(fwd_graph, wrt)
-    # parent_desc is modified in place
-    inline_graph_into_desc(parent_desc, grad_graph)
+    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, mode = "subgraph")
+    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
+    unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
   }
   formals(f_gradient) <- formals2(f)
   return(f_gradient)
@@ -624,32 +639,18 @@ value_and_gradient <- function(f, wrt = NULL) {
     args <- lapply(args, eval, envir = parent.frame())
     prep <- prepare_gradient_args(args, wrt)
 
-    parent_desc <- current_descriptor(silent = TRUE)
-    if (is.null(parent_desc)) {
+    if (is.null(current_descriptor(silent = TRUE))) {
       cli_abort(c(
         "{.fn value_and_gradient} can only be called inside a {.fn jit}-compiled function.",
         i = "Wrap the result of {.fn value_and_gradient} in {.fn jit}, e.g. {.code jit(value_and_gradient(f))}."
       ))
     }
-    fwd_graph <- trace_fn(
-      f,
-      args_flat = prep$args_flat,
-      in_tree = prep$in_tree,
-      mode = "inline"
+    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, mode = "subgraph")
+    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
+    list(
+      value = unflatten(fwd_graph$out_tree, res$value),
+      grad = unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
     )
-    res <- transform_gradient_impl(fwd_graph, wrt)
-    grad_graph <- res$graph
-    trans <- res$fwd_translation
-
-    fwd_outputs <- lapply(fwd_graph$outputs, \(g) trans[[g]] %||% g)
-    combined_graph <- grad_graph
-    combined_graph$outputs <- c(fwd_outputs, grad_graph$outputs)
-
-    combined_graph$out_tree <- pjrt::tree_concat(
-      list(fwd_graph$out_tree, grad_graph$out_tree),
-      names = c("value", "grad")
-    )
-    inline_graph_into_desc(parent_desc, combined_graph)
   }
   formals(f_value_and_grad) <- formals2(f)
   f_value_and_grad

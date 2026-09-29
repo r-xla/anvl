@@ -30,9 +30,9 @@ How to handle the inputs.
 Options are:
 \itemize{
 \item \code{"toplevel"}: Used for \code{\link[=jit]{jit()}}. Only allowed outside a trace.
-\item \code{"subgraph"}: Use for tracing subgraphs in higher-order primitives like \code{\link[=prim_while]{prim_while()}}.
-\item \code{"inline"}: Use for transformations like \code{\link[=gradient]{gradient()}}, where the graph is
-later inlined into the parent graph.
+\item \code{"subgraph"}: Use for a closed trace inside another one: the subgraphs
+of higher-order primitives like \code{\link[=prim_while]{prim_while()}}, and the function
+\code{\link[=gradient]{gradient()}} differentiates.
 }
 
 \code{NULL} (default) means \code{"toplevel"} and is only allowed outside a trace.}

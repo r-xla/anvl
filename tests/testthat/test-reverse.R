@@ -438,7 +438,7 @@ describe("rdata", {
     expect_identical(as_array(f(nv_scalar(2, dtype = "f64"), 3L)$x), 3)
   })
 
-  it("keeps a bare R value outside wrt exact through the inline trace", {
+  it("keeps a bare R value outside wrt exact through the traced function", {
     # `k` is an R double used at f64. sqrt(2) is not representable at f32, so a
     # materialize at the default would show up in the gradient.
     f <- jit(gradient(function(v, k) v * k, wrt = "v"))

@@ -293,6 +293,10 @@
   `prim_while()` loop's result depends on. A sub-graph now takes what it closes
   over as inputs, which its call passes as operands after its own, and the
   call's `n_captures` param counts.
+* A value that the function passed to `gradient()` closes over is a constant
+  of it, even where the same value is also passed for one of its arguments,
+  as in JAX: `gradient(\(x) sum(y * 2))(y)` is zero. It used to be
+  differentiated as if it were the argument.
 * A bare R integer start index of `prim_dynamic_slice()` /
   `prim_dynamic_update_slice()` takes the data type of the other start indices,
   so `prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)` no longer fails.

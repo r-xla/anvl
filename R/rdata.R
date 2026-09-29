@@ -320,22 +320,12 @@ has_no_dtype <- function(x) {
 
 # Reserve `desc`'s next input slot for an R argument: an input like any other,
 # except that its aval is an `RData` and so has no data type yet. The slot holds
-# it until finalize_rdata_inputs() (or, for an inline trace,
-# finalize_inline_rdata_inputs()) replaces it with the value the body
+# it until finalize_rdata_inputs() replaces it with the value the body
 # materialized, which keeps the input order the same as the argument order (the
 # caller supplies its inputs in that order).
-#
-# `outer` links an inline trace's input to the enclosing trace's box the
-# argument came from. The value is fresh rather than shared so the inline body's
-# materializations land in `desc` -- where transform_gradient() can
-# differentiate the converts between them -- and cannot clobber the outer
-# input's memo.
-register_rdata_input <- function(desc, aval, outer = NULL) {
+register_rdata_input <- function(desc, aval) {
   gval <- GraphValue(aval)
   desc$inputs <- c(desc$inputs, list(gval))
-  if (!is.null(outer)) {
-    desc$rdata_outer[[gval]] <- outer
-  }
   GraphBox(gval, desc)
 }
 
@@ -392,68 +382,6 @@ rdata_requested_dtypes <- function(aval, mat) {
     function(dt) rdata_in_category(aval$r_type, as_dtype(dt)),
     names(mat)
   )
-}
-
-# Finalize Rdata inputs of a sub-trace.
-# E.g. used with gradent()
-finalize_inline_rdata_inputs <- function(desc) {
-  inputs <- desc$inputs
-  is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
-  if (!any(is_open)) {
-    return(invisible(NULL))
-  }
-  pre_statements <- list()
-  add_convert <- function(input, dtype, output) {
-    # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
-    # always results in the same value
-    pre_statements[[length(pre_statements) + 1L]] <<- GraphStatement(
-      primitive = prim_convert,
-      inputs = list(input),
-      params = list(dtype = as_dtype(dtype)),
-      outputs = list(output)
-    )
-  }
-  for (i in which(is_open)) {
-    gval <- inputs[[i]]
-    aval <- gval$aval
-    mat <- rdata_mat(desc, gval)
-    requested <- rdata_requested_dtypes(aval, mat)
-    resolved <- resolve_upload_dtype(aval, requested, desc$default_dtypes)
-    outer <- desc$rdata_outer[[gval]]
-    local_box <- mat[[resolved]]
-    # In the examples below, `x` is `nv_scalar(1, "f64")` and `b` is the R
-    # value this iteration settles.
-    if (is.null(local_box)) {
-      # The sub-trace never built at the resolved data type
-      # (e.g., if sub-trace uses input 1 at f16 and bf16, resolved would be f32, i.e. the one that
-      # can hold both, even though nobody requested it)
-      main <- materialize_rdata(outer, as_dtype(resolved))$gnode
-    } else if (is.null(rdata_mat(outer$desc, outer$gnode)[[resolved]])) {
-      # The value at `resolved` exists in this graph and nowhere else: hand
-      # the gval itself up, so the enclosing trace's own finalize defines it
-      # (as the upload input, or a convert from it) ahead of this graph's
-      # calls, and later uses there reuse it.
-      # e.g. the body builds `q` at `f64`, the enclosing trace never uses `b`:
-      #   jit(\(a, b) gradient(\(p, q) p * q, wrt = "p")(a, b))(x, 2)
-      main <- local_box$gnode
-      rdata_mat_set(outer$desc, outer$gnode, resolved, register_gval(outer$desc, main))
-    } else {
-      # The enclosing trace built `resolved` too, so the body's gval is a
-      # second value for it: take the outer one as the input and define the
-      # body's from it.
-      # e.g. `a + b` builds `b` at `f64` before the body builds its own:
-      #   jit(\(a, b) { w <- a + b; gradient(\(p, q) p * q, wrt = "p")(a, b) })(x, 2)
-      main <- materialize_rdata(outer, as_dtype(resolved))$gnode
-      add_convert(main, resolved, local_box$gnode)
-    }
-    inputs[[i]] <- main
-    for (other in setdiff(requested, resolved)) {
-      add_convert(main, other, mat[[other]]$gnode)
-    }
-  }
-  desc$inputs <- inputs
-  desc$pre_statements <- c(desc$pre_statements, pre_statements)
-  invisible(NULL)
 }
 
 # What a dtype can hold, as (precision, range): a float's mantissa and exponent

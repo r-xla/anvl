@@ -206,7 +206,7 @@
             return %7
           },
           n_captures = 3
-        ] (%c2, %x1, %2, %c1)
+        ] (%c1, %x1, %2, %c2)
         %4: f32[2,1] = broadcast_in_axes [
           shape = c(2, 1), broadcast_axes = integer(0)
         ] (%3)

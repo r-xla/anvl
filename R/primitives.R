@@ -2621,6 +2621,7 @@ prim_while <- new_primitive(
     }
 
     current_desc <- current_descriptor(silent = TRUE)
+    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     desc_cond <- local_descriptor()
     cond_graph <- trace_fn(cond, init, desc = desc_cond, mode = "subgraph")
@@ -2715,6 +2716,7 @@ prim_scan <- new_primitive(
     assert_flag(reverse)
 
     current_desc <- current_descriptor(silent = TRUE)
+    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     init_flat <- flatten(init)
     xs_flat <- flatten(xs)
