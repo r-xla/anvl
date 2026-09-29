@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+* The tensor generics and `DataType` now come from xlamisc, which absorbed
+  tengen; anvl no longer depends on tengen.
 * `PrimitiveCall` is now `GraphStatement`, and the `calls` field of `AnvlGraph`
   and `GraphDescriptor` is now `statements`.
 * `AnvlBox` is gone; `GraphBox` is the class of a traced value.

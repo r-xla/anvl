@@ -317,8 +317,8 @@ AnvlBackendPjrt <- function() {
       structure(
         list(
           data = buf,
-          dtype = tengen::dtype(buf),
-          shape = tengen::shape(buf),
+          dtype = xlamisc::dtype(buf),
+          shape = xlamisc::shape(buf),
           device = device(buf),
           backend = "pjrt"
         ),
@@ -330,8 +330,8 @@ AnvlBackendPjrt <- function() {
       structure(
         list(
           data = buf,
-          dtype = tengen::dtype(buf),
-          shape = tengen::shape(buf),
+          dtype = xlamisc::dtype(buf),
+          shape = xlamisc::shape(buf),
           device = device(buf),
           backend = "pjrt"
         ),
@@ -340,8 +340,8 @@ AnvlBackendPjrt <- function() {
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    as_array = function(x, check) tengen::as_array(x$data, check = check),
-    as_raw = function(x, row_major) tengen::as_raw(x$data, row_major = row_major),
+    as_array = function(x, check) xlamisc::as_array(x$data, check = check),
+    as_raw = function(x, row_major) xlamisc::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),
     device = function(x) x$device,
     new_device = function(x) pjrt::pjrt_device(x),

@@ -11,9 +11,9 @@
 #' to decide what they meet at.
 #'
 #' See `r roxy_article("type-promotion")` for more information.
-#' @param lhs_dtype,rhs_dtype ([`tengen::DataType`])\cr
+#' @param lhs_dtype,rhs_dtype ([`xlamisc::DataType`])\cr
 #'   The two data types.
-#' @return ([`tengen::DataType`])\cr
+#' @return ([`xlamisc::DataType`])\cr
 #'   The narrowest common data type.
 #' @examples
 #' common_dtype("i32", "f32")
@@ -50,7 +50,7 @@ NULL
 #' ([`common_dtype()`]).
 #' An R value takes the data type the arrays meet at when that is in its own or
 #' a higher category, and otherwise contributes its default data type.
-#' @param fallback (`NULL` | [`tengen::DataType`] | `character(1)`)\cr
+#' @param fallback (`NULL` | [`xlamisc::DataType`] | `character(1)`)\cr
 #'   The data type to settle on when *every* input is a bare R value, in place
 #'   of the default those would materialize at on their own. `NULL` (default)
 #'   leaves them their default.
@@ -109,7 +109,7 @@ promotion_like <- function(arg, on = NULL, coerce = FALSE) {
 
 #' @description
 #' `promotion_dtype()` brings the inputs to the specified data type.
-#' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
+#' @param dtype ([`xlamisc::DataType`] | `character(1)`)\cr
 #'   The data type to bring the inputs to.
 #' @rdname promotion_rule
 #' @export
@@ -251,7 +251,7 @@ assert_disjoint_rules <- function(rules) {
 #'   function(args) {
 #'     widths <- vapply(args, function(a) {
 #'       dt <- peek_dtype(to_abstract(a))
-#'       if (tengen::is_dtype_float(dt)) tengen::dtype_width(dt) else 0L
+#'       if (xlamisc::is_dtype_float(dt)) xlamisc::dtype_width(dt) else 0L
 #'     }, integer(1))
 #'     rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
 #'   },
@@ -659,7 +659,7 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' * **float** -- `f32` and `f64`.
 #'
 #' These are the categories promotion works in, where signed and unsigned
-#' integers count as one. [`tengen::dtype_category()`] reports a finer split
+#' integers count as one. [`xlamisc::dtype_category()`] reports a finer split
 #' that names `int` and `uint` separately.
 #'
 #' @template section_dtype_words

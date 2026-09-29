@@ -199,7 +199,7 @@
       Error in `prim_convert()`:
       ! `dtype` must name a data type.
       x Got "nope".
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 ---
 
@@ -209,7 +209,7 @@
       Error in `prim_convert()`:
       ! `dtype` must name a data type.
       x Got 42.
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 # prim_round
 
@@ -246,7 +246,7 @@
       Error in `prim_fill()`:
       ! `dtype` must name a data type.
       x Got "nope".
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 # prim_iota
 
@@ -636,7 +636,7 @@
       Error in `prim_fill()`:
       ! `dtype` must name a data type.
       x Got "aaaaaaaaaaaaaaaaaaaaaaaaaaa...".
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 ---
 

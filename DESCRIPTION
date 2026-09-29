@@ -34,9 +34,8 @@ Imports:
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.4.0),
-    tengen (>= 0.3.0),
     withr,
-    xlamisc (>= 0.4.1)
+    xlamisc (>= 0.4.1.9000)
 Suggests:
     bit64,
     knitr,
@@ -48,7 +47,6 @@ Additional_repositories:
     https://r-xla.r-universe.dev
 Remotes:
     r-xla/pjrt,
-    r-xla/tengen,
     r-xla/stablehlo,
     r-xla/xlamisc
 Config/testthat/edition: 3

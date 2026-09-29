@@ -608,7 +608,7 @@ export(with_default_device)
 export(with_default_dtypes)
 export(with_dtypes)
 import(checkmate)
-import(tengen)
+import(xlamisc)
 importFrom(cli,
   cli_abort,
   cli_warn
@@ -747,16 +747,6 @@ importFrom(stats,
   quantile,
   setNames
 )
-importFrom(tengen,
-  as_array,
-  as_dtype,
-  as_raw,
-  device,
-  dtype,
-  is_dtype,
-  naxes,
-  shape
-)
 importFrom(utils,
   capture.output,
   getFromNamespace,
@@ -766,6 +756,12 @@ importFrom(utils,
   tail
 )
 importFrom(xlamisc,
-  seq_along0,
-  seq_len0
+  as_array,
+  as_dtype,
+  as_raw,
+  device,
+  dtype,
+  is_dtype,
+  naxes,
+  shape
 )

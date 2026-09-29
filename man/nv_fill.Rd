@@ -18,7 +18,7 @@ one for an unsigned integer, and a logical or \code{0} / \code{1} for \code{bool
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result.
 The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} for \code{nv_fill} and
 \code{dtype(like)} for \code{nv_fill_like}.}

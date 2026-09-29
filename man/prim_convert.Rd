@@ -11,7 +11,7 @@ prim_convert(x, dtype)
 One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Target data type. Can be any data type; the conversion is a value
 conversion, so it may lose precision or wrap around.}
 }

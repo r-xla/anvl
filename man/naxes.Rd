@@ -24,5 +24,5 @@ naxes(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[tengen:naxes]{tengen::naxes()}}
+\code{\link[xlamisc:naxes]{xlamisc::naxes()}}
 }

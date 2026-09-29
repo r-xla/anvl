@@ -10,7 +10,7 @@ nv_aval(dtype, shape)
 AbstractArray(dtype, shape)
 }
 \arguments{
-\item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
+\item{dtype}{(\code{\link[xlamisc:DataType]{xlamisc::DataType}} | \code{character(1)})\cr
 The data type of the array. For \code{nv_aval()} only, \code{"double"},
 \code{"integer"} or \code{"logical"} create an \code{\link{RData}} instead.}
 

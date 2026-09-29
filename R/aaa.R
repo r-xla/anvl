@@ -56,10 +56,9 @@ NULL
 #' @importFrom stablehlo hlo_scalar hlo_tensor
 #' @evalNamespace paste0("importFrom(stablehlo,", setdiff(grep("^hlo_", getNamespaceExports("stablehlo"), value = TRUE), c("hlo_scalar", "hlo_tensor")), ")")
 #' @import checkmate
-#' @import tengen
+#' @import xlamisc
 #' @importFrom pjrt pjrt_buffer pjrt_scalar pjrt_execute pjrt_compile pjrt_program elt_type
 #' @importFrom utils hashtab
-#' @importFrom xlamisc seq_len0 seq_along0
 #' @importFrom utils head tail getFromNamespace install.packages
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%

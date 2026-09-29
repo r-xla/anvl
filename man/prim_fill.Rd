@@ -15,7 +15,7 @@ one for an unsigned integer, and a logical or \code{0} / \code{1} for \code{bool
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr

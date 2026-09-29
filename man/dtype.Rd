@@ -13,7 +13,7 @@ An array. See Details for the values that have no data type.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-(\code{\link[tengen:DataType]{DataType}})
+(\code{\link[xlamisc:DataType]{DataType}})
 }
 \description{
 Returns the data type of an array (e.g. \code{f32}, \code{i64}).
@@ -26,7 +26,7 @@ of an R value passed to a jit-compiled function, and so for the
 \code{\link{GraphBox}} that carries one during tracing. Use \code{\link[=peek_dtype]{peek_dtype()}} for the
 data type such a value would take.
 
-This is implemented via the generic \code{\link[tengen:dtype]{tengen::dtype()}}.
+This is implemented via the generic \code{\link[xlamisc:dtype]{xlamisc::dtype()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -42,5 +42,5 @@ jit(function(x) {
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[tengen:dtype]{tengen::dtype()}}, \code{\link[=peek_dtype]{peek_dtype()}}, \link{RData}
+\code{\link[xlamisc:dtype]{xlamisc::dtype()}}, \code{\link[=peek_dtype]{peek_dtype()}}, \link{RData}
 }

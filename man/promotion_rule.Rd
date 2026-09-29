@@ -28,7 +28,7 @@ argument name. For \code{promotion_rule()}, \code{on} only declares which argume
 the rule covers (which \code{\link[=promotion_grouped]{promotion_grouped()}} needs to check that its
 rules are disjoint); \code{fn} itself must restrict itself to them.}
 
-\item{fallback}{(\code{NULL} | \code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
+\item{fallback}{(\code{NULL} | \code{\link[xlamisc:DataType]{xlamisc::DataType}} | \code{character(1)})\cr
 The data type to settle on when \emph{every} input is a bare R value, in place
 of the default those would materialize at on their own. \code{NULL} (default)
 leaves them their default.}
@@ -45,7 +45,7 @@ integer data type, which no category crosses to on its own (an R double at
 \code{i32}, or an \code{f32} array at \code{i32}), and narrowing a value the target cannot
 hold (an \code{f64} array at \code{f32}). The default is \code{FALSE}.}
 
-\item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
+\item{dtype}{(\code{\link[xlamisc:DataType]{xlamisc::DataType}} | \code{character(1)})\cr
 The data type to bring the inputs to.}
 
 \item{...}{For \code{promotion_grouped()}: (\code{\link[=promotion_rule]{PromotionRule}})\cr
@@ -126,7 +126,7 @@ widest_float <- promotion_rule(
   function(args) {
     widths <- vapply(args, function(a) {
       dt <- peek_dtype(to_abstract(a))
-      if (tengen::is_dtype_float(dt)) tengen::dtype_width(dt) else 0L
+      if (xlamisc::is_dtype_float(dt)) xlamisc::dtype_width(dt) else 0L
     }, integer(1))
     rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
   },
