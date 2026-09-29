@@ -84,6 +84,8 @@
 <li>
 <code>AnvlBox</code> is gone; <code>GraphBox</code> is the class of a traced value.</li>
 <li>
+<code><a href="../reference/trace_fn.html">trace_fn()</a></code> loses its <code>mode</code> argument: a trace inside another one is recognized as such, and takes its inputs the same way as the outermost one.</li>
+<li>
 <code>at2vt()</code> and <code>vt()</code> are no longer exported.</li>
 <li>
 <code>.current_descriptor()</code> is now <code><a href="../reference/current_descriptor.html">current_descriptor()</a></code>.</li>
@@ -191,6 +193,12 @@
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
 <ul><li>
+<code><a href="../reference/prim_if.html">prim_if()</a></code> / <code><a href="../reference/nv_if.html">nv_if()</a></code> are now differentiable; only the taken branch’s gradient is computed.</li>
+<li>
+<code><a href="../reference/prim_scan.html">prim_scan()</a></code> / <code><a href="../reference/nv_scan.html">nv_scan()</a></code> are now differentiable, in time and memory linear in <code>steps</code>.</li>
+<li>
+<code><a href="../reference/prim_print.html">prim_print()</a></code> / <code><a href="../reference/nv_print.html">nv_print()</a></code> pass the gradient through, and print once per execution of a differentiated <code><a href="../reference/nv_if.html">nv_if()</a></code> branch or <code><a href="../reference/nv_scan.html">nv_scan()</a></code> step.</li>
+<li>
 <code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> and <code>[&lt;-</code> gain <code>inplace</code>, which writes into the memory of <code>x</code> instead of copying it, e.g. <code>x[1, inplace = TRUE] &lt;- 0</code>; <code>x</code> is donated.</li>
 <li>New <code><a href="../reference/axes.html">axes()</a></code> returns the axis indices of an array, <code>seq_len(naxes(x))</code>.</li>
 <li>New <code><a href="../reference/local_default_device.html">local_default_device()</a></code> and <code><a href="../reference/local_default_device.html">with_default_device()</a></code> set the <code>anvl.default_device</code> option, which names the device a call that names none allocates on in place of the first CPU device.</li>
@@ -256,7 +264,11 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>A bare R integer start index of <code><a href="../reference/prim_dynamic_slice.html">prim_dynamic_slice()</a></code> / <code><a href="../reference/prim_dynamic_update_slice.html">prim_dynamic_update_slice()</a></code> takes the data type of the other start indices, so <code>prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)</code> no longer fails.</li>
+<ul><li>
+<code><a href="../reference/gradient.html">gradient()</a></code> no longer returns a zero gradient for a value that a <code><a href="../reference/prim_if.html">prim_if()</a></code> or <code><a href="../reference/prim_scan.html">prim_scan()</a></code> sub-graph closes over, and refuses one that a <code><a href="../reference/prim_while.html">prim_while()</a></code> loop’s result depends on. A sub-graph now takes what it closes over as inputs, which its call passes as operands after its own, and the call’s <code>n_captures</code> param counts.</li>
+<li>A value that the function passed to <code><a href="../reference/gradient.html">gradient()</a></code> closes over is a constant of it, even where the same value is also passed for one of its arguments, as in JAX: <code>gradient(\(x) sum(y * 2))(y)</code> is zero. It used to be differentiated as if it were the argument.</li>
+<li>A sub-graph that returns an R argument of the jitted function untouched, e.g. <code>jit(\(p, b) nv_if(p, \() b, \() b))(TRUE, 2)</code>, no longer fails to compile with “GraphValue not found in environment”.</li>
+<li>A bare R integer start index of <code><a href="../reference/prim_dynamic_slice.html">prim_dynamic_slice()</a></code> / <code><a href="../reference/prim_dynamic_update_slice.html">prim_dynamic_update_slice()</a></code> takes the data type of the other start indices, so <code>prim_dynamic_slice(x, nv_scalar(1L, "i64"), 1L, ...)</code> no longer fails.</li>
 <li>
 <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> with a scalar <code>shape</code> and a non-scalar <code>mean</code> or <code>sd</code> returned one draw shifted/scaled to the shape of <code>mean</code>/<code>sd</code>; it is now an error, as any shape other than a scalar or <code>shape</code> already was.</li>
 <li>Whatever a <code>prim_*()</code> refuses now reports that primitive as the call, rather than the helper that checked the argument or the anonymous function <code><a href="../reference/jit.html">jit()</a></code> wraps.</li>

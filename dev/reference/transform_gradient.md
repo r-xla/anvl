@@ -40,12 +40,12 @@ See
 [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md)
 for more information.
 
-This is the building block used by
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
 and
-[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md);
-prefer those higher-level wrappers unless you need to operate on graphs
-directly.
+[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+differentiate the same way, but into the trace they are called in rather
+than into a graph of its own; prefer them unless you need to operate on
+graphs directly.
 
 ## See also
 

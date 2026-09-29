@@ -460,11 +460,12 @@ gradient computation can be made significantly more efficient by running
 an alternative forward pass that exposes intermediate values for reuse,
 use the alternative-forward form:
 <code>rule_reverse(forward = ...)</code>. The forward hook receives
-<code>(inputs, params)</code>, emits whatever forward primitives it
+<code>(inputs, params, required)</code> – <code>required</code> says
+which inputs need a gradient –, emits whatever forward primitives it
 likes via the normal <code>prim_*</code> callables, and returns a list
 with the primal outputs and a <code>backward</code> closure.
 Intermediates flow from forward to backward via R’s lexical scoping:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>prim_<span class="sc">&lt;</span>name<span class="sc">&gt;</span>[[<span class="st">"reverse"</span>]] <span class="ot">&lt;-</span> <span class="fu">rule_reverse</span>(<span class="at">forward =</span> <span class="cf">function</span>(inputs, params) {</span>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>prim_<span class="sc">&lt;</span>name<span class="sc">&gt;</span>[[<span class="st">"reverse"</span>]] <span class="ot">&lt;-</span> <span class="fu">rule_reverse</span>(<span class="at">forward =</span> <span class="cf">function</span>(inputs, params, required) {</span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  x <span class="ot">&lt;-</span> inputs[[<span class="dv">1</span><span class="dt">L</span>]]</span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  y <span class="ot">&lt;-</span> <span class="fu">prim_some_op</span>(x)        <span class="co"># forward emit 1</span></span>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  z <span class="ot">&lt;-</span> <span class="fu">prim_other_op</span>(x, y)    <span class="co"># forward emit 2; both `x` and `y` captured</span></span>

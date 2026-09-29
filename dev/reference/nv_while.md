@@ -41,6 +41,13 @@ A tree of the loop-carried arrays – see
 its final state after the loop terminates, with `init`'s structure, data
 types and shapes.
 
+## Gradients
+
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+cannot differentiate a while loop: its trip count is only known at run
+time, so there is no static size for the per-iteration states the
+backward pass needs.
+
 ## See also
 
 [`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md)

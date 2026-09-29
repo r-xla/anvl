@@ -7,6 +7,9 @@
 - `PrimitiveCall` is now `GraphStatement`, and the `calls` field of
   `AnvlGraph` and `GraphDescriptor` is now `statements`.
 - `AnvlBox` is gone; `GraphBox` is the class of a traced value.
+- [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
+  loses its `mode` argument: a trace inside another one is recognized as
+  such, and takes its inputs the same way as the outermost one.
 - `at2vt()` and `vt()` are no longer exported.
 - `.current_descriptor()` is now
   [`current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md).
@@ -341,6 +344,21 @@
 
 ### Features
 
+- [`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md) /
+  [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) are
+  now differentiable; only the taken branch’s gradient is computed.
+- [`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
+  / [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md)
+  are now differentiable, in time and memory linear in `steps`.
+- [`prim_print()`](https://r-xla.github.io/anvl/dev/reference/prim_print.md)
+  /
+  [`nv_print()`](https://r-xla.github.io/anvl/dev/reference/nv_print.md)
+  pass the gradient through, and print once per execution of a
+  differentiated
+  [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md)
+  branch or
+  [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md)
+  step.
 - [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
   and `[<-` gain `inplace`, which writes into the memory of `x` instead
   of copying it, e.g. `x[1, inplace = TRUE] <- 0`; `x` is donated.
@@ -568,6 +586,25 @@
 
 ### Bug fixes
 
+- [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  no longer returns a zero gradient for a value that a
+  [`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md)
+  or
+  [`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
+  sub-graph closes over, and refuses one that a
+  [`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md)
+  loop’s result depends on. A sub-graph now takes what it closes over as
+  inputs, which its call passes as operands after its own, and the
+  call’s `n_captures` param counts.
+- A value that the function passed to
+  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  closes over is a constant of it, even where the same value is also
+  passed for one of its arguments, as in JAX:
+  `gradient(\(x) sum(y * 2))(y)` is zero. It used to be differentiated
+  as if it were the argument.
+- A sub-graph that returns an R argument of the jitted function
+  untouched, e.g. `jit(\(p, b) nv_if(p, \() b, \() b))(TRUE, 2)`, no
+  longer fails to compile with “GraphValue not found in environment”.
 - A bare R integer start index of
   [`prim_dynamic_slice()`](https://r-xla.github.io/anvl/dev/reference/prim_dynamic_slice.md)
   /

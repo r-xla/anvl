@@ -95,7 +95,6 @@ an <code><a href="AnvlGraph.html">AnvlGraph</a></code>.</p>
 <span>  <span class="va">f</span>,</span>
 <span>  args <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  desc <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  in_tree <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  optimize <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -120,16 +119,6 @@ The (unflattened) arguments to the function. Mutually exclusive with the
 <dt id="arg-desc">desc<a class="anchor" aria-label="anchor" href="#arg-desc"></a></dt>
 <dd><p>(<code>NULL</code> | <code>GraphDescriptor</code>)<br>
 Optional descriptor. When <code>NULL</code> (default), a new descriptor is created.</p></dd>
-
-
-<dt id="arg-mode">mode<a class="anchor" aria-label="anchor" href="#arg-mode"></a></dt>
-<dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
-How to handle the inputs.
-Options are:</p><ul><li><p><code>"toplevel"</code>: Used for <code><a href="jit.html">jit()</a></code>. Only allowed outside a trace.</p></li>
-<li><p><code>"subgraph"</code>: Use for tracing subgraphs in higher-order primitives like <code><a href="prim_while.html">prim_while()</a></code>.</p></li>
-<li><p><code>"inline"</code>: Use for transformations like <code><a href="gradient.html">gradient()</a></code>, where the graph is
-later inlined into the parent graph.</p></li>
-</ul><p><code>NULL</code> (default) means <code>"toplevel"</code> and is only allowed outside a trace.</p></dd>
 
 
 <dt id="arg-args-flat">args_flat<a class="anchor" aria-label="anchor" href="#arg-args-flat"></a></dt>

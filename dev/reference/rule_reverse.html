@@ -13,10 +13,11 @@ function(inputs, outputs, grads, params, required) and returns a list
 with one entry per input: that input's gradient, or NULL where
 required says it is not needed.
 Pass forward when a slightly different forward pass enables a more
-efficient backward pass. It has the signature function(inputs, params)
-and returns list(outputs = , backward = ): the forward results and a
-closure with the signature of backward above, which can use intermediate
-values of the forward pass via lexical scoping."><meta property="og:description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
+efficient backward pass. It has the signature
+function(inputs, params, required), where required says which inputs
+need a gradient, and returns list(outputs = , backward = ): the forward
+results and a closure with the signature of backward above, which can use
+intermediate values of the forward pass via lexical scoping."><meta property="og:description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
 of backward and forward.
 Pass backward when the primitive's forward statement can run unmodified, which
 covers most use cases. It has the signature
@@ -24,10 +25,11 @@ function(inputs, outputs, grads, params, required) and returns a list
 with one entry per input: that input's gradient, or NULL where
 required says it is not needed.
 Pass forward when a slightly different forward pass enables a more
-efficient backward pass. It has the signature function(inputs, params)
-and returns list(outputs = , backward = ): the forward results and a
-closure with the signature of backward above, which can use intermediate
-values of the forward pass via lexical scoping."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+efficient backward pass. It has the signature
+function(inputs, params, required), where required says which inputs
+need a gradient, and returns list(outputs = , backward = ): the forward
+results and a closure with the signature of backward above, which can use
+intermediate values of the forward pass via lexical scoping."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -107,10 +109,11 @@ covers most use cases. It has the signature
 with one entry per input: that input's gradient, or <code>NULL</code> where
 <code>required</code> says it is not needed.</p>
 <p>Pass <code>forward</code> when a slightly different forward pass enables a more
-efficient backward pass. It has the signature <code>function(inputs, params)</code>
-and returns <code>list(outputs = , backward = )</code>: the forward results and a
-closure with the signature of <code>backward</code> above, which can use intermediate
-values of the forward pass via lexical scoping.</p>
+efficient backward pass. It has the signature
+<code>function(inputs, params, required)</code>, where <code>required</code> says which inputs
+need a gradient, and returns <code>list(outputs = , backward = )</code>: the forward
+results and a closure with the signature of <code>backward</code> above, which can use
+intermediate values of the forward pass via lexical scoping.</p>
     </div>
 
     <div class="section level2">
@@ -156,7 +159,7 @@ closure.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     list(if (required[[1L]]) prim_negate(grads[[1L]]))</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55d605582a08&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55ff4e1cf978&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "anvl_rule_reverse"</span>

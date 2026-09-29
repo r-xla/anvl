@@ -335,6 +335,29 @@ are differentiable everywhere except at a few points. At these points,
 {anvl} follows the conventions of other frameworks such as PyTorch.</p>
 </div>
 <div class="section level2">
+<h2 id="control-flow">Control Flow<a class="anchor" aria-label="anchor" href="#control-flow"></a>
+</h2>
+<p><code><a href="../reference/gradient.html">gradient()</a></code> differentiates through <code><a href="../reference/nv_if.html">nv_if()</a></code>,
+including the values its branches close over. The gradient flows through
+the branch the predicate selects:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">square</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_if.html">nv_if</a></span><span class="op">(</span><span class="va">square</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">f_grad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="../reference/gradient.html">gradient</a></span><span class="op">(</span><span class="va">f</span>, wrt <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">f_grad</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; $x</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt;  4</span></span>
+<span><span class="co">#&gt; [ CPUf32{2} ]</span></span>
+<span><span class="fu">f_grad</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; $x</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt; [ CPUf32{2} ]</span></span></code></pre></div>
+<p><code><a href="../reference/nv_while.html">nv_while()</a></code>, in contrast, cannot be differentiated.</p>
+</div>
+<div class="section level2">
 <h2 id="limitations">Limitations<a class="anchor" aria-label="anchor" href="#limitations"></a>
 </h2>
 <ul>

@@ -10,10 +10,12 @@ unmodified, which covers most use cases. It has the signature
 `required` says it is not needed.
 
 Pass `forward` when a slightly different forward pass enables a more
-efficient backward pass. It has the signature `function(inputs, params)`
-and returns `list(outputs = , backward = )`: the forward results and a
-closure with the signature of `backward` above, which can use
-intermediate values of the forward pass via lexical scoping.
+efficient backward pass. It has the signature
+`function(inputs, params, required)`, where `required` says which inputs
+need a gradient, and returns `list(outputs = , backward = )`: the
+forward results and a closure with the signature of `backward` above,
+which can use intermediate values of the forward pass via lexical
+scoping.
 
 ## Usage
 
@@ -57,7 +59,7 @@ rule_reverse(function(inputs, outputs, grads, params, required) {
 #> {
 #>     list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #> }
-#> <environment: 0x55d605582a08>
+#> <environment: 0x55ff4e1cf978>
 #> 
 #> attr(,"class")
 #> [1] "anvl_rule_reverse"

@@ -119,6 +119,14 @@ final state after the loop terminates, with <code>init</code>'s structure, data
 types and shapes.</p>
     </div>
     <div class="section level2">
+    <h2 id="gradients">Gradients<a class="anchor" aria-label="anchor" href="#gradients"></a></h2>
+
+
+<p><code><a href="gradient.html">gradient()</a></code> cannot differentiate a while loop: its trip count is only known
+at run time, so there is no static size for the per-iteration states the
+backward pass needs.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="prim_while.html">prim_while()</a></code> for the underlying primitive.</p></div>
     </div>

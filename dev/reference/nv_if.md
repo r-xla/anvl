@@ -42,6 +42,14 @@ of pjrt's
 `list`, nested arbitrarily – with the structure, data types and shapes
 both branches share.
 
+## Gradients
+
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+differentiates through the branch the predicate selects, including the
+values the branches close over; a value only the other branch uses gets
+a zero. See
+[`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md).
+
 ## See also
 
 [`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md) for
@@ -57,4 +65,15 @@ nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 #> AnvlArray
 #>  1
 #> [ CPUf32{} ] 
+
+# the gradient flows through the branch that is taken
+f <- function(p, x) nv_if(p, \() sum(x * x), \() sum(x))
+jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), nv_array(c(1, 2, 3)))
+#> $x
+#> AnvlArray
+#>  2
+#>  4
+#>  6
+#> [ CPUf32{3} ] 
+#> 
 ```

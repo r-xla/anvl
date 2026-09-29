@@ -118,8 +118,7 @@ outputs.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">stablehlo</span><span class="op">(</span></span>
 <span>  <span class="va">graph</span>,</span>
 <span>  id <span class="op">=</span> <span class="st">"main"</span>,</span>
-<span>  constants_as_inputs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  env <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  captured <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  donate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  donate_unaliased_outputs <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  platform <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -144,18 +143,14 @@ a scatter update computation) that builds an anonymous nested function
 inside an enclosing build.</p></dd>
 
 
-<dt id="arg-constants-as-inputs">constants_as_inputs<a class="anchor" aria-label="anchor" href="#arg-constants-as-inputs"></a></dt>
-<dd><p>(<code>logical(1)</code>)<br>
-If <code>TRUE</code> (default), constants are registered as inputs to the StableHLO function
-so they can be passed in at execution time.
-If <code>FALSE</code>, they are not added as inputs. Set to <code>FALSE</code> for closures.
-Note that <code>GraphLiteral</code>s are always inlined into the StableHLO function.</p></dd>
-
-
-<dt id="arg-env">env<a class="anchor" aria-label="anchor" href="#arg-env"></a></dt>
-<dd><p>(<code>HloEnv</code> | <code>NULL</code>)<br>
-Optional environment for reusing variable mappings across nested function lowerings
-(e.g. for higher-order primitives like <code>prim_while</code>).</p></dd>
+<dt id="arg-captured">captured<a class="anchor" aria-label="anchor" href="#arg-captured"></a></dt>
+<dd><p>(<code>list(FuncValue)</code>)<br>
+Values of the enclosing function to bind the graph's last <code>length(captured)</code>
+inputs to. The lowered function reads them the way an MLIR region captures
+a value from above, instead of declaring them as inputs. Used for the
+sub-graphs of higher-order primitives (e.g. <code>nv_while</code>), whose trailing
+inputs are the values they close over. The graph's constants always become
+inputs, and <code>GraphLiteral</code>s are always inlined.</p></dd>
 
 
 <dt id="arg-donate">donate<a class="anchor" aria-label="anchor" href="#arg-donate"></a></dt>

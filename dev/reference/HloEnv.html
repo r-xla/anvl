@@ -6,8 +6,12 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="HloEnv — HloEnv"><meta name="description" content="Environment for storing graph value to func value mappings.
-This is a mutable class."><meta property="og:description" content="Environment for storing graph value to func value mappings.
-This is a mutable class."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+This is a mutable class. Every graph is lowered against an environment of
+its own: a sub-graph reads nothing of the graph around it except through
+its inputs."><meta property="og:description" content="Environment for storing graph value to func value mappings.
+This is a mutable class. Every graph is lowered against an environment of
+its own: a sub-graph reads nothing of the graph around it except through
+its inputs."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -80,24 +84,21 @@ This is a mutable class."><meta property="og:image" content="https://r-xla.githu
 
     <div class="ref-description section level2">
     <p>Environment for storing graph value to func value mappings.
-This is a mutable class.</p>
+This is a mutable class. Every graph is lowered against an environment of
+its own: a sub-graph reads nothing of the graph around it except through
+its inputs.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">HloEnv</span><span class="op">(</span>parent <span class="op">=</span> <span class="cn">NULL</span>, gval_to_fval <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">HloEnv</span><span class="op">(</span>gval_to_fval <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-parent">parent<a class="anchor" aria-label="anchor" href="#arg-parent"></a></dt>
-<dd><p>(<code>HloEnv</code> | <code>NULL</code>)<br>
-Parent environment for lookups.</p></dd>
-
-
-<dt id="arg-gval-to-fval">gval_to_fval<a class="anchor" aria-label="anchor" href="#arg-gval-to-fval"></a></dt>
+<dl><dt id="arg-gval-to-fval">gval_to_fval<a class="anchor" aria-label="anchor" href="#arg-gval-to-fval"></a></dt>
 <dd><p>(<code>hashtab</code>)<br>
 Mapping from graph values to func values.</p></dd>
 

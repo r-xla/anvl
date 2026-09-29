@@ -28,6 +28,8 @@ Returns the input unchanged.
 
 - `stablehlo`
 
+- `reverse`
+
 ## StableHLO
 
 Lowers to

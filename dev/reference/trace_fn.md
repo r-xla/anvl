@@ -16,7 +16,6 @@ trace_fn(
   f,
   args = NULL,
   desc = NULL,
-  mode = NULL,
   args_flat = NULL,
   in_tree = NULL,
   optimize = FALSE
@@ -45,26 +44,6 @@ trace_fn(
   (`NULL` \| `GraphDescriptor`)  
   Optional descriptor. When `NULL` (default), a new descriptor is
   created.
-
-- mode:
-
-  (`NULL` \| `character(1)`)  
-  How to handle the inputs. Options are:
-
-  - `"toplevel"`: Used for
-    [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md). Only
-    allowed outside a trace.
-
-  - `"subgraph"`: Use for tracing subgraphs in higher-order primitives
-    like
-    [`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md).
-
-  - `"inline"`: Use for transformations like
-    [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
-    where the graph is later inlined into the parent graph.
-
-  `NULL` (default) means `"toplevel"` and is only allowed outside a
-  trace.
 
 - args_flat:
 

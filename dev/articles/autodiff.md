@@ -249,6 +249,35 @@ or [`abs()`](https://rdrr.io/r/base/MathFun.html), are differentiable
 everywhere except at a few points. At these points, {anvl} follows the
 conventions of other frameworks such as PyTorch.
 
+## Control Flow
+
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+differentiates through
+[`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md),
+including the values its branches close over. The gradient flows through
+the branch the predicate selects:
+
+``` r
+
+f <- function(x, square) nv_if(square, \() sum(x^2), \() sum(x))
+f_grad <- jit(gradient(f, wrt = "x"))
+f_grad(nv_array(c(1, 2)), nv_scalar(TRUE))
+#> $x
+#> AnvlArray
+#>  2
+#>  4
+#> [ CPUf32{2} ]
+f_grad(nv_array(c(1, 2)), nv_scalar(FALSE))
+#> $x
+#> AnvlArray
+#>  1
+#>  1
+#> [ CPUf32{2} ]
+```
+
+[`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md),
+in contrast, cannot be differentiated.
+
 ## Limitations
 
 - {anvl} only implements *reverse-mode* differentiation, which is

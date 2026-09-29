@@ -47,6 +47,8 @@ both branches share.
 
 - `quickr`
 
+- `reverse`
+
 ## StableHLO
 
 Lowers to

@@ -29,8 +29,7 @@ This is a low-level function; most users should use
 stablehlo(
   graph,
   id = "main",
-  constants_as_inputs = TRUE,
-  env = NULL,
+  captured = list(),
   donate = character(),
   donate_unaliased_outputs = FALSE,
   platform = NULL
@@ -54,21 +53,16 @@ stablehlo(
   or a scatter update computation) that builds an anonymous nested
   function inside an enclosing build.
 
-- constants_as_inputs:
+- captured:
 
-  (`logical(1)`)  
-  If `TRUE` (default), constants are registered as inputs to the
-  StableHLO function so they can be passed in at execution time. If
-  `FALSE`, they are not added as inputs. Set to `FALSE` for closures.
-  Note that `GraphLiteral`s are always inlined into the StableHLO
-  function.
-
-- env:
-
-  (`HloEnv` \| `NULL`)  
-  Optional environment for reusing variable mappings across nested
-  function lowerings (e.g. for higher-order primitives like
-  `prim_while`).
+  (`list(FuncValue)`)  
+  Values of the enclosing function to bind the graph's last
+  `length(captured)` inputs to. The lowered function reads them the way
+  an MLIR region captures a value from above, instead of declaring them
+  as inputs. Used for the sub-graphs of higher-order primitives (e.g.
+  `nv_while`), whose trailing inputs are the values they close over. The
+  graph's constants always become inputs, and `GraphLiteral`s are always
+  inlined.
 
 - donate:
 

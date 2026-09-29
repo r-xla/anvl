@@ -50,7 +50,7 @@ because it does not apply for a specific primitive.
 | gather                 |     ✓     |    ✓    |   ✓    |
 | ge                     |     ✓     |    ✓    |   ✓    |
 | gt                     |     ✓     |    ✓    |   ✓    |
-| if                     |     ✓     |    ✗    |   ✓    |
+| if                     |     ✓     |    ✓    |   ✓    |
 | ifelse                 |     ✓     |    ✓    |   ✓    |
 | iota                   |     ✓     |    ✗    |   ✓    |
 | is_finite              |     ✓     |    ✓    |   ✗    |
@@ -73,7 +73,7 @@ because it does not apply for a specific primitive.
 | pmin                   |     ✓     |    ✓    |   ✓    |
 | popcnt                 |     ✓     |    ✓    |   ✗    |
 | pow                    |     ✓     |    ✓    |   ✓    |
-| print                  |     ✓     |    ✗    |   ✗    |
+| print                  |     ✓     |    ✓    |   ✗    |
 | prod                   |     ✓     |    ✓    |   ✓    |
 | psigamma               |     ✓     |    ✓    |   ✗    |
 | qr                     |     ✓     |    ✗    |   ✗    |
