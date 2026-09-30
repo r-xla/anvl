@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,7 +111,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Static Shape Restriction</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.5.0/vignettes/articles/static_shapes.Rmd" class="external-link"><code>vignettes/articles/static_shapes.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/static_shapes.Rmd" class="external-link"><code>vignettes/articles/static_shapes.Rmd</code></a></small>
       <div class="d-none name"><code>static_shapes.Rmd</code></div>
     </div>
 
@@ -245,9 +245,10 @@ numeric type and sum it.</p>
 <h3 id="subset-assignment">Subset assignment<a class="anchor" aria-label="anchor" href="#subset-assignment"></a>
 </h3>
 <p>The static shape restriction also prevents calls of the form
-<code>x[mask] &lt;- update</code>. In some cases, this can be replaced
-by <code><a href="../reference/nv_ifelse.html">nv_ifelse()</a></code>. For example, you might want to replace all
-values <code>&lt; 1</code> with 1:</p>
+<code>x[mask] &lt;- update</code> inside <code><a href="../reference/jit.html">jit()</a></code> when
+<code>mask</code> is computed from the inputs. In some cases, this can
+be replaced by <code><a href="../reference/nv_ifelse.html">nv_ifelse()</a></code>. For example, you might want to
+replace all values <code>&lt; 1</code> with 1:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">&lt;</span> <span class="fl">1</span>, <span class="fl">1</span>, <span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>

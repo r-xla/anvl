@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,7 +111,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>FAQ</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.5.0/vignettes/articles/faq.Rmd" class="external-link"><code>vignettes/articles/faq.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/faq.Rmd" class="external-link"><code>vignettes/articles/faq.Rmd</code></a></small>
       <div class="d-none name"><code>faq.Rmd</code></div>
     </div>
 
@@ -169,7 +169,7 @@ related discussion in JAX.</p>
 <span><span class="co"># 2. Includes compilation time</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   1.353   0.448   0.915</span></span></code></pre>
+<span><span class="co">##   1.853   0.796   1.182</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Good:</span></span>
 <span><span class="co"># 1. Awaits the computation</span></span>
@@ -177,7 +177,7 @@ related discussion in JAX.</p>
 <span><span class="co">#    already compiled above.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/await.html">await</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   0.824   0.538   0.547</span></span></code></pre>
+<span><span class="co">##   1.496   1.308   1.252</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="how-do-i-control-the-number-of-threads-used-by-xla">How do I control the number of threads used by XLA?<a class="anchor" aria-label="anchor" href="#how-do-i-control-the-number-of-threads-used-by-xla"></a>

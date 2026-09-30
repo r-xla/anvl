@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,7 +111,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Next Steps</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.5.0/vignettes/articles/next_steps.Rmd" class="external-link"><code>vignettes/articles/next_steps.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/articles/next_steps.Rmd" class="external-link"><code>vignettes/articles/next_steps.Rmd</code></a></small>
       <div class="d-none name"><code>next_steps.Rmd</code></div>
     </div>
 
@@ -231,9 +231,11 @@ R:</p>
 <span><span class="co">##  4 7</span></span>
 <span><span class="co">##  6 9</span></span>
 <span><span class="co">## [ CPUi32{2,2} ]</span></span></code></pre>
-<p>Logical masks cannot be used for subsetting (see <a href="#shapes-must-be-known-in-advance">shapes must be known in
-advance</a> below), and indices outside of the <code>AnvlArray</code>
-are moved to the nearest valid index instead of raising an error (see <a href="#compiled-code-cannot-throw-errors">compiled code cannot throw
+<p>Logical masks work as well, but inside <code><a href="../reference/jit.html">jit()</a></code> their
+values must be known in advance, so a mask computed from the inputs,
+such as <code>x[x &gt; 0]</code>, is an error (see <a href="#shapes-must-be-known-in-advance">shapes must be known in
+advance</a> below). Indices outside of the <code>AnvlArray</code> are
+moved to the nearest valid index instead of raising an error (see <a href="#compiled-code-cannot-throw-errors">compiled code cannot throw
 errors</a> below). See the <a href="subsetting.html">Subsetting</a>
 article for the details.</p>
 </div>
@@ -348,11 +350,11 @@ of <code>AnvlArray</code>s:</p>
 <h2 id="shapes-must-be-known-in-advance">Shapes Must Be Known in Advance<a class="anchor" aria-label="anchor" href="#shapes-must-be-known-in-advance"></a>
 </h2>
 <p>The shape of every intermediate result must be known when compiling,
-so operations such as <code>x[x &gt; 0]</code>, <code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code>, or
-<code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code> cannot be used. Often, one can instead keep all
-values and ignore the unwanted ones,
-e.g. <code>sum(nv_ifelse(x &gt; 0, x, 0))</code> instead of
-<code>sum(x[x &gt; 0])</code>. See the <a href="static_shapes.html">Static Shape Restriction</a> article for more
+so a jitted function cannot use operations such as
+<code>x[x &gt; 0]</code>, <code><a href="https://rdrr.io/r/base/which.html" class="external-link">which()</a></code>, or <code><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique()</a></code>
+on its inputs. Often, one can instead keep all values and ignore the
+unwanted ones, e.g. <code>sum(nv_ifelse(x &gt; 0, x, 0))</code> instead
+of <code>sum(x[x &gt; 0])</code>. See the <a href="static_shapes.html">Static Shape Restriction</a> article for more
 such patterns.</p>
 </div>
 <div class="section level2">

@@ -112,7 +112,9 @@ a numeric type and sum it.
 ### Subset assignment
 
 The static shape restriction also prevents calls of the form
-`x[mask] <- update`. In some cases, this can be replaced by
+`x[mask] <- update` inside
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) when `mask` is
+computed from the inputs. In some cases, this can be replaced by
 [`nv_ifelse()`](https://r-xla.github.io/anvl/reference/nv_ifelse.md).
 For example, you might want to replace all values `< 1` with 1:
 

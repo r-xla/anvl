@@ -1,5 +1,9 @@
 # Changelog
 
+## anvl 0.5.1
+
+- Bugfix: Add r-xla r-universe repo to description again.
+
 ## anvl 0.5.0
 
 This release contained many breaking changes. From now on, the API will
