@@ -146,6 +146,8 @@ jit <- function(
   .jit_cfg <- list(f = f, static = static, cache_size = cache_size, device = device, dots = list(...))
   .jit_fns <- list()
   .jit_runs <- list()
+  # Whether `f` draws from the global RNG state (see nv_set_seed()).
+  .jit_rng <- FALSE
   .jit_formals <- formals2(f)
   .jit_dots <- "..." %in% names(.jit_formals)
   # `names()` of no formals at all is NULL, which is not a character vector.
@@ -202,7 +204,16 @@ jit <- function(
     }
     # The args are already evaluated; the fast entry skips the inner
     # closure's argument re-capture (and do.call()).
-    .jit_run(.jit_args)
+    if (.jit_rng) {
+      return(global_rng_dispatch(.jit_run, .jit_args, .jit_be))
+    }
+    # A trace that draws from the global RNG state needs it as an input, which
+    # is only known once it is traced: it signals so, and from then on every
+    # call passes the state.
+    tryCatch(.jit_run(.jit_args), anvl_global_rng_needed = function(e) {
+      .jit_rng <<- TRUE
+      global_rng_dispatch(.jit_run, .jit_args, .jit_be)
+    })
   }
   formals(wrapper) <- .jit_formals
   class(wrapper) <- "JitFunction"
@@ -476,9 +487,10 @@ static_path <- function(path, name, i) {
 
 # The device of the call's array inputs, for compile_pjrt()'s device inference,
 # or `NULL` when there are none. Without a fixed target device pjrt has already
-# checked that they all share one, so the first array's device is theirs.
+# checked that they all share one, so the first array's device is theirs. An
+# array that follows the call's device (the global RNG state) names none.
 dispatch_arg_device <- function(info) {
-  is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1L))
+  is_array <- !info$is_static & !info$is_follow & vapply(info$leaves, is_anvl_array, logical(1L))
   first <- Position(isTRUE, is_array)
   if (is.na(first)) NULL else xlamisc::device(info$leaves[[first]])
 }

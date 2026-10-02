@@ -70,7 +70,8 @@ promote_distribution_args <- function(...) {
 #'
 #' `nv_rnorm()` returns a named `list` of two [`arrayish`]: `state`, the updated
 #' RNG state with the input `state`'s data type and shape, and `values`, the
-#' sample of shape `shape` and the data type described under `dtype`.
+#' sample of shape `shape` and the data type described under `dtype`. Drawing
+#' from the global RNG state (`state = NULL`), it returns only the sample.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -463,7 +464,8 @@ nv_qnorm <- jit(
 #'
 #' `nv_runif()` returns a named `list` of two [`arrayish`]: `state`, the updated
 #' RNG state with the input `state`'s data type and shape, and `values`, the
-#' sample of shape `shape` and the data type described under `dtype`.
+#' sample of shape `shape` and the data type described under `dtype`. Drawing
+#' from the global RNG state (`state = NULL`), it returns only the sample.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.25, 1, 1.5))

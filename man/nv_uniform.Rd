@@ -14,7 +14,7 @@ nv_punif(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
+nv_runif(shape, state = NULL, min = 0, max = 1, dtype = NULL)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -42,10 +42,12 @@ Probabilities at which to evaluate the quantile function. Values outside
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{NULL} | \code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned \code{state} has them too.}
+default data types, and the returned \code{state} has them too.
+The default (\code{NULL}) draws from the global RNG state instead (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}) and returns only the sample.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Floating point data type of the sample.
@@ -59,7 +61,8 @@ same shape and data type as \code{x}/\code{q}/\code{p}.
 
 \code{nv_runif()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
 RNG state with the input \code{state}'s data type and shape, and \code{values}, the
-sample of shape \code{shape} and the data type described under \code{dtype}.
+sample of shape \code{shape} and the data type described under \code{dtype}. Drawing
+from the global RNG state (\code{state = NULL}), it returns only the sample.
 }
 \description{
 Density (\code{nv_dunif}), distribution function (\code{nv_punif}), quantile
@@ -139,6 +142,7 @@ Other rng:
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample]{nv_sample()}},
-\code{\link[=nv_sample_int]{nv_sample_int()}}
+\code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}}
 }
 \concept{rng}

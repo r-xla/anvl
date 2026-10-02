@@ -40,7 +40,7 @@ jit_quickr_compile_cb <- function(f, static, unwrap) {
   function(info) {
     check_static_args(info$args, static)
     compiled <- compile_quickr(
-      f,
+      global_rng_fn(f, info$args),
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
       unwrap = unwrap,
@@ -77,7 +77,8 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap, device) {
     # one device today, but the dispatcher keys on whatever this returns, so a
     # second one would split the cache without further work here.
     default_device = function() default_device("quickr"),
-    context = default_dtypes_context("quickr")
+    context = default_dtypes_context("quickr"),
+    follow = RNG_STATE_ARG
   )
   dispatch <- pjrt::dispatch
 

@@ -289,6 +289,9 @@ GraphDescriptor <- function(
   # One entry per input, set by finalize: the R storage type of an input the
   # caller supplies as bare R data, `NA` for one that arrives as an array.
   env$rdata_types <- NULL
+  # The current global RNG state of a jit call's root trace, a GraphBox, or
+  # `NULL` where the call does not take one (see rng_state_in()).
+  env$rng_state <- NULL
 
   structure(env, class = "GraphDescriptor")
 }

@@ -142,7 +142,9 @@ transform_gradient <- function(graph, wrt) {
 # Here we compute the gradients of a graph and write it into the current descriptor
 # This can either be a call to the gradient (inputs are provided)
 # Or just the gradient itself, i.e. then the inputs are NULL (used for transform_gradient).
-graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
+# `extra` are further nodes of `graph` -- the global RNG state it leaves behind --
+# whose boxes in the current descriptor are returned as `extra`.
+graph_value_and_grad <- function(graph, wrt, inputs = NULL, extra = list()) {
   desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
   reqs <- compute_requirements(graph, wrt)
@@ -154,9 +156,11 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
 
   box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
+  rebuilt_box <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
   list(
-    value = lapply(graph$outputs, function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)),
-    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
+    value = lapply(graph$outputs, rebuilt_box),
+    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of),
+    extra = lapply(extra, rebuilt_box)
   )
 }
 
@@ -674,8 +678,10 @@ gradient <- function(f, wrt = NULL) {
         i = "Wrap the result of {.fn gradient} in {.fn jit}, e.g. {.code jit(gradient(f))}."
       ))
     }
-    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
-    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
+    traced <- trace_gradient_fn(f, prep)
+    fwd_graph <- traced$graph
+    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat), extra = traced$rng)
+    rng_state_restore(res$extra)
     unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
   }
   formals(f_gradient) <- formals2(f)
@@ -701,8 +707,10 @@ value_and_gradient <- function(f, wrt = NULL) {
         i = "Wrap the result of {.fn value_and_gradient} in {.fn jit}, e.g. {.code jit(value_and_gradient(f))}."
       ))
     }
-    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
-    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
+    traced <- trace_gradient_fn(f, prep)
+    fwd_graph <- traced$graph
+    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat), extra = traced$rng)
+    rng_state_restore(res$extra)
     list(
       value = unflatten(fwd_graph$out_tree, res$value),
       grad = unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
@@ -710,4 +718,26 @@ value_and_gradient <- function(f, wrt = NULL) {
   }
   formals(f_value_and_grad) <- formals2(f)
   f_value_and_grad
+}
+
+# Traces `f`, the function `gradient()` differentiates, from the prepared
+# arguments `prep`. Where the enclosing trace has a global RNG state, `f` starts
+# from it, and `rng` is the node of the state it leaves behind (a list of one),
+# for `rng_state_restore()` once the graph is replayed; otherwise it is empty.
+trace_gradient_fn <- function(f, prep) {
+  rng <- current_descriptor()$rng_state
+  desc <- local_descriptor()
+  desc$rng_state <- rng
+  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
+  list(graph = graph, rng = if (!is.null(rng)) list(desc$rng_state$gnode))
+}
+
+# Makes the replayed global RNG state `extra` (a list of at most one box) that
+# of the current trace.
+rng_state_restore <- function(extra) {
+  if (length(extra)) {
+    desc <- current_descriptor()
+    desc$rng_state <- extra[[1L]]
+  }
+  invisible(NULL)
 }

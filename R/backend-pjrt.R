@@ -13,7 +13,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
   function(info) {
     check_static_args(info$args, static)
     compiled <- compile_pjrt(
-      f,
+      global_rng_fn(f, info$args),
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
       donate = donate,
@@ -62,7 +62,9 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
     default_device = if (is.null(device)) function() default_device("pjrt"),
     # The default dtypes the program is compiled under are part of the key, so
     # a program compiled under one pair is never served under another.
-    context = default_dtypes_context("pjrt")
+    context = default_dtypes_context("pjrt"),
+    # The global RNG state follows the call to its device (see nv_set_seed()).
+    follow = RNG_STATE_ARG
   )
   # Hoisted out of the per-call path: `::` resolves via getExportedValue on
   # every evaluation, which costs ~1us per lookup.

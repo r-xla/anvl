@@ -46,6 +46,7 @@ Other rng:
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_sample]{nv_sample()}},
 \code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
 \code{\link{nv_uniform}}
 }
 \concept{rng}

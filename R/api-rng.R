@@ -71,7 +71,7 @@ nv_unif_rand <- function(
 #' @family rng
 #' @export
 nv_runif <- jit(
-  function(shape, state, min = 0, max = 1, dtype = NULL) {
+  function(shape, state = NULL, min = 0, max = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
 
     rule <- if (is.null(dtype)) {
@@ -92,7 +92,7 @@ nv_runif <- jit(
     assert_sample_param_shape(max, shape)
 
     # generate samples in [0, 1)
-    Unif <- nv_unif_rand(state = state, shape = shape, dtype = dtype)
+    Unif <- nv_unif_rand(state = rng_state_in(state), shape = shape, dtype = dtype)
     U <- Unif$values
 
     # check if some values are <= 0
@@ -103,7 +103,7 @@ nv_runif <- jit(
     # the next smallest generated value.
     # Same applies for f64 and 2^-53 and 52 mantissa bits.
     smallest_step <- nv_fill_like(
-      state,
+      U,
       ifelse(dtype == "f32", 2^-24, 2^-53),
       shape = shape,
       dtype = dtype
@@ -118,7 +118,7 @@ nv_runif <- jit(
     # a reversed or non-finite interval is NaN to match base R
     valid <- nv_is_finite(min) & nv_is_finite(max) & (max >= min)
 
-    list(state = Unif$state, values = nv_ifelse(valid, Y, NaN))
+    rng_state_out(state, Unif$state, nv_ifelse(valid, Y, NaN))
   },
   static = c(1L, 5L)
 )
@@ -161,7 +161,7 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
 #' nv_rnorm(c(2, 3), state, sd = sds)$values
 #' @export
 nv_rnorm <- jit(
-  function(shape, state, mean = 0, sd = 1, dtype = NULL) {
+  function(shape, state = NULL, mean = 0, sd = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
 
     rule <- if (is.null(dtype)) {
@@ -193,7 +193,7 @@ nv_rnorm <- jit(
 
     # generate the first ceil(n/2) random uniform variables
     U <- nv_unif_rand(
-      state = state,
+      state = rng_state_in(state),
       dtype = dtype,
       shape = as.integer(ceiling(n / 2L))
     )
@@ -233,7 +233,7 @@ nv_rnorm <- jit(
     N <- Z * sd + mean
 
     # return state and Normals N
-    list(state = Theta$state, values = N)
+    rng_state_out(state, Theta$state, N)
   },
   static = c(1L, 5L)
 )
@@ -252,9 +252,10 @@ nv_rnorm <- jit(
 #'   Numeric type of the sample.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #'   The number of successes are converted to it.
-#' @return (named `list` of two [`arrayish`])\cr
+#' @return (named `list` of two [`arrayish`] | [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
+#'   Drawing from the global RNG state (`state = NULL`), only the sample.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Bernoulli samples; `state` is the updated RNG state
@@ -263,7 +264,7 @@ nv_rnorm <- jit(
 #' result$values
 #' @export
 nv_rbinom <- jit(
-  function(shape, state, size = 1L, prob = 0.5, dtype = NULL) {
+  function(shape, state = NULL, size = 1L, prob = 0.5, dtype = NULL) {
     # The sample counts successes, which `bool` cannot hold: it used to come back
     # as `bool` for `size = 1` and silently as an integer for anything above.
     dtype <- assert_numeric_dtype(
@@ -281,7 +282,7 @@ nv_rbinom <- jit(
     # Generate uniform samples in [0, 1) and compare to prob
     # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
     # so we don't benefit from using runif w.r.t. unbiasedness
-    res <- nv_unif_rand(state, shape = n_trials, dtype = "f64")
+    res <- nv_unif_rand(rng_state_in(state), shape = n_trials, dtype = "f64")
     U <- res$values
 
     # Success if U < prob
@@ -294,7 +295,7 @@ nv_rbinom <- jit(
       nv_sum(successes, axes = 1L, drop = TRUE)
     }
 
-    list(state = res$state, values = result)
+    rng_state_out(state, res$state, result)
   },
   static = c(1L, 3L, 4L, 5L)
 )
@@ -313,9 +314,10 @@ nv_rbinom <- jit(
 #'   Numeric type of the sampled integers.
 #'   The sampled values are converted to it.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
-#' @return (named `list` of two [`arrayish`])\cr
+#' @return (named `list` of two [`arrayish`] | [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
 #'   of shape `shape` and data type `dtype`.
+#'   Drawing from the global RNG state (`state = NULL`), only the sample.
 #' @family rng
 #' @seealso [nv_sample()] to sample from an arbitrary population.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -325,7 +327,7 @@ nv_rbinom <- jit(
 #' result$values
 #' @export
 nv_sample_int <- jit(
-  function(shape, state, n, dtype = NULL) {
+  function(shape, state = NULL, n, dtype = NULL) {
     # An index is a count too: at `bool` every draw collapsed to `TRUE`.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
@@ -335,9 +337,9 @@ nv_sample_int <- jit(
     assert_int(n, lower = 1L)
     shape <- assert_shapevec(shape)
 
-    out <- sample_indices(state, as.integer(n), prod(shape))
+    out <- sample_indices(rng_state_in(state), as.integer(n), prod(shape))
 
-    list(state = out$state, values = nv_reshape(nv_convert(out$values, dtype), shape))
+    rng_state_out(state, out$state, nv_reshape(nv_convert(out$values, dtype), shape))
   },
   static = c(1L, 3L, 4L)
 )
@@ -354,9 +356,10 @@ nv_sample_int <- jit(
 #' @param x ([`arrayish`])\cr
 #'   The population vector to sample from.
 #'   An R value materializes at its [default data type][default_dtypes].
-#' @return (named `list` of two [`arrayish`])\cr
+#' @return (named `list` of two [`arrayish`] | [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and `x`'s data type.
+#'   Drawing from the global RNG state (`state = NULL`), only the sample.
 #' @family rng
 #' @seealso [nv_sample_int()] to sample the integers `1` to `n`.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -367,7 +370,7 @@ nv_sample_int <- jit(
 #' result$values
 #' @export
 nv_sample <- jit(
-  function(shape, state, x) {
+  function(shape, state = NULL, x) {
     shape <- assert_shapevec(shape)
     x <- as_anvl_array(x)
     x_shape <- shape(x)
@@ -376,9 +379,9 @@ nv_sample <- jit(
     }
     n <- x_shape[1L]
 
-    out <- sample_indices(state, n, prod(shape))
+    out <- sample_indices(rng_state_in(state), n, prod(shape))
 
-    list(state = out$state, values = nv_reshape(nv_subset(x, out$values), shape))
+    rng_state_out(state, out$state, nv_reshape(nv_subset(x, out$values), shape))
   },
   static = 1L
 )

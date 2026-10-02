@@ -4,16 +4,18 @@
 \alias{nv_sample_int}
 \title{Sample Integers}
 \usage{
-nv_sample_int(shape, state, n, dtype = NULL)
+nv_sample_int(shape, state = NULL, n, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{NULL} | \code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned \code{state} has them too.}
+default data types, and the returned \code{state} has them too.
+The default (\code{NULL}) draws from the global RNG state instead (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}) and returns only the sample.}
 
 \item{n}{(\code{integer(1)})\cr
 Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
@@ -24,9 +26,10 @@ The sampled values are converted to it.
 \code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.}
 }
 \value{
-(named \code{list} of two \code{\link{arrayish}})\cr
+(named \code{list} of two \code{\link{arrayish}} | \code{\link{arrayish}})\cr
 Elements \code{state}, the updated RNG state, and \code{values}, the sampled integers
 of shape \code{shape} and data type \code{dtype}.
+Drawing from the global RNG state (\code{state = NULL}), only the sample.
 }
 \description{
 Samples integers from \code{1} to \code{n} with equal probability and with
@@ -50,6 +53,7 @@ Other rng:
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample]{nv_sample()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
 \code{\link{nv_uniform}}
 }
 \concept{rng}

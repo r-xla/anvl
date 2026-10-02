@@ -334,6 +334,7 @@ reference:
     desc: Helpers supporting the API functions
     contents:
       - nv_rng_state
+      - nv_set_seed
       - nv_print
 
   - title: Data Types and Promotion

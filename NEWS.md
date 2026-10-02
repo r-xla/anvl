@@ -1,3 +1,10 @@
+# anvl (development version)
+
+* `nv_set_seed()` seeds a global RNG state. The samplers draw from it when
+  called without a `state` and then return only the sample; a jitted function
+  threads it through all its draws, including those in `nv_if()`, `nv_while()`,
+  `nv_scan()` and `gradient()`, on whatever device the call runs.
+
 # anvl 0.5.1
 
 * Bugfix: Add r-xla r-universe repo to description again.

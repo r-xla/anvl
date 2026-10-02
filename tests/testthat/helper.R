@@ -38,6 +38,19 @@ local_unset_default_device <- function(envir = parent.frame()) {
   local_env_default("DEVICE", NULL, envir)
 }
 
+# Restores the global RNG seed and state (see nv_set_seed()) when `envir` exits.
+local_global_rng <- function(envir = parent.frame()) {
+  seed <- globals$seed
+  state <- globals$rng_state
+  withr::defer(
+    {
+      globals$seed <- seed
+      globals$rng_state <- state
+    },
+    envir = envir
+  )
+}
+
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "torch-helpers.R", package = "anvl"), local = TRUE)
 }

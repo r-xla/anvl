@@ -44,6 +44,8 @@ Suggests:
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
 Additional_repositories: https://r-xla.r-universe.dev
+Remotes:
+    r-xla/pjrt@feat/dispatch-follow
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -81,6 +83,7 @@ Collate:
     'rdata.R'
     'reexports.R'
     'reverse.R'
+    'rng.R'
     'roxygen.R'
     'rules-reverse.R'
     'rules-stablehlo.R'

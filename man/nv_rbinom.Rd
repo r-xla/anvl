@@ -4,16 +4,18 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
+nv_rbinom(shape, state = NULL, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{NULL} | \code{\link{arrayish}})\cr
 RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
 returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned \code{state} has them too.}
+default data types, and the returned \code{state} has them too.
+The default (\code{NULL}) draws from the global RNG state instead (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}) and returns only the sample.}
 
 \item{size}{(\code{integer(1)})\cr
 Number of trials.}
@@ -27,9 +29,10 @@ Numeric type of the sample.
 The number of successes are converted to it.}
 }
 \value{
-(named \code{list} of two \code{\link{arrayish}})\cr
+(named \code{list} of two \code{\link{arrayish}} | \code{\link{arrayish}})\cr
 Elements \code{state}, the updated RNG state, and \code{values}, the sample of shape
 \code{shape} and data type \code{dtype}.
+Drawing from the global RNG state (\code{state = NULL}), only the sample.
 }
 \description{
 Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
@@ -49,6 +52,7 @@ Other rng:
 \code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample]{nv_sample()}},
 \code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
 \code{\link{nv_uniform}}
 }
 \concept{rng}
