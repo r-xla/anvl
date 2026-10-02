@@ -137,7 +137,7 @@ describe("print.AnvlArray", {
   it("passes print options on to the backend's printer", {
     x <- nv_array(1:100, dtype = "i32")
     expect_output(print(x), "truncated")
-    out <- capture.output(print(x, max_rows = -1))
+    out <- capture.output(print(x, max_rows = 100L))
     expect_false(any(grepl("truncated", out, fixed = TRUE)))
     expect_true(any(grepl("^ *100$", out)))
   })
