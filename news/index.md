@@ -1,5 +1,15 @@
 # Changelog
 
+## anvl (development version)
+
+- New
+  [`nv_bool()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md),
+  `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`,
+  [`nv_float32()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  and
+  [`nv_float64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  create an array of the data type in their name.
+
 ## anvl 0.5.1
 
 - Bugfix: Add r-xla r-universe repo to description again.

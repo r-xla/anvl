@@ -16,6 +16,18 @@ Functions for creating and initializing arrays
   [`nv_scalar_like()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
   [`nv_empty_like()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
   : AnvlArray
+- [`nv_bool()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_int8()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_int16()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_int32()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_int64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_uint8()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_uint16()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_uint32()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_uint64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_float32()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  [`nv_float64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  : Create an Array of a Given Data Type
 - [`nv_fill()`](https://r-xla.github.io/anvl/reference/nv_fill.md)
   [`nv_fill_like()`](https://r-xla.github.io/anvl/reference/nv_fill.md)
   : Fill Constant
