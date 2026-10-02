@@ -22,7 +22,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/r-xla/anvl/blob/v0.5.1/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/r-xla/anvl/blob/main/DESCRIPTION)
 
 Fischer S, Falbel D, Kalinowski T, German N (2026). *anvl: Accelerated
 Array Computing and Automatic Differentiation*. R package version 0.5.1,

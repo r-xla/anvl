@@ -89,8 +89,9 @@ AnvlBackend(
 
 - print_data:
 
-  (`function(x, footer)`)  
-  Prints the array data with a footer.
+  (`function(x, footer, ...)`)  
+  Prints the array data with a footer, passing `...` (e.g. `max_rows`
+  for the pjrt backend) on to the backend's printer.
 
 - jit:
 
