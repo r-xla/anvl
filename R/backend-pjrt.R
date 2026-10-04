@@ -345,7 +345,7 @@ AnvlBackendPjrt <- function() {
     platform = function(x) pjrt::platform(x$data),
     device = function(x) x$device,
     new_device = function(x) pjrt::pjrt_device(x),
-    print_data = function(x, footer) print(x$data, header = FALSE, footer = footer),
+    print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
     jit = function(f, static, cache_size, donate = character(), device = NULL) {
       assert_subset(donate, formalArgs2(f))
       # static is checked in jit() itself

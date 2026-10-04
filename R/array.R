@@ -507,6 +507,103 @@ nv_empty <- function(shape, dtype, device = NULL) {
   )
 }
 
+#' @title Create an Array of a Given Data Type
+#' @description
+#' Shorthands for [`nv_array()`] with the data type fixed by the function name:
+#' `nv_float32(data)` is `nv_array(data, dtype = "f32")`.
+#'
+#' | Function | Data type |
+#' |----------|-----------|
+#' | `nv_bool()` | `bool` |
+#' | `nv_int8()` | `i8` |
+#' | `nv_int16()` | `i16` |
+#' | `nv_int32()` | `i32` |
+#' | `nv_int64()` | `i64` |
+#' | `nv_uint8()` | `ui8` |
+#' | `nv_uint16()` | `ui16` |
+#' | `nv_uint32()` | `ui32` |
+#' | `nv_uint64()` | `ui64` |
+#' | `nv_float32()` | `f32` |
+#' | `nv_float64()` | `f64` |
+#'
+#' @inheritParams AnvlArray
+#' @inheritSection AnvlArray Out of Range values
+#' @return ([`AnvlArray`])
+#' @seealso [`nv_array()`], [`nv_convert()`] to change the data type of an existing array.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_float32(1:4)
+#' nv_uint8(c(0, 255))
+#' nv_int64(1:6, shape = c(2, 3))
+#' nv_bool(c(TRUE, FALSE))
+#' @name nv_dtype_constructors
+NULL
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_bool <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "bool", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int8 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i8", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int16 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i16", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i32", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i64", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint8 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui8", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint16 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui16", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui32", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui64", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_float32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "f32", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_float64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "f64", device = device, byrow = byrow)
+}
+
 #' @rdname AbstractArray
 #' @export
 nv_aval <- function(dtype, shape) {
@@ -1122,7 +1219,7 @@ print.AnvlArray <- function(x, header = TRUE, ...) {
   }
   dtype_str <- as.character(dtype(x))
   footer <- sprintf("[ %s%s{%s} ]", toupper(platform(x)), dtype_str, paste0(shape(x), collapse = ","))
-  globals$backends[[x$backend]]$print_data(x, footer)
+  globals$backends[[x$backend]]$print_data(x, footer, ...)
   invisible(x)
 }
 

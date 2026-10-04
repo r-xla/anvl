@@ -82,6 +82,7 @@ reference:
       - nv_matrix
       - nv_scalar
       - nv_empty
+      - nv_dtype_constructors
       - nv_fill
       - nv_iota
       - nv_seq

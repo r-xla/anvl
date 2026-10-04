@@ -35,6 +35,44 @@ test_that("nv_scalar", {
   expect_snapshot(x)
 })
 
+describe("nv_dtype_constructors", {
+  it("create an array of the data type in their name", {
+    constructors <- list(
+      bool = nv_bool,
+      i8 = nv_int8,
+      i16 = nv_int16,
+      i32 = nv_int32,
+      i64 = nv_int64,
+      ui8 = nv_uint8,
+      ui16 = nv_uint16,
+      ui32 = nv_uint32,
+      ui64 = nv_uint64,
+      f32 = nv_float32,
+      f64 = nv_float64
+    )
+    for (dt in names(constructors)) {
+      data <- if (dt == "bool") c(TRUE, FALSE, TRUE, TRUE) else 1:4
+      x <- constructors[[dt]](data)
+      expect_dtype(x, dt)
+      expect_shape(x, 4L)
+    }
+  })
+
+  it("forward shape and byrow to nv_array", {
+    x <- nv_float64(1:6, shape = c(2L, 3L), byrow = TRUE)
+    expect_dtype(x, "f64")
+    expect_equal(as_array(x), matrix(as.double(1:6), 2L, 3L, byrow = TRUE))
+  })
+
+  it("refuse values the data type cannot hold", {
+    expect_error(nv_uint8(-1L))
+  })
+
+  it("refuse an existing array of another data type", {
+    expect_error(nv_float32(nv_array(1:3, dtype = "i32")), "Cannot change dtype")
+  })
+})
+
 test_that("AbstractArray", {
   x <- AbstractArray(
     as_dtype("f32"),
@@ -93,6 +131,16 @@ test_that("format", {
     format(nv_array(1:4, shape = c(4, 1), dtype = "i32")),
     "AnvlArray(dtype=i32, shape=4x1)"
   )
+})
+
+describe("print.AnvlArray", {
+  it("passes print options on to the backend's printer", {
+    x <- nv_array(1:100, dtype = "i32")
+    expect_output(print(x), "truncated")
+    out <- capture.output(print(x, max_rows = 100L))
+    expect_false(any(grepl("truncated", out, fixed = TRUE)))
+    expect_true(any(grepl("^ *100$", out)))
+  })
 })
 
 test_that("nv_array(byrow = TRUE) fills row-major from a flat vector", {
