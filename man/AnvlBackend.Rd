@@ -14,6 +14,8 @@ AnvlBackend(
   platform,
   device,
   new_device,
+  platform_devices,
+  copy_to_device,
   print_data,
   jit,
   await_data,
@@ -53,6 +55,13 @@ bytes.}
 \item{new_device}{(\verb{function(x)})\cr Constructs a backend-specific device
 object from a device identifier (e.g. \code{"cpu"} or \code{"cuda:1"}). Called by
 \code{\link[=nv_device]{nv_device()}}.}
+
+\item{platform_devices}{(\verb{function(device)})\cr Returns a \code{list} of all
+devices of the platform \code{device} belongs to. Called by \code{\link[=device_map]{device_map()}}.}
+
+\item{copy_to_device}{(\verb{function(x, device)})\cr Returns a copy of the
+AnvlArray \code{x} on \code{device}, without waiting for the copy to finish where
+the backend runs asynchronously. Called by \code{\link[=device_map]{device_map()}}.}
 
 \item{print_data}{(\verb{function(x, footer, ...)})\cr Prints the array data with a
 footer, passing \code{...} (e.g. \code{max_rows} for the pjrt backend) on to the backend's printer.}

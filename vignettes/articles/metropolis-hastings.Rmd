@@ -20,6 +20,9 @@ We set the hyperparameter $b$ to 0.01.
 
 
 ```{r}
+# At the end we run several chains in parallel, one per CPU device. The number
+# of CPU devices is fixed when the first array is created, so we set it first.
+Sys.setenv(PJRT_CPU_DEVICE_COUNT = 4L)
 library(anvl)
 b_param <- 0.01
 ```
@@ -235,3 +238,63 @@ hist(
 curve(marginal_theta2, add = TRUE, col = "red", lwd = 2, n = 200)
 legend("topright", "Analytical", col = "red", lwd = 2, bty = "n", cex = 0.8)
 ```
+
+## Running Chains in Parallel
+
+A single chain is inherently sequential, but several independent chains are not.
+Running them in parallel is a common way to obtain more samples in the same time, and comparing the chains with each other is a standard check of convergence.
+
+`device_map()` maps a function over a list like `lapply()`, but runs each call on a device of its own, all at the same time.
+We set up four CPU devices at the top of this article, so we can run four chains at once.
+
+For this, the whole chain should be a single program, so that each device can run it without coming back to R.
+We therefore write the sampling loop from above with `nv_scan()`, which collects the state after every call of `mh_sample()`.
+The chain also creates its RNG state from a seed, so that every chain gets one of its own.
+
+```{r}
+mh_chain <- jit(function(seed, theta, b, proposal_sd, thin, n) {
+  nv_scan(
+    init = list(theta = theta, rng_state = nv_rng_state(seed)),
+    steps = n,
+    body = function(carry, x) {
+      carry <- mh_sample(carry$theta, carry$rng_state, b, proposal_sd, thin)
+      list(carry = carry, out = carry$theta)
+    }
+  )$out
+}, static = "n")
+```
+
+The seeds are the list we map over; the remaining arguments are the same for every chain.
+They are passed through `device_map()` rather than captured by the function, so that they are copied to each device.
+
+```{r}
+n_chain_samples <- 5000L
+n_chain_warmup <- 1000L
+
+chains <- device_map(
+  c(1L, 2L, 3L, 4L),
+  mh_chain,
+  theta = nv_array(c(0, 0), dtype = "f64"),
+  b = b_t,
+  proposal_sd = proposal_sd,
+  thin = thin,
+  n = n_chain_warmup + n_chain_samples
+)
+vapply(chains, \(x) as.character(device(x)), character(1L))
+```
+
+`device_map()` returns as soon as all chains have been started; reading a result waits for it.
+We drop the warmup samples of each chain and compare the chains' moments.
+
+```{r}
+chain_samples <- lapply(chains, \(x) as_array(x)[-seq_len(n_chain_warmup), ])
+chain_moments <- t(vapply(
+  chain_samples,
+  \(s) c(colMeans(s), apply(s, 2, sd)),
+  numeric(4L)
+))
+colnames(chain_moments) <- c("mean_theta1", "mean_theta2", "sd_theta1", "sd_theta2")
+chain_moments
+```
+
+All four chains agree with each other and with the analytical moments.
