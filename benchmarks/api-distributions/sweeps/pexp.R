@@ -18,11 +18,12 @@ source(file.path(here(), "sweeps", "_exponential.R"), local = TRUE)
 ##   log F:  d/dq  rate / expm1(t)    d/drate  q / expm1(t)
 ##   log S:  d/dq  -rate              d/drate  -q
 ##
-## At and below q = 0 the CDF is pinned at a constant and every derivative is
-## 0; the comparison is <=, matching the at_or_below guard in nv_pexp(), so
-## q = 0 belongs to the constant branch -- a kink, where the derivative does
-## not exist and this is a convention, not a claim. At q = +Inf nv_pexp()
-## resolves the constant directly, and the true derivative is 0 there too.
+## At and below q = 0 this reference uses the constant branch and assigns
+## every derivative 0. nv_pexp() also includes positive subnormal q in that
+## branch, explicitly matching the backend's input flushing; the reference
+## retains the interior formula for positive q. At q = 0 the derivative is
+## a boundary convention. At q = +Inf both nv_pexp() and this reference
+## resolve the constant directly and assign zero derivatives there too.
 ##
 ## t is carried as hi + lo (rate_times(), _exponential.R), and the
 ## probability-scale forms go through exp_times() so that nothing underflows

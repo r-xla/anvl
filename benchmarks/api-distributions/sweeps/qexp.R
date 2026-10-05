@@ -24,10 +24,10 @@ source(file.path(here(), "sweeps", "_exponential.R"), local = TRUE)
 ## Outside the valid range of p the result is NaN and every derivative is 0.
 ## At the ends of the range the derivative is taken one-sided, as for qunif:
 ## the formula holds up to the endpoint and gives its limiting value there
-## (e.g. 1/rate at p = 0, lower tail). nv_qexp() resolves the quantile at
-## probability zero to the constant 0, so its own d/dp there is 0; the sweep
-## reports that difference at the exact point rather than this reference
-## adopting it.
+## (e.g. 1/rate at p = 0, lower tail). nv_qexp() preserves these finite
+## endpoint slopes, but does not normalize signed zero to enforce the sign
+## of an infinite slope at a singular endpoint. The sweep records such
+## disagreements as boundary findings while retaining the one-sided reference.
 ##
 ## In the lower tail on the log scale, below p = -700 exp(p) is near or below
 ## the smallest normal while exp(p) / rate may be ordinary for a small rate:

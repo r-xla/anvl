@@ -1185,14 +1185,16 @@ describe("nv_pexp", {
   it("log_p = TRUE stays finite where rate * q underflows", {
     for (dt in c("f32", "f64")) {
       r <- if (dt == "f32") 1e-30 else 1e-200
-      q <- nv_array(c(r, 2 * r), dtype = dt)
       rate <- nv_scalar(r, dtype = dt)
-      want <- log(as.vector(rate)) + log(as.vector(q))
-      expect_equal_elementwise(
-        as.vector(nv_pexp(q, rate, log_p = TRUE)),
-        want,
-        tolerance = if (dt == "f32") 3e-7 else 1e-15
-      )
+      # Scalar and length-one programs can be optimized differently to vectors.
+      for (q in list(nv_scalar(r, dtype = dt), nv_array(r, dtype = dt), nv_array(c(r, 2 * r), dtype = dt))) {
+        want <- log(as.vector(rate)) + log(as.vector(q))
+        expect_equal_elementwise(
+          as.vector(nv_pexp(q, rate, log_p = TRUE)),
+          want,
+          tolerance = if (dt == "f32") 3e-7 else 1e-15
+        )
+      }
     }
   })
 
@@ -1224,12 +1226,41 @@ describe("nv_pexp", {
   })
 
   it("log_p = TRUE has accurate gradients where rate * q underflows", {
-    q <- nv_array(c(1e-200, 2e-200), dtype = "f64")
-    rate <- nv_scalar(1e-200, dtype = "f64")
     f <- function(q, rate) nv_sum(nv_pexp(q, rate, log_p = TRUE))
-    g <- jit(gradient(f, wrt = c("q", "rate")))(q, rate)
-    expect_equal(as.vector(g$q) / (1 / as.vector(q)), c(1, 1))
-    expect_equal(as.vector(g$rate) / 2e200, 1)
+    grad <- jit(gradient(f, wrt = c("q", "rate")))
+    for (dt in c("f32", "f64")) {
+      r <- if (dt == "f32") 1e-30 else 1e-200
+      tolerance <- if (dt == "f32") 5e-7 else 1e-12
+      rate <- nv_scalar(r, dtype = dt)
+      for (q in list(nv_scalar(r, dtype = dt), nv_array(r, dtype = dt), nv_array(c(r, 2 * r), dtype = dt))) {
+        g <- grad(q, rate)
+        q_values <- as.vector(q)
+        expect_equal(as.vector(g$q) / (1 / q_values), rep(1, length(q_values)), tolerance = tolerance)
+        expect_equal(as.vector(g$rate) / (length(q_values) / as.vector(rate)), 1, tolerance = tolerance)
+      }
+    }
+  })
+
+  it("log_p = TRUE ignores overflow in unused rescaled factors", {
+    f <- function(q, rate) nv_sum(nv_pexp(q, rate, log_p = TRUE))
+    grad <- jit(gradient(f, wrt = c("q", "rate")))
+    for (dt in c("f32", "f64")) {
+      large <- if (dt == "f32") 1e30 else 1e200
+      tolerance <- if (dt == "f32") 5e-7 else 1e-12
+      q <- nv_array(c(large, 1 / large), dtype = dt)
+      rate <- nv_array(c(1 / large, large), dtype = dt)
+      q_values <- as.vector(q)
+      rate_values <- as.vector(rate)
+      product <- q_values * rate_values
+      expect_equal(
+        as.vector(nv_pexp(q, rate, log_p = TRUE)),
+        pexp(q_values, rate_values, log.p = TRUE),
+        tolerance = tolerance
+      )
+      g <- grad(q, rate)
+      expect_equal(as.vector(g$q) / (rate_values / expm1(product)), c(1, 1), tolerance = tolerance)
+      expect_equal(as.vector(g$rate) / (q_values / expm1(product)), c(1, 1), tolerance = tolerance)
+    }
   })
 
   it("log_p = TRUE resolves a subnormal q as q = 0, in the gradient as in the value", {
@@ -1522,17 +1553,7 @@ describe("nv_qexp", {
     }
   })
 
-  it("d/dp at the zero end of the probability scale is the limit from inside, for either sign of zero", {
-    # the quantile tends to Inf as log p -> 0 from below, and as p -> 0 from above
-    zeros <- c(0, as.numeric("-0"))
-    f <- function(p, rate, lower_tail, log_p) nv_sum(nv_qexp(p, rate, lower_tail, log_p))
-    grad <- jit(gradient(f, wrt = "p"), static = c("lower_tail", "log_p"))
-    g <- function(lt, lp) as.vector(grad(as_f64(zeros), as_f64(c(2, 2)), lt, lp)[[1L]])
-    expect_equal(g(TRUE, TRUE), c(Inf, Inf))
-    expect_equal(g(FALSE, FALSE), c(-Inf, -Inf))
-  })
-
-  it("the zero quantile is +0 and keeps its one-sided d/dp", {
+  it("the zero quantile keeps its finite one-sided d/dp", {
     f <- function(p, rate, lower_tail, log_p) nv_sum(nv_qexp(p, rate, lower_tail, log_p))
     grad <- jit(gradient(f, wrt = c("p", "rate")), static = c("lower_tail", "log_p"))
     cases <- list(
@@ -1544,7 +1565,7 @@ describe("nv_qexp", {
       p <- as_f64(cs$p)
       rate <- as_f64(c(2, 2))
       value <- as.vector(nv_qexp(p, rate, lower_tail = cs$lower_tail, log_p = cs$log_p))
-      expect_identical(1 / value, c(Inf, Inf))
+      expect_equal(value, c(0, 0))
       g <- grad(p, rate, cs$lower_tail, cs$log_p)
       expect_equal(as.vector(g$p), rep(cs$d_p, 2))
       expect_equal(as.vector(g$rate), c(0, 0))

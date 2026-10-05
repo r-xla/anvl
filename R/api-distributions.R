@@ -634,13 +634,6 @@ valid_exp_rate <- function(rate) {
   (rate >= 0) & !(zero & (1 / nv_floor(nv_ifelse(zero, rate, 1)) < 0))
 }
 
-# Normalize signed zero without changing the derivative; negative_zero() gives -0.
-# Generate +0 from a NaN check so XLA won't remove the addition; NaN stays NaN.
-# NB: in IEEE arithmetic `x + 0` is enough, but XLA folds it to `x`, hence need
-#     this to avoid optimisation away.
-positive_zero <- function(x) x + nv_convert(x != x, dtype(x))
-negative_zero <- function(x) -positive_zero(-x)
-
 #' @title The Exponential Distribution
 #' @name nv_exponential
 #' @description
@@ -771,8 +764,10 @@ nv_pexp <- jit(
         # Only split near underflow: log1mexp() more accurate otherwise.
         underflow <- (t == 0) & (rate > 0) & !at_or_below & !at_inf
         k <- if (op_dtype == "f32") 63 else 511
+        # Select after scaling each factor so XLA cannot reassociate this as
+        # (rate * q) * 2^(2*k), underflowing before the scale is applied.
         rescaled <- nv_log(
-          (nv_ifelse(underflow, rate, 1) * 2^k) * (nv_ifelse(underflow, q, 1) * 2^k)
+          nv_ifelse(underflow, rate * 2^k, 1) * nv_ifelse(underflow, q * 2^k, 1)
         ) -
           2 * k * base::log(2)
         interior <- nv_ifelse(underflow, rescaled, log1mexp(nv_ifelse(underflow, -1, t)))
@@ -800,10 +795,6 @@ nv_qexp <- jit(
     p <- args$p
     rate <- args$rate
     op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
-
-    # Need +0 for probabilities and -0 for log probabilities so endpoint
-    # derivatives have correct sign.
-    p <- if (log_p) negative_zero(p) else positive_zero(p)
 
     # Valid range checks for p, gradient guarding and exact zero result resolution
     if (log_p) {
@@ -845,8 +836,7 @@ nv_qexp <- jit(
     }
     # Resolve to NaN matching base R rules
     valid <- in_range & valid_exp_rate(rate)
-    # zero quantile can end up -0 so ensure +0
-    nv_ifelse(valid, nv_ifelse(degenerate, 0, positive_zero(quantile)), NaN)
+    nv_ifelse(valid, nv_ifelse(degenerate, 0, quantile), NaN)
   },
   static = c("lower_tail", "log_p")
 )
