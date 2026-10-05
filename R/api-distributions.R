@@ -739,26 +739,27 @@ nv_pexp <- jit(
     rate <- args$rate
     op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
 
-    # At or below the support and at `x = Inf` the density is resolved directly,
-    # which also keeps `rate = Inf` well defined at `q = 0`. `q` is clamped there
-    # so the untaken branch cannot poison gradients.
+    # At or below the support and at `q = Inf` the cdf is resolved directly,
+    # which also keeps `rate = Inf` well defined at `q = 0`. `q` is clamped
+    # there so untaken branch cannot poison gradients.
     # NaN fails both comparisons and flows through.
     at_or_below <- q <= 0
     at_inf <- q == Inf
     resolve_ends <- function(below_val, inf_val, interior_val) {
       nv_ifelse(at_or_below, below_val, nv_ifelse(at_inf, inf_val, interior_val))
     }
-    # log of the upper tail probability
+    # compute exponent, with a guard value outside support or at inf
     t <- -rate * nv_ifelse(at_or_below | at_inf, 1, q)
 
-    res <- if (lower_tail) {
-      if (log_p) {
-        # Where rate * q underflows, t flushes to zero and log1mexp() gives -Inf,
-        # though log(1 - exp(-rate * q)) = log(rate * q) to working precision.
-        # Both factors are then normal but below 1, so scaling each by 2^k (half
-        # the exponent range) brings the product back into the normal range
-        # without overflowing. Only underflowed elements take this branch, as
-        # log1mexp() is the more accurate elsewhere.
+    res <- if (lower_tail) { # => 1-e^t
+      if (log_p) { # => log(1-e^t)
+        # If rate & q are not subnormal, but rate * q underflows, then t flushes
+        # to zero and log1mexp() gives -Inf.
+        # But log(1 - exp(-rate * q)) is approx log(rate * q) for tiny rate*q so
+        # this should be computable.
+        # Hence scale each rate & q by 2^k (half the exponent range) to avoid
+        # subnormal product without overflowing, then rescale back.
+        # Only underflowed elts take branch: log1mexp() more accurate otherwise.
         underflow <- (t == 0) & (rate > 0) & (q > 0) & !at_inf
         k <- if (op_dtype == "f32") 63 else 511
         rescaled <- nv_log(
@@ -770,9 +771,12 @@ nv_pexp <- jit(
       } else {
         resolve_ends(0, 1, -nv_expm1(t))
       }
-    } else {
+    } else { # => 1-e^t
+      # Here for tiny t, 1-exp(-t) approx t, but if t subnormal then approx
+      # would also flush, so not worth it.
       if (log_p) resolve_ends(0, -Inf, t) else resolve_ends(1, 0, nv_exp(t))
     }
+    # Resolve to NaN matching base R rules
     valid <- valid_exp_rate(rate) & !(at_inf & (rate == 0))
     nv_ifelse(valid, res, NaN)
   },
