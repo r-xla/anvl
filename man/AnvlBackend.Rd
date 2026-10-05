@@ -54,8 +54,8 @@ bytes.}
 object from a device identifier (e.g. \code{"cpu"} or \code{"cuda:1"}). Called by
 \code{\link[=nv_device]{nv_device()}}.}
 
-\item{print_data}{(\verb{function(x, footer)})\cr Prints the array data with a
-footer.}
+\item{print_data}{(\verb{function(x, footer, ...)})\cr Prints the array data with a
+footer, passing \code{...} (e.g. \code{max_rows} for the pjrt backend) on to the backend's printer.}
 
 \item{jit}{(\verb{function(f, static, cache_size, <options>, device = NULL)})\cr
 Creates the backend's implementation of a JIT-compiled function and returns
