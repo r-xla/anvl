@@ -1348,6 +1348,62 @@ cmd_selftest <- function(opt) {
     check(
       "the inverse Mills ratio is within a few ulp at z = -50 and -100",
       near(inv_mills_ref(-50), 0x1.9028ed635bd0cp+5) && near(inv_mills_ref(-100), 0x1.900a3cea7d44dp+6)
+    ),
+    check("no exponential-family gradient reference is NaN at x = +-Inf or +-the largest finite x", {
+      xe <- c(-Inf, -.Machine$double.xmax, .Machine$double.xmax, Inf)
+      flagged <- c(
+        list(list(sp_all$nv_dexp, list(log = FALSE)), list(sp_all$nv_dexp, list(log = TRUE))),
+        unlist(
+          lapply(c("nv_pexp", "nv_qexp"), function(nm) {
+            lapply(1:4, function(k) list(sp_all[[nm]], list(lower_tail = k <= 2, log_p = k %% 2 == 0)))
+          }),
+          recursive = FALSE
+        )
+      )
+      !any(vapply(
+        flagged,
+        function(sf) any(vapply(sf[[1L]]$params, function(q) anyNA(unlist(sf[[1L]]$ref_grad(xe, q, sf[[2L]]))), TRUE)),
+        TRUE
+      ))
+    }),
+    check(
+      "dexp d/dx at t = 740 (large rate) is -1.4e-301, not 0: rate^2 is applied before exp(-t) underflows",
+      near(
+        sp_all$nv_dexp$ref_grad(0x1.94abaf44d6f1ep-26, list(rate = pi * 1e10), list(log = FALSE))$x,
+        -0x1.1b80f45a754bap-998
+      )
+    ),
+    check(
+      "log dexp d/drate at the largest finite x (large rate) is 1/rate - x, not -Inf where rate * x overflows",
+      near(
+        sp_all$nv_dexp$ref_grad(.Machine$double.xmax, list(rate = pi * 1e10), list(log = TRUE))$rate,
+        -0x1.fffffffffffffp+1023
+      )
+    ),
+    check(
+      "pexp's lower log_p stable reference at q = 1e-300 (small rate) is log(rate) + log(q), not -Inf where rate * q underflows",
+      near(
+        sp_all$nv_pexp$ref_stable(1e-300, list(rate = pi * 1e-10), list(lower_tail = TRUE, log_p = TRUE)),
+        -0x1.64540d1292137p+9
+      )
+    ),
+    check(
+      "qexp lower log_p d/dp at p = -720 (small rate) is 1.7e-304, not 0: exp(p) is divided by rate before it underflows",
+      near(
+        sp_all$nv_qexp$ref_grad(-720, list(rate = pi * 1e-10), list(lower_tail = TRUE, log_p = TRUE))$p,
+        0x1.c641058cb3e7ap-1008
+      )
+    ),
+    check(
+      "qexp lower log_p d/dp at p = +0 is +Inf, the limit from inside the domain, not -Inf from expm1(-0)",
+      identical(sp_all$nv_qexp$ref_grad(0, list(rate = 1), list(lower_tail = TRUE, log_p = TRUE))$p, Inf)
+    ),
+    check(
+      "qexp lower d/drate at the smallest subnormal p (small rate) divides by rate^2 in one step, not twice",
+      near(
+        sp_all$nv_qexp$ref_grad(2^-1074, list(rate = pi * 1e-10), list(lower_tail = TRUE, log_p = FALSE))$rate,
+        -0x1.193907f0a4bb8p-1011
+      )
     )
   )
 

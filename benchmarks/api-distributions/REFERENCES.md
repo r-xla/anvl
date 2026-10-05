@@ -62,12 +62,15 @@ The `ref_params` field stores the reference's parameters as hex doubles.
 Validation uses those values, so it can reproduce the parameters even if the
 spec's named parameter set has since changed.
 
-`nv_punif`'s stable reference uses the same small-tail algorithm as anvl.
-Agreement between them in f64 becomes independent evidence only through the
-MPFR check.
+`nv_punif`'s stable reference uses the same small-tail algorithm as anvl, and
+`nv_pexp`'s and `nv_qexp`'s use the same `log1mexp` split, with the
+underflowing regions handled their own way (the exact logs of the two factors
+for `nv_pexp`, a rescaled exponential for `nv_qexp`). Agreement between them in
+f64 becomes independent evidence only through the MPFR check.
 
-Currently, only `nv_punif`'s log-scale value cells declare a stable reference.
-Evaluating it adds work to those cells; measure that cost on the target system.
+Currently, `nv_punif`'s log-scale value cells and the lower-tail log-scale
+value cells of `nv_pexp` and `nv_qexp` declare a stable reference. Evaluating
+it adds work to those cells; measure that cost on the target system.
 
 ## `validate-refs` — checking the references against high precision
 
@@ -201,8 +204,28 @@ normal family's are built to avoid the ways the obvious evaluation fails:
 - the inverse Mills ratio as a direct ratio above z = −20 and a continued
   fraction below, not a difference of two logs of ~−z²/2.
 
+The exponential family's follow the same pattern, and each of these was a
+failure that validation found in a first draft:
+
+- `t = rate · x` is carried as a double-double (`rate_times()`), since a
+  rounded t costs `exp(−t)` about t ulp;
+- its low part is folded in as `exp(−lo)` only below t = 1500: for t ≈ 1e19
+  the low part is itself ~1e3 in absolute terms, `exp(−lo)` overflows, and
+  `Inf · 0` would make a zero answer NaN;
+- `m · exp(−t)` goes through `exp_times()`, which applies m between two halves
+  of the exponential, so `rate² e^−t` is still 1.4e−301 at t = 740 for the
+  `large` rate, and is a signed zero beyond t = 1500 even where t or m has
+  overflowed; `exp(p) / rate` likewise goes through `exp_over()`;
+- the log-scale d/drate of the density is `1/rate − x` where `rate · x`
+  overflows, not `(1 − t)/rate = −Inf`;
+- a quotient by rate² is taken in one step: dividing a subnormal numerator by
+  a small rate twice rounds the intermediate to a subnormal first;
+- `expm1(−p)` is taken as `expm1(|p|)`, because at p = +0 it is −0 and turns
+  the limiting +∞ derivative into −∞ — in the MPFR truth as much as in the
+  reference.
+
 The normal-family specs currently declare a **16 f64 ulp** bound for gradient
-reference validation. Run `validate-refs` and inspect the records for the
+reference validation, the exponential-family specs **8**. Run `validate-refs` and inspect the records for the
 reference identity in use. `selftest` also checks selected
 regression cases against recorded MPFR values.
 
