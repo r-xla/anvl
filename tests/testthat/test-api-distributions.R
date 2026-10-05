@@ -1232,6 +1232,20 @@ describe("nv_pexp", {
     expect_equal(as.vector(g$rate) / 2e200, 1)
   })
 
+  it("log_p = TRUE resolves a subnormal q as q = 0, in the gradient as in the value", {
+    # Arithmetic flushes a subnormal q to zero; the gradient must then take the
+    # q = 0 branch too, not the interior formula, whose derivative is singular
+    for (dt in c("f32", "f64")) {
+      q <- nv_array(c(if (dt == "f32") 1e-40 else 1e-315, 0), dtype = dt)
+      rate <- nv_array(c(2, 2), dtype = dt)
+      f <- function(q, rate) nv_sum(nv_pexp(q, rate, log_p = TRUE))
+      g <- jit(gradient(f, wrt = c("q", "rate")))(q, rate)
+      expect_equal(as.vector(nv_pexp(q, rate, log_p = TRUE)), c(-Inf, -Inf))
+      expect_equal(as.vector(g$q), c(0, 0))
+      expect_equal(as.vector(g$rate), c(0, 0))
+    }
+  })
+
   it("converts rate to the dtype of q", {
     out <- nv_pexp(nv_array(c(0, 1), dtype = "f32"), rate = 2L)
     expect_equal(dtype(out), as_dtype("f32"))
@@ -1505,6 +1519,35 @@ describe("nv_qexp", {
         g <- grad(nv_scalar(p, dtype = "f64"), nv_scalar(0, dtype = "f64"), lt, lp)
         expect_equal(as.vector(g$rate), 0)
       }
+    }
+  })
+
+  it("d/dp at the zero end of the probability scale is the limit from inside, for either sign of zero", {
+    # the quantile tends to Inf as log p -> 0 from below, and as p -> 0 from above
+    zeros <- c(0, as.numeric("-0"))
+    f <- function(p, rate, lower_tail, log_p) nv_sum(nv_qexp(p, rate, lower_tail, log_p))
+    grad <- jit(gradient(f, wrt = "p"), static = c("lower_tail", "log_p"))
+    g <- function(lt, lp) as.vector(grad(as_f64(zeros), as_f64(c(2, 2)), lt, lp)[[1L]])
+    expect_equal(g(TRUE, TRUE), c(Inf, Inf))
+    expect_equal(g(FALSE, FALSE), c(-Inf, -Inf))
+  })
+
+  it("the zero quantile is +0 and keeps its one-sided d/dp", {
+    f <- function(p, rate, lower_tail, log_p) nv_sum(nv_qexp(p, rate, lower_tail, log_p))
+    grad <- jit(gradient(f, wrt = c("p", "rate")), static = c("lower_tail", "log_p"))
+    cases <- list(
+      list(lower_tail = TRUE, log_p = FALSE, p = c(0, as.numeric("-0")), d_p = 1 / 2),
+      list(lower_tail = FALSE, log_p = FALSE, p = c(1, 1), d_p = -1 / 2),
+      list(lower_tail = FALSE, log_p = TRUE, p = c(0, as.numeric("-0")), d_p = -1 / 2)
+    )
+    for (cs in cases) {
+      p <- as_f64(cs$p)
+      rate <- as_f64(c(2, 2))
+      value <- as.vector(nv_qexp(p, rate, lower_tail = cs$lower_tail, log_p = cs$log_p))
+      expect_identical(1 / value, c(Inf, Inf))
+      g <- grad(p, rate, cs$lower_tail, cs$log_p)
+      expect_equal(as.vector(g$p), rep(cs$d_p, 2))
+      expect_equal(as.vector(g$rate), c(0, 0))
     }
   })
 

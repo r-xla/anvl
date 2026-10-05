@@ -634,6 +634,13 @@ valid_exp_rate <- function(rate) {
   (rate >= 0) & !(zero & (1 / nv_floor(nv_ifelse(zero, rate, 1)) < 0))
 }
 
+# Normalize signed zero without changing the derivative; negative_zero() gives -0.
+# Generate +0 from a NaN check so XLA won't remove the addition; NaN stays NaN.
+# NB: in IEEE arithmetic `x + 0` is enough, but XLA folds it to `x`, hence need
+#     this to avoid optimisation away.
+positive_zero <- function(x) x + nv_convert(x != x, dtype(x))
+negative_zero <- function(x) -positive_zero(-x)
+
 #' @title The Exponential Distribution
 #' @name nv_exponential
 #' @description
@@ -714,8 +721,7 @@ nv_dexp <- jit(
     density <- if (log) {
       nv_ifelse(resolved, -Inf, nv_log(rate) - rate * x_safe)
     } else {
-      # Splitting the exponent keeps the exponential normal until after it
-      # has been rescaled by rate
+      # Splitting exponent delays underflow so rate can rescale result first.
       t <- -rate * x_safe
       split <- t < (if (op_dtype == "f32") -80 else -700)
       e <- nv_exp(nv_ifelse(split, t / 2, t))
@@ -743,7 +749,10 @@ nv_pexp <- jit(
     # which also keeps `rate = Inf` well defined at `q = 0`. `q` is clamped
     # there so untaken branch cannot poison gradients.
     # NaN fails both comparisons and flows through.
-    at_or_below <- q <= 0
+    # NB: need to treat subnormal q as zero explicitly so compiler optimizations
+    #     can't cause the value and gradient guards to disagree.
+    #     Hence at_or_below not simply `q <= 0`
+    at_or_below <- q < (if (op_dtype == "f32") 2^-126 else 2^-1022)
     at_inf <- q == Inf
     resolve_ends <- function(below_val, inf_val, interior_val) {
       nv_ifelse(at_or_below, below_val, nv_ifelse(at_inf, inf_val, interior_val))
@@ -759,8 +768,8 @@ nv_pexp <- jit(
         # this should be computable.
         # Hence scale each rate & q by 2^k (half the exponent range) to avoid
         # subnormal product without overflowing, then rescale back.
-        # Only underflowed elts take branch: log1mexp() more accurate otherwise.
-        underflow <- (t == 0) & (rate > 0) & (q > 0) & !at_inf
+        # Only split near underflow: log1mexp() more accurate otherwise.
+        underflow <- (t == 0) & (rate > 0) & !at_or_below & !at_inf
         k <- if (op_dtype == "f32") 63 else 511
         rescaled <- nv_log(
           (nv_ifelse(underflow, rate, 1) * 2^k) * (nv_ifelse(underflow, q, 1) * 2^k)
@@ -771,9 +780,7 @@ nv_pexp <- jit(
       } else {
         resolve_ends(0, 1, -nv_expm1(t))
       }
-    } else { # => 1-e^t
-      # Here for tiny t, 1-exp(-t) approx t, but if t subnormal then approx
-      # would also flush, so not worth it.
+    } else { # => e^t
       if (log_p) resolve_ends(0, -Inf, t) else resolve_ends(1, 0, nv_exp(t))
     }
     # Resolve to NaN matching base R rules
@@ -794,6 +801,10 @@ nv_qexp <- jit(
     rate <- args$rate
     op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
 
+    # Need +0 for probabilities and -0 for log probabilities so endpoint
+    # derivatives have correct sign.
+    p <- if (log_p) negative_zero(p) else positive_zero(p)
+
     # Valid range checks for p, gradient guarding and exact zero result resolution
     if (log_p) {
       in_range <- p <= 0
@@ -805,10 +816,10 @@ nv_qexp <- jit(
       zero_result <- p == (if (lower_tail) 0 else 1)
     }
 
-    # Resolve exact probability zero and give safe stand-ins so that division by
-    # `rate = 0` cannot poison gradient.
-    p_safe <- nv_ifelse(zero_result, if (log_p) -1 else 0.5, p_safe)
-    rate_safe <- nv_ifelse(zero_result | !in_range, 1, rate)
+    # If degenerate case (zero-quantile endpoint and rate 0 => 0/0) resolve
+    # directly, with gradient guard.
+    degenerate <- zero_result & (rate == 0)
+    rate_safe <- nv_ifelse(degenerate | !in_range, 1, rate)
 
     quantile <- if (lower_tail && log_p) { # => -log(1-e^p)/rate
       # For small exp(p), -log(1 - exp(p)) is approx exp(p). But if exp(p)
@@ -816,7 +827,7 @@ nv_qexp <- jit(
       # Hence, split exponential itself so rate can rescale before underflow,
       # but avoiding costly log(rate) calculation.
       # (exp(p/2)/rate)*exp(p/2) = exp(p)/rate
-      # Only underflowed elts take branch: log1mexp() more accurate otherwise.
+      # Only split near underflow: log1mexp() more accurate otherwise.
       underflow <- p_safe < (if (op_dtype == "f32") -80 else -700)
       half <- nv_exp(nv_ifelse(underflow, p_safe / 2, -1))
       zero_rate <- rate_safe == 0
@@ -834,7 +845,8 @@ nv_qexp <- jit(
     }
     # Resolve to NaN matching base R rules
     valid <- in_range & valid_exp_rate(rate)
-    nv_ifelse(valid, nv_ifelse(zero_result, 0, quantile), NaN)
+    # zero quantile can end up -0 so ensure +0
+    nv_ifelse(valid, nv_ifelse(degenerate, 0, positive_zero(quantile)), NaN)
   },
   static = c("lower_tail", "log_p")
 )
