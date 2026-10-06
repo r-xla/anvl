@@ -298,11 +298,12 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' @export
 AnvlBackendPjrt <- function() {
   backend <- AnvlBackend(
-    # The dtype/shape/device of a PJRT buffer are immutable, so we resolve them
-    # once here and cache them on the AnvlArray (as the plain/quickr backends
-    # already do for dtype/shape). This turns the per-call dtype()/shape()/
-    # device() reads on the hot dispatch path into plain field accesses instead
-    # of repeated S3-dispatch -> C++/pjrt calls.
+    # The dtype/shape of a PJRT buffer are immutable, so we resolve them once
+    # here and cache them on the AnvlArray (as the plain/quickr backends already
+    # do). This turns the per-call dtype()/shape() reads on the hot dispatch path
+    # into plain field accesses instead of repeated S3-dispatch -> C++/pjrt
+    # calls. The device is not cached: a PJRTDevice is an external pointer, which
+    # would not survive serializing the array, while the buffer itself does.
     new_data = function(data, dtype, shape, device, row_major = FALSE) {
       # A buffer arrives on a device of its own; everything else is placed on
       # the default when the call names none.
@@ -319,7 +320,6 @@ AnvlBackendPjrt <- function() {
           data = buf,
           dtype = xlamisc::dtype(buf),
           shape = xlamisc::shape(buf),
-          device = device(buf),
           backend = "pjrt"
         ),
         class = "AnvlArray"
@@ -332,7 +332,6 @@ AnvlBackendPjrt <- function() {
           data = buf,
           dtype = xlamisc::dtype(buf),
           shape = xlamisc::shape(buf),
-          device = device(buf),
           backend = "pjrt"
         ),
         class = "AnvlArray"
@@ -343,7 +342,7 @@ AnvlBackendPjrt <- function() {
     as_array = function(x, check) xlamisc::as_array(x$data, check = check),
     as_raw = function(x, row_major) xlamisc::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),
-    device = function(x) x$device,
+    device = function(x) xlamisc::device(x$data),
     new_device = function(x) pjrt::pjrt_device(x),
     print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
     jit = function(f, static, cache_size, donate = character(), device = NULL) {
