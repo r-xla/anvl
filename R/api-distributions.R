@@ -753,8 +753,10 @@ nv_pexp <- jit(
     # compute exponent, with a guard value outside support or at inf
     t <- -rate * nv_ifelse(at_or_below | at_inf, 1, q)
 
-    res <- if (lower_tail) { # => 1-e^t
-      if (log_p) { # => log(1-e^t)
+    res <- if (lower_tail) {
+      # => 1-e^t
+      if (log_p) {
+        # => log(1-e^t)
         # If rate & q are not subnormal, but rate * q underflows, then t flushes
         # to zero and log1mexp() gives -Inf.
         # But log(1 - exp(-rate * q)) is approx log(rate * q) for tiny rate*q so
@@ -775,7 +777,8 @@ nv_pexp <- jit(
       } else {
         resolve_ends(0, 1, -nv_expm1(t))
       }
-    } else { # => e^t
+    } else {
+      # => e^t
       if (log_p) resolve_ends(0, -Inf, t) else resolve_ends(1, 0, nv_exp(t))
     }
     # Resolve to NaN matching base R rules
@@ -812,7 +815,8 @@ nv_qexp <- jit(
     degenerate <- zero_result & (rate == 0)
     rate_safe <- nv_ifelse(degenerate | !in_range, 1, rate)
 
-    quantile <- if (lower_tail && log_p) { # => -log(1-e^p)/rate
+    quantile <- if (lower_tail && log_p) {
+      # => -log(1-e^p)/rate
       # For small exp(p), -log(1 - exp(p)) is approx exp(p). But if exp(p)
       # underflows (or subnormal) result lost before division by rate.
       # Hence, split exponential itself so rate can rescale before underflow,
