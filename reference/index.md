@@ -552,6 +552,10 @@ distributions
   [`nv_qunif()`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
   [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_uniform.md) :
   The Uniform Distribution
+- [`nv_dexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
+  [`nv_pexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
+  [`nv_qexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
+  : The Exponential Distribution
 - [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md) :
   Sample from a Binomial Distribution
 - [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md) :
