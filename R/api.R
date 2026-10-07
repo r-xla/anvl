@@ -2326,7 +2326,8 @@ nv_matmul <- jit(
 #'   Triangular matrix with the input's shape, and its data type -- or the
 #'   default float data type (see [`default_dtypes()`]) where the input was an
 #'   integer one. The values in the triangle not selected by `lower` are
-#'   implementation-defined.
+#'   implementation-defined. A matrix that is not positive definite factors
+#'   to `NaN`.
 #' @seealso [nv_solve()], [prim_chol()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the factor has the matrix's shape and data type

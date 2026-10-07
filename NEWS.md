@@ -4,6 +4,8 @@
   create an array of the data type in their name.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,
   and `nv_qexp()`.
+* `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
+  `potrf` custom call, which is about ten times faster on CPU.
 
 # anvl 0.5.1
 

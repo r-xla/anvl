@@ -3374,10 +3374,12 @@ prim_gather <- new_primitive(
 #' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as the input.
 #'   The values in the triangle not specified by `lower` are implementation-defined.
+#'   A matrix that is not positive definite factors to `NaN`.
 #' @templateVar primitive_id chol
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("cholesky")`
+#' Lowers to a `"potrf"` [hlo_custom_call()] (backed by LAPACK on CPU and
+#' cuSOLVER on CUDA) + postprocessing.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # create a positive-definite matrix
