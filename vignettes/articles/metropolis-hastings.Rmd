@@ -244,7 +244,7 @@ legend("topright", "Analytical", col = "red", lwd = 2, bty = "n", cex = 0.8)
 A single chain is inherently sequential, but several independent chains are not.
 Running them in parallel is a common way to obtain more samples in the same time, and comparing the chains with each other is a standard check of convergence.
 
-`device_map()` maps a function over a list like `lapply()`, but runs each call on a device of its own, all at the same time.
+`dapply()` maps a function over a list like `lapply()`, but runs each call on a device of its own, all at the same time.
 We set up four CPU devices at the top of this article, so we can run four chains at once.
 
 For this, the whole chain should be a single program, so that each device can run it without coming back to R.
@@ -265,13 +265,13 @@ mh_chain <- jit(function(seed, theta, b, proposal_sd, thin, n) {
 ```
 
 The seeds are the list we map over; the remaining arguments are the same for every chain.
-They are passed through `device_map()` rather than captured by the function, so that they are copied to each device.
+They are passed through `dapply()` rather than captured by the function, so that they are copied to each device.
 
 ```{r}
 n_chain_samples <- 5000L
 n_chain_warmup <- 1000L
 
-chains <- device_map(
+chains <- dapply(
   c(1L, 2L, 3L, 4L),
   mh_chain,
   theta = nv_array(c(0, 0), dtype = "f64"),
@@ -283,7 +283,7 @@ chains <- device_map(
 vapply(chains, \(x) as.character(device(x)), character(1L))
 ```
 
-`device_map()` returns as soon as all chains have been started; reading a result waits for it.
+`dapply()` returns as soon as all chains have been started; reading a result waits for it.
 We drop the warmup samples of each chain and compare the chains' moments.
 
 ```{r}

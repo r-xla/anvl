@@ -389,7 +389,7 @@ reference:
       - local_default_device
       - is_device
       - quickr_device
-      - device_map
+      - dapply
 
   - title: Miscellaneous
     desc: General-purpose helpers

@@ -28,10 +28,10 @@ NULL
 #'   object from a device identifier (e.g. `"cpu"` or `"cuda:1"`). Called by
 #'   [`nv_device()`].
 #' @param platform_devices (`function(device)`)\cr Returns a `list` of all
-#'   devices of the platform `device` belongs to. Called by [`device_map()`].
+#'   devices of the platform `device` belongs to. Called by [`dapply()`].
 #' @param copy_to_device (`function(x, device)`)\cr Returns a copy of the
 #'   AnvlArray `x` on `device`, without waiting for the copy to finish where
-#'   the backend runs asynchronously. Called by [`device_map()`].
+#'   the backend runs asynchronously. Called by [`dapply()`].
 #' @param print_data (`function(x, footer, ...)`)\cr Prints the array data with a
 #'   footer, passing `...` (e.g. `max_rows` for the pjrt backend) on to the backend's printer.
 #' @param jit (`function(f, static, cache_size, <options>, device = NULL)`)\cr

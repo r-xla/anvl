@@ -199,7 +199,7 @@ compile_pjrt <- function(
 }
 
 # `device` may also be a list of devices, which compiles a replicated
-# executable with one replica per device (see `device_map()`); the constants
+# executable with one replica per device (see `dapply()`); the constants
 # are then placed on the first one.
 compile_graph_pjrt <- function(graph, donate = character(), device) {
   devices <- if (is.list(device)) device else list(device)

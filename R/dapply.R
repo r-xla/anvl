@@ -1,9 +1,9 @@
 #' @include device.R
 NULL
 
-#' @title Map a Function over Devices in Parallel
+#' @title Apply a Function over a List on Several Devices
 #' @description
-#' Like [lapply()], calls `.f(.x[[i]], ...)` for every element of `.x`, but
+#' Like [lapply()], calls `FUN(X[[i]], ...)` for every element of `X`, but
 #' runs each call on a device of its own, with the devices computing in
 #' parallel.
 #'
@@ -12,14 +12,14 @@ NULL
 #' runs the program it would run on its own.
 #'
 #' @section Devices:
-#' The elements of `.x` are assigned to `.devices` in turn: element `i` runs on
-#' device `(i - 1) %% length(.devices) + 1`. Each round of up to
-#' `length(.devices)` elements is one launch of a single program, compiled once
+#' The elements of `X` are assigned to `devices` in turn: element `i` runs on
+#' device `(i - 1) %% length(devices) + 1`. Each round of up to
+#' `length(devices)` elements is one launch of a single program, compiled once
 #' for all the round's devices; with more elements than devices, the rounds run
 #' one after another.
 #'
-#' Every array in `.x[[i]]` and in `...` is copied to the call's device. Arrays
-#' that `.f` captures from its environment are not: pass them through `...`
+#' Every array in `X[[i]]` and in `...` is copied to the call's device. Arrays
+#' that `FUN` captures from its environment are not: pass them through `...`
 #' instead.
 #'
 #' To run on several CPU devices, the CPU client has to be created with them:
@@ -31,49 +31,49 @@ NULL
 #' On a backend that runs on a single device, such as quickr, the calls run one
 #' after another.
 #'
-#' @param .x (`list` | `vector`)\cr
-#'   The elements to map over. Every element must give `.f` arguments of the
+#' @param X (`list` | `vector`)\cr
+#'   The elements to map over. Every element must give `FUN` arguments of the
 #'   same structure, data types and shapes, and the same values for its static
 #'   arguments, so that all calls run the same program.
-#' @param .f (`function`)\cr
-#'   Called as `.f(.x[[i]], ...)`. Typically a [jit()]-compiled function, whose
+#' @param FUN (`function`)\cr
+#'   Called as `FUN(X[[i]], ...)`. Typically a [jit()]-compiled function, whose
 #'   `static` arguments are honoured and which keeps the compiled program across
-#'   calls of `device_map()`. A plain function is compiled for the duration of
-#'   one `device_map()` call, with no static arguments.
+#'   calls of `dapply()`. A plain function is compiled for the duration of
+#'   one `dapply()` call, with no static arguments.
 #' @param ... (`any`)\cr
-#'   Further arguments to `.f`, the same for every call. Arrays among them are
+#'   Further arguments to `FUN`, the same for every call. Arrays among them are
 #'   copied once to each device.
-#' @param .devices (`NULL` | `character()` | `list()` of devices)\cr
+#' @param devices (`NULL` | `character()` | `list()` of devices)\cr
 #'   The devices to run on, of the active backend. The default (`NULL`) is every
 #'   device of the platform of the [default device][default_device].
 #' @return (`list`)\cr
-#'   Of the same length and with the same names as `.x`: element `i` is the
-#'   result of `.f(.x[[i]], ...)`, with its arrays on the device the call ran
-#'   on. `device_map()` returns as soon as the calls are launched; reading an
+#'   Of the same length and with the same names as `X`: element `i` is the
+#'   result of `FUN(X[[i]], ...)`, with its arrays on the device the call ran
+#'   on. `dapply()` returns as soon as the calls are launched; reading an
 #'   array (e.g. with [as_array()]) waits for it, as does [await()].
 #' @seealso [jit()], [default_device()], [nv_device()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- jit(function(seed, n) nv_rnorm(n, nv_rng_state(seed))$values, static = "n")
 #' # one sample per seed, each drawn on a device of its own
-#' samples <- device_map(1:4, f, n = 3L)
+#' samples <- dapply(1:4, f, n = 3L)
 #' samples[[1L]]
 #' @export
-device_map <- function(.x, .f, ..., .devices = NULL) {
+dapply <- function(X, FUN, ..., devices = NULL) {
   if (currently_tracing()) {
     cli_abort(c(
-      "{.fn device_map} cannot be called inside a {.fn jit}-compiled function.",
-      i = "A compiled program runs on one device; call {.fn device_map} on the jitted function instead."
+      "{.fn dapply} cannot be called inside a {.fn jit}-compiled function.",
+      i = "A compiled program runs on one device; call {.fn dapply} on the jitted function instead."
     ))
   }
-  if (is_anvl_array(.x)) {
+  if (is_anvl_array(X)) {
     cli_abort(c(
-      "{.arg .x} must be a list or a vector, not an array.",
+      "{.arg X} must be a list or a vector, not an array.",
       i = "Wrap it in a list to map over it as one element: {.code list(x)}."
     ))
   }
-  assert_function(.f, .var.name = ".f")
-  devices <- resolve_map_devices(.devices)
-  .x <- as.list(.x)
+  assert_function(FUN, .var.name = "FUN")
+  devices <- resolve_dapply_devices(devices)
+  X <- as.list(X)
 
   # The shared arguments are copied to each device once, not once per call.
   dots <- list(...)
@@ -81,22 +81,22 @@ device_map <- function(.x, .f, ..., .devices = NULL) {
   device_of <- function(i) (i - 1L) %% length(devices) + 1L
   args_of <- function(i) {
     k <- device_of(i)
-    c(list(to_device(.x[[i]], devices[[k]])), dots_on[[k]])
+    c(list(to_device(X[[i]], devices[[k]])), dots_on[[k]])
   }
 
   out <- if (active_backend() == "pjrt") {
-    device_map_pjrt(.x, .f, args_of, devices)
+    dapply_pjrt(X, FUN, args_of, devices)
   } else {
-    lapply(seq_along(.x), function(i) {
-      with_default_device(devices[[device_of(i)]], do.call(.f, args_of(i)))
+    lapply(seq_along(X), function(i) {
+      with_default_device(devices[[device_of(i)]], do.call(FUN, args_of(i)))
     })
   }
-  names(out) <- names(.x)
+  names(out) <- names(X)
   out
 }
 
-# `.devices` of `device_map()` as a list of devices of the active backend.
-resolve_map_devices <- function(devices) {
+# `devices` of `dapply()` as a list of devices of the active backend.
+resolve_dapply_devices <- function(devices) {
   backend <- active_backend()
   if (is.null(devices)) {
     return(globals$backends[[backend]]$platform_devices(default_device(backend)))
@@ -104,7 +104,7 @@ resolve_map_devices <- function(devices) {
   if (is_device(devices) || is.character(devices)) {
     devices <- if (is_device(devices)) list(devices) else as.list(devices)
   }
-  checkmate::assert_list(devices, min.len = 1L, .var.name = ".devices")
+  checkmate::assert_list(devices, min.len = 1L, .var.name = "devices")
   lapply(devices, backend_device, backend = backend)
 }
 
@@ -123,25 +123,25 @@ to_device <- function(x, device) {
   x
 }
 
-# The pjrt implementation of `device_map()`: each round of up to
+# The pjrt implementation of `dapply()`: each round of up to
 # `length(devices)` elements is one launch of a replicated executable, whose
 # replicas XLA runs in parallel, each on a thread of its own device. Calling
 # the single-device executables one after another would not overlap: the CPU
 # client runs a program it estimates to be cheap -- which includes a whole
 # loop whose body is -- on the calling thread, so each call would block.
-device_map_pjrt <- function(.x, .f, args_of, devices) {
-  cfg <- jit_config(.f)
+dapply_pjrt <- function(X, FUN, args_of, devices) {
+  cfg <- jit_config(FUN)
   if (!is.null(cfg$device)) {
     cli_abort(c(
-      "{.arg .f} must not be compiled for a device of its own.",
-      i = "{.fn device_map} places the calls itself; drop {.arg device} from the {.fn jit} call."
+      "{.arg FUN} must not be compiled for a device of its own.",
+      i = "{.fn dapply} places the calls itself; drop {.arg device} from the {.fn jit} call."
     ))
   }
-  f <- cfg$f %||% .f
+  f <- cfg$f %||% FUN
   static <- cfg$static %||% character()
-  cache <- device_map_cache(.f)
+  cache <- dapply_cache(FUN)
 
-  calls <- lapply(seq_along(.x), function(i) map_call(f, args_of(i), static))
+  calls <- lapply(seq_along(X), function(i) map_call(f, args_of(i), static))
   if (!length(calls)) {
     return(list())
   }
@@ -149,7 +149,7 @@ device_map_pjrt <- function(.x, .f, args_of, devices) {
   for (i in seq_along(calls)) {
     if (!identical(calls[[i]]$key, key)) {
       cli_abort(c(
-        "Every element of {.arg .x} must give {.arg .f} arguments of the same structure, data types and shapes.",
+        "Every element of {.arg X} must give {.arg FUN} arguments of the same structure, data types and shapes.",
         x = "Element {i} differs from element 1.",
         i = "All calls run one program; {.fn lapply} runs calls that differ."
       ))
@@ -160,7 +160,7 @@ device_map_pjrt <- function(.x, .f, args_of, devices) {
   out <- vector("list", length(calls))
   for (round in rounds) {
     round_devices <- devices[seq_along(round)]
-    compiled <- device_map_compile(cache, f, calls[[1L]], round_devices)
+    compiled <- dapply_compile(cache, f, calls[[1L]], round_devices)
     inputs <- Map(
       function(call, device) map_call_inputs(call, compiled, device),
       calls[round],
@@ -174,7 +174,7 @@ device_map_pjrt <- function(.x, .f, args_of, devices) {
   out
 }
 
-# One call of `device_map()`: its leaves, which of them are static, their
+# One call of `dapply()`: its leaves, which of them are static, their
 # abstract values, and the key that tells whether two calls run one program.
 map_call <- function(f, args, static) {
   args <- match_args_to_formals(f, args)
@@ -236,7 +236,7 @@ is_map_rdata <- function(x) {
 
 # The replicated executable for `call` on `devices`, compiled on first use and
 # kept in `cache`.
-device_map_compile <- function(cache, f, call, devices) {
+dapply_compile <- function(cache, f, call, devices) {
   dtypes <- current_default_dtypes()
   key <- rlang::hash(list(
     call$key,
@@ -258,18 +258,18 @@ device_map_compile <- function(cache, f, call, devices) {
   compiled
 }
 
-# Where `device_map()` keeps the programs it compiled for `f`: on a jitted
+# Where `dapply()` keeps the programs it compiled for `f`: on a jitted
 # function, next to its own cache, so that they live as long as it does; for
 # a plain function, for the one call.
-device_map_cache <- function(f) {
+dapply_cache <- function(f) {
   if (!inherits(f, "JitFunction")) {
     return(new.env(parent = emptyenv()))
   }
   env <- environment(f)
-  if (is.null(env$.jit_device_map)) {
-    env$.jit_device_map <- new.env(parent = emptyenv())
+  if (is.null(env$.jit_dapply)) {
+    env$.jit_dapply <- new.env(parent = emptyenv())
   }
-  env$.jit_device_map
+  env$.jit_dapply
 }
 
 # The executable's inputs for one call on `device`, in the order pjrt's

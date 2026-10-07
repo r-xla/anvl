@@ -76,7 +76,7 @@ Collate:
     'backend-quickr.R'
     'bibentries.R'
     'box.R'
-    'device-map.R'
+    'dapply.R'
     'graph-passes.R'
     'graph.R'
     'graph-print.R'
