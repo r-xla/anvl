@@ -2955,6 +2955,7 @@ prim_top_k <- new_primitive(
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
+#' @template section_print_order
 #' @templateVar primitive_id print
 #' @template section_rules
 #' @section StableHLO:
