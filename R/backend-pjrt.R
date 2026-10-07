@@ -198,8 +198,12 @@ compile_pjrt <- function(
   compile_graph_pjrt(graph, donate = donate, device = device)
 }
 
+# `device` may also be a list of devices, which compiles a replicated
+# executable with one replica per device (see `dapply()`); the constants
+# are then placed on the first one.
 compile_graph_pjrt <- function(graph, donate = character(), device) {
-  platform_name <- if (is.character(device)) device else platform(device)
+  devices <- if (is.list(device)) device else list(device)
+  platform_name <- if (is.character(devices[[1L]])) devices[[1L]] else platform(devices[[1L]])
   out <- stablehlo(
     graph,
     donate = donate,
@@ -216,12 +220,12 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     }
     arr <- const$aval$data
     if (backend(arr) == "plain") {
-      pjrt_buffer(as_array(arr), dtype = dtype(arr), device = device, shape = shape(arr))
+      pjrt_buffer(as_array(arr), dtype = dtype(arr), device = devices[[1L]], shape = shape(arr))
     } else if (backend(arr) != "pjrt") {
       cli_abort("Found non-PJRT constant in program")
     } else {
       # no copy is done if buffer already on correct device
-      pjrt::copy_buffer(arr$data, device = device)
+      pjrt::copy_buffer(arr$data, device = devices[[1L]])
     }
   })
 
@@ -298,11 +302,6 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' @export
 AnvlBackendPjrt <- function() {
   backend <- AnvlBackend(
-    # The dtype/shape/device of a PJRT buffer are immutable, so we resolve them
-    # once here and cache them on the AnvlArray (as the plain/quickr backends
-    # already do for dtype/shape). This turns the per-call dtype()/shape()/
-    # device() reads on the hot dispatch path into plain field accesses instead
-    # of repeated S3-dispatch -> C++/pjrt calls.
     new_data = function(data, dtype, shape, device, row_major = FALSE) {
       # A buffer arrives on a device of its own; everything else is placed on
       # the default when the call names none.
@@ -314,29 +313,10 @@ AnvlBackendPjrt <- function() {
       } else {
         pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
       }
-      structure(
-        list(
-          data = buf,
-          dtype = xlamisc::dtype(buf),
-          shape = xlamisc::shape(buf),
-          device = device(buf),
-          backend = "pjrt"
-        ),
-        class = "AnvlArray"
-      )
+      new_pjrt_array(buf)
     },
     new_empty = function(dtype, shape, device) {
-      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device %||% default_device("pjrt"))
-      structure(
-        list(
-          data = buf,
-          dtype = xlamisc::dtype(buf),
-          shape = xlamisc::shape(buf),
-          device = device(buf),
-          backend = "pjrt"
-        ),
-        class = "AnvlArray"
-      )
+      new_pjrt_array(pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device %||% default_device("pjrt")))
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
@@ -345,6 +325,10 @@ AnvlBackendPjrt <- function() {
     platform = function(x) pjrt::platform(x$data),
     device = function(x) x$device,
     new_device = function(x) pjrt::pjrt_device(x),
+    platform_devices = function(device) pjrt::devices(pjrt::pjrt_client(pjrt::platform(device))),
+    copy_to_device = function(x, device) {
+      new_pjrt_array(pjrt::copy_buffer(x$data, device))
+    },
     print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
     jit = function(f, static, cache_size, donate = character(), device = NULL) {
       assert_subset(donate, formalArgs2(f))
@@ -360,6 +344,24 @@ AnvlBackendPjrt <- function() {
   )
   class(backend) <- c("AnvlBackendPjrt", class(backend))
   backend
+}
+
+# The dtype/shape/device of a PJRT buffer are immutable, so we resolve them
+# once here and cache them on the AnvlArray (as the plain/quickr backends
+# already do for dtype/shape). This turns the per-call dtype()/shape()/
+# device() reads on the hot dispatch path into plain field accesses instead
+# of repeated S3-dispatch -> C++/pjrt calls.
+new_pjrt_array <- function(buf) {
+  structure(
+    list(
+      data = buf,
+      dtype = xlamisc::dtype(buf),
+      shape = xlamisc::shape(buf),
+      device = device(buf),
+      backend = "pjrt"
+    ),
+    class = "AnvlArray"
+  )
 }
 
 register_backend("pjrt", AnvlBackendPjrt())

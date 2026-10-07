@@ -1,5 +1,8 @@
 # anvl (development version)
 
+* New `dapply()` maps a function over a list like `lapply()`, running each call on a device of
+  its own and in parallel, e.g. the chains of an MCMC sampler on several CPU devices.
+
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,

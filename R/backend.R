@@ -27,6 +27,11 @@ NULL
 #' @param new_device (`function(x)`)\cr Constructs a backend-specific device
 #'   object from a device identifier (e.g. `"cpu"` or `"cuda:1"`). Called by
 #'   [`nv_device()`].
+#' @param platform_devices (`function(device)`)\cr Returns a `list` of all
+#'   devices of the platform `device` belongs to. Called by [`dapply()`].
+#' @param copy_to_device (`function(x, device)`)\cr Returns a copy of the
+#'   AnvlArray `x` on `device`, without waiting for the copy to finish where
+#'   the backend runs asynchronously. Called by [`dapply()`].
 #' @param print_data (`function(x, footer, ...)`)\cr Prints the array data with a
 #'   footer, passing `...` (e.g. `max_rows` for the pjrt backend) on to the backend's printer.
 #' @param jit (`function(f, static, cache_size, <options>, device = NULL)`)\cr
@@ -52,6 +57,8 @@ AnvlBackend <- function(
   platform,
   device,
   new_device,
+  platform_devices,
+  copy_to_device,
   print_data,
   jit,
   await_data,
@@ -74,6 +81,8 @@ AnvlBackend <- function(
       platform = platform,
       device = device,
       new_device = new_device,
+      platform_devices = platform_devices,
+      copy_to_device = copy_to_device,
       print_data = print_data,
       jit = jit,
       await_data = await_data,
@@ -213,6 +222,12 @@ register_backend(
     device = function(x) PlainDeviceCpu(),
     new_device = function(type) {
       cli_abort("{.val plain} backend does not support creating devices.")
+    },
+    platform_devices = function(device) {
+      cli_abort("{.val plain} backend does not support listing devices.")
+    },
+    copy_to_device = function(x, device) {
+      cli_abort("{.val plain} backend does not support copying to a device.")
     },
     print_data = function(x, footer, ...) {
       print(x$data, ...)

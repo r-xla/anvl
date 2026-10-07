@@ -240,6 +240,9 @@ AnvlBackendQuickr <- function() {
     platform = function(x) "cpu",
     device = function(x) x$device,
     new_device = function(x) quickr_device(x),
+    platform_devices = function(device) list(quickr_device("cpu")),
+    # quickr has a single device, which every array already lives on.
+    copy_to_device = function(x, device) x,
     print_data = function(x, footer, ...) {
       print(x$data, ...)
       cat(footer, "\n")
