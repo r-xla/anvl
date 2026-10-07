@@ -84,6 +84,8 @@ Collate:
     'roxygen.R'
     'rules-reverse.R'
     'rules-stablehlo.R'
+    'vectorize.R'
+    'rules-vectorize.R'
     'serialize.R'
     'stablehlo.R'
     'zzz.R'

@@ -267,6 +267,20 @@ The forward must return one output box per output of the original statement, wit
 A primitive can optionally also carry a `quickr` rule, which lowers it to plain R code for the quickr backend (see `R/rules-quickr.R`).
 The quickr rule is only required if you want the primitive to run under `local_backend("quickr")`; if you skip it, the primitive will still work on the pjrt backend.
 
+#### Optional: a vectorize rule
+
+To make the primitive work under `vectorize()`, attach a rule built with `rule_vectorize()`.
+Inside it, a value that is mapped over carries the batch axis as its first axis.
+Most primitives already work on an extra leading axis, so the rule only has to say how the parameters that name axes or sizes change.
+For `prim_repeat_along()`, `axis` moves one axis further:
+
+```{r}
+prim_repeat_along[["vectorize"]] <- rule_vectorize(params = list(axis = param_axes()))
+```
+
+The rule broadcasts an operand that is not mapped over and calls the primitive with the changed parameters.
+A primitive this does not fit passes a function of its own, `rule_vectorize(fn = function(inputs, batched, params, size) ...)`.
+
 ### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives.
@@ -311,6 +325,12 @@ grad_f <- jit(gradient(f))
 grad_f(x)[[1L]]
 ```
 
+And map it over a batch with `vectorize()`, here over the columns of `x`:
+
+```{r}
+jit(vectorize(function(x) prim_repeat_along(x, times = 2L, axis = 1L), axis = 2L))(x)
+```
+
 ## Contributing to the Package
 
 If you want to contribute your primitive to {anvl}, there are some additional things to be aware of.
@@ -322,6 +342,7 @@ If you want to contribute your primitive to {anvl}, there are some additional th
 - **`R/rules-stablehlo.R`**: Add the StableHLO lowering rule
 - **`R/rules-reverse.R`**: Add the reverse rule (if differentiable)
 - **`R/rules-quickr.R`**: Add the quickr lowering rule (optional; only if the primitive should run on the quickr backend)
+- **`R/rules-vectorize.R`**: Add the vectorize rule (optional; only if the primitive should work under `vectorize()`)
 - **`R/api.R`**: Add the `nv_*` wrapper function (or possibly in another **api** file).
 
 ### Testing

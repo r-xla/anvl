@@ -70,7 +70,7 @@ NULL
 
 globals <- new.env()
 globals$nv_types <- "AnvlArray"
-globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
+globals$interpretation_rules <- c("stablehlo", "quickr", "reverse", "vectorize")
 globals[["DESCRIPTOR_STASH"]] <- list()
 globals[["CURRENT_DESCRIPTOR"]] <- NULL
 globals[["LOWERING_PLATFORM"]] <- NULL

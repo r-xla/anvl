@@ -23,6 +23,7 @@ Element-wise error function \verb{erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

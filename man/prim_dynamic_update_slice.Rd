@@ -46,6 +46,7 @@ effective start position may differ from the requested one.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

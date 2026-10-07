@@ -1,5 +1,8 @@
 # anvl (development version)
 
+* New `vectorize()` maps a function over an axis of its arguments, like
+  `base::Vectorize()` but as a single traced program; it composes with
+  `gradient()`. Primitives declare how with `rule_vectorize()`.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,

@@ -41,6 +41,7 @@ For other axes, transpose so the target axis is last, call
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

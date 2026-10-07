@@ -373,6 +373,7 @@ reference:
     contents:
       - jit
       - gradient
+      - vectorize
 
   - title: Backend
     desc: Backend-related functionality and implementations
@@ -461,6 +462,8 @@ reference:
       - AnvlPrimitiveDef
       - graph_desc_add
       - rule_reverse
+      - rule_vectorize
+      - param_axes
 
   - subtitle: Implemented Primitives
     contents:

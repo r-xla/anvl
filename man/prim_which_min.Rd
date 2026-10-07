@@ -34,6 +34,7 @@ are broken by returning the smallest index.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

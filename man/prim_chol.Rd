@@ -35,6 +35,7 @@ errors on a batched input (an input with more than 2 axes).
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

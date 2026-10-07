@@ -23,6 +23,7 @@ Element-wise inverse sine.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

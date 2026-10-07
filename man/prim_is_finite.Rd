@@ -23,6 +23,7 @@ Element-wise check if values are finite (not Inf, -Inf, or NaN).
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

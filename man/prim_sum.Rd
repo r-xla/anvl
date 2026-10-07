@@ -36,6 +36,7 @@ rather than a count. \code{\link[=nv_sum]{nv_sum()}} counts instead.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

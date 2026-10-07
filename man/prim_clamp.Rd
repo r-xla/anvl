@@ -29,6 +29,7 @@ Clamps every element of \code{x} to the range \verb{[min, max]}.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

@@ -61,3 +61,15 @@ test_that("the call an inference error reports is a function that exists", {
     expect_identical(reported, paste0(nm, "()"), info = nm)
   }
 })
+
+test_that("vectorize rule is tested", {
+  nms <- names(asNamespace("anvl"))
+  primitive_names <- Filter(
+    function(nm) !is.null(getFromNamespace(nm, "anvl")[["vectorize"]]),
+    nms[grepl("^prim_", nms)]
+  )
+  content <- paste(readLines(file.path(testthat::test_path(), "test-primitives-vectorize.R")), collapse = "\n")
+  missing <- Filter(function(nm) !grepl(paste0("\\b", nm, "\\b"), content), primitive_names)
+
+  expect_true(length(missing) == 0L, info = paste(missing, collapse = ", "), label = "Vectorize rule is tested")
+})

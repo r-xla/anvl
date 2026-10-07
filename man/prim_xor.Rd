@@ -29,6 +29,7 @@ bit-by-bit one on an integer.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 
