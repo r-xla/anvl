@@ -30,7 +30,8 @@ Positions of the operands that cannot be mapped over, e.g. the padding
 value of \code{\link[=prim_pad]{prim_pad()}}. They are passed on unchanged.}
 }
 \value{
-(\code{anvl_rule_vectorize})
+(\code{anvl_rule_vectorize})\cr
+A rule to assign to \verb{prim_<name>[["vectorize"]]}.
 }
 \description{
 Construct the rule \code{\link[=vectorize]{vectorize()}} uses for a primitive applied to values
@@ -49,6 +50,10 @@ For a primitive that this does not fit, pass \code{fn} instead, with the
 signature \verb{function(inputs, batched, params, size)}: \code{inputs} are the
 operands, \code{batched} says which of them carry the batch axis, and \code{size} is
 its size. It returns the outputs, each with the batch axis first.
+
+A declared rule calls the primitive with its parameters as arguments, so it
+only fits a primitive made with \code{\link[=new_primitive]{new_primitive()}} whose parameters are
+named like the arguments of its function.
 }
 \examples{
 # the rule of prim_transpose()

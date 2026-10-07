@@ -660,8 +660,9 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 gradient <- function(f, wrt = NULL) {
   assert_function(f)
   wrt <- resolve_transformation_args(f, wrt, "wrt")
-  transformation_fn(f, "gradient", function(args) {
+  transformation_fn(f, function(args) {
     prep <- prepare_gradient_args(args, wrt)
+    assert_in_trace("gradient")
     fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
     res <- graph_value_and_grad(fwd_graph, wrt, graph_operands(fwd_graph, prep$args_flat))
     unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
@@ -673,8 +674,9 @@ gradient <- function(f, wrt = NULL) {
 value_and_gradient <- function(f, wrt = NULL) {
   assert_function(f)
   wrt <- resolve_transformation_args(f, wrt, "wrt")
-  transformation_fn(f, "value_and_gradient", function(args) {
+  transformation_fn(f, function(args) {
     prep <- prepare_gradient_args(args, wrt)
+    assert_in_trace("value_and_gradient")
     fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
     res <- graph_value_and_grad(fwd_graph, wrt, graph_operands(fwd_graph, prep$args_flat))
     list(

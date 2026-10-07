@@ -100,6 +100,25 @@ describe("vectorize", {
     expect_error(vectorize(function(x) x)(x), "inside a")
   })
 
+  it("rejects mapping over an argument that was not passed", {
+    expect_error(
+      jit(vectorize(function(a, w = a) a * w, args = "w"))(x),
+      "Cannot map over `w`: it was not passed"
+    )
+  })
+
+  it("needs an argument to map over", {
+    expect_error(
+      jit(vectorize(function(x, s) s), static = c("x", "s"))(x = "a", s = 2L),
+      "needs at least one argument to map over"
+    )
+  })
+
+  it("names the argument that cannot be mapped over", {
+    f <- function(x, s) x * s
+    expect_error(jit(vectorize(f))(x, 2), "`s` has shape ()")
+  })
+
   it("rejects arguments that are not formal arguments of f", {
     expect_error(vectorize(function(x) x, args = "y"), "subset of the formal arguments")
   })
@@ -135,6 +154,42 @@ describe("vectorize", {
     prim_neg[["vectorize"]] <- rule_vectorize()
     out <- jit(vectorize(prim_neg))(x)
     expect_equal(as_r(out), -as_r(x))
+  })
+
+  it("accepts a rule that returns a single output unwrapped", {
+    prim_neg <- new_primitive(
+      "negate",
+      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
+      register = FALSE
+    )
+    prim_neg[["stablehlo"]] <- prim_negate[["stablehlo"]]
+    prim_neg[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) prim_negate(inputs[[1L]]))
+    expect_equal(as_r(jit(vectorize(prim_neg))(x)), -as_r(x))
+  })
+
+  it("refuses a declared rule for a primitive whose parameters are not its arguments", {
+    prim_scale <- new_primitive(
+      "scale",
+      function(x, k) {
+        graph_desc_add(self, list(x = x), params = list(factor = k), infer_fn = function(x, factor) list(x))[[1L]]
+      },
+      static = "k",
+      register = FALSE
+    )
+    prim_scale[["vectorize"]] <- rule_vectorize()
+    expect_error(jit(vectorize(function(a) prim_scale(a, k = 2)))(x), "cannot call it with them")
+  })
+
+  it("checks how many outputs a rule returns", {
+    prim_bad <- new_primitive(
+      "bad",
+      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
+      register = FALSE
+    )
+    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+      list(inputs[[1L]], inputs[[1L]])
+    })
+    expect_error(jit(vectorize(prim_bad))(x), "returned 2 outputs, not 1")
   })
 
   it("checks what a rule returns", {

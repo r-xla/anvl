@@ -535,6 +535,28 @@ describe("prim_triangular_solve", {
       tolerance = 1e-4
     )
   })
+
+  it("vectorizes with the matrix on the right and transposed", {
+    withr::local_seed(1L)
+    lower <- vapply(
+      1:3,
+      function(i) {
+        m <- matrix(stats::rnorm(9L), 3L)
+        m[upper.tri(m)] <- 0
+        m + 3 * diag(3)
+      },
+      numeric(9L)
+    )
+    a <- nv_array(as.vector(t(lower)), shape = c(3L, 3L, 3L), dtype = "f32")
+    autotest_vectorize(
+      function(a, b) {
+        prim_triangular_solve(a, b, left_side = FALSE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
+      },
+      a = a,
+      b = rand_array(c(3L, 2L, 3L)),
+      tolerance = 1e-4
+    )
+  })
 })
 
 describe("prim_print", {
@@ -552,7 +574,7 @@ describe("vectorize rules that rearrange axes", {
     function(lhs, rhs) prim_dot_general(lhs, rhs, contracting_axes = contracting, batching_axes = batching)
   }
 
-  it("vectorize prim_dot_general along other axes and with more axes", {
+  it("vectorizes prim_dot_general along other axes and with more axes", {
     withr::local_seed(1L)
     f <- dot_general(list(2L, 1L), list(integer(), integer()))
     autotest_vectorize(f, lhs = rand_array(c(3L, 2L, 4L)), rhs = rand_array(c(3L, 4L)), axis = 2L)
@@ -567,7 +589,7 @@ describe("vectorize rules that rearrange axes", {
     )
   })
 
-  it("vectorize prim_gather along other axes and with more axes", {
+  it("vectorizes prim_gather along other axes and with more axes", {
     withr::local_seed(1L)
     rows <- function(x, idx) {
       prim_gather(
@@ -596,7 +618,7 @@ describe("vectorize rules that rearrange axes", {
     )
   })
 
-  it("vectorize prim_scatter along other axes and with more axes", {
+  it("vectorizes prim_scatter along other axes and with more axes", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x, idx, update) {
@@ -620,7 +642,7 @@ describe("vectorize rules that rearrange axes", {
     )
   })
 
-  it("vectorize the slicing primitives along other axes", {
+  it("vectorizes the slicing primitives along other axes", {
     withr::local_seed(1L)
     x <- rand_array(c(3L, 2L, 4L))
     autotest_vectorize(
@@ -642,7 +664,7 @@ describe("vectorize rules that rearrange axes", {
     autotest_vectorize(function(x) prim_pad(x, 0, c(1L, 0L), c(0L, 1L), c(1L, 0L)), x = x, axis = 2L)
   })
 
-  it("vectorize the reshaping primitives along other axes", {
+  it("vectorizes the reshaping primitives along other axes", {
     withr::local_seed(1L)
     x <- rand_array(c(3L, 2L, 4L))
     autotest_vectorize(function(x) prim_transpose(x, perm = c(2L, 1L)), x = x, axis = 3L)
@@ -660,7 +682,7 @@ describe("vectorize rules that rearrange axes", {
     )
   })
 
-  it("vectorize prim_sort, prim_top_k and prim_bitcast_convert along other axes", {
+  it("vectorizes prim_sort, prim_top_k and prim_bitcast_convert along other axes", {
     withr::local_seed(1L)
     x <- rand_array(c(3L, 2L, 4L))
     autotest_vectorize(function(x, y) prim_sort(list(x, y), axis = 1L), x = x, y = rand_array(c(3L, 2L, 4L)), axis = 3L)

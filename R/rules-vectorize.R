@@ -64,8 +64,7 @@ for (prim in list(
   prim_round,
   prim_convert,
   prim_top_k,
-  prim_chol,
-  prim_triangular_solve
+  prim_chol
 )) {
   prim[["vectorize"]] <- rule_vectorize()
 }
@@ -242,4 +241,33 @@ prim_scatter[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, 
   # Sorted within one slice need not mean sorted across the batch.
   p$indices_are_sorted <- FALSE
   graph_desc_add(prim_scatter, c(operands, inputs[-(1:3)]), params = p, infer_fn = infer_scatter)
+})
+
+# A matrix shared by the whole batch is solved against once: the right-hand
+# sides of all slices are laid side by side -- as columns when `a` is on the
+# left, as rows when it is on the right -- instead of broadcasting `a`.
+prim_triangular_solve[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  a <- inputs[[1L]]
+  b <- inputs[[2L]]
+  solve <- function(a, b) {
+    prim_triangular_solve(
+      a,
+      b,
+      left_side = params$left_side,
+      lower = params$lower,
+      unit_diagonal = params$unit_diagonal,
+      transpose_a = params$transpose_a
+    )
+  }
+  if (batched[[1L]] || naxes(a) != 2L) {
+    return(list(solve(batch_operand(a, batched[[1L]], size), batch_operand(b, batched[[2L]], size))))
+  }
+  s <- shape(b)
+  out <- if (params$left_side) {
+    side_by_side <- prim_reshape(prim_transpose(b, c(2L, 1L, 3L)), c(s[[2L]], size * s[[3L]]))
+    prim_transpose(prim_reshape(solve(a, side_by_side), s[c(2L, 1L, 3L)]), c(2L, 1L, 3L))
+  } else {
+    prim_reshape(solve(a, prim_reshape(b, c(size * s[[2L]], s[[3L]]))), s)
+  }
+  list(out)
 })

@@ -371,23 +371,31 @@ resolve_transformation_args <- function(f, x, arg) {
 }
 
 # The function a transformation of `f` such as `gradient()` returns: it has the
-# formals of `f`, must be called inside `jit()`, and hands the arguments it was
-# called with, evaluated, to `.impl`. The dotted names keep a formal of `f` from
-# shadowing them.
-transformation_fn <- function(f, .name, .impl) {
-  force(.impl)
+# formals of `f` and hands the arguments it was called with, evaluated, to
+# `impl`. The formals of `f` live in its frame, so everything it uses is looked
+# up past that frame, where no formal can shadow it.
+transformation_fn <- function(f, impl) {
+  force(impl)
   out <- function() {
-    .args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-    if (is.null(current_descriptor(silent = TRUE))) {
-      cli_abort(c(
-        "{.fn {(.name)}} can only be called inside a {.fn jit}-compiled function.",
-        i = "Wrap the result of {.fn {(.name)}} in {.fn jit}, e.g. {.code jit({(.name)}(f))}."
-      ))
-    }
-    .impl(.args)
+    base::get("impl", envir = base::parent.env(base::environment()))(
+      base::lapply(base::as.list(base::match.call())[-1L], base::eval, envir = base::parent.frame())
+    )
   }
   formals(out) <- formals2(f)
   out
+}
+
+# A transformation such as `gradient()` works on the trace it is called in.
+assert_in_trace <- function(name) {
+  if (is.null(current_descriptor(silent = TRUE))) {
+    cli_abort(
+      c(
+        "{.fn {name}} can only be called inside a {.fn jit}-compiled function.",
+        i = "Wrap the result of {.fn {name}} in {.fn jit}, e.g. {.code jit({name}(f))}."
+      ),
+      call = rlang::caller_env(2L)
+    )
+  }
 }
 
 # The flat argument list a compile callback traces with, built from the `info`

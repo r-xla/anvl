@@ -50,7 +50,8 @@ vectorize <- function(f, args = NULL, axis = 1L) {
   assert_function(f)
   mapped_args <- resolve_transformation_args(f, args, "args")
   axis <- as.integer(checkmate::assert_int(axis, lower = 1L))
-  transformation_fn(f, "vectorize", function(call_args) {
+  transformation_fn(f, function(call_args) {
+    assert_in_trace("vectorize")
     vectorize_call(f, call_args, mapped_args, axis)
   })
 }
@@ -58,7 +59,10 @@ vectorize <- function(f, args = NULL, axis = 1L) {
 # Traces `f` on one slice of the arguments `mapped_args` names and replays the
 # graph into the current descriptor, batched over `axis`.
 vectorize_call <- function(f, call_args, mapped_args, axis) {
-  desc <- current_descriptor()
+  missing_args <- setdiff(mapped_args, names(call_args))
+  if (length(missing_args)) {
+    cli_abort("Cannot map over {.arg {missing_args}}: {cli::qty(length(missing_args))}{?it was/they were} not passed.")
+  }
   args_flat <- flatten(call_args)
   in_tree <- build_tree(call_args)
   is_mapped <- if (is.null(mapped_args)) {
@@ -66,6 +70,9 @@ vectorize_call <- function(f, call_args, mapped_args, axis) {
   } else {
     pjrt::tree_leaf_mask(in_tree, mapped_args)
   }
+  # The argument each flat leaf belongs to, for messages.
+  sizes <- pjrt::tree_child_sizes(in_tree)
+  leaf_args <- rep(pjrt::tree_child_names(in_tree) %||% rep("", length(sizes)), times = sizes)
 
   size <- NULL
   trace_args <- args_flat
@@ -74,7 +81,7 @@ vectorize_call <- function(f, call_args, mapped_args, axis) {
     if (!is_arrayish(x)) {
       cli_abort(c(
         "Can only map over arrays.",
-        x = "Got {.cls {class(x)[1L]}}."
+        x = "{.arg {leaf_args[[i]]}} is {.cls {class(x)[1L]}}."
       ))
     }
     aval <- to_abstract(x)
@@ -82,7 +89,8 @@ vectorize_call <- function(f, call_args, mapped_args, axis) {
     if (length(x_shape) < axis) {
       cli_abort(c(
         "Every argument mapped over must have an axis {.val {axis}}.",
-        x = "Got an argument of shape {shape_repr(x_shape)}."
+        x = "{.arg {leaf_args[[i]]}} has shape {shape_repr(x_shape)}.",
+        i = "Name the arguments to map over with {.arg args}; an argument of the enclosing {.fn jit} that is not static is an array here."
       ))
     }
     if (is.null(size)) {
@@ -90,7 +98,7 @@ vectorize_call <- function(f, call_args, mapped_args, axis) {
     } else if (x_shape[[axis]] != size) {
       cli_abort(c(
         "Every argument mapped over must have the same size along axis {.val {axis}}.",
-        x = "Got sizes {.val {size}} and {.val {x_shape[[axis]]}}."
+        x = "{.arg {leaf_args[[i]]}} has size {.val {x_shape[[axis]]}}, an earlier one {.val {size}}."
       ))
     }
     trace_args[[i]] <- if (is_rdata(aval)) {
@@ -117,7 +125,8 @@ vectorize_call <- function(f, call_args, mapped_args, axis) {
     if (naxes(out) < axis) {
       cli_abort(c(
         "Every output must have room for the batch axis at axis {.val {axis}}.",
-        x = "Output {j} has shape {shape_repr(shape(out)[-1L])}, so it can be stacked along axes 1 to {naxes(out)} only."
+        x = "Output {.val {j}} has shape {shape_repr(shape(out)[-1L])}, so it can be stacked along axes {.val {1L}} to {.val {naxes(out)}} only.",
+        i = "Stack along an axis it has room for, and transpose the result if needed."
       ))
     }
     move_axis(out, from = 1L, to = axis)
@@ -177,13 +186,22 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size) {
     ))
   }
   if (!is.null(rule$fn)) {
-    return(rule$fn(inputs, batched, params, size))
+    out <- rule$fn(inputs, batched, params, size)
+    return(if (is_graph_box(out)) list(out) else out)
+  }
+  prim_fn <- primitive$fn
+  name <- paste0("prim_", primitive$name)
+  if (is.null(prim_fn) || !all(names(params) %in% formalArgs(prim_fn))) {
+    cli_abort(c(
+      "The vectorize rule of {.fn {name}} declares its parameters, but cannot call it with them.",
+      i = "A declared rule calls the primitive {.fn new_primitive} made with its parameters as arguments of the same names; otherwise, give it a rule of its own with {.code rule_vectorize(fn = )}."
+    ))
   }
 
   for (i in rule$unbatched) {
     if (batched[[i]]) {
       cli_abort(
-        "{.fn vectorize} cannot map over operand {i} of {.fn {paste0('prim_', primitive$name)}}."
+        "{.fn vectorize} cannot map over operand {i} of {.fn {name}}."
       )
     }
   }
@@ -191,7 +209,7 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size) {
   for (nm in names(rule$params)) {
     params[[nm]] <- rule$params[[nm]](params[[nm]], size)
   }
-  out <- do.call(primitive$fn, c(operands, params))
+  out <- do.call(prim_fn, c(operands, params))
   if (is_graph_box(out)) list(out) else out
 }
 
@@ -235,6 +253,10 @@ check_vectorized_outputs <- function(call, outputs, size) {
 #' signature `function(inputs, batched, params, size)`: `inputs` are the
 #' operands, `batched` says which of them carry the batch axis, and `size` is
 #' its size. It returns the outputs, each with the batch axis first.
+#'
+#' A declared rule calls the primitive with its parameters as arguments, so it
+#' only fits a primitive made with [`new_primitive()`] whose parameters are
+#' named like the arguments of its function.
 #' @param fn (`NULL` | `function`)\cr
 #'   A rule of its own. If given, the other arguments must be left at their
 #'   defaults.
@@ -248,7 +270,8 @@ check_vectorized_outputs <- function(call, outputs, size) {
 #' @param unbatched (`integer()`)\cr
 #'   Positions of the operands that cannot be mapped over, e.g. the padding
 #'   value of [`prim_pad()`]. They are passed on unchanged.
-#' @return (`anvl_rule_vectorize`)
+#' @return (`anvl_rule_vectorize`)\cr
+#'   A rule to assign to `prim_<name>[["vectorize"]]`.
 #' @seealso [`vectorize()`], [`param_axes()`]
 #' @export
 #' @examples

@@ -12,8 +12,9 @@
 # and every output must have that many axes.
 #
 # `f` only takes arrays: bind the parameters a primitive takes in a closure.
-# The primitives `f` applies are recorded in `vectorize_tested`, which the end
-# of test-primitives-vectorize.R checks against the primitives with a rule.
+# Every primitive whose vectorize rule runs is recorded in `vectorize_tested`,
+# which the end of test-primitives-vectorize.R checks against the primitives
+# with a rule.
 autotest_vectorize <- function(f, ..., axis = 1L, tolerance = 1e-6) {
   args <- list(...)
   checkmate::assert_list(args, min.len = 1L, names = "unique")
@@ -23,9 +24,11 @@ autotest_vectorize <- function(f, ..., axis = 1L, tolerance = 1e-6) {
   }
   slice_avals <- lapply(args, function(x) nv_aval(dtype(x), shape(x)[-1L]))
   prims <- unique(vapply(trace_fn(f, slice_avals)$statements, \(s) s$primitive$name, character(1L)))
-  for (prim in prims) {
-    vectorize_tested[[prim]] <- TRUE
-  }
+  apply_rule <- apply_vectorize_rule
+  testthat::local_mocked_bindings(apply_vectorize_rule = function(primitive, ...) {
+    vectorize_tested[[primitive$name]] <- TRUE
+    apply_rule(primitive, ...)
+  })
 
   f_jit <- jit(f)
   subsets <- unlist(
@@ -72,11 +75,12 @@ autotest_vectorize <- function(f, ..., axis = 1L, tolerance = 1e-6) {
 vectorize_tested <- new.env()
 
 # An array as plain R data of its shape: a vector for a scalar, an array
-# otherwise. An `i64` array comes back as `integer64`, which `as.vector()` would
-# turn into garbage, so it is read as integers.
+# otherwise. A 64-bit or `ui32` array comes back as `integer64`, which
+# `as.vector()` would turn into garbage, so it is read as doubles, which hold its
+# values exactly up to 2^53.
 as_r <- function(x) {
   a <- as_array(x)
-  v <- if (inherits(a, "integer64")) as.integer(a) else as.vector(a)
+  v <- if (inherits(a, "integer64")) as.double(a) else as.vector(a)
   s <- shape(x)
   if (length(s)) array(v, dim = s) else v
 }

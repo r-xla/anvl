@@ -3,6 +3,9 @@
 * New `vectorize()` maps a function over an axis of its arguments, like
   `base::Vectorize()` but as a single traced program; it composes with
   `gradient()`. Primitives declare how with `rule_vectorize()`.
+* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
+  differentiated by `gradient()` closes over now counts toward the device
+  `jit()` detects, as it already did for the jitted function itself.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,
