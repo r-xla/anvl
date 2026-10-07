@@ -24,9 +24,9 @@ describe("vectorize", {
     out <- jit(vectorize(f, axis = 2L))(x)
     expect_equal(as_r(out), as_r(x) * 2)
 
-    g <- function(x) sum(x)
+    g <- function(x) cumsum(x)
     out <- jit(vectorize(g, axis = 2L))(x)
-    expect_equal(as_r(out), array(colSums(as_r(x)), dim = 2L))
+    expect_equal(as_r(out), apply(as_r(x), 2L, cumsum))
   })
 
   it("maps over every leaf of a nested argument", {
@@ -54,6 +54,12 @@ describe("vectorize", {
     expect_equal(as_r(out), array(rowSums(as_r(x)^2), dim = 3L))
   })
 
+  it("passes static arguments through when mapping over all arguments", {
+    f <- function(x, p) sum(x^p)
+    out <- jit(vectorize(f), static = "p")(x, p = 2L)
+    expect_equal(as_r(out), array(rowSums(as_r(x)^2), dim = 3L))
+  })
+
   it("maps over R data", {
     f <- function(x) sum(x)
     out <- jit(vectorize(f))(matrix(c(1, 2, 3, 4), nrow = 2L))
@@ -66,6 +72,13 @@ describe("vectorize", {
     out <- jit(vectorize(gradient(loss, wrt = "w"), args = "x"))(w, x)
     xr <- as_r(x)
     expect_equal(as_r(out$w), 2 * xr^2 * rep(c(1, 2), each = 3L))
+  })
+
+  it("composes with gradient() through indexing", {
+    loss <- function(w, x) sum(w[array(c(2L, 1L))] * x)
+    w <- nv_array(c(1, 2), dtype = "f32")
+    out <- jit(vectorize(gradient(loss, wrt = "w"), args = "x"))(w, x)
+    expect_equal(as_r(out$w), as_r(x)[, c(2L, 1L)])
   })
 
   it("is differentiable", {
@@ -99,12 +112,49 @@ describe("vectorize", {
     )
   })
 
+  it("rejects an output without room for the batch axis at axis", {
+    expect_error(
+      jit(vectorize(function(x) sum(x), axis = 2L))(x),
+      "room for the batch axis at axis"
+    )
+  })
+
+  it("keeps the device of an array f closes over", {
+    cst <- nv_array(c(10, 20), dtype = "f32", device = "cpu:1")
+    out <- jit(vectorize(function(x) x + cst))(as_r(x)[, 1L:2L])
+    expect_equal(device(out), nv_device("cpu:1"))
+  })
+
+  it("calls a primitive that is not registered", {
+    prim_neg <- new_primitive(
+      "negate",
+      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
+      register = FALSE
+    )
+    prim_neg[["stablehlo"]] <- prim_negate[["stablehlo"]]
+    prim_neg[["vectorize"]] <- rule_vectorize()
+    out <- jit(vectorize(prim_neg))(x)
+    expect_equal(as_r(out), -as_r(x))
+  })
+
+  it("checks what a rule returns", {
+    prim_bad <- new_primitive(
+      "bad",
+      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
+      register = FALSE
+    )
+    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+      list(prim_sum(inputs[[1L]], axes = 1L))
+    })
+    expect_error(jit(vectorize(prim_bad))(x), "returned a wrong output 1")
+  })
+
   it("rejects an argument without the axis", {
     expect_error(jit(vectorize(function(x) x, axis = 3L))(x), "must have an axis")
   })
 
   it("rejects mapping over a value that is not an array", {
-    expect_error(jit(vectorize(function(x) x), static = "x")(x = "a"), "Can only map over arrays")
+    expect_error(jit(vectorize(function(x) x, args = "x"), static = "x")(x = "a"), "Can only map over arrays")
   })
 
   it("rejects a primitive that has no vectorize rule", {

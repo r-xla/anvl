@@ -360,6 +360,36 @@ resolve_arg_names <- function(f, x, arg) {
   x
 }
 
+# `x` (see `resolve_arg_names()`) for the argument `arg` of a transformation of
+# `f` such as `gradient()`, which must name formal arguments of `f`.
+resolve_transformation_args <- function(f, x, arg) {
+  x <- resolve_arg_names(f, x, arg)
+  if (!is.null(x) && !all(x %in% formalArgs(f))) {
+    cli_abort("{.arg {arg}} must be a subset of the formal arguments of {.arg f}.")
+  }
+  x
+}
+
+# The function a transformation of `f` such as `gradient()` returns: it has the
+# formals of `f`, must be called inside `jit()`, and hands the arguments it was
+# called with, evaluated, to `.impl`. The dotted names keep a formal of `f` from
+# shadowing them.
+transformation_fn <- function(f, .name, .impl) {
+  force(.impl)
+  out <- function() {
+    .args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+    if (is.null(current_descriptor(silent = TRUE))) {
+      cli_abort(c(
+        "{.fn {(.name)}} can only be called inside a {.fn jit}-compiled function.",
+        i = "Wrap the result of {.fn {(.name)}} in {.fn jit}, e.g. {.code jit({(.name)}(f))}."
+      ))
+    }
+    .impl(.args)
+  }
+  formals(out) <- formals2(f)
+  out
+}
+
 # The flat argument list a compile callback traces with, built from the `info`
 # pjrt's dispatcher hands it: a static leaf traces as its value, a dynamic one
 # as the aval the dispatcher already derived. There is deliberately no

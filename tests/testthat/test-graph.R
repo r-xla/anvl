@@ -19,6 +19,15 @@ describe("graph_desc_add's device", {
   })
 })
 
+describe("get_box_or_register_const's device", {
+  it("declares the device of an array another graph closed over", {
+    gval <- GraphValue(ConcreteArray(nv_array(c(1, 2), dtype = "f32", device = "cpu:1")))
+    desc <- local_descriptor()
+    get_box_or_register_const(desc, gval)
+    expect_equal(desc$devices, list(nv_device("cpu:1")))
+  })
+})
+
 test_that("trace_fn: simple test", {
   f <- function(x, y) {
     prim_add(x, y)

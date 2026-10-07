@@ -11,13 +11,17 @@ vectorize(f, args = NULL, axis = 1L)
 Function to vectorize.}
 
 \item{args}{(\code{character} | \code{integer} | \code{NULL})\cr
-Names or positions of the arguments to map over. If \code{NULL} (the default),
-all of them are mapped over.}
+Names or positions of the arguments to map over, like \code{vectorize.args} of
+\code{\link[base:Vectorize]{base::Vectorize()}}. If \code{NULL} (the default), every argument that is an
+array is mapped over, and plain R values -- such as static arguments of
+the enclosing \code{\link[=jit]{jit()}} -- are passed on unchanged.}
 
 \item{axis}{(\code{integer(1)})\cr
 The axis of the arguments in \code{args} that is mapped over, and the axis of
 the outputs along which the results are stacked. All arguments in \code{args}
-must have the same size along it.}
+must have the same size along it, and every output must have room for it:
+an output with \code{n} axes per slice can be stacked along axes \code{1} to \code{n + 1}.
+For another layout, transpose the arguments or results.}
 }
 \value{
 (\code{function})\cr
@@ -40,7 +44,11 @@ application of \code{f} unchanged. Every output of \code{f} is stacked along \co
 
 A primitive applied to a value that is mapped over needs a \code{vectorize} rule
 (see \code{\link[=rule_vectorize]{rule_vectorize()}}); calling one that has none raises an error.
-Values that are not mapped over can go through any primitive.
+Values that are not mapped over can go through any primitive. Without a rule
+so far are control flow (\code{\link[=prim_if]{prim_if()}}, \code{\link[=prim_while]{prim_while()}}, \code{\link[=prim_scan]{prim_scan()}}),
+\code{\link[=prim_reduce]{prim_reduce()}}, \code{\link[=prim_rng_bit_generator]{prim_rng_bit_generator()}}, \code{\link[=prim_convolution]{prim_convolution()}} and
+the decompositions \code{\link[=prim_qr]{prim_qr()}}, \code{\link[=prim_lu]{prim_lu()}}, \code{\link[=prim_svd]{prim_svd()}} and
+\code{\link[=prim_eigh]{prim_eigh()}}.
 }
 
 \examples{
@@ -52,10 +60,10 @@ x <- nv_array(matrix(1:6, nrow = 3), dtype = "f32")
 # one dot product per row of x, against the same y
 jit(vectorize(f, args = "x"))(x, nv_array(c(1, 2), dtype = "f32"))
 
-# map over the columns instead
-jit(vectorize(f, args = "x", axis = 2L))(x, nv_array(c(1, 2, 3), dtype = "f32"))
+# map over the columns instead: each column divided by its sum
+jit(vectorize(function(x) x / sum(x), axis = 2L))(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=rule_vectorize]{rule_vectorize()}}
+\code{\link[=rule_vectorize]{rule_vectorize()}}, \code{\link[=gradient]{gradient()}}
 }

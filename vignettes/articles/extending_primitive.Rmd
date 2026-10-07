@@ -325,10 +325,10 @@ grad_f <- jit(gradient(f))
 grad_f(x)[[1L]]
 ```
 
-And map it over a batch with `vectorize()`, here over the columns of `x`:
+And map it over a batch with `vectorize()`, here over the rows of `x`:
 
 ```{r}
-jit(vectorize(function(x) prim_repeat_along(x, times = 2L, axis = 1L), axis = 2L))(x)
+jit(vectorize(function(x) prim_repeat_along(x, times = 2L, axis = 1L)))(x)
 ```
 
 ## Contributing to the Package

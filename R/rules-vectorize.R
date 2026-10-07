@@ -63,7 +63,6 @@ for (prim in list(
   prim_popcnt,
   prim_round,
   prim_convert,
-  prim_bitcast_convert,
   prim_top_k,
   prim_chol,
   prim_triangular_solve
@@ -209,4 +208,38 @@ prim_gather[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, s
     p$unique_indices <- FALSE
   }
   list(do.call(prim_gather, c(list(x, idx), p)))
+})
+
+# anvl's bitcast unpacks into, or packs from, a leading axis, where the batch
+# axis is. The batch axis is kept in front of it.
+prim_bitcast_convert[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  x <- inputs[[1L]]
+  in_width <- dtype_width(dtype(x))
+  out_width <- dtype_width(as_dtype(params$dtype))
+  out <- if (in_width > out_width) {
+    move_axis(prim_bitcast_convert(x, params$dtype), 2L, 1L)
+  } else if (in_width < out_width) {
+    prim_bitcast_convert(move_axis(x, 1L, 2L), params$dtype)
+  } else {
+    prim_bitcast_convert(x, params$dtype)
+  }
+  list(out)
+})
+
+# The batch axis is a batching axis of `x`, the indices and the update, so each
+# slice of `x` only receives the updates of its own slice. An operand that is
+# not mapped over is broadcast, as every slice of the result needs its own `x`.
+# The update computation is kept as it is: it closes over constants only.
+prim_scatter[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  operands <- batch_operands(inputs[1:3], batched[1:3], size)
+  p <- params
+  p$x_batching_axes <- c(1L, p$x_batching_axes + 1L)
+  p$scatter_indices_batching_axes <- c(1L, p$scatter_indices_batching_axes + 1L)
+  p$inserted_window_axes <- p$inserted_window_axes + 1L
+  p$scatter_axes_to_x_axes <- p$scatter_axes_to_x_axes + 1L
+  p$index_vector_axis <- p$index_vector_axis + 1L
+  p$update_window_axes <- p$update_window_axes + 1L
+  # Sorted within one slice need not mean sorted across the batch.
+  p$indices_are_sorted <- FALSE
+  graph_desc_add(prim_scatter, c(operands, inputs[-(1:3)]), params = p, infer_fn = infer_scatter)
 })

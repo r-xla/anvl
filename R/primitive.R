@@ -6,7 +6,9 @@
 #' its `AnvlPrimitiveDef` as `attr(<fn>, "definition")`. The graph records the
 #' `AnvlPrimitiveDef` in each [`GraphStatement`].
 #' Note that `[[` and `[[<-` access the interpretation rules.
-#' To access other fields, use `$` and `$<-`.
+#' To access other fields, use `$` and `$<-`. [`new_primitive()`] stores the
+#' `AnvlPrimitive` in the field `fn`, so a rule can call the primitive it
+#' belongs to.
 #'
 #' A primitive is considered higher-order if it has subgraphs.
 #' @param name (`character(1)`)\cr
@@ -136,6 +138,7 @@ new_primitive <- function(
 
   jit_fn <- jit(fn, static = static)
   attr(jit_fn, "definition") <- definition
+  definition$fn <- jit_fn
   class(jit_fn) <- c("AnvlPrimitive", class(jit_fn))
 
   if (register) {

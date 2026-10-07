@@ -169,6 +169,8 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
 - `tests/testthat/test-primitives-reverse.R` -- sources `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
+  (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 

@@ -27,9 +27,9 @@ A function of the parameter's value and \code{size} that returns its new value.
 How a parameter of a primitive changes when its operands gain a leading
 batch axis of size \code{size}, for \code{\link[=rule_vectorize]{rule_vectorize()}}:
 \itemize{
-\item \code{param_axes()}: axis indices, which move one axis further (\code{axes + 1}).
+\item \code{param_axes()}: axis indices, which move one axis further (\code{axes + 1L}).
 \item \code{param_axis_map()}: one axis per axis of an operand, such as a
-permutation; the batch axis maps to the batch axis (\code{c(1, axes + 1)}).
+permutation; the batch axis maps to the batch axis (\code{c(1L, axes + 1L)}).
 \item \code{param_shape()}: a shape, which gains the batch axis (\code{c(size, shape)}).
 \item \code{param_per_axis()}: one entry per axis of an operand, with \code{value} for the
 batch axis.

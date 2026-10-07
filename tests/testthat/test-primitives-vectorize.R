@@ -108,7 +108,7 @@ describe("prim_psigamma", {
     autotest_vectorize(
       prim_psigamma,
       x = rand_array(c(3L, 2L), sample = positive),
-      deriv = rand_array(c(3L, 2L), sample = \(n) rep(1, n))
+      deriv = rand_array(c(3L, 2L), sample = \(n) sample(0:2, n, replace = TRUE))
     )
   })
 })
@@ -159,13 +159,29 @@ describe("prim_ifelse", {
 
 describe("prim_convert", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(function(x) prim_convert(x, "f64"), x = rand_array(c(3L, 2L)))
   })
 })
 
 describe("prim_bitcast_convert", {
-  it("vectorizes", {
+  it("vectorizes between data types of one width", {
+    withr::local_seed(1L)
     autotest_vectorize(function(x) prim_bitcast_convert(x, "i32"), x = rand_array(c(3L, 2L)))
+  })
+
+  it("vectorizes to a narrower data type", {
+    withr::local_seed(1L)
+    autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = rand_array(c(3L, 2L)))
+    autotest_vectorize(function(x) prim_bitcast_convert(x, "i16"), x = rand_array(3L))
+  })
+
+  it("vectorizes to a wider data type", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x) prim_bitcast_convert(x, "f32"),
+      x = rand_array(c(3L, 4L, 2L), dtype = "ui8", sample = \(n) sample(0:255, n, replace = TRUE))
+    )
   })
 })
 
@@ -207,24 +223,28 @@ describe("cumulative primitives", {
 
 describe("prim_rev", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(function(x) prim_rev(x, axes = 2L), x = rand_array(c(3L, 2L, 4L)))
   })
 })
 
 describe("prim_transpose", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(function(x) prim_transpose(x, perm = c(2L, 1L)), x = rand_array(c(3L, 2L, 4L)))
   })
 })
 
 describe("prim_reshape", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(function(x) prim_reshape(x, shape = c(4L, 2L)), x = rand_array(c(3L, 2L, 4L)))
   })
 })
 
 describe("prim_broadcast_in_axes", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_broadcast_in_axes(x, shape = c(2L, 5L), broadcast_axes = 1L),
       x = rand_array(c(3L, 2L))
@@ -234,6 +254,7 @@ describe("prim_broadcast_in_axes", {
 
 describe("prim_concatenate", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(
       function(x, y) prim_concatenate(x, y, axis = 1L),
       x = rand_array(c(3L, 2L, 2L)),
@@ -244,6 +265,7 @@ describe("prim_concatenate", {
 
 describe("prim_static_slice", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_static_slice(x, start_indices = c(1L, 2L), end_indices = c(2L, 4L), strides = c(1L, 2L)),
       x = rand_array(c(3L, 2L, 4L))
@@ -253,28 +275,55 @@ describe("prim_static_slice", {
 
 describe("prim_pad", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_pad(x, 0, c(1L, 0L), c(0L, 1L), c(1L, 0L)),
       x = rand_array(c(3L, 2L, 4L))
+    )
+  })
+
+  it("refuses to map over the padding value", {
+    f <- function(x, value) prim_pad(x, value, c(1L, 0L), c(0L, 1L), c(0L, 0L))
+    expect_error(
+      jit(vectorize(f, args = "value"))(rand_array(c(2L, 4L)), rand_array(3L)),
+      "cannot map over operand 2 of `prim_pad\\(\\)`"
     )
   })
 })
 
 describe("prim_dynamic_slice", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_dynamic_slice(x, 2L, nv_scalar(1L, dtype = "i32"), slice_sizes = c(1L, 2L)),
       x = rand_array(c(3L, 2L, 4L))
+    )
+  })
+
+  it("refuses to map over a start index", {
+    f <- function(x, i) prim_dynamic_slice(x, i, 1L, slice_sizes = c(1L, 2L))
+    expect_error(
+      jit(vectorize(f, args = "i"))(rand_array(c(2L, 4L)), nv_array(1:3, dtype = "i32")),
+      "start indices of `prim_dynamic_slice\\(\\)`"
     )
   })
 })
 
 describe("prim_dynamic_update_slice", {
   it("vectorizes", {
+    withr::local_seed(1L)
     autotest_vectorize(
       function(x, update) prim_dynamic_update_slice(x, update, 1L, 2L),
       x = rand_array(c(3L, 2L, 4L)),
       update = rand_array(c(3L, 1L, 2L))
+    )
+  })
+
+  it("refuses to map over a start index", {
+    f <- function(x, i) prim_dynamic_update_slice(x, nv_array(c(1, 2), shape = c(1L, 2L), dtype = "f32"), i, 1L)
+    expect_error(
+      jit(vectorize(f, args = "i"))(rand_array(c(2L, 4L)), nv_array(1:3, dtype = "i32")),
+      "start indices of `prim_dynamic_update_slice\\(\\)`"
     )
   })
 })
@@ -363,6 +412,89 @@ describe("prim_gather", {
       idx = rand_array(c(3L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE))
     )
   })
+
+  it("vectorizes a gather with batching axes of its own", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx) {
+        prim_gather(
+          x,
+          idx,
+          slice_sizes = c(1L, 1L),
+          offset_axes = integer(),
+          collapsed_slice_axes = 2L,
+          x_batching_axes = 1L,
+          start_indices_batching_axes = 1L,
+          start_index_map = 2L,
+          index_vector_axis = 3L
+        )
+      },
+      x = rand_array(c(3L, 2L, 5L)),
+      idx = rand_array(c(3L, 2L, 3L, 1L), dtype = "i32", sample = \(n) sample(1:5, n, replace = TRUE))
+    )
+  })
+})
+
+describe("prim_scatter", {
+  scatter_rows <- function(x, idx, update, update_fn = NULL) {
+    prim_scatter(
+      x,
+      idx,
+      update,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      update_fn = update_fn
+    )
+  }
+
+  it("vectorizes a scatter of single elements", {
+    withr::local_seed(1L)
+    # Two distinct indices per slice, so that which update wins is defined.
+    idx <- nv_array(c(1L, 2L, 3L, 4L, 5L, 1L), shape = c(3L, 2L, 1L), dtype = "i32")
+    autotest_vectorize(
+      function(x, idx, update) scatter_rows(x, idx, update),
+      x = rand_array(c(3L, 5L)),
+      idx = idx,
+      update = rand_array(c(3L, 2L))
+    )
+  })
+
+  it("vectorizes a scatter with an update function", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx, update) scatter_rows(x, idx, update, update_fn = function(old, new) old + new),
+      x = rand_array(c(3L, 5L)),
+      idx = rand_array(c(3L, 4L, 1L), dtype = "i32", sample = \(n) sample(1:5, n, replace = TRUE)),
+      update = rand_array(c(3L, 4L))
+    )
+  })
+
+  it("vectorizes a scatter of rows", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx, update) {
+        prim_scatter(
+          x,
+          idx,
+          update,
+          update_window_axes = 2L,
+          inserted_window_axes = 1L,
+          x_batching_axes = integer(),
+          scatter_indices_batching_axes = integer(),
+          scatter_axes_to_x_axes = 1L,
+          index_vector_axis = 2L,
+          update_fn = function(old, new) old + new
+        )
+      },
+      x = rand_array(c(3L, 4L, 3L)),
+      idx = rand_array(c(3L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE)),
+      update = rand_array(c(3L, 2L, 3L))
+    )
+  })
 })
 
 describe("prim_chol", {
@@ -407,6 +539,153 @@ describe("prim_triangular_solve", {
 
 describe("prim_print", {
   it("vectorizes", {
+    withr::local_seed(1L)
     capture.output(autotest_vectorize(prim_print, x = rand_array(c(3L, 2L))))
+  })
+})
+
+# The rules see the batch axis first wherever it is; mapping over another axis
+# checks that `vectorize()` moves it there and back for the rules that do more
+# than shift an axis, and operands of more axes check their axis bookkeeping.
+describe("vectorize rules that rearrange axes", {
+  dot_general <- function(contracting, batching) {
+    function(lhs, rhs) prim_dot_general(lhs, rhs, contracting_axes = contracting, batching_axes = batching)
+  }
+
+  it("vectorize prim_dot_general along other axes and with more axes", {
+    withr::local_seed(1L)
+    f <- dot_general(list(2L, 1L), list(integer(), integer()))
+    autotest_vectorize(f, lhs = rand_array(c(3L, 2L, 4L)), rhs = rand_array(c(3L, 4L)), axis = 2L)
+    g <- dot_general(list(3L, 1L), list(integer(), integer()))
+    autotest_vectorize(g, lhs = rand_array(c(3L, 2L, 3L, 4L)), rhs = rand_array(c(3L, 4L, 5L)), axis = 3L)
+    h <- dot_general(list(c(2L, 4L), c(3L, 1L)), list(1L, 2L))
+    autotest_vectorize(
+      h,
+      lhs = rand_array(c(3L, 2L, 4L, 5L, 6L)),
+      rhs = rand_array(c(3L, 6L, 2L, 4L, 3L)),
+      axis = 2L
+    )
+  })
+
+  it("vectorize prim_gather along other axes and with more axes", {
+    withr::local_seed(1L)
+    rows <- function(x, idx) {
+      prim_gather(
+        x,
+        idx,
+        slice_sizes = c(1L, 3L, 2L),
+        offset_axes = c(2L, 3L),
+        collapsed_slice_axes = 1L,
+        x_batching_axes = integer(),
+        start_indices_batching_axes = integer(),
+        start_index_map = 1L,
+        index_vector_axis = 3L
+      )
+    }
+    autotest_vectorize(
+      rows,
+      x = rand_array(c(3L, 4L, 3L, 2L)),
+      idx = rand_array(c(3L, 2L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE)),
+      axis = 2L
+    )
+    autotest_vectorize(
+      rows,
+      x = rand_array(c(3L, 4L, 3L, 2L)),
+      idx = rand_array(c(3L, 2L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE)),
+      axis = 3L
+    )
+  })
+
+  it("vectorize prim_scatter along other axes and with more axes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx, update) {
+        prim_scatter(
+          x,
+          idx,
+          update,
+          update_window_axes = c(2L, 3L),
+          inserted_window_axes = 1L,
+          x_batching_axes = integer(),
+          scatter_indices_batching_axes = integer(),
+          scatter_axes_to_x_axes = 1L,
+          index_vector_axis = 2L,
+          update_fn = function(old, new) old + new
+        )
+      },
+      x = rand_array(c(3L, 4L, 3L, 2L)),
+      idx = rand_array(c(3L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE)),
+      update = rand_array(c(3L, 2L, 3L, 2L)),
+      axis = 2L
+    )
+  })
+
+  it("vectorize the slicing primitives along other axes", {
+    withr::local_seed(1L)
+    x <- rand_array(c(3L, 2L, 4L))
+    autotest_vectorize(
+      function(x) prim_dynamic_slice(x, 2L, 1L, slice_sizes = c(1L, 2L)),
+      x = x,
+      axis = 3L
+    )
+    autotest_vectorize(
+      function(x, update) prim_dynamic_update_slice(x, update, 1L, 2L),
+      x = x,
+      update = rand_array(c(3L, 1L, 2L)),
+      axis = 2L
+    )
+    autotest_vectorize(
+      function(x) prim_static_slice(x, start_indices = c(1L, 2L), end_indices = c(2L, 4L), strides = c(1L, 2L)),
+      x = x,
+      axis = 3L
+    )
+    autotest_vectorize(function(x) prim_pad(x, 0, c(1L, 0L), c(0L, 1L), c(1L, 0L)), x = x, axis = 2L)
+  })
+
+  it("vectorize the reshaping primitives along other axes", {
+    withr::local_seed(1L)
+    x <- rand_array(c(3L, 2L, 4L))
+    autotest_vectorize(function(x) prim_transpose(x, perm = c(2L, 1L)), x = x, axis = 3L)
+    autotest_vectorize(function(x) prim_reshape(x, shape = c(4L, 2L)), x = x, axis = 2L)
+    autotest_vectorize(
+      function(x) prim_broadcast_in_axes(x, shape = c(5L, 2L, 4L), broadcast_axes = c(2L, 3L)),
+      x = x,
+      axis = 3L
+    )
+    autotest_vectorize(
+      function(x, y) prim_concatenate(x, y, axis = 2L),
+      x = x,
+      y = rand_array(c(3L, 2L, 1L)),
+      axis = 3L
+    )
+  })
+
+  it("vectorize prim_sort, prim_top_k and prim_bitcast_convert along other axes", {
+    withr::local_seed(1L)
+    x <- rand_array(c(3L, 2L, 4L))
+    autotest_vectorize(function(x, y) prim_sort(list(x, y), axis = 1L), x = x, y = rand_array(c(3L, 2L, 4L)), axis = 3L)
+    autotest_vectorize(function(x) prim_top_k(x, k = 2L, indices = TRUE), x = x, axis = 2L)
+    autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = x, axis = 2L)
+    autotest_vectorize(
+      function(x) prim_bitcast_convert(x, "f32"),
+      x = rand_array(c(3L, 4L, 2L), dtype = "ui8", sample = \(n) sample(0:255, n, replace = TRUE)),
+      axis = 2L
+    )
+  })
+})
+
+# Every primitive with a vectorize rule must have been applied by one of the
+# `autotest_vectorize()` calls above (see helper-vectorize.R).
+describe("vectorize rules", {
+  it("are all tested", {
+    nms <- names(asNamespace("anvl"))
+    with_rule <- Filter(
+      function(nm) {
+        inherits(get(nm, asNamespace("anvl")), "AnvlPrimitive") && !is.null(get(nm, asNamespace("anvl"))[["vectorize"]])
+      },
+      nms[grepl("^prim_", nms)]
+    )
+    untested <- setdiff(sub("^prim_", "", with_rule), names(vectorize_tested))
+    expect_identical(untested, character())
   })
 })

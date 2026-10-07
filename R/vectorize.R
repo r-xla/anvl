@@ -13,20 +13,28 @@
 #' @param f (`function`)\cr
 #'   Function to vectorize.
 #' @param args (`character` | `integer` | `NULL`)\cr
-#'   Names or positions of the arguments to map over. If `NULL` (the default),
-#'   all of them are mapped over.
+#'   Names or positions of the arguments to map over, like `vectorize.args` of
+#'   [base::Vectorize()]. If `NULL` (the default), every argument that is an
+#'   array is mapped over, and plain R values -- such as static arguments of
+#'   the enclosing [`jit()`] -- are passed on unchanged.
 #' @param axis (`integer(1)`)\cr
 #'   The axis of the arguments in `args` that is mapped over, and the axis of
 #'   the outputs along which the results are stacked. All arguments in `args`
-#'   must have the same size along it.
+#'   must have the same size along it, and every output must have room for it:
+#'   an output with `n` axes per slice can be stacked along axes `1` to `n + 1`.
+#'   For another layout, transpose the arguments or results.
 #' @return (`function`)\cr
 #'   Has the same formals as `f` and must be called inside [`jit()`]. It returns
 #'   what `f` returns, with every array gaining the batch axis at `axis`.
 #' @section Supported Primitives:
 #' A primitive applied to a value that is mapped over needs a `vectorize` rule
 #' (see [`rule_vectorize()`]); calling one that has none raises an error.
-#' Values that are not mapped over can go through any primitive.
-#' @seealso [`rule_vectorize()`]
+#' Values that are not mapped over can go through any primitive. Without a rule
+#' so far are control flow ([`prim_if()`], [`prim_while()`], [`prim_scan()`]),
+#' [`prim_reduce()`], [`prim_rng_bit_generator()`], [`prim_convolution()`] and
+#' the decompositions [`prim_qr()`], [`prim_lu()`], [`prim_svd()`] and
+#' [`prim_eigh()`].
+#' @seealso [`rule_vectorize()`], [`gradient()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' # f is written for a single vector
@@ -36,28 +44,15 @@
 #' # one dot product per row of x, against the same y
 #' jit(vectorize(f, args = "x"))(x, nv_array(c(1, 2), dtype = "f32"))
 #'
-#' # map over the columns instead
-#' jit(vectorize(f, args = "x", axis = 2L))(x, nv_array(c(1, 2, 3), dtype = "f32"))
+#' # map over the columns instead: each column divided by its sum
+#' jit(vectorize(function(x) x / sum(x), axis = 2L))(x)
 vectorize <- function(f, args = NULL, axis = 1L) {
   assert_function(f)
-  mapped_args <- resolve_arg_names(f, args, "args")
-  if (!is.null(mapped_args) && !all(mapped_args %in% formalArgs(f))) {
-    cli_abort("{.arg args} must be a subset of the formal arguments of {.arg f}.")
-  }
+  mapped_args <- resolve_transformation_args(f, args, "args")
   axis <- as.integer(checkmate::assert_int(axis, lower = 1L))
-  f_vectorized <- function() {
-    call_args <- as.list(match.call())[-1L]
-    call_args <- lapply(call_args, eval, envir = parent.frame())
-    if (is.null(current_descriptor(silent = TRUE))) {
-      cli_abort(c(
-        "{.fn vectorize} can only be called inside a {.fn jit}-compiled function.",
-        i = "Wrap the result of {.fn vectorize} in {.fn jit}, e.g. {.code jit(vectorize(f))}."
-      ))
-    }
+  transformation_fn(f, "vectorize", function(call_args) {
     vectorize_call(f, call_args, mapped_args, axis)
-  }
-  formals(f_vectorized) <- formals2(f)
-  f_vectorized
+  })
 }
 
 # Traces `f` on one slice of the arguments `mapped_args` names and replays the
@@ -67,7 +62,7 @@ vectorize_call <- function(f, call_args, mapped_args, axis) {
   args_flat <- flatten(call_args)
   in_tree <- build_tree(call_args)
   is_mapped <- if (is.null(mapped_args)) {
-    rep(TRUE, length(args_flat))
+    vapply(args_flat, \(x) is_graph_box(x) || is_anvl_array(x), logical(1L))
   } else {
     pjrt::tree_leaf_mask(in_tree, mapped_args)
   }
@@ -110,25 +105,24 @@ vectorize_call <- function(f, call_args, mapped_args, axis) {
 
   graph <- trace_fn(f, args_flat = trace_args, in_tree = in_tree)
   is_input <- !graph$is_static_flat
-  # An R value the body gave a data type materializes at that data type, as for
-  # `gradient()` (see `gradient_operands()`).
   operands <- Map(
-    function(x, input, mapped) {
-      if (is_rdata_box(x)) {
-        x <- materialize_rdata(x, input$aval$dtype)
-      } else if (is_valid_r(x)) {
-        x <- build_r_at(x, input$aval$dtype, desc)
-      }
-      box <- maybe_box_arrayish(x, desc)
-      if (mapped) move_axis(box, axis, 1L) else box
-    },
-    args_flat[is_input],
-    graph$inputs,
+    function(box, mapped) if (mapped) move_axis(box, axis, 1L) else box,
+    graph_operands(graph, args_flat),
     is_mapped[is_input]
   )
 
   outs <- graph_vectorize(graph, operands, is_mapped[is_input], size)
-  unflatten(graph$out_tree, lapply(outs, move_axis, from = 1L, to = axis))
+  outs <- lapply(seq_along(outs), function(j) {
+    out <- outs[[j]]
+    if (naxes(out) < axis) {
+      cli_abort(c(
+        "Every output must have room for the batch axis at axis {.val {axis}}.",
+        x = "Output {j} has shape {shape_repr(shape(out)[-1L])}, so it can be stacked along axes 1 to {naxes(out)} only."
+      ))
+    }
+    move_axis(out, from = 1L, to = axis)
+  })
+  unflatten(graph$out_tree, outs)
 }
 
 # Replays `graph` into the current descriptor as a function of `inputs` (boxes,
@@ -160,10 +154,10 @@ graph_vectorize <- function(graph, inputs, batched, size) {
     in_boxes <- lapply(call$inputs, box_of)
     in_batched <- vapply(call$inputs, batched_of, logical(1L))
     if (!any(in_batched)) {
-      desc$statements$add(GraphStatement(call$primitive, lapply(in_boxes, \(b) b$gnode), call$params, call$outputs))
-      out_boxes <- register_gvals(desc, call$outputs)
+      out_boxes <- replay_statement(desc, call, lapply(in_boxes, \(b) b$gnode))
     } else {
       out_boxes <- apply_vectorize_rule(call$primitive, in_boxes, in_batched, call$params, size)
+      check_vectorized_outputs(call, out_boxes, size)
     }
     for (j in seq_along(call$outputs)) {
       boxes[[call$outputs[[j]]]] <- out_boxes[[j]]
@@ -197,8 +191,30 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size) {
   for (nm in names(rule$params)) {
     params[[nm]] <- rule$params[[nm]](params[[nm]], size)
   }
-  out <- do.call(primitive_env[[primitive$name]], c(operands, params))
+  out <- do.call(primitive$fn, c(operands, params))
   if (is_graph_box(out)) list(out) else out
+}
+
+# A vectorize rule must return what the call returned, each with the batch axis
+# in front.
+check_vectorized_outputs <- function(call, outputs, size) {
+  name <- paste0("prim_", call$primitive$name)
+  if (length(outputs) != length(call$outputs)) {
+    cli_abort(
+      "Internal error: the vectorize rule of {.fn {name}} returned {length(outputs)} output{?s}, not {length(call$outputs)}."
+    )
+  }
+  for (j in seq_along(outputs)) {
+    want <- call$outputs[[j]]$aval
+    want_shape <- c(size, shape(want))
+    got <- outputs[[j]]
+    if (!identical(as.integer(shape(got)), as.integer(want_shape)) || dtype(got) != dtype(want)) {
+      cli_abort(c(
+        "Internal error: the vectorize rule of {.fn {name}} returned a wrong output {j}.",
+        x = "Expected {.val {as.character(dtype(want))}} of shape {shape_repr(want_shape)}, got {.val {as.character(dtype(got))}} of shape {shape_repr(shape(got))}."
+      ))
+    }
+  }
 }
 
 #' @title Vectorize Rule
@@ -257,9 +273,9 @@ rule_vectorize <- function(fn = NULL, params = list(), scalar = integer(), unbat
 #' How a parameter of a primitive changes when its operands gain a leading
 #' batch axis of size `size`, for [`rule_vectorize()`]:
 #'
-#' * `param_axes()`: axis indices, which move one axis further (`axes + 1`).
+#' * `param_axes()`: axis indices, which move one axis further (`axes + 1L`).
 #' * `param_axis_map()`: one axis per axis of an operand, such as a
-#'   permutation; the batch axis maps to the batch axis (`c(1, axes + 1)`).
+#'   permutation; the batch axis maps to the batch axis (`c(1L, axes + 1L)`).
 #' * `param_shape()`: a shape, which gains the batch axis (`c(size, shape)`).
 #' * `param_per_axis()`: one entry per axis of an operand, with `value` for the
 #'   batch axis.
@@ -301,12 +317,6 @@ param_per_axis <- function(value) {
 
 param_kind <- function(fn) {
   structure(fn, class = "anvl_param_kind")
-}
-
-#' @export
-print.anvl_rule_vectorize <- function(x, ...) {
-  cat("<anvl_rule_vectorize>\n")
-  invisible(x)
 }
 
 # `x` with a leading batch axis of size `size`: as it is if it already has one,

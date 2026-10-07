@@ -532,6 +532,7 @@ get_box_or_register_const <- function(desc, x) {
   # it, so an array `desc` already holds is matched by itself: the box returned
   # may then be of another GraphValue than `x`.
   if (is_concrete_array(x$aval)) {
+    desc$devices <- c(desc$devices, placement_device(x$aval$data))
     known <- desc$array_to_gval[[x$aval$data]]
     if (!is.null(known)) {
       return(desc$gval_to_box[[known]])
@@ -657,6 +658,13 @@ substitute_gnodes <- function(graph, map) {
 # array (see `get_box_or_register_const()`).
 register_consts <- function(desc, consts) {
   lapply(consts, get_box_or_register_const, desc = desc)
+}
+
+# Records `call` into `desc` unchanged, reading the gnodes `inputs` in place of
+# its own, and returns the boxes of its outputs, which it shares with `call`.
+replay_statement <- function(desc, call, inputs) {
+  desc$statements$add(GraphStatement(call$primitive, inputs, call$params, call$outputs))
+  register_gvals(desc, call$outputs)
 }
 
 register_inputs <- function(desc, inputs) {

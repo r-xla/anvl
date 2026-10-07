@@ -113,6 +113,7 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 
