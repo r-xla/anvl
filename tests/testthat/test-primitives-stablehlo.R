@@ -845,23 +845,65 @@ describe("prim_while", {
   })
 })
 
-test_that("prim_chol", {
-  A <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f64")
-  L <- as_array(prim_chol(A, lower = TRUE))
-  expect_equal(L[1, 1], 2)
-  expect_equal(L[2, 1], 1)
-  expect_equal(L[2, 2], sqrt(2), tolerance = 1e-5)
-  # Verify L %*% t(L) = A
-  expect_equal(L %*% t(L), matrix(c(4, 2, 2, 3), nrow = 2), tolerance = 1e-5)
-})
+describe("prim_chol", {
+  random_spd <- function(n) {
+    m <- matrix(rnorm(n * n), n, n)
+    crossprod(m) + diag(n)
+  }
 
-test_that("prim_chol zeros out non-triangular part", {
-  A <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f64")
-  L <- as_array(prim_chol(A, lower = TRUE))
-  expect_equal(L[1, 2], 0)
+  it("matches base R chol() for either triangle in f32 and f64", {
+    withr::local_seed(1L)
+    A <- random_spd(20L)
+    for (dt in c("f32", "f64")) {
+      tol <- if (dt == "f64") 1e-10 else 1e-4
+      x <- nv_array(A, dtype = dt)
+      U <- prim_chol(x, lower = FALSE)
+      L <- prim_chol(x, lower = TRUE)
+      expect_dtype(U, dt)
+      expect_equal(as_array(U), chol(A), tolerance = tol)
+      expect_equal(as_array(L), t(chol(A)), tolerance = tol)
+    }
+  })
 
-  U <- as_array(prim_chol(A, lower = FALSE))
-  expect_equal(U[2, 1], 0)
+  it("zeros out the triangle it does not compute", {
+    A <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f64")
+    expect_equal(as_array(prim_chol(A, lower = TRUE))[1L, 2L], 0)
+    expect_equal(as_array(prim_chol(A, lower = FALSE))[2L, 1L], 0)
+  })
+
+  it("fills the factor of a matrix that is not positive definite with NaN", {
+    A <- diag(c(1, 2, -1, 3))
+    for (dt in c("f32", "f64")) {
+      for (lower in c(TRUE, FALSE)) {
+        out <- as_array(prim_chol(nv_array(A, dtype = dt), lower = lower))
+        tri <- if (lower) lower.tri(A, diag = TRUE) else upper.tri(A, diag = TRUE)
+        expect_true(all(is.nan(out[tri])))
+        expect_true(all(out[!tri] == 0))
+      }
+    }
+  })
+
+  it("factors every matrix of a batch, and only the failing one to NaN", {
+    withr::local_seed(2L)
+    n <- 5L
+    a <- array(0, c(2L, 3L, n, n))
+    for (i in 1:2) {
+      for (j in 1:3) {
+        a[i, j, , ] <- random_spd(n)
+      }
+    }
+    a[1L, 2L, , ] <- -diag(n)
+    out <- as_array(prim_chol(nv_array(a, dtype = "f64"), lower = TRUE))
+    for (i in 1:2) {
+      for (j in 1:3) {
+        if (i == 1L && j == 2L) {
+          expect_true(all(is.nan(out[i, j, , ][lower.tri(diag(n), diag = TRUE)])))
+        } else {
+          expect_equal(out[i, j, , ], t(chol(a[i, j, , ])), tolerance = 1e-10)
+        }
+      }
+    }
+  })
 })
 
 test_that("prim_triangular_solve", {
