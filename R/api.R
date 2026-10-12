@@ -3755,7 +3755,7 @@ nv_squeeze <- function(x, axes = NULL) {
         cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
       }
     }
-    new_shape <- shp[-axes]
+    new_shape <- shp[setdiff(seq_along(shp), axes)]
   }
   if (length(new_shape) == 0L) {
     new_shape <- integer(0L)

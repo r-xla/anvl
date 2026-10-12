@@ -1293,6 +1293,10 @@ describe("nv_squeeze", {
       nv_array(1:6, shape = c(6, 1))
     )
   })
+  it("is a no-op for no axes", {
+    x <- nv_array(1:6, shape = c(1, 6, 1))
+    expect_equal(shape(nv_squeeze(x, axes = integer(0L))), c(1L, 6L, 1L))
+  })
   it("errors when squeezing non-1 axis", {
     expect_error(
       nv_squeeze(nv_array(1:6, shape = c(2, 3)), axes = 1L),
