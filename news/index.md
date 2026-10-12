@@ -2,6 +2,12 @@
 
 ## anvl (development version)
 
+- Bugfix:
+  [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md),
+  [`nv_var()`](https://r-xla.github.io/anvl/reference/nv_var.md) and
+  [`nv_sd()`](https://r-xla.github.io/anvl/reference/nv_sd.md) no longer
+  overflow on an integer input, which is now summed at the default
+  float.
 - New
   [`nv_bool()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md),
   `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`,
