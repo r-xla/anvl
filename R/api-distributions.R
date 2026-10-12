@@ -1155,24 +1155,26 @@ basym <- function(a, b, lambda, op_dtype) {
 
 # The Binomial distribution function at whole `k`, for whole `n` with
 # 0 <= k < n and 0 < p < 1, through the incomplete beta function
-# P(X > k) = I_p(k + 1, n - k), evaluated as in R's `pbeta()` (TOMS 708). With
-# lambda = a - (a + b) x for I_x(a, b), the tail on the far side of the mean,
-# lambda >= 0, is computed directly; the other comes as its complement.
+# P(X > k) = I_p(k + 1, n - k), evaluated as in R's `pbeta()` (TOMS 708,
+# DiDonato and Morris (1992)).
 #
-# For large a and b with lambda small relative to them the asymptotic expansion
-# `basym()` is used. Everywhere else the continued fraction `bfrac()` converges
-# within a few dozen iterations; its leading factor x^a (1 - x)^b / B(a, b) is
-# the same in both tails, (n - k) p dbinom(k), and is taken from the saddle
-# point density. An element whose continued fraction has not converged within
-# 1000 iterations is NaN.
+# For large beta parameters near the mean, we use the asymptotic expansion
+# `basym()`. Otherwise we use the continued fraction from TOMS 708's `bfrac()`,
+# which typically converges within a few dozen iterations.
+# An element whose continued fraction has not converged within 1000 iterations
+# is NaN.
 binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
   is_f32 <- op_dtype == "f32"
   eps <- if (is_f32) 2^-23 else 2^-52
   n_terms <- if (is_f32) 4L else 8L
 
   q <- 1 - p
+  # lambda = (k + 1) - (n + 1) p with reduced error
   lambda <- sub_exact_prod(k + 1, n + 1, p)
-  # `upper`: the directly computed tail is P(X > k), otherwise P(X <= k)
+  # Choose the beta-function orientation with lambda >= 0.
+  # If upper is true, compute I_p(k + 1, n - k) = P(X > k).
+  # Otherwise compute I_{1-p}(n - k, k + 1) = P(X <= k).
+  # Complement taken later if the caller requests the other tail.
   upper <- lambda >= 0
   a <- nv_ifelse(upper, k + 1, n - k)
   b <- nv_ifelse(upper, n - k, k + 1)
@@ -1181,11 +1183,12 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
   lambda <- nv_abs(lambda)
 
   ab_min <- nv_pmin(a, b)
+  # Identify when to use asymptotic expansion method `basym()`
   use_asym <- (ab_min > 1000) & (lambda <= 0.03 * ab_min)
   # The expansion is long, and only needed for large a and b, so it is skipped
-  # at run time where no element needs it. That takes a loop of at most one
-  # trip: XLA turns an `nv_if()` of elementwise branches into a select, which
-  # computes both.
+  # at run time where no element needs it.
+  # A while loop that runs at most once lets us skip that work: XLA may lower
+  # `nv_if()` into a select, which computes both branches.
   log_asym <- nv_while(
     init = list(pending = nv_any(use_asym), value = nv_fill_like(lambda, 0)),
     cond = function(pending, value) pending,
@@ -1193,6 +1196,8 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
       list(
         pending = nv_scalar(FALSE),
         value = basym(
+          # This runs for the whole array if any element needs the expansion.
+          # Give the other elements safe inputs within the expansion's domain.
           nv_ifelse(use_asym, a, 2000),
           nv_ifelse(use_asym, b, 2000),
           nv_ifelse(use_asym, lambda, 0),
@@ -1202,26 +1207,31 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
     }
   )$value
 
+  # Set up constants for the continued fraction.
   c <- lambda + 1
-  c0 <- b / a
   c1 <- 1 / a + 1
   yp1 <- y + 1
   float_dtype <- dtype(lambda)
 
-  # TOMS 708 carries the convergents' numerators and denominators (an, anp1)
-  # and (bn, bnp1), rescaled by bnp1 every step, so that bnp1 is 1 and anp1
-  # is the current approximation r. Only an, bn and r are therefore carried,
-  # starting from the rescaled first step. The counters TOMS 708 also carries
-  # (n, p, s) are functions of the step m, which is the same for every element.
-  # Converged elements keep their r; their an and bn are left to run on, as they
-  # are no longer read.
+  # The continued fraction uses the previous and current numerator and
+  # denominator. Between loop iterations, we divide all four by the current
+  # denominator. This makes it 1 and the current numerator equal to the
+  # approximation r, so we only need to keep three values: an, bn, and r.
+  #
+  # The other counters used by TOMS 708 can be calculated from the step
+  # number m, which is shared by all array elements.
+  #
+  # Once an element converges, we keep its answer r. Its an and bn values
+  # continue to change while other elements finish, but no longer affect
+  # its answer.
   ab <- a + b
   # 1 / tau, see `step()`
   u <- 1 / (a + 1)
 
-  # 2^-e for x = f 2^e with 1 <= f < 2, from x's exponent bits: an exact
-  # rescaling, and no division. It is applied after every step; see `step()`
-  # for what that keeps in range.
+  # For positive normal x, read its exponent bits to find the power of two
+  # that scales it into [1, 2). This avoids division. Scaling is exact while
+  # the results remain normal; smaller values can still underflow. We use
+  # this after each step; see the comments above `step()` for the limits.
   is_f32 <- op_dtype == "f32"
   bits_dtype <- if (is_f32) "ui32" else "ui64"
   n_mantissa <- if (is_f32) 23L else 52L
@@ -1230,54 +1240,41 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
     e <- nv_shift_right_logical(nv_bitcast_convert(x, bits_dtype), n_mantissa)
     nv_bitcast_convert(nv_shift_left(exponent_max - e, n_mantissa), float_dtype)
   }
-  # Step m of the continued fraction. TOMS 708's terms are
-  #   alpha = p (p + c0) e^2 w x^2,   beta = w x / s + m + e' (c + m (y + 1)),
-  # with s = a + 2 m - 1, w = m (b - m), p = (a + m - 1) / a, e = a / s,
-  # e' = (t + 1) / (c1 + 2 t) and t = m / a. Here every term is scaled by
-  # k_m = s (s + 2) / tau^2, tau = a + 1 (an equivalence transformation: beta by
-  # k_m and alpha by k_m k_(m-1), which leaves the fraction's value alone),
-  # which clears every division from the step:
-  #   alpha' = (a + m - 1) ((a + b + m - 1) x) (w x) (s + 2) (s - 2) / tau^4,
-  #   beta' = (w x (s + 2) + m s (s + 2) + (a + m) s (c + m (y + 1))) / tau^2,
-  # with k_0 = (a + 1) / tau^2, so that the factor s - 2 is 1 at m = 1.
+  # Advance the continued fraction by one step, using the TOMS 708 recurrence
+  # (DiDonato and Morris, 1992).
   #
-  # Range. The fraction is taken on the side where lambda = a - (a + b) x >= 0,
-  # so (a + b) x <= a and b x <= a. With tau = a + 1, the factors of alpha' are
-  # then w x <= m a, ((a + b + m - 1) x) / tau <= 1 + m, and three more in
-  # [1 / tau, 1 + 2 m]; and beta' >= m s (s + 2) / tau^2 >= 1.
-  #  - Denominators. After each step the pair (B_(m-1), B_m) is rescaled by a
-  #    power of two so that B_m is in [1, 2). Then B_(m-1) <= B_m / beta' <= 2.
-  #  - Numerators. A_m = r_m B_m, where r_m is the current approximation. The
-  #    limit r satisfies 1 / a <= r <= (a + 1) / a (the hypergeometric series
-  #    for I_x(a, b) has positive terms in ratio at most (a + b) x / (a + 1)),
-  #    and every r_m stayed in that range in our checks. So the numerators are
-  #    in [1 / a, 2 (a + 1) / a), and the products in the convergence test in
-  #    [1 / a, 8). Its threshold eps |A_m B_(m-1)| >= eps / a is a normal
-  #    number for a up to about 10^31 at f32 and 10^292 at f64. Beyond that it
-  #    can flush to zero, and the test then passes only if the two products
-  #    are equal, i.e. the approximations agree to rounding, or else the
-  #    element ends as NaN at the iteration cap. Only for a above about
-  #    1 / tiny (10^38 at f32, 4 10^307 at f64) can the products themselves
-  #    underflow, and a false convergence on 0 <= 0 is no longer excluded.
-  #  - alpha'. Its two factors that can be small are multiplied first, after
-  #    w x, and every factor after them lies in [1 / tau, 1 + 2 m]. So an
-  #    intermediate product only underflows if alpha' itself is below about
-  #    tiny (1 + 2 m)^3, and then its contribution alpha' B_(m-1) <= 2 alpha'
-  #    is negligible against beta' B_m >= 1. The terms of beta' are all
-  #    non-negative and beta' >= 1, so their underflow is harmless too.
-  #  - Overflow. alpha' <= m a (1 + m)^2 (1 + 2 m)^2 and beta' grows like
-  #    a m^2, so at f32 a must stay below about 10^23 to reach the iteration
-  #    cap's m without overflowing (an overflow ends as NaN); f32 holds whole
-  #    numbers only to 2^24 in any case.
+  # We rearrange its coefficients to avoid division inside the step. With
+  # tau = a + 1 and s = a + 2 m - 1, we multiply the original beta coefficient
+  # by k_m = s (s + 2) / tau^2, and alpha by k_m k_(m-1). Together these
+  # changes preserve the value of the continued fraction. The first step
+  # uses k_0 = 1 / tau, so its s - 2 factor in alpha is replaced by 1.
   #
-  # Divisions are what make XLA write a buffer per value, so the steps are
-  # unrolled `n_unroll` to a trip, and only normalised at the end of each.
+  # Divisions by tau use the precomputed reciprocal u, spread across the
+  # factors to keep intermediate values small. In alpha, we first multiply
+  # (w * x) by ((a + b + m - 1) * x / tau), then apply the remaining three
+  # factors. The chosen orientation gives (a + b) * x <= a, so that second
+  # factor is at most 1 + m. This limits growth early in the product.
+  #
+  # If that initial product underflows, each remaining factor is at most
+  # 1 + 2 m, so the lost alpha has magnitude at most roughly
+  # tiny * (1 + 2 m)^3, where tiny is the smallest positive normal value.
+  # This bounds the lost coefficient, not its effect on every later step;
+  # in particular, w = m (b - m) becomes negative beyond m = b, so we cannot
+  # assume positive recurrence coefficients throughout the unrolled steps.
+  #
+  # After each step, we scale both numerator/denominator pairs by the same
+  # power of two. For a positive normal current denominator, this brings
+  # it into [1, 2). Both ratios are preserved unless scaling loses values
+  # to underflow. This controls growth without division.
+  #
+  # At extreme parameter values, the recurrence can still overflow before
+  # rescaling, or the convergence test can underflow. These precautions do
+  # not guarantee that every intermediate value remains within range.
   step <- function(m, an, anp1, bn, bnp1) {
     s <- a + 2 * m - 1
     w <- m * (b - m)
     s_minus_2 <- nv_ifelse(m == 1, 1, s - 2)
-    # Each factor of 1 / tau is folded into a factor of size up to about tau;
-    # the order of the factors in alpha is the one argued for above
+    # Apply the reciprocal u within each factor, in the order described above.
     su <- s * u
     s2u <- (s + 2) * u
     alpha <- (w * x) * ((ab + m - 1) * x * u) * ((a + m - 1) * u) * s2u * (s_minus_2 * u)
@@ -1287,14 +1284,18 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
     scale <- inv_pow2(bnp1_new)
     list(an = anp1 * scale, anp1 = anp1_new * scale, bn = bnp1 * scale, bnp1 = bnp1_new * scale)
   }
+  # Group steps so division by the current denominator happens only once
+  # per group. This reduced buffer writes in the XLA-generated code examined;
+  # the benefit depends on the compiler and backend.
   n_unroll <- 4L
   k0 <- ((a + 1) * u) * u
   r0 <- c1 / c
-  # Normalised so that the current denominator is 1 and the numerator is the
-  # approximation r, which is positive. An element's r is stored negated once
-  # it has converged, which saves carrying a flag: each value carried out of a
-  # trip costs a recomputation of the whole trip, as XLA does not share the work
-  # between them.
+  # Divide by the current denominator so it becomes 1 and the numerator
+  # becomes the approximation r. Since r is positive, we can store it as
+  # negative to mark an element as finished, then use abs(r) in calculations.
+  # This avoids a separate completion flag. XLA was found to duplicate this
+  # loop's computation for each value carried into the next iteration, so
+  # carrying fewer values reduced that work.
   frac <- nv_while(
     init = list(i = nv_scalar(0L), an = nv_fill_like(lambda, 0), bn = r0 / k0, r = nv_ifelse(use_asym, -r0, r0)),
     cond = function(i, an, bn, r) {
@@ -1330,9 +1331,13 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
     }
   )
 
+  # The fraction's leading factor is x^a (1 - x)^b / B(a, b), which equals
+  # (n - k) * p * P(X = k) in either orientation. Combine it with the fraction
+  # on the log scale to avoid multiplying tiny probabilities. A converged
+  # fraction is stored negated, so -frac$r recovers its positive value.
   log_frac <- nv_log(n - k) + nv_log(p) + binom_log_density(k, n, p, n_terms) + nv_log(-frac$r)
   log_direct <- nv_ifelse(use_asym, log_asym, nv_ifelse(frac$r < 0, log_frac, NaN))
-  # The direct tail is P(X > k) where `upper`, and P(X <= k) elsewhere
+  # The direct tail is P(X > k) where `upper`, and P(X <= k) otherwise
   direct_wanted <- if (lower_tail) !upper else upper
   if (log_p) {
     # Rounding can take the direct tail a hair above 1
