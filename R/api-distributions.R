@@ -1031,24 +1031,29 @@ binom_log_density <- function(x, n, p, n_terms) {
   )
 }
 
-# x - log(1 + x) for |x| <= 0.03, as R's `rlog1()`. With r = x / (2 + x) it is
-# r x - 2 (r^3 / 3 + r^5 / 5 + ...), free of the cancellation in the direct
-# form; r^2 < 2.5e-4, so `n_terms` = 6 terms reach double precision, 3 single.
+# Compute x - log(1 + x) for |x| <= 0.03, as in R's `rlog1()`.
+# Direct subtraction loses precision near zero. With r = x / (2 + x), the
+# same expression is r * x - 2 * (r^3 / 3 + r^5 / 5 + ...). Here r^2 < 2.5e-4,
+# so the caller uses just 3 series terms for f32 or 6 for f64.
 rlog1 <- function(x, n_terms) {
   r <- x / (2 + x)
   r2 <- r * r
+  # Evaluate 1/3 + r^2/5 + r^4/7 + ... using Horner's method.
   r * x - 2 * r * r2 * horner(r2, 1 / (2 * rev(seq_len(n_terms)) + 1))
 }
 
-# exp(z^2) erfc(z) for z >= 0: directly while erfc(z) is a normal number, and
-# from its asymptotic series beyond `z_switch`, which has converged by `n_terms`
-# terms there.
+# Compute the scaled complementary error function exp(z^2) * erfc(z), z >= 0.
+# For large z, the two factors overflow and underflow even though their product
+# is finite. Above z_switch, use an asymptotic approximation to the product.
+# The caller chooses the switch and term count together for the float type.
 erfcx <- function(z, z_switch, n_terms) {
   use_series <- z > z_switch
+  # Both branches are evaluated, so give each safe inputs where it is unused.
   z_direct <- nv_ifelse(use_series, 0, z)
   z_series <- nv_ifelse(use_series, z, z_switch)
   u <- 1 / (2 * z_series * z_series)
-  # 1 - u + 1 * 3 u^2 - 1 * 3 * 5 u^3 + ...
+  # Evaluate 1 - u + 3 u^2 - 15 u^3 + ... by nested multiplication.
+  # Dividing this by z * sqrt(pi) gives the asymptotic approximation.
   series <- Reduce(
     function(acc, k) 1 - (2 * k - 1) * u * acc,
     rev(seq_len(n_terms)),
@@ -1061,18 +1066,25 @@ erfcx <- function(z, z_switch, n_terms) {
   )
 }
 
-# del(a) + del(b) - del(a + b) for a, b >= 8, where
-# del(x) = log Gamma(x) - (x - 1/2) log(x) + x - log(2 pi) / 2, as R's `bcorr()`,
-# which avoids the cancellation between del(b) and del(a + b).
+# Compute the Stirling correction del(a) + del(b) - del(a + b), for a, b >= 8,
+# as in R's `bcorr()`. Here del(x) is the error in the log-Gamma approximation:
+# del(x) = log Gamma(x) - (x - 1/2) log(x) + x - log(2 pi) / 2.
+# Combine the last two corrections algebraically rather than subtracting
+# nearly equal values when one parameter is much larger than the other.
 bcorr <- function(a0, b0) {
+  # Put the smaller parameter first, so h <= 1. Then x = b / (a + b)
+  # and c = 1 - x, calculated without subtracting x from 1.
   a <- nv_pmin(a0, b0)
   b <- nv_pmax(a0, b0)
   h <- a / b
   c <- h / (h + 1)
   x <- 1 / (h + 1)
   x2 <- x * x
-  # s3, s5, ..., s11
+  # Build s3, s5, ..., s11, where sj = 1 + x + ... + x^(j-1).
+  # These let us write 1 - x^j as c * sj without cancellation.
   s <- Reduce(function(acc, i) c(acc, list(x + x2 * acc[[length(acc)]] + 1)), 1:4, init = list(x + x2 + 1))
+  # Approximate del(t) by (c0 + c1/t^2 + c2/t^4 + ...) / t.
+  # Store the coefficients in increasing order of the inverse powers.
   coefs <- c(
     0.0833333333333333,
     -0.00277777777760991,
@@ -1082,37 +1094,49 @@ bcorr <- function(a0, b0) {
     -0.00165322962780713
   )
   t <- 1 / (b * b)
-  # The coefficients after the first are weighted by s3, ..., s11
+  # Evaluate del(b) - del(a + b): weight each odd inverse power by its sj,
+  # then multiply by c / b. Horner's method takes highest powers first.
   w <- horner(t, rev(c(list(coefs[[1L]]), Map(`*`, coefs[-1L], s))))
   w <- w * c / b
+  # Add the correction for the smaller parameter, del(a).
   t <- 1 / (a * a)
   horner(t, rev(coefs)) / a + w
 }
 
-# log I_x(a, b) from the asymptotic expansion of DiDonato & Morris (TOMS 708
-# `basym()`, as in R's `pbeta()`) for large a and b, with
-# lambda = a - (a + b) x >= 0 small relative to them. The coefficients are fixed
-# recurrences, unrolled here; `n_terms` (even) is where the expansion is cut.
+# Compute log I_x(a, b) using the asymptotic expansion of DiDonato and Morris
+# (1992, Algorithm 708), as in R's `basym()`. The caller uses this for large
+# a and b with 0 <= lambda = a - (a + b) x <= 0.03 * min(a, b).
+# The beta argument x is represented by lambda rather than passed separately.
+# Use a fixed expansion length for each float type; the R loops are unrolled
+# during tracing, with no convergence loop at run time.
 basym <- function(a, b, lambda, op_dtype) {
   is_f32 <- op_dtype == "f32"
   n_terms <- if (is_f32) 4L else 8L
   e0 <- 2 / base::sqrt(pi)
   e1 <- 2^-1.5
 
+  # f measures departure from the beta mean. rlog1() avoids cancellation
+  # near that mean; clamp small negative rounding errors before taking sqrt.
   rlog1_terms <- if (is_f32) 3L else 6L
   f <- nv_pmax(a * rlog1(-lambda / a, rlog1_terms) + b * rlog1(lambda / b, rlog1_terms), 0)
   z0 <- nv_sqrt(f)
   z <- z0 / e1 * 0.5
   z2 <- f + f
+  # Express the parameter balance using a ratio <= 1. r1 retains the sign
+  # of the asymmetry, while w0 sets the scale of successive correction terms.
   a_lt_b <- a < b
   h <- nv_ifelse(a_lt_b, a / b, b / a)
   r0 <- 1 / (h + 1)
   r1 <- (b - a) / nv_pmax(a, b)
   w0 <- 1 / nv_sqrt(nv_pmin(a, b) * (h + 1))
 
+  # Seed the coefficient recurrences from Algorithm 708. Keep its naming:
+  # a0 supplies the expansion coefficients, and cc and dd are derived below.
   a0 <- list(r1 * 2 / 3)
   cc <- list(-a0[[1L]] / 2)
   dd <- list(a0[[1L]] / 2)
+  # Start the two j recurrences with the scaled error function. Keeping the
+  # exp(-f) factor out of the sum avoids underflow; it is restored in log form.
   j0 <- 0.5 / e0 * erfcx(z0, if (is_f32) 8 else 20, if (is_f32) 6L else 8L)
   j1 <- e1
   sum <- j0 + dd[[1L]] * w0 * j1
@@ -1123,11 +1147,16 @@ basym <- function(a, b, lambda, op_dtype) {
   w <- w0
   znm1 <- z
   zn <- z2
+  # Add corrections in pairs, at orders n and n + 1. Thus the final pair
+  # includes order n_terms + 1, despite the loop ending at n_terms.
   for (n in seq(2L, n_terms, by = 2L)) {
+    # Update the even and odd a0 coefficients using successive powers of h^2.
     hn <- hn * h2
     a0[[n]] <- r0 * 2 * (h * hn + 1) / (n + 2)
     s <- s + hn
     a0[[n + 1L]] <- r1 * 2 * s / (n + 3)
+    # For each order, derive b0 and cc, then dd from the earlier coefficients.
+    # These are the paper's finite recurrences, not convergence tests.
     for (i in c(n, n + 1L)) {
       r <- (i + 1) * -0.5
       b0 <- list(r * a0[[1L]])
@@ -1139,6 +1168,8 @@ basym <- function(a, b, lambda, op_dtype) {
       dsum <- if (i > 1L) Reduce(`+`, lapply(seq_len(i - 1L), function(j) dd[[i - j]] * cc[[j]])) else 0
       dd[[i]] <- -(dsum + cc[[i]])
     }
+    # Advance both j recurrences and their powers of z, then weight the two
+    # corrections by successive powers of w0.
     j0 <- e1 * znm1 + (n - 1) * j0
     j1 <- e1 * zn + n * j1
     znm1 <- z2 * znm1
@@ -1150,6 +1181,7 @@ basym <- function(a, b, lambda, op_dtype) {
     sum <- sum + t0 + t1
   }
 
+  # Combine e0 * exp(-f) * exp(-bcorr(a, b)) * sum on the log scale.
   base::log(e0) - f - bcorr(a, b) + nv_log(sum)
 }
 
@@ -1559,10 +1591,11 @@ nv_pbinom <- jit(
     invalid <- invalid_param | nv_is_nan(q)
     # Round size after checking it is within the whole-number tolerance.
     size <- nv_round(size)
-    # Round q down, allowing values within 1e-7 below a whole number to count
-    # as that number, as base R does. At f32, adding 1e-7 can round across a
-    # larger gap than intended. Test the gap directly instead; subtracting
-    # these nearby values is exact where the gap is small.
+    # Match base R's floor(q + 1e-7), treating values just below a whole
+    # number as that number. At f32, the addition can round up too far:
+    # the float immediately below 2 is about 1.192e-7 away, but adding
+    # 1e-7 rounds to exactly 2. Instead, compare the gap to 1e-7 directly.
+    # Subtracting nearby floats gives an exact gap here.
     k <- if (op_dtype == "f32") {
       k_floor <- nv_floor(q)
       nv_ifelse((k_floor + 1) - q <= 1e-7, k_floor + 1, k_floor)
