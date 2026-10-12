@@ -1545,11 +1545,11 @@ nv_pbinom <- jit(
     q <- args$q
     size <- args$size
     prob <- args$prob
-    # One convergence tolerance per width -- see `binom_cdf()`
     op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
 
-    # Resolve to NaN matching base R rules. The parameters' own conditions are
-    # kept apart from q's, so that a scalar `size` or `prob` stays scalar.
+    # Match base R rules for returning NaN, including non-finite size.
+    # Keep parameter checks independent of q to avoid expanding scalar
+    # parameters to q's shape. Check NaN directly where range checks miss it.
     invalid_param <- nv_is_nan(prob) |
       !nv_is_finite(size) |
       is_nonint(size) |
@@ -1557,11 +1557,12 @@ nv_pbinom <- jit(
       (prob < 0) |
       (prob > 1)
     invalid <- invalid_param | nv_is_nan(q)
+    # Round size after checking it is within the whole-number tolerance.
     size <- nv_round(size)
-    # base R's fuzz, so that a q a hair below a whole number counts as it. At
-    # f32, q + 1e-7 rounds up to the next whole number from as far as half an
-    # ulp below it, so the gap to it is tested instead: (k + 1) - q is exact
-    # wherever it can be small.
+    # Round q down, allowing values within 1e-7 below a whole number to count
+    # as that number, as base R does. At f32, adding 1e-7 can round across a
+    # larger gap than intended. Test the gap directly instead; subtracting
+    # these nearby values is exact where the gap is small.
     k <- if (op_dtype == "f32") {
       k_floor <- nv_floor(q)
       nv_ifelse((k_floor + 1) - q <= 1e-7, k_floor + 1, k_floor)
@@ -1569,23 +1570,26 @@ nv_pbinom <- jit(
       nv_floor(q + 1e-7)
     }
 
-    # Below the support, at or above `size`, and at `prob` of 0 or 1 the
-    # distribution function is resolved directly, in base R's order. Elsewhere
-    # 0 <= k < size and 0 < prob < 1, and the stand-ins keep the computation
-    # well defined on the resolved elements.
+    # Identify where the lower-tail probability P(X <= q) is exactly 0 or 1.
+    # Check the support limits before prob = 0 or 1, matching base R's order.
+    # Use the original q for the lower limit: even a tiny negative q is below
+    # the support, regardless of whether the tolerance above rounds it to 0.
     below <- q < 0
     above <- !below & (k >= size)
     is_zero <- below | (!above & (prob == 1))
     is_one <- above | (!below & (prob == 0))
     resolved <- invalid | is_zero | is_one
-    # Stand-ins for the parameters are chosen on their own conditions, and the
-    # stand-in k = 0 lies in [0, size) for any of them
+    # binom_cdf() needs 0 <= k < size and 0 < prob < 1. Give invalid or
+    # already-resolved elements safe inputs; their results are replaced below.
+    # Keep parameter replacements independent of q so scalar parameters stay
+    # scalar. The replacement k = 0 is valid for every size_safe >= 1.
     k_safe <- nv_ifelse(resolved, 0, k)
     size_safe <- nv_ifelse(invalid_param | (size < 1), 1, size)
     prob_safe <- nv_ifelse(invalid_param | (prob == 0) | (prob == 1), 0.5, prob)
     cdf <- binom_cdf(k_safe, size_safe, prob_safe, lower_tail, log_p, op_dtype)
 
-    # The values of P(X <= k) of 0 and 1, in the scale and tail asked for
+    # Convert the known lower-tail probabilities 0 and 1 to the requested
+    # tail and scale. For the upper tail, their roles are reversed.
     if (lower_tail) {
       at_zero <- if (log_p) -Inf else 0
       at_one <- if (log_p) 0 else 1
@@ -1593,6 +1597,7 @@ nv_pbinom <- jit(
       at_zero <- if (log_p) 0 else 1
       at_one <- if (log_p) -Inf else 0
     }
+    # Invalid inputs take precedence over the known endpoint results.
     nv_ifelse(
       invalid,
       NaN,
@@ -1615,9 +1620,9 @@ nv_qbinom <- jit(
     op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
     eps <- if (op_dtype == "f32") 2^-23 else 2^-52
 
-    # base R rounds `size` here without first checking it is whole
+    # Match base R by rounding size here, without requiring a whole-number input.
     size <- nv_round(size)
-    # Valid range checks for p, and resolution of its endpoints
+    # Check p on the supplied scale and identify its two endpoints.
     if (log_p) {
       in_range <- p <= 0
       at_bottom <- p == -Inf
@@ -1627,7 +1632,8 @@ nv_qbinom <- jit(
       at_bottom <- p == 0
       at_top <- p == 1
     }
-    # Resolve to NaN matching base R rules
+    # Match base R rules for returning NaN. Both parameters must be finite;
+    # p may be -Inf on the log scale, where it represents probability zero.
     invalid <- !in_range |
       nv_is_nan(p) |
       !nv_is_finite(size) |
@@ -1635,61 +1641,69 @@ nv_qbinom <- jit(
       (size < 0) |
       (prob < 0) |
       (prob > 1)
-    # `at_bottom`/`at_top` refer to P(X <= x) at the support's ends
+    # Make at_bottom and at_top refer to the lower and upper support limits.
+    # Upper-tail probabilities run in the opposite direction, so swap them.
     if (!lower_tail) {
       swap <- at_bottom
       at_bottom <- at_top
       at_top <- swap
     }
-    # base R resolves the ends of `p` first, then degenerate distributions
+    # Resolve probability endpoints before distributions concentrated at 0
+    # or size, matching base R's order.
     is_zero <- at_bottom | (!at_top & ((prob == 0) | (size == 0)))
     is_size <- at_top | (prob == 1)
     resolved <- invalid | is_zero | is_size
+    # Give invalid or already-resolved elements safe inputs for the search.
+    # Their search results are replaced before returning.
     size_safe <- nv_ifelse(resolved, 1, size)
     prob_safe <- nv_ifelse(resolved, 0.5, prob)
     p_safe <- nv_ifelse(resolved, if (log_p) -1 else 0.5, p)
 
-    # base R's fuzz, so that the search is continuous from the left and maps
-    # the p of a support point back to it despite rounding
+    # Nudge the target toward the lower quantile to allow for CDF rounding,
+    # following base R's approach. This helps a CDF value map back to its
+    # original count, but cannot guarantee it when nearby values round alike.
+    # Lower-tail targets decrease; upper-tail targets increase. On the log
+    # scale, multiplying a negative value reverses the direction of the change.
     target <- if (log_p) {
       fuzzed <- p_safe * (if (lower_tail) 1 + 2 * eps else 1 - 2 * eps)
+      # Keep the original target if the adjustment overflows to -Inf.
       nv_ifelse(nv_is_finite(fuzzed), fuzzed, p_safe)
     } else if (lower_tail) {
-      # Just above the smallest normal number the fuzz makes p subnormal, which
-      # XLA flushes to zero; p is left as it is there
+      # Near the smallest normal value, the adjustment can produce a subnormal
+      # that XLA flushes to zero. Keep the original target in that case.
       fuzzed <- p_safe * (1 - 8 * eps)
       nv_ifelse(fuzzed > 0, fuzzed, p_safe)
     } else {
+      # Near one, leave the upper-tail target unchanged so the adjustment
+      # cannot push it across the probability boundary.
       nv_ifelse(1 - p_safe > 32 * eps, p_safe * (1 + 8 * eps), p_safe)
     }
-    # Whether the support point `k` is at or above the quantile; this is
-    # monotone in `k`, false below the quantile and true from it on
-    # A NaN from a failed evaluation of the distribution function is reported
-    # as such, rather than read as either answer
+    # Test whether k is at or above the quantile for the adjusted target.
+    # The lower-tail CDF increases with k; the upper tail decreases. Keep the
+    # upper-tail comparison strict, as below. Report a failed CDF evaluation
+    # separately so a NaN cannot be mistaken for a search direction.
     at_or_above <- function(k) {
       cdf <- binom_cdf(k, size_safe, prob_safe, lower_tail, log_p, op_dtype)
       list(above = if (lower_tail) cdf >= target else cdf < target, failed = nv_is_nan(cdf))
     }
 
-    # Cornish-Fisher approximation to the quantile, as base R starts from
+    # Start from a normal quantile with a skewness correction (Cornish-Fisher),
+    # as base R does. sigma and gamma are the binomial SD and skewness.
     q_safe <- 1 - prob_safe
     sigma <- nv_sqrt(size_safe * prob_safe * q_safe)
     gamma <- (q_safe - prob_safe) / sigma
-    # z is clamped to [-40, 40], beyond any probability on the plain scale: at
-    # an extreme log probability z * z overflows, or nv_qnorm() itself returns
-    # NaN (below log p = -8.9e307), either of which would make the start NaN
-    # and stop the search where it began. A NaN z only arises from a vanishing
-    # probability in the tail asked for, so it takes that tail's end. Out there
-    # the start is only a guess, and the search walks from it.
+    # Extreme log probabilities can make z * z overflow or nv_qnorm() return
+    # NaN. Limit z to [-40, 40], using the requested tail to choose the sign
+    # for NaN. This keeps the starting guess usable; the search below still
+    # compares the CDF against the full target probability.
     z <- nv_qnorm(p_safe, lower_tail = lower_tail, log_p = log_p)
     z <- nv_ifelse(nv_is_nan(z), if (lower_tail) -40 else 40, nv_pmin(nv_pmax(z, -40), 40))
     start <- nv_round(size_safe * prob_safe + sigma * (z + gamma * (z * z - 1) / 6))
 
-    # The quantile lies in (lo, hi]: `lo` is below it, `hi` at or above it.
-    # From the start, step away in the direction it points, doubling the step
-    # until the quantile is bracketed, and then bisect. Each probe lies strictly
-    # inside (lo, hi). A `size` too large for its whole numbers to all be held
-    # can leave no such probe, which ends the search too.
+    # Keep the quantile in (lo, hi]: lo is below it and hi is at or above it.
+    # Try the starting guess, then move toward the quantile with doubling
+    # steps (galloping). Once a probe crosses to the other side, bisect the
+    # remaining interval. Clamp probes to counts between the two bounds.
     probe_at <- function(lo, hi, step, started, galloping, down) {
       probe <- nv_ifelse(
         !started,
@@ -1702,7 +1716,10 @@ nv_qbinom <- jit(
       )
       nv_pmin(nv_pmax(probe, lo + 1), hi - 1)
     }
+    # Stop when the bounds are adjacent, or floating-point precision leaves
+    # no probe strictly between them. The latter can happen for very large size.
     is_active <- function(lo, hi, probe) (hi - lo > 1) & (probe > lo) & (probe < hi)
+    # Build initial arrays with the common shape of the search inputs.
     like <- target + size_safe + prob_safe
     no <- nv_fill_like(like, 0) > 1
     search <- nv_while(
@@ -1717,17 +1734,20 @@ nv_qbinom <- jit(
       ),
       cond = function(i, lo, hi, step, started, galloping, down) {
         probe <- probe_at(lo, hi, step, started, galloping, down)
+        # Continue while any element needs work, subject to the iteration cap.
         nv_any(is_active(lo, hi, probe)) & (i < 2200L)
       },
       body = function(i, lo, hi, step, started, galloping, down) {
         probe <- probe_at(lo, hi, step, started, galloping, down)
         active <- is_active(lo, hi, probe)
+        # Finished elements still enter the array calculation; give them k = 0.
         answer <- at_or_above(nv_ifelse(active, probe, 0))
         above <- answer$above
-        # A failed evaluation ends that element's search with a NaN bracket,
-        # and so a NaN result
+        # A failed CDF evaluation sets both bounds to NaN, stopping that
+        # element's search and making its result NaN.
         failed <- active & answer$failed
-        # Galloping goes on while each probe lands on the same side as the last
+        # Keep doubling steps while probes stay on the initial side of the
+        # quantile. The first probe chooses whether to search down or up.
         onward <- nv_ifelse(down, above, !above)
         list(
           i = i + 1L,
@@ -1741,6 +1761,9 @@ nv_qbinom <- jit(
       }
     )
 
+    # Restore invalid and endpoint results; otherwise return the upper bound.
+    # If precision or the iteration cap stopped the search early, this is the
+    # current bound rather than a guarantee that the exact count was found.
     nv_ifelse(
       invalid,
       NaN,
