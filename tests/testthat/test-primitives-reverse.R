@@ -218,6 +218,17 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     contracting_axes = list(c(1L, 2L), c(3L, 4L)),
     batching_axes = list(c(4L, 5L), c(1L, 2L))
   )
+
+  # lhs has no free axes, so the free axes of rhs come right after the batching axes
+  # A[b,k] • B[b,k,n] with batching b and contracting k
+  A6 <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
+  B6 <- nv_array(1:24, shape = c(2, 3, 4), dtype = "f32")
+  check_case(
+    A6,
+    B6,
+    contracting_axes = list(2L, 2L),
+    batching_axes = list(1L, 1L)
+  )
 })
 
 test_that("broadcasting", {
