@@ -2097,8 +2097,12 @@ nv_seq <- jit(
       return(nv_iota(shape = n, dtype = dtype, axis = 1L, start = from, device = device))
     }
     # prim_iota has no step, so scale a 0-based iota; the literals are integers so
-    # that they take the data type of the array instead of promoting it to float
+    # that they take the data type of the array instead of promoting it to float.
+    # A descending sequence subtracts |by|, so an unsigned type never sees a negative.
     indices <- nv_iota(shape = n, dtype = dtype, axis = 1L, start = 0L, device = device)
+    if (by < 0) {
+      return(as.integer(from) - indices * as.integer(-by))
+    }
     indices * as.integer(by) + as.integer(from)
   },
   static = 1:5

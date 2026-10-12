@@ -1443,6 +1443,12 @@ describe("nv_seq", {
     expect_error(nv_seq(0, 10, by = -2), "Wrong sign")
     expect_error(nv_seq(10, 0, by = 2), "Wrong sign")
   })
+  it("counts down at an unsigned dtype", {
+    x <- nv_seq(5, 1, dtype = "ui8")
+    expect_dtype(x, "ui8")
+    expect_equal(as.integer(as_array(x)), 5:1)
+    expect_equal(as.integer(as_array(nv_seq(10, 0, by = -3, dtype = "ui32"))), c(10L, 7L, 4L, 1L))
+  })
 })
 
 describe("nv_outer", {
