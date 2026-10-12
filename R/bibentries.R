@@ -41,6 +41,20 @@ bibentries <- c(
     year = "1989",
     publisher = "Ellis Horwood",
     isbn = "0-7458-0289-3"
+  ),
+  salmon2011parallel = bibentry(
+    bibtype = "inproceedings",
+    title = "Parallel Random Numbers: As Easy as 1, 2, 3",
+    author = c(
+      person("John K.", "Salmon"),
+      person("Mark A.", "Moraes"),
+      person("Ron O.", "Dror"),
+      person("David E.", "Shaw")
+    ),
+    booktitle = "Proceedings of the 2011 International Conference for High Performance Computing, Networking, Storage and Analysis",
+    year = "2011",
+    publisher = "ACM",
+    doi = "10.1145/2063384.2063405"
   )
 )
 # nolint end

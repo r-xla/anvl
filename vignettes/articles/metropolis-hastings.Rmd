@@ -75,8 +75,6 @@ There are a few things to note in the code below:
 
 a) the accept/reject decision uses `nv_if()` and not a native R conditional.
 b) we sample a scalar uniform random number by setting `shape = integer()`
-c) the draws advance {anvl}'s global RNG state, which the compiled function threads through every iteration of the loop.
-
 
 ```{r}
 mh_step <- function(theta, b, proposal_sd) {

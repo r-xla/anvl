@@ -348,7 +348,8 @@ format_call <- function(
 # counts.
 #
 # `typed_captures` spells a constant's data type too, for a graph formatted on
-# its own.
+# its own. The side effects a graph uses come after its inputs and outputs,
+# named: `rng = %x2: ui64[2]` and `rng = %5`.
 format_graph_lines <- function(
   inputs,
   constants,
@@ -357,6 +358,7 @@ format_graph_lines <- function(
   node_ids,
   title = "",
   rdata_types = NULL,
+  side_effects = list(),
   width = getOption("width", 80L),
   digits = getOption("digits"),
   typed_captures = FALSE,
@@ -376,6 +378,15 @@ format_graph_lines <- function(
     },
     character(1L)
   )
+  for (name in names(side_effects)) {
+    node <- side_effects[[name]]$input
+    if (!is.null(node)) {
+      input_strs <- c(
+        input_strs,
+        sprintf("%s = %s: %s", name, format_node_id(node, node_ids, digits), format_aval_short(node$aval))
+      )
+    }
+  }
   capture_strs <- vapply(
     constants,
     function(node) {
@@ -398,8 +409,16 @@ format_graph_lines <- function(
   }
   header <- c(add(header, "(", ")", input_strs), " {")
 
-  output_ids <- vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
-  ret <- if (length(outputs) == 1L) {
+  output_ids <- c(
+    vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits),
+    vapply(
+      names(side_effects),
+      function(name) sprintf("%s = %s", name, format_node_id(side_effects[[name]]$output, node_ids, digits)),
+      character(1L),
+      USE.NAMES = FALSE
+    )
+  )
+  ret <- if (length(output_ids) == 1L) {
     paste0(indent, "return ", output_ids)
   } else {
     layout_row(list("return", call_chunk(" (", ")", output_ids)), indent, width)
@@ -432,10 +451,12 @@ format_graph_body <- function(
   outputs,
   title = "Graph",
   rdata_types = NULL,
+  side_effects = list(),
   width = getOption("width", 80L),
   digits = getOption("digits")
 ) {
-  node_ids <- build_node_ids(inputs, constants, statements)
+  side_effect_inputs <- Filter(Negate(is.null), lapply(side_effects, `[[`, "input"))
+  node_ids <- build_node_ids(c(inputs, side_effect_inputs), constants, statements)
   lines <- format_graph_lines(
     inputs = inputs,
     constants = constants,
@@ -444,6 +465,7 @@ format_graph_body <- function(
     node_ids = node_ids,
     title = sprintf("<%s>", title),
     rdata_types = rdata_types,
+    side_effects = side_effects,
     width = width,
     digits = digits,
     typed_captures = TRUE
@@ -488,6 +510,7 @@ format.AnvlGraph <- function(x, ..., width = getOption("width", 80L), digits = g
     outputs = x$outputs,
     title = "AnvlGraph",
     rdata_types = x$rdata_types,
+    side_effects = x$side_effects,
     width = width,
     digits = digits
   )
@@ -510,6 +533,7 @@ format.GraphDescriptor <- function(x, ..., width = getOption("width", 80L), digi
     outputs = x$outputs,
     title = "GraphDescriptor",
     rdata_types = x$rdata_types,
+    side_effects = side_effects_of_desc(x),
     width = width,
     digits = digits
   )

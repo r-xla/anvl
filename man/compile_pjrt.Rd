@@ -64,9 +64,9 @@ for an array one. \code{NULL} for a call whose inputs are all arrays.
 \item \code{device}: The \code{PJRTDevice} the executable was compiled for.
 \item \code{phantom_specs}: One \code{list(dtype, shape)} per phantom donated input the
 executor must allocate for an output (see \code{\link[=stablehlo]{stablehlo()}}).
-\item \code{state}: \code{NULL}, or for a program that draws from the global RNG state
-the state slot through which pjrt's dispatcher supplies and stores it
-(see \code{\link[=nv_set_seed]{nv_set_seed()}}).
+\item \code{state}: One state slot per side effect the program uses, through which
+pjrt's dispatcher supplies and stores its value (see
+\code{register_side_effect()}).
 }
 }
 \description{

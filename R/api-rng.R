@@ -12,7 +12,7 @@ nv_unif_rand <- function(shape, dtype) {
 
   ui_dtype <- as_dtype(paste0("ui", dtype_width(dtype)))
 
-  rbits <- prim_random_bits(shape, ui_dtype)
+  rbits <- prim_sample_bits(shape, ui_dtype)
 
   # shift value: 9 for f32, 11 for f64
   shift <- if (dtype == "f32") 9L else 11L

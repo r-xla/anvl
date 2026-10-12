@@ -220,32 +220,14 @@
       ! `method` must be one of "nearest_even" or "afz".
       x Got "bogus".
 
-# prim_rng_bit_generator
+# prim_sample_bits
 
     Code
-      prim_rng_bit_generator(state, "MERSENNE", "f32", 3L)
+      prim_sample_bits(3L, "f32")
     Condition
-      Error in `prim_rng_bit_generator()`:
-      ! `rng_algorithm` must be one of "DEFAULT", "THREE_FRY", or "PHILOX".
-      x Got "MERSENNE".
-
-# prim_random_bits
-
-    Code
-      prim_random_bits(3L, "f32")
-    Condition
-      Error in `prim_random_bits()`:
+      Error in `prim_sample_bits()`:
       ! `dtype` must name an unsigned integer data type.
       x Got "f32".
-
----
-
-    Code
-      prim_random_bits(3L, "ui32", streams = -1L)
-    Condition
-      Error in `prim_random_bits()`:
-      ! `streams` must not contain a negative axis size.
-      x Got -1.
 
 # prim_fill
 

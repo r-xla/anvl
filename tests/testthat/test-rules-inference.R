@@ -579,14 +579,8 @@ test_that("prim_round", {
   expect_snapshot(error = TRUE, prim_round(nv_array(c(1.5, 2.5)), method = "bogus"))
 })
 
-test_that("prim_rng_bit_generator", {
-  state <- nv_array(c(1, 2), dtype = "ui64")
-  expect_snapshot(error = TRUE, prim_rng_bit_generator(state, "MERSENNE", "f32", 3L))
-})
-
-test_that("prim_random_bits", {
-  expect_snapshot(error = TRUE, prim_random_bits(3L, "f32"))
-  expect_snapshot(error = TRUE, prim_random_bits(3L, "ui32", streams = -1L))
+test_that("prim_sample_bits", {
+  expect_snapshot(error = TRUE, prim_sample_bits(3L, "f32"))
 })
 
 test_that("prim_fill", {

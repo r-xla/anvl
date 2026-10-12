@@ -18,8 +18,7 @@ describe("nv_set_seed", {
 
   it("starts from the seed as the key and a zero counter", {
     local_nv_seed(-1L)
-    nv_runif(3L)
-    expect_identical(as.numeric(as_array(globals$rng_state)), c(2^32 - 1, 3))
+    expect_identical(as.numeric(as_array(globals$rng_state)), c(2^32 - 1, 0))
   })
 
   it("returns only the sample for every sampler", {
@@ -77,6 +76,56 @@ describe("with_nv_seed", {
     a <- with_nv_seed(1L, as_array(nv_runif(2L)))
     expect_identical(as_array(globals$rng_state), before)
     expect_identical(with_nv_seed(1L, as_array(nv_runif(2L))), a)
+  })
+})
+
+describe("nv_get_rng_state", {
+  it("is NULL while the global state is not set", {
+    local_nv_seed(NULL)
+    expect_null(nv_get_rng_state())
+  })
+
+  it("returns a copy of the global state that later draws leave intact", {
+    local_nv_seed(-1L)
+    nv_runif(3L)
+    state <- nv_get_rng_state()
+    expected <- as.numeric(as_array(state))
+    nv_runif(3L)
+    expect_identical(as.numeric(as_array(state)), expected)
+  })
+
+  it("lets nv_set_rng_state() continue the sequence where it stopped", {
+    local_nv_seed(7L)
+    nv_runif(2L)
+    state <- nv_get_rng_state()
+    a <- as_array(nv_runif(3L))
+    nv_set_rng_state(state)
+    expect_identical(as_array(nv_runif(3L)), a)
+    # the state passed is copied, so it can be used again
+    nv_set_rng_state(state)
+    expect_identical(as_array(nv_runif(3L)), a)
+  })
+
+  it("cannot be called in a traced function", {
+    f <- jit(function() {
+      nv_get_rng_state()
+      nv_runif(1L)
+    })
+    expect_error(f(), "cannot be read in a function traced")
+  })
+})
+
+describe("nv_set_rng_state", {
+  it("unsets the global state with NULL", {
+    local_nv_seed(1L)
+    nv_set_rng_state(NULL)
+    expect_null(nv_get_rng_state())
+  })
+
+  it("rejects what is not an RNG state", {
+    expect_error(nv_set_rng_state(1L), "must be an RNG state returned by")
+    expect_error(nv_set_rng_state(nv_array(c(1, 2), dtype = "f32")), "must be an RNG state")
+    expect_error(nv_set_rng_state(nv_array(c(1, 2, 3), dtype = "ui64")), "must be an RNG state")
   })
 })
 
@@ -139,28 +188,29 @@ describe("the global RNG state in jit", {
     expect_identical(globals$rng_state, state)
   })
 
-  it("is the last input and output of a graph traced by trace_fn()", {
+  it("is a side effect of a graph traced by trace_fn()", {
     graph <- trace_fn(nv_runif, list(1L))
-    n_in <- length(graph$inputs)
-    n_out <- length(graph$outputs)
-    expect_identical(n_in, 1L)
-    expect_identical(n_out, 2L)
-    state <- graph$inputs[[n_in]]$aval
+    expect_length(graph$inputs, 0L)
+    expect_length(graph$outputs, 1L)
+    expect_named(graph$side_effects, "rng")
+    state <- graph$side_effects$rng$input$aval
     expect_identical(as.character(dtype(state)), "ui64")
     expect_identical(shape(state), 2L)
-    expect_identical(as.character(dtype(graph$outputs[[n_out]]$aval)), "ui64")
+    expect_identical(as.character(dtype(graph$side_effects$rng$output$aval)), "ui64")
+  })
+
+  it("is updated in place", {
+    local_nv_seed(1L)
+    before <- globals$rng_state
+    nv_runif(1L)
+    expect_error(as_array(before), "deleted or donated")
   })
 
   it("is left out of a graph traced by trace_fn() that does not draw", {
     graph <- trace_fn(function(x) x + 1, list(nv_array(1)))
     expect_length(graph$inputs, 1L)
     expect_length(graph$outputs, 1L)
-  })
-
-  it("advances by draws past the integer range", {
-    local_nv_seed(1L)
-    prim_random_bits(0L, "ui32", streams = c(65536L, 32769L))
-    expect_identical(as.numeric(as_array(globals$rng_state)), c(1, 65536 * 32769))
+    expect_length(graph$side_effects, 0L)
   })
 })
 
@@ -195,26 +245,14 @@ describe("the global RNG state in sub-graphs", {
     expect_identical(as_array(out$after), expected[[4L]])
   })
 
-  it("carries a draw from several streams through the body of nv_scan", {
-    f <- jit(function() {
-      nv_scan(
-        init = list(nv_scalar(0)),
-        body = function(carry, x) list(carry = carry, out = prim_random_bits(3L, "ui32", streams = 2L)),
-        steps = 2L
-      )$out
+  it("is threaded through nv_if when only the false branch draws", {
+    f <- jit(function(pred) {
+      list(branch = nv_if(pred, function() nv_fill(-1, 1L), function() nv_runif(1L)), after = nv_runif(1L))
     })
-    local_nv_seed(NULL)
-    out <- with_nv_seed(1L, {
-      list(as.character(as_array(f())), as.numeric(as_array(globals$rng_state)))
-    })
-    expected <- with_nv_seed(1L, {
-      c(
-        as.character(as_array(prim_random_bits(3L, "ui32", streams = 2L))),
-        as.character(as_array(prim_random_bits(3L, "ui32", streams = 2L)))
-      )
-    })
-    expect_identical(sort(out[[1L]]), sort(expected))
-    expect_identical(out[[2L]], c(1, 4))
+    expected <- draws(1L, 2L)
+    out <- with_nv_seed(1L, f(FALSE))
+    expect_identical(as_array(out$branch), expected[[1L]])
+    expect_identical(as_array(out$after), expected[[2L]])
   })
 
   it("is threaded through the branch nv_if takes", {
@@ -261,11 +299,57 @@ describe("the global RNG state in sub-graphs", {
     })
   })
 
+  it("is threaded through an nv_if nested in an nv_if", {
+    f <- jit(function(p, q) {
+      branch <- nv_if(
+        p,
+        function() nv_if(q, function() nv_runif(1L), function() nv_fill(-1, 1L)),
+        function() nv_fill(-2, 1L)
+      )
+      list(branch = branch, after = nv_runif(1L))
+    })
+    expected <- draws(1L, 2L)
+    out <- with_nv_seed(1L, f(TRUE, TRUE))
+    expect_identical(as_array(out$branch), expected[[1L]])
+    expect_identical(as_array(out$after), expected[[2L]])
+    # where no branch on the way draws, the state is left for the next draw
+    for (pq in list(c(TRUE, FALSE), c(FALSE, TRUE))) {
+      out <- with_nv_seed(1L, f(pq[[1L]], pq[[2L]]))
+      expect_identical(as_array(out$after), expected[[1L]])
+    }
+  })
+
+  it("is carried through an nv_while nested in the body of nv_scan", {
+    f <- jit(function() {
+      out <- nv_scan(
+        init = nv_scalar(0),
+        body = function(carry, x) {
+          inner <- nv_while(
+            list(i = 0L, total = nv_scalar(0)),
+            function(i, total) i < 2L,
+            function(i, total) list(i = i + 1L, total = total * 10 + nv_runif(integer()))
+          )$total
+          list(carry = carry, out = inner)
+        },
+        steps = 2L
+      )
+      list(out = out$out, after = nv_runif(integer()))
+    })
+    expected <- unlist(draws(1L, 5L, integer()))
+    out <- with_nv_seed(1L, f())
+    expect_equal(
+      as.vector(as_array(out$out)),
+      c(expected[[1L]] * 10 + expected[[2L]], expected[[3L]] * 10 + expected[[4L]]),
+      tolerance = 1e-6
+    )
+    expect_identical(as_array(out$after), expected[[5L]])
+  })
+
   it("is not available in the condition of nv_while", {
     f <- jit(function() {
       nv_while(list(i = 0L), function(i) nv_runif(integer()) < 0.5, function(i) list(i = i + 1L))
     })
-    expect_error(f(), "cannot be drawn from here")
+    expect_error(f(), "cannot be used here")
   })
 
   it("is not available in the function of a reduction", {
@@ -273,7 +357,7 @@ describe("the global RNG state in sub-graphs", {
       nv_runif(1L)
       prim_reduce(x, nv_scalar(0), function(a, b) a + b + nv_runif(integer()), axes = 1L)
     })
-    expect_error(f(nv_array(c(1, 2))), "cannot be drawn from here")
+    expect_error(f(nv_array(c(1, 2))), "cannot be used here")
   })
 })
 

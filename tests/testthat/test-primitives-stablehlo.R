@@ -10,108 +10,58 @@ test_that("prim_cos", {
   expect_equal(c(out), c(1, 0, -1, 0), tolerance = 1e-15)
 })
 
-test_that("prim_rng_bit_generator", {
-  out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
-  expect_named(out, c("state", "values"))
-  expect_dtype(out$state, "ui64")
-  expect_shape(out$state, 2L)
-  expect_shape(out$values, c(2L, 2L))
-})
-
-describe("prim_random_bits", {
-  # XLA's own THREE_FRY generator, which a single-stream `ui64` draw of a 1-D
-  # shape reproduces.
-  xla_bits <- function(state, n) {
-    prim_rng_bit_generator(nv_array(state, dtype = "ui64"), "THREE_FRY", "ui64", n)
-  }
+describe("prim_sample_bits", {
   set_state <- function(state) {
     globals$rng_state <- nv_array(state, dtype = "ui64")
   }
   # The values of an unsigned integer array as decimal strings, which hold
   # every bit of a `ui32` or `ui64`, in an array of its shape.
   bits <- function(x) {
-    a <- as_array(x)
+    # a `ui64` of 2^63 or more reads back wrapped, which is fine for comparing
+    a <- as_array(x, check = FALSE)
     array(as.character(a), shape(x))
   }
-  counter <- function() as.numeric(as_array(globals$rng_state))
 
-  it("draws what XLA's THREE_FRY draws from the same state", {
+  it("matches the known-answer vectors of the ThreeFry-2x32 reference", {
     local_nv_seed(NULL)
-    # the counter carries into its high 32 bits during the draw
-    state <- c(123456789, 2^32 - 3)
-    expected <- xla_bits(state, 7L)
-    set_state(state)
-    expect_identical(bits(prim_random_bits(7L, "ui64")), bits(expected$values))
-    expect_identical(bits(globals$rng_state), bits(expected$state))
-  })
-
-  it("advances the counter by the number of draws whatever the data type", {
-    local_nv_seed(NULL)
-    set_state(c(5, 10))
-    prim_random_bits(c(2L, 3L), "ui8")
-    expect_identical(counter(), c(5, 16))
-    prim_random_bits(integer(), "ui32")
-    expect_identical(counter(), c(5, 17))
-  })
-
-  it("draws the bits of a narrower data type from the 64 bits of a draw", {
-    local_nv_seed(NULL)
-    set_state(c(42, 0))
-    halves <- nv_bitcast_convert(prim_random_bits(5L, "ui64"), dtype = "ui32")
-    half <- function(i) nv_reshape(nv_static_slice(halves, c(i, 1L), c(i, 5L), c(1L, 1L)), 5L)
-    set_state(c(42, 0))
-    narrow <- prim_random_bits(5L, "ui32")
-    expect_identical(bits(narrow), bits(nv_xor(half(1L), half(2L))))
-    set_state(c(42, 0))
-    expect_identical(bits(prim_random_bits(5L, "ui8")), bits(nv_convert(narrow, "ui8")))
-  })
-
-  it("fills a shape in column-major order", {
-    local_nv_seed(NULL)
-    set_state(c(1, 0))
-    flat <- bits(prim_random_bits(6L, "ui32"))
-    set_state(c(1, 0))
-    expect_identical(bits(prim_random_bits(c(2L, 3L), "ui32")), array(flat, c(2L, 3L)))
-  })
-
-  it("draws each stream from a key derived from the next values of the counter", {
-    local_nv_seed(NULL)
-    state <- c(99, 7)
-    keys <- xla_bits(state, 3L)$values
-    set_state(state)
-    out <- bits(prim_random_bits(4L, "ui64", streams = 3L))
-    expect_identical(dim(out), c(3L, 4L))
-    expect_identical(counter(), c(99, 10))
-    for (i in 1:3) {
-      key <- nv_static_slice(keys, start_indices = i, end_indices = i, strides = 1L)
-      stream_state <- nv_concatenate(key, nv_array(0, dtype = "ui64"), axis = 1L)
-      expected <- prim_rng_bit_generator(stream_state, "THREE_FRY", "ui64", 4L)$values
-      expect_identical(out[i, ], as.vector(bits(expected)))
+    # a 32-bit word given in hex, as a number
+    h <- function(s) strtoi(substr(s, 1L, 4L), 16L) * 65536 + strtoi(substr(s, 5L, 8L), 16L)
+    u32 <- function(x) as.numeric(as_array(nv_bitcast_convert(x, dtype = "ui32")))
+    kat <- list(
+      list(ctr = c("00000000", "00000000"), key = c("00000000", "00000000"), out = c("6b200159", "99ba4efe")),
+      list(ctr = c("ffffffff", "ffffffff"), key = c("ffffffff", "ffffffff"), out = c("1cb996fc", "bb002be7")),
+      list(ctr = c("243f6a88", "85a308d3"), key = c("13198a2e", "03707344"), out = c("c4923a9c", "483df7a0"))
+    )
+    for (k in kat) {
+      # the state's key and counter, each as its low and high 32-bit word
+      halves <- matrix(h(c(k$key[[1L]], k$ctr[[1L]], k$key[[2L]], k$ctr[[2L]])), nrow = 2L, byrow = TRUE)
+      globals$rng_state <- nv_bitcast_convert(nv_array(halves, dtype = "ui32"), dtype = "ui64")
+      expect_identical(u32(prim_sample_bits(1L, "ui64")), h(k$out))
     }
   })
 
-  it("arranges streams of several axes in column-major order", {
+  it("continues a ui64 draw where the previous one stopped", {
     local_nv_seed(NULL)
-    set_state(c(8, 1))
-    flat <- bits(prim_random_bits(3L, "ui32", streams = 4L))
-    set_state(c(8, 1))
-    grid <- bits(prim_random_bits(3L, "ui32", streams = c(2L, 2L)))
-    expect_identical(grid, array(flat, c(2L, 2L, 3L)))
-    expect_identical(counter(), c(8, 5))
+    set_state(c(99, 2^32 - 5))
+    parts <- c(bits(prim_sample_bits(5L, "ui64")), bits(prim_sample_bits(3L, "ui64")))
+    set_state(c(99, 2^32 - 5))
+    expect_identical(parts, as.vector(bits(prim_sample_bits(8L, "ui64"))))
   })
 
-  it("draws different values in each stream", {
-    local_nv_seed(NULL)
-    set_state(c(3, 0))
-    out <- bits(prim_random_bits(100L, "ui32", streams = 4L))
-    expect_identical(nrow(unique(out)), 4L)
+  it("draws every unsigned data type and advances the state", {
+    local_nv_seed(1L)
+    for (dtype in c("ui8", "ui16", "ui32", "ui64")) {
+      before <- bits(globals$rng_state)
+      out <- prim_sample_bits(c(2L, 3L), dtype)
+      expect_dtype(out, dtype)
+      expect_shape(out, c(2L, 3L))
+      expect_false(identical(bits(globals$rng_state), before))
+    }
   })
 
-  it("draws a stream shape of no elements", {
-    local_nv_seed(NULL)
-    set_state(c(3, 0))
-    expect_shape(prim_random_bits(0L, "ui32", streams = 2L), c(2L, 0L))
-    expect_identical(counter(), c(3, 2))
+  it("draws a shape with no elements", {
+    local_nv_seed(1L)
+    expect_shape(prim_sample_bits(c(2L, 0L), "ui32"), c(2L, 0L))
   })
 })
 

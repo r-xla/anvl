@@ -13,16 +13,20 @@
 #'   The name of the primitive, without the `prim_` prefix.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
+#' @param side_effects (`character()`)\cr
+#'   Names of the side effects the primitive uses (see `register_side_effect()`).
 #' @return (`AnvlPrimitiveDef`)
 #' @export
-AnvlPrimitiveDef <- function(name, subgraphs = character()) {
+AnvlPrimitiveDef <- function(name, subgraphs = character(), side_effects = character()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
+  checkmate::assert_character(side_effects, any.missing = FALSE, unique = TRUE)
 
   env <- new.env(parent = emptyenv())
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
+  env$side_effects <- side_effects
 
   structure(env, class = "AnvlPrimitiveDef")
 }
@@ -95,6 +99,12 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
+#' @param side_effects (`character()`)\cr
+#'   Names of the side effects the primitive uses (see `register_side_effect()`).
+#'   [`graph_desc_add()`] passes the current value of each to the call as one
+#'   more operand, named after the side effect, after `args`; the inference
+#'   and interpretation rules return the updated values as the last outputs, in
+#'   the same order, and `graph_desc_add()` does not return them.
 #' @param register (`logical(1)`)\cr
 #'   Whether to add the primitive to anvl's internal registry of primitives,
 #'   under `name`, replacing one registered under the same name. The quickr
@@ -115,14 +125,20 @@ new_primitive <- function(
   fn,
   subgraphs = character(),
   static = character(),
+  side_effects = character(),
   register = TRUE
 ) {
   checkmate::assert_string(name)
   checkmate::assert_function(fn)
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
+  # The rules take the value of a side effect as an argument of its name.
+  clash <- intersect(side_effects, names(formals(fn)))
+  if (length(clash)) {
+    cli_abort("{.arg fn} must not have an argument named like one of its side effects: {.arg {clash}}.")
+  }
 
-  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs)
+  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs, side_effects = side_effects)
 
   # Bind `self` (the AnvlPrimitiveDef) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —

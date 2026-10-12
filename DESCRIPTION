@@ -82,6 +82,7 @@ Collate:
     'rdata.R'
     'reexports.R'
     'reverse.R'
+    'side-effects.R'
     'rng.R'
     'roxygen.R'
     'rules-reverse.R'

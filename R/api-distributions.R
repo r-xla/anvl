@@ -606,3 +606,237 @@ nv_qunif <- jit(
   },
   static = c("lower_tail", "log_p")
 )
+
+# log(1 - exp(x)) for x <= 0, switching at -log(2) between the two forms that
+# keep full accuracy either side of it (Maechler, "Accurately Computing
+# log(1 - exp(-|a|))"; R's `R_Log1_Exp()`). Each form is fed a safe stand-in on
+# the elements where it is not selected, so it cannot poison the gradient.
+log1mexp <- function(x) {
+  use_expm1 <- x > -base::log(2)
+  nv_ifelse(
+    use_expm1,
+    nv_log(-nv_expm1(nv_ifelse(use_expm1, x, -1))),
+    nv_log1p(-nv_exp(nv_ifelse(use_expm1, -1, x)))
+  )
+}
+
+# Whether `rate` is admissible. base R tests the scale 1 / rate, so -0 (scale
+# -Inf) is rejected along with negative and NaN rates. Only zero needs the
+# reciprocal to tell its sign: taking it of every rate would reject large rates
+# whose reciprocal flushes to zero. `nv_floor()` keeps the sign of zero and has a
+# zero derivative, which stops the reverse pass forming 0 * Inf through 1 / 0.
+valid_exp_rate <- function(rate) {
+  zero <- rate == 0
+  (rate >= 0) & !(zero & (1 / nv_floor(nv_ifelse(zero, rate, 1)) < 0))
+}
+
+#' @title The Exponential Distribution
+#' @name nv_exponential
+#' @description
+#' Density (`nv_dexp`), distribution function (`nv_pexp`), and quantile
+#' function (`nv_qexp`) for the Exponential distribution with rate `rate`
+#' (i.e., mean `1 / rate`).
+#' @param x,q ([`arrayish`])\cr
+#'   Quantiles at which to evaluate the density (`x`) or the distribution
+#'   function (`q`).
+#' @param p ([`arrayish`])\cr
+#'   Probabilities at which to evaluate the quantile function. Values outside
+#'   \eqn{[0, 1]} give `NaN`. With `log_p = TRUE`, supply log-probabilities
+#'   in \eqn{[-\infty, 0]} instead.
+#' @param rate ([`arrayish`])\cr
+#'   Rate of the distribution. Scalars broadcast; otherwise `rate` and
+#'   `x`/`q`/`p` must have the same shape. Negative rates (including `-Inf`
+#'   and negative zero) give `NaN`.
+#' @param log,log_p (`logical(1)`)\cr
+#'   If `TRUE`, the densities/probabilities are given as logarithms. For
+#'   `nv_qexp` this describes the input `p`.
+#' @param lower_tail (`logical(1)`)\cr
+#'   If `TRUE` (default), probabilities are \eqn{P(X \le x)}; otherwise,
+#'   \eqn{P(X > x)}.
+#' @details
+#' The Exponential distribution has probability density function:
+#' \deqn{f(x) = \lambda e^{-\lambda x}, \quad x \ge 0}
+#' and zero elsewhere, where \eqn{\lambda} is `rate`.
+#'
+#' For positive finite rates, the mean is `1 / rate`. Zero and infinite rates
+#' follow base R's endpoint conventions:
+#' * `rate = 0`: the density and lower-tail probability are zero at finite
+#'   quantiles, but `NaN` at infinity. Quantiles are infinite except at
+#'   lower-tail probability zero, where the result is zero.
+#' * `rate = Inf`: densities are `NaN`. The lower-tail probability is zero
+#'   at or below zero and one above zero. Quantiles are zero except at
+#'   lower-tail probability one, where the result is `NaN`.
+#'
+#' @templateVar dist exp
+#' @templateVar params `rate`
+#' @template section_distribution_dtype
+#' @return ([`arrayish`])\cr
+#' `nv_dexp()`, `nv_pexp()`, and `nv_qexp()` return an [`arrayish`] with the
+#' data type of `x`/`q`/`p` and the shape after scalar broadcasting with `rate`.
+#'
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(-1, 0, 0.5, 1, 2))
+#' nv_dexp(x)
+#' nv_dexp(x, rate = 2)
+#' nv_dexp(x, log = TRUE)
+#'
+#' nv_pexp(x)
+#' nv_pexp(x, rate = 2)
+#' nv_pexp(x, lower_tail = FALSE)
+#' nv_pexp(x, log_p = TRUE)
+#'
+#' p <- nv_array(c(0.025, 0.5, 0.975))
+#' nv_qexp(p)
+#' nv_qexp(p, rate = 2)
+#' nv_qexp(p, lower_tail = FALSE)
+#' nv_qexp(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
+NULL
+
+#' @rdname nv_exponential
+#' @export
+nv_dexp <- jit(
+  function(x, rate = 1, log = FALSE) {
+    assert_flag(log)
+    args <- promote_distribution_args(x = x, rate = rate)
+    x <- args$x
+    rate <- args$rate
+    op_dtype <- assert_rng_float_dtype(dtype(x), arg = "x")
+
+    # Below the support and at `x = Inf` the density is resolved directly, and
+    # `x` is clamped so the untaken branch cannot poison gradients.
+    # NaN fails both comparisons and flows through.
+    resolved <- x < 0 | x == Inf
+    x_safe <- nv_ifelse(resolved, 0, x)
+    density <- if (log) {
+      nv_ifelse(resolved, -Inf, nv_log(rate) - rate * x_safe)
+    } else {
+      # Splitting exponent delays underflow so rate can rescale result first.
+      t <- -rate * x_safe
+      split <- t < (if (op_dtype == "f32") -80 else -700)
+      e <- nv_exp(nv_ifelse(split, t / 2, t))
+      scaled <- rate * e
+      nv_ifelse(resolved, 0, nv_ifelse(split, scaled * e, scaled))
+    }
+    valid <- valid_exp_rate(rate) & (rate != Inf) & !((x == Inf) & (rate == 0))
+    nv_ifelse(valid, density, NaN)
+  },
+  static = "log"
+)
+
+#' @rdname nv_exponential
+#' @export
+nv_pexp <- jit(
+  function(q, rate = 1, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(q = q, rate = rate)
+    q <- args$q
+    rate <- args$rate
+    op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
+
+    # At or below the support and at `q = Inf` the cdf is resolved directly,
+    # which also keeps `rate = Inf` well defined at `q = 0`. `q` is clamped
+    # there so untaken branch cannot poison gradients.
+    # NaN fails both comparisons and flows through.
+    # NB: need to treat subnormal q as zero explicitly so compiler optimizations
+    #     can't cause the value and gradient guards to disagree.
+    #     Hence at_or_below not simply `q <= 0`
+    at_or_below <- q < (if (op_dtype == "f32") 2^-126 else 2^-1022)
+    at_inf <- q == Inf
+    resolve_ends <- function(below_val, inf_val, interior_val) {
+      nv_ifelse(at_or_below, below_val, nv_ifelse(at_inf, inf_val, interior_val))
+    }
+    # compute exponent, with a guard value outside support or at inf
+    t <- -rate * nv_ifelse(at_or_below | at_inf, 1, q)
+
+    res <- if (lower_tail) {
+      # => 1-e^t
+      if (log_p) {
+        # => log(1-e^t)
+        # If rate & q are not subnormal, but rate * q underflows, then t flushes
+        # to zero and log1mexp() gives -Inf.
+        # But log(1 - exp(-rate * q)) is approx log(rate * q) for tiny rate*q so
+        # this should be computable.
+        # Hence scale each rate & q by 2^k (half the exponent range) to avoid
+        # subnormal product without overflowing, then rescale back.
+        # Only split near underflow: log1mexp() more accurate otherwise.
+        underflow <- (t == 0) & (rate > 0) & !at_or_below & !at_inf
+        k <- if (op_dtype == "f32") 63 else 511
+        # Select after scaling each factor so XLA cannot reassociate this as
+        # (rate * q) * 2^(2*k), underflowing before the scale is applied.
+        rescaled <- nv_log(
+          nv_ifelse(underflow, rate * 2^k, 1) * nv_ifelse(underflow, q * 2^k, 1)
+        ) -
+          2 * k * base::log(2)
+        interior <- nv_ifelse(underflow, rescaled, log1mexp(nv_ifelse(underflow, -1, t)))
+        resolve_ends(-Inf, 0, interior)
+      } else {
+        resolve_ends(0, 1, -nv_expm1(t))
+      }
+    } else {
+      # => e^t
+      if (log_p) resolve_ends(0, -Inf, t) else resolve_ends(1, 0, nv_exp(t))
+    }
+    # Resolve to NaN matching base R rules
+    valid <- valid_exp_rate(rate) & !(at_inf & (rate == 0))
+    nv_ifelse(valid, res, NaN)
+  },
+  static = c("lower_tail", "log_p")
+)
+
+#' @rdname nv_exponential
+#' @export
+nv_qexp <- jit(
+  function(p, rate = 1, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(p = p, rate = rate)
+    p <- args$p
+    rate <- args$rate
+    op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
+
+    # Valid range checks for p, gradient guarding and exact zero result resolution
+    if (log_p) {
+      in_range <- p <= 0
+      p_safe <- nv_ifelse(in_range, p, -1)
+      zero_result <- p == (if (lower_tail) -Inf else 0)
+    } else {
+      in_range <- (p >= 0) & (p <= 1)
+      p_safe <- nv_ifelse(in_range, p, 0.5)
+      zero_result <- p == (if (lower_tail) 0 else 1)
+    }
+
+    # If degenerate case (zero-quantile endpoint and rate 0 => 0/0) resolve
+    # directly, with gradient guard.
+    degenerate <- zero_result & (rate == 0)
+    rate_safe <- nv_ifelse(degenerate | !in_range, 1, rate)
+
+    quantile <- if (lower_tail && log_p) {
+      # => -log(1-e^p)/rate
+      # For small exp(p), -log(1 - exp(p)) is approx exp(p). But if exp(p)
+      # underflows (or subnormal) result lost before division by rate.
+      # Hence, split exponential itself so rate can rescale before underflow,
+      # but avoiding costly log(rate) calculation.
+      # (exp(p/2)/rate)*exp(p/2) = exp(p)/rate
+      # Only split near underflow: log1mexp() more accurate otherwise.
+      underflow <- p_safe < (if (op_dtype == "f32") -80 else -700)
+      half <- nv_exp(nv_ifelse(underflow, p_safe / 2, -1))
+      zero_rate <- rate_safe == 0
+      rescaled <- nv_ifelse(zero_rate, Inf, (half / nv_ifelse(zero_rate, 1, rate_safe)) * half)
+      regular <- -log1mexp(nv_ifelse(underflow, -1, p_safe)) / rate_safe
+      nv_ifelse(underflow, rescaled, regular)
+    } else {
+      # Remaining easy cases
+      log_upper <- if (lower_tail) {
+        nv_log1p(-p_safe)
+      } else {
+        if (log_p) p_safe else nv_log(p_safe)
+      }
+      -log_upper / rate_safe
+    }
+    # Resolve to NaN matching base R rules
+    valid <- in_range & valid_exp_rate(rate)
+    nv_ifelse(valid, nv_ifelse(degenerate, 0, quantile), NaN)
+  },
+  static = c("lower_tail", "log_p")
+)

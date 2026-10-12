@@ -74,6 +74,8 @@ globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
 globals[["DESCRIPTOR_STASH"]] <- list()
 globals[["CURRENT_DESCRIPTOR"]] <- NULL
 globals[["LOWERING_PLATFORM"]] <- NULL
-# The global RNG state (see `global_rng_slot()`).
+# The registered side effects, by name (see `register_side_effect()`).
+globals$side_effects <- list()
+# The value of the global RNG state, the side effect "rng" (see R/rng.R).
 globals$rng_state <- NULL
 utils::globalVariables(c("globals", "self"))

@@ -1,14 +1,21 @@
 # anvl (development version)
 
-* Breaking: random draws use a global RNG state, which `nv_set_seed()` seeds
-  (`with_nv_seed()` / `local_nv_seed()` for a scope); unset, it is derived
-  from base R's RNG on the first draw.
-  The samplers lose their `state` argument and return only the sample;
-  `nv_rng_state()` is removed. A jitted function threads the state through
-  all its draws, including those in `nv_if()`, `nv_while()`, `nv_scan()` and
-  `gradient()`.
-* New `prim_random_bits()` draws random bits with ThreeFry, also from several
-  independent streams at once.
+## Breaking changes
+
+* The RNG state no longer has to be passed around manually.
+  Instead, set a seed via `nv_set_seed()` or the context managers `with_nv_seed()` / `local_nv_seed()`.
+* New `prim_sample_bits()` draws random bits with ThreeFry.
+* Removed `prim_rng_bit_generator()`; draw random bits with `prim_sample_bits()`.
+
+## Features
+
+* `nv_get_rng_state()` and `nv_set_rng_state()` save and restore the global RNG
+  state, to continue a sequence where it stopped.
+* Added a general mechanism that enable primitive side-effects, such as the global
+  RNG state.
+* New `nv_bool()`, `nv_int{8,16,32,64}`, `nv_uint{8,16,32,64}` and `nv_float{32,64}`
+  constructors.
+* New functions for the exponential distribution: `nv_{d,p,q}exp`.
 
 # anvl 0.5.1
 

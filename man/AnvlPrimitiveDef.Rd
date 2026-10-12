@@ -4,7 +4,7 @@
 \alias{AnvlPrimitiveDef}
 \title{Primitive Definition}
 \usage{
-AnvlPrimitiveDef(name, subgraphs = character())
+AnvlPrimitiveDef(name, subgraphs = character(), side_effects = character())
 }
 \arguments{
 \item{name}{(\code{character(1)})\cr
@@ -12,6 +12,9 @@ The name of the primitive, without the \code{prim_} prefix.}
 
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs.}
+
+\item{side_effects}{(\code{character()})\cr
+Names of the side effects the primitive uses (see \code{register_side_effect()}).}
 }
 \value{
 (\code{AnvlPrimitiveDef})

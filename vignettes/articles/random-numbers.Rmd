@@ -1,5 +1,6 @@
 ---
 title: "Random Number Generation"
+bibliography: references.bib
 ---
 
 ```{r, include = FALSE}
@@ -81,7 +82,7 @@ The state is threaded through `nv_while()`, `nv_scan()` and `nv_if()` too, so a 
 ```{r}
 walk <- jit(function() {
   nv_scan(
-    init = list(nv_scalar(0)),
+    init = nv_scalar(0),
     body = function(carry, x) {
       pos <- carry + nv_rnorm(integer())
       list(carry = pos, out = pos)
@@ -92,8 +93,6 @@ walk <- jit(function() {
 walk()
 ```
 
-## How the generator works
+## The generator
 
-The global state is a key and a counter, and random bits are drawn with the counter-based ThreeFry generator: a draw of `n` numbers hashes the key with the next `n` values of the counter and advances the counter by `n`.
-`prim_random_bits()` is the primitive all samplers are built on.
-It can also draw several independent streams at once, each from its own key derived from the global state, which is the basis for drawing in parallel.
+{anvl} draws random numbers with the counter-based ThreeFry-2x32 generator [@salmon2011parallel].

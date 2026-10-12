@@ -14,7 +14,6 @@ test_that("nv_rnorm", {
 })
 
 test_that("nv_rnorm accepts arrayish mean and sd", {
-
   # An elementwise mean of the same shape as the sample
   means <- nv_array(matrix(c(-1000, 1000, -1000, 1000, -1000, 1000), nrow = 2))
   out <- nv_rnorm(c(2, 3), dtype = "f64", mean = means, sd = 1)
@@ -109,7 +108,6 @@ test_that("nv_runif with min == max returns the pair, state advanced", {
 })
 
 test_that("nv_runif accepts arrayish min and max", {
-
   # An elementwise interval of the same shape as the sample
   lower <- nv_array(matrix(c(0, 10, 100, 1000, 10000, 100000), nrow = 2), dtype = "f64")
   out <- nv_runif(c(2, 3), min = lower, max = lower + 1)

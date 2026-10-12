@@ -2,11 +2,17 @@
 % Please edit documentation in R/rng.R
 \name{nv_set_seed}
 \alias{nv_set_seed}
+\alias{nv_get_rng_state}
+\alias{nv_set_rng_state}
 \alias{local_nv_seed}
 \alias{with_nv_seed}
 \title{Set the Global RNG Seed}
 \usage{
 nv_set_seed(seed)
+
+nv_get_rng_state()
+
+nv_set_rng_state(state)
 
 local_nv_seed(seed, envir = parent.frame())
 
@@ -16,6 +22,9 @@ with_nv_seed(seed, code)
 \item{seed}{(\code{integer(1)} | \code{NULL})\cr
 The seed, or \code{NULL} to derive the global state from base R's RNG.}
 
+\item{state}{(\code{\link{AnvlArray}} | \code{NULL})\cr
+A state returned by \code{nv_get_rng_state()}.}
+
 \item{envir}{(\code{environment})\cr
 The scope whose exit restores the global state.}
 
@@ -23,8 +32,11 @@ The scope whose exit restores the global state.}
 An expression to evaluate with the seeded global state.}
 }
 \value{
-\code{nv_set_seed()} and \code{local_nv_seed()} return \code{NULL}, invisibly;
-\code{with_nv_seed()} returns the result of evaluating \code{code}.
+\code{nv_set_seed()}, \code{local_nv_seed()} and \code{nv_set_rng_state()} return
+\code{NULL}, invisibly; \code{with_nv_seed()} returns the result of evaluating
+\code{code}.
+\code{nv_get_rng_state()} returns a copy of the global state, a \code{ui64}
+\code{\link{AnvlArray}} of shape \code{2}, or \code{NULL} while it is not set.
 }
 \description{
 Seeds the global RNG state, analogous to base R's \code{\link[=set.seed]{set.seed()}}. Calling it
@@ -34,7 +46,7 @@ makes the draws reproducible too.
 
 All random draws in anvl -- the samplers \code{\link[=nv_runif]{nv_runif()}}, \code{\link[=nv_rnorm]{nv_rnorm()}},
 \code{\link[=nv_rbinom]{nv_rbinom()}}, \code{\link[=nv_sample_int]{nv_sample_int()}} and \code{\link[=nv_sample]{nv_sample()}}, and the primitive
-\code{\link[=prim_random_bits]{prim_random_bits()}} they build on -- draw from one global RNG state and
+\code{\link[=prim_sample_bits]{prim_sample_bits()}} they build on -- draw from one global RNG state and
 advance it. A \code{\link[=jit]{jit()}}-compiled function that draws from it takes the global
 state as a hidden input and hands the advanced state back as a hidden
 output, so every draw inside one call advances the same state, and
@@ -69,6 +81,18 @@ called in a function traced by \code{\link[=jit]{jit()}}, where they would seed 
 tracing, rather than on every call.
 }
 
+\section{Saving and restoring the state}{
+
+A seed restarts a sequence from its beginning. To continue one where it
+stopped, e.g. when resuming a model fit, save the state itself:
+\code{nv_get_rng_state()} returns a copy of the global state, and
+\code{nv_set_rng_state()} makes a copy of a saved state the global state again.
+The state is a \code{ui64} \code{\link{AnvlArray}} of shape \code{2}, the key and the counter of
+the generator (see \code{\link[=prim_sample_bits]{prim_sample_bits()}}), so \code{\link[=nv_save]{nv_save()}} can write it to a
+file. \code{NULL} is the state that is not set. Both functions copy the state, as
+the draws update the global state in place.
+}
+
 \section{Devices}{
 
 The global state lives on the device of the call that last drew from it,
@@ -99,6 +123,12 @@ f()
 # seed for one expression only
 with_nv_seed(1L, nv_runif(2L))
 with_nv_seed(1L, nv_runif(2L))
+
+# save the state and continue from it later
+state <- nv_get_rng_state()
+nv_runif(2L)
+nv_set_rng_state(state)
+nv_runif(2L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

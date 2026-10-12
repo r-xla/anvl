@@ -52,9 +52,8 @@ an \code{\link{AnvlGraph}}.
 The resulting graph can be lowered to StableHLO (via \code{\link[=stablehlo]{stablehlo()}}) or transformed
 (e.g. via \code{\link[=transform_gradient]{transform_gradient()}}).
 
-When \code{f} draws random numbers (see \code{\link[=nv_set_seed]{nv_set_seed()}}), the graph takes the
-global RNG state as its last input and returns the advanced state as its last
-output, as the program \code{\link[=jit]{jit()}} compiles from it does.
+When \code{f} uses a side effect, the graph records it in its \code{side_effects} field rather
+than among its inputs and outputs (see \code{\link{AnvlGraph}}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

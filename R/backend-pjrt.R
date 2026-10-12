@@ -33,10 +33,9 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       client = pjrt::pjrt_client(pjrt::platform(compiled$device)),
       device = compiled$device,
       out_tree = compiled$out_tree,
-      out_avals = compiled$out_avals
+      out_avals = compiled$out_avals,
+      state = compiled$state
     )
-    # the global RNG state slot, for a program that draws from it
-    entry$state <- compiled$state
     entry
   }
 }
@@ -142,9 +141,9 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `device`: The `PJRTDevice` the executable was compiled for.
 #'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
 #'     executor must allocate for an output (see [`stablehlo()`]).
-#'   - `state`: `NULL`, or for a program that draws from the global RNG state
-#'     the state slot through which pjrt's dispatcher supplies and stores it
-#'     (see [`nv_set_seed()`]).
+#'   - `state`: One state slot per side effect the program uses, through which
+#'     pjrt's dispatcher supplies and stores its value (see
+#'     `register_side_effect()`).
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -156,8 +155,7 @@ compile_pjrt <- function(
   fallback_device = NULL,
   default_dtypes = NULL
 ) {
-  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt")
-  rng_enable(desc, "input")
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt", side_effects_mode = "input")
   graph <- trace_fn(
     f,
     desc = desc,
@@ -170,6 +168,7 @@ compile_pjrt <- function(
   # constants, which would otherwise hide a closed-over constant from a foreign
   # backend and let `check_single_backend()` pass incorrectly.
   check_single_backend(graph, expected = "pjrt")
+  check_side_effects(graph, "pjrt")
 
   # jit() always runs the full set of graph optimization passes.
   graph <- optimize_graph(graph, optimize = TRUE)
@@ -202,17 +201,15 @@ compile_pjrt <- function(
   # Otherwise, everything will be converted to requested device and it does not matter
   # If we found different devices during tracing.
 
-  compile_graph_pjrt(graph, donate = donate, device = device, rng = rng_finish(desc))
+  compile_graph_pjrt(graph, donate = donate, device = device)
 }
 
-# `rng` is `NULL`, or the global RNG state's `list(input, output)` of a trace
-# that drew from it (see `rng_finish()`): the program then takes the state as
-# its last input and returns it as its last output, and pjrt supplies and stores
-# it through a state slot.
-compile_graph_pjrt <- function(graph, donate = character(), device, rng = NULL) {
+# The program takes the values of the side effects `graph` uses after its
+# inputs and returns them after its outputs (see `stablehlo()`), and pjrt
+# supplies and stores them through the state slots the side effects' pjrt rules
+# build.
+compile_graph_pjrt <- function(graph, donate = character(), device) {
   platform_name <- if (is.character(device)) device else platform(device)
-  # Read before the state is added: it is not one of the call's inputs or
-  # outputs.
   input_dtypes <- graph_input_dtypes(graph)
   # pjrt needs these to create templates for the outputs
   # We also provide dtype and shape because these are created BEFORE the first execution
@@ -222,7 +219,6 @@ compile_graph_pjrt <- function(graph, donate = character(), device, rng = NULL) 
       shape = shape(x$aval)
     )
   })
-  graph <- rng_add_io(graph, rng)
   out <- stablehlo(
     graph,
     donate = donate,
@@ -266,7 +262,22 @@ compile_graph_pjrt <- function(graph, donate = character(), device, rng = NULL) 
     input_dtypes = input_dtypes,
     device = device(exec),
     phantom_specs = phantom_specs,
-    state = if (!is.null(rng)) list(global_rng_slot())
+    state = unname(lapply(names(graph$side_effects), function(name) side_effect(name)$rules$pjrt))
+  )
+}
+
+# The pjrt rule of a side effect of aval `aval` (see `register_side_effect()`):
+# the state slot of `pjrt::dispatcher()` that reads the value with `getter()`
+# before every call of a program that uses it, and stores the updated value with
+# `setter()` after it. The program updates the value in place: the buffer
+# `getter()` returned is donated to it, so nothing may keep a reference to an
+# old value.
+pjrt_state_slot <- function(aval, getter, setter) {
+  list(
+    get = getter,
+    set = setter,
+    dtype = as.character(dtype(aval)),
+    shape = shape(aval)
   )
 }
 

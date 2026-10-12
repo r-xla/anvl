@@ -446,6 +446,95 @@ f(list(w = nv_scalar(2), b = nv_scalar(5)), nv_scalar(3))
 jit_cache_size(f)
 ```
 
+### Side Effects
+
+In principle, all functions that are `jit`ted in {anvl} must be pure.
+However, sometimes this is hidden from the user, to enable a more user-friendly experience.
+Most importantly, we deviate from this for RNG state handling.
+This is implemented via the generic **side effects** mechanism.
+
+To illustrate this, let's look at the bit-sampling primitive, which has the `"rng"` side effect as it advances the global rng state.
+
+```{r}
+nv_set_seed(1L)
+utils::getFromNamespace("globals", "anvl")$rng_state
+prim_sample_bits(1L)
+utils::getFromNamespace("globals", "anvl")$rng_state
+```
+
+The underlying function is still pure, however parts of the inputs and outputs are hidden from the user:
+
+```{r}
+trace_fn(prim_sample_bits, args = list(1L))
+```
+
+Generally, during tracing a side effect is always tied to some state value, in this case the RNG state.
+When the compiled function is called, this state is extracted from {anvl}'s global state and passed to the compiled progam.
+The compiled program also returns the updated state which is then assigned to {anvl}'s global state again.
+In addition, {anvl} makes
+
+An `AnvlGraph` describes a pure function: its outputs depend only on its inputs, and running it changes nothing else.
+Drawing random numbers does not fit this picture, as it reads and advances the global RNG state, which lives outside the program.
+{anvl} handles such values as **side effects**: a value that some primitives read and update, which the user never passes, and which {anvl} **threads** through the trace instead.
+The global RNG state is one: all random draws -- `nv_runif()`, `nv_rnorm()`, and the other samplers -- build on `prim_sample_bits()`, which reads it and advances it.
+See the [random numbers](random-numbers.html) article for the user-facing side.
+
+A side effect is registered once with `register_side_effect()`, with the data type and shape of its value and where that value lives between calls: a getter that returns it and a setter that stores it.
+For the global RNG state, a `ui64[2]` `AnvlArray` holding a key and a counter, that is the `rng_state` binding of {anvl}'s internal `globals` environment, which `nv_set_seed()` writes to.
+A primitive declares the side effects it uses with the `side_effects` argument of `new_primitive()`:
+
+```r
+prim_sample_bits <- new_primitive("sample_bits", function(shape, dtype) {
+  graph_desc_add(self, list(), params = list(shape = shape, dtype = dtype), infer_fn = infer_sample_bits)[[1L]]
+}, static = c("shape", "dtype"), side_effects = "rng")
+```
+
+While tracing, the `GraphDescriptor` holds the *current* value of each side effect it has used, and `graph_desc_add()` does the threading: it passes the current value to the call as one more operand, and makes the updated value the call outputs last the new current value, so the next draw reads the state the previous one left behind.
+Where a side effect comes from on its first use is decided by the `side_effects_mode` whoever opens the trace passes to `local_descriptor()`:
+
+- `"input"`: the value is a fresh input of the graph.
+  The top-level trace of `jit()` and the bodies of `nv_while()` and `nv_scan()` take side effects this way.
+- `"capture"`: the value is the current one of the enclosing trace, which the graph closes over like any other captured value.
+  The branches of `nv_if()` and the function differentiated by `gradient()` take side effects this way.
+- Neither: using a side effect is an error.
+  This is the case for the condition of `nv_while()` and the functions of a reduction or scatter, which have no way to hand an updated value back.
+
+A side effect is only registered on its first use, so a function that does not draw takes no extra input and returns no extra output.
+The graph records the side effects it uses in its `side_effects` field, apart from its `inputs` and `outputs`, so that `in_tree` and `out_tree` keep describing what the user passes and gets back:
+
+```{r}
+graph <- trace_fn(function(x) x + prim_sample_bits(2L, "ui32"), list(x = nv_aval("ui32", 2L)))
+graph
+```
+
+For the higher-order primitives, this means:
+
+- `nv_if()`: if either branch uses a side effect, both branches return the value they leave behind as one more output, a branch that did not use it returning the captured value unchanged.
+  The output of the `if` becomes the enclosing trace's current value.
+- `nv_while()` and `nv_scan()`: if the body uses a side effect, it becomes one more member of the loop state (the carry), so every iteration reads the value the previous one left behind, and the loop's final value becomes the enclosing trace's current value.
+- `gradient()`: the differentiated function closes over the value, and once the graph has been replayed by the reverse-mode transformation, the value it leaves behind becomes the enclosing trace's current value.
+
+At the top level, `stablehlo()` lowers each side effect of the graph to one more argument after the graph's inputs and one more result after its outputs, and aliases the two, so that the program updates the value in place.
+A backend runs a function that uses a side effect only if the side effect has a rule for it.
+The pjrt rule of the global RNG state is the *state slot* `pjrt_state_slot()` builds for it, which pjrt's dispatcher uses to read the value with the getter before every run (creating it from base R's RNG when it is unset), and to store the updated value with the setter after it.
+pjrt's execution engine copies the value to the program's device when it lives elsewhere, and donates its buffer to the program.
+The slot is not part of the cache key: whether a program uses a side effect is decided by the program, not by the arguments of the call.
+
+Since eager calls of `nv_*` functions also run through `jit()`, every draw -- eager or compiled -- advances the same state, and the split of the draws into compiled functions does not change the numbers:
+
+```{r}
+nv_set_seed(1L)
+x <- nv_runif(2L)
+y <- nv_runif(2L)
+nv_set_seed(1L)
+f <- jit(function() list(x = nv_runif(2L), y = nv_runif(2L)))
+out <- f()
+identical(as_array(x), as_array(out$x))
+identical(as_array(y), as_array(out$y))
+```
+
+The global RNG state has no rule for the quickr backend, so quickr cannot run a function that draws random numbers.
+
 ## Backend and Device in `jit()`
 
 A compiled program runs on one backend and on one device of that backend.
