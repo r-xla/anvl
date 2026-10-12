@@ -1001,6 +1001,9 @@ nv_mod <- jit(function(lhs, rhs) {
     return(rest)
   }
   shifted <- nv_ifelse((rest != 0L) & ((rest < 0L) != (rhs < 0L)), rest + rhs, rest)
+  if (!is_dtype_float(peek_dtype(lhs))) {
+    return(shifted)
+  }
   # A shift that rounds up to the divisor itself is a remainder of 0. An
   # infinite divisor is exempt: there the shift is exact, `-5 %% Inf` is `Inf`.
   nv_ifelse((nv_abs(shifted) >= nv_abs(rhs)) & nv_is_finite(rhs), 0L, shifted)
@@ -1030,16 +1033,37 @@ nv_floor_div <- jit(function(lhs, rhs) {
   rhs <- args[[2L]]
   dt <- peek_dtype(lhs)
   if (is_dtype_float(dt)) {
-    return(nv_floor(nv_div(lhs, rhs)))
+    return(floor_div_float(lhs, rhs, dt))
   }
   if (is_dtype_uint(dt)) {
     # Unsigned division cannot be negative, so there is nothing to floor.
     return(prim_div(lhs, rhs))
   }
-  # Integer division truncates towards zero, so subtract the flooring
-  # remainder first to make the division exact.
-  prim_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs)
+  # Integer division truncates towards zero: step down where the truncating
+  # remainder and the divisor differ in sign.
+  rest <- prim_remainder(lhs, rhs)
+  quot <- prim_div(lhs, rhs)
+  nv_ifelse((rest != 0L) & ((rest < 0L) != (rhs < 0L)), quot - 1L, quot)
 })
+
+# Float flooring division with base R's semantics (`myfloor()` in R's
+# arithmetic.c). `floor(lhs / rhs)` would round `1 / 0.1` up to `10`, so the
+# quotient is instead recovered from the exact flooring remainder, which keeps
+# `lhs == lhs %% rhs + rhs * (lhs %/% rhs)`.
+floor_div_float <- function(lhs, rhs, dt) {
+  eps <- if (dtype_width(dt) == 64L) .Machine$double.eps else 2^-23
+  quot <- nv_div(lhs, rhs)
+  res <- nv_round(nv_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs))
+  # A quotient below one in magnitude floors by sign alone, which also covers
+  # an infinite divisor.
+  small <- nv_abs(quot) < 1L
+  opposite <- ((lhs < 0L) & (rhs > 0L)) | ((lhs > 0L) & (rhs < 0L))
+  res <- nv_ifelse(small & opposite, -1L, res)
+  res <- nv_ifelse(small & !opposite, 0L, res)
+  # A zero divisor, a non-finite quotient and one too large to have a
+  # fractional part are returned as they are.
+  nv_ifelse((rhs == 0L) | !nv_is_finite(quot) | (nv_abs(quot) * eps > 1), quot, res)
+}
 
 #' @title Bitwise AND
 #' @description

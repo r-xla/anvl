@@ -712,6 +712,32 @@ describe("nv_floor_div", {
     y <- nv_array(c(3L, 3L, -3L, -3L))
     expect_equal(as.vector(nv_floor_div(x, y) * y + nv_mod(x, y)), as.vector(x))
   })
+
+  it("matches base R for floats whose quotient rounds up to a whole number", {
+    lhs <- c(1, 0.3, 0.7, -1, 5.5, 1e20, 3)
+    rhs <- c(0.1, 0.1, 0.1, 0.1, -2, 3, 1e-20)
+    out <- as.vector(as_array(nv_floor_div(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))))
+    expect_identical(out, lhs %/% rhs)
+    mod <- as.vector(as_array(nv_mod(nv_array(lhs[1:4], dtype = "f64"), nv_array(rhs[1:4], dtype = "f64"))))
+    expect_equal(mod + rhs[1:4] * out[1:4], lhs[1:4])
+  })
+
+  it("matches base R for zero, infinite and tiny operands", {
+    lhs <- c(-5, 5, -5, 5, 0, Inf, -Inf, NaN, 5, -5, 0, -1e-20, 1e-20, 0.5, -0.5, 0)
+    rhs <- c(Inf, Inf, -Inf, -Inf, Inf, 5, 5, 5, 0, 0, 0, 1, -1, -2, 2, -3)
+    out <- as.vector(as_array(nv_floor_div(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))))
+    expect_identical(out, lhs %/% rhs)
+  })
+
+  it("matches base R when the divisor is the most negative value of its type", {
+    for (dt in c("i8", "i16", "i32")) {
+      mn <- -2^(c(i8 = 7L, i16 = 15L, i32 = 31L)[[dt]])
+      lhs <- c(100, -100, 0, mn, mn, 1, -1)
+      rhs <- c(mn, mn, mn, mn, 3, mn, mn)
+      out <- nv_floor_div(nv_array(lhs, dtype = dt), nv_array(rhs, dtype = dt))
+      expect_equal(as.double(as_array(out)), lhs %/% rhs, info = dt)
+    }
+  })
 })
 
 describe("nv_psigamma", {
@@ -2821,6 +2847,16 @@ describe("nv_mod", {
       as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
       lhs %% rhs
     )
+  })
+
+  it("matches base R when the divisor is the most negative value of its type", {
+    for (dt in c("i8", "i16", "i32")) {
+      mn <- -2^(c(i8 = 7L, i16 = 15L, i32 = 31L)[[dt]])
+      lhs <- c(100, -100, 0, mn, mn, 1, -1)
+      rhs <- c(mn, mn, mn, mn, 3, mn, mn)
+      out <- nv_mod(nv_array(lhs, dtype = dt), nv_array(rhs, dtype = dt))
+      expect_equal(as.double(as_array(out)), lhs %% rhs, info = dt)
+    }
   })
 
   it("takes the sign of an infinite divisor, like base R", {

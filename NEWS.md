@@ -1,5 +1,7 @@
 # anvl (development version)
 
+* Bugfix: float `nv_floor_div()` (`%/%`) now matches base R (`1 %/% 0.1` is `9`, `-5 %/% Inf` is `-1`),
+  and integer `%%` / `%/%` no longer give `0` for a divisor that is its type's most negative value.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,
