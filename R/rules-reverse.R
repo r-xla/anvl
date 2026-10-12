@@ -752,11 +752,16 @@ prim_pad[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) {
-      # select the non-padded elements
-      out_shape <- shape(outputs[[1L]])
+      # A negative edge padding trimmed the interior-padded operand: pad the
+      # cotangent back with zeros there, then select the non-padded elements.
+      trimmed_low <- pmax(-edge_padding_low, 0L)
+      trimmed_high <- pmax(-edge_padding_high, 0L)
+      if (any(trimmed_low > 0L | trimmed_high > 0L)) {
+        grad <- prim_pad(grad, zeros(dtype(grad), integer()), trimmed_low, trimmed_high, integer(length(trimmed_low)))
+      }
       strides <- interior_padding + 1L
-      start_indices <- edge_padding_low + 1L
-      end_indices <- out_shape - edge_padding_high
+      start_indices <- pmax(edge_padding_low, 0L) + 1L
+      end_indices <- shape(grad) - pmax(edge_padding_high, 0L)
       prim_static_slice(grad, start_indices, end_indices, strides)
     },
     if (required[[2L]]) {

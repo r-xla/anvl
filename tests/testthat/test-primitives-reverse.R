@@ -641,6 +641,27 @@ test_that("prim_pad reverse with interior padding", {
   expect_equal(g4[[1L]], nv_matrix(rep(1, 6), nrow = 2, ncol = 3, dtype = "f64"))
 })
 
+describe("prim_pad reverse", {
+  it("gives a trimmed element a zero gradient", {
+    f <- jit(gradient(function(x) nv_sum(nv_pad(x, 0, low = -1L, high = 0L))))
+    expect_equal(as.numeric(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(0, 1, 1))
+  })
+
+  it("combines negative edge padding with interior padding", {
+    # [a, b, c] with interior 1 is [a, 0, b, 0, c]; trimming one element low and
+    # padding one high gives [0, b, 0, c, 0].
+    w <- nv_array(c(1, 2, 3, 4, 5), dtype = "f64")
+    f <- jit(gradient(function(x) nv_sum(prim_pad(x, 0, -1L, 1L, 1L) * w)))
+    expect_equal(as.numeric(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(0, 2, 4))
+  })
+
+  it("handles a trim that reaches into the opposite edge padding", {
+    # [0, 0, a, b, c] trimmed by four high is [0]: no element of x survives.
+    f <- jit(gradient(function(x) nv_sum(prim_pad(x, 0, 2L, -4L, 0L))))
+    expect_equal(as.numeric(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(0, 0, 0))
+  })
+})
+
 test_that("prim_dynamic_slice reverse", {
   # Gradient should scatter the incoming gradient back to the input position
   f <- jit(gradient(
