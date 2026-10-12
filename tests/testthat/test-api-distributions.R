@@ -1826,18 +1826,39 @@ describe("nv_pbinom", {
   it("stays accurate for very large size, near the mean and in the tails", {
     # Near the mean the continued fraction would need too many iterations here;
     # the asymptotic expansion takes over
-    for (size in c(1e12, 1e15)) {
-      for (prob in c(0.001, 0.5)) {
-        q <- floor(size * prob + c(-5, -1, 0, 1, 5) * sqrt(size * prob * (1 - prob)))
-        for (lp in c(FALSE, TRUE)) {
-          expect_equal(
-            as.vector(nv_pbinom(as_f64(q), size = size, prob = prob, log_p = lp)),
-            pbinom(q, size = size, prob = prob, log.p = lp),
-            tolerance = 1e-12
-          )
-        }
+    for (args in list(c(1e12, 0.001), c(1e12, 0.5), c(1e15, 0.5))) {
+      size <- args[[1L]]
+      prob <- args[[2L]]
+      q <- floor(size * prob + c(-5, -1, 0, 1, 5) * sqrt(size * prob * (1 - prob)))
+      for (lp in c(FALSE, TRUE)) {
+        expect_equal(
+          as.vector(nv_pbinom(as_f64(q), size = size, prob = prob, log_p = lp)),
+          pbinom(q, size = size, prob = prob, log.p = lp),
+          tolerance = 1e-12
+        )
       }
     }
+    # Reference values from mpmath at 40 digits, via the incomplete beta
+    # continued fraction. base R's pbinom() is platform dependent here: it
+    # matches these on macOS arm64 but is out by up to ~7e-11 on Linux x86_64.
+    q <- c(999995002500, 999999000500, 1000000000000, 1000000999499, 1000004997499)
+    log_ref <- c(
+      -15.065019759294128,
+      -1.8410210729244791,
+      -0.6931466486535973,
+      -0.1727538869153773,
+      -2.8665736459560832e-7
+    )
+    expect_equal(
+      as.vector(nv_pbinom(as_f64(q), size = 1e15, prob = 0.001, log_p = TRUE)),
+      log_ref,
+      tolerance = 1e-14
+    )
+    expect_equal(
+      as.vector(nv_pbinom(as_f64(q), size = 1e15, prob = 0.001)),
+      c(2.8664544754624097e-7, 0.15865534469573975, 0.50000026595324474, 0.84134465529424158, 0.99999971334267649),
+      tolerance = 1e-14
+    )
   })
 
   it("stays accurate where size is huge but size * prob is about 1", {
