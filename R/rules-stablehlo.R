@@ -46,7 +46,19 @@ prim_div[["stablehlo"]] <- function(lhs, rhs, output_types) {
 }
 
 prim_pow[["stablehlo"]] <- function(x, y, output_types) {
-  list(hlo_power(x, y, output_types = output_types))
+  dt <- dtype(x)
+  if (!is_dtype_uint(dt)) {
+    return(list(hlo_power(x, y, output_types = output_types)))
+  }
+  # XLA's integer power only takes signed integers. Wrapping the power of the
+  # zero-extended operands back to the narrower width gives the unsigned result;
+  # `ui64` has no wider type and is reinterpreted at `i64` instead.
+  if (dtype_width(dt) == 64L) {
+    out <- hlo_power(hlo_bitcast_convert(x, "i64"), hlo_bitcast_convert(y, "i64"))
+    return(list(hlo_bitcast_convert(out, dt, output_types = output_types)))
+  }
+  out <- hlo_power(hlo_convert(x, "i64"), hlo_convert(y, "i64"))
+  list(hlo_convert(out, dt, output_types = output_types))
 }
 
 prim_broadcast_in_axes[["stablehlo"]] <- function(x, shape, broadcast_axes, output_types) {
