@@ -3,6 +3,9 @@
 ## anvl (development version)
 
 - Bugfix:
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md) no
+  longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+- Bugfix:
   [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md),
   [`nv_var()`](https://r-xla.github.io/anvl/reference/nv_var.md) and
   [`nv_sd()`](https://r-xla.github.io/anvl/reference/nv_sd.md) no longer

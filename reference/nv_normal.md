@@ -224,15 +224,15 @@ state <- nv_rng_state(42L)
 result <- nv_rnorm(c(2, 3), state)
 result$values
 #> AnvlArray
-#>  -0.0675  1.9457  1.2002
-#>   0.9489 -0.5255  0.0008
+#>  -0.2568  0.5714  0.6761
+#>   0.5345 -2.0000  0.0002
 #> [ CPUf32{2,3} ] 
 
 # `sd` may also be an array of the same shape as the sample
 sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
 nv_rnorm(c(2, 3), state, sd = sds)$values
 #> AnvlArray
-#>   -0.0007   1.9457 120.0167
-#>    0.0949  -5.2551   0.7665
+#>   -0.0026   0.5714  67.6114
+#>    0.0535 -19.9998   0.2251
 #> [ CPUf32{2,3} ] 
 ```

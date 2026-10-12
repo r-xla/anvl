@@ -370,8 +370,8 @@ res$values
 ```
 
     ## AnvlArray
-    ##  0.4299
-    ##  0.3097
+    ##  1.6360
+    ##  1.1787
     ## [ CPUf32{2} ]
 
 See the [Random Number
