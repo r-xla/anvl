@@ -299,3 +299,15 @@ test_that("nv_rnorm takes the sample's dtype from mean and sd", {
   )
   expect_error(draw(mean = nv_scalar(1L), sd = nv_scalar(2L)), "Pass `dtype`")
 })
+
+describe("box_muller", {
+  it("maps a uniform of exactly 0 to a finite sample", {
+    for (dt in c("f32", "f64")) {
+      u1 <- nv_array(c(0, 0.5), dtype = dt)
+      u2 <- nv_array(c(0.125, 0), dtype = dt)
+      z <- as.vector(as_array(box_muller(u1, u2)))
+      expect_true(all(is.finite(z)))
+      expect_equal(z, c(0, 0, 0, sqrt(-2 * log(0.5))), tolerance = 1e-6)
+    }
+  })
+})
