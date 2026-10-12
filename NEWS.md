@@ -6,6 +6,8 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
+* Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
+  `lhs` has batching axes but no free axes.
 
 # anvl 0.5.1
 

@@ -387,8 +387,7 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   bd_out <- seq_along(bd_lhs)
   d_lhs_out <- seq_along(rd_lhs) +
     if (length(bd_out)) bd_out[length(bd_out)] else 0L
-  d_rhs_out <- seq_along(rd_rhs) +
-    if (length(d_lhs_out)) d_lhs_out[length(d_lhs_out)] else 0L
+  d_rhs_out <- length(bd_out) + length(d_lhs_out) + seq_along(rd_rhs)
 
   conv_perm <- function(x) {
     ids_new <- integer(length(x))
