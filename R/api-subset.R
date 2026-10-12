@@ -769,6 +769,7 @@ nv_subset <- function(x, ...) {
       "x" = "Got {.cls {class(x)[1]}}."
     ))
   }
+  x <- as_anvl_array(x)
   x_shape <- shape(x)
   quos <- rlang::enquos(...)
 
