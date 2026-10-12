@@ -97,13 +97,25 @@ prim_static_slice[["stablehlo"]] <- function(x, start_indices, end_indices, stri
   list(hlo_slice(x, start_indices - 1L, end_indices, strides, output_types = output_types))
 }
 
+# Shift a 1-based index array to 0-based. An unsigned index is first converted
+# to a signed type wide enough to hold it, so that index 0 becomes -1 (out of
+# bounds below) instead of wrapping around to the largest value.
+hlo_index_0based <- function(idx) {
+  dt <- dtype(idx)
+  if (is_dtype_uint(dt)) {
+    dt <- as_dtype(paste0("i", min(2L * dtype_width(dt), 64L)))
+    idx <- hlo_convert(idx, dt)
+  }
+  one <- hlo_scalar(1L, dtype = dt, func = idx$func)
+  if (length(shape(idx))) {
+    one <- hlo_broadcast_in_dim(one, integer(), shape(idx))
+  }
+  hlo_subtract(idx, one)
+}
+
 prim_dynamic_slice[["stablehlo"]] <- function(x, ..., slice_sizes, output_types) {
   start_indices <- list(...)
-  # Convert start indices from 1-based to 0-based by subtracting 1
-  start_indices_0based <- lapply(start_indices, function(idx) {
-    one <- hlo_scalar(1L, dtype = dtype(idx), func = idx$func)
-    hlo_subtract(idx, one)
-  })
+  start_indices_0based <- lapply(start_indices, hlo_index_0based)
   list(rlang::exec(
     hlo_dynamic_slice,
     x,
@@ -118,11 +130,7 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(x, update, ..., output_type
   if (!length(start_indices)) {
     return(list(update))
   }
-  # Convert start indices from 1-based to 0-based by subtracting 1
-  start_indices_0based <- lapply(start_indices, function(idx) {
-    one <- hlo_scalar(1L, dtype = dtype(idx), func = idx$func)
-    hlo_subtract(idx, one)
-  })
+  start_indices_0based <- lapply(start_indices, hlo_index_0based)
   list(rlang::exec(
     hlo_dynamic_update_slice,
     x,
@@ -986,8 +994,7 @@ prim_scatter[["stablehlo"]] <- function(
     index_vector_dim = index_vector_axis - 1L
   )
 
-  one <- hlo_tensor(1L, shape = shape(scatter_indices), dtype = dtype(scatter_indices))
-  scatter_indices_0based <- hlo_subtract(scatter_indices, one)
+  scatter_indices_0based <- hlo_index_0based(scatter_indices)
 
   result <- hlo_scatter(
     inputs = list(x),
@@ -1027,8 +1034,7 @@ prim_gather[["stablehlo"]] <- function(
     index_vector_dim = index_vector_axis - 1L
   )
 
-  one <- hlo_tensor(1L, dtype = dtype(start_indices), shape = shape(start_indices))
-  start_indices_0based <- hlo_subtract(start_indices, one)
+  start_indices_0based <- hlo_index_0based(start_indices)
 
   result <- hlo_gather(
     x,
