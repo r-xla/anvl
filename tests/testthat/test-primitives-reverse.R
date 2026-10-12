@@ -641,6 +641,13 @@ test_that("prim_pad reverse with interior padding", {
   expect_equal(g4[[1L]], nv_matrix(rep(1, 6), nrow = 2, ncol = 3, dtype = "f64"))
 })
 
+describe("prim_static_slice reverse", {
+  it("pads the cotangent of an empty strided slice back to the input shape", {
+    f <- jit(gradient(function(x) nv_sum(prim_static_slice(x, 3L, 2L, 2L)) + nv_sum(x)))
+    expect_equal(as.numeric(as_array(f(nv_array(as.double(1:6), dtype = "f64"))[[1L]])), rep(1, 6))
+  })
+})
+
 test_that("prim_dynamic_slice reverse", {
   # Gradient should scatter the incoming gradient back to the input position
   f <- jit(gradient(
