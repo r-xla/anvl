@@ -4,18 +4,36 @@ NULL
 ## Probability distributions ---------------------------------------------------
 
 # The operand -- `x`/`q`/`p`, always the first argument -- governs the data type
-# the distribution is evaluated at; the parameters follow it. The float check
-# runs before the promotion, so a non-float operand is reported as itself rather
-# than as a failure to bring a parameter to its data type.
+# the distribution is evaluated at; the parameters follow it. An integer operand
+# has no float precision to govern with, so it is first converted to the widest
+# float among the parameters that are arrays, or to the default float if none
+# is. R values do not count: they have no data type of their own. The numeric
+# check runs before the promotion, so a boolean operand is reported as itself
+# rather than as a failure to bring a parameter to its data type.
 promote_distribution_args <- function(...) {
   args <- list(...)
   operand <- names(args)[[1L]]
-  assert_float_dtype(
+  operand_dtype <- assert_numeric_dtype(
     peek_dtype(args[[1L]]),
     arg = operand,
     hint = "Convert it with `nv_convert()`."
   )
+  if (!is_dtype_float(operand_dtype)) {
+    args[[1L]] <- nv_convert(args[[1L]], distribution_float(args[-1L]))
+  }
   do.call(as_anvl_arrays, c(args, list(.promote = promotion_like(operand))))
+}
+
+# The float an integer operand is evaluated at: the widest float among the
+# parameter arrays, or the default float.
+distribution_float <- function(params) {
+  avals <- lapply(params, to_abstract)
+  dtypes <- lapply(avals[!vapply(avals, is_rdata, logical(1L))], function(aval) aval$dtype)
+  floats <- Filter(is_dtype_float, dtypes)
+  if (length(floats) == 0L) {
+    return(default_float())
+  }
+  floats[[which.max(vapply(floats, dtype_width, integer(1L)))]]
 }
 
 #' @title The Normal Distribution
@@ -66,7 +84,7 @@ promote_distribution_args <- function(...) {
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
 #' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
 #' `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an [`arrayish`] with the
-#' shape and data type of `x`/`q`/`p`.
+#' shape of `x`/`q`/`p` and the float data type described under Data Types.
 #'
 #' `nv_rnorm()` returns a named `list` of two [`arrayish`]: `state`, the updated
 #' RNG state with the input `state`'s data type and shape, and `values`, the
@@ -459,7 +477,7 @@ nv_qnorm <- jit(
 #' @template section_distribution_dtype
 #' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
 #' `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an [`arrayish`] with the
-#' same shape and data type as `x`/`q`/`p`.
+#' same shape as `x`/`q`/`p` and the float data type described under Data Types.
 #'
 #' `nv_runif()` returns a named `list` of two [`arrayish`]: `state`, the updated
 #' RNG state with the input `state`'s data type and shape, and `values`, the
@@ -676,7 +694,8 @@ valid_exp_rate <- function(rate) {
 #' @template section_distribution_dtype
 #' @return ([`arrayish`])\cr
 #' `nv_dexp()`, `nv_pexp()`, and `nv_qexp()` return an [`arrayish`] with the
-#' data type of `x`/`q`/`p` and the shape after scalar broadcasting with `rate`.
+#' float data type described under Data Types and the shape after scalar
+#' broadcasting with `rate`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 0.5, 1, 2))
@@ -995,7 +1014,7 @@ binom_log_density <- function(x, n, p, n_terms) {
   # (n - x) - nq is exactly -(x - np)
   d <- sub_exact_prod(x_int, n_int, p_int)
   # First three terms: Stirling factorial corrections for n!, x!, and (n-x)!
-  # Last two terms: success and failure count deviance 
+  # Last two terms: success and failure count deviance
   lc <- binom_stirlerr(n_int) -
     binom_stirlerr(x_int) -
     binom_stirlerr(n_int - x_int) -
@@ -1389,7 +1408,7 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
 #' and `prob`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
-#'   function (`q`). These are counts, but held as floats.
+#'   function (`q`). These are counts, given as integers or floats.
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
 #'   \eqn{[0, 1]} give `NaN`. With `log_p = TRUE`, supply log-probabilities
@@ -1420,7 +1439,7 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
 #' incomplete beta function methods of `r cite_bib("didonato1992algorithm")`
 #' that base R's [stats::pbeta()] uses: a continued fraction, and an asymptotic
 #' expansion for large `size` near the mean. If the continued fraction has not
-#' converged after 1000 iterations, the result is `NaN`. `nv_qbinom` finds the 
+#' converged after 1000 iterations, the result is `NaN`. `nv_qbinom` finds the
 #' smallest \eqn{x} with \eqn{P(X \le x) \ge p}, starting from a Cornish-Fisher
 #' approximation as base R does.
 #'
@@ -1441,7 +1460,7 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
 #' @seealso [nv_rbinom()] for sampling from a Binomial distribution.
 #' @return ([`arrayish`])\cr
 #' `nv_dbinom()`, `nv_pbinom()`, and `nv_qbinom()` return an [`arrayish`] with
-#' the shape and data type of `x`/`q`/`p`.
+#' the shape of `x`/`q`/`p` and the float data type described under Data Types.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 1, 2, 5, 10))

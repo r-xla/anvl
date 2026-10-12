@@ -16,7 +16,7 @@ nv_qbinom(p, size, prob, lower_tail = TRUE, log_p = FALSE)
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
-function (\code{q}). These are counts, but held as floats.}
+function (\code{q}). These are counts, given as integers or floats.}
 
 \item{size}{(\code{\link{arrayish}})\cr
 Number of trials, zero or more. Either a scalar, or an array of exactly
@@ -42,7 +42,7 @@ in \eqn{[-\infty, 0]} instead.}
 \value{
 (\code{\link{arrayish}})\cr
 \code{nv_dbinom()}, \code{nv_pbinom()}, and \code{nv_qbinom()} return an \code{\link{arrayish}} with
-the shape and data type of \code{x}/\code{q}/\code{p}.
+the shape of \code{x}/\code{q}/\code{p} and the float data type described under Data Types.
 }
 \description{
 Density (\code{nv_dbinom}), distribution function (\code{nv_pbinom}), and quantile
@@ -81,10 +81,15 @@ this implementation, not the mathematical derivative.
 \section{Data Types}{
 
 \code{nv_dbinom()}, \code{nv_pbinom()} and \code{nv_qbinom()} compute at
-the data type of \code{x}/\code{q}/\code{p}, which must be float; an R value settles on the
-\link[=default_dtypes]{default float}. An R value for \code{size} or \code{prob} takes this data
-type. An array is promoted to it, so a wider one (e.g. \code{f64} for an \code{f32}
-\code{x}) is an error.
+a float data type and return it. If \code{x}/\code{q}/\code{p} is a float, they compute at
+its data type; an R double settles on the \link[=default_dtypes]{default float}.
+An integer \code{x}/\code{q}/\code{p} (an array or an R integer) is converted to the widest
+float among the arrays given for \code{size} or \code{prob}, or to the default float if
+there is none. Integers beyond \eqn{2^{24}} are not all exact at \code{f32}, so a
+large integer may change in that conversion.
+
+An R value for \code{size} or \code{prob} takes the computing data type. An array is
+promoted to it, so a wider one (e.g. \code{f64} for an \code{f32} \code{x}) is an error.
 }
 
 \examples{

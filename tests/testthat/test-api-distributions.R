@@ -232,11 +232,10 @@ describe("nv_qnorm", {
     )
   })
 
-  it("names the operand when it is not a float", {
-    # Reported as a failure to bring `mean` to the operand's data type before.
-    expect_error(nv_qnorm(nv_array(1L)), "`p` must be a float data type")
-    expect_error(nv_pnorm(nv_array(1L)), "`q` must be a float data type")
-    expect_error(nv_dnorm(nv_array(1L)), "`x` must be a float data type")
+  it("names the operand when it is a boolean", {
+    expect_error(nv_qnorm(nv_array(TRUE)), "`p` must be a numeric data type")
+    expect_error(nv_pnorm(nv_array(TRUE)), "`q` must be a numeric data type")
+    expect_error(nv_dnorm(nv_array(TRUE)), "`x` must be a numeric data type")
   })
 
   it("matches base R qnorm() with custom mean/sd", {
@@ -847,11 +846,10 @@ describe("nv_qunif", {
     expect_equal(dtype(out), as_dtype("f32"))
   })
 
-  it("names the operand when it is not a float", {
-    # Reported as a failure to bring `min` to the operand's data type before.
-    expect_error(nv_qunif(nv_array(1L)), "`p` must be a float data type")
-    expect_error(nv_punif(nv_array(1L)), "`q` must be a float data type")
-    expect_error(nv_dunif(nv_array(1L)), "`x` must be a float data type")
+  it("names the operand when it is a boolean", {
+    expect_error(nv_qunif(nv_array(TRUE)), "`p` must be a numeric data type")
+    expect_error(nv_punif(nv_array(TRUE)), "`q` must be a numeric data type")
+    expect_error(nv_dunif(nv_array(TRUE)), "`x` must be a numeric data type")
   })
 })
 
@@ -1577,10 +1575,10 @@ describe("nv_qexp", {
     expect_equal(dtype(out), as_dtype("f32"))
   })
 
-  it("names the operand when it is not a float", {
-    expect_error(nv_qexp(nv_array(1L)), "`p` must be a float data type")
-    expect_error(nv_pexp(nv_array(1L)), "`q` must be a float data type")
-    expect_error(nv_dexp(nv_array(1L)), "`x` must be a float data type")
+  it("names the operand when it is a boolean", {
+    expect_error(nv_qexp(nv_array(TRUE)), "`p` must be a numeric data type")
+    expect_error(nv_pexp(nv_array(TRUE)), "`q` must be a numeric data type")
+    expect_error(nv_dexp(nv_array(TRUE)), "`x` must be a numeric data type")
   })
 })
 
@@ -2178,10 +2176,10 @@ describe("nv_qbinom", {
     expect_dtype(out, "f32")
   })
 
-  it("names the operand when it is not a float", {
-    expect_error(nv_qbinom(nv_array(1L), 2, 0.5), "`p` must be a float data type")
-    expect_error(nv_pbinom(nv_array(1L), 2, 0.5), "`q` must be a float data type")
-    expect_error(nv_dbinom(nv_array(1L), 2, 0.5), "`x` must be a float data type")
+  it("names the operand when it is a boolean", {
+    expect_error(nv_qbinom(nv_array(TRUE), 2, 0.5), "`p` must be a numeric data type")
+    expect_error(nv_pbinom(nv_array(TRUE), 2, 0.5), "`q` must be a numeric data type")
+    expect_error(nv_dbinom(nv_array(TRUE), 2, 0.5), "`x` must be a numeric data type")
   })
 })
 
@@ -2211,6 +2209,88 @@ describe("eager/jit equivalence", {
       pbinom = function(x, v) nv_pbinom(f64(), size = v, prob = 0.5),
       qbinom = function(x, v) nv_qbinom(f64(), size = 3, prob = v)
     ))
+  })
+})
+
+describe("an integer operand", {
+  # Each function as a function of its operand and one parameter, which may be
+  # an R value or an array.
+  families <- list(
+    dnorm = function(x, v) nv_dnorm(x, mean = v),
+    pnorm = function(x, v) nv_pnorm(x, mean = v),
+    qnorm = function(x, v) nv_qnorm(x, mean = v),
+    dunif = function(x, v) nv_dunif(x, min = v, max = 4),
+    punif = function(x, v) nv_punif(x, min = v, max = 4),
+    qunif = function(x, v) nv_qunif(x, min = v, max = 4),
+    dexp = function(x, v) nv_dexp(x, rate = v),
+    pexp = function(x, v) nv_pexp(x, rate = v),
+    qexp = function(x, v) nv_qexp(x, rate = v),
+    dbinom = function(x, v) nv_dbinom(x, size = v, prob = 0.5),
+    pbinom = function(x, v) nv_pbinom(x, size = v, prob = 0.5),
+    qbinom = function(x, v) nv_qbinom(x, size = v, prob = 0.5)
+  )
+
+  it("computes at the default float when the parameters are R values", {
+    for (name in names(families)) {
+      expected <- as.vector(families[[name]](nv_array(c(0, 1), dtype = default_float()), 1))
+      for (int_dtype in c("i8", "i32", "i64", "ui32")) {
+        out <- families[[name]](nv_array(c(0L, 1L), dtype = int_dtype), 1)
+        expect_dtype(out, default_float(), info = paste(name, int_dtype))
+        expect_equal(as.vector(out), expected, info = paste(name, int_dtype))
+      }
+    }
+  })
+
+  it("follows the default float", {
+    for (float_dtype in c("f32", "f64")) {
+      with_default_dtypes(c(float = float_dtype), {
+        expect_dtype(nv_dbinom(nv_array(c(0L, 1L)), 3, 0.5), float_dtype)
+      })
+    }
+  })
+
+  it("computes at the widest float among the parameter arrays", {
+    for (name in names(families)) {
+      for (float_dtype in c("f32", "f64")) {
+        out <- families[[name]](nv_array(c(0L, 1L)), nv_array(c(1, 1), dtype = float_dtype))
+        expect_dtype(out, float_dtype, info = paste(name, float_dtype))
+      }
+    }
+    out <- nv_dnorm(
+      nv_array(c(0L, 1L)),
+      mean = nv_array(c(0, 0), dtype = "f32"),
+      sd = nv_scalar(1, dtype = "f64")
+    )
+    expect_dtype(out, "f64")
+  })
+
+  it("ignores integer parameter arrays when choosing the float", {
+    out <- nv_dbinom(
+      nv_array(c(0L, 1L), dtype = "i64"),
+      size = nv_scalar(3L, dtype = "ui64"),
+      prob = 0.5
+    )
+    expect_dtype(out, default_float())
+  })
+
+  it("accepts an R integer", {
+    expect_dtype(nv_dnorm(1L), default_float())
+    expect_equal(as.vector(nv_dbinom(1L, 3, 0.5)), dbinom(1, 3, 0.5), tolerance = 1e-6)
+  })
+
+  it("is converted directly to f64, not through the default float", {
+    # 2^30 + 1, which is not an f32. Rounding it through f32 moves the result
+    # by about 1e-10 relative, so the tolerance has to be tighter than that.
+    x <- 1073741825L
+    expect_equal(
+      as.vector(nv_dbinom(nv_array(x), size = nv_scalar(2^31, dtype = "f64"), prob = 0.5, log = TRUE)),
+      dbinom(x, 2^31, 0.5, log = TRUE),
+      tolerance = 1e-14
+    )
+  })
+
+  it("agrees between eager and jit", {
+    expect_eager_jit_equal_grid(families)
   })
 })
 
