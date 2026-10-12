@@ -77,7 +77,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
-<ul><li>Bugfix: <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> no longer returns <code>Inf</code> / <code>-Inf</code> when a uniform draw is exactly 0.</li>
+<ul><li>Bugfix: <code><a href="../reference/nv_subset.html">nv_subset()</a></code> accepts an R value as <code>x</code>, like <code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> does.</li>
+<li>Bugfix: <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> no longer returns <code>Inf</code> / <code>-Inf</code> when a uniform draw is exactly 0.</li>
 <li>Bugfix: <code><a href="../reference/nv_mean.html">nv_mean()</a></code>, <code><a href="../reference/nv_var.html">nv_var()</a></code> and <code><a href="../reference/nv_sd.html">nv_sd()</a></code> no longer overflow on an integer input, which is now summed at the default float.</li>
 <li>New <code><a href="../reference/nv_dtype_constructors.html">nv_bool()</a></code>, <code>nv_int{8,16,32,64}()</code>, <code>nv_uint{8,16,32,64}()</code>, <code><a href="../reference/nv_dtype_constructors.html">nv_float32()</a></code> and <code><a href="../reference/nv_dtype_constructors.html">nv_float64()</a></code> create an array of the data type in their name.</li>
 <li>New functions for the exponential distribution: <code><a href="../reference/nv_exponential.html">nv_dexp()</a></code>, <code><a href="../reference/nv_exponential.html">nv_pexp()</a></code>, and <code><a href="../reference/nv_exponential.html">nv_qexp()</a></code>.</li>

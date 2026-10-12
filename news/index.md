@@ -3,6 +3,11 @@
 ## anvl (development version)
 
 - Bugfix:
+  [`nv_subset()`](https://r-xla.github.io/anvl/reference/nv_subset.md)
+  accepts an R value as `x`, like
+  [`nv_subset_assign()`](https://r-xla.github.io/anvl/reference/nv_subset_assign.md)
+  does.
+- Bugfix:
   [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md) no
   longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
 - Bugfix:
