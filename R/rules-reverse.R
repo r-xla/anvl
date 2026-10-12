@@ -67,13 +67,16 @@ prim_pow[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   y <- inputs[[2L]]
   out <- outputs[[1L]]
   grad <- grads[[1L]]
+  # As in JAX, the derivatives are 0 where they would otherwise read 0^-1 or
+  # log(0) at base 0: x^0 is constant in x, and 0^y is constant in y.
   list(
     if (required[[1L]]) {
-      one <- ones_like(x)
-      prim_mul(prim_mul(grad, y), prim_pow(x, prim_sub(y, one)))
+      dx <- prim_mul(y, prim_pow(x, prim_sub(y, ones_like(y))))
+      prim_mul(grad, prim_ifelse(prim_eq(y, zeros_like(y)), zeros_like(dx), dx))
     },
     if (required[[2L]]) {
-      prim_mul(grad, prim_mul(prim_log(x), out))
+      safe_x <- prim_ifelse(prim_eq(x, zeros_like(x)), ones_like(x), x)
+      prim_mul(grad, prim_mul(prim_log(safe_x), out))
     }
   )
 })

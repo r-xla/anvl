@@ -412,6 +412,23 @@ describe("prim_if", {
   })
 })
 
+describe("prim_pow reverse", {
+  it("gives a zero derivative in the exponent at base 0", {
+    f <- jit(gradient(function(y) nv_sum(prim_pow(nv_array(c(0, 2), dtype = "f64"), y))))
+    expect_equal(as.numeric(as_array(f(nv_array(c(2, 2), dtype = "f64"))[[1L]])), c(0, 4 * log(2)))
+  })
+
+  it("gives a zero derivative in the base for exponent 0", {
+    f <- jit(gradient(function(x) nv_sum(x^0L)))
+    expect_equal(as.numeric(as_array(f(nv_array(c(0, 2), dtype = "f64"))[[1L]])), c(0, 0))
+  })
+
+  it("keeps the derivative in the base at base 0 for other exponents", {
+    f <- jit(gradient(function(x) nv_sum(x^2L + x^0.5)))
+    expect_equal(as.numeric(as_array(f(nv_array(c(0, 4), dtype = "f64"))[[1L]])), c(Inf, 8.25))
+  })
+})
+
 test_that("prim_log reverse", {
   f <- jit(gradient(function(x) {
     nv_log(x)
