@@ -55,60 +55,18 @@ probability mass function:
 \deqn{p(x) = \binom{n}{x} p^x (1-p)^{n-x}, \quad x = 0, \ldots, n}
 and zero elsewhere.
 
-The functions compute at \code{f32} or \code{f64}, the data type of \code{x}/\code{q}/\code{p}.
-
-Invalid arguments give \code{NaN}, as in base R, but without a warning. That is
-\code{prob} outside \eqn{[0, 1]}, or a negative \code{size}. A non-whole \code{size} is
-also invalid for \code{nv_dbinom} and \code{nv_pbinom}, while \code{nv_qbinom} rounds it.
-An infinite \code{size} is invalid for \code{nv_pbinom} and \code{nv_qbinom}.
-
-\code{nv_dbinom} is zero at a non-whole \code{x}. \code{nv_pbinom} rounds \code{q} down to a
-whole number, after adding \code{1e-7} so that a \code{q} just below a whole number
-counts as it.
+Invalid arguments give \code{NaN}, as in base R, but without a warning (that is
+\code{prob} outside \eqn{[0, 1]}, or a negative \code{size}).
 
 \code{nv_dbinom} uses the saddle point expansion of
 Loader (2000), as base R does. \code{nv_pbinom} uses the
 incomplete beta function methods of DiDonato & Morris (1992)
 that base R's \code{\link[stats:pbeta]{stats::pbeta()}} uses: a continued fraction, and an asymptotic
 expansion for large \code{size} near the mean. If the continued fraction has not
-converged after 1000 iterations, the result is \code{NaN}.
-
-\code{nv_qbinom} finds the smallest \eqn{x} with \eqn{P(X \le x) \ge p}, starting
-from a Cornish-Fisher approximation as base R does. Like base R, it first
-lowers \code{p} by a relative tolerance of \eqn{8\epsilon} (\eqn{2\epsilon} on
-the log scale), where \eqn{\epsilon} is the machine epsilon of the data
-type, so that a \code{p} computed by \code{nv_pbinom} maps back to its quantile. At
-\code{f32} the tolerance is correspondingly coarser. The mapping back is not
-guaranteed: it fails where neighbouring probabilities round to the same
-value, such as close to zero or one, and the search evaluates the
-distribution function afresh, which can differ from \code{nv_pbinom}'s value in
-the last few units in the last place. Such a \code{p} can then map to the
-neighbouring quantile; this is most likely on the log scale and at \code{f32}.
+converged after 1000 iterations, the result is \code{NaN}. \code{nv_qbinom} finds the
+smallest \eqn{x} with \eqn{P(X \le x) \ge p}, starting from a Cornish-Fisher
+approximation as base R does.
 }
-\section{Accuracy}{
-
-The figures here are relative errors of the returned value measured in our
-tests, not guaranteed bounds. With \code{log = TRUE} or \code{log_p = TRUE} they are
-relative errors of the log-density or log-probability itself.
-
-At \code{f64}, against high-precision (MPFR) references and base R for \code{size} up
-to \eqn{10^{13}} (\eqn{10^{15}} for \code{nv_pbinom}), the relative error was
-around \eqn{10^{-14}} or less. It grows in proportion to the magnitude of
-the logarithm of the density or tail probability involved, to about
-\eqn{2 \times 10^{-13}}{2e-13} for those near the bottom of the \code{f64} range
-(around \eqn{10^{-300}}).
-
-At \code{f32}, against base R evaluated on the same \code{f32} inputs for \code{size} up to
-\eqn{10^7}, the relative error was below \eqn{10^{-5}}, except for
-densities and tail probabilities below about \eqn{10^{-14}}, where it
-reached about \eqn{4 \times 10^{-5}}{4e-5}.
-
-\code{f32} holds every whole number only up to \eqn{2^{24}}, and \code{f64} up to
-\eqn{2^{53}}. XLA (at least on the CPU backend) treats subnormal numbers
-as zero, so a subnormal \code{prob} acts as \code{prob = 0}: \code{nv_dbinom(1, 2, 1e-310)}
-at \code{f64} is zero, where base R gives \code{2e-310}.
-}
-
 \section{Gradients}{
 
 \code{nv_dbinom} can be differentiated with respect to \code{prob}, including at

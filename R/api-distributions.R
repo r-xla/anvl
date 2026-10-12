@@ -1412,57 +1412,17 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
 #' \deqn{p(x) = \binom{n}{x} p^x (1-p)^{n-x}, \quad x = 0, \ldots, n}
 #' and zero elsewhere.
 #'
-#' The functions compute at `f32` or `f64`, the data type of `x`/`q`/`p`.
-#'
-#' Invalid arguments give `NaN`, as in base R, but without a warning. That is
-#' `prob` outside \eqn{[0, 1]}, or a negative `size`. A non-whole `size` is
-#' also invalid for `nv_dbinom` and `nv_pbinom`, while `nv_qbinom` rounds it.
-#' An infinite `size` is invalid for `nv_pbinom` and `nv_qbinom`.
-#'
-#' `nv_dbinom` is zero at a non-whole `x`. `nv_pbinom` rounds `q` down to a
-#' whole number, after adding `1e-7` so that a `q` just below a whole number
-#' counts as it.
+#' Invalid arguments give `NaN`, as in base R, but without a warning (that is
+#' `prob` outside \eqn{[0, 1]}, or a negative `size`).
 #'
 #' `nv_dbinom` uses the saddle point expansion of
 #' `r cite_bib("loader2000fast")`, as base R does. `nv_pbinom` uses the
 #' incomplete beta function methods of `r cite_bib("didonato1992algorithm")`
 #' that base R's [stats::pbeta()] uses: a continued fraction, and an asymptotic
 #' expansion for large `size` near the mean. If the continued fraction has not
-#' converged after 1000 iterations, the result is `NaN`.
-#'
-#' `nv_qbinom` finds the smallest \eqn{x} with \eqn{P(X \le x) \ge p}, starting
-#' from a Cornish-Fisher approximation as base R does. Like base R, it first
-#' lowers `p` by a relative tolerance of \eqn{8\epsilon} (\eqn{2\epsilon} on
-#' the log scale), where \eqn{\epsilon} is the machine epsilon of the data
-#' type, so that a `p` computed by `nv_pbinom` maps back to its quantile. At
-#' `f32` the tolerance is correspondingly coarser. The mapping back is not
-#' guaranteed: it fails where neighbouring probabilities round to the same
-#' value, such as close to zero or one, and the search evaluates the
-#' distribution function afresh, which can differ from `nv_pbinom`'s value in
-#' the last few units in the last place. Such a `p` can then map to the
-#' neighbouring quantile; this is most likely on the log scale and at `f32`.
-#'
-#' @section Accuracy:
-#' The figures here are relative errors of the returned value measured in our
-#' tests, not guaranteed bounds. With `log = TRUE` or `log_p = TRUE` they are
-#' relative errors of the log-density or log-probability itself.
-#'
-#' At `f64`, against high-precision (MPFR) references and base R for `size` up
-#' to \eqn{10^{13}} (\eqn{10^{15}} for `nv_pbinom`), the relative error was
-#' around \eqn{10^{-14}} or less. It grows in proportion to the magnitude of
-#' the logarithm of the density or tail probability involved, to about
-#' \eqn{2 \times 10^{-13}}{2e-13} for those near the bottom of the `f64` range
-#' (around \eqn{10^{-300}}).
-#'
-#' At `f32`, against base R evaluated on the same `f32` inputs for `size` up to
-#' \eqn{10^7}, the relative error was below \eqn{10^{-5}}, except for
-#' densities and tail probabilities below about \eqn{10^{-14}}, where it
-#' reached about \eqn{4 \times 10^{-5}}{4e-5}.
-#'
-#' `f32` holds every whole number only up to \eqn{2^{24}}, and `f64` up to
-#' \eqn{2^{53}}. XLA (at least on the CPU backend) treats subnormal numbers
-#' as zero, so a subnormal `prob` acts as `prob = 0`: `nv_dbinom(1, 2, 1e-310)`
-#' at `f64` is zero, where base R gives `2e-310`.
+#' converged after 1000 iterations, the result is `NaN`. `nv_qbinom` finds the 
+#' smallest \eqn{x} with \eqn{P(X \le x) \ge p}, starting from a Cornish-Fisher
+#' approximation as base R does.
 #'
 #' @section Gradients:
 #' `nv_dbinom` can be differentiated with respect to `prob`, including at
@@ -1654,6 +1614,10 @@ nv_qbinom <- jit(
     eps <- if (op_dtype == "f32") 2^-23 else 2^-52
 
     # Match base R by rounding size here, without requiring a whole-number input.
+    # This deliberately differs from nv_dbinom/nv_pbinom, which return NaN for a
+    # non-whole size: base R's qbinom applies R_forceint(n) with no R_nonint(n)
+    # check, while dbinom and pbinom check it. Rounding happens before the
+    # negative-size check, as in base R, so e.g. size = -0.4 is treated as 0.
     size <- nv_round(size)
     # Check p on the supplied scale and identify its two endpoints.
     if (log_p) {
