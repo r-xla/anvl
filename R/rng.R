@@ -24,9 +24,10 @@ NULL
 #' The global state is also threaded through the branches of [nv_if()], the
 #' bodies of [nv_while()] and [nv_scan()], and functions differentiated by
 #' [gradient()], so a draw in a loop body gives a new sample on every
-#' iteration. It cannot be drawn from in the condition of [nv_while()], nor in
-#' the functions of a reduction or a scatter, as these
-#' cannot hand an advanced state back.
+#' iteration. It cannot be drawn from in the condition of [nv_while()], in the
+#' functions of a reduction or a scatter, or in any other function that a
+#' primitive traces without threading it, as these cannot hand an advanced
+#' state back.
 #'
 #' @section Seeding from base R:
 #' When the global state is not set, the next draw derives it from base R's
@@ -45,6 +46,14 @@ NULL
 #' called in a function traced by [jit()], where they would seed it once, while
 #' tracing, rather than on every call.
 #'
+#' @section Draws that depend on an argument:
+#' There is only the one global state: a jitted function cannot seed it from
+#' one of its arguments, nor draw from several independent states, e.g. one per
+#' chain of a sampler. What a call of a jitted function draws therefore depends
+#' on how far the global state has advanced, not on its arguments. To make the
+#' draws of a call depend on a seed, seed the global state before the call:
+#' `for (i in 1:3) { nv_set_seed(i); f(x) }`.
+#'
 #' @section Saving and restoring the state:
 #' A seed restarts a sequence from its beginning. To continue one where it
 #' stopped, e.g. when resuming a model fit, save the state itself:
@@ -52,16 +61,22 @@ NULL
 #' `nv_set_rng_state()` makes a copy of a saved state the global state again.
 #' The state is a `ui64` [`AnvlArray`] of shape `2`, the key and the counter of
 #' the generator (see [prim_sample_bits()]), so [nv_save()] can write it to a
-#' file. `NULL` is the state that is not set. Both functions copy the state, as
-#' the draws update the global state in place.
+#' file, e.g. as `nv_save(list(rng = nv_get_rng_state()), path)`. `NULL` is the
+#' state that is not set. Both functions copy the state, as the draws update the
+#' global state in place. The counter wraps around at \eqn{2^{64}}, where its
+#' draws repeat, so restore a state that `nv_get_rng_state()` returned rather
+#' than one made up.
 #'
 #' @section Devices:
 #' The global state lives on the device of the call that last drew from it,
 #' and a call that runs on another device -- however that device is decided --
-#' copies it there. A seed therefore gives the same sequence whatever devices
-#' the draws run on.
+#' copies it there. A seed therefore gives the same random bits whatever
+#' devices the draws run on; the samples computed from them, e.g. by
+#' [nv_rnorm()], can differ in the last digits between platforms, as their
+#' floating point functions do.
 #' @param seed (`integer(1)` | `NULL`)\cr
-#'   The seed, or `NULL` to derive the global state from base R's RNG.
+#'   The seed, a 32-bit integer, or `NULL` to derive the global state from base
+#'   R's RNG.
 #' @param state ([`AnvlArray`] | `NULL`)\cr
 #'   A state returned by `nv_get_rng_state()`.
 #' @param code (any)\cr
@@ -104,6 +119,7 @@ NULL
 #' @export
 nv_set_seed <- function(seed) {
   abort_if_tracing("seeded")
+  abort_if_no_rng()
   globals$rng_state <- if (!is.null(seed)) rng_state_from_seed(assert_int(seed, coerce = TRUE))
   invisible(NULL)
 }
@@ -112,6 +128,7 @@ nv_set_seed <- function(seed) {
 #' @export
 nv_get_rng_state <- function() {
   abort_if_tracing("read")
+  abort_if_no_rng()
   state <- globals$rng_state
   if (!is.null(state)) rng_state_copy(state)
 }
@@ -120,6 +137,7 @@ nv_get_rng_state <- function() {
 #' @export
 nv_set_rng_state <- function(state) {
   abort_if_tracing("set")
+  abort_if_no_rng()
   globals$rng_state <- if (!is.null(state)) rng_state_copy(assert_rng_state(state))
   invisible(NULL)
 }
@@ -131,6 +149,13 @@ abort_if_tracing <- function(what) {
       "The global RNG state cannot be {what} in a function traced by {.fn jit}.",
       i = "Do it before calling the function."
     ))
+  }
+}
+
+abort_if_no_rng <- function() {
+  backend <- active_backend()
+  if (is.null(side_effect("rng")$rules[[backend]])) {
+    cli_abort("The {backend} backend does not support random draws, so it has no global RNG state.")
   }
 }
 

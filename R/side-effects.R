@@ -56,8 +56,9 @@ side_effect_get <- function(desc, name) {
     cli_abort(c(
       "The side effect {.val {name}} cannot be used here.",
       i = paste(
-        "A side effect cannot be used in the condition of {.fn nv_while},",
-        "nor in the function of a reduction or a scatter."
+        "A side effect can only be used where its updated value can be handed back,",
+        "so not in the condition of {.fn nv_while}, the function of a reduction or a",
+        "scatter, or any other function traced without a {.arg side_effects_mode}."
       )
     ))
   }

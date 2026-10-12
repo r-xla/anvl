@@ -120,6 +120,15 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
   invisible(x)
 }
 
+# Box-Muller transform: map two batches of uniforms in [0, 1) to twice as many
+# standard normals. The radius uses 1 - u1, which lies in (0, 1], so a uniform
+# of exactly 0 gives a finite sample.
+box_muller <- function(u1, u2) {
+  radius <- nv_sqrt(nv_log(1L - u1) * -2L)
+  theta <- u2 * (2 * pi)
+  nv_concatenate(radius * nv_sin(theta), radius * nv_cos(theta), axis = 1L)
+}
+
 #' @rdname nv_normal
 #' @template param_shape
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
@@ -132,7 +141,9 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
 #'
 #' `mean` and `sd` are [`arrayish`], so they may vary across the sample: they
 #' are applied to the draws after they have been reshaped to `shape`, and so
-#' may either be scalars or have exactly that shape.
+#' may either be scalars or have exactly that shape. As in base R's `rnorm()`,
+#' an element whose `mean` is `NaN`, or whose `sd` is not finite or negative, is
+#' `NaN`. The global RNG state is advanced regardless.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_set_seed(42L)
@@ -166,34 +177,10 @@ nv_rnorm <- jit(
     # n: amount of rvs needed
     n <- prod(shape)
 
-    # Box-Muller Method:
-    # from two random uniform variables u1 and u2 we can produce to normals z1, z2
-    # z1 = sqrt(-2 * log(u1)) * cos(2 * pi * u2)
-    # z2 = sqrt(-2 * log(u1)) * sin(2 * pi * u2)
-    # Box-Muller works via polar representation of coordinates.
-    # We scale this approach and genereate ceil(n/2) uniform rvs twice (U, Theta)
-
-    # generate the first ceil(n/2) random uniform variables
-    U <- nv_unif_rand(dtype = dtype, shape = as.integer(ceiling(n / 2L)))
-
-    # compute the radius R = sqrt(-2 * log(u1))
-    R <- nv_mul(nv_log(U), -2L)
-    sqrt_R <- nv_sqrt(R)
-
-    # generate second batch of ceil(n/2) random uniform variables
-    Theta <- nv_unif_rand(dtype = dtype, shape = as.integer(ceiling(n / 2L)))
-
-    # compute cos(2 * pi * u2) / sin(2 * pi * u2)
-    Theta <- nv_mul(Theta, 2 * pi)
-    sin_Theta <- nv_sin(Theta)
-    cos_Theta <- nv_cos(Theta)
-
-    # compute z1, z2
-    Z1 <- nv_mul(sqrt_R, sin_Theta)
-    Z2 <- nv_mul(sqrt_R, cos_Theta)
-
-    # concatenate z = (z1, z2)
-    Z <- nv_concatenate(Z1, Z2, axis = 1L)
+    m <- as.integer(ceiling(n / 2L))
+    U1 <- nv_unif_rand(dtype = dtype, shape = m)
+    U2 <- nv_unif_rand(dtype = dtype, shape = m)
+    Z <- box_muller(U1, U2)
 
     # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
     if (n %% 2L == 1L) {
@@ -210,7 +197,9 @@ nv_rnorm <- jit(
     # now:    mean(N) = mean, var(N) = sd^2
     N <- Z * sd + mean
 
-    N
+    # an invalid parameter is NaN to match base R
+    valid <- !nv_is_nan(mean) & nv_is_finite(sd) & (sd >= 0L)
+    nv_ifelse(valid, N, NaN)
   },
   static = c("shape", "dtype")
 )
@@ -221,7 +210,7 @@ nv_rnorm <- jit(
 #' When `size = 1` (the default), this is a Bernoulli distribution.
 #' @template param_shape
 #' @param size (`integer(1)`)\cr
-#'   Number of trials.
+#'   Number of trials, at most the largest value of `dtype`.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
@@ -238,14 +227,14 @@ nv_rnorm <- jit(
 #' @export
 nv_rbinom <- jit(
   function(shape, size = 1L, prob = 0.5, dtype = NULL) {
-    # The sample counts successes, which `bool` cannot hold: it used to come back
-    # as `bool` for `size = 1` and silently as an integer for anything above.
+    # the sample counts successes, which `bool` cannot hold
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
       arg = "dtype",
       hint = "A boolean cannot hold a count; use an integer data type and compare it."
     )
-    checkmate::assert_int(size, lower = 1L)
+    checkmate::assert_int(size, lower = 0L)
+    assert_fits_dtype(size, dtype)
     checkmate::assert_number(prob, lower = 0, upper = 1)
     shape <- assert_shapevec(shape)
 
@@ -280,7 +269,8 @@ nv_rbinom <- jit(
 #' To sample from a population other than `1:n`, use [nv_sample()].
 #' @template param_shape
 #' @param n (`integer(1)`)\cr
-#'   Size of the population, i.e. the integers `1` to `n` are sampled.
+#'   Size of the population, i.e. the integers `1` to `n` are sampled. At most
+#'   the largest value of `dtype`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sampled integers.
 #'   The sampled values are converted to it.
@@ -296,13 +286,14 @@ nv_rbinom <- jit(
 #' @export
 nv_sample_int <- jit(
   function(shape, n, dtype = NULL) {
-    # An index is a count too: at `bool` every draw collapsed to `TRUE`.
+    # an index is a count too, which `bool` cannot hold
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
       arg = "dtype",
       hint = "A boolean cannot hold an index; use an integer data type."
     )
     assert_int(n, lower = 1L)
+    assert_fits_dtype(n, dtype)
     shape <- assert_shapevec(shape)
 
     idx <- sample_indices(as.integer(n), prod(shape))
@@ -320,7 +311,7 @@ nv_sample_int <- jit(
 #' integers `1` to `n` is [nv_sample_int()] and never an overload of `x`.
 #' @template param_shape
 #' @param x ([`arrayish`])\cr
-#'   The population vector to sample from.
+#'   The population vector to sample from. Must not be empty.
 #'   An R value materializes at its [default data type][default_dtypes].
 #' @return ([`arrayish`])\cr
 #'   The sample, of shape `shape` and `x`'s data type.
@@ -340,12 +331,35 @@ nv_sample <- jit(
       cli_abort("{.arg x} must be a 1-D array, but has {length(x_shape)} axes.")
     }
     n <- x_shape[1L]
+    if (n == 0L) {
+      cli_abort("{.arg x} must not be empty: there is nothing to sample from.")
+    }
 
     idx <- sample_indices(n, prod(shape))
     nv_reshape(nv_subset(x, idx), shape)
   },
   static = "shape"
 )
+
+# Error unless the count `value` -- a number of trials or a population size --
+# fits into the numeric data type `dtype` of the sample that holds it.
+assert_fits_dtype <- function(value, dtype, arg = rlang::caller_arg(value)) {
+  dtype <- as_dtype(dtype)
+  upper <- if (is_dtype_uint(dtype)) {
+    2^dtype_width(dtype) - 1
+  } else if (is_dtype_int(dtype)) {
+    2^(dtype_width(dtype) - 1L) - 1
+  } else {
+    Inf
+  }
+  if (value > upper) {
+    cli_abort(c(
+      "{.arg {arg}} must fit into the data type of the sample, {.val {as.character(dtype)}}.",
+      x = "Got {value}, but the largest {.val {as.character(dtype)}} is {upper}."
+    ))
+  }
+  invisible(value)
+}
 
 # Draw `n_sample` uniformly distributed indices into a population of size `n`,
 # with replacement.

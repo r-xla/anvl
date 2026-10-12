@@ -14,7 +14,9 @@ The name of the primitive, without the \code{prim_} prefix.}
 Names of parameters that are subgraphs.}
 
 \item{side_effects}{(\code{character()})\cr
-Names of the side effects the primitive uses (see \code{register_side_effect()}).}
+Names of the side effects the primitive uses: values outside of the traced
+function that it reads and updates, such as the global RNG state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}).}
 }
 \value{
 (\code{AnvlPrimitiveDef})

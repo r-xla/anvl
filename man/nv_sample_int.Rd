@@ -11,7 +11,8 @@ nv_sample_int(shape, n, dtype = NULL)
 Shape of the result.}
 
 \item{n}{(\code{integer(1)})\cr
-Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
+Size of the population, i.e. the integers \code{1} to \code{n} are sampled. At most
+the largest value of \code{dtype}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Numeric type of the sampled integers.

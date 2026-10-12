@@ -20,7 +20,8 @@ with_nv_seed(seed, code)
 }
 \arguments{
 \item{seed}{(\code{integer(1)} | \code{NULL})\cr
-The seed, or \code{NULL} to derive the global state from base R's RNG.}
+The seed, a 32-bit integer, or \code{NULL} to derive the global state from base
+R's RNG.}
 
 \item{state}{(\code{\link{AnvlArray}} | \code{NULL})\cr
 A state returned by \code{nv_get_rng_state()}.}
@@ -58,9 +59,10 @@ function gives the same values as drawing one after the other outside of
 The global state is also threaded through the branches of \code{\link[=nv_if]{nv_if()}}, the
 bodies of \code{\link[=nv_while]{nv_while()}} and \code{\link[=nv_scan]{nv_scan()}}, and functions differentiated by
 \code{\link[=gradient]{gradient()}}, so a draw in a loop body gives a new sample on every
-iteration. It cannot be drawn from in the condition of \code{\link[=nv_while]{nv_while()}}, nor in
-the functions of a reduction or a scatter, as these
-cannot hand an advanced state back.
+iteration. It cannot be drawn from in the condition of \code{\link[=nv_while]{nv_while()}}, in the
+functions of a reduction or a scatter, or in any other function that a
+primitive traces without threading it, as these cannot hand an advanced
+state back.
 }
 \section{Seeding from base R}{
 
@@ -81,6 +83,16 @@ called in a function traced by \code{\link[=jit]{jit()}}, where they would seed 
 tracing, rather than on every call.
 }
 
+\section{Draws that depend on an argument}{
+
+There is only the one global state: a jitted function cannot seed it from
+one of its arguments, nor draw from several independent states, e.g. one per
+chain of a sampler. What a call of a jitted function draws therefore depends
+on how far the global state has advanced, not on its arguments. To make the
+draws of a call depend on a seed, seed the global state before the call:
+\code{for (i in 1:3) { nv_set_seed(i); f(x) }}.
+}
+
 \section{Saving and restoring the state}{
 
 A seed restarts a sequence from its beginning. To continue one where it
@@ -89,16 +101,21 @@ stopped, e.g. when resuming a model fit, save the state itself:
 \code{nv_set_rng_state()} makes a copy of a saved state the global state again.
 The state is a \code{ui64} \code{\link{AnvlArray}} of shape \code{2}, the key and the counter of
 the generator (see \code{\link[=prim_sample_bits]{prim_sample_bits()}}), so \code{\link[=nv_save]{nv_save()}} can write it to a
-file. \code{NULL} is the state that is not set. Both functions copy the state, as
-the draws update the global state in place.
+file, e.g. as \code{nv_save(list(rng = nv_get_rng_state()), path)}. \code{NULL} is the
+state that is not set. Both functions copy the state, as the draws update the
+global state in place. The counter wraps around at \eqn{2^{64}}, where its
+draws repeat, so restore a state that \code{nv_get_rng_state()} returned rather
+than one made up.
 }
 
 \section{Devices}{
 
 The global state lives on the device of the call that last drew from it,
 and a call that runs on another device -- however that device is decided --
-copies it there. A seed therefore gives the same sequence whatever devices
-the draws run on.
+copies it there. A seed therefore gives the same random bits whatever
+devices the draws run on; the samples computed from them, e.g. by
+\code{\link[=nv_rnorm]{nv_rnorm()}}, can differ in the last digits between platforms, as their
+floating point functions do.
 }
 
 \examples{

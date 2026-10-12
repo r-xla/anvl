@@ -3,6 +3,9 @@
 
 library(anvl)
 
+# a fixed seed keeps the statistical thresholds below from failing at random
+nv_set_seed(1L)
+
 test_rnorm_statistical <- function() {
   cat("Testing rnorm statistical properties...\n")
 

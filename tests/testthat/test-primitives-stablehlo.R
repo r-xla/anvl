@@ -56,6 +56,10 @@ describe("prim_sample_bits", {
       expect_dtype(out, dtype)
       expect_shape(out, c(2L, 3L))
       expect_false(identical(bits(globals$rng_state), before))
+      # the bits are random, not a constant: 64 draws of 8 bits or more repeat
+      # a value only rarely
+      values <- as.numeric(as.character(as_array(prim_sample_bits(64L, dtype))))
+      expect_gt(length(unique(values)), 40L)
     }
   })
 

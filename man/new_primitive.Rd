@@ -31,7 +31,9 @@ Names of parameters that are subgraphs (for higher-order primitives).}
 Passed to \code{\link[=jit]{jit()}}.}
 
 \item{side_effects}{(\code{character()})\cr
-Names of the side effects the primitive uses (see \code{register_side_effect()}).
+Names of the side effects the primitive uses: values outside of the traced
+function that it reads and updates, such as the global RNG state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}).
 \code{\link[=graph_desc_add]{graph_desc_add()}} passes the current value of each to the call as one
 more operand, named after the side effect, after \code{args}; the inference
 and interpretation rules return the updated values as the last outputs, in

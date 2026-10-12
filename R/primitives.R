@@ -3051,11 +3051,21 @@ prim_print <- new_primitive(
 #' is called in and leaves the advanced state behind for the next draw. A
 #' [jit()]-compiled function takes the global RNG state as a hidden input and
 #' hands the state its last draw left behind back to it.
+#'
+#' The state is a key and a counter. A draw hashes the key with the next values
+#' of the counter and advances the counter past them, so consecutive draws never
+#' share a counter value. A `"ui64"` draw of `n` values advances the counter by
+#' `n`. A narrower draw takes two values from each counter value and may leave
+#' the second of the last one unused: a `"ui32"` draw of `4` gives the values
+#' of two draws of `2`, but two draws of `1` do not give the values of one draw
+#' of `2`.
 #' @template param_shape
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
 #' @return ([`arrayish`])\cr
-#'   The random bits, of data type `dtype` and shape `shape`.
+#'   The random bits, of data type `dtype` and shape `shape`. The draws fill
+#'   `shape` in column-major order, so a draw of `c(2, 3)` holds the values of a
+#'   draw of `6`, reshaped to `c(2, 3)`.
 #' @references
 #' `r format_bib("salmon2011parallel")`
 #' @templateVar primitive_id sample_bits

@@ -354,6 +354,11 @@ describe("prim_if", {
     }
     grad <- jit(gradient(f, wrt = "x"))(false_, x)$x
     expect_equal(as.numeric(grad), c(1, 1, 1))
+
+    # through the branch that draws, the gradient is that draw
+    z <- with_nv_seed(1L, as.numeric(nv_rnorm(integer(), dtype = "f64")))
+    grad <- with_nv_seed(1L, jit(gradient(f, wrt = "x"))(true_, x)$x)
+    expect_equal(as.numeric(grad), rep(z, 3L))
   })
 
   it("lets a branch take the gradient of a value it closes over", {

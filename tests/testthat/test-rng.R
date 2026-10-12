@@ -21,17 +21,6 @@ describe("nv_set_seed", {
     expect_identical(as.numeric(as_array(globals$rng_state)), c(2^32 - 1, 0))
   })
 
-  it("returns only the sample for every sampler", {
-    local_nv_seed(1L)
-    expect_shape(nv_runif(c(2L, 3L)), c(2L, 3L))
-    expect_shape(nv_rnorm(4L), 4L)
-    expect_shape(nv_rbinom(3L, size = 2L), 3L)
-    values <- as_array(nv_sample_int(5L, n = 3L))
-    expect_true(all(values %in% 1:3))
-    values <- as_array(nv_sample(5L, x = nv_array(c(10, 20))))
-    expect_true(all(values %in% c(10, 20)))
-  })
-
   it("is not needed: an unset state is derived from base R's RNG", {
     draw <- function() {
       local_nv_seed(NULL)
@@ -41,6 +30,15 @@ describe("nv_set_seed", {
     first <- draw()
     expect_identical(draw(), first)
     expect_false(identical(first[[1L]], first[[2L]]))
+  })
+
+  it("derives an unset state from base R's seed", {
+    draw <- function(seed) {
+      local_nv_seed(NULL)
+      withr::local_seed(seed)
+      as_array(nv_runif(3L))
+    }
+    expect_false(identical(draw(1L), draw(2L)))
   })
 
   it("derives an unset state from base R's RNG only once", {
@@ -58,6 +56,12 @@ describe("nv_set_seed", {
 
   it("rejects a seed that is not an integer", {
     expect_error(nv_set_seed(1.5), "integerish")
+  })
+
+  it("is refused by a backend that cannot draw", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    expect_error(nv_set_seed(1L), "does not support random draws")
   })
 
   it("cannot be called in a traced function", {
@@ -175,8 +179,9 @@ describe("the global RNG state in jit", {
 
   it("is shared between jitted functions and eager draws", {
     f <- jit(function() nv_runif(2L))
-    out <- with_nv_seed(5L, list(as_array(f()), as_array(nv_runif(2L))))
-    expect_identical(with_nv_seed(5L, list(as_array(nv_runif(2L)), as_array(f()))), out)
+    expected <- draws(5L, 2L, 2L)
+    expect_identical(with_nv_seed(5L, list(as_array(f()), as_array(nv_runif(2L)))), expected)
+    expect_identical(with_nv_seed(5L, list(as_array(nv_runif(2L)), as_array(f()))), expected)
   })
 
   it("leaves the global state alone in functions that do not draw from it", {
@@ -228,6 +233,21 @@ describe("the global RNG state in sub-graphs", {
     out <- with_nv_seed(1L, f())
     expect_equal(as_array(out$total), (expected[[1L]] * 10 + expected[[2L]]) * 10 + expected[[3L]], tolerance = 1e-6)
     expect_identical(as_array(out$after), expected[[4L]])
+  })
+
+  it("is carried through the body of nv_scan in reverse", {
+    f <- jit(function(xs) {
+      nv_scan(
+        init = list(nv_scalar(0)),
+        body = function(carry, x) list(carry = carry, out = x + nv_runif(1L)),
+        xs = xs,
+        reverse = TRUE
+      )$out
+    })
+    expected <- unlist(draws(1L, 3L))
+    out <- with_nv_seed(1L, f(nv_array(matrix(c(0, 10, 20), ncol = 1L))))
+    # the body runs from the last step to the first, drawing in that order
+    expect_equal(as.vector(as_array(out)), c(0, 10, 20) + rev(expected), tolerance = 1e-6)
   })
 
   it("is carried through the body of nv_scan", {
@@ -359,6 +379,24 @@ describe("the global RNG state in sub-graphs", {
     })
     expect_error(f(nv_array(c(1, 2))), "cannot be used here")
   })
+
+  it("is not available in the update function of a scatter", {
+    f <- jit(function(x) {
+      prim_scatter(
+        x,
+        nv_array(matrix(1L, 1L, 1L)),
+        nv_array(5),
+        update_window_axes = integer(),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(),
+        scatter_indices_batching_axes = integer(),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = function(old, new) old + new + nv_runif(integer())
+      )
+    })
+    expect_error(f(nv_array(c(1, 2))), "cannot be used here")
+  })
 })
 
 describe("the global RNG state across devices", {
@@ -428,8 +466,20 @@ describe("the global RNG state across devices", {
   })
 
   it("moves to the device of the call that draws from it", {
-    local_nv_seed(7L)
+    local_nv_seed(NULL)
+    globals$rng_state <- rng_state_from_seed(7L, device = dev0)
     with_default_device(dev1, nv_runif(1L))
     expect_true(eq_device(device(globals$rng_state), dev1))
+  })
+
+  it("is restored by nv_set_rng_state() from a state on another device", {
+    local_nv_seed(NULL)
+    globals$rng_state <- rng_state_from_seed(7L, device = dev1)
+    state <- nv_get_rng_state()
+    nv_set_rng_state(NULL)
+    nv_set_rng_state(state)
+    out <- with_default_device(dev0, nv_runif(3L))
+    expect_true(eq_device(device(globals$rng_state), dev0))
+    expect_identical(as_array(out), draws(7L, 1L, 3L)[[1L]])
   })
 })

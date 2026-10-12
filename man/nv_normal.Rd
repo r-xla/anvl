@@ -94,7 +94,9 @@ structure, use a Cholesky decomposition.
 
 \code{mean} and \code{sd} are \code{\link{arrayish}}, so they may vary across the sample: they
 are applied to the draws after they have been reshaped to \code{shape}, and so
-may either be scalars or have exactly that shape.
+may either be scalars or have exactly that shape. As in base R's \code{rnorm()},
+an element whose \code{mean} is \code{NaN}, or whose \code{sd} is not finite or negative, is
+\code{NaN}. The global RNG state is advanced regardless.
 }
 
 \examples{

@@ -2,20 +2,32 @@
 
 ## Breaking changes
 
-* The RNG state no longer has to be passed around manually.
-  Instead, set a seed via `nv_set_seed()` or the context managers `with_nv_seed()` / `local_nv_seed()`.
-* New `prim_sample_bits()` draws random bits with ThreeFry.
-* Removed `prim_rng_bit_generator()`; draw random bits with `prim_sample_bits()`.
+* Random draws use a global RNG state, which `nv_set_seed()` seeds
+  (`with_nv_seed()` / `local_nv_seed()` for a scope); unset, it is derived from
+  base R's RNG on the first draw. The samplers lose their `state` argument and
+  return only the sample; `nv_rng_state()` is removed.
+* `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`, which draws
+  random bits with ThreeFry from the global RNG state.
 
 ## Features
 
 * `nv_get_rng_state()` and `nv_set_rng_state()` save and restore the global RNG
   state, to continue a sequence where it stopped.
-* Added a general mechanism that enable primitive side-effects, such as the global
-  RNG state.
-* New `nv_bool()`, `nv_int{8,16,32,64}`, `nv_uint{8,16,32,64}` and `nv_float{32,64}`
-  constructors.
-* New functions for the exponential distribution: `nv_{d,p,q}exp`.
+* `new_primitive()` gains `side_effects`, for primitives that read and update a
+  value outside of the traced function, such as the global RNG state.
+* New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
+  create an array of the data type in their name.
+* New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,
+  and `nv_qexp()`.
+
+## Bug fixes
+
+* `nv_rnorm()` no longer returns non-finite values when a uniform draw is `0`,
+  and, like `rnorm()`, returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`.
+* `nv_rbinom()` and `nv_sample_int()` reject a `size` or `n` that does not fit
+  into `dtype`; `nv_rbinom()` accepts `size = 0`.
+* `nv_sample()` gives a clear error for an empty population.
 
 # anvl 0.5.1
 

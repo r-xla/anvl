@@ -8,6 +8,10 @@
 #' calls with the same input structure, shapes, and dtypes hit an LRU cache and
 #' skip recompilation.
 #'
+#' A function that draws random numbers also reads and advances the global RNG
+#' state (see [nv_set_seed()]), so two calls with the same arguments draw
+#' different samples.
+#'
 #' @param f (`function`)\cr
 #'   Function to compile.
 #' @param static (`character()` | `integer()`)\cr

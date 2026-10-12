@@ -76,7 +76,8 @@ The rule for translating a primitive to stablehlo is \verb{prim_<name>[["stableh
 
 The arguments of the resulting function are, in this order: the graph's
 constants (when \code{constants_as_inputs = TRUE}), the graph's inputs, the
-values of the graph's side effects (see \code{register_side_effect()}), and the
+values of the graph's side effects (such as the global RNG state, see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), and the
 phantom donated inputs (when \code{donate_unaliased_outputs = TRUE}), one per
 output that is not already aliased to a donated input, in the order of the
 outputs. Its results are the graph's outputs, then the values its side

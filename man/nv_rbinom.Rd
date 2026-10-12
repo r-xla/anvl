@@ -11,7 +11,7 @@ nv_rbinom(shape, size = 1L, prob = 0.5, dtype = NULL)
 Shape of the result.}
 
 \item{size}{(\code{integer(1)})\cr
-Number of trials.}
+Number of trials, at most the largest value of \code{dtype}.}
 
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}

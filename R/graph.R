@@ -774,8 +774,7 @@ trace_fn <- function(
     args_flat <- flatten(args)
   }
   f_flat <- pjrt::flatten_fun(f, in_tree = in_tree)
-  toplevel <- is.null(desc)
-  if (toplevel) {
+  if (is.null(desc)) {
     desc <- local_descriptor(in_tree = in_tree, side_effects_mode = "input")
   } else {
     desc$in_tree <- in_tree

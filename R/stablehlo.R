@@ -54,7 +54,8 @@ env_get <- function(env, gval) {
 #'
 #' The arguments of the resulting function are, in this order: the graph's
 #' constants (when `constants_as_inputs = TRUE`), the graph's inputs, the
-#' values of the graph's side effects (see `register_side_effect()`), and the
+#' values of the graph's side effects (such as the global RNG state, see
+#' [nv_set_seed()]), and the
 #' phantom donated inputs (when `donate_unaliased_outputs = TRUE`), one per
 #' output that is not already aliased to a donated input, in the order of the
 #' outputs. Its results are the graph's outputs, then the values its side

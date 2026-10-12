@@ -11,7 +11,7 @@ nv_sample(shape, x)
 Shape of the result.}
 
 \item{x}{(\code{\link{arrayish}})\cr
-The population vector to sample from.
+The population vector to sample from. Must not be empty.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
 }
 \value{

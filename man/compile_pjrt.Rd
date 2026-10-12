@@ -65,8 +65,7 @@ for an array one. \code{NULL} for a call whose inputs are all arrays.
 \item \code{phantom_specs}: One \code{list(dtype, shape)} per phantom donated input the
 executor must allocate for an output (see \code{\link[=stablehlo]{stablehlo()}}).
 \item \code{state}: One state slot per side effect the program uses, through which
-pjrt's dispatcher supplies and stores its value (see
-\code{register_side_effect()}).
+pjrt's dispatcher supplies and stores its value.
 }
 }
 \description{

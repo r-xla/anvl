@@ -14,7 +14,9 @@
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
 #' @param side_effects (`character()`)\cr
-#'   Names of the side effects the primitive uses (see `register_side_effect()`).
+#'   Names of the side effects the primitive uses: values outside of the traced
+#'   function that it reads and updates, such as the global RNG state (see
+#'   [nv_set_seed()]).
 #' @return (`AnvlPrimitiveDef`)
 #' @export
 AnvlPrimitiveDef <- function(name, subgraphs = character(), side_effects = character()) {
@@ -100,7 +102,9 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
 #' @param side_effects (`character()`)\cr
-#'   Names of the side effects the primitive uses (see `register_side_effect()`).
+#'   Names of the side effects the primitive uses: values outside of the traced
+#'   function that it reads and updates, such as the global RNG state (see
+#'   [nv_set_seed()]).
 #'   [`graph_desc_add()`] passes the current value of each to the call as one
 #'   more operand, named after the side effect, after `args`; the inference
 #'   and interpretation rules return the updated values as the last outputs, in

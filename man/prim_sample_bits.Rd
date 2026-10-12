@@ -15,7 +15,9 @@ An unsigned integer data type: \code{"ui8"}, \code{"ui16"}, \code{"ui32"} or \co
 }
 \value{
 (\code{\link{arrayish}})\cr
-The random bits, of data type \code{dtype} and shape \code{shape}.
+The random bits, of data type \code{dtype} and shape \code{shape}. The draws fill
+\code{shape} in column-major order, so a draw of \code{c(2, 3)} holds the values of a
+draw of \code{6}, reshaped to \code{c(2, 3)}.
 }
 \description{
 Draws random bits from the global RNG state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) with XLA's
@@ -26,6 +28,14 @@ The state is not an argument: the primitive reads the state of the trace it
 is called in and leaves the advanced state behind for the next draw. A
 \code{\link[=jit]{jit()}}-compiled function takes the global RNG state as a hidden input and
 hands the state its last draw left behind back to it.
+
+The state is a key and a counter. A draw hashes the key with the next values
+of the counter and advances the counter past them, so consecutive draws never
+share a counter value. A \code{"ui64"} draw of \code{n} values advances the counter by
+\code{n}. A narrower draw takes two values from each counter value and may leave
+the second of the last one unused: a \code{"ui32"} draw of \code{4} gives the values
+of two draws of \code{2}, but two draws of \code{1} do not give the values of one draw
+of \code{2}.
 }
 \section{Implemented Rules}{
 

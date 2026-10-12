@@ -142,8 +142,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
 #'     executor must allocate for an output (see [`stablehlo()`]).
 #'   - `state`: One state slot per side effect the program uses, through which
-#'     pjrt's dispatcher supplies and stores its value (see
-#'     `register_side_effect()`).
+#'     pjrt's dispatcher supplies and stores its value.
 #' @keywords internal
 compile_pjrt <- function(
   f,
