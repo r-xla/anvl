@@ -523,10 +523,10 @@ prim_broadcast_in_axes[["reverse"]] <- rule_reverse(function(inputs, outputs, gr
         g <- prim_reshape(g, reshape_dims)
       }
 
-      # If broadcast_axes are not in increasing order, reorder the
-      # remaining axes back to the original input axis order.
+      # The remaining axes are those of the output, in increasing order, so
+      # axis `i` of `x` sits at position `rank(broadcast_axes)[i]` of `g`.
       if (is.unsorted(broadcast_axes)) {
-        g <- prim_transpose(g, order(broadcast_axes))
+        g <- prim_transpose(g, rank(broadcast_axes))
       }
       g
     }

@@ -1218,6 +1218,18 @@ describe("prim_reshape reverse", {
   })
 })
 
+describe("prim_broadcast_in_axes reverse", {
+  it("permutes the gradient back for unsorted broadcast axes", {
+    # Distinct weights pin where each element of the gradient lands; c(3, 1, 2)
+    # is not its own inverse.
+    x <- nv_array(array(0, c(2L, 3L, 4L)), dtype = "f64")
+    w <- array(as.numeric(1:24), c(3L, 4L, 2L))
+    f <- function(x) nv_sum(prim_broadcast_in_axes(x, c(3L, 4L, 2L), c(3L, 1L, 2L)) * w)
+    grads <- jit(gradient(f))(x)
+    expect_equal(as_array(grads[[1L]]), aperm(w, c(3L, 1L, 2L)))
+  })
+})
+
 describe("prim_print", {
   x <- nv_array(c(1, 2, 3), dtype = "f64")
   # The number of times a print ran: each one shows the value 7 on a line of
