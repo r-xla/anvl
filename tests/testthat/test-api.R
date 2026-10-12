@@ -2632,6 +2632,12 @@ describe("nv_det", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f64")
     expect_equal(as_array(nv_det(empty)), 1)
   })
+
+  it("returns 0 for a singular matrix", {
+    skip_if_lu_rejects_singular()
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    expect_equal(as_array(nv_det(nv_array(A_mat, dtype = "f64"))), det(A_mat))
+  })
 })
 
 describe("nv_determinant", {
@@ -2658,6 +2664,17 @@ describe("nv_determinant", {
     expect_equal(as_array(out_lin$modulus), 1)
     expect_equal(as_array(out_lin$sign), 1)
   })
+
+  it("matches base::determinant() for a singular matrix", {
+    skip_if_lu_rejects_singular()
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    for (logarithm in c(TRUE, FALSE)) {
+      out <- nv_determinant(nv_array(A_mat, dtype = "f64"), logarithm = logarithm)
+      expected <- determinant(A_mat, logarithm = logarithm)
+      expect_equal(as_array(out$modulus), as.vector(expected$modulus))
+      expect_equal(as_array(out$sign), expected$sign)
+    }
+  })
 })
 
 describe("nv_inv", {
@@ -2674,6 +2691,12 @@ describe("nv_inv", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f64")
     out <- nv_inv(empty)
     expect_shape(out, c(0L, 0L))
+  })
+
+  it("returns non-finite values for a singular matrix", {
+    skip_if_lu_rejects_singular()
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    expect_false(any(is.finite(as_array(nv_inv(nv_array(A_mat, dtype = "f64"))))))
   })
 })
 

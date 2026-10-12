@@ -2348,7 +2348,8 @@ nv_chol <- jit(
 #' @description
 #' Solves the linear system `a %*% x = b` for `x`. Uses LU decomposition
 #' with partial pivoting internally, so `a` need only be square and
-#' non-singular.
+#' non-singular. Unlike [base::solve()], a singular `a` is not an error: the
+#' result then holds non-finite values.
 #' @details
 #' \deqn{A x = b}
 #' \deqn{P A = L U}
@@ -2634,6 +2635,9 @@ nv_determinant <- jit(
       sign <- prim_mul(pivot_sign, nv_sign(signed_prod))
       modulus <- prim_abs(signed_prod)
     }
+    # Like base R, a singular matrix (an exact zero pivot) has sign 1.
+    singular <- nv_any(diag_U == 0L)
+    sign <- nv_ifelse(singular, 1L, sign)
 
     list(modulus = modulus, sign = sign)
   },
@@ -2643,7 +2647,8 @@ nv_determinant <- jit(
 #' @title Matrix Inverse
 #' @description
 #' Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
-#' solving `x %*% y = I` for `y`.
+#' solving `x %*% y = I` for `y`. Unlike [base::solve()], a singular `x` is
+#' not an error: the result then holds non-finite values.
 #'
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
