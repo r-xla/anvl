@@ -18,9 +18,9 @@ For \code{nv_serialize()}, an optional connection to write to; if \code{NULL}
 (default), a raw vector is returned. For \code{nv_unserialize()}, a connection
 or raw vector to read from.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
-The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...)
-when the active backend is \code{"pjrt"}, defaulting to \code{\link[=default_device]{default_device()}}.}
+\item{device}{(\code{NULL} | \code{character(1)} | device object)\cr
+The device of the active backend on which to place the loaded arrays
+(\code{"cpu"}, \code{"cuda"}, ...), defaulting to \code{\link[=default_device]{default_device()}}.}
 }
 \value{
 \code{nv_serialize()}: (\code{\link{raw}} | \code{NULL})\cr

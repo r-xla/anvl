@@ -44,6 +44,26 @@ test_that("nv_serialize and nv_unserialize work for quickr backend", {
   expect_shape(reloaded$x, shape(x))
 })
 
+describe("nv_unserialize() on the quickr backend", {
+  it("places the arrays on a device of the active backend", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    raw_data <- nv_serialize(list(x = nv_array(1:3)))
+    for (device in list(nv_device("cpu"), "cpu")) {
+      x <- nv_unserialize(raw_data, device = device)$x
+      expect_equal(backend(x), "quickr")
+      expect_equal(device(x), nv_device("cpu"))
+      expect_equal(as.integer(as_array(x)), 1:3)
+    }
+  })
+  it("rejects a device the active backend does not have", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    raw_data <- nv_serialize(list(x = nv_array(1:3)))
+    expect_error(nv_unserialize(raw_data, device = "cuda"), "cpu")
+  })
+})
+
 test_that("nv_save and nv_read work for quickr backend", {
   skip_if_no_quickr()
   local_backend("quickr")
