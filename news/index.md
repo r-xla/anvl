@@ -14,6 +14,10 @@
   [`nv_pexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md),
   and
   [`nv_qexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md).
+- [`nv_chol()`](https://r-xla.github.io/anvl/reference/nv_chol.md) /
+  [`prim_chol()`](https://r-xla.github.io/anvl/reference/prim_chol.md)
+  now lower to a LAPACK (CPU) / cuSOLVER (CUDA) `potrf` custom call,
+  which is about ten times faster on CPU.
 
 ## anvl 0.5.1
 

@@ -110,7 +110,8 @@ upper triangular factor <code>U</code> such that <code>x = t(U) %*% U</code>. If
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has the same shape and data type as the input.
-The values in the triangle not specified by <code>lower</code> are implementation-defined.</p>
+The values in the triangle not specified by <code>lower</code> are implementation-defined.
+A matrix that is not positive definite factors to <code>NaN</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -128,8 +129,8 @@ errors on a batched input (an input with more than 2 axes).</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html" class="external-link">hlo_cholesky()</a></code>, specified under
-<a href="https://openxla.org/stablehlo/spec#cholesky" class="external-link">cholesky</a>.</p>
+<p>Lowers to a <code>"potrf"</code> <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html" class="external-link">hlo_custom_call()</a></code> (backed by LAPACK on CPU and
+cuSOLVER on CUDA) + postprocessing.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

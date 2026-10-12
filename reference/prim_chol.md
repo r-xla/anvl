@@ -31,7 +31,8 @@ prim_chol(x, lower = FALSE)
 
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Has the same shape and data type as the input. The values in the
-triangle not specified by `lower` are implementation-defined.
+triangle not specified by `lower` are implementation-defined. A matrix
+that is not positive definite factors to `NaN`.
 
 ## Details
 
@@ -46,9 +47,9 @@ rule errors on a batched input (an input with more than 2 axes).
 
 ## StableHLO
 
-Lowers to
-[`hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html),
-specified under [cholesky](https://openxla.org/stablehlo/spec#cholesky).
+Lowers to a `"potrf"`
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+(backed by LAPACK on CPU and cuSOLVER on CUDA) + postprocessing.
 
 ## References
 

@@ -43,7 +43,8 @@ Triangular matrix with the input's shape, and its data type – or the
 default float data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md))
 where the input was an integer one. The values in the triangle not
-selected by `lower` are implementation-defined.
+selected by `lower` are implementation-defined. A matrix that is not
+positive definite factors to `NaN`.
 
 ## Details
 
