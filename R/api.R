@@ -73,7 +73,8 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
         x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
       ))
     }
-    shape_out[i] <- max(d_lhs, d_rhs)
+    # Not `max()`: a size-1 axis meeting a size-0 one broadcasts to 0.
+    shape_out[i] <- if (d_lhs == 1L) d_rhs else d_lhs
   }
   shape_out
 }

@@ -63,6 +63,12 @@ describe("nv_broadcast_arrays()", {
       "not broadcastable"
     )
   })
+
+  it("broadcasts a size-1 axis to a size-0 one", {
+    xs <- nv_broadcast_arrays(nv_array(numeric(), shape = c(0L, 3L)), nv_array(1:3, shape = c(1L, 3L)))
+    expect_shape(xs[[1L]], c(0L, 3L))
+    expect_shape(xs[[2L]], c(0L, 3L))
+  })
 })
 
 test_that("broadcasting scalars", {

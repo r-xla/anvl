@@ -6,6 +6,8 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
+* Bugfix: `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
+  axis to size 0.
 
 # anvl 0.5.1
 
