@@ -38,6 +38,33 @@ peek_r_type <- function(x) {
   to_abstract(x)$r_type %||% "value"
 }
 
+# Adds the arguments in `wrt` that the call left to their defaults to `args`,
+# evaluated as R evaluates a default: lazily, in a frame of `f` that holds the
+# supplied arguments, so a default may read another argument. The arguments
+# keep the order of `f`'s formals.
+add_wrt_defaults <- function(f, args, wrt) {
+  while (inherits(f, "JitFunction")) {
+    f <- jit_config(f)$f
+  }
+  fmls <- formals2(f)
+  has_default <- !vapply(seq_along(fmls), function(i) identical(fmls[[i]], quote(expr = )), logical(1L))
+  unsupplied <- setdiff(names(fmls)[has_default], names(args))
+  defaulted <- intersect(wrt, unsupplied)
+  if (!length(defaulted)) {
+    return(args)
+  }
+  frame <- new.env(parent = environment(f) %||% baseenv())
+  supplied <- args[nzchar(rlang::names2(args))]
+  list2env(supplied, frame)
+  for (nm in unsupplied) {
+    eval(call("delayedAssign", nm, fmls[[nm]], frame, frame))
+  }
+  args <- c(args, mget(defaulted, envir = frame))
+  pos <- match(rlang::names2(args), names(fmls))
+  pos[is.na(pos)] <- match("...", names(fmls))
+  args[order(pos)]
+}
+
 prepare_gradient_args <- function(args, wrt) {
   args_flat <- flatten(args)
   in_tree <- build_tree(args)
@@ -622,7 +649,9 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #'   type, not an R value such as `3`, since the data type of its gradient
 #'   would otherwise be undetermined.
 #'   If `NULL` (the default), the gradient is computed with respect to all
-#'   arguments (which must all be arrayish in that case).
+#'   arguments passed in the call (which must all be arrayish in that case).
+#'   An argument in `wrt` that the call does not pass is differentiated at its
+#'   default value.
 #' @return (`function`)\cr
 #'   Has the same formals as `f` and must be called inside [`jit()`].
 #'   For `gradient()`, it returns a named `list` of gradients, one per
@@ -666,6 +695,7 @@ gradient <- function(f, wrt = NULL) {
   f_gradient <- function() {
     args <- as.list(match.call())[-1L]
     args <- lapply(args, eval, envir = parent.frame())
+    args <- add_wrt_defaults(f, args, wrt)
     prep <- prepare_gradient_args(args, wrt)
 
     if (is.null(current_descriptor(silent = TRUE))) {
@@ -693,6 +723,7 @@ value_and_gradient <- function(f, wrt = NULL) {
   f_value_and_grad <- function() {
     args <- as.list(match.call())[-1L]
     args <- lapply(args, eval, envir = parent.frame())
+    args <- add_wrt_defaults(f, args, wrt)
     prep <- prepare_gradient_args(args, wrt)
 
     if (is.null(current_descriptor(silent = TRUE))) {

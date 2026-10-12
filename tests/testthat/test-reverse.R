@@ -212,6 +212,35 @@ test_that("gradients are present even if they don't influence the output", {
   )
 })
 
+describe("wrt naming an argument left to its default", {
+  x <- nv_array(c(1, 2), dtype = "f64")
+
+  it("differentiates gradient() at the default", {
+    f <- local({
+      y0 <- nv_array(c(3, 4), dtype = "f64")
+      function(x, y = y0) nv_sum(x * y)
+    })
+    grads <- jit(gradient(f, wrt = c("x", "y")))(x)
+    expect_named(grads, c("x", "y"))
+    expect_equal(as.numeric(as_array(grads$x)), c(3, 4))
+    expect_equal(as.numeric(as_array(grads$y)), c(1, 2))
+    expect_named(jit(gradient(f, wrt = "y"))(x), "y")
+  })
+
+  it("differentiates value_and_gradient() at the default", {
+    f <- function(x, y = x * 2) nv_sum(x * y)
+    out <- jit(value_and_gradient(f, wrt = c("y", "x")))(x)
+    expect_equal(as.numeric(as_array(out$value)), 10)
+    expect_named(out$grad, c("x", "y"))
+    expect_equal(as.numeric(as_array(out$grad$y)), c(1, 2))
+  })
+
+  it("leaves the argument out when wrt does not name it", {
+    f <- function(x, y = nv_array(c(3, 4), dtype = "f64")) nv_sum(x * y)
+    expect_named(jit(gradient(f))(x), "x")
+  })
+})
+
 test_that("wrt non-existent argument", {
   f <- function(x) {
     nv_pow(x, nv_scalar(1))

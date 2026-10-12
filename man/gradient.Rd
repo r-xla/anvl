@@ -20,7 +20,9 @@ Only float arrays can be included; static arguments must not appear in
 type, not an R value such as \code{3}, since the data type of its gradient
 would otherwise be undetermined.
 If \code{NULL} (the default), the gradient is computed with respect to all
-arguments (which must all be arrayish in that case).}
+arguments passed in the call (which must all be arrayish in that case).
+An argument in \code{wrt} that the call does not pass is differentiated at its
+default value.}
 }
 \value{
 (\code{function})\cr
