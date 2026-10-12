@@ -303,8 +303,8 @@ prim_cummin[["stablehlo"]] <- function(x, axis, output_types) {
   .stablehlo_apply_cum_extreme(x, axis, is_max = FALSE, index_dtype = index_dtype_of(output_types, 2L))
 }
 
-prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reducer, .env) {
-  red_func <- stablehlo(reducer, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
+prim_reduce[["stablehlo"]] <- function(x, init, ..., axes, drop, reducer, n_captures) {
+  red_func <- stablehlo(reducer, id = "", captured = list(...))[[1L]]
   out <- hlo_reduce(
     inputs = list(x),
     init_values = list(init),
@@ -316,7 +316,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reducer, .env) {
 
 .r_reducer_to_hlo_func <- function(fn, dummy_args) {
   graph <- trace_fn(fn, dummy_args, desc = local_descriptor())
-  stablehlo(graph, id = "", constants_as_inputs = FALSE)[[1L]]
+  stablehlo(graph, id = "")[[1L]]
 }
 
 # The scalar arguments of a reducer over (value, index) pairs: the left pair,
@@ -696,22 +696,30 @@ prim_print[["stablehlo"]] <- function(x, header, footer) {
 
 # higher order primitives --------------------------------------------------------
 
-prim_if[["stablehlo"]] <- function(pred, true, false, .env) {
-  true_func <- stablehlo(true, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
-  false_func <- stablehlo(false, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
+# The operands after `pred` are the branches' inputs. A StableHLO `if` region
+# takes no arguments, so the regions read them by capture.
+prim_if[["stablehlo"]] <- function(pred, ..., true, false, n_captures) {
+  true_func <- stablehlo(true, id = "", captured = list(...))[[1L]]
+  false_func <- stablehlo(false, id = "", captured = list(...))[[1L]]
   hlo_if(pred, true_func, false_func, simplify = FALSE)
 }
 
-prim_while[["stablehlo"]] <- function(..., cond, body, .env) {
-  body_func <- stablehlo(body, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
-  cond_func <- stablehlo(cond, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
-  hlo_while(..., cond = cond_func, body = body_func, simplify = FALSE)
+# The regions take the state as arguments and read the captures past it from
+# above.
+prim_while[["stablehlo"]] <- function(..., cond, body, n_captures) {
+  args <- list(...)
+  n_state <- length(args) - n_captures
+  state_idx <- seq_len(n_state)
+  captured <- args[n_state + seq_len(n_captures)]
+  body_func <- stablehlo(body, id = "", captured = captured)[[1L]]
+  cond_func <- stablehlo(cond, id = "", captured = captured)[[1L]]
+  rlang::exec(hlo_while, !!!args[state_idx], cond = cond_func, body = body_func, simplify = FALSE)
 }
 
 # A while loop over the state (i, carry..., out buffers..., xs...). Each
 # iteration slices step i of every xs leaf, runs the traced body inline, and
 # writes its outputs into the buffers at step i; xs ride along unchanged.
-prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, .env) {
+prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
   args <- list(...)
   outer <- args[[1L]]$func
   n <- as.integer(steps)
@@ -780,8 +788,8 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, .
     hlo_reshape(sl, as.integer(shp[-1L]))
   })
 
-  env <- HloEnv(parent = .env)
-  ins <- c(carry_in, slices)
+  env <- HloEnv()
+  ins <- c(carry_in, slices, args[n_carry + n_xs + seq_len(n_captures)])
   for (k in seq_along(body$inputs)) {
     env_add(env, body$inputs[[k]], ins[[k]])
   }
@@ -920,9 +928,10 @@ prim_scatter[["stablehlo"]] <- function(
   indices_are_sorted,
   unique_indices,
   update_fn,
-  .env
+  n_captures,
+  ...
 ) {
-  update_func <- stablehlo(update_fn, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
+  update_func <- stablehlo(update_fn, id = "", captured = list(...))[[1L]]
 
   # StableHLO's ScatterDimensionNumbers() follows the spec naming, so the
   # anvl-side argument names are mapped back here.
@@ -991,19 +1000,57 @@ prim_gather[["stablehlo"]] <- function(
 }
 
 prim_chol[["stablehlo"]] <- function(x, lower) {
-  L <- hlo_cholesky(x, lower = lower)
-  # The non-triangular part of the output is implementation-defined.
-  # Zero it out so downstream code (including reverse rules) never sees garbage.
   op_shape <- shape(x$value_type)
-  n <- op_shape[length(op_shape)]
+  r <- length(op_shape)
+  batch_axes <- seq_len(r - 2L) - 1L
+  dt <- dtype(x)
+
+  # pjrt's `potrf` custom call (LAPACK on the host, cuSOLVER on CUDA) factors
+  # column-major matrices and returns potrf's `info` per matrix, which is
+  # non-zero for a matrix that is not positive definite. We hand it XLA's
+  # default row-major layout instead, which saves a transpose on either side:
+  # potrf then sees t(x) and writes a factor that reads back transposed. The
+  # upper factor of t(x) is the transpose of the lower factor of x, and both
+  # come from the same triangle of x, so asking for the other triangle gives
+  # exactly the factor requested.
+  row_major <- rev(seq_len(r) - 1L)
+  out <- hlo_custom_call(
+    x,
+    call_target_name = "potrf",
+    api_version = 4L,
+    has_side_effect = FALSE,
+    backend_config = stablehlo::CustomOpBackendConfig(list(
+      stablehlo::BoolAttr(name = "lower", value = !lower)
+    )),
+    output_types = list(vt(dtype = dt, shape = op_shape), vt(dtype = "i32", shape = op_shape[seq_len(r - 2L)])),
+    operand_layouts = list(row_major),
+    result_layouts = list(row_major, rev(batch_axes))
+  )
+  L <- out[[1L]]
+  info <- out[[2L]]
+
+  # A matrix that is not positive definite factors to NaN, as XLA's own
+  # expansion of `stablehlo.cholesky` does.
+  ok <- hlo_compare(
+    info,
+    hlo_tensor(0L, dtype = "i32", shape = shape(info$value_type), func = x$func),
+    comparison_direction = "EQ",
+    compare_type = "SIGNED"
+  )
+  ok <- hlo_broadcast_in_dim(ok, batch_axes, op_shape)
+  L <- hlo_select(ok, L, hlo_tensor(NaN, dtype = dt, shape = op_shape, func = x$func))
+
+  # potrf leaves the input's values in the other triangle: zero it, so
+  # downstream code (including reverse rules) never sees them.
+  n <- op_shape[r]
   mat_shape <- c(n, n)
   rows <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = mat_shape, func = x$func)
   cols <- hlo_iota(iota_dimension = 1L, dtype = "i32", shape = mat_shape, func = x$func)
   mask <- hlo_compare(rows, cols, comparison_direction = if (lower) "GE" else "LE", compare_type = "SIGNED")
-  if (length(op_shape) > 2L) {
-    mask <- hlo_broadcast_in_dim(mask, (length(op_shape) - 2L):(length(op_shape) - 1L), op_shape)
+  if (r > 2L) {
+    mask <- hlo_broadcast_in_dim(mask, c(r - 2L, r - 1L), op_shape)
   }
-  zero <- hlo_tensor(0L, dtype = dtype(x), shape = op_shape)
+  zero <- hlo_tensor(0L, dtype = dt, shape = op_shape, func = x$func)
   list(hlo_select(mask, L, zero))
 }
 

@@ -382,7 +382,7 @@ test_that("rule_reverse(forward = ...) emits multiple primitives and captures an
     register = FALSE
   )
 
-  my_exp[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+  my_exp[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
     x <- inputs[[1L]]
     y <- prim_exp(x)
     neg_y <- prim_negate(y)
@@ -438,7 +438,7 @@ describe("rdata", {
     expect_identical(as_array(f(nv_scalar(2, dtype = "f64"), 3L)$x), 3)
   })
 
-  it("keeps a bare R value outside wrt exact through the inline trace", {
+  it("keeps a bare R value outside wrt exact through the traced function", {
     # `k` is an R double used at f64. sqrt(2) is not representable at f32, so a
     # materialize at the default would show up in the gradient.
     f <- jit(gradient(function(v, k) v * k, wrt = "v"))
@@ -562,4 +562,53 @@ describe("the float category", {
     g <- jit(gradient(function(x) nv_convert(nv_sum(x), "i32")))
     expect_error(g(nv_array(c(1, 2), dtype = "f32")), "return float scalar")
   })
+})
+
+describe("gradients through prim_while", {
+  # A while loop's trip count is only known at run time, so there is no static
+  # size for the tape a backward pass would need.
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  accumulate <- function(x) {
+    prim_while(
+      init = list(i = nv_scalar(0L), acc = nv_scalar(0, "f64")),
+      cond = function(i, acc) i < nv_scalar(2L),
+      body = function(i, acc) list(i = i + 1L, acc = acc + prim_sum(x, axes = 1L))
+    )$acc
+  }
+
+  it("refuses one that closes over a value wrt depends on, rather than returning zero", {
+    # What the body closes over is an operand of the call, so the backward
+    # pass sees that the loop reads `x`.
+    expect_error(jit(gradient(accumulate))(x), "No reverse rule for primitive .*while")
+  })
+
+  it("refuses such a loop inside a branch of prim_if() too", {
+    f <- function(p, x) nv_if(p, function() accumulate(x), function() nv_scalar(0, "f64"))
+    expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No reverse rule for primitive .*while")
+  })
+
+  it("leaves one alone whose outputs are integers", {
+    # The loop only counts, so it contributes no gradient even though its
+    # condition reads `x`: 0.25 + 2.25 + 4 = 6.5, so it runs 7 times.
+    x <- nv_array(c(0.5, 1.5, -2), dtype = "f64")
+    f <- function(x) {
+      n <- nv_while(list(i = 0L), \(i) nv_convert(i, "f64") < nv_sum(x * x), \(i) list(i = i + 1L))$i
+      nv_sum(x) * nv_convert(n, "f64")
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(7, 7, 7))
+  })
+
+  it("leaves one that does not depend on wrt alone", {
+    f <- function(x, y) accumulate(x) * y
+    expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(x, nv_scalar(1, "f64"))$y), 12)
+  })
+})
+
+test_that("gradient() inside a sub-graph takes an R argument at the data type its body uses", {
+  # `b` belongs to the outermost trace, two levels up; the product settles it
+  # at f64, so it is uploaded at f64 rather than at its default and converted.
+  f <- jit(function(a, b) {
+    nv_if(TRUE, function() gradient(function(p, q) p * q, wrt = "p")(a, b)$p, function() a)
+  })
+  expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
 })

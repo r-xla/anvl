@@ -23,7 +23,7 @@ An R value has a shape when it is arrayish: a length-1 vector is a scalar
 with shape \code{integer()}, and an R array has its \code{dim()}. Any other R vector is
 an error; use \code{\link[=nv_array]{nv_array()}} to make it an array.
 
-This is implemented via the generic \code{\link[tengen:shape]{tengen::shape()}}.
+This is implemented via the generic \code{\link[xlamisc:shape]{xlamisc::shape()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

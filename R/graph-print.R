@@ -62,9 +62,10 @@ build_node_ids <- function(inputs, constants, statements) {
 }
 
 # Names the nodes of a graph and then, recursively, of its sub-graphs. One table
-# covers the whole tree: a sub-graph's constants are nodes it captured from the
-# graph around it, so letting them keep the name they already have is what shows
-# the capture. Every node is named by the outermost graph that reaches it.
+# covers the whole tree, so that no two nodes share a name; a node is named by
+# the outermost graph that reaches it. A sub-graph is closed -- what it reads
+# from outside are inputs of its own, which its statement passes operands for --
+# so its nodes are all its own.
 name_graph_nodes <- function(inputs, constants, statements, node_ids, counters) {
   name_node <- function(node, counter, prefix) {
     if (!is.null(node_ids[[node]]) || is_graph_literal(node)) {
@@ -179,9 +180,8 @@ format_array_param <- function(x, digits = getOption("digits")) {
 }
 
 # A sub-graph as a single line: the data types it takes and returns. This is
-# what a sub-graph comes to where the whole graph cannot go -- printing one
-# outside the graph holding it would name its captures after a node table the
-# reader never sees.
+# what a sub-graph comes to where the whole graph cannot go -- outside the graph
+# holding it, its node names would refer to a table the reader never sees.
 format_graph_signature <- function(g) {
   avals <- function(nodes) {
     paste(vapply(nodes, \(node) format_aval_short(node$aval), character(1L)), collapse = ", ")
@@ -190,9 +190,8 @@ format_graph_signature <- function(g) {
 }
 
 # A sub-graph param, printed in full. `node_ids` is the enclosing graph's table,
-# which is what lets a captured node keep its outer name; a graph formatted on
-# its own gets a table -- and typed captures -- of its own, there being no
-# enclosing graph to read them from.
+# so that the sub-graph's names do not clash with the graph around it; a graph
+# formatted on its own gets a table of its own.
 format_graph_param <- function(
   g,
   node_ids = NULL,
@@ -336,13 +335,14 @@ format_call <- function(
   paste(layout_row(chunks, indent, width), collapse = "\n")
 }
 
-# A graph as `[captures] (inputs) { <body> return <outputs> }`, headed by
-# `title` where it has one. The signature line carries the captures in brackets
-# and the inputs in parens with their data types.
+# A graph as `[constants] (inputs) { <body> return <outputs> }`, headed by
+# `title` where it has one: the arrays it closed over in brackets, the inputs in
+# parens with their data types. A sub-graph has no constants: what it closed
+# over are inputs of its own, which the `n_captures` param of its statement
+# counts.
 #
-# `typed_captures` spells a captured node's data type too. Only a graph with
-# nothing around it needs that -- a sub-graph's captures are nodes of the graph
-# holding it, declared there, so naming them is enough.
+# `typed_captures` spells a constant's data type too, for a graph formatted on
+# its own.
 format_graph_lines <- function(
   inputs,
   constants,

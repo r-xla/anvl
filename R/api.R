@@ -16,7 +16,7 @@
 #'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Data type of the result.
 #'   The default (`NULL`) uses the [default data type][default_dtypes] for `nv_fill` and
 #'   `dtype(like)` for `nv_fill_like`.
@@ -2323,7 +2323,8 @@ nv_matmul <- jit(
 #'   Triangular matrix with the input's shape, and its data type -- or the
 #'   default float data type (see [`default_dtypes()`]) where the input was an
 #'   integer one. The values in the triangle not selected by `lower` are
-#'   implementation-defined.
+#'   implementation-defined. A matrix that is not positive definite factors
+#'   to `NaN`.
 #' @seealso [nv_solve()], [prim_chol()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the factor has the matrix's shape and data type
@@ -3387,11 +3388,19 @@ nv_cummin <- jit(
 #'   Result of the executed branch: an array, or a tree of them in the sense
 #'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
 #'   the structure, data types and shapes both branches share.
+#' @section Gradients:
+#' [gradient()] differentiates through the branch the predicate selects, including
+#' the values the branches close over; a value only the other branch uses gets a
+#' zero. See [prim_if()].
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # both branches must return the same structure, data types and shapes
 #' nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
+#'
+#' # the gradient flows through the branch that is taken
+#' f <- function(p, x) nv_if(p, \() sum(x * x), \() sum(x))
+#' jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), nv_array(c(1, 2, 3)))
 #' @export
 nv_if <- prim_if
 
@@ -3411,6 +3420,10 @@ nv_if <- prim_if
 #'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- in its
 #'   final state after the loop terminates, with `init`'s structure, data
 #'   types and shapes.
+#' @section Gradients:
+#' [gradient()] cannot differentiate a while loop: its trip count is only known
+#' at run time, so there is no static size for the per-iteration states the
+#' backward pass needs.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the loop state is a named list, and each member keeps its data type

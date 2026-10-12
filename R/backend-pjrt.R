@@ -149,8 +149,7 @@ compile_pjrt <- function(
     f,
     desc = desc,
     args_flat = args_flat,
-    in_tree = in_tree,
-    mode = "toplevel"
+    in_tree = in_tree
   )
 
   # Validate backends on the raw traced graph, before the optimization passes
@@ -305,12 +304,12 @@ AnvlBackendPjrt <- function() {
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    as_array = function(x, check) tengen::as_array(x$data, check = check),
-    as_raw = function(x, row_major) tengen::as_raw(x$data, row_major = row_major),
+    as_array = function(x, check) xlamisc::as_array(x$data, check = check),
+    as_raw = function(x, row_major) xlamisc::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),
     device = function(x) x$device,
     new_device = function(x) pjrt::pjrt_device(x),
-    print_data = function(x, footer) print(x$data, header = FALSE, footer = footer),
+    print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
     jit = function(f, static, cache_size, donate = character(), device = NULL) {
       assert_subset(donate, formalArgs2(f))
       # static is checked in jit() itself
@@ -336,8 +335,8 @@ pjrt_anvl_array <- function(buf) {
   structure(
     list(
       data = buf,
-      dtype = tengen::dtype(buf),
-      shape = tengen::shape(buf),
+      dtype = xlamisc::dtype(buf),
+      shape = xlamisc::shape(buf),
       device = device(buf),
       backend = "pjrt"
     ),

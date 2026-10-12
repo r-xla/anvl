@@ -1,11 +1,10 @@
-# Calls `fn` on every node a graph reads: the inputs of its statements, its
-# outputs, and the same of every sub-graph.
+# Sub-graphs are closed -- what they read of this graph is an operand of their
+# call -- so the passes below never have to look into them.
 traverse_gnodes <- function(graph, fn) {
   for (call in graph$statements) {
     for (input in call$inputs) {
       fn(input)
     }
-    lapply(subgraphs(call), traverse_gnodes, fn = fn)
   }
   for (output in graph$outputs) {
     fn(output)
@@ -34,9 +33,6 @@ remove_unused_constants <- function(graph) {
   new_graph <- copy_graph(graph)
 
   is_used <- hashtab()
-  # A higher-order primitive's sub-graphs capture their constants from the
-  # graph around them rather than holding constants of their own, so every
-  # constant in use is one of the main graph's.
   traverse_gnodes(new_graph, function(gval) {
     if (is_graph_value(gval) && is_concrete_array(gval$aval)) {
       is_used[[gval]] <- TRUE
@@ -50,7 +46,7 @@ remove_unused_constants <- function(graph) {
   new_graph
 }
 
-inline_scalarish_constants <- function(graph, map = NULL) {
+inline_scalarish_constants <- function(graph) {
   is_scalarish <- function(gval) {
     is_graph_value(gval) && is_concrete_array(gval$aval) && (nelts(gval$aval) == 1L)
   }
@@ -65,11 +61,9 @@ inline_scalarish_constants <- function(graph, map = NULL) {
 
   new_graph <- copy_graph(graph)
 
-  # `map` answers "what did this node become", shared with the sub-graphs so a
-  # constant captured by several of them becomes the same literal.
-  map <- map %||% hashtab()
+  map <- hashtab()
   for (const in new_graph$constants) {
-    if (is_scalarish(const) && is.null(map[[const]])) {
+    if (is_scalarish(const)) {
       map[[const]] <- scalarish_to_lit(const)
     }
   }
@@ -77,9 +71,6 @@ inline_scalarish_constants <- function(graph, map = NULL) {
   new_graph$inputs <- replace_nodes(new_graph$inputs)
   new_graph$statements <- lapply(new_graph$statements, function(call) {
     call$inputs <- replace_nodes(call$inputs)
-    for (name in intersect(call$primitive$subgraphs, names(call$params))) {
-      call$params[[name]] <- inline_scalarish_constants(call$params[[name]], map)
-    }
     call
   })
   new_graph$outputs <- replace_nodes(new_graph$outputs)

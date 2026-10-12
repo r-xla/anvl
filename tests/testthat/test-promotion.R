@@ -124,6 +124,6 @@ describe("a ui64 that meets a signed integer", {
     y <- nv_array(c(3L, 4L), dtype = "i32")
     out <- x + y
     expect_dtype(out, "f64")
-    expect_equal(as.vector(tengen::as_array(out)), c(4, 6))
+    expect_equal(as.vector(xlamisc::as_array(out)), c(4, 6))
   })
 })

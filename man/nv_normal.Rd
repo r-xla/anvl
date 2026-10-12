@@ -49,7 +49,7 @@ RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Floating point data type of the sample. The default (\code{NULL}) uses the
 common data type of \code{mean} and \code{sd}, and the
 \link[=default_dtypes]{default float type} when both are R values.}

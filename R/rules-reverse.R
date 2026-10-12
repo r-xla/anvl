@@ -529,6 +529,69 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
+# In forward-mode, the two branches capture constants via lexical scoping
+# and they are turned into pure functions that receive these constants as arguments
+# (both true and false get the same arguments)
+# In reverse-mode, we could simply compute the forward-reverse graph and select
+# either branche's graph via prim_if
+# The problem with this is that it re-runs the forward pass and as both is part of
+# an if-condition we can't rely on XLA to optimize this away (?)
+# So now we instead run a modified forward pass that also outputs any intermediate
+# values (residuals) that are needed by the reverse pass
+prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+  pred <- inputs[[1L]]
+  operands <- inputs[-1L]
+  needed <- which(required[-1L])
+  n_out <- length(params$true$outputs)
+  vjps <- lapply(list(params$true, params$false), split_vjp, needed = needed)
+
+  # The function the forward `if` runs for branch `k` (1 = true, 2 = false).
+
+  # we return in the form of (outputs, true_residuals, false_residuals)
+  # During reverse, the true path returns 0 for false's residuals and
+  # the false path returns 0 for true's residuals
+  branch_forward <- function(k) {
+    function() {
+      # Run the branch's forward graph on the `if`'s operands: its outputs,
+      # then the residuals its backward pass reads.
+      outs <- graph_apply(vjps[[k]]$fwd, operands)
+      # Both branches must return the same structure, so each returns a slot
+      # for every branch's residuals: its own values in its own slots, zeros
+      # of the right aval in the other branch's, which that branch's backward
+      # never runs to read.
+      res <- lapply(seq_along(vjps), function(j) {
+        if (j == k) {
+          outs[n_out + seq_along(vjps[[k]]$residual_avals)]
+        } else {
+          lapply(vjps[[j]]$residual_avals, \(a) zeros(a$dtype, shape(a)))
+        }
+      })
+      # `out` are the `if`'s results. `res[[k]]` holds branch k's residuals
+      # when branch k ran, which is exactly when the backward `if` runs branch
+      # k's backward to read them.
+      list(out = outs[seq_len(n_out)], res = res)
+    }
+  }
+  fwd <- prim_if(pred, branch_forward(1L), branch_forward(2L))
+
+  list(
+    outputs = fwd$out,
+    backward = function(inputs, outputs, grads, params, required) {
+      branch_backward <- function(k) {
+        function() graph_apply(vjps[[k]]$bwd, c(grads, operands, fwd$res[[k]]))
+      }
+      grads_in <- vector("list", length(inputs))
+      grads_in[needed + 1L] <- prim_if(pred, branch_backward(1L), branch_backward(2L))
+      grads_in
+    }
+  )
+})
+
+# Printing hands its argument back unchanged, so the cotangent passes through.
+prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  list(if (required[[1L]]) grads[[1L]])
+})
+
 # convert reverse -----------------
 
 # A conversion is the identity, and so passes the cotangent through, only
@@ -723,7 +786,7 @@ prim_atan2[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
 # Implementation trick: instead of computing σ explicitly and gathering, sort
 # (π, grad) ascending — the second output is grad permuted by argsort(π) = σ,
 # which is exactly the input gradient.
-prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   axis <- params$axis
   decreasing <- params$decreasing
   stable <- params$stable
@@ -770,7 +833,7 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # the last axis.
 # The forward always runs with indices, even when the call asked for the values
 # only, so the backward has them without a second top_k.
-prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   x <- inputs[[1L]]
   out <- prim_top_k(x, k = params$k, indices = TRUE)
   indices <- out[[2L]]
@@ -1201,7 +1264,7 @@ triangular_mask <- function(n, lower, unit_diagonal) {
 #' @name prim_chol
 #' @rdname prim_chol
 #' @references
-#' `r xlamisc::format_bib("murray2016differentiation", "walter2012structured")`
+#' `r format_bib("murray2016differentiation", "walter2012structured")`
 prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   lower <- params$lower
   if (length(shape(outputs[[1L]])) > 2L) {
@@ -1263,7 +1326,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
 #' @name prim_triangular_solve
 #' @rdname prim_triangular_solve
 #' @references
-#' `r xlamisc::format_bib("giles2008extended")`
+#' `r format_bib("giles2008extended")`
 prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   left_side <- params$left_side
   lower <- params$lower
