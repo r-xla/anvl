@@ -1,5 +1,7 @@
 # anvl (development version)
 
+* Bugfix: the common data type of arrays and R values no longer depends on the order of the
+  arguments; the R values take the data type the arrays agree on.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,

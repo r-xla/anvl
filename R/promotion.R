@@ -613,28 +613,18 @@ common_dtype_of <- function(..., .fallback = NULL) {
   if (length(args) == 0L) {
     cli_abort("No arguments provided")
   }
-  cdt <- NULL
-  cdt_is_rdata <- TRUE
-  for (arg in args) {
-    aval <- to_abstract(arg)
-    arg_is_rdata <- is_rdata(aval)
-    dt <- peek_dtype(aval)
-    if (is.null(cdt)) {
-      cdt <- dt
-      cdt_is_rdata <- arg_is_rdata
-      next
-    }
-    if (cdt_is_rdata && arg_is_rdata) {
-      cdt <- promote_dt_known(cdt, dt)
-    } else if (cdt_is_rdata) {
-      cdt <- promote_dt_rdata(cdt, dt)
-      cdt_is_rdata <- FALSE
-    } else if (arg_is_rdata) {
-      cdt <- promote_dt_rdata(dt, cdt)
-    } else {
-      cdt <- promote_dt_known(cdt, dt)
-    }
+  avals <- lapply(args, to_abstract)
+  is_r <- vapply(avals, is_rdata, logical(1L))
+  dts <- lapply(avals, peek_dtype)
+  # The arrays agree among themselves first, so that the R values meet the
+  # data type of all of them rather than of whichever came before.
+  if (all(is_r)) {
+    cdt <- Reduce(promote_dt_known, dts)
+  } else {
+    cdt <- Reduce(promote_dt_known, dts[!is_r])
+    cdt <- Reduce(function(acc, dt) promote_dt_rdata(dt, acc), dts[is_r], cdt)
   }
+  cdt_is_rdata <- all(is_r)
   # `.fallback` is the data type the R values materialize at when nothing in the
   # call has one of its own to give them -- it replaces the default they would
   # otherwise take, and is ignored the moment any argument brings a real data
