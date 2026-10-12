@@ -1182,6 +1182,18 @@ describe("nv_which_max / nv_which_min nan_rm", {
   })
 })
 
+describe("nv_mean", {
+  it("averages an integer input at the default float, without overflowing the sum", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    out <- nv_mean(x)
+    expect_dtype(out, default_float())
+    expect_equal(as.vector(as_array(out)), 2e9)
+    m <- nv_array(rep(2000000000L, 4L), shape = c(2L, 2L))
+    expect_equal(as.vector(as_array(nv_mean(m, axes = 1L))), c(2e9, 2e9))
+    expect_equal(as.vector(as_array(nv_mean(x, nan_rm = TRUE))), 2e9)
+  })
+})
+
 describe("nv_var", {
   it("computes variance with Bessel's correction", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
@@ -1226,6 +1238,11 @@ describe("nv_var", {
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = 5L))
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = c(1L, 1L)))
   })
+  it("does not overflow on a large integer input", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    expect_dtype(nv_var(x), default_float())
+    expect_equal(as.vector(as_array(nv_var(x))), 0)
+  })
   it("accepts negative dims", {
     m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
     expect_equal(nv_var(m, axes = -1L), nv_var(m, axes = 2L))
@@ -1254,6 +1271,11 @@ describe("nv_sd", {
       nv_scalar(sd(vals)),
       tolerance = 1e-5
     )
+  })
+  it("does not overflow on a large integer input", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    expect_dtype(nv_sd(x), default_float())
+    expect_equal(as.vector(as_array(nv_sd(x))), 0)
   })
   it("accepts negative dims", {
     m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
