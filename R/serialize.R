@@ -14,9 +14,9 @@
 #'   Named list of arrays. Names must be unique.
 #' @param path (`character(1)`)\cr
 #'   File path to write to or read from.
-#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
-#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
-#'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
+#' @param device (`NULL` | `character(1)` | device object)\cr
+#'   The device of the active backend on which to place the loaded arrays
+#'   (`"cpu"`, `"cuda"`, ...), defaulting to [`default_device()`].
 #'
 #' @returns `nv_save()`: (`NULL`)\cr
 #'   Invisibly.
@@ -67,9 +67,9 @@ nv_read <- function(path, device = NULL) {
 #'   For `nv_serialize()`, an optional connection to write to; if `NULL`
 #'   (default), a raw vector is returned. For `nv_unserialize()`, a connection
 #'   or raw vector to read from.
-#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
-#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
-#'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
+#' @param device (`NULL` | `character(1)` | device object)\cr
+#'   The device of the active backend on which to place the loaded arrays
+#'   (`"cpu"`, `"cuda"`, ...), defaulting to [`default_device()`].
 #'
 #' @returns `nv_serialize()`: ([`raw`] | `NULL`)\cr
 #'   A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
@@ -114,12 +114,14 @@ nv_serialize <- function(arrays, con = NULL) {
 #' @rdname nv_serialize
 #' @export
 nv_unserialize <- function(con, device = NULL) {
-  # TODO: don't convert to pjrt first
-  device <- device %||% default_device("pjrt")
-  result <- safetensors::safe_load_file(con, framework = "pjrt", device = device)
-
-  # The arrays are built on the active backend.
+  device <- nv_device(device %||% default_device())
   backend <- active_backend()
+  # TODO: don't convert to pjrt first
+  # Another backend reads the buffers back to the host, so they are staged on
+  # the CPU.
+  staging_device <- if (backend == "pjrt") device else pjrt::pjrt_device("cpu")
+  result <- safetensors::safe_load_file(con, framework = "pjrt", device = staging_device)
+
   result_wrapped <- lapply(names(result), function(name) {
     buf <- result[[name]]
     if (backend == "pjrt") {
@@ -128,7 +130,8 @@ nv_unserialize <- function(con, device = NULL) {
       nv_array(
         xlamisc::as_array(buf, check = FALSE),
         dtype = as.character(pjrt::elt_type(buf)),
-        shape = xlamisc::shape(buf)
+        shape = xlamisc::shape(buf),
+        device = device
       )
     }
   })
