@@ -170,7 +170,14 @@ register_backend(
         dtype <- as_dtype(dtype)
       }
       shape <- shape %||% r_data_shape(data)
-      data <- as.vector(data, plain_storage_mode(dtype))
+      # Not `as.vector(data, mode)`: it does not dispatch, so it reinterprets the
+      # bits of a `bit64::integer64` instead of converting its values.
+      data <- switch(
+        plain_storage_mode(dtype),
+        double = as.double(data),
+        integer = as.integer(data),
+        logical = as.logical(data)
+      )
       structure(
         list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"

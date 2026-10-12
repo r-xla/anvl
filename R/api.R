@@ -65,14 +65,15 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   }
   clash <- which(shape_lhs != shape_rhs & shape_lhs != 1L & shape_rhs != 1L)
   if (length(clash)) {
-    d_lhs <- shape_lhs[clash[[1L]]]
-    d_rhs <- shape_rhs[clash[[1L]]]
+    size_lhs <- shape_lhs[clash[[1L]]]
+    size_rhs <- shape_rhs[clash[[1L]]]
     cli_abort(c(
       "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
-      x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
+      x = "Sizes {size_lhs} and {size_rhs} meet, and neither is 1."
     ))
   }
-  pmax(shape_lhs, shape_rhs)
+  # Not `pmax()`: a size-1 axis meeting a size-0 one broadcasts to 0.
+  ifelse(shape_lhs == 1L, shape_rhs, shape_lhs)
 }
 
 #' @title Broadcast Scalars to Common Shape
@@ -3739,8 +3740,8 @@ nv_squeeze <- function(x, axes = NULL) {
     axes <- resolve_axes(axes, length(shp), unique = TRUE)
     not_one <- axes[shp[axes] != 1L]
     if (length(not_one)) {
-      d <- not_one[[1L]]
-      cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
+      axis <- not_one[[1L]]
+      cli_abort("Cannot squeeze axis {axis}: its size is {shp[axis]}, but must be 1")
     }
     new_shape <- shp[-axes]
   }

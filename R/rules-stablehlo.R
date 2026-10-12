@@ -21,15 +21,17 @@ region_input <- function(dtype, shape = integer()) {
   stablehlo::FuncValue(id, vt, func)
 }
 
-# A scalar index, shifted from 1-based to 0-based.
-hlo_zero_based_index <- function(idx) {
-  hlo_subtract(idx, hlo_scalar(1L, dtype = dtype(idx), func = idx$func))
+# Indices shifted from 1-based to 0-based, and back.
+hlo_zero_based_indices <- function(indices) {
+  hlo_subtract(indices, hlo_ones_like(indices))
 }
 
-# An array of 0-based indices, shifted to 1-based.
 hlo_one_based_indices <- function(indices) {
-  one <- hlo_scalar(1L, dtype = dtype(indices), func = indices$func)
-  hlo_add(indices, hlo_broadcast_in_dim(one, integer(0L), shape(indices$value_type)))
+  hlo_add(indices, hlo_ones_like(indices))
+}
+
+hlo_ones_like <- function(x) {
+  hlo_tensor(1L, dtype = dtype(x), shape = shape(x$value_type), func = x$func)
 }
 
 # A reduction's result, reshaped to keep the reduced `axes` of `x` at size 1
@@ -118,7 +120,7 @@ prim_static_slice[["stablehlo"]] <- function(x, start_indices, end_indices, stri
 }
 
 prim_dynamic_slice[["stablehlo"]] <- function(x, ..., slice_sizes, output_types) {
-  start_indices_0based <- lapply(list(...), hlo_zero_based_index)
+  start_indices_0based <- lapply(list(...), hlo_zero_based_indices)
   list(rlang::exec(
     hlo_dynamic_slice,
     x,
@@ -133,7 +135,7 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(x, update, ..., output_type
   if (!length(start_indices)) {
     return(list(update))
   }
-  start_indices_0based <- lapply(start_indices, hlo_zero_based_index)
+  start_indices_0based <- lapply(start_indices, hlo_zero_based_indices)
   list(rlang::exec(
     hlo_dynamic_update_slice,
     x,
@@ -944,8 +946,7 @@ prim_scatter[["stablehlo"]] <- function(
     index_vector_dim = index_vector_axis - 1L
   )
 
-  one <- hlo_tensor(1L, shape = shape(scatter_indices), dtype = dtype(scatter_indices))
-  scatter_indices_0based <- hlo_subtract(scatter_indices, one)
+  scatter_indices_0based <- hlo_zero_based_indices(scatter_indices)
 
   result <- hlo_scatter(
     inputs = list(x),
@@ -985,8 +986,7 @@ prim_gather[["stablehlo"]] <- function(
     index_vector_dim = index_vector_axis - 1L
   )
 
-  one <- hlo_tensor(1L, dtype = dtype(start_indices), shape = shape(start_indices))
-  start_indices_0based <- hlo_subtract(start_indices, one)
+  start_indices_0based <- hlo_zero_based_indices(start_indices)
 
   result <- hlo_gather(
     x,
@@ -1137,9 +1137,7 @@ pivots_to_permutation <- function(pivots, n) {
   func <- pivots$func
   k <- shape(pivots$value_type)[[1L]]
 
-  iota0 <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = n, func = func)
-  one_n <- hlo_tensor(1L, dtype = "i32", shape = n, func = func)
-  init_perm <- hlo_add(iota0, one_n)
+  init_perm <- hlo_one_based_indices(hlo_iota(iota_dimension = 0L, dtype = "i32", shape = n, func = func))
   init_i <- hlo_scalar(0L, dtype = "i32", func = func)
 
   cond_func <- stablehlo::local_func("")
