@@ -18,6 +18,25 @@ test_that("prim_rng_bit_generator", {
   expect_shape(out$values, c(2L, 2L))
 })
 
+describe("prim_pow", {
+  it("raises unsigned integers like base R, wrapping around past the maximum", {
+    x <- c(0, 1, 2, 3, 2, 7, 2)
+    y <- c(0, 5, 2, 4, 15, 3, 70)
+    for (dt in c("ui8", "ui16", "ui32", "ui64")) {
+      out <- prim_pow(nv_array(x, dtype = dt), nv_array(y, dtype = dt))
+      expect_dtype(out, dt)
+      width <- c(ui8 = 8, ui16 = 16, ui32 = 32, ui64 = 64)[[dt]]
+      expected <- x^y
+      expected[expected >= 2^width] <- NA
+      got <- as.double(as_array(out))
+      keep <- !is.na(expected)
+      expect_equal(got[keep], expected[keep], info = dt)
+    }
+    expect_equal(as.integer(as_array(prim_pow(nv_scalar(2L, "ui8"), nv_scalar(9L, "ui8")))), 0L)
+    expect_equal(as.integer(as_array(prim_pow(nv_scalar(3L, "ui8"), nv_scalar(5L, "ui8")))), 3L^5L %% 256L)
+  })
+})
+
 describe("prim_bitcast_convert", {
   it("keeps the shape when the widths match", {
     expect_shape(nv_bitcast_convert(nv_array(c(1, 2, 3), dtype = "f32"), dtype = "i32"), 3L)
