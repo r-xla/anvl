@@ -681,7 +681,7 @@ name_failing_primitive <- function(e) {
   if (isTRUE(e$anvl_primitive_named)) {
     return(e)
   }
-  prim <- globals[["INFER_PRIMITIVE"]]
+  prim <- globals[["infer_primitive"]]
   if (!is.null(prim)) {
     e$call <- print_call_repr(prim)
   }
@@ -758,17 +758,17 @@ trace_fn <- function(
   # the marker again on its way out. An error out of the sub-graph restores it
   # too, but is named first, so it keeps the primitive that raised it. The
   # outermost trace starts from no marker, whatever an earlier error left.
-  prim <- if (!is.null(parent_desc)) globals[["INFER_PRIMITIVE"]]
-  globals[["INFER_PRIMITIVE"]] <- prim
+  prim <- if (!is.null(parent_desc)) globals[["infer_primitive"]]
+  globals[["infer_primitive"]] <- prim
   output <- tryCatch(
     do.call(f_flat, inputs_flat),
     error = function(e) {
       e <- name_failing_primitive(e)
-      globals[["INFER_PRIMITIVE"]] <- prim
+      globals[["infer_primitive"]] <- prim
       rlang::cnd_signal(e)
     }
   )
-  globals[["INFER_PRIMITIVE"]] <- prim
+  globals[["infer_primitive"]] <- prim
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -797,17 +797,17 @@ is_graph_value <- function(x) {
 }
 
 maybe_restore_previous_desc <- function(desc = NULL) {
-  if (!is.null(desc) && (!identical(desc, globals[["CURRENT_DESCRIPTOR"]]))) {
+  if (!is.null(desc) && (!identical(desc, globals[["current_descriptor"]]))) {
     # graph has already been returned
     return()
   }
 
-  stash_size <- length(globals[["DESCRIPTOR_STASH"]])
+  stash_size <- length(globals[["descriptor_stash"]])
   if (stash_size) {
-    globals[["CURRENT_DESCRIPTOR"]] <- globals[["DESCRIPTOR_STASH"]][[stash_size]]
-    globals[["DESCRIPTOR_STASH"]] <- globals[["DESCRIPTOR_STASH"]][-stash_size]
+    globals[["current_descriptor"]] <- globals[["descriptor_stash"]][[stash_size]]
+    globals[["descriptor_stash"]] <- globals[["descriptor_stash"]][-stash_size]
   } else {
-    globals[["CURRENT_DESCRIPTOR"]] <- NULL
+    globals[["current_descriptor"]] <- NULL
   }
 }
 
@@ -820,7 +820,7 @@ maybe_restore_previous_desc <- function(desc = NULL) {
 #'   `NULL` only when `silent = TRUE` and no graph is being built.
 #' @export
 current_descriptor <- function(silent = FALSE) {
-  maybe_desc <- globals[["CURRENT_DESCRIPTOR"]]
+  maybe_desc <- globals[["current_descriptor"]]
   if (silent) {
     return(maybe_desc)
   }
@@ -830,12 +830,12 @@ current_descriptor <- function(silent = FALSE) {
 
 currently_tracing <- function() {
   # read the global directly: this runs on every jitted call (hot path)
-  !is.null(globals[["CURRENT_DESCRIPTOR"]])
+  !is.null(globals[["current_descriptor"]])
 }
 
 
 maybe_previous_descriptor <- function() {
-  stash <- globals[["DESCRIPTOR_STASH"]]
+  stash <- globals[["descriptor_stash"]]
   n <- length(stash)
   if (!n) {
     return(NULL)
@@ -870,13 +870,13 @@ local_descriptor <- function(..., envir = parent.frame()) {
   args$backend <- args$backend %||% active_backend()
   args$default_dtypes <- args$default_dtypes %||% current_default_dtypes()
   desc <- do.call(GraphDescriptor, args)
-  if (!is.null(globals[["CURRENT_DESCRIPTOR"]])) {
-    globals[["DESCRIPTOR_STASH"]] <- c(
-      globals[["DESCRIPTOR_STASH"]],
-      list(globals[["CURRENT_DESCRIPTOR"]])
+  if (!is.null(globals[["current_descriptor"]])) {
+    globals[["descriptor_stash"]] <- c(
+      globals[["descriptor_stash"]],
+      list(globals[["current_descriptor"]])
     )
   }
-  globals[["CURRENT_DESCRIPTOR"]] <- desc
+  globals[["current_descriptor"]] <- desc
 
   withr::defer(
     envir = envir,
@@ -951,7 +951,7 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   # it again once inference has passed, so that a later error somewhere else in
   # the traced function is not attributed to the last primitive that ran.
   ats_out <- do.call(infer_fn, c(avals_in, params))
-  globals[["INFER_PRIMITIVE"]] <- NULL
+  globals[["infer_primitive"]] <- NULL
   # An output is computed, whatever its inputs were: an inference rule that
   # hands an input's aval back (`infer_generic_biv()` returns `lhs`) must not
   # make `sin(y)` of a closed-over `y` look like `y` itself. Only a constant's

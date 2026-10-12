@@ -320,14 +320,14 @@ describe("parse_default_dtypes_env()", {
 describe("default_dtypes_setting()", {
   it("falls back to ANVL_DEFAULT_DTYPES when the option is not set", {
     local_registered_default_dtypes()
-    local_env_default("DTYPES", c(int = "i64"))
+    local_env_default("dtypes", c(int = "i64"))
     expect_identical(default_dtypes_setting(), c(int = "i64"))
     expect_dtype(nv_array(1L), "i64")
   })
 
   it("prefers the option", {
     local_registered_default_dtypes()
-    local_env_default("DTYPES", c(int = "i64"))
+    local_env_default("dtypes", c(int = "i64"))
     withr::local_options(anvl.default_dtypes = c(float = "f64"))
     expect_identical(default_dtypes_setting(), c(float = "f64"))
   })

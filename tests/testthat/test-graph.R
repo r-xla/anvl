@@ -116,14 +116,14 @@ test_that("trace_fn works without arguments", {
 
 
 test_that("local_descriptor creates a graph", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   g <- local_descriptor()
-  expect_false(is.null(globals[["CURRENT_DESCRIPTOR"]]))
-  expect_true(is_graph_descriptor(globals[["CURRENT_DESCRIPTOR"]]))
+  expect_false(is.null(globals[["current_descriptor"]]))
+  expect_true(is_graph_descriptor(globals[["current_descriptor"]]))
 })
 
 test_that("local_descriptor restores previous graph", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   g1 <- local_descriptor()
   inner_test <- function() {
     g2 <- local_descriptor()
@@ -135,7 +135,7 @@ test_that("local_descriptor restores previous graph", {
 })
 
 test_that("current_descriptor errors when no graph exists", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   expect_error(current_descriptor(), "No graph is currently being built")
 })
 

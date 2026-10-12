@@ -324,17 +324,17 @@ lower_graph_calls <- function(graph, env, func) {
 #' f()
 #' @export
 current_platform <- function() {
-  globals[["LOWERING_PLATFORM"]]
+  globals[["lowering_platform"]]
 }
 
 #' @rdname current_platform
 #' @export
 local_platform <- function(platform, envir = parent.frame()) {
-  old <- globals[["LOWERING_PLATFORM"]]
-  globals[["LOWERING_PLATFORM"]] <- platform
+  old <- globals[["lowering_platform"]]
+  globals[["lowering_platform"]] <- platform
   withr::defer(
     {
-      globals[["LOWERING_PLATFORM"]] <- old
+      globals[["lowering_platform"]] <- old
     },
     envir = envir
   )

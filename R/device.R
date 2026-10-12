@@ -15,7 +15,7 @@
 #' @export
 default_device <- function(backend = NULL) {
   backend <- backend %||% active_backend()
-  device <- getOption("anvl.default_device") %||% globals[["ENV_DEFAULT_DEVICE"]] %||% "cpu"
+  device <- getOption("anvl.default_device") %||% globals[["env_default_device"]] %||% "cpu"
   backend_device(device, backend)
 }
 
