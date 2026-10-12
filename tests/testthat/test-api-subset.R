@@ -328,6 +328,13 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[array(c(0, 5))], "out of bounds")
   })
 
+  it("rejects an array() index that contains NA", {
+    x <- nv_matrix(1:6, nrow = 2L)
+    expect_error(x[array(c(NA, 1L)), ], "the index array contains NA")
+    expect_error(x[array(c(NA, 1)), ], "Each subset must be")
+    expect_error(nv_subset_assign(x, , array(c(2L, NA)), value = 0L), "For axis 2")
+  })
+
   it("names the axis a rejected subset came from", {
     x <- nv_array(array(1:24, dim = c(2, 3, 4)))
     expect_error(x[1, 99, 1], "out of bounds for axis 2")
