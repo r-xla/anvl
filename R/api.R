@@ -3854,6 +3854,9 @@ nv_extract_diag <- jit(function(x) {
   }
   shp <- shape(x)
   n <- min(shp)
+  if (n == 0L) {
+    return(prim_reshape(x, shape = 0L))
+  }
   idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
   indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_gather(
@@ -4488,6 +4491,13 @@ nv_quantile <- jit(
     shp_kd <- replace(shp, axis, 1L)
     shp_K <- replace(shp, axis, K)
     out_dtype <- dtype(x)
+
+    # With no elements there is nothing to gather from: an empty reduced axis
+    # has no quantile, which is NaN like base R's `NA`.
+    if (prod(shp) == 0L) {
+      out_shape <- if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape
+      return(nv_fill_like(x, NaN, shape = out_shape))
+    }
 
     # Selection instead of a full sort when every requested order statistic lies
     # in one end of the axis. Ascending position j of a slice's n_valid sorted

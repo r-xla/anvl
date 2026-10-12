@@ -202,6 +202,10 @@ prim_all[["stablehlo"]] <- function(x, axes, drop) {
   shp <- shape(x)
   rank <- length(shp)
   s_d <- shp[[axis]]
+  # reduce_window rejects a window of size 0, and there is nothing to accumulate.
+  if (s_d == 0L) {
+    return(list(x))
+  }
   window_dimensions <- rep(1L, rank)
   window_dimensions[[axis]] <- s_d
   ones <- rep(1L, rank)
@@ -255,6 +259,9 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   v_dtype <- as.character(x$value_type$type$dtype)
   i_dtype <- as.character(index_dtype)
   iota <- hlo_iota(iota_dimension = axis - 1L, dtype = i_dtype, shape = shp)
+  if (s_d == 0L) {
+    return(list(x, iota))
+  }
 
   init_v_fn <- if (is_max) nv_minval else nv_maxval
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
