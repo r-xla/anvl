@@ -57,8 +57,7 @@ nv_sample(8L, population)
 
 ## Random numbers in compiled functions
 
-A function compiled with `jit()` draws from the same global state.
-The compiled program takes the state as a hidden input and returns the advanced state as a hidden output, so each call continues where the previous one stopped:
+A function compiled with `jit()` draws from the same global state, so each call continues where the previous one stopped:
 
 ```{r}
 noisy <- jit(function(x) x + nv_rnorm(shape(x), sd = 0.1))
@@ -77,7 +76,7 @@ nv_set_seed(1L)
 list(nv_runif(2L), nv_runif(2L))
 ```
 
-The state is threaded through `nv_while()`, `nv_scan()` and `nv_if()` too, so a draw inside a loop body gives new numbers on every iteration:
+This also holds for loops: a draw inside the body of `nv_while()` or `nv_scan()` gives new numbers on every iteration.
 
 ```{r}
 walk <- jit(function() {
@@ -93,6 +92,258 @@ walk <- jit(function() {
 walk()
 ```
 
+As there is only one global state, a compiled function cannot be seeded through one of its arguments.
+To make the draws of a call depend on a seed, seed the global state before the call.
+
+## Seeding for a scope
+
+`local_nv_seed()` and `with_nv_seed()` seed the global state for the calling scope or for one expression only, like `withr::local_seed()` and `withr::with_seed()` do for base R's RNG.
+Afterwards, the state from before is restored, so the draws around them are not affected:
+
+```{r}
+nv_set_seed(1L)
+a <- nv_runif(2L)
+with_nv_seed(42L, nv_runif(2L))
+b <- nv_runif(2L)
+
+nv_set_seed(1L)
+identical(as_array(a), as_array(nv_runif(2L)))
+identical(as_array(b), as_array(nv_runif(2L)))
+```
+
 ## The generator
 
-{anvl} draws random numbers with the counter-based ThreeFry-2x32 generator [@salmon2011parallel].
+{anvl} draws random numbers with the counter-based ThreeFry-2x32 generator [@salmon2011parallel], which it builds from basic StableHLO operations, so that a seed gives the same numbers on every device and platform.
+
+Every generator has a state $s$, a transition function $f$ that advances the state, and an output function $g$ that turns a state into a random number: $s_{n+1} = f(s_n)$ and $x_n = g(s_n)$.
+Generators differ in which of the two functions does the work of making the numbers look random [@lecuyer2017random].
+
+*Recursive* generators, the conventional kind, put the work into the transition function $f$, which mixes the state thoroughly, while $g$ merely reads a number off it.
+The Mersenne Twister, R's default, and MRG32k3a, which R's {parallel} package uses, are of this kind: both advance their state by linear recurrences, modulo $2$ for the Mersenne Twister and modulo large primes for MRG32k3a, which combines two recurrences of the form
+$$
+s_n = (a_1 s_{n-1} + a_2 s_{n-2} + a_3 s_{n-3}) \bmod m.
+$$
+Each number depends on the ones before, so the sequence has to be generated one number after the other, and getting to the $n$-th number means either generating all the ones before it or computing a jump ahead from the structure of the recurrence.
+
+*Counter-based* generators do the opposite [@salmon2011parallel]: their state is just a counter, so $f$ is $n \to n + 1$, and all the work is in the output function.
+That function is modeled on a cryptographic block cipher, which is a *keyed* function
+$$
+x_n = b_k(n),
+$$
+where $k$ is an element of a key space and $b_k$ is one member of a family of bijections [@salmon2011parallel].
+A block cipher encrypts a message so that the result looks random to anyone who does not know the key, and a bijection built like one turns the regular sequence of counters $0, 1, 2, \dots$ into numbers that look random just as well.
+The same counter gives a different number under a different key, so each key defines a sequence $b_k(0), b_k(1), b_k(2), \dots$ of its own.
+As $b_k$ needs nothing but $n$, the $n$-th number can be computed directly, and the numbers of a draw can be computed in any order or all at once.
+ThreeFry and Philox are the best-known generators of this kind.
+Of the generators @salmon2011parallel propose, they report that "all three families have PRNGs with periods of $2^{128}$ or longer, and are parameterized by a key that allows for $2^{64}$ or more distinct, parallel streams."
+The ThreeFry-2x32 variant that {anvl} uses is smaller: its 64-bit key also gives $2^{64}$ streams, but its 64-bit counter gives each of them a period of $2^{64}$ blocks.
+They differ in how they scramble: ThreeFry with additions, bit rotations and XORs, Philox with multiplications, which mix more bits at once, so that it needs fewer rounds.
+In {anvl}, the seed determines the key, and the counter starts at $0$.
+
+ThreeFry is a simplified version of the Threefish block cipher.
+A block cipher encrypts a message in pieces of fixed size, its *blocks*, and the key decides how each block is scrambled.
+ThreeFry-2x32 uses blocks of two 32-bit words, i.e. 64 bits, which is what the "2x32" in its name stands for.
+Used as a random number generator, the block it scrambles is the counter: the 64-bit counter $n$ is split into two 32-bit words $(x_0, x_1)$, and the scrambled block, again two 32-bit words, is 64 random bits.
+The key also has 64 bits.
+
+The amount of random data that one step of a generator produces is called its *granularity* [@salmon2011parallel].
+For a counter-based generator, it is usually the size of the block: each counter value gives one block of random bits, 64 bits for ThreeFry-2x32 and 128 bits for Philox-4x32.
+A generator with a large granularity produces more random bits per step, but an application that needs fewer bits per number has to either keep the rest for later or discard them.
+{anvl} gives every number of a draw a counter value of its own, whatever its data type: an `f64` sample uses all 64 bits of a block, and an `f32` sample combines the two 32-bit words of a block into one number.
+This hashes twice as many blocks for an `f32` sample as strictly necessary, but it means that the $i$-th number of a draw always comes from counter value $c + i$, so that which number a draw holds where does not depend on its shape or data type.
+
+The scrambling consists of 20 rounds, each of which mixes the two words with three simple operations, an addition, a bit rotation and an XOR:
+$$
+x_0 \leftarrow x_0 + x_1 \bmod 2^{32}, \qquad
+x_1 \leftarrow \operatorname{rotl}(x_1, r) \oplus x_0,
+$$
+where $\operatorname{rotl}(x_1, r)$ rotates the bits of $x_1$ by $r$ positions to the left, with $r$ changing from round to round.
+Before the first round and after every fourth, the key is added to the words, so that the result depends on the key throughout.
+The three operations complement each other: the carries of the addition move information from the low to the high bits, the rotation brings high bits back down, and alternating addition with XOR, which is bitwise and has no carries, makes the result hard to describe by either operation alone.
+
+This construction gives ThreeFry the properties a random number generator needs:
+
+* **It is a bijection.** Each round can be undone by reversing its operations, so for a fixed key, distinct counters give distinct blocks.
+  The numbers therefore do not repeat before the 64-bit counter has run through all of its values, which gives every key a period of $2^{64}$ blocks.
+* **It diffuses its input.** After the 20 rounds, flipping a single bit of the counter flips each output bit with a probability of about one half.
+  This is why the consecutive counters $0, 1, 2, \dots$ give numbers that look unrelated, and why so simple a counter is all the state needs.
+* **Different keys give independent streams.** Each key selects a different bijection, so changing the key, e.g. by choosing another seed, gives an entirely different sequence.
+
+ThreeFry generators pass the most demanding batteries of statistical tests, such as BigCrush of TestU01 [@salmon2011parallel], and as the numbers of a draw do not depend on each other, they can be computed in parallel, e.g. on a GPU.
+
+The state is a `ui64` array of shape `2`: the first element is the key, which the seed determines, and the second one is the counter, each 64 bits wide.
+Each draw hashes the key with the next values of the counter and advances the counter past them, so no two draws ever see the same counter value.
+`nv_get_rng_state()` returns a copy of the state:
+
+```{r}
+nv_set_seed(1L)
+nv_get_rng_state()
+nv_runif(4L)
+nv_get_rng_state()
+```
+
+Every number of a sample uses a counter value of its own, so a sample of `n` numbers advances the counter by `n`, whatever its data type.
+
+## Random numbers and parallelism
+
+The programs {anvl} compiles run on parallel hardware: a CPU executes a few threads at once, a GPU thousands.
+This puts requirements on a random number generator that a sequential program does not have [@lecuyer2017random], and they are the reason {anvl} uses a counter-based generator:
+
+* **Many numbers at once.** A draw of a million numbers should be computed by many threads at the same time.
+  With a recursive generator, the $n$-th number needs the state after $n - 1$ steps, so the threads would have to wait for each other, or each first jump ahead to its part of the sequence.
+  With a counter-based generator, the thread computing the $i$-th number of a draw that starts at counter $c$ simply computes $b_k(c + i)$.
+* **A small state.** A generator running in parallel needs a copy of its state for every parallel unit, e.g. every thread.
+  On a GPU, the fast memory close to the arithmetic units is scarce, which makes generators with a large state costly: @salmon2011parallel point out that initializing and storing the 2.5 kB per thread of the Mersenne Twister's state "may cause significant overhead for a highly parallel GPU application".
+  The key and counter of ThreeFry take 16 bytes, and as the counter of a thread follows from its position in the draw, the threads of a draw need not even store a state of their own.
+* **Results that do not depend on the scheduling.** As each number depends only on its counter, the numbers are the same however the work is divided among the threads, and in whichever order the threads run, and they are the same as in a computation that runs one thread after the other.
+
+Parallel computations are often *nested*: a parallel computation consists of parts that are themselves parallel.
+For example, a sampler may run many chains at once, each of which draws a whole vector of proposals in every step, or a simulation may run many independent replications, each of which moves many particles.
+Every level needs numbers that are independent of those of the other parts.
+A counter-based generator can divide its counter space in the same nested way: each replication gets a block of counter values, each draw within it a part of that block, and each number of the draw one counter value of that part.
+This is how L'Ecuyer's streams and substreams divide the sequence of a recursive generator [@lecuyer2002object], but where those have fixed lengths and require computing a jump ahead, a counter-based generator gets to any block by an addition.
+The keys offer a second way of nesting, which also works when the sizes of the parts are not known in advance: each part derives a key of its own from the key of its parent, by applying the keyed bijection to a small counter.
+For example, a key $k$ can be *split* into the two keys $b_k(0)$ and $b_k(1)$, and each of these can be split again, so that every part of a nested computation gets a key, and thereby a stream, of its own.
+@claessen2013splittable show that such *splittable* generators, built on a cryptographic hash function, give independent streams for all parts, as long as the hash function is good.
+JAX follows this design: in its [PRNG design](https://docs.jax.dev/en/latest/jep/263-prng.html), splitting hashes a key with the counters $0$ and $1$, and a draw hashes a key with a range of counters.
+This is how {anvl} can give each part of a nested parallel computation, e.g. each chain of a sampler, keys of its own.
+
+The figure contrasts the two ways of providing many streams.
+A recursive generator has a single sequence, which RngStreams cuts into streams of $2^{127}$ numbers and those into substreams of $2^{76}$, jumping ahead from one to the next.
+A counter-based generator has two independent dimensions: each key gives a stream of its own, the *multistream* approach, and the counter values of a key can be divided into blocks, the *substream* approach.
+{anvl} uses a single key, determined by the seed, and gives each draw the next block of counter values.
+
+```{r streams, echo = FALSE, fig.width = 8, fig.height = 4.5, fig.alt = "Two schematics. Top: the single sequence of a recursive generator, cut into streams that are 2 to the 127 numbers apart, and the first stream cut into substreams of 2 to the 76. Bottom: a grid of keys by counters for a counter-based generator; each key is a stream, and in the row of the seed's key, draws 1 to 3 take consecutive blocks of counter values."}
+cols <- c("#2a78d6", "#eb6834", "#1baf7a")
+ink <- "#1f1f1e"
+muted <- "#6b6a64"
+empty <- "#e8e7e2"
+
+op <- par(mfrow = c(2L, 1L), mar = c(1.5, 1, 2.5, 1), family = "sans")
+
+# recursive generator: one sequence, cut into streams and substreams by jumping ahead
+plot.new()
+plot.window(xlim = c(0, 100), ylim = c(0, 10))
+title("Recursive generator (MRG32k3a, RngStreams): one sequence", adj = 0, cex.main = 1, font.main = 1, col.main = ink)
+starts <- c(2, 32, 62)
+for (i in 1:3) {
+  rect(starts[i], 4, starts[i] + 29, 7, col = cols[i], border = "white", lwd = 2)
+  text(starts[i] + 14.5, 8.2, sprintf("stream %d", i), cex = 0.85, col = ink)
+  for (j in 1:3) {
+    x0 <- starts[i] + (j - 1) * 29 / 3
+    rect(x0, 4, x0 + 29 / 3, 7, border = "white", lwd = 1.5)
+  }
+}
+text(starts[1] + 29 / 6, 5.5, "sub 1", cex = 0.7, col = "white")
+text(starts[1] + 29 / 2, 5.5, "sub 2", cex = 0.7, col = "white")
+text(starts[1] + 5 * 29 / 6, 5.5, "sub 3", cex = 0.7, col = "white")
+text(95, 5.5, "...", cex = 1.2, col = muted)
+arrows(starts[1], 2.5, starts[2], 2.5, length = 0.08, col = muted)
+text((starts[1] + starts[2]) / 2, 1.2, expression("jump ahead " * 2^127), cex = 0.75, col = muted)
+arrows(starts[2], 2.5, starts[2] + 29 / 3, 2.5, length = 0.08, col = muted)
+text(starts[2] + 29 / 6 + 3, 1.2, expression(2^76), cex = 0.75, col = muted)
+
+# counter-based generator: a grid of keys and counters
+plot.new()
+plot.window(xlim = c(0, 100), ylim = c(0, 10))
+title("Counter-based generator (ThreeFry): a key for each stream, counter blocks within it", adj = 0, cex.main = 1, font.main = 1, col.main = ink)
+rows <- c(7.5, 5, 2.5)
+labels <- c("key 1 (seed)", "key 2", "key 3")
+for (r in 1:3) {
+  rect(14, rows[r] - 0.9, 92, rows[r] + 0.9, col = empty, border = NA)
+  text(13, rows[r], labels[r], adj = 1, cex = 0.8, col = ink)
+}
+blocks <- list(c(14, 34), c(34, 44), c(44, 70))
+names <- c("draw 1", "draw 2", "draw 3")
+for (b in 1:3) {
+  rect(blocks[[b]][1], rows[1] - 0.9, blocks[[b]][2], rows[1] + 0.9, col = cols[b], border = "white", lwd = 2)
+  text(mean(blocks[[b]]), rows[1], names[b], cex = 0.75, col = "white")
+}
+text(81, rows[1], "unused", cex = 0.75, col = muted)
+text(96, rows[1], "...", cex = 1.2, col = muted)
+text(53, rows[2], "another stream: same counters, different numbers", cex = 0.75, col = muted)
+text(53, rows[3], "...", cex = 1.2, col = muted)
+text(14, 0.6, "counter 0", adj = 0, cex = 0.75, col = muted)
+text(92, 0.6, expression(2^64 - 1), adj = 1, cex = 0.75, col = muted)
+arrows(14, 9.4, 34, 9.4, length = 0.08, col = muted)
+text(24, 9.95, "jump ahead: add n", cex = 0.75, col = muted)
+
+par(op)
+```
+
+In {anvl}, the numbers of a single draw are computed in parallel in this way, and so are independent draws within a compiled function (see [below](#draws-that-do-not-wait-for-each-other)).
+
+## Comparison with other generators
+
+Base R offers two generators that are often used for simulation: the Mersenne Twister [@matsumoto1998mersenne], R's default, and L'Ecuyer's combined multiple recursive generator MRG32k3a [@lecuyer1999good], which `RNGkind("L'Ecuyer-CMRG")` selects and which the {parallel} package uses for its streams [@lecuyer2002object].
+Both are recursive generators.
+ThreeFry and Philox, which PyTorch uses on GPUs, are counter-based; Philox's multiplications make it the fastest of these generators on GPUs [@salmon2011parallel].
+
+|                         | Mersenne Twister          | MRG32k3a                       | Philox-4x32-10               | ThreeFry-2x32-20         |
+|:------------------------|:--------------------------|:-------------------------------|:-----------------------------|:-------------------------|
+| Used by                 | R (default), PyTorch on CPU | R's {parallel} package       | PyTorch on GPU, cuRAND       | JAX, {anvl}              |
+| Type                    | recursive                 | recursive                      | counter-based                | counter-based            |
+| State                   | 2.5 kB                    | 24 bytes                       | 24 bytes (key and counter)   | 16 bytes (key and counter) |
+| Granularity             | 32 bits                   | 32 bits                        | 128 bits                     | 64 bits                  |
+| Period                  | $2^{19937} - 1$           | about $2^{191}$                | $2^{128}$ blocks per key     | $2^{64}$ blocks per key  |
+| Statistical tests       | fails the linear-dependence tests of BigCrush | passes BigCrush | passes BigCrush         | passes BigCrush          |
+| The $n$-th number       | requires generating the ones before | by jumping ahead   | computed directly            | computed directly        |
+| Independent streams     | different seeds           | blocks $2^{127}$ numbers apart | different keys or counter blocks | different keys or counter blocks |
+
+The two recursive generators differ in their state.
+The Mersenne Twister has a very long period, but its large state is costly to store and to jump ahead in, and as its recurrence is linear in the bits, it fails the statistical tests that look for linear dependence [@salmon2011parallel; @lecuyer2017random].
+MRG32k3a has a small state and passes all tests, and jumping ahead in its sequence is cheap enough to divide it into long independent streams, which is how {parallel} gives each worker its own stream.
+The counter-based generators go one step further: as the $n$-th number is computed directly from $n$, jumping ahead is just an addition to the counter, and all numbers of a draw can be computed in parallel.
+This is what makes them a good fit for {anvl}, whose programs run on GPUs and other parallel hardware.
+The test results are for the variants above, except for ThreeFry, where @salmon2011parallel test the 4x32, 2x64 and 4x64 variants.
+
+Which counter-based generator is fastest depends on the hardware, and @salmon2011parallel recommend Threefry on CPUs and Philox on GPUs.
+{anvl} nevertheless uses ThreeFry everywhere, as JAX does, because one of its goals is that a seed gives the same random numbers on a CPU as on a GPU, so that results can be reproduced, and code debugged, on any device.
+This requires the same generator on all devices, and ThreeFry is the one that is cheap everywhere: its additions, rotations and XORs are fast on any processor, whereas Philox relies on fast multiplications of 32-bit integers into 64-bit products.
+The random bits are then identical on all devices; samples computed from them, e.g. by `nv_rnorm()`, can still differ in the last digits, as the floating point functions they use do.
+
+## Draws that do not wait for each other
+
+A generator that updates its state with every number introduces a data dependency into a program: each draw needs the state that the draw before it left behind, so the draws have to run one after the other, even when they have nothing to do with each other [@claessen2013splittable].
+For a compiled function, this would rule out evaluating independent draws in parallel or in a different order.
+
+A counter-based generator avoids this.
+The shapes of all draws in a compiled function are known in advance, so the counter values a draw uses are known as well: the draw takes the counter values after those of the draws before it.
+Each draw therefore only needs the key and its own block of counter values, not the numbers drawn before it, and the counter that the function leaves behind is just the counter it started with plus the number of values drawn.
+This is the classic way of dividing the sequence of a single generator into disjoint blocks, which is especially simple for a counter-based generator, where jumping ahead in the sequence just means adding to the counter [@salmon2011parallel; @lecuyer2017random].
+The numbers are the same as when drawing one after the other, which is why a draw inside `jit()` gives the same values as outside of it.
+Only a loop whose number of iterations is not known in advance, such as `nv_while()`, still has to pass the counter from one iteration to the next.
+
+Another way to break the dependency is to *split* the generator: each part of a program derives a key of its own, e.g. from its position in the program, and draws from it independently [@claessen2013splittable].
+This is what JAX does.
+It has one more advantage: the numbers a part of a program draws do not depend on how many numbers are drawn elsewhere.
+With a single sequence, as in {anvl} and in base R, adding a draw shifts the numbers of all draws after it.
+We nevertheless keep the single sequence, as it gives the same numbers no matter how the draws are distributed over compiled functions.
+
+When comparing variants of a model, it is often important that each source of randomness keeps its numbers, even when the variants draw different amounts elsewhere.
+For this, @lecuyer2017random recommend a separate stream for each source of random numbers.
+With {anvl}, give each source a seed of its own with `with_nv_seed()`:
+
+```{r}
+noise <- function(n) with_nv_seed(1L, nv_rnorm(n))
+nv_set_seed(42L)
+a <- noise(3L)
+nv_runif(10L) # an extra draw elsewhere
+b <- noise(3L)
+identical(as_array(a), as_array(b))
+```
+
+## Saving and restoring the state
+
+A seed restarts a sequence from its beginning.
+To continue a sequence where it stopped, e.g. when resuming a model fit, save the state with `nv_get_rng_state()` and restore it with `nv_set_rng_state()`:
+
+```{r}
+state <- nv_get_rng_state()
+nv_runif(2L)
+nv_set_rng_state(state)
+nv_runif(2L)
+```
+
+As the state is an ordinary `AnvlArray`, `nv_save()` can write it to a file, e.g. as `nv_save(list(rng = state), path)`.
+`nv_get_rng_state()` returns the state on the default device, unless its `device` argument names another one.

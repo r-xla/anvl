@@ -16,9 +16,10 @@ NULL
 #     AnvlArray, creating it when it is not set.
 #   - setter: a function of one argument storing the value a call leaves
 #     behind.
-#   - rules: what each backend needs to run the side effect, named by backend;
-#     for pjrt, the state slot `pjrt_state_slot()` builds. A backend without a
-#     rule refuses a function that uses the side effect.
+#   - rules: what each backend needs to run the side effect, named by backend:
+#     a function the backend calls with the registered side effect; for pjrt,
+#     `pjrt_state_slot()`. A backend without a rule refuses a function that
+#     uses the side effect.
 register_side_effect <- function(name, aval, getter, setter, rules = list()) {
   globals$side_effects[[name]] <- list(name = name, aval = aval, getter = getter, setter = setter, rules = rules)
   invisible(NULL)
@@ -85,14 +86,11 @@ side_effects_of_desc <- function(desc) {
 # `out`, the boxes a higher-order call returns, holds at the positions after
 # `at`, and returns `out` without them.
 side_effects_take <- function(desc, names, out, at = length(out) - length(names)) {
-  if (!length(names)) {
-    return(out)
-  }
   positions <- at + seq_along(names)
   for (i in seq_along(names)) {
     side_effect_set(desc, names[[i]], out[[positions[[i]]]])
   }
-  out[-positions]
+  without(out, positions)
 }
 
 # Makes the branches `graphs` of a `prim_if()` call in the trace `desc` return

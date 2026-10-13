@@ -1,0 +1,221 @@
+I have thought about this a little more and I am not 100% sure what to do, but at least I understand the problem a bit better.
+Below I am trying to summarize what I now understand, what I think our goals should be and how a possible solution might look.
+It would be great to get your thoughts on this.
+
+Generally, our current RNG implementation looks like this: The random state consists of a tuple $(c, k)$, where $c$ is a counter and $k$ a key. And for a given key $k$ and counter $c$, we can generate $n$ random values via $(f_k(c), \ldots, f_k(c + n - 1))$. So an approach one might think of would be to have a single key $k$ at the start and then always update the counter $c$.
+
+E.g., in pseudo-code:
+
+```r
+library(anvl)
+nv_set_seed(23243423)
+# rng state is (0, 23243423)
+nv_runif(1)
+# rng state is (1, 23243423)
+nv_runif(2)
+# rng state is (3, 23243423)
+nv_set_seed(888888888)
+# rng state is (0, 888888888)
+nv_runif(3)
+# rng state is (3, 888888888)
+```
+
+If we were to use the `prim_rng_bit_generator()` (https://r-xla.github.io/anvl/reference/prim_rng_bit_generator.html), every call to a `nv_runif()` function would automatically take the global RNG state, call the compiled XLA executable, which would return the generated values and the updated state, and then automatically update the global RNG state.
+
+The problem with this approach is that it introduces a data-dependency [^salmon], because the second `nv_runif(2)` call needs the `nv_runif(1)` call to have finished because it requires its state. This also prevents the compiler from certain reorderings (I don't know how bad this is) and most importantly **does not play well with parallelism/vectorization**:
+
+To understand why, let's say we have a `parallel_map` that maps the same function across CPU cores, which is your motivating MCMC case:
+
+```r
+nv_set_seed(42)
+sampler <- function(i) nv_runif(1000L)
+out <- parallel_map(sampler, cores = 10)
+```
+
+There, we want different rng states on each core.
+Because for `nv_runif()` we know exactly how much we need to forward the counter $c$ (simplifying a little bit, we need to increment the counter by $n$ to generate $n$ random draws), we could pre-compute the RNG states on the main worker and use the RNG states: `(core 1 -> (0, 42), core 2 -> (1000, 42), ..., core 10 -> (9000, 42))` and afterwards set the RNG state in the main process to `(10000, 42)`.
+However, it is not always possible to pre-compute this. E.g. if the `sampler` from above uses rejection sampling then we don't know how to sequence the RNG state, because we don't know how many primitive RNG draws we need to generate $n$ samples from some distribution (we reject some of them).
+
+The approach by [^cp], which is the basis for JAX, is to instead create different keys $k$ for the independent streams.
+This is generally called **key splitting** and the idea is that we run the same hashing function that we normally use to produce the random values ($f_k$) instead to generate new keys.
+This approach **does not increment the counter c between multiple RNG calls** and the global RNG state basically only consists of the $k$ from earlier, but there are many different such keys within the lifetime of a program.
+Generally, we might have $k_1$ in the beginning and then there is some function $h$ such that $(k_2, k_3) = h(k_1)$. Concretely, we could generate $(k_2, k_3)$ via $(f_{k_1}(0), f_{k_1}(1))$, where $0$ and $1$ take the place of the counter $c$ from the beginning.
+One rule is important here: a key is either split or used to draw random values, never both. Otherwise, a new key can coincide with a random value that was handed out, e.g. if we drew $f_{k_1}(0)$ from $k_1$, it would be identical to $k_2$.
+
+This generally plays well with **nested parallelism** as well:
+
+```text
+              k                  <- the global key
+       ┌──────┴──────┐
+       k1            k2          <- split(k): one key per chain
+    ┌──┴──┐       ┌──┴──┐
+   k11   k12     k21   k22       <- split(k1), split(k2): one key per task in a chain
+```
+
+We could now e.g. use the key $k_2$ to generate $n$ random values via the formula $(f_{k_2}(0), \ldots, f_{k_2}(n - 1))$ from above, or split it into new keys, but not both.
+
+So generally, the programming model there is that the counter is basically never incremented and it is always $0$. Only within a single hashing call ($f_k$) do we call with different values for $c$, e.g. when we want to generate 1000 uniform values at once from a given key.
+
+---
+
+If we want to decide for an RNG implementation, we need to understand what we want.
+Here, I list some desiderata that we might want.
+I don't think we can satisfy everything here simultaneously but we should at least be aware of it. Also see JAX's design notes: https://docs.jax.dev/en/latest/jep/263-prng.html
+
+**Convenience & Usability**:
+
+1. Users should not have to worry about managing RNG states other than calling a `set.seed()`-like function by default. Especially they should not have to pass the keys around like it is the case right now.
+2. It should be possible to **opt-in** for more control, which is what you have suggested with your `stream` argument.
+
+**Correctness & Statistical validity**:
+
+This is our biggest concern of course, without it nothing else matters.
+
+1. The generated sequences should satisfy RNG test suites
+2. Their sequence length should be long enough to usually not be a problem.
+
+**Consistency**:
+
+1. `c(nv_rnorm(1), nv_rnorm(1))` is the same as `nv_rnorm(2)` <-- **I don't think we can satisfy this**
+2. The random numbers **do not depend on the backend** (up to numerics). Specifically, we do not use a different RNG algorithm on CPU and GPU (at least by default), even though [^salmon] recommends Philox for GPU and Threefry for CPU.
+3. *JIT-invariance*: `jit(\() nv_runif(1))` is the same as `nv_runif(1)`. Specifically the counter example you have posted [here](https://github.com/r-xla/anvl/pull/604#issuecomment-6057814747) is something we need to think about.
+
+---
+
+So, what would be a solution that works reasonably well by default?
+
+JAX has introduced Stateful Randomness [^jep28845] and I think it contains some powerful ideas.
+
+Here is some code that shows how it works:
+
+<details>
+<summary>JAX code to generate output below (click to expand)</summary>
+
+```python
+import jax
+import jax.numpy as jnp
+from jax import random
+from jax.experimental import random as xrandom
+
+def show(rng, label):
+    print(f"{label:<28} base_key = {random.key_data(rng._base_key)}   counter = {int(rng._counter[...])}")
+
+rng = xrandom.stateful_rng(42)
+show(rng, "after stateful_rng(42):")
+
+x1 = rng.normal(size=3)
+show(rng, "after rng.normal(size=3):")
+x2 = rng.normal(size=1000)
+show(rng, "after rng.normal(size=1000):")
+x3 = rng.uniform()
+show(rng, "after rng.uniform():")
+
+# each call n uses the key fold_in(base_key, n); the base key never changes
+base = random.key(42)
+print()
+print("rng.normal(size=3)   == random.normal(fold_in(base, 0), (3,))   :",
+      bool(jnp.all(x1 == random.normal(random.fold_in(base, 0), (3,)))))
+print("rng.normal(size=1000)== random.normal(fold_in(base, 1), (1000,)):",
+      bool(jnp.all(x2 == random.normal(random.fold_in(base, 1), (1000,)))))
+print("rng.uniform()        == random.uniform(fold_in(base, 2))        :",
+      bool(x3 == random.uniform(random.fold_in(base, 2))))
+
+# spawn: parent counter +1, children get new base keys and fresh counters
+print()
+children = rng.spawn(2)
+show(rng, "parent after spawn(2):")
+for i, c in enumerate(children):
+    show(c, f"child {i}:")
+expected = random.split(random.fold_in(base, 3), 2)
+print("child base keys == split(fold_in(base, 3), 2):",
+      bool(jnp.all(random.key_data(jnp.stack([c._base_key for c in children])) == random.key_data(expected))))
+```
+
+</details>
+
+```text
+after stateful_rng(42):      base_key = [ 0 42]   counter = 0
+after rng.normal(size=3):    base_key = [ 0 42]   counter = 1
+after rng.normal(size=1000): base_key = [ 0 42]   counter = 2
+after rng.uniform():         base_key = [ 0 42]   counter = 3
+
+rng.normal(size=3)   == random.normal(fold_in(base, 0), (3,))   : True
+rng.normal(size=1000)== random.normal(fold_in(base, 1), (1000,)): True
+rng.uniform()        == random.uniform(fold_in(base, 2))        : True
+```
+
+In the output above, note that the `counter` is how often a RNG function was called, irrespective of how many elements were generated in that call (which was the $c$ at the top of this comment). Also note that the `0` in `[0 42]` is not a counter, it's simply the 64 bit RNG state which is depicted as `ui32[2]`.
+
+The JAX JEP itself [^jep28845] uses this simplified code to explain it:
+
+```python
+def stateful_rng(seed: ArrayLike) -> StatefulPRNG:
+  """Create a stateful PRNG Generator given an integer seed."""
+  return StatefulPRNG(jax.random.key(seed), jax.new_ref(0))
+
+
+@tree_util.register_dataclass
+@dataclass(frozen=True)
+class StatefulPRNG:
+  """Stateful PRNG Generator class."""
+  base_key: jax.Array
+  counter: jax.core.Ref
+
+  def key(self) -> jax.Array:
+    """Generate a new jax PRNG key"""
+    key = jax.random.fold_in(self.base_key, self.counter[...])
+    jax.ref.addupdate(self.counter, ..., 1)  # increment counter
+    return key
+
+  def random(self, size: Sequence[int], dtype: DType = float):
+    """Return random floats in the half-open interval [0, 1)"""
+    return random.uniform(self.key(), shape=size, dtype=dtype)
+
+  # uniform(), normal(), integers(), and others implemented similarly.
+```
+
+Note that the `jax.random.fold_in` is a call into the threefry algorithm.
+So the `self.counter` folding is used to generate the keys for the first, second, third, ... `rng.random()` call.
+In JAX, the counter is an `int32` that `fold_in()` reads as a `uint32`, so after `2^32` calls to `rng.key()` (which is called in `rng.random()`), the sequence repeats.
+Also, the keys are 64 bits wide (`uint32[2]`), so after about `2^32` derived keys in total, two of them are likely to coincide (the birthday bound). This is fine for normal use (see also [^jep263]).
+
+---
+
+What I am proposing:
+
+We have one global rng state, which is essentially like the `StatefulPRNG` from JAX.
+When we call `nv_set_seed(42)`, we initialize this `StatefulPRNG`.
+If a user does not set `nv_set_seed(42)`, we randomly initialize `StatefulPRNG` upon first use (e.g. using a `runif(2)` call).
+
+If we call `prim_rng_bit_generator()`, we always create a new key via `rng.key()` and pass it to the primitive.
+In the higher-order primitives `scan` and `while`, we pass the `StatefulPRNG` (i.e., its counter) when the `body` function uses randomness and thread it through the iterations, so each iteration derives new keys.
+
+Once we land a `parallel_map` function, we add the `randomness` argument from PyTorch. It can be `"different"`, `"same"` similar to PyTorch (I don't think we need the `"error"` option). If `randomness` is:
+
+* `"different"`, we create one new key per task (i.e., per element that we map over, not per core), so the results do not depend on the number of cores, and
+* `"same"`, we create one new key and pass the same key to each of the function evaluations.
+
+We do the same for `vmap()` which works also with nested `vmap()`s, which is made clear in the diagram from earlier.
+
+Besides this auto mode, I think it should be possible to explicitly pass an `rng` object to functions as well.
+
+E.g., the pseudo-code for `nv_runif` might be:
+
+```r
+jit(function(size, rng = NULL) {
+  if (is.null(rng)) rng <- new_key(rng_state())
+  ...
+})
+```
+
+I am not 100% sure whether this works out and I haven't thought of every detail, but I think this plan might already be good enough to share it.
+
+[^salmon]: Salmon et al. (2011), *Parallel Random Numbers: As Easy as 1, 2, 3*, SC11.
+    https://www.thesalmons.org/john/random123/papers/random123sc11.pdf
+[^jep263]: JAX Authors (2019), *JEP 263: JAX PRNG Design*.
+    https://docs.jax.dev/en/latest/jep/263-prng.html
+[^cp]: Claessen & Pałka (2013), *Splittable Pseudorandom Number Generators using Cryptographic Hashing*, Haskell '13.
+[^jep28845]: VanderPlas (2025), *JEP 28845: Stateful Randomness in JAX*.
+    https://github.com/jax-ml/jax/blob/main/docs/jep/28845-stateful-rng.md
+[^torch-vmap]: PyTorch documentation, `torch.func.vmap`, argument `randomness` (`"error"`, `"different"`, `"same"`).
+    https://docs.pytorch.org/docs/stable/generated/torch.func.vmap.html

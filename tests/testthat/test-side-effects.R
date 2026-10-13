@@ -2,17 +2,20 @@
 # value lives in `store$value`. Both are removed when `envir` exits.
 local_counter <- function(envir = parent.frame()) {
   store <- new.env(parent = emptyenv())
-  aval <- AbstractArray(dtype = "i32", shape = integer())
-  getter <- function() {
-    if (is.null(store$value)) {
-      store$value <- nv_scalar(0L, dtype = "i32")
-    }
-    store$value
-  }
-  setter <- function(value) {
-    store$value <- value
-  }
-  register_side_effect("counter", aval, getter, setter, rules = list(pjrt = pjrt_state_slot(aval, getter, setter)))
+  register_side_effect(
+    "counter",
+    aval = AbstractArray(dtype = "i32", shape = integer()),
+    getter = function() {
+      if (is.null(store$value)) {
+        store$value <- nv_scalar(0L, dtype = "i32")
+      }
+      store$value
+    },
+    setter = function(value) {
+      store$value <- value
+    },
+    rules = list(pjrt = pjrt_state_slot)
+  )
   withr::defer(
     {
       globals$side_effects$counter <- NULL

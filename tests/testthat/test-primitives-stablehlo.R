@@ -40,12 +40,23 @@ describe("prim_sample_bits", {
     }
   })
 
-  it("continues a ui64 draw where the previous one stopped", {
+  it("continues a draw where the previous one stopped", {
     local_nv_seed(NULL)
-    set_state(c(99, 2^32 - 5))
-    parts <- c(bits(prim_sample_bits(5L, "ui64")), bits(prim_sample_bits(3L, "ui64")))
-    set_state(c(99, 2^32 - 5))
-    expect_identical(parts, as.vector(bits(prim_sample_bits(8L, "ui64"))))
+    for (dtype in c("ui8", "ui32", "ui64")) {
+      set_state(c(99, 2^32 - 5))
+      parts <- c(bits(prim_sample_bits(5L, dtype)), bits(prim_sample_bits(3L, dtype)))
+      set_state(c(99, 2^32 - 5))
+      expect_identical(parts, as.vector(bits(prim_sample_bits(8L, dtype))))
+    }
+  })
+
+  it("advances the counter by the number of values whatever the data type", {
+    local_nv_seed(NULL)
+    for (dtype in c("ui8", "ui32", "ui64")) {
+      set_state(c(5, 10))
+      prim_sample_bits(c(2L, 3L), dtype)
+      expect_identical(as.numeric(as_array(globals$rng_state)), c(5, 16))
+    }
   })
 
   it("draws every unsigned data type and advances the state", {
@@ -58,8 +69,18 @@ describe("prim_sample_bits", {
       expect_false(identical(bits(globals$rng_state), before))
       # the bits are random, not a constant: 64 draws of 8 bits or more repeat
       # a value only rarely
-      values <- as.numeric(as.character(as_array(prim_sample_bits(64L, dtype))))
+      values <- bits(prim_sample_bits(64L, dtype))
       expect_gt(length(unique(values)), 40L)
+    }
+  })
+
+  it("fills the shape in column-major order", {
+    for (dtype in c("ui8", "ui32", "ui64")) {
+      for (shape in list(c(2L, 3L), c(3L, 3L), c(3L, 5L, 2L))) {
+        shaped <- with_nv_seed(3L, bits(prim_sample_bits(shape, dtype)))
+        flat <- with_nv_seed(3L, bits(prim_sample_bits(prod(shape), dtype)))
+        expect_identical(shaped, array(flat, shape))
+      }
     }
   })
 

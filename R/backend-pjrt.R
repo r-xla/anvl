@@ -261,22 +261,25 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     input_dtypes = input_dtypes,
     device = device(exec),
     phantom_specs = phantom_specs,
-    state = unname(lapply(names(graph$side_effects), function(name) side_effect(name)$rules$pjrt))
+    state = unname(lapply(names(graph$side_effects), function(name) {
+      side_effect <- side_effect(name)
+      side_effect$rules$pjrt(side_effect)
+    }))
   )
 }
 
-# The pjrt rule of a side effect of aval `aval` (see `register_side_effect()`):
-# the state slot of `pjrt::dispatcher()` that reads the value with `getter()`
+# The pjrt rule of a side effect (see `register_side_effect()`): the state slot
+# of `pjrt::dispatcher()` that reads the value with the side effect's getter
 # before every call of a program that uses it, and stores the updated value with
-# `setter()` after it. The program updates the value in place: the buffer
-# `getter()` returned is donated to it, so nothing may keep a reference to an
-# old value.
-pjrt_state_slot <- function(aval, getter, setter) {
+# its setter after it. The program updates the value in place: the buffer the
+# getter returned is donated to it, so nothing may keep a reference to an old
+# value.
+pjrt_state_slot <- function(side_effect) {
   list(
-    get = getter,
-    set = setter,
-    dtype = as.character(dtype(aval)),
-    shape = shape(aval)
+    get = side_effect$getter,
+    set = side_effect$setter,
+    dtype = as.character(dtype(side_effect$aval)),
+    shape = shape(side_effect$aval)
   )
 }
 

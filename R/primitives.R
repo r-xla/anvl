@@ -3043,22 +3043,21 @@ prim_print <- new_primitive(
 # RNG primitives
 #' @title Primitive Random Bits
 #' @description
-#' Draws random bits from the global RNG state (see [nv_set_seed()]) with XLA's
-#' implementation of the ThreeFry-2x32 counter-based generator of
-#' `r cite_bib("salmon2011parallel")`, and advances that state.
+#' Draws random bits from the global RNG state (see [nv_set_seed()]) with the
+#' ThreeFry-2x32 counter-based generator of `r cite_bib("salmon2011parallel")`,
+#' and advances that state.
 #'
 #' The state is not an argument: the primitive reads the state of the trace it
 #' is called in and leaves the advanced state behind for the next draw. A
 #' [jit()]-compiled function takes the global RNG state as a hidden input and
 #' hands the state its last draw left behind back to it.
 #'
-#' The state is a key and a counter. A draw hashes the key with the next values
-#' of the counter and advances the counter past them, so consecutive draws never
-#' share a counter value. A `"ui64"` draw of `n` values advances the counter by
-#' `n`. A narrower draw takes two values from each counter value and may leave
-#' the second of the last one unused: a `"ui32"` draw of `4` gives the values
-#' of two draws of `2`, but two draws of `1` do not give the values of one draw
-#' of `2`.
+#' The state is a key and a counter. A draw of `n` values hashes the key with
+#' the next `n` values of the counter, one per value whatever `dtype` is, and
+#' advances the counter by `n`. Consecutive draws therefore never share a
+#' counter value, and two draws of `n` give the values of one draw of `2 * n`.
+#' The advanced counter does not depend on the bits drawn, so in a compiled
+#' function a draw does not wait for the draws before it.
 #' @template param_shape
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.

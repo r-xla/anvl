@@ -138,7 +138,7 @@ ones it uses with `new_primitive(side_effects = )`. Never thread such a value by
 last outputs; `side_effects_branches()` / `side_effects_carry()` / `side_effects_take()` thread it
 through the sub-graphs of higher-order primitives; a graph records it in `$side_effects`, apart
 from `$inputs` / `$outputs`, and `stablehlo()` lowers it to an aliased input/output pair. A backend
-supports a side effect through its `rules` (for pjrt, the state slot `pjrt_state_slot()` builds).
+supports a side effect through its `rules`, a function of the side effect per backend (for pjrt, `pjrt_state_slot()`).
 A higher-order primitive opens each sub-trace with a `side_effects_mode` (`?GraphDescriptor`):
 `"input"` for a body that hands the updated value back (`nv_while()`, `nv_scan()`), `"capture"`
 for one that closes over it (`nv_if()`), and none for a function that cannot thread it (a

@@ -1216,9 +1216,8 @@ describe("nv_pexp", {
   it("log_p = TRUE keeps full accuracy where rate * q is tiny but representable", {
     # log(rate) + log(q) is exact in principle here, but cancels several ulps
     # away when the two logs are large and of opposite sign
-    # the exact doubles are given in hex, which air cannot parse as literals
-    rate <- c(as.numeric("0x1.bd318f07885f5p-450"), 1e-100, 1e100, 1e-20, 1e150)
-    q <- c(as.numeric("0x1.362c5bca9c0c2p+389"), 1e-150, 1e-217, 1e-5, 1e-300)
+    rate <- c(0x1.bd318f07885f5p-450, 1e-100, 1e100, 1e-20, 1e150)
+    q <- c(0x1.362c5bca9c0c2p+389, 1e-150, 1e-217, 1e-5, 1e-300)
     expect_equal_elementwise(
       as.vector(nv_pexp(as_f64(q), as_f64(rate), log_p = TRUE)),
       pexp(q, rate, log.p = TRUE),

@@ -7,7 +7,8 @@
   base R's RNG on the first draw. The samplers lose their `state` argument and
   return only the sample; `nv_rng_state()` is removed.
 * `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`, which draws
-  random bits with ThreeFry from the global RNG state.
+  random bits with ThreeFry-2x32 from the global RNG state, one counter value
+  per value drawn.
 
 ## Features
 

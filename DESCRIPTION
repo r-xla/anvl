@@ -89,5 +89,6 @@ Collate:
     'rules-stablehlo.R'
     'serialize.R'
     'stablehlo.R'
+    'threefry.R'
     'zzz.R'
 Config/roxygen2/version: 8.1.0

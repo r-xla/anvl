@@ -702,11 +702,10 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 
 # RNG jit rules --------------------------------------------------------
 
-# The global RNG state `rng` is the `ui64[2]` state, the key and the counter, of
-# XLA's ThreeFry-2x32 `rng_bit_generator`.
+# The global RNG state `rng` is the `ui64[2]` state, the key and the counter,
+# of ThreeFry-2x32 (see `hlo_threefry_bits()`).
 prim_sample_bits[["stablehlo"]] <- function(rng, shape, dtype) {
-  out <- hlo_rng_bit_generator(rng, "THREE_FRY", dtype, as.integer(shape))
-  list(out[[2L]], out[[1L]])
+  hlo_threefry_bits(rng, shape, dtype)
 }
 
 prim_print[["stablehlo"]] <- function(x, header, footer) {

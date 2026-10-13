@@ -20,22 +20,21 @@ The random bits, of data type \code{dtype} and shape \code{shape}. The draws fil
 draw of \code{6}, reshaped to \code{c(2, 3)}.
 }
 \description{
-Draws random bits from the global RNG state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) with XLA's
-implementation of the ThreeFry-2x32 counter-based generator of
-Salmon et al. (2011), and advances that state.
+Draws random bits from the global RNG state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) with the
+ThreeFry-2x32 counter-based generator of Salmon et al. (2011),
+and advances that state.
 
 The state is not an argument: the primitive reads the state of the trace it
 is called in and leaves the advanced state behind for the next draw. A
 \code{\link[=jit]{jit()}}-compiled function takes the global RNG state as a hidden input and
 hands the state its last draw left behind back to it.
 
-The state is a key and a counter. A draw hashes the key with the next values
-of the counter and advances the counter past them, so consecutive draws never
-share a counter value. A \code{"ui64"} draw of \code{n} values advances the counter by
-\code{n}. A narrower draw takes two values from each counter value and may leave
-the second of the last one unused: a \code{"ui32"} draw of \code{4} gives the values
-of two draws of \code{2}, but two draws of \code{1} do not give the values of one draw
-of \code{2}.
+The state is a key and a counter. A draw of \code{n} values hashes the key with
+the next \code{n} values of the counter, one per value whatever \code{dtype} is, and
+advances the counter by \code{n}. Consecutive draws therefore never share a
+counter value, and two draws of \code{n} give the values of one draw of \code{2 * n}.
+The advanced counter does not depend on the bits drawn, so in a compiled
+function a draw does not wait for the draws before it.
 }
 \section{Implemented Rules}{
 

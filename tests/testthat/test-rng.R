@@ -84,9 +84,9 @@ describe("with_nv_seed", {
 })
 
 describe("nv_get_rng_state", {
-  it("is NULL while the global state is not set", {
+  it("errors while the global state is not set", {
     local_nv_seed(NULL)
-    expect_null(nv_get_rng_state())
+    expect_error(nv_get_rng_state(), "The global RNG state is not set")
   })
 
   it("returns a copy of the global state that later draws leave intact", {
@@ -123,7 +123,7 @@ describe("nv_set_rng_state", {
   it("unsets the global state with NULL", {
     local_nv_seed(1L)
     nv_set_rng_state(NULL)
-    expect_null(nv_get_rng_state())
+    expect_null(globals$rng_state)
   })
 
   it("rejects what is not an RNG state", {
@@ -472,10 +472,21 @@ describe("the global RNG state across devices", {
     expect_true(eq_device(device(globals$rng_state), dev1))
   })
 
+  it("is returned by nv_get_rng_state() on the device asked for", {
+    local_nv_seed(NULL)
+    globals$rng_state <- rng_state_from_seed(7L, device = dev0)
+    expected <- as_array(globals$rng_state)
+    state <- nv_get_rng_state(dev1)
+    expect_true(eq_device(device(state), dev1))
+    expect_true(eq_device(device(globals$rng_state), dev0))
+    expect_identical(as_array(state), expected)
+    expect_true(eq_device(device(with_default_device(dev1, nv_get_rng_state())), dev1))
+  })
+
   it("is restored by nv_set_rng_state() from a state on another device", {
     local_nv_seed(NULL)
     globals$rng_state <- rng_state_from_seed(7L, device = dev1)
-    state <- nv_get_rng_state()
+    state <- nv_get_rng_state(dev1)
     nv_set_rng_state(NULL)
     nv_set_rng_state(state)
     out <- with_default_device(dev0, nv_runif(3L))
