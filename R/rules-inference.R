@@ -161,8 +161,8 @@ assert_choice_param <- function(x, choices, arg = rlang::as_label(substitute(x))
 }
 
 # Sizes that become a shape, so they must also be non-negative.
-assert_size_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL) {
-  x <- assert_int_param(x, arg, len = len)
+assert_size_param <- function(x, arg = rlang::as_label(substitute(x))) {
+  x <- assert_int_param(x, arg)
   if (any(x < 0L)) {
     cli_abort(c(
       "{.arg {arg}} must not be negative.",
@@ -395,7 +395,7 @@ assert_axis_layout <- function(parts, n_axes, what) {
 # A sub-graph traced against two scalars of `x`'s data type (`prim_reduce()`'s
 # `reducer`, `prim_scatter()`'s `update_fn`) must return one such scalar.
 assert_scalar_fn_output <- function(graph, x, arg = rlang::as_label(substitute(graph))) {
-  outputs <- lapply(graph$outputs, function(out) out$aval)
+  outputs <- graph_output_avals(graph)
   if (length(outputs) != 1L) {
     cli_abort(c(
       "{.arg {arg}} must return exactly one value.",
@@ -676,8 +676,8 @@ infer_concatenate <- function(..., axis) {
   axis <- assert_int_param(axis, len = 1L)
   assert_axes_in_range(axis, n_axes)
 
-  # (C2) Ranks first: `s[-axis]` below would silently drop nothing from a
-  # shape with fewer than `axis` axes.
+  # (C2) The numbers of axes first: `s[-axis]` below would silently drop
+  # nothing from a shape with fewer than `axis` axes.
   input_n_axes <- lengths(shapes)
   bad <- first_mismatch(input_n_axes)
   if (!is.null(bad)) {

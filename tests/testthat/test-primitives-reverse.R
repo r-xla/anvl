@@ -218,6 +218,17 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     contracting_axes = list(c(1L, 2L), c(3L, 4L)),
     batching_axes = list(c(4L, 5L), c(1L, 2L))
   )
+
+  # lhs has no free axes, so the free axes of rhs come right after the batching axes
+  # A[b,k] • B[b,k,n] with batching b and contracting k
+  A6 <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
+  B6 <- nv_array(1:24, shape = c(2, 3, 4), dtype = "f32")
+  check_case(
+    A6,
+    B6,
+    contracting_axes = list(2L, 2L),
+    batching_axes = list(1L, 1L)
+  )
 })
 
 test_that("broadcasting", {
@@ -409,6 +420,23 @@ describe("prim_if", {
       cos(c(1, 2, 3)) * c(1, 2, 3) + sin(c(1, 2, 3))
     )
     expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
+  })
+})
+
+describe("prim_pow reverse", {
+  it("gives a zero derivative in the exponent at base 0", {
+    f <- jit(gradient(function(y) nv_sum(prim_pow(nv_array(c(0, 2), dtype = "f64"), y))))
+    expect_equal(as.numeric(as_array(f(nv_array(c(2, 2), dtype = "f64"))[[1L]])), c(0, 4 * log(2)))
+  })
+
+  it("gives a zero derivative in the base for exponent 0", {
+    f <- jit(gradient(function(x) nv_sum(x^0L)))
+    expect_equal(as.numeric(as_array(f(nv_array(c(0, 2), dtype = "f64"))[[1L]])), c(0, 0))
+  })
+
+  it("keeps the derivative in the base at base 0 for other exponents", {
+    f <- jit(gradient(function(x) nv_sum(x^2L + x^0.5)))
+    expect_equal(as.numeric(as_array(f(nv_array(c(0, 4), dtype = "f64"))[[1L]])), c(Inf, 8.25))
   })
 })
 
@@ -639,6 +667,34 @@ test_that("prim_pad reverse with interior padding", {
   x4 <- nv_matrix(1:6, nrow = 2, ncol = 3, dtype = "f64")
   g4 <- f4(x4)
   expect_equal(g4[[1L]], nv_matrix(rep(1, 6), nrow = 2, ncol = 3, dtype = "f64"))
+})
+
+describe("prim_static_slice reverse", {
+  it("pads the cotangent of an empty strided slice back to the input shape", {
+    f <- jit(gradient(function(x) nv_sum(prim_static_slice(x, 3L, 2L, 2L)) + nv_sum(x)))
+    expect_equal(as.numeric(as_array(f(nv_array(as.double(1:6), dtype = "f64"))[[1L]])), rep(1, 6))
+  })
+})
+
+describe("prim_pad reverse", {
+  it("gives a trimmed element a zero gradient", {
+    f <- jit(gradient(function(x) nv_sum(nv_pad(x, 0, low = -1L, high = 0L))))
+    expect_equal(as.numeric(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(0, 1, 1))
+  })
+
+  it("combines negative edge padding with interior padding", {
+    # [a, b, c] with interior 1 is [a, 0, b, 0, c]; trimming one element low and
+    # padding one high gives [0, b, 0, c, 0].
+    w <- nv_array(c(1, 2, 3, 4, 5), dtype = "f64")
+    f <- jit(gradient(function(x) nv_sum(prim_pad(x, 0, -1L, 1L, 1L) * w)))
+    expect_equal(as.numeric(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(0, 2, 4))
+  })
+
+  it("handles a trim that reaches into the opposite edge padding", {
+    # [0, 0, a, b, c] trimmed by four high is [0]: no element of x survives.
+    f <- jit(gradient(function(x) nv_sum(prim_pad(x, 0, 2L, -4L, 0L))))
+    expect_equal(as.numeric(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(0, 0, 0))
+  })
 })
 
 test_that("prim_dynamic_slice reverse", {
@@ -1215,6 +1271,18 @@ describe("prim_reshape reverse", {
     f <- function(x) nv_sum(prim_reshape(x, c(4L, 6L)) * w)
     grads <- jit(gradient(f))(x)
     expect_equal(as_array(grads[[1L]]), array(w, c(2L, 3L, 4L)))
+  })
+})
+
+describe("prim_broadcast_in_axes reverse", {
+  it("permutes the gradient back for unsorted broadcast axes", {
+    # Distinct weights pin where each element of the gradient lands; c(3, 1, 2)
+    # is not its own inverse.
+    x <- nv_array(array(0, c(2L, 3L, 4L)), dtype = "f64")
+    w <- array(as.numeric(1:24), c(3L, 4L, 2L))
+    f <- function(x) nv_sum(prim_broadcast_in_axes(x, c(3L, 4L, 2L), c(3L, 1L, 2L)) * w)
+    grads <- jit(gradient(f))(x)
+    expect_equal(as_array(grads[[1L]]), aperm(w, c(3L, 1L, 2L)))
   })
 })
 

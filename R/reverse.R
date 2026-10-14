@@ -1,34 +1,33 @@
 check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
-  for (i in seq_along(args_flat)) {
-    if (is_wrt_flat[[i]]) {
-      if (!is_arrayish(args_flat[[i]])) {
-        cli_abort(c(
-          "Cannot compute gradient with respect to non-array argument.",
-          x = "Got {.cls {class(args_flat[[i]])}}"
-        ))
-      }
+  for (arg in args_flat[is_wrt_flat]) {
+    if (!is_arrayish(arg)) {
+      cli_abort(c(
+        "Cannot compute gradient with respect to non-array argument.",
+        x = "Got {.cls {class(arg)}}"
+      ))
+    }
 
-      if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
-        # `repr()` on a data type gives stablehlo's spelling (`i1` for a
-        # boolean); the pages speak anvl's, which `as.character()` gives.
-        cli_abort(c(
-          "Can only compute gradient with respect to float arrays.",
-          x = "Got {.val {as.character(peek_dtype(args_flat[[i]]))}}."
-        ))
-      }
+    dt <- peek_dtype(arg)
+    if (!is_dtype_float(dt)) {
+      # `repr()` on a data type gives stablehlo's spelling (`i1` for a
+      # boolean); the pages speak anvl's, which `as.character()` gives.
+      cli_abort(c(
+        "Can only compute gradient with respect to float arrays.",
+        x = "Got {.val {as.character(dt)}}."
+      ))
+    }
 
-      # A value with no data type of its own cannot be differentiated with
-      # respect to: the gradient comes back at whatever data type the forward
-      # pass happened to settle the value at, so the answer would depend on how
-      # the rest of the body used it rather than on what the caller passed.
-      # Materializing it here would only hide that behind the default.
-      if (has_no_dtype(args_flat[[i]])) {
-        cli_abort(c(
-          "Cannot compute gradient with respect to a value that has no data type.",
-          x = "It is an R {peek_r_type(args_flat[[i]])}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-          i = "Give it one first, e.g. {.code nv_array(x, dtype = \"f32\")} or an explicit {.code nv_array(x, dtype = \"f64\")}, so the gradient's data type is the caller's choice." # nolint
-        ))
-      }
+    # A value with no data type of its own cannot be differentiated with
+    # respect to: the gradient comes back at whatever data type the forward
+    # pass happened to settle the value at, so the answer would depend on how
+    # the rest of the body used it rather than on what the caller passed.
+    # Materializing it here would only hide that behind the default.
+    if (has_no_dtype(arg)) {
+      cli_abort(c(
+        "Cannot compute gradient with respect to a value that has no data type.",
+        x = "It is an R {peek_r_type(arg)}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
+        i = "Give it one first, e.g. {.code nv_array(x, dtype = \"f32\")} or an explicit {.code nv_array(x, dtype = \"f64\")}, so the gradient's data type is the caller's choice." # nolint
+      ))
     }
   }
 }
@@ -224,8 +223,8 @@ compute_requirements <- function(graph, wrt) {
   # `wrt` entries, so this drop is safe.
   is_static <- graph$is_static_flat
   if (!is.null(is_static) && any(requires_grad_all & is_static)) {
-    # pjrt dropped flat_names(); the per-leaf top-level group name is the
-    # top-level child's name repeated once per leaf beneath it.
+    # The argument each flat leaf belongs to: the top-level child's name,
+    # repeated once per leaf beneath it.
     sizes <- pjrt::tree_child_sizes(graph$in_tree)
     nms <- pjrt::tree_child_names(graph$in_tree) %||% rep("", length(sizes))
     flat_argnames <- rep(nms, times = sizes)
@@ -246,8 +245,8 @@ compute_requirements <- function(graph, wrt) {
   for (i in seq_along(graph$inputs)) {
     required_env[[graph$inputs[[i]]]] <- requires_grad[[i]]
   }
-  for (i in seq_along(graph$constants)) {
-    required_env[[graph$constants[[i]]]] <- FALSE
+  for (const in graph$constants) {
+    required_env[[const]] <- FALSE
   }
   required_env <- propagate_requirements(graph, required_env)
 
@@ -373,7 +372,6 @@ propagate_requirements <- function(graph, required_env) {
   required_env
 }
 
-
 # Replays `graph`'s forward pass into `desc`, call by call. `split_vjp()` uses
 # it to rebuild a branch of `prim_if()`, `graph_apply()` to rerun a closed
 # graph, `graph_value_and_grad()` to replay what `gradient()` traced into the
@@ -387,22 +385,14 @@ propagate_requirements <- function(graph, required_env) {
 #   - backwards: ordered list that needs to be traversed in reverse for the
 #     backward pass.
 #
+# `inputs` are the boxes the graph's inputs are bound to -- the arguments
+# passed to the gradient function. Without them, the graph's inputs become
+# inputs of `desc`.
+#
 # With `required_env`, a call none of whose operands requires a gradient keeps
 # its plain forward even where its rule has a replacement: the backward pass
 # skips it, so what the replacement keeps for it -- an if's residuals -- would
 # be computed for nothing.
-
-# Because some primitives require an alternative forward pass for efficiency
-# we need a way to re-run the this alternative
-
-# Here we re-run a forward pass, selecting the alternative forward passes for
-# those primitives that need it for efficiency.
-# Inputs:
-# - graph: graph whose forward pass is replayed
-# - desc: descriptor the replay is written ino
-# - inputs: the arguments passed to the gradient function. If NULL, the gradient's arguments
-#           are added as inputs to the descriptor.
-# - required_env: maps each gval to whether it requires a gradient
 rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL) {
   if (is.null(inputs)) {
     register_inputs(desc, graph$inputs)
@@ -413,9 +403,8 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
   }
 
   # Existing GraphValues are reused where possible to minimize cloning.
-  # If an alternative forward pass is called, this possibly invalidates
-  # inputs to subsequent GraphStatements, so we have to look up the translated gnode every time
-  # (we could actually delay this lookup until
+  # An alternative forward pass replaces the outputs of its statement, which
+  # later statements may read, so every input is looked up in `trans`.
   trans <- hashtab()
   translate_gnode <- function(g) {
     if (is_graph_literal(g)) {
@@ -423,10 +412,8 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     }
     trans[[g]] %||% g
   }
-  # When we call into a gradient graph within jit(), we need to do the wiring
-  # of the passed argumenbts to the gvals of the sub-graph
-  # In an earlier implementation we used the same gval for this, but we now use a purified IR
-  # (which is good for autodiff) so we now have to handle this wiring here.
+  # The graph is pure, so its inputs are GraphValues of its own: bind each to
+  # the value passed for it.
   for (i in seq_along(inputs)) {
     trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
   }
@@ -437,21 +424,11 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
       trans[[graph$constants[[i]]]] <- const_boxes[[i]]$gnode
     }
   }
-  # Get/create the box for a translated gval. Literals reach this branch
-  # only when used as a call input; mint a box on demand (GraphBox has value semantics)
-  box_for <- function(g) {
-    new_g <- translate_gnode(g)
-    box <- desc$gval_to_box[[new_g]]
-    if (is.null(box)) {
-      box <- GraphBox(new_g, desc)
-      desc$gval_to_box[[new_g]] <- box
-    }
-    box
-  }
+  # The box for a translated gval, minted on demand (a literal has none until
+  # it is used as a call input).
+  box_for <- function(g) register_gval(desc, translate_gnode(g))
 
-  # We store the backward rules in a list so we can just traverse it backwards afterwards
-
-  # backwards be longer than graph$statements, but never shorter
+  # One entry per statement, which run_backward_pass() traverses in reverse.
   backwards <- vector("list", length(graph$statements))
 
   for (i in seq_along(graph$statements)) {
@@ -463,10 +440,10 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
 
     if (is.null(rule) || is.null(rule$forward) || !needs_grad) {
       # No rule, a backward-only rule, or a call the backward pass skips: the
-      # forward computation is unchanged,
-      # so we can reuse the original output gvals directly. Only mint a new
-      # GraphStatement if an upstream alt-forward replaced one of our inputs;
-      # otherwise share the original statement object verbatim.
+      # forward computation is unchanged, so the original output gvals are
+      # reused directly. The statement is rebuilt only to read its inputs
+      # through `trans`, in case an upstream alternative forward replaced one
+      # of them.
       new_inputs <- lapply(call$inputs, translate_gnode)
       new_call <- GraphStatement(call$primitive, new_inputs, call$params, call$outputs)
 
@@ -583,12 +560,7 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
 # accumulated gradient gnode -- or a zero of matching shape if the input
 # never reached the loss.
 collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
-  input_grads <- list()
-  for (i in seq_along(graph$inputs)) {
-    if (!requires_grad[[i]]) {
-      next
-    }
-    input <- graph$inputs[[i]]
+  lapply(graph$inputs[requires_grad], function(input) {
     x <- grad_env[[input]] %||%
       {
         const <- get_box_or_register_const(
@@ -597,9 +569,8 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
         )
         nv_broadcast_to(const, shape(input$aval))
       }
-    input_grads <- c(input_grads, list(x$gnode))
-  }
-  input_grads
+    x$gnode
+  })
 }
 
 
@@ -659,55 +630,57 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #' result$grad
 gradient <- function(f, wrt = NULL) {
   assert_function(f)
-  wrt <- resolve_arg_names(f, wrt, "wrt")
-  if (!is.null(wrt) && !all(wrt %in% formalArgs(f))) {
-    cli_abort("wrt must be a subset of the formal arguments of f")
-  }
+  wrt <- resolve_wrt(f, wrt)
   f_gradient <- function() {
     args <- as.list(match.call())[-1L]
     args <- lapply(args, eval, envir = parent.frame())
-    prep <- prepare_gradient_args(args, wrt)
-
-    if (is.null(current_descriptor(silent = TRUE))) {
-      cli_abort(c(
-        "{.fn gradient} can only be called inside a {.fn jit}-compiled function.",
-        i = "Wrap the result of {.fn gradient} in {.fn jit}, e.g. {.code jit(gradient(f))}."
-      ))
-    }
-    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
-    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
-    unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
+    trace_value_and_grad(f, args, wrt, "gradient")$grad
   }
   formals(f_gradient) <- formals2(f)
-  return(f_gradient)
+  f_gradient
 }
 
 #' @rdname gradient
 #' @export
 value_and_gradient <- function(f, wrt = NULL) {
   assert_function(f)
-  wrt <- resolve_arg_names(f, wrt, "wrt")
-  if (!is.null(wrt) && !all(wrt %in% formalArgs(f))) {
-    cli_abort("wrt must be a subset of the formal arguments of f")
-  }
+  wrt <- resolve_wrt(f, wrt)
   f_value_and_grad <- function() {
     args <- as.list(match.call())[-1L]
     args <- lapply(args, eval, envir = parent.frame())
-    prep <- prepare_gradient_args(args, wrt)
-
-    if (is.null(current_descriptor(silent = TRUE))) {
-      cli_abort(c(
-        "{.fn value_and_gradient} can only be called inside a {.fn jit}-compiled function.",
-        i = "Wrap the result of {.fn value_and_gradient} in {.fn jit}, e.g. {.code jit(value_and_gradient(f))}."
-      ))
-    }
-    fwd_graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
-    res <- graph_value_and_grad(fwd_graph, wrt, gradient_operands(fwd_graph, prep$args_flat))
-    list(
-      value = unflatten(fwd_graph$out_tree, res$value),
-      grad = unflatten(gradient_out_tree(fwd_graph, wrt), res$grad)
-    )
+    trace_value_and_grad(f, args, wrt, "value_and_gradient")
   }
   formals(f_value_and_grad) <- formals2(f)
   f_value_and_grad
+}
+
+# The `wrt` of gradient() / value_and_gradient() as names of `f`'s formals.
+resolve_wrt <- function(f, wrt, call = rlang::caller_env()) {
+  wrt <- resolve_arg_names(f, wrt, "wrt")
+  if (!is.null(wrt) && !all(wrt %in% formalArgs(f))) {
+    cli_abort("wrt must be a subset of the formal arguments of f", call = call)
+  }
+  wrt
+}
+
+# gradient() / value_and_gradient() (named by `fn`) at the call's arguments:
+# `f` traced into a graph whose value and gradient are replayed into the
+# enclosing trace.
+trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
+  prep <- prepare_gradient_args(args, wrt)
+  if (is.null(current_descriptor(silent = TRUE))) {
+    cli_abort(
+      c(
+        "{.fn {fn}} can only be called inside a {.fn jit}-compiled function.",
+        i = "Wrap the result of {.fn {fn}} in {.fn jit}, e.g. {.code jit({fn}(f))}."
+      ),
+      call = call
+    )
+  }
+  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
+  res <- graph_value_and_grad(graph, wrt, gradient_operands(graph, prep$args_flat))
+  list(
+    value = unflatten(graph$out_tree, res$value),
+    grad = unflatten(gradient_out_tree(graph, wrt), res$grad)
+  )
 }

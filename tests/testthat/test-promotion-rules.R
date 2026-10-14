@@ -69,6 +69,39 @@ test_that("common_dtype_of: multiple arguments", {
   )
 })
 
+describe("common_dtype_of()", {
+  permutations <- function(x) {
+    if (length(x) <= 1L) {
+      return(list(x))
+    }
+    do.call(c, lapply(seq_along(x), function(i) lapply(permutations(x[-i]), function(p) c(x[i], p))))
+  }
+  expect_order_independent <- function(args, expected) {
+    for (p in permutations(args)) {
+      expect_equal(do.call(common_dtype_of, p), as_dtype(expected))
+    }
+  }
+
+  it("does not depend on the order of its arguments", {
+    local_registered_default_dtypes()
+    rlgl <- RData(integer(), "logical")
+    rint <- RData(integer(), "integer")
+    rdbl <- RData(integer(), "double")
+    i8 <- AbstractArray("i8", Shape(1))
+    f32 <- AbstractArray("f32", Shape(1))
+    bool <- AbstractArray("bool", Shape(1))
+
+    expect_order_independent(list(bool, rint, i8), "i8")
+    expect_order_independent(list(i8, rlgl, rint), "i8")
+    expect_order_independent(list(i8, rdbl, f32), "f32")
+    expect_order_independent(list(bool, rint, rdbl, i8), default_float())
+    with_default_dtypes(c(float = "f64"), {
+      expect_order_independent(list(i8, rdbl, f32), "f32")
+      expect_order_independent(list(bool, rdbl, i8), "f64")
+    })
+  })
+})
+
 test_that("common_dtype_of: error on no arguments", {
   expect_error(common_dtype_of(), "No arguments provided")
 })
