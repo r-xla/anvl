@@ -242,7 +242,7 @@ nv_scalar(NA)
 ```
 
     ## Error:
-    ## ! Missing value (NA/NaN) cannot be converted to "pred".
+    ## ! Missing value (NA/NaN) cannot be converted to "bool".
 
 ``` r
 

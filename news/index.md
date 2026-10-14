@@ -2,6 +2,7 @@
 
 ## anvl (development version)
 
+- Bugfix: `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
 - Bugfix:
   [`nv_subset()`](https://r-xla.github.io/anvl/reference/nv_subset.md)
   accepts an R value as `x`, like
