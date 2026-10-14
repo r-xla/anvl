@@ -54,30 +54,50 @@ jax_dtype <- function(dtype) {
   if (dtype == "f32") jnp$float32 else jnp$float64
 }
 
+## An R vector as a JAX array, through NumPy: reticulate hands a bare R vector
+## to Python as a list, which JAX then reads value by value -- 0.4 s for a
+## chunk of 2^20 samples, against 1 ms. A single value stays a scalar.
+jax_array <- function(x, dtype) {
+  jnp <- reticulate::import("jax.numpy", convert = FALSE)
+  if (length(x) > 1L) {
+    x <- reticulate::np_array(x)
+  }
+  jnp$asarray(x, dtype = jax_dtype(dtype))
+}
+
 ## jax.scipy.stats.expon is parameterised by scale = 1/rate. Every JAX twin
 ## takes the rate and forms the scale inside the traced function, as a JAX user
 ## holding a rate would, so a gradient with respect to its second argument is
 ## d/drate, comparable with anvl's, not d/dscale.
 jax_expon <- function() {
   jax_init()
-  reticulate::py_run_string(
-    "
+  ## Defined once per process, and each twin jitted once per variant
+  ## (lru_cache): rebuilt on every call, JAX re-traced every chunk, at
+  ## ~0.5 s a call against ~0.02 s. The program, and so every output, is
+  ## the same either way.
+  if (!reticulate::py_has_attr(reticulate::py, "_expon_value")) {
+    reticulate::py_run_string(
+      "
 import jax
+import functools
 from jax.scipy.stats import expon as _e
 _EXPON = {
     'pdf': _e.pdf, 'logpdf': _e.logpdf,
     'cdf': _e.cdf, 'logcdf': _e.logcdf, 'sf': _e.sf, 'logsf': _e.logsf,
     'ppf': _e.ppf,
 }
+@functools.lru_cache(maxsize=None)
 def _expon_value(name):
     f = _EXPON[name]
     return jax.jit(lambda x, r: f(x, scale=1 / r))
+@functools.lru_cache(maxsize=None)
 def _expon_grad(name, i):
     f = _EXPON[name]
     g = jax.grad(lambda x, r: f(x, scale=1 / r), argnums=i)
     return jax.jit(jax.vmap(g, in_axes=(0, None)))
 "
-  )
+    )
+  }
   invisible(TRUE)
 }
 
@@ -85,14 +105,14 @@ jax_expon_value <- function(name, x, dtype, rate) {
   jax_expon()
   jnp <- reticulate::import("jax.numpy", convert = FALSE)
   np <- reticulate::import("numpy")
-  as.double(np$asarray(reticulate::py$`_expon_value`(name)(jnp$asarray(x, dtype = jax_dtype(dtype)), rate)))
+  as.double(np$asarray(reticulate::py$`_expon_value`(name)(jax_array(x, dtype), rate)))
 }
 
 jax_expon_grad <- function(name, x, dtype, rate, wrt) {
   jax_expon()
   jnp <- reticulate::import("jax.numpy", convert = FALSE)
   np <- reticulate::import("numpy")
-  xx <- jnp$asarray(x, dtype = jax_dtype(dtype))
+  xx <- jax_array(x, dtype)
   g <- function(i) as.double(np$asarray(reticulate::py$`_expon_grad`(name, i)(xx, rate)))
   setNames(list(g(0L), g(1L)), wrt)
 }
