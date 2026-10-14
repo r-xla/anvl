@@ -6,8 +6,6 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
-* Bugfix: `nv_determinant()` returns sign 1 for a singular matrix, like
-  `base::determinant()`, instead of 0.
 
 # anvl 0.5.1
 

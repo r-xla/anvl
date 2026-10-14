@@ -2550,6 +2550,7 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' @title Determinant
 #' @description
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
+#' A singular matrix has determinant `0`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @return ([`arrayish`])\cr
@@ -2581,6 +2582,10 @@ nv_det <- jit(function(x) {
 #' Matching base R's `det_ge_real`, the magnitude is computed in log
 #' space when `logarithm = TRUE` (\eqn{\sum_i \log|U_{ii}|}) and as a
 #' direct product when `logarithm = FALSE` (\eqn{\prod_i |U_{ii}|}).
+#'
+#' A singular matrix has determinant `0`: `modulus` is `-Inf` (with
+#' `logarithm = TRUE`) or `0` (with `logarithm = FALSE`), and `sign` is `0`.
+#' This deviates from [base::determinant()], which reports `sign` `1`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @param logarithm (`logical(1)`)\cr
@@ -2635,9 +2640,6 @@ nv_determinant <- jit(
       sign <- prim_mul(pivot_sign, nv_sign(signed_prod))
       modulus <- prim_abs(signed_prod)
     }
-    # Like base R, a singular matrix (an exact zero pivot) has sign 1.
-    singular <- nv_any(diag_U == 0L)
-    sign <- nv_ifelse(singular, 1L, sign)
 
     list(modulus = modulus, sign = sign)
   },

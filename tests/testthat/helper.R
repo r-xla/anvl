@@ -117,11 +117,3 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
   testthat::expect_equal(grads[[1L]], expected1)
   testthat::expect_equal(grads[[2L]], expected2)
 }
-
-# pjrt's host LU kernel failed on an exact zero pivot before 0.6.0.9001.
-skip_if_lu_rejects_singular <- function() {
-  skip_if(
-    is_cpu() && utils::packageVersion("pjrt") < "0.6.0.9001",
-    "pjrt's LU kernel rejects a singular matrix"
-  )
-}
