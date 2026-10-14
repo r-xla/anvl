@@ -2,8 +2,22 @@
 
 * Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in
   `x` at exponent 0.
+* Bugfix: The gradient of `nv_pad()` / `prim_pad()` works for negative edge
+  padding.
+* Bugfix: The gradient of `prim_broadcast_in_axes()` is no longer permuted for
+  broadcast axes that are not in increasing order.
+* Bugfix: An `NA` in an `array()` subset index now gives an informative error.
+* Bugfix: the common data type of arrays and R values no longer depends on the order of the
+  arguments; the R values take the data type the arrays agree on.
+* Bugfix: `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+* Bugfix: `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
+* Bugfix: `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+* Bugfix: `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
+  summed at the default float.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
+* New functions for the binomial distribution: `nv_dbinom()`, `nv_pbinom()` and
+  `nv_qbinom()`.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
