@@ -39,7 +39,8 @@ in \eqn{[-\infty, 0]} instead.}
 \value{
 (\code{\link{arrayish}})\cr
 \code{nv_dexp()}, \code{nv_pexp()}, and \code{nv_qexp()} return an \code{\link{arrayish}} with the
-data type of \code{x}/\code{q}/\code{p} and the shape after scalar broadcasting with \code{rate}.
+float data type described under Data Types and the shape after scalar
+broadcasting with \code{rate}.
 }
 \description{
 Density (\code{nv_dexp}), distribution function (\code{nv_pexp}), and quantile
@@ -65,10 +66,15 @@ lower-tail probability one, where the result is \code{NaN}.
 \section{Data Types}{
 
 \code{nv_dexp()}, \code{nv_pexp()} and \code{nv_qexp()} compute at
-the data type of \code{x}/\code{q}/\code{p}, which must be float; an R value settles on the
-\link[=default_dtypes]{default float}. An R value for \code{rate} takes this data
-type. An array is promoted to it, so a wider one (e.g. \code{f64} for an \code{f32}
-\code{x}) is an error.
+a float data type and return it. If \code{x}/\code{q}/\code{p} is a float, they compute at
+its data type; an R double settles on the \link[=default_dtypes]{default float}.
+An integer \code{x}/\code{q}/\code{p} (an array or an R integer) is converted to the widest
+float among the arrays given for \code{rate}, or to the default float if
+there is none. Integers beyond \eqn{2^{24}} are not all exact at \code{f32}, so a
+large integer may change in that conversion.
+
+An R value for \code{rate} takes the computing data type. An array is
+promoted to it, so a wider one (e.g. \code{f64} for an \code{f32} \code{x}) is an error.
 }
 
 \examples{
