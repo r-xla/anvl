@@ -134,6 +134,9 @@ $$\det(A) = \det(U) / \det(P) = \mathrm{sign}(P^{-1}) \, \prod_i U_{ii}
 <p>Matching base R's <code>det_ge_real</code>, the magnitude is computed in log
 space when <code>logarithm = TRUE</code> (\(\sum_i \log|U_{ii}|\)) and as a
 direct product when <code>logarithm = FALSE</code> (\(\prod_i |U_{ii}|\)).</p>
+<p>A singular matrix has determinant <code>0</code>: <code>modulus</code> is <code>-Inf</code> (with
+<code>logarithm = TRUE</code>) or <code>0</code> (with <code>logarithm = FALSE</code>), and <code>sign</code> is <code>0</code>.
+This deviates from <code><a href="https://rdrr.io/r/base/det.html" class="external-link">base::determinant()</a></code>, which reports <code>sign</code> <code>1</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -2,6 +2,7 @@
 
 Computes the determinant of a square matrix via
 [`nv_determinant()`](https://r-xla.github.io/anvl/reference/nv_determinant.md).
+A singular matrix has determinant `0`.
 
 ## Usage
 

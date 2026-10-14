@@ -59,6 +59,12 @@ Matching base R's `det_ge_real`, the magnitude is computed in log space
 when `logarithm = TRUE` (\\\sum_i \log\|U\_{ii}\|\\) and as a direct
 product when `logarithm = FALSE` (\\\prod_i \|U\_{ii}\|\\).
 
+A singular matrix has determinant `0`: `modulus` is `-Inf` (with
+`logarithm = TRUE`) or `0` (with `logarithm = FALSE`), and `sign` is
+`0`. This deviates from
+[`base::determinant()`](https://rdrr.io/r/base/det.html), which reports
+`sign` `1`.
+
 ## See also
 
 [`nv_det()`](https://r-xla.github.io/anvl/reference/nv_det.md),

@@ -2,6 +2,11 @@
 
 ## anvl (development version)
 
+- Bugfix: The gradient of an empty strided
+  [`prim_static_slice()`](https://r-xla.github.io/anvl/reference/prim_static_slice.md)
+  has the shape of its input.
+- Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0
+  and in `x` at exponent 0.
 - Bugfix: The gradient of
   [`nv_pad()`](https://r-xla.github.io/anvl/reference/nv_pad.md) /
   [`prim_pad()`](https://r-xla.github.io/anvl/reference/prim_pad.md)

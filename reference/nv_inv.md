@@ -1,7 +1,9 @@
 # Matrix Inverse
 
 Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
-solving `x %*% y = I` for `y`.
+solving `x %*% y = I` for `y`. Unlike
+[`base::solve()`](https://rdrr.io/r/base/solve.html), a singular `x` is
+not an error: the result then holds non-finite values.
 
 For most use cases prefer
 [`nv_solve()`](https://r-xla.github.io/anvl/reference/nv_solve.md)
