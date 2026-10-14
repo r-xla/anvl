@@ -24,6 +24,11 @@
   and
   [`nv_float64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
   create an array of the data type in their name.
+- New functions for the binomial distribution:
+  [`nv_dbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md),
+  [`nv_pbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md)
+  and
+  [`nv_qbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md).
 - New functions for the exponential distribution:
   [`nv_dexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md),
   [`nv_pexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md),

@@ -83,7 +83,8 @@ named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) with
-the shape and data type of `x`/`q`/`p`.
+the shape of `x`/`q`/`p` and the float data type described under Data
+Types.
 
 `nv_rnorm()` returns a named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md):
@@ -109,11 +110,18 @@ same intervals for `f32`.
 
 ## Data Types
 
-`nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` compute at the data type of
-`x`/`q`/`p`, which must be float; an R value settles on the [default
-float](https://r-xla.github.io/anvl/reference/default_dtypes.md). An R
-value for `mean` or `sd` takes this data type. An array is promoted to
-it, so a wider one (e.g. `f64` for an `f32` `x`) is an error.
+`nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` compute at a float data type
+and return it. If `x`/`q`/`p` is a float, they compute at its data type;
+an R double settles on the [default
+float](https://r-xla.github.io/anvl/reference/default_dtypes.md). An
+integer `x`/`q`/`p` (an array or an R integer) is converted to the
+widest float among the arrays given for `mean` or `sd`, or to the
+default float if there is none. Integers beyond \\2^{24}\\ are not all
+exact at `f32`, so a large integer may change in that conversion.
+
+An R value for `mean` or `sd` takes the computing data type. An array is
+promoted to it, so a wider one (e.g. `f64` for an `f32` `x`) is an
+error.
 
 ## Random generation
 

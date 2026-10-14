@@ -80,7 +80,8 @@ named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) with
-the same shape and data type as `x`/`q`/`p`.
+the same shape as `x`/`q`/`p` and the float data type described under
+Data Types.
 
 `nv_runif()` returns a named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md):
@@ -104,11 +105,18 @@ b_i\]\\. For that, reduce over the result:
 
 ## Data Types
 
-`nv_dunif()`, `nv_punif()` and `nv_qunif()` compute at the data type of
-`x`/`q`/`p`, which must be float; an R value settles on the [default
-float](https://r-xla.github.io/anvl/reference/default_dtypes.md). An R
-value for `min` or `max` takes this data type. An array is promoted to
-it, so a wider one (e.g. `f64` for an `f32` `x`) is an error.
+`nv_dunif()`, `nv_punif()` and `nv_qunif()` compute at a float data type
+and return it. If `x`/`q`/`p` is a float, they compute at its data type;
+an R double settles on the [default
+float](https://r-xla.github.io/anvl/reference/default_dtypes.md). An
+integer `x`/`q`/`p` (an array or an R integer) is converted to the
+widest float among the arrays given for `min` or `max`, or to the
+default float if there is none. Integers beyond \\2^{24}\\ are not all
+exact at `f32`, so a large integer may change in that conversion.
+
+An R value for `min` or `max` takes the computing data type. An array is
+promoted to it, so a wider one (e.g. `f64` for an `f32` `x`) is an
+error.
 
 ## Random generation
 

@@ -162,7 +162,7 @@ common data type of <code>mean</code> and <code>sd</code>, and the
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code> | named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br><code>nv_dnorm()</code>, <code>nv_pnorm()</code> and <code>nv_qnorm()</code> return an <code><a href="arrayish.html">arrayish</a></code> with the
-shape and data type of <code>x</code>/<code>q</code>/<code>p</code>.</p>
+shape of <code>x</code>/<code>q</code>/<code>p</code> and the float data type described under Data Types.</p>
 <p><code>nv_rnorm()</code> returns a named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>: <code>state</code>, the updated
 RNG state with the input <code>state</code>'s data type and shape, and <code>values</code>, the
 sample of shape <code>shape</code> and the data type described under <code>dtype</code>.</p>
@@ -186,10 +186,14 @@ rational approximation on the same intervals for <code>f32</code>.</p>
 
 
 <p><code>nv_dnorm()</code>, <code>nv_pnorm()</code> and <code>nv_qnorm()</code> compute at
-the data type of <code>x</code>/<code>q</code>/<code>p</code>, which must be float; an R value settles on the
-<a href="default_dtypes.html">default float</a>. An R value for <code>mean</code> or <code>sd</code> takes this data
-type. An array is promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code>
-<code>x</code>) is an error.</p>
+a float data type and return it. If <code>x</code>/<code>q</code>/<code>p</code> is a float, they compute at
+its data type; an R double settles on the <a href="default_dtypes.html">default float</a>.
+An integer <code>x</code>/<code>q</code>/<code>p</code> (an array or an R integer) is converted to the widest
+float among the arrays given for <code>mean</code> or <code>sd</code>, or to the default float if
+there is none. Integers beyond \(2^{24}\) are not all exact at <code>f32</code>, so a
+large integer may change in that conversion.</p>
+<p>An R value for <code>mean</code> or <code>sd</code> takes the computing data type. An array is
+promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code> <code>x</code>) is an error.</p>
     </div>
     <div class="section level2">
     <h2 id="random-generation">Random generation<a class="anchor" aria-label="anchor" href="#random-generation"></a></h2>

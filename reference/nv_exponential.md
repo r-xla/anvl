@@ -53,8 +53,8 @@ nv_qexp(p, rate = 1, lower_tail = TRUE, log_p = FALSE)
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 `nv_dexp()`, `nv_pexp()`, and `nv_qexp()` return an
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) with
-the data type of `x`/`q`/`p` and the shape after scalar broadcasting
-with `rate`.
+the float data type described under Data Types and the shape after
+scalar broadcasting with `rate`.
 
 ## Details
 
@@ -75,11 +75,18 @@ rates follow base R's endpoint conventions:
 
 ## Data Types
 
-`nv_dexp()`, `nv_pexp()` and `nv_qexp()` compute at the data type of
-`x`/`q`/`p`, which must be float; an R value settles on the [default
-float](https://r-xla.github.io/anvl/reference/default_dtypes.md). An R
-value for `rate` takes this data type. An array is promoted to it, so a
-wider one (e.g. `f64` for an `f32` `x`) is an error.
+`nv_dexp()`, `nv_pexp()` and `nv_qexp()` compute at a float data type
+and return it. If `x`/`q`/`p` is a float, they compute at its data type;
+an R double settles on the [default
+float](https://r-xla.github.io/anvl/reference/default_dtypes.md). An
+integer `x`/`q`/`p` (an array or an R integer) is converted to the
+widest float among the arrays given for `rate`, or to the default float
+if there is none. Integers beyond \\2^{24}\\ are not all exact at `f32`,
+so a large integer may change in that conversion.
+
+An R value for `rate` takes the computing data type. An array is
+promoted to it, so a wider one (e.g. `f64` for an `f32` `x`) is an
+error.
 
 ## Examples
 

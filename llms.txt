@@ -695,6 +695,10 @@ distributions
   [`nv_qunif()`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
   [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_uniform.md) :
   The Uniform Distribution
+- [`nv_dbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md)
+  [`nv_pbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md)
+  [`nv_qbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md)
+  : The Binomial Distribution
 - [`nv_dexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
   [`nv_pexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
   [`nv_qexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
