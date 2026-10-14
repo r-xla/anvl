@@ -77,7 +77,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
-<ul><li>Bugfix: <code>nv_squeeze(x, axes = integer(0))</code> no longer drops every axis.</li>
+<ul><li>Bugfix: the common data type of arrays and R values no longer depends on the order of the arguments; the R values take the data type the arrays agree on.</li>
+<li>Bugfix: <code>nv_squeeze(x, axes = integer(0))</code> no longer drops every axis.</li>
 <li>Bugfix: <code><a href="../reference/nv_subset.html">nv_subset()</a></code> accepts an R value as <code>x</code>, like <code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> does.</li>
 <li>Bugfix: <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> no longer returns <code>Inf</code> / <code>-Inf</code> when a uniform draw is exactly 0.</li>
 <li>Bugfix: <code><a href="../reference/nv_mean.html">nv_mean()</a></code>, <code><a href="../reference/nv_var.html">nv_var()</a></code> and <code><a href="../reference/nv_sd.html">nv_sd()</a></code> no longer overflow on an integer input, which is now summed at the default float.</li>
