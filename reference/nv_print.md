@@ -27,6 +27,12 @@ nv_print(x)
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Returns the input unchanged, data type and shape included.
 
+## Order of prints
+
+A print is currently not ordered with respect to other prints. Due to
+compiler reordering it is possible that the order of the prints differs
+from their location in the code.
+
 ## See also
 
 [`prim_print()`](https://r-xla.github.io/anvl/reference/prim_print.md)
