@@ -545,6 +545,12 @@ describe("subset_specs_start_indices", {
 })
 
 describe("nv_subset", {
+  it("accepts an R array as x", {
+    r_arr <- matrix(1:6, nrow = 2L)
+    expect_equal(as.integer(nv_subset(r_arr, 2)), r_arr[2L, ])
+    expect_equal(as.integer(nv_subset(r_arr, , array(c(1L, 3L)))), as.vector(r_arr[, c(1L, 3L)]))
+  })
+
   it("returns a zero-sized axis for an empty index array", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)

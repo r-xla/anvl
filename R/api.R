@@ -3004,7 +3004,11 @@ nv_mean <- jit(
     assert_flag(nan_rm)
     x <- as_anvl_array(x)
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    if (!is_dtype_float(peek_dtype(x))) {
+      # Summed at the result's float data type, as an integer sum can overflow.
+      x <- nv_convert(x, default_float())
+    }
+    if (nan_rm) {
       is_nan <- nv_is_nan(x)
       total <- prim_sum(nv_ifelse(is_nan, 0L, x), axes = axes, drop = drop)
       count <- prim_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
