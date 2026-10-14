@@ -77,7 +77,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
-<ul><li>Bugfix: The gradient of an empty strided <code><a href="../reference/prim_static_slice.html">prim_static_slice()</a></code> has the shape of its input.</li>
+<ul><li>Bugfix: <code><a href="../reference/nv_seq.html">nv_seq()</a></code> counts down at an unsigned data type instead of erroring.</li>
+<li>Bugfix: The gradient of an empty strided <code><a href="../reference/prim_static_slice.html">prim_static_slice()</a></code> has the shape of its input.</li>
 <li>Bugfix: The gradient of <code>x^y</code> is 0 instead of <code>NaN</code> in <code>y</code> at base 0 and in <code>x</code> at exponent 0.</li>
 <li>Bugfix: The gradient of <code><a href="../reference/nv_pad.html">nv_pad()</a></code> / <code><a href="../reference/prim_pad.html">prim_pad()</a></code> works for negative edge padding.</li>
 <li>Bugfix: The gradient of <code><a href="../reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> is no longer permuted for broadcast axes that are not in increasing order.</li>

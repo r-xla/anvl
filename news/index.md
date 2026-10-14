@@ -2,6 +2,8 @@
 
 ## anvl (development version)
 
+- Bugfix: [`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md)
+  counts down at an unsigned data type instead of erroring.
 - Bugfix: The gradient of an empty strided
   [`prim_static_slice()`](https://r-xla.github.io/anvl/reference/prim_static_slice.md)
   has the shape of its input.
