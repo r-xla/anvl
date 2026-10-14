@@ -2,6 +2,14 @@
 
 ## anvl (development version)
 
+- Bugfix: The gradient of
+  [`nv_pad()`](https://r-xla.github.io/anvl/reference/nv_pad.md) /
+  [`prim_pad()`](https://r-xla.github.io/anvl/reference/prim_pad.md)
+  works for negative edge padding.
+- Bugfix: The gradient of
+  [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/reference/prim_broadcast_in_axes.md)
+  is no longer permuted for broadcast axes that are not in increasing
+  order.
 - Bugfix: An `NA` in an [`array()`](https://rdrr.io/r/base/array.html)
   subset index now gives an informative error.
 - Bugfix: the common data type of arrays and R values no longer depends
