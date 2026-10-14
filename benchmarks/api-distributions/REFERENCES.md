@@ -65,12 +65,17 @@ spec's named parameter set has since changed.
 `nv_punif`'s stable reference uses the same small-tail algorithm as anvl, and
 `nv_pexp`'s and `nv_qexp`'s use the same `log1mexp` split, with the
 underflowing regions handled their own way (the exact logs of the two factors
-for `nv_pexp`, a rescaled exponential for `nv_qexp`). Agreement between them in
-f64 becomes independent evidence only through the MPFR check.
+for `nv_pexp`, a rescaled exponential for `nv_qexp`). `nv_dbinom`'s uses the
+same saddle point expansion as anvl, with x − n p from the exact product.
+Agreement between them in f64 becomes independent evidence only through the
+MPFR check. `nv_pbinom`'s is base R's own value except in the far lower tail,
+where base R fails and it sums the series below the mode; its MPFR truth is
+independent of both, a continued fraction for the incomplete beta function.
 
-Currently, `nv_punif`'s log-scale value cells and the lower-tail log-scale
-value cells of `nv_pexp` and `nv_qexp` declare a stable reference. Evaluating
-it adds work to those cells; measure that cost on the target system.
+Currently, `nv_punif`'s log-scale value cells, the lower-tail log-scale value
+cells of `nv_pexp`, `nv_qexp` and `nv_pbinom`, and every value cell of
+`nv_dbinom` declare a stable reference. Evaluating it adds work to those
+cells; measure that cost on the target system.
 
 ## `validate-refs` — checking the references against high precision
 
@@ -224,8 +229,33 @@ failure that validation found in a first draft:
   the limiting +∞ derivative into −∞ — in the MPFR truth as much as in the
   reference.
 
+The binomial family's, again each a failure that validation or a check
+against MPFR found in a first draft:
+
+- the density is swept in `prob`, not x: a bit-pattern sweep of x lands on a
+  whole number only from 2^23 (f32) or 2^52 (f64) upwards;
+- `x / (n p)` overflows where n p is subnormal, which a double keeps (XLA
+  flushes it, so anvl needs no such case): there the deviance term takes
+  `log(x) − log(n p)`, which cannot cancel;
+- the density at x = 0 and x = n is `(1 − p)^n` and `p^n` by `pow`, as base
+  R's `pow1p()` does where 1 − p is exact, not `exp(n log1p(−p))`, which
+  multiplies the rounding of its log by |n log(1 − p)| (300 ulps);
+- base R's `pbinom()` is not uniformly accurate even in the bulk: its
+  probability-scale tails reach ~30 ulps at size 20, its `log.p` result
+  ~2000 ulps far above the mode at size 1e6, where the log is a tiny
+  −P(X > k), and in the far lower tail it returns −Inf or a finite but wrong
+  log (−603 for −844). The stable reference therefore replaces it only in the
+  far lower tail, and its bound covers base R's error elsewhere;
+- any double evaluation of a probability through exp of its log carries
+  about |log| ulps of error, so the density's references declare **4096** f64
+  ulps (validated near 3000, at densities near the bottom of the double
+  range) and `nv_pbinom`'s lower-tail log reference the same. A dispute still
+  needs base R off by more than that: ~1e−9 in the density at size 1e13, and
+  −Inf or hundreds in the log in the far lower tail.
+
 The normal-family specs currently declare a **16 f64 ulp** bound for gradient
-reference validation, the exponential-family specs **8**. Run `validate-refs` and inspect the records for the
+reference validation, the exponential-family specs **8**, and the binomial
+density's **4096**, for the reason above. Run `validate-refs` and inspect the records for the
 reference identity in use. `selftest` also checks selected
 regression cases against recorded MPFR values.
 
