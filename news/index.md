@@ -56,6 +56,13 @@
   [`prim_chol()`](https://r-xla.github.io/anvl/reference/prim_chol.md)
   now lower to a LAPACK (CPU) / cuSOLVER (CUDA) `potrf` custom call,
   which is about ten times faster on CPU.
+- Bugfix: the gradient of
+  [`prim_dot_general()`](https://r-xla.github.io/anvl/reference/prim_dot_general.md)
+  with respect to `lhs` is right when `lhs` has batching axes but no
+  free axes.
+- Bugfix:
+  [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/reference/nv_broadcast_arrays.md)
+  broadcasts a size-1 axis that meets a size-0 axis to size 0.
 
 ## anvl 0.5.1
 

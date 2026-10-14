@@ -12,10 +12,9 @@ be serialized to MLIR text via stablehlo::repr() and subsequently compiled to an
 XLA executable with pjrt::pjrt_compile().
 The rule for translating a primitive to stablehlo is prim_&amp;lt;name&amp;gt;[[&quot;stablehlo&quot;]].
 The arguments of the resulting function are, in this order: the graph's
-constants (when constants_as_inputs = TRUE), the graph's inputs, and the
-phantom donated inputs (when donate_unaliased_outputs = TRUE), one per
-output that is not already aliased to a donated input, in the order of the
-outputs.
+constants, the graph's inputs, and the phantom donated inputs (when
+donate_unaliased_outputs = TRUE), one per output that is not already
+aliased to a donated input, in the order of the outputs.
 This is a low-level function; most users should use jit() instead."><meta property="og:description" content="Converts a traced AnvlGraph into the StableHLO intermediate representation (IR),
 building a stablehlo::Func with the stablehlo package.
 Each statement of the graph is translated to its corresponding StableHLO op. The result can
@@ -23,10 +22,9 @@ be serialized to MLIR text via stablehlo::repr() and subsequently compiled to an
 XLA executable with pjrt::pjrt_compile().
 The rule for translating a primitive to stablehlo is prim_&amp;lt;name&amp;gt;[[&quot;stablehlo&quot;]].
 The arguments of the resulting function are, in this order: the graph's
-constants (when constants_as_inputs = TRUE), the graph's inputs, and the
-phantom donated inputs (when donate_unaliased_outputs = TRUE), one per
-output that is not already aliased to a donated input, in the order of the
-outputs.
+constants, the graph's inputs, and the phantom donated inputs (when
+donate_unaliased_outputs = TRUE), one per output that is not already
+aliased to a donated input, in the order of the outputs.
 This is a low-level function; most users should use jit() instead."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -106,10 +104,9 @@ be serialized to MLIR text via <code><a href="https://r-xla.github.io/stablehlo/
 XLA executable with <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_compile.html" class="external-link">pjrt::pjrt_compile()</a></code>.</p>
 <p>The rule for translating a primitive to stablehlo is <code>prim_&lt;name&gt;[["stablehlo"]]</code>.</p>
 <p>The arguments of the resulting function are, in this order: the graph's
-constants (when <code>constants_as_inputs = TRUE</code>), the graph's inputs, and the
-phantom donated inputs (when <code>donate_unaliased_outputs = TRUE</code>), one per
-output that is not already aliased to a donated input, in the order of the
-outputs.</p>
+constants, the graph's inputs, and the phantom donated inputs (when
+<code>donate_unaliased_outputs = TRUE</code>), one per output that is not already
+aliased to a donated input, in the order of the outputs.</p>
 <p>This is a low-level function; most users should use <code><a href="jit.html">jit()</a></code> instead.</p>
     </div>
 
@@ -183,8 +180,7 @@ primitives inherit the platform of the enclosing call.</p></dd>
     <p>(<code>list</code>)<br>
 Of length 3:</p><ul><li><p>the <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code></p></li>
 <li><p>The graph's constants: the <code><a href="GraphValue.html">GraphValue</a></code>s holding <code><a href="ConcreteArray.html">ConcreteArray</a></code>s,
-whose data must be passed as the leading inputs at execution time when
-<code>constants_as_inputs = TRUE</code>.</p></li>
+whose data must be passed as the leading inputs at execution time.</p></li>
 <li><p>A list of phantom-output specs, one per phantom donated input
 appended when <code>donate_unaliased_outputs = TRUE</code>. Each entry is a
 <code>list(dtype, shape)</code> describing the buffer the executor must

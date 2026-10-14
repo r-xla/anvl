@@ -343,7 +343,7 @@ result
     ## 
     ## $signal_var
     ## AnvlArray
-    ##  1.2431
+    ##  1.2432
     ## [ CPUf32{} ] 
     ## 
     ## $noise_var

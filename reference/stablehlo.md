@@ -15,10 +15,9 @@ The rule for translating a primitive to stablehlo is
 `prim_<name>[["stablehlo"]]`.
 
 The arguments of the resulting function are, in this order: the graph's
-constants (when `constants_as_inputs = TRUE`), the graph's inputs, and
-the phantom donated inputs (when `donate_unaliased_outputs = TRUE`), one
-per output that is not already aliased to a donated input, in the order
-of the outputs.
+constants, the graph's inputs, and the phantom donated inputs (when
+`donate_unaliased_outputs = TRUE`), one per output that is not already
+aliased to a donated input, in the order of the outputs.
 
 This is a low-level function; most users should use
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) instead.
@@ -103,8 +102,7 @@ Of length 3:
   [`GraphValue`](https://r-xla.github.io/anvl/reference/GraphValue.md)s
   holding
   [`ConcreteArray`](https://r-xla.github.io/anvl/reference/ConcreteArray.md)s,
-  whose data must be passed as the leading inputs at execution time when
-  `constants_as_inputs = TRUE`.
+  whose data must be passed as the leading inputs at execution time.
 
 - A list of phantom-output specs, one per phantom donated input appended
   when `donate_unaliased_outputs = TRUE`. Each entry is a

@@ -92,6 +92,8 @@
 <li>New functions for the exponential distribution: <code><a href="../reference/nv_exponential.html">nv_dexp()</a></code>, <code><a href="../reference/nv_exponential.html">nv_pexp()</a></code>, and <code><a href="../reference/nv_exponential.html">nv_qexp()</a></code>.</li>
 <li>
 <code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> now lower to a LAPACK (CPU) / cuSOLVER (CUDA) <code>potrf</code> custom call, which is about ten times faster on CPU.</li>
+<li>Bugfix: the gradient of <code><a href="../reference/prim_dot_general.html">prim_dot_general()</a></code> with respect to <code>lhs</code> is right when <code>lhs</code> has batching axes but no free axes.</li>
+<li>Bugfix: <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> broadcasts a size-1 axis that meets a size-0 axis to size 0.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.1" id="anvl-051">anvl 0.5.1<a class="anchor" aria-label="anchor" href="#anvl-051"></a></h2>
