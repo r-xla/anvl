@@ -1042,11 +1042,49 @@ prim_gather[["stablehlo"]] <- function(
 }
 
 prim_chol[["stablehlo"]] <- function(x, lower) {
-  L <- hlo_cholesky(x, lower = lower)
-  # The non-triangular part of the output is implementation-defined.
-  # Zero it out so downstream code (including reverse rules) never sees garbage.
   op_shape <- shape(x$value_type)
-  n <- op_shape[length(op_shape)]
+  r <- length(op_shape)
+  batch_axes <- seq_len(r - 2L) - 1L
+  dt <- dtype(x)
+
+  # pjrt's `potrf` custom call (LAPACK on the host, cuSOLVER on CUDA) factors
+  # column-major matrices and returns potrf's `info` per matrix, which is
+  # non-zero for a matrix that is not positive definite. We hand it XLA's
+  # default row-major layout instead, which saves a transpose on either side:
+  # potrf then sees t(x) and writes a factor that reads back transposed. The
+  # upper factor of t(x) is the transpose of the lower factor of x, and both
+  # come from the same triangle of x, so asking for the other triangle gives
+  # exactly the factor requested.
+  row_major <- rev(seq_len(r) - 1L)
+  out <- hlo_custom_call(
+    x,
+    call_target_name = "potrf",
+    api_version = 4L,
+    has_side_effect = FALSE,
+    backend_config = stablehlo::CustomOpBackendConfig(list(
+      stablehlo::BoolAttr(name = "lower", value = !lower)
+    )),
+    output_types = list(vt(dtype = dt, shape = op_shape), vt(dtype = "i32", shape = op_shape[seq_len(r - 2L)])),
+    operand_layouts = list(row_major),
+    result_layouts = list(row_major, rev(batch_axes))
+  )
+  L <- out[[1L]]
+  info <- out[[2L]]
+
+  # A matrix that is not positive definite factors to NaN, as XLA's own
+  # expansion of `stablehlo.cholesky` does.
+  ok <- hlo_compare(
+    info,
+    hlo_tensor(0L, dtype = "i32", shape = shape(info$value_type), func = x$func),
+    comparison_direction = "EQ",
+    compare_type = "SIGNED"
+  )
+  ok <- hlo_broadcast_in_dim(ok, batch_axes, op_shape)
+  L <- hlo_select(ok, L, hlo_tensor(NaN, dtype = dt, shape = op_shape, func = x$func))
+
+  # potrf leaves the input's values in the other triangle: zero it, so
+  # downstream code (including reverse rules) never sees them.
+  n <- op_shape[r]
   mat_shape <- c(n, n)
   rows <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = mat_shape, func = x$func)
   cols <- hlo_iota(iota_dimension = 1L, dtype = "i32", shape = mat_shape, func = x$func)
@@ -1055,10 +1093,10 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
   } else {
     hlo_compare(rows, cols, comparison_direction = "LE", compare_type = "SIGNED")
   }
-  if (length(op_shape) > 2L) {
-    mask <- hlo_broadcast_in_dim(mask, (length(op_shape) - 2L):(length(op_shape) - 1L), op_shape)
+  if (r > 2L) {
+    mask <- hlo_broadcast_in_dim(mask, c(r - 2L, r - 1L), op_shape)
   }
-  zero <- hlo_tensor(0L, dtype = dtype(x), shape = op_shape)
+  zero <- hlo_tensor(0L, dtype = dt, shape = op_shape, func = x$func)
   list(hlo_select(mask, L, zero))
 }
 

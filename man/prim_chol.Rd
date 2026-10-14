@@ -21,6 +21,7 @@ upper triangular factor \code{U} such that \code{x = t(U) \%*\% U}. If
 (\code{\link{arrayish}})\cr
 Has the same shape and data type as the input.
 The values in the triangle not specified by \code{lower} are implementation-defined.
+A matrix that is not positive definite factors to \code{NaN}.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
@@ -40,8 +41,8 @@ errors on a batched input (an input with more than 2 axes).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}, specified under
-\href{https://openxla.org/stablehlo/spec#cholesky}{cholesky}.
+Lowers to a \code{"potrf"} \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} (backed by LAPACK on CPU and
+cuSOLVER on CUDA) + postprocessing.
 }
 
 \examples{

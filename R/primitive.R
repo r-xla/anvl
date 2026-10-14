@@ -159,7 +159,7 @@ new_primitive <- function(
 # place it always was.
 mark_primitive_body <- function(body) {
   rlang::expr({
-    base::assign("INFER_PRIMITIVE", self, envir = utils::getFromNamespace("globals", "anvl"))
+    base::assign("infer_primitive", self, envir = utils::getFromNamespace("globals", "anvl"))
     !!body
   })
 }

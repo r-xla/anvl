@@ -26,11 +26,12 @@
 ##        delivered exactly as their pattern encodes them.
 ##
 ##   f64  index = the high word (sign + 11 exponent bits + top 20 mantissa
-##        bits = exactly 32 bits); the low 32 mantissa bits are drawn at random
-##        from a fixed seed. Stride 1 therefore takes exactly one sample from
-##        each of the 2^32 contiguous blocks of 2^32 patterns: every (sign,
-##        exponent, top-20-mantissa) combination is visited, which is the most
-##        that is reachable when 2^64 is out of the question.
+##        bits = exactly 32 bits); the low 32 mantissa bits are drawn at random,
+##        from a seed fixed per chunk and sign (chunk_seed()). Stride 1
+##        therefore takes exactly one sample from each of the 2^32 contiguous
+##        blocks of 2^32 patterns: every (sign, exponent, top-20-mantissa)
+##        combination is visited, which is the most that is reachable when 2^64
+##        is out of the question.
 ##
 ## Depth sets the stride, so a smoke run is the same sweep at coarser spacing
 ## rather than a different, narrower sweep -- it covers the whole number line,
@@ -43,11 +44,22 @@ DEPTHS <- list(
   full = list(stride = 1) #  4,294,967,296 samples
 )
 
-CHUNK_INDEX <- 2^20 # pattern indices per sign per chunk
+## Pattern indices per sign per chunk. At full depth a chunk is exactly one f64
+## binade (2^20 high words) and one eighth of an f32 binade (2^23 patterns).
+CHUNK_INDEX <- 2^20
 
 ## The low mantissa bits of an f64 sample are random; the seed makes a run on
 ## one machine reproduce on another, which is what lets HPC shards be compared.
 SWEEP_SEED <- 1142212L # "anvl" as a=1 .. z=26
+
+## Each chunk of each sign draws from its own seed rather than from one stream
+## for the whole cell, so a cell swept in parts (see R/queue.R) draws exactly
+## the inputs it would have drawn in one piece, and a part starting at chunk
+## 2000 does not first have to replay the 4 billion draws before it.
+## Recorded with every run as `sweep_sampling`: results under another scheme
+## sample different f64 inputs and are not comparable sample for sample.
+SWEEP_SAMPLING <- "chunk-seeded"
+chunk_seed <- function(k, sign) SWEEP_SEED + 2L * (as.integer(k) - 1L) + (sign < 0)
 
 sweep_plan <- function(dtype, depth) {
   d <- DEPTHS[[depth]]
@@ -78,6 +90,7 @@ sweep_chunk <- function(plan, k, sign) {
   x <- if (plan$dtype == "f32") {
     f32_from_bits(as.integer(idx))
   } else {
+    set.seed(chunk_seed(k, sign))
     f64_from_words(as.integer(idx), rand_word32(n))
   }
   ## An exact sign flip: negating the value is the same as setting the sign
@@ -818,6 +831,21 @@ reducer_topk <- function(dtype, k = 10L) {
         rounded = d$rounded,
         flushed = d$flushed
       )
+    },
+    ## Every reducer can hand over what it holds as plain data, and absorb
+    ## another's from a *later* stretch of the same sweep. Absorbing is exactly
+    ## what add() would have done with those samples: the order is stable, so
+    ## a tie goes to the earlier sample either way, and anything that could not
+    ## have displaced the k-th worst is gone from both. See sweep_state().
+    state = function() as.list(store),
+    absorb = function(st) {
+      for (key in names(st)) {
+        all <- rbind(store[[key]], st[[key]])
+        all <- utils::head(all[order(all$rel_err, decreasing = TRUE), , drop = FALSE], k)
+        store[[key]] <- all
+        if (nrow(all) == k) cut[[key]] <- all$rel_err[k]
+      }
+      invisible(NULL)
     }
   )
 }
@@ -875,6 +903,49 @@ reducer_runs <- function(stride) {
         rep_g <<- c(rep_g, gx[a])
         pairs[[m + 1L]] <<- tally
       }
+    },
+    state = function() {
+      list(
+        lo = lo,
+        hi = hi,
+        n = n,
+        cause = cause,
+        x_first = x_first,
+        x_last = x_last,
+        rep_x = rep_x,
+        rep_f = rep_f,
+        rep_g = rep_g,
+        pairs = pairs
+      )
+    },
+    ## A later stretch's regions, appended; its first joins this one's last
+    ## when they are contiguous with one cause -- the test add() applies
+    ## between chunks, so a region spanning the seam comes out whole.
+    absorb = function(st) {
+      if (!length(st$lo)) {
+        return(invisible(NULL))
+      }
+      m <- length(lo)
+      first <- 1L
+      if (m && st$lo[1L] == hi[m] + stride && st$cause[1L] == cause[m]) {
+        hi[m] <<- st$hi[1L]
+        n[m] <<- n[m] + st$n[1L]
+        x_last[m] <<- st$x_last[1L]
+        pairs[[m]] <<- pairs[[m]] + st$pairs[[1L]]
+        first <- 2L
+      }
+      r <- seq.int(first, length.out = length(st$lo) - first + 1L)
+      lo <<- c(lo, st$lo[r])
+      hi <<- c(hi, st$hi[r])
+      n <<- c(n, st$n[r])
+      cause <<- c(cause, st$cause[r])
+      x_first <<- c(x_first, st$x_first[r])
+      x_last <<- c(x_last, st$x_last[r])
+      rep_x <<- c(rep_x, st$rep_x[r])
+      rep_f <<- c(rep_f, st$rep_f[r])
+      rep_g <<- c(rep_g, st$rep_g[r])
+      pairs <<- c(pairs, st$pairs[r])
+      invisible(NULL)
     },
     get = function() {
       describe <- function(t) {
@@ -989,6 +1060,17 @@ reducer_disputes <- function(dtype, k = 10L) {
       out$bits <- bits_of(out$x, dtype)
       rownames(out) <- NULL
       out[order(out$kind, -out$beyond_tolerance), , drop = FALSE]
+    },
+    ## as reducer_topk()'s
+    state = function() as.list(store),
+    absorb = function(st) {
+      for (key in names(st)) {
+        all <- rbind(store[[key]], st[[key]])
+        all <- utils::head(all[order(all$by, decreasing = TRUE), , drop = FALSE], k)
+        store[[key]] <- all
+        if (nrow(all) == k) cut[[key]] <- all$by[k]
+      }
+      invisible(NULL)
     }
   )
 }
@@ -1198,7 +1280,50 @@ reducer_bands <- function(dtype) {
       acc[[k]] <<- a
     },
     get = function() acc,
-    span = function() span
+    span = function() span,
+    state = function() acc,
+    ## Counts add; maxima and minima combine; a worst-with-its-sample is
+    ## replaced only by a strictly worse one, which leaves a tie with the
+    ## earlier sample as add() does.
+    absorb = function(st) {
+      sums <- c(
+        "n",
+        "rounded",
+        "zero_sign",
+        "flushed",
+        "flushed_zero_error",
+        "out_normal",
+        "out_normal_identical",
+        "kinds",
+        "ref_candidate",
+        "ref_candidate_nonfinite",
+        "ref_shared"
+      )
+      for (k in seq_along(acc)) {
+        a <- acc[[k]]
+        b <- st[[k]]
+        for (f in sums) {
+          a[[f]] <- a[[f]] + b[[f]]
+        }
+        a$worst <- pmax(a$worst, b$worst)
+        a$worst_ulp <- pmax(a$worst_ulp, b$worst_ulp)
+        a$worst_excl <- pmax(a$worst_excl, b$worst_excl)
+        a$m_worst <- pmin(a$m_worst, b$m_worst, na.rm = TRUE)
+        a$m_best <- pmax(a$m_best, b$m_best, na.rm = TRUE)
+        w <- b$out_normal_worst > a$out_normal_worst
+        a$out_normal_worst[w] <- b$out_normal_worst[w]
+        a$out_normal_x[w] <- b$out_normal_x[w]
+        a$out_normal_value[w] <- b$out_normal_value[w]
+        a$out_normal_reference[w] <- b$out_normal_reference[w]
+        w <- b$out_normal_worst_excl > a$out_normal_worst_excl
+        a$out_normal_worst_excl[w] <- b$out_normal_worst_excl[w]
+        a$out_normal_excl_x[w] <- b$out_normal_excl_x[w]
+        a$out_normal_excl_value[w] <- b$out_normal_excl_value[w]
+        a$out_normal_excl_reference[w] <- b$out_normal_excl_reference[w]
+        acc[[k]] <<- a
+      }
+      invisible(NULL)
+    }
   )
 }
 
@@ -1431,7 +1556,16 @@ reducer_hist <- function() {
         count_ref_candidate = cand
       )
     },
-    totals = function() list(n_exact = n_exact, n_inf = n_inf, n_rounded = n_rounded)
+    totals = function() list(n_exact = n_exact, n_inf = n_inf, n_rounded = n_rounded),
+    state = function() list(counts = counts, cand = cand, n_exact = n_exact, n_inf = n_inf, n_rounded = n_rounded),
+    absorb = function(st) {
+      counts <<- counts + st$counts
+      cand <<- cand + st$cand
+      n_exact <<- n_exact + st$n_exact
+      n_inf <<- n_inf + st$n_inf
+      n_rounded <<- n_rounded + st$n_rounded
+      invisible(NULL)
+    }
   )
 }
 
@@ -1581,6 +1715,12 @@ run_points <- function(fun, ref, dtype, outputs, pts, domain = c(-Inf, Inf), sta
 ## `stable`, when given, is list(fun, bound_ulp64): a stable reference for
 ## some outputs (a named list like `ref`'s, possibly covering fewer), tested
 ## against every sample of those outputs -- see dispute_facts().
+##
+## `chunks` restricts the sweep to a contiguous, increasing stretch of chunk
+## numbers -- one *part* of a cell -- and `finish = FALSE` returns what the
+## reducers hold rather than the finished tables (see sweep_state()). Every
+## chunk is seeded on its own, so the parts of a cell, absorbed in order by
+## sweep_assemble(), give exactly what the cell gives when swept in one piece.
 run_sweep <- function(
   fun,
   ref,
@@ -1591,38 +1731,29 @@ run_sweep <- function(
   topk = 10L,
   domain = c(-Inf, Inf),
   ctx = NULL,
-  stable = NULL
+  stable = NULL,
+  chunks = NULL,
+  finish = TRUE
 ) {
   plan <- sweep_plan(dtype, depth)
-  ## The behaviour at +-0 is taken before seeding, so it cannot shift the
-  ## random stream that the f64 samples are drawn from. A caller that has
-  ## already evaluated the exact points passes it in (see run_points()).
+  ## A caller that has already evaluated the exact points passes the
+  ## behaviour at +-0 in (see run_points()).
   if (is.null(ctx)) {
     ctx <- sweep_context(fun, ref, dtype, outputs, domain)
   }
-  set.seed(SWEEP_SEED)
-
-  acc <- lapply(outputs, function(o) {
-    list(
-      topk = reducer_topk(dtype, topk),
-      hist = reducer_hist(),
-      bands = reducer_bands(dtype),
-      runs = list(reducer_runs(plan$stride), reducer_runs(plan$stride)),
-      disputes = reducer_disputes(dtype, topk)
-    )
-  })
-  names(acc) <- outputs
+  chunks <- check_chunks(chunks %||% seq_len(plan$n_chunks), plan)
+  acc <- sweep_reducers(plan, outputs, topk)
 
   if (progress) {
     cli::cli_progress_bar(
       format = "{cli::pb_extra$tag} {cli::pb_bar} {cli::pb_percent} | ETA {cli::pb_eta}",
-      total = plan$n_chunks * 2L,
+      total = length(chunks) * 2L,
       extra = list(tag = sprintf("%s/%s", dtype, depth))
     )
   }
 
   t0 <- proc.time()[["elapsed"]]
-  for (k in seq_len(plan$n_chunks)) {
+  for (k in chunks) {
     for (sgn in c(1, -1)) {
       ch <- sweep_chunk(plan, k, sgn)
       if (is.null(ch)) {
@@ -1655,6 +1786,129 @@ run_sweep <- function(
     cli::cli_progress_done()
   }
 
+  if (!finish) {
+    return(list(chunks = chunks, elapsed = elapsed, state = sweep_state(acc)))
+  }
+  sweep_result(acc, plan, outputs, stable, elapsed)
+}
+
+## A stretch of chunk numbers a sweep can take: contiguous, increasing and
+## inside the plan, since the region tracker joins regions across chunk seams.
+check_chunks <- function(chunks, plan) {
+  chunks <- as.integer(chunks)
+  if (
+    !length(chunks) ||
+      anyNA(chunks) ||
+      chunks[1L] < 1L ||
+      chunks[length(chunks)] > plan$n_chunks ||
+      any(diff(chunks) != 1L)
+  ) {
+    stop(
+      sprintf("chunks must be a contiguous stretch of 1..%d at depth '%s'", plan$n_chunks, plan$depth),
+      call. = FALSE
+    )
+  }
+  chunks
+}
+
+## One set of reducers per output.
+sweep_reducers <- function(plan, outputs, topk) {
+  acc <- lapply(outputs, function(o) {
+    list(
+      topk = reducer_topk(plan$dtype, topk),
+      hist = reducer_hist(),
+      bands = reducer_bands(plan$dtype),
+      runs = list(reducer_runs(plan$stride), reducer_runs(plan$stride)),
+      disputes = reducer_disputes(plan$dtype, topk)
+    )
+  })
+  names(acc) <- outputs
+  acc
+}
+
+## What a part's reducers hold, as plain data that survives saveRDS(): every
+## reducer's own state(), nothing derived. Small for a well-behaved cell -- a
+## few hundred kB, mostly the per-binade kind tallies.
+sweep_state <- function(acc) {
+  lapply(acc, function(a) {
+    list(
+      topk = a$topk$state(),
+      hist = a$hist$state(),
+      bands = a$bands$state(),
+      runs = lapply(a$runs, function(r) r$state()),
+      disputes = a$disputes$state()
+    )
+  })
+}
+
+## A cell's parts, as run_sweep(finish = FALSE) returned them, assembled into
+## the result run_sweep() gives for the whole cell. They must cover every chunk
+## exactly once, and are absorbed in chunk order, which is what makes the
+## assembly exact (see the reducers' absorb()). The elapsed time is the sum of
+## the parts': the cost of the cell, not the wall time of any one process.
+sweep_assemble <- function(parts, dtype, depth, outputs, topk = 10L, stable = NULL) {
+  failed <- !vapply(parts, function(p) is.list(p) && !is.null(p$state), TRUE)
+  if (any(failed)) {
+    stop("a part has no sweep state to assemble: ", paste(unlist(parts[failed]), collapse = "; "), call. = FALSE)
+  }
+  asm <- sweep_assembler(dtype, depth, outputs, topk)
+  for (p in parts[order(vapply(parts, function(p) p$chunks[1L], 1L))]) {
+    asm$absorb(p)
+  }
+  asm$finish(stable)
+}
+
+## The same, one part at a time, for parts that should not all be held at
+## once: at full depth a part's state is ~10 MB (mostly per-binade tallies, per
+## output and sign), a cell can have hundreds of parts, and holding them all
+## once took workers past their memory limit. absorb() takes the parts in chunk
+## order, each starting where the last ended; finish() checks that they
+## reached the last chunk and returns the result.
+sweep_assembler <- function(dtype, depth, outputs, topk = 10L) {
+  plan <- sweep_plan(dtype, depth)
+  acc <- sweep_reducers(plan, outputs, topk)
+  next_chunk <- 1L
+  elapsed <- 0
+  uncovered <- function() {
+    stop(
+      sprintf("the parts do not cover chunks 1..%d exactly once, in order, at depth '%s'", plan$n_chunks, depth),
+      call. = FALSE
+    )
+  }
+  list(
+    absorb = function(p) {
+      if (!is.list(p) || is.null(p$state)) {
+        stop("a part has no sweep state to assemble: ", paste(unlist(p), collapse = "; "), call. = FALSE)
+      }
+      if (p$chunks[1L] != next_chunk) {
+        uncovered()
+      }
+      for (o in outputs) {
+        a <- acc[[o]]
+        st <- p$state[[o]]
+        a$topk$absorb(st$topk)
+        a$hist$absorb(st$hist)
+        a$bands$absorb(st$bands)
+        a$runs[[1L]]$absorb(st$runs[[1L]])
+        a$runs[[2L]]$absorb(st$runs[[2L]])
+        a$disputes$absorb(st$disputes)
+      }
+      next_chunk <<- p$chunks[length(p$chunks)] + 1L
+      elapsed <<- elapsed + p$elapsed
+      invisible(NULL)
+    },
+    finish = function(stable = NULL) {
+      if (next_chunk != plan$n_chunks + 1L) {
+        uncovered()
+      }
+      sweep_result(acc, plan, outputs, stable, elapsed)
+    }
+  )
+}
+
+## The finished tables, per output, from a sweep's reducers.
+sweep_result <- function(acc, plan, outputs, stable, elapsed) {
+  dtype <- plan$dtype
   lapply(stats::setNames(outputs, outputs), function(o) {
     a <- acc[[o]]
     ## candidate-filtered figures exist only where a stable reference covered
