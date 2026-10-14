@@ -20,6 +20,7 @@ A scalar with the input's data type -- or the default float data type
 }
 \description{
 Computes the determinant of a square matrix via \code{\link[=nv_determinant]{nv_determinant()}}.
+A singular matrix has determinant \code{0}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

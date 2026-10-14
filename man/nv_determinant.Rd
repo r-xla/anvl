@@ -44,6 +44,10 @@ For computing the determinant, we use:
 Matching base R's \code{det_ge_real}, the magnitude is computed in log
 space when \code{logarithm = TRUE} (\eqn{\sum_i \log|U_{ii}|}) and as a
 direct product when \code{logarithm = FALSE} (\eqn{\prod_i |U_{ii}|}).
+
+A singular matrix has determinant \code{0}: \code{modulus} is \code{-Inf} (with
+\code{logarithm = TRUE}) or \code{0} (with \code{logarithm = FALSE}), and \code{sign} is \code{0}.
+This deviates from \code{\link[base:determinant]{base::determinant()}}, which reports \code{sign} \code{1}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

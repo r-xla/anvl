@@ -135,6 +135,15 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
   invisible(x)
 }
 
+# Box-Muller transform: map two batches of uniforms in [0, 1) to twice as many
+# standard normals. The radius uses 1 - u1, which lies in (0, 1], so a uniform
+# of exactly 0 gives a finite sample.
+box_muller <- function(u1, u2) {
+  radius <- nv_sqrt(nv_log(1L - u1) * -2L)
+  theta <- u2 * (2 * pi)
+  nv_concatenate(radius * nv_sin(theta), radius * nv_cos(theta), axis = 1L)
+}
+
 #' @rdname nv_normal
 #' @template param_shape
 #' @template param_state
@@ -184,38 +193,10 @@ nv_rnorm <- jit(
     # n: amount of rvs needed
     n <- prod(shape)
 
-    # Box-Muller Method:
-    # from two random uniform variables u1 and u2 we can produce to normals z1, z2
-    # z1 = sqrt(-2 * log(u1)) * cos(2 * pi * u2)
-    # z2 = sqrt(-2 * log(u1)) * sin(2 * pi * u2)
-    # Box-Muller works via polar representation of coordinates.
-    # We scale this approach and genereate ceil(n/2) uniform rvs twice (U, Theta)
-
-    # generate the first ceil(n/2) random uniform variables
-    U <- nv_unif_rand(
-      state = state,
-      dtype = dtype,
-      shape = as.integer(ceiling(n / 2L))
-    )
-
-    # compute the radius R = sqrt(-2 * log(u1))
-    R <- nv_mul(nv_log(U$values), -2L)
-    sqrt_R <- nv_sqrt(R)
-
-    # generate second batch of ceil(n/2) random uniform variables
-    Theta <- nv_unif_rand(state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2L)))
-
-    # compute cos(2 * pi * u2) / sin(2 * pi * u2)
-    Theta$values <- nv_mul(Theta$values, 2 * pi)
-    sin_Theta <- nv_sin(Theta$values)
-    cos_Theta <- nv_cos(Theta$values)
-
-    # compute z1, z2
-    Z1 <- nv_mul(sqrt_R, sin_Theta)
-    Z2 <- nv_mul(sqrt_R, cos_Theta)
-
-    # concatenate z = (z1, z2)
-    Z <- nv_concatenate(Z1, Z2, axis = 1L)
+    m <- as.integer(ceiling(n / 2L))
+    U1 <- nv_unif_rand(state = state, dtype = dtype, shape = m)
+    U2 <- nv_unif_rand(state = U1$state, dtype = dtype, shape = m)
+    Z <- box_muller(U1$values, U2$values)
 
     # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
     if (n %% 2L == 1L) {
@@ -233,7 +214,7 @@ nv_rnorm <- jit(
     N <- Z * sd + mean
 
     # return state and Normals N
-    list(state = Theta$state, values = N)
+    list(state = U2$state, values = N)
   },
   static = c(1L, 5L)
 )
