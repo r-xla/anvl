@@ -589,6 +589,7 @@ nv_static_slice <- prim_static_slice
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged, data type and shape included.
+#' @template section_print_order
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the value is printed and handed back unchanged
@@ -2348,7 +2349,8 @@ nv_chol <- jit(
 #' @description
 #' Solves the linear system `a %*% x = b` for `x`. Uses LU decomposition
 #' with partial pivoting internally, so `a` need only be square and
-#' non-singular.
+#' non-singular. Unlike [base::solve()], a singular `a` is not an error: the
+#' result then holds non-finite values.
 #' @details
 #' \deqn{A x = b}
 #' \deqn{P A = L U}
@@ -2549,6 +2551,7 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' @title Determinant
 #' @description
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
+#' A singular matrix has determinant `0`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @return ([`arrayish`])\cr
@@ -2580,6 +2583,10 @@ nv_det <- jit(function(x) {
 #' Matching base R's `det_ge_real`, the magnitude is computed in log
 #' space when `logarithm = TRUE` (\eqn{\sum_i \log|U_{ii}|}) and as a
 #' direct product when `logarithm = FALSE` (\eqn{\prod_i |U_{ii}|}).
+#'
+#' A singular matrix has determinant `0`: `modulus` is `-Inf` (with
+#' `logarithm = TRUE`) or `0` (with `logarithm = FALSE`), and `sign` is `0`.
+#' This deviates from [base::determinant()], which reports `sign` `1`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @param logarithm (`logical(1)`)\cr
@@ -2643,7 +2650,8 @@ nv_determinant <- jit(
 #' @title Matrix Inverse
 #' @description
 #' Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
-#' solving `x %*% y = I` for `y`.
+#' solving `x %*% y = I` for `y`. Unlike [base::solve()], a singular `x` is
+#' not an error: the result then holds non-finite values.
 #'
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
