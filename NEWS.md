@@ -16,6 +16,8 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
+* Bugfix: `nv_pmax()`, `nv_pmin()`, `nv_clamp()` (and `max()` / `min()` with several
+  arguments) now propagate a NaN in any operand on CPU.
 
 # anvl 0.5.1
 

@@ -454,12 +454,35 @@ prim_le[["stablehlo"]] <- .stablehlo_compare_bin("LE")
 
 # binary simple math jit rules ---------------------------------------------------
 
+# XLA CPU lowers maximum, minimum and clamp to comparisons that drop a NaN
+# operand (`xla_cpu_enable_fast_min_max`), so a float result takes the first
+# NaN operand back explicitly. A scalar operand is broadcast to `out`'s shape.
+.stablehlo_propagate_nan <- function(out, operands, output_types) {
+  if (!is_dtype_float(dtype(out))) {
+    return(out)
+  }
+  Reduce(
+    function(operand, out) {
+      if (!identical(shape(operand), shape(out))) {
+        operand <- hlo_broadcast_in_dim(operand, integer(0L), shape(out))
+      }
+      is_nan <- hlo_compare(operand, operand, comparison_direction = "NE", compare_type = "FLOAT")
+      hlo_select(is_nan, operand, out, output_types = output_types)
+    },
+    operands,
+    init = out,
+    right = TRUE
+  )
+}
+
 prim_pmax[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_maximum(lhs, rhs, output_types = output_types))
+  out <- hlo_maximum(lhs, rhs, output_types = output_types)
+  list(.stablehlo_propagate_nan(out, list(lhs, rhs), output_types))
 }
 
 prim_pmin[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_minimum(lhs, rhs, output_types = output_types))
+  out <- hlo_minimum(lhs, rhs, output_types = output_types)
+  list(.stablehlo_propagate_nan(out, list(lhs, rhs), output_types))
 }
 
 prim_remainder[["stablehlo"]] <- function(x, y, output_types) {
@@ -644,7 +667,8 @@ prim_popcnt[["stablehlo"]] <- function(x, output_types) {
 }
 
 prim_clamp[["stablehlo"]] <- function(x, min, max, output_types) {
-  list(hlo_clamp(min, x, max, output_types = output_types))
+  out <- hlo_clamp(min, x, max, output_types = output_types)
+  list(.stablehlo_propagate_nan(out, list(x, min, max), output_types))
 }
 
 prim_rev[["stablehlo"]] <- function(x, axes, output_types) {

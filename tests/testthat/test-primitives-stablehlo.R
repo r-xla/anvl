@@ -1097,11 +1097,49 @@ test_that("prim_is_finite", {
   expect_equal(prim_is_finite(x), nv_array(c(TRUE, FALSE, FALSE, FALSE), dtype = "bool"))
 })
 
-test_that("prim_clamp", {
-  x <- nv_array(c(-2.0, -0.5, 0.5, 2.0), dtype = "f32")
-  lo <- nv_broadcast_to(nv_scalar(-1.0, "f32"), shape(x))
-  hi <- nv_broadcast_to(nv_scalar(1.0, "f32"), shape(x))
-  expect_equal(prim_clamp(x, lo, hi), nv_array(c(-1.0, -0.5, 0.5, 1.0), dtype = "f32"))
+describe("prim_pmax / prim_pmin", {
+  it("propagate a NaN in either operand, eagerly and under jit", {
+    lhs <- c(NaN, 1, 3, NaN)
+    rhs <- c(2, NaN, 1, NaN)
+    for (dt in c("f32", "f64")) {
+      x <- nv_array(lhs, dtype = dt)
+      y <- nv_array(rhs, dtype = dt)
+      expect_equal(as.vector(as_array(prim_pmax(x, y))), pmax(lhs, rhs))
+      expect_equal(as.vector(as_array(prim_pmin(x, y))), pmin(lhs, rhs))
+      expect_equal(as.vector(as_array(jit(prim_pmax)(x, y))), pmax(lhs, rhs))
+      expect_equal(as.vector(as_array(jit(prim_pmin)(x, y))), pmin(lhs, rhs))
+    }
+  })
+
+  it("leave integers to the plain maximum and minimum", {
+    x <- nv_array(c(1L, 5L, -3L), dtype = "i32")
+    y <- nv_array(c(2L, 4L, -3L), dtype = "i32")
+    expect_equal(as.integer(as_array(prim_pmax(x, y))), c(2L, 5L, -3L))
+    expect_equal(as.integer(as_array(prim_pmin(x, y))), c(1L, 4L, -3L))
+  })
+})
+
+describe("prim_clamp", {
+  it("clamps to the bounds", {
+    x <- nv_array(c(-2.0, -0.5, 0.5, 2.0), dtype = "f32")
+    lo <- nv_broadcast_to(nv_scalar(-1.0, "f32"), shape(x))
+    hi <- nv_broadcast_to(nv_scalar(1.0, "f32"), shape(x))
+    expect_equal(prim_clamp(x, lo, hi), nv_array(c(-1.0, -0.5, 0.5, 1.0), dtype = "f32"))
+  })
+
+  it("propagates a NaN in x, eagerly and under jit", {
+    for (dt in c("f32", "f64")) {
+      x <- nv_array(c(-1, 0.5, 5, NaN), dtype = dt)
+      expect_equal(as.vector(as_array(prim_clamp(x, 0, 1))), c(0, 0.5, 1, NaN))
+      expect_equal(as.vector(as_array(jit(prim_clamp)(x, 0, 1))), c(0, 0.5, 1, NaN))
+    }
+  })
+
+  it("propagates a NaN bound, scalar or not", {
+    x <- nv_array(c(-1, 0.5, 5), dtype = "f64")
+    expect_equal(as.vector(as_array(prim_clamp(x, NaN, 1))), rep(NaN, 3L))
+    expect_equal(as.vector(as_array(prim_clamp(x, 0, nv_array(c(1, NaN, 1), dtype = "f64")))), c(0, NaN, 1))
+  })
 })
 
 test_that("prim_rev", {
