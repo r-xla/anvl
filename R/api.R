@@ -2905,6 +2905,9 @@ nv_eye <- jit(
 
 # The `nan_rm = TRUE` treatment of a reduction: replace NaN by `value`, the
 # reduction's identity. A non-float array holds no NaN and is returned as is.
+# Callers assign the result before passing it to the primitive: an argument
+# promise forced inside the primitive's body would run these operations there,
+# and an error the primitive then raises would no longer be attributed to it.
 .replace_nan <- function(x, value, nan_rm) {
   if (nan_rm && is_dtype_float(peek_dtype(x))) nv_ifelse(nv_is_nan(x), value, x) else x
 }
@@ -2980,7 +2983,8 @@ nv_sum <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    prim_sum(.replace_nan(x, 0L, nan_rm), axes = axes, drop = drop)
+    x <- .replace_nan(x, 0L, nan_rm)
+    prim_sum(x, axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3067,7 +3071,8 @@ nv_prod <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    prim_prod(.replace_nan(x, 1L, nan_rm), axes = axes, drop = drop)
+    x <- .replace_nan(x, 1L, nan_rm)
+    prim_prod(x, axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3280,7 +3285,8 @@ nv_cumsum <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    prim_cumsum(.replace_nan(cum$x, 0L, nan_rm), axis = cum$axis)
+    x <- .replace_nan(cum$x, 0L, nan_rm)
+    prim_cumsum(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3307,7 +3313,8 @@ nv_cumprod <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    prim_cumprod(.replace_nan(cum$x, 1L, nan_rm), axis = cum$axis)
+    x <- .replace_nan(cum$x, 1L, nan_rm)
+    prim_cumprod(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3377,7 +3384,8 @@ nv_cummin <- jit(
 # the reduction's identity.
 .nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
   cum <- .resolve_cum_input(as_anvl_array(x), axis)
-  out <- prim_cum(.replace_nan(cum$x, identity_val, nan_rm), axis = cum$axis)
+  x <- .replace_nan(cum$x, identity_val, nan_rm)
+  out <- prim_cum(x, axis = cum$axis)
   if (indices) out else out$values
 }
 
