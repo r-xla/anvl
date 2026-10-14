@@ -591,6 +591,7 @@ nv_static_slice <- prim_static_slice
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged, data type and shape included.
+#' @template section_print_order
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the value is printed and handed back unchanged
@@ -2346,7 +2347,8 @@ nv_chol <- jit(
 #' @description
 #' Solves the linear system `a %*% x = b` for `x`. Uses LU decomposition
 #' with partial pivoting internally, so `a` need only be square and
-#' non-singular.
+#' non-singular. Unlike [base::solve()], a singular `a` is not an error: the
+#' result then holds non-finite values.
 #' @details
 #' \deqn{A x = b}
 #' \deqn{P A = L U}
@@ -2547,6 +2549,7 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' @title Determinant
 #' @description
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
+#' A singular matrix has determinant `0`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @return ([`arrayish`])\cr
@@ -2578,6 +2581,10 @@ nv_det <- jit(function(x) {
 #' Matching base R's `det_ge_real`, the magnitude is computed in log
 #' space when `logarithm = TRUE` (\eqn{\sum_i \log|U_{ii}|}) and as a
 #' direct product when `logarithm = FALSE` (\eqn{\prod_i |U_{ii}|}).
+#'
+#' A singular matrix has determinant `0`: `modulus` is `-Inf` (with
+#' `logarithm = TRUE`) or `0` (with `logarithm = FALSE`), and `sign` is `0`.
+#' This deviates from [base::determinant()], which reports `sign` `1`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @param logarithm (`logical(1)`)\cr
@@ -2641,7 +2648,8 @@ nv_determinant <- jit(
 #' @title Matrix Inverse
 #' @description
 #' Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
-#' solving `x %*% y = I` for `y`.
+#' solving `x %*% y = I` for `y`. Unlike [base::solve()], a singular `x` is
+#' not an error: the result then holds non-finite values.
 #'
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
@@ -3010,7 +3018,11 @@ nv_mean <- jit(
     assert_flag(nan_rm)
     x <- as_anvl_array(x)
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    if (!is_dtype_float(peek_dtype(x))) {
+      # Summed at the result's float data type, as an integer sum can overflow.
+      x <- nv_convert(x, default_float())
+    }
+    if (nan_rm) {
       is_nan <- nv_is_nan(x)
       total <- prim_sum(nv_ifelse(is_nan, 0L, x), axes = axes, drop = drop)
       count <- prim_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
@@ -3743,7 +3755,7 @@ nv_squeeze <- function(x, axes = NULL) {
       axis <- not_one[[1L]]
       cli_abort("Cannot squeeze axis {axis}: its size is {shp[axis]}, but must be 1")
     }
-    new_shape <- shp[-axes]
+    new_shape <- shp[setdiff(seq_along(shp), axes)]
   }
   if (length(new_shape) == 0L) {
     new_shape <- integer(0L)

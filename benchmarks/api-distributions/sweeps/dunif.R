@@ -101,23 +101,31 @@ sweep_spec(
     js <- reticulate::import("jax.scipy.stats", convert = FALSE)
     np <- reticulate::import("numpy")
     fn <- if (isTRUE(f$log)) js$uniform$logpdf else js$uniform$pdf
-    as.double(np$asarray(fn(jnp$asarray(x, dtype = jax_dtype(dtype)), p$min, p$max - p$min)))
+    as.double(np$asarray(fn(jax_array(x, dtype), p$min, p$max - p$min)))
   },
   jax_grad = function(x, dtype, p, f) {
     jax_init()
-    reticulate::py_run_string(
-      "
+    ## Defined once per process, and each twin jitted once per variant
+    ## (lru_cache): rebuilt on every call, JAX re-traced every chunk, at
+    ## ~0.5 s a call against ~0.02 s. The program, and so every output, is
+    ## the same either way.
+    if (!reticulate::py_has_attr(reticulate::py, "_dunif_grad")) {
+      reticulate::py_run_string(
+        "
 import jax
+import functools
 from jax.scipy.stats import uniform as _u
+@functools.lru_cache(maxsize=None)
 def _dunif_grad(log, i):
     f = _u.logpdf if log else _u.pdf
     g = jax.grad(lambda x, mn, mx: f(x, mn, mx - mn), argnums=i)
     return jax.jit(jax.vmap(g, in_axes=(0, None, None)))
 "
-    )
+      )
+    }
     jnp <- reticulate::import("jax.numpy", convert = FALSE)
     np <- reticulate::import("numpy")
-    xx <- jnp$asarray(x, dtype = jax_dtype(dtype))
+    xx <- jax_array(x, dtype)
     g <- function(i) {
       as.double(np$asarray(reticulate::py$`_dunif_grad`(f$log, i)(xx, p$min, p$max)))
     }

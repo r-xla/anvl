@@ -213,25 +213,33 @@ sweep_spec(
     js <- reticulate::import("jax.scipy.stats", convert = FALSE)
     np <- reticulate::import("numpy")
     as.double(np$asarray(js$uniform$cdf(
-      jnp$asarray(x, dtype = jax_dtype(dtype)),
+      jax_array(x, dtype),
       p$min,
       p$max - p$min
     )))
   },
   jax_grad = function(x, dtype, p, f) {
     jax_init()
-    reticulate::py_run_string(
-      "
+    ## Defined once per process, and each twin jitted once per variant
+    ## (lru_cache): rebuilt on every call, JAX re-traced every chunk, at
+    ## ~0.5 s a call against ~0.02 s. The program, and so every output, is
+    ## the same either way.
+    if (!reticulate::py_has_attr(reticulate::py, "_punif_grad")) {
+      reticulate::py_run_string(
+        "
 import jax
+import functools
 from jax.scipy.stats import uniform as _u
+@functools.lru_cache(maxsize=None)
 def _punif_grad(i):
     g = jax.grad(lambda q, mn, mx: _u.cdf(q, mn, mx - mn), argnums=i)
     return jax.jit(jax.vmap(g, in_axes=(0, None, None)))
 "
-    )
+      )
+    }
     jnp <- reticulate::import("jax.numpy", convert = FALSE)
     np <- reticulate::import("numpy")
-    xx <- jnp$asarray(x, dtype = jax_dtype(dtype))
+    xx <- jax_array(x, dtype)
     g <- function(i) as.double(np$asarray(reticulate::py$`_punif_grad`(i)(xx, p$min, p$max)))
     list(q = g(0L), min = g(1L), max = g(2L))
   }

@@ -67,13 +67,16 @@ prim_pow[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   y <- inputs[[2L]]
   out <- outputs[[1L]]
   grad <- grads[[1L]]
+  # As in JAX, the derivatives are 0 where they would otherwise read 0^-1 or
+  # log(0) at base 0: x^0 is constant in x, and 0^y is constant in y.
   list(
     if (required[[1L]]) {
-      one <- ones_like(x)
-      prim_mul(prim_mul(grad, y), prim_pow(x, prim_sub(y, one)))
+      dx <- prim_mul(y, prim_pow(x, prim_sub(y, ones_like(y))))
+      prim_mul(grad, prim_ifelse(prim_eq(y, zeros_like(y)), zeros_like(dx), dx))
     },
     if (required[[2L]]) {
-      prim_mul(grad, prim_mul(prim_log(x), out))
+      safe_x <- prim_ifelse(prim_eq(x, zeros_like(x)), ones_like(x), x)
+      prim_mul(grad, prim_mul(prim_log(safe_x), out))
     }
   )
 })
@@ -500,10 +503,10 @@ prim_broadcast_in_axes[["reverse"]] <- rule_reverse(function(inputs, outputs, gr
         g <- prim_reshape(g, shape(g)[-new_axes])
       }
 
-      # If broadcast_axes are not in increasing order, reorder the
-      # remaining axes back to the original input axis order.
+      # The remaining axes are those of the output, in increasing order, so
+      # axis `i` of `x` sits at position `rank(broadcast_axes)[i]` of `g`.
       if (is.unsorted(broadcast_axes)) {
-        g <- prim_transpose(g, order(broadcast_axes))
+        g <- prim_transpose(g, rank(broadcast_axes))
       }
       g
     }
@@ -726,11 +729,16 @@ prim_pad[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) {
-      # select the non-padded elements
-      out_shape <- shape(outputs[[1L]])
+      # A negative edge padding trimmed the interior-padded operand: pad the
+      # cotangent back with zeros there, then select the non-padded elements.
+      trimmed_low <- pmax(-edge_padding_low, 0L)
+      trimmed_high <- pmax(-edge_padding_high, 0L)
+      if (any(trimmed_low > 0L | trimmed_high > 0L)) {
+        grad <- prim_pad(grad, zeros(dtype(grad), integer()), trimmed_low, trimmed_high, integer(length(trimmed_low)))
+      }
       strides <- interior_padding + 1L
-      start_indices <- edge_padding_low + 1L
-      end_indices <- out_shape - edge_padding_high
+      start_indices <- pmax(edge_padding_low, 0L) + 1L
+      end_indices <- shape(grad) - pmax(edge_padding_high, 0L)
       prim_static_slice(grad, start_indices, end_indices, strides)
     },
     if (required[[2L]]) {
@@ -1016,8 +1024,9 @@ prim_static_slice[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
       input_shape <- shape(x)
       grad_shape <- shape(grad)
       edge_padding_low <- start_indices - 1L
-      edge_padding_high <- input_shape - start_indices - (grad_shape - 1L) * strides
       interior_padding <- strides - 1L
+      # An axis of size zero has no gaps to fill with interior padding.
+      edge_padding_high <- input_shape - edge_padding_low - grad_shape - pmax(grad_shape - 1L, 0L) * interior_padding
       prim_pad(
         grad,
         zeros(dtype(grad), integer()),

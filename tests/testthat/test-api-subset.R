@@ -328,6 +328,13 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[array(c(0, 5))], "out of bounds")
   })
 
+  it("rejects an array() index that contains NA", {
+    x <- nv_matrix(1:6, nrow = 2L)
+    expect_error(x[array(c(NA, 1L)), ], "the index array contains NA")
+    expect_error(x[array(c(NA, 1)), ], "Each subset must be")
+    expect_error(nv_subset_assign(x, , array(c(2L, NA)), value = 0L), "For axis 2")
+  })
+
   it("names the axis a rejected subset came from", {
     x <- nv_array(array(1:24, dim = c(2, 3, 4)))
     expect_error(x[1, 99, 1], "out of bounds for axis 2")
@@ -545,6 +552,12 @@ describe("subset_specs_start_indices", {
 })
 
 describe("nv_subset", {
+  it("accepts an R array as x", {
+    r_arr <- matrix(1:6, nrow = 2L)
+    expect_equal(as.integer(nv_subset(r_arr, 2)), r_arr[2L, ])
+    expect_equal(as.integer(nv_subset(r_arr, , array(c(1L, 3L)))), as.vector(r_arr[, c(1L, 3L)]))
+  })
+
   it("returns a zero-sized axis for an empty index array", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
