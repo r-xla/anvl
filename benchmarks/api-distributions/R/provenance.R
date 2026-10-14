@@ -121,7 +121,10 @@ platform_key <- function(pv) {
   sprintf("%s-%s-%s", tolower(pv$os), pv$arch, pv$device)
 }
 
-collect_provenance <- function(depth, device = NULL) {
+## `run_id` names an existing run to join -- a queued campaign's, whose
+## workers record themselves under the one ID their plan gave them -- rather
+## than starting a new one.
+collect_provenance <- function(depth, device = NULL, run_id = NULL) {
   si <- Sys.info()
   root <- normalizePath(file.path(here(), "..", "..", ".."), mustWork = FALSE)
 
@@ -148,12 +151,7 @@ collect_provenance <- function(depth, device = NULL) {
   }
 
   pv <- list(
-    run_id = sprintf(
-      "%s-%s-%04X",
-      format(Sys.time(), "%Y%m%dT%H%M%S"),
-      gsub("[^A-Za-z0-9]", "", substr(si[["nodename"]], 1L, 12L)),
-      sample.int(65535L, 1L)
-    ),
+    run_id = run_id %||% new_run_id(),
     started_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
     host = unname(si[["nodename"]]),
     os = unname(si[["sysname"]]),
@@ -165,11 +163,21 @@ collect_provenance <- function(depth, device = NULL) {
     r_version = paste0(R.version$major, ".", R.version$minor),
     depth = depth,
     branch = git_branch(anvl_root()),
-    sweep_seed = SWEEP_SEED
+    sweep_seed = SWEEP_SEED,
+    sweep_sampling = SWEEP_SAMPLING
   )
   pv <- c(pv, as.list(sha), as.list(ver), as.list(dd))
   pv$platform_key <- platform_key(pv)
   pv
+}
+
+new_run_id <- function() {
+  sprintf(
+    "%s-%s-%04X",
+    format(Sys.time(), "%Y%m%dT%H%M%S"),
+    gsub("[^A-Za-z0-9]", "", substr(Sys.info()[["nodename"]], 1L, 12L)),
+    sample.int(65535L, 1L)
+  )
 }
 
 provenance_row <- function(pv) {
