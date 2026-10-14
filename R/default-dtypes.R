@@ -20,7 +20,7 @@ parse_default_dtypes_env <- function(value) {
 # The `anvl.default_dtypes` option, falling back to the `ANVL_DEFAULT_DTYPES`
 # environment variable read when anvl was loaded (see `read_env_defaults()`).
 default_dtypes_setting <- function() {
-  getOption("anvl.default_dtypes") %||% globals[["ENV_DEFAULT_DTYPES"]]
+  getOption("anvl.default_dtypes") %||% globals[["env_default_dtypes"]]
 }
 
 resolve_option_default_dtypes <- function(value, backend) {
@@ -150,7 +150,7 @@ merged_default_dtypes <- function(dtypes, backend) {
   # A program is compiled for one backend, and a trace reads the entry of that
   # backend, so an override filed under another could not reach it. Naming one
   # explicitly is a mistake worth reporting rather than a silent no-op.
-  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  desc <- globals[["current_descriptor"]]
   if (!is.null(backend) && !is.null(desc) && !identical(backend, desc$backend)) {
     cli_abort(c(
       "Cannot set the default data types of the {.val {backend}} backend here.",
@@ -349,7 +349,7 @@ convertible_dtype_category <- function(dtype) {
 
 # The default dtypes (see `default_dtypes()`) that are active here.
 current_default_dtypes <- function() {
-  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  desc <- globals[["current_descriptor"]]
   if (is.null(desc)) {
     # Eager mode: the active backend's defaults, with the anvl.default_dtypes
     # option over them.

@@ -49,7 +49,7 @@ RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state
 returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Floating point data type of the sample. The default (\code{NULL}) uses the
 common data type of \code{mean} and \code{sd}, and the
 \link[=default_dtypes]{default float type} when both are R values.}
@@ -57,7 +57,7 @@ common data type of \code{mean} and \code{sd}, and the
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
 \code{nv_dnorm()}, \code{nv_pnorm()} and \code{nv_qnorm()} return an \code{\link{arrayish}} with the
-shape and data type of \code{x}/\code{q}/\code{p}.
+shape of \code{x}/\code{q}/\code{p} and the float data type described under Data Types.
 
 \code{nv_rnorm()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
 RNG state with the input \code{state}'s data type and shape, and \code{values}, the
@@ -87,10 +87,15 @@ rational approximation on the same intervals for \code{f32}.
 \section{Data Types}{
 
 \code{nv_dnorm()}, \code{nv_pnorm()} and \code{nv_qnorm()} compute at
-the data type of \code{x}/\code{q}/\code{p}, which must be float; an R value settles on the
-\link[=default_dtypes]{default float}. An R value for \code{mean} or \code{sd} takes this data
-type. An array is promoted to it, so a wider one (e.g. \code{f64} for an \code{f32}
-\code{x}) is an error.
+a float data type and return it. If \code{x}/\code{q}/\code{p} is a float, they compute at
+its data type; an R double settles on the \link[=default_dtypes]{default float}.
+An integer \code{x}/\code{q}/\code{p} (an array or an R integer) is converted to the widest
+float among the arrays given for \code{mean} or \code{sd}, or to the default float if
+there is none. Integers beyond \eqn{2^{24}} are not all exact at \code{f32}, so a
+large integer may change in that conversion.
+
+An R value for \code{mean} or \code{sd} takes the computing data type. An array is
+promoted to it, so a wider one (e.g. \code{f64} for an \code{f32} \code{x}) is an error.
 }
 
 \section{Random generation}{

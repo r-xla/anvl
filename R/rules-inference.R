@@ -128,7 +128,7 @@ assert_dtype_param <- function(x, arg = rlang::as_label(substitute(x)), categori
     cli_abort(c(
       "{.arg {arg}} must name a data type.",
       x = "Got {value_repr(x)}.",
-      i = "See {.fn tengen::as_dtype} for the data types anvl knows."
+      i = "See {.fn xlamisc::as_dtype} for the data types anvl knows."
     ))
   }
   if (!is.null(categories) && !dtype_in_categories(out, categories)) {
@@ -1134,7 +1134,7 @@ reduced_shape <- function(x, axes, drop) {
   new_shape
 }
 
-infer_reduce <- function(x, init, axes, drop, reducer) {
+infer_reduce <- function(x, init, ..., axes, drop, reducer, n_captures) {
   assert_arrays(x = x, init = init)
 
   if (length(shape(init)) != 0L) {
@@ -1451,6 +1451,7 @@ infer_scatter <- function(
   x,
   scatter_indices,
   update,
+  ...,
   update_window_axes,
   inserted_window_axes,
   x_batching_axes,
@@ -1459,7 +1460,8 @@ infer_scatter <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
-  update_fn
+  update_fn,
+  n_captures
 ) {
   assert_arrays(x = x, update = update)
   # (I2)
@@ -1972,7 +1974,9 @@ type_mismatches <- function(a, b) {
   which(!vapply(seq_along(a), function(i) eq_type(a[[i]], b[[i]]), logical(1L)))
 }
 
-infer_cond <- function(pred, true, false) {
+# The operands after `pred` are the branches' inputs, which only the lowering
+# reads.
+infer_cond <- function(pred, ..., true, false, n_captures) {
   assert_array_dtype(pred, "bool", shape = integer())
   outs_true <- graph_output_avals(true)
   outs_false <- graph_output_avals(false)
@@ -2002,10 +2006,13 @@ infer_cond <- function(pred, true, false) {
   outs_true
 }
 
-infer_while <- function(..., cond, body) {
-  outs <- list(...)
+infer_while <- function(..., cond, body, n_captures) {
+  # The operands and the body's inputs past the state are its captures.
+  args <- list(...)
+  state_idx <- seq_len(length(args) - n_captures)
+  outs <- args[state_idx]
   outs_body <- graph_output_avals(body)
-  inputs_body <- lapply(body$inputs, function(inp) inp$aval)
+  inputs_body <- lapply(body$inputs[state_idx], function(inp) inp$aval)
   # The names of `init`, read off the body's input tree rather than passed as a
   # param (which would reach the lowering rules).
   state_names <- pjrt::tree_child_names(body$in_tree)

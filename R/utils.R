@@ -3,16 +3,6 @@ dtype_from_buffer <- function(x) {
   as_dtype(d)
 }
 
-hashvalues <- function(h) {
-  val <- vector("list", numhash(h))
-  idx <- 0L
-  maphash(h, function(k, v) {
-    idx <<- idx + 1L
-    val[[idx]] <<- v
-  })
-  val
-}
-
 # these functions also work with primitives etc.
 formalArgs2 <- function(f) {
   names(formals2(f))

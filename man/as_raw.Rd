@@ -25,7 +25,7 @@ stores an array.
 Returns the underlying bytes of an array as a \link{raw} vector.
 }
 \details{
-This is implemented via the generic \code{\link[tengen:as_raw]{tengen::as_raw()}}.
+This is implemented via the generic \code{\link[xlamisc:as_raw]{xlamisc::as_raw()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

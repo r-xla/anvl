@@ -8,7 +8,6 @@ trace_fn(
   f,
   args = NULL,
   desc = NULL,
-  mode = NULL,
   args_flat = NULL,
   in_tree = NULL,
   optimize = FALSE
@@ -24,18 +23,6 @@ The (unflattened) arguments to the function. Mutually exclusive with the
 
 \item{desc}{(\code{NULL} | \code{GraphDescriptor})\cr
 Optional descriptor. When \code{NULL} (default), a new descriptor is created.}
-
-\item{mode}{(\code{NULL} | \code{character(1)})\cr
-How to handle the inputs.
-Options are:
-\itemize{
-\item \code{"toplevel"}: Used for \code{\link[=jit]{jit()}}. Only allowed outside a trace.
-\item \code{"subgraph"}: Use for tracing subgraphs in higher-order primitives like \code{\link[=prim_while]{prim_while()}}.
-\item \code{"inline"}: Use for transformations like \code{\link[=gradient]{gradient()}}, where the graph is
-later inlined into the parent graph.
-}
-
-\code{NULL} (default) means \code{"toplevel"} and is only allowed outside a trace.}
 
 \item{args_flat}{(\code{list})\cr
 Flattened arguments. Must be accompanied by \code{in_tree}.}

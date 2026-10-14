@@ -13,7 +13,7 @@ with_default_dtypes(dtypes, code, backend = NULL)
 \item{dtypes}{(named \code{character()} | named \code{list()})\cr
 A mapping of the data type categories (\code{float} and \code{int}) to data types,
 e.g. \code{c(float = "f64", int = "i32")}. Each may be a string or a
-\code{\link[tengen:DataType]{DataType}}. Can also be a partial override, such as \code{c(float = "f64")},
+\code{\link[xlamisc:DataType]{DataType}}. Can also be a partial override, such as \code{c(float = "f64")},
 in which case the category it does not name is left as it is.}
 
 \item{backend}{(\code{NULL} | \code{character(1)})\cr

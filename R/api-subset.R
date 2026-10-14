@@ -472,6 +472,16 @@ known_mask_array <- function(e) {
 #' @noRd
 parse_subset_spec <- function(quo, axis_size, axis) {
   in_bounds <- "Axis {axis} has size {axis_size}, so indices must be between 1 and {axis_size}."
+  abort_invalid_subset <- function(detail) {
+    cli_abort(
+      c(
+        "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
+        x = detail,
+        i = "See {.url {article_url(\"subsetting\")}}."
+      ),
+      call = parent.frame()
+    )
+  }
   is_integerish <- function(x) {
     is.null(dim(x)) && test_integerish(x, len = 1L, any.missing = FALSE)
   }
@@ -570,6 +580,9 @@ parse_subset_spec <- function(quo, axis_size, axis) {
         x = "The array given for axis {axis} has {length(dim(e))} axes."
       ))
     }
+    if (anyNA(e)) {
+      abort_invalid_subset("For axis {axis}, the index array contains {.val {NA}}.")
+    }
     indices <- as.integer(e)
     oob <- indices < 1L | indices > axis_size
     if (any(oob)) {
@@ -625,11 +638,7 @@ parse_subset_spec <- function(quo, axis_size, axis) {
   } else {
     "For axis {axis}, got {.obj_type_friendly {e}}."
   }
-  cli_abort(c(
-    "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
-    x = detail,
-    i = "See {.url {article_url(\"subsetting\")}}."
-  ))
+  abort_invalid_subset(detail)
 }
 
 #' @title Subset an Array
@@ -685,6 +694,7 @@ nv_subset <- function(x, ...) {
       "x" = "Got {.cls {class(x)[1]}}."
     ))
   }
+  x <- as_anvl_array(x)
   x_shape <- shape(x)
   quos <- rlang::enquos(...)
 

@@ -979,14 +979,14 @@ tcrossprod.GraphBox <- tcrossprod.AnvlArray
 #' @title Shape of an Array
 #' @description
 #' The shape of an array, i.e. its axis sizes -- the generic [base::dim()] on an
-#' anvl array, and the same thing as [shape()][tengen::shape].
+#' anvl array, and the same thing as [shape()][xlamisc::shape].
 #'
 #' Unlike base R, it also has a value for an array with a single axis, where
 #' `dim()` on an R vector is `NULL`.
 #' @param x ([`arrayish`])\cr
 #'   Input array.
 #' @return (`integer()`)
-#' @seealso [length()][length.AnvlArray], [shape()][tengen::shape]
+#' @seealso [length()][length.AnvlArray], [shape()][xlamisc::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' dim(nv_matrix(1:6, nrow = 2))
 #' dim(nv_array(1:3))
@@ -1007,7 +1007,7 @@ dim.GraphBox <- dim.AnvlArray
 #' @param x ([`arrayish`])\cr
 #'   Input array.
 #' @return (`integer(1)`)
-#' @seealso [dim()][dim.AnvlArray], [nelts()][tengen::nelts]
+#' @seealso [dim()][dim.AnvlArray], [nelts()][xlamisc::nelts]
 #' @examplesIf pjrt::plugins_downloaded()
 #' length(nv_matrix(1:6, nrow = 2))
 #' @method length AnvlArray

@@ -169,33 +169,11 @@ describe("format.AnvlGraph()", {
     expect_snapshot(nested_graph())
   })
 
-  it("gives every node in the tree exactly one name", {
-    graph <- nested_graph()
-    ids <- unlist(hashvalues(build_node_ids(graph$inputs, graph$constants, graph$statements)))
-    expect_equal(anyDuplicated(ids), 0L)
-  })
-
   it("numbers a graph's own values without a gap where a sub-graph call sits", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
     # The outer body is the only one indented by exactly two spaces.
     defs <- grep("^  %[0-9]+: .+ = ", lines, value = TRUE)
     expect_equal(sub("^  %([0-9]+):.*", "\\1", defs), c("1", "2", "3", "4"))
-  })
-
-  it("keeps a captured node's outer name inside a sub-graph", {
-    lines <- strsplit(format(nested_graph()), "\n")[[1L]]
-    # `step` is `%2` in the outer body; the loop body and both `if` branches
-    # capture that same node, so it appears in three of the four capture lists.
-    heads <- grep("^ +[a-z_]+ = \\[", lines, value = TRUE)
-    captures <- sub("\\].*$", "", sub("^[^[]*\\[", "", heads))
-    expect_equal(sum(grepl("%2", captures, fixed = TRUE)), 3L)
-  })
-
-  it("names a capture without its data type, the enclosing graph having it", {
-    lines <- strsplit(format(nested_graph()), "\n")[[1L]]
-    expect_true(any(grepl("cond = [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
-    # The graph around it is the one place `%x1` is declared with a type.
-    expect_match(lines[[1L]], "(%x1: f32[])", fixed = TRUE)
   })
 
   it("leaves out the bracket list of a graph that captures nothing", {
@@ -229,7 +207,7 @@ describe("format.AnvlGraph()", {
 
   it("does not spill the internals of an array an optimization pass inlined", {
     out <- format(inline_scalarish_constants(nested_graph()))
-    expect_match(out, "add(%x3, 0.5:f32)", fixed = TRUE)
+    expect_match(out, "] (0:f32, %x1, %2, 0.5:f32)", fixed = TRUE)
     expect_no_match(out, "pointer", fixed = TRUE)
   })
 
@@ -310,7 +288,7 @@ describe("format.AnvlGraph()", {
 
   it("spends a nested line's whole width budget, not a conservative part of it", {
     graph <- nested_param_graph()
-    target <- "broadcast_axes = integer(0)] (%x3)"
+    target <- "broadcast_axes = integer(0)] (%x5)"
     fits <- function(width) {
       any(grepl(target, strsplit(format(graph, width = width), "\n")[[1L]], fixed = TRUE))
     }

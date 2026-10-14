@@ -20,10 +20,18 @@ Prints an array value to the console during execution and returns the
 input unchanged. This is useful for debugging JIT-compiled code.
 Bare R inputs print at their category's default data type.
 }
+\section{Order of prints}{
+
+A print is currently not ordered with respect to other prints.
+Due to compiler reordering it is possible that the order of the
+prints differs from their location in the code.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
+\item \code{reverse}
 }
 }
 

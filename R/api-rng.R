@@ -55,7 +55,7 @@ nv_unif_rand <- function(
 #' @rdname nv_uniform
 #' @template param_shape
 #' @template param_state
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample.
 #'   The default (`NULL`) takes it from `min` and `max`, and uses the
 #'   [default float type][default_dtypes] where both are R values.
@@ -144,10 +144,19 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
   invisible(x)
 }
 
+# Box-Muller transform: map two batches of uniforms in [0, 1) to twice as many
+# standard normals. The radius uses 1 - u1, which lies in (0, 1], so a uniform
+# of exactly 0 gives a finite sample.
+box_muller <- function(u1, u2) {
+  radius <- nv_sqrt(nv_log(1L - u1) * -2L)
+  theta <- u2 * (2 * pi)
+  nv_concatenate(radius * nv_sin(theta), radius * nv_cos(theta), axis = 1L)
+}
+
 #' @rdname nv_normal
 #' @template param_shape
 #' @template param_state
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample. The default (`NULL`) uses the
 #'   common data type of `mean` and `sd`, and the
 #'   [default float type][default_dtypes] when both are R values.
@@ -180,35 +189,10 @@ nv_rnorm <- jit(
     # n: amount of rvs needed
     n <- prod(shape)
 
-    # Box-Muller Method:
-    # from two random uniform variables u1 and u2 we can produce two normals z1, z2
-    # z1 = sqrt(-2 * log(u1)) * cos(2 * pi * u2)
-    # z2 = sqrt(-2 * log(u1)) * sin(2 * pi * u2)
-    # Box-Muller works via polar representation of coordinates.
-    # We scale this approach and generate ceil(n/2) uniform rvs twice (U, Theta)
-    n_half <- as.integer(ceiling(n / 2L))
-
-    # generate the first ceil(n/2) random uniform variables
-    U <- nv_unif_rand(state = state, dtype = dtype, shape = n_half)
-
-    # compute the radius R = sqrt(-2 * log(u1))
-    R <- nv_mul(nv_log(U$values), -2L)
-    sqrt_R <- nv_sqrt(R)
-
-    # generate second batch of ceil(n/2) random uniform variables
-    Theta <- nv_unif_rand(state = U$state, dtype = dtype, shape = n_half)
-
-    # compute cos(2 * pi * u2) / sin(2 * pi * u2)
-    Theta$values <- nv_mul(Theta$values, 2 * pi)
-    sin_Theta <- nv_sin(Theta$values)
-    cos_Theta <- nv_cos(Theta$values)
-
-    # compute z1, z2
-    Z1 <- nv_mul(sqrt_R, sin_Theta)
-    Z2 <- nv_mul(sqrt_R, cos_Theta)
-
-    # concatenate z = (z1, z2)
-    Z <- nv_concatenate(Z1, Z2, axis = 1L)
+    m <- as.integer(ceiling(n / 2L))
+    U1 <- nv_unif_rand(state = state, dtype = dtype, shape = m)
+    U2 <- nv_unif_rand(state = U1$state, dtype = dtype, shape = m)
+    Z <- box_muller(U1$values, U2$values)
 
     # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
     if (n %% 2L == 1L) {
@@ -226,7 +210,7 @@ nv_rnorm <- jit(
     N <- Z * sd + mean
 
     # return state and Normals N
-    list(state = Theta$state, values = N)
+    list(state = U2$state, values = N)
   },
   static = c(1L, 5L)
 )
@@ -241,7 +225,7 @@ nv_rnorm <- jit(
 #'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sample.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #'   The number of successes are converted to it.
@@ -301,7 +285,7 @@ nv_rbinom <- jit(
 #' @template param_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sampled integers.
 #'   The sampled values are converted to it.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].

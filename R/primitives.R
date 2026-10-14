@@ -977,14 +977,14 @@ prim_reduce <- new_primitive(
       nv_aval(op_dtype, integer()),
       nv_aval(op_dtype, integer())
     )
-    reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red, mode = "subgraph")
-
-    register_consts(current_desc, reducer_graph$constants)
+    reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red)
+    inline_region_captures(reducer_graph, "reducer")
+    captures <- purify_subgraphs(current_desc, list(reducer_graph))
 
     graph_desc_add(
       self,
-      args = operands,
-      params = list(axes = axes, drop = drop, reducer = reducer_graph),
+      args = c(operands, captures),
+      params = list(axes = axes, drop = drop, reducer = reducer_graph, n_captures = length(captures)),
       infer_fn = infer_reduce,
       desc = current_desc
     )[[1L]]
@@ -2516,31 +2516,25 @@ prim_if <- new_primitive(
       ))
     }
 
-    # Each branch is traced without inputs and only captures closed-over values.
-    # Registering the true branch's constants in the false branch's descriptor
-    # gives a constant captured by both branches the same `GraphValue`.
-
     current_desc <- current_descriptor(silent = TRUE)
 
     desc_true <- local_descriptor()
-    true_graph <- trace_fn(true, list(), desc = desc_true, mode = "subgraph")
+    true_graph <- trace_fn(true, list(), desc = desc_true)
     desc_false <- local_descriptor()
-
-    register_consts(desc_false, desc_true$constants)
-    false_graph <- trace_fn(false, list(), desc = desc_false, mode = "subgraph")
-
-    register_consts(current_desc, desc_false$constants)
+    false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
 
-    # TODO: Apply promotion rules to the outputs of the branches
+    # What the branches close over becomes their inputs -- both take all of it,
+    # in the same order -- and the call's operands after `pred`.
+    captures <- purify_subgraphs(current_desc, list(true_graph, false_graph))
 
     out <- graph_desc_add(
       self,
-      list(pred = pred),
-      params = list(true = true_graph, false = false_graph),
+      c(list(pred = pred), captures),
+      params = list(true = true_graph, false = false_graph, n_captures = length(captures)),
       infer_fn = infer_cond,
       desc = current_desc
     )
@@ -2610,17 +2604,12 @@ prim_while <- new_primitive(
     }
 
     current_desc <- current_descriptor(silent = TRUE)
+    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     desc_cond <- local_descriptor()
-
-    cond_graph <- trace_fn(cond, init, desc = desc_cond, mode = "subgraph")
-
+    cond_graph <- trace_fn(cond, init, desc = desc_cond)
     desc_body <- local_descriptor()
-
-    # ensure that constant ids are the same between cond and body
-    # inputs don't matter, because we don't inline the sub-graphs into the parent graph
-    register_consts(desc_body, desc_cond$constants)
-    body_graph <- trace_fn(body, init, desc_body, mode = "subgraph")
+    body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
       cli_abort("cond and body must have the same input structure")
@@ -2630,13 +2619,14 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
-    # now we register the constants of both sub-graphs (body includes cond's constants) into the graph
-    register_consts(current_desc, body_graph$constants)
+    # `cond` and `body` take the state, then what either of them closes over;
+    # the call's operands are the same.
+    captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = flatten(init),
-      params = list(cond = cond_graph, body = body_graph),
+      args = c(flatten(init), captures),
+      params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
@@ -2705,6 +2695,7 @@ prim_scan <- new_primitive(
     assert_flag(reverse)
 
     current_desc <- current_descriptor(silent = TRUE)
+    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     init_flat <- flatten(init)
     xs_flat <- flatten(xs)
@@ -2759,13 +2750,12 @@ prim_scan <- new_primitive(
     }
 
     desc_body <- local_descriptor()
-    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
-    # The body is lowered inline into the parent's loop region, so whatever it
-    # closed over has to be a constant of the parent graph too -- the same
-    # reason `prim_while()` and `prim_if()` register theirs.
-    register_consts(current_desc, body_graph$constants)
+    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # The body takes the carry, the `xs` slices, then what it closes over; the
+    # call's operands are the carry, `xs`, then the same captures.
+    captures <- purify_subgraphs(current_desc, list(body_graph))
 
-    infer_fn <- function(..., body, steps, reverse, n_carry, n_xs) {
+    infer_fn <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
       ins <- list(...)
       outs_body <- lapply(body$outputs, \(out) out$aval)
       carry_in <- ins[seq_len(n_carry)]
@@ -2795,13 +2785,14 @@ prim_scan <- new_primitive(
 
     out <- graph_desc_add(
       self,
-      args = c(init_flat, xs_flat),
+      args = c(init_flat, xs_flat, captures),
       params = list(
         body = body_graph,
         steps = steps,
         reverse = reverse,
         n_carry = n_carry,
-        n_xs = n_xs
+        n_xs = n_xs,
+        n_captures = length(captures)
       ),
       infer_fn = infer_fn,
       desc = current_desc
@@ -2952,6 +2943,7 @@ prim_top_k <- new_primitive(
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
+#' @template section_print_order
 #' @templateVar primitive_id print
 #' @template section_rules
 #' @section StableHLO:
@@ -3201,13 +3193,13 @@ prim_scatter <- new_primitive(
       AbstractArray(dtype = x_dtype, shape = Shape(integer()))
     )
 
-    update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update, mode = "subgraph")
-
-    register_consts(current_desc, update_fn_graph$constants)
+    update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update)
+    inline_region_captures(update_fn_graph, "update_fn")
+    captures <- purify_subgraphs(current_desc, list(update_fn_graph))
 
     graph_desc_add(
       self,
-      args = list(x = x, scatter_indices = scatter_indices, update = update),
+      args = c(list(x = x, scatter_indices = scatter_indices, update = update), captures),
       params = list(
         update_window_axes = update_window_axes,
         inserted_window_axes = inserted_window_axes,
@@ -3217,7 +3209,8 @@ prim_scatter <- new_primitive(
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
-        update_fn = update_fn_graph
+        update_fn = update_fn_graph,
+        n_captures = length(captures)
       ),
       infer_fn = infer_scatter,
       desc = current_desc
@@ -3367,10 +3360,12 @@ prim_gather <- new_primitive(
 #' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as the input.
 #'   The values in the triangle not specified by `lower` are implementation-defined.
+#'   A matrix that is not positive definite factors to `NaN`.
 #' @templateVar primitive_id chol
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("cholesky")`
+#' Lowers to a `"potrf"` [hlo_custom_call()] (backed by LAPACK on CPU and
+#' cuSOLVER on CUDA) + postprocessing.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # create a positive-definite matrix

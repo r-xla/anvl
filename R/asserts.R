@@ -143,7 +143,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
 # and cannot serve `bf16` or `f16` even though those are float data types.
 # Returns the converted DataType.
 assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
-  dt <- assert_float_dtype(x, arg = arg, hint = hint)
+  dt <- assert_float_dtype(x, arg = arg, hint = hint, call = rlang::current_env())
   if (!dtype_width(dt) %in% c(32L, 64L)) {
     cli_abort(c(
       "{.arg {arg}} must be a 32- or 64-bit float data type.",
@@ -291,14 +291,17 @@ assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
 
 # Convert `x` to a DataType via `as_dtype()` and assert it belongs to the float
 # category. Returns the converted DataType.
-assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL, call = rlang::caller_env()) {
   dt <- as_dtype(x)
   if (!is_dtype_float(dt)) {
-    cli_abort(c(
-      "{.arg {arg}} must be a float data type.",
-      "x" = "Got {.val {as.character(dt)}}.",
-      "i" = hint
-    ))
+    cli_abort(
+      c(
+        "{.arg {arg}} must be a float data type.",
+        "x" = "Got {.val {as.character(dt)}}.",
+        "i" = hint
+      ),
+      call = call
+    )
   }
   dt
 }

@@ -321,6 +321,7 @@ export(nv_atan2)
 export(nv_atanh)
 export(nv_aval)
 export(nv_bitcast_convert)
+export(nv_bool)
 export(nv_broadcast_arrays)
 export(nv_broadcast_scalars)
 export(nv_broadcast_to)
@@ -342,9 +343,11 @@ export(nv_cummax)
 export(nv_cummin)
 export(nv_cumprod)
 export(nv_cumsum)
+export(nv_dbinom)
 export(nv_det)
 export(nv_determinant)
 export(nv_device)
+export(nv_dexp)
 export(nv_diag)
 export(nv_digamma)
 export(nv_div)
@@ -366,6 +369,8 @@ export(nv_eye_like)
 export(nv_fill)
 export(nv_fill_like)
 export(nv_flatten)
+export(nv_float32)
+export(nv_float64)
 export(nv_floor)
 export(nv_floor_div)
 export(nv_gamma)
@@ -373,6 +378,10 @@ export(nv_ge)
 export(nv_gt)
 export(nv_if)
 export(nv_ifelse)
+export(nv_int16)
+export(nv_int32)
+export(nv_int64)
+export(nv_int8)
 export(nv_inv)
 export(nv_iota)
 export(nv_iota_like)
@@ -406,6 +415,8 @@ export(nv_or)
 export(nv_order)
 export(nv_outer)
 export(nv_pad)
+export(nv_pbinom)
+export(nv_pexp)
 export(nv_plogis)
 export(nv_pmax)
 export(nv_pmin)
@@ -417,6 +428,8 @@ export(nv_prod)
 export(nv_promote_to_common)
 export(nv_psigamma)
 export(nv_punif)
+export(nv_qbinom)
+export(nv_qexp)
 export(nv_qnorm)
 export(nv_qr)
 export(nv_quantile)
@@ -472,6 +485,10 @@ export(nv_triangular_solve)
 export(nv_tril)
 export(nv_triu)
 export(nv_trunc)
+export(nv_uint16)
+export(nv_uint32)
+export(nv_uint64)
+export(nv_uint8)
 export(nv_unserialize)
 export(nv_unsqueeze)
 export(nv_upper_tri)
@@ -608,7 +625,7 @@ export(with_default_device)
 export(with_default_dtypes)
 export(with_dtypes)
 import(checkmate)
-import(tengen)
+import(xlamisc)
 importFrom(cli,
   cli_abort,
   cli_warn
@@ -747,7 +764,15 @@ importFrom(stats,
   quantile,
   setNames
 )
-importFrom(tengen,
+importFrom(utils,
+  capture.output,
+  getFromNamespace,
+  hashtab,
+  head,
+  install.packages,
+  tail
+)
+importFrom(xlamisc,
   as_array,
   as_dtype,
   as_raw,
@@ -756,19 +781,4 @@ importFrom(tengen,
   is_dtype,
   naxes,
   shape
-)
-importFrom(utils,
-  capture.output,
-  getFromNamespace,
-  gethash,
-  hashtab,
-  head,
-  install.packages,
-  maphash,
-  numhash,
-  tail
-)
-importFrom(xlamisc,
-  seq_along0,
-  seq_len0
 )

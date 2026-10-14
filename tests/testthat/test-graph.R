@@ -88,6 +88,18 @@ test_that("trace_fn can deduplicate constants", {
   expect_identical(graph$constants[[1]]$aval$data, x)
 })
 
+test_that("an array both a graph and its sub-graphs close over is one constant", {
+  x <- nv_array(c(1, 2))
+  f <- function(p, y) {
+    z <- y + x
+    nv_if(p, function() nv_sum(z * x), function() nv_sum(x))
+  }
+  graph <- trace_fn(f, list(p = nv_scalar(TRUE), y = nv_array(c(3, 4))))
+  expect_length(graph$constants, 1L)
+  expect_equal(as.numeric(jit(f)(nv_scalar(TRUE), nv_array(c(3, 4)))), 16)
+  expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(nv_scalar(TRUE), nv_array(c(3, 4)))[[1L]]), c(1, 2))
+})
+
 test_that("trace_fn works without arguments", {
   # For this it is necessary to also box outputs in trace_fn()
   x <- nv_scalar(1)
@@ -104,14 +116,14 @@ test_that("trace_fn works without arguments", {
 
 
 test_that("local_descriptor creates a graph", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   g <- local_descriptor()
-  expect_false(is.null(globals[["CURRENT_DESCRIPTOR"]]))
-  expect_true(is_graph_descriptor(globals[["CURRENT_DESCRIPTOR"]]))
+  expect_false(is.null(globals[["current_descriptor"]]))
+  expect_true(is_graph_descriptor(globals[["current_descriptor"]]))
 })
 
 test_that("local_descriptor restores previous graph", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   g1 <- local_descriptor()
   inner_test <- function() {
     g2 <- local_descriptor()
@@ -123,7 +135,7 @@ test_that("local_descriptor restores previous graph", {
 })
 
 test_that("current_descriptor errors when no graph exists", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   expect_error(current_descriptor(), "No graph is currently being built")
 })
 
@@ -240,29 +252,7 @@ test_that("can print GraphLiteral if it holds scalar array", {
   expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer())))
 })
 
-test_that("trace_fn(mode = 'toplevel') errors when called inside an existing descriptor", {
-  parent <- local_descriptor()
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "toplevel"),
-    "must not have a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'subgraph') errors without a parent descriptor", {
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "subgraph"),
-    "requires a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'inline') errors without a parent descriptor", {
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "inline"),
-    "requires a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'toplevel') passes non-arrayish R values through as static args", {
+test_that("trace_fn() passes non-arrayish R values through as static args", {
   f <- function(x, flag) x
   graph <- trace_fn(f, list(x = nv_scalar(1), flag = TRUE))
   expect_equal(length(graph$inputs), 1L)
@@ -270,32 +260,14 @@ test_that("trace_fn(mode = 'toplevel') passes non-arrayish R values through as s
   expect_equal(graph$static_args_flat, list(TRUE))
 })
 
-test_that("trace_fn(mode = 'subgraph') promotes R lits/arrays to AnvlArray inputs", {
+test_that("trace_fn() inside another trace gives a box of it a fresh input", {
   parent <- local_descriptor()
-  desc <- local_descriptor()
-  graph <- trace_fn(
-    function(x, y) list(x, y),
-    list(x = 1, y = array(c(2, 3))),
-    desc = desc,
-    mode = "subgraph"
-  )
-  expect_equal(length(graph$inputs), 2L)
-  expect_shape(graph$inputs[[1L]], integer())
-  expect_shape(graph$inputs[[2L]], 2L)
-})
-
-test_that("trace_fn(mode = 'subgraph') errors on non-arrayish args", {
-  parent <- local_descriptor()
-  desc <- local_descriptor()
-  expect_error(
-    trace_fn(
-      function(x) x,
-      list(x = "string"),
-      desc = desc,
-      mode = "subgraph"
-    ),
-    "all args must be arrayish"
-  )
+  box <- maybe_box_arrayish(nv_array(c(2, 3), dtype = "f32"), parent)
+  graph <- trace_fn(function(x, n, flag) x, list(x = box, n = 1, flag = "a"))
+  expect_length(graph$inputs, 1L)
+  expect_false(identical(graph$inputs[[1L]], box$gnode))
+  expect_shape(graph$inputs[[1L]], 2L)
+  expect_equal(graph$static_args_flat, list(1, "a"))
 })
 
 # An R value written in the body of a traced function, and one passed as an

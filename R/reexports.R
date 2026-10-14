@@ -7,7 +7,7 @@
 #' with shape `integer()`, and an R array has its `dim()`. Any other R vector is
 #' an error; use [`nv_array()`] to make it an array.
 #'
-#' This is implemented via the generic [`tengen::shape()`].
+#' This is implemented via the generic [`xlamisc::shape()`].
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
@@ -28,15 +28,15 @@
 NULL
 
 #' @rdname shape
-#' @importFrom tengen shape
+#' @importFrom xlamisc shape
 #' @export
-tengen::shape
+xlamisc::shape
 
 #' @title Get the Device of an Array
 #'
 #' @description Returns the device on which an array is allocated.
 #'
-#' @details This is implemented via the generic [`tengen::device()`].
+#' @details This is implemented via the generic [`xlamisc::device()`].
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
@@ -52,9 +52,9 @@ tengen::shape
 NULL
 
 #' @rdname device
-#' @importFrom tengen device
+#' @importFrom xlamisc device
 #' @export
-tengen::device
+xlamisc::device
 
 #' @title Convert to an R Array
 #'
@@ -63,7 +63,7 @@ tengen::device
 #' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 axes.
 #'
 #' @details
-#' This is implemented via the generic [`tengen::as_array()`].
+#' This is implemented via the generic [`xlamisc::as_array()`].
 #'
 #' @section Data types:
 #' R has fewer data types than anvl, so the values are converted to the R
@@ -103,15 +103,15 @@ tengen::device
 NULL
 
 #' @rdname as_array
-#' @importFrom tengen as_array
+#' @importFrom xlamisc as_array
 #' @export
-tengen::as_array
+xlamisc::as_array
 
 #' @title Convert an Array to a Raw Vector
 #'
 #' @description Returns the underlying bytes of an array as a [raw] vector.
 #'
-#' @details This is implemented via the generic [`tengen::as_raw()`].
+#' @details This is implemented via the generic [`xlamisc::as_raw()`].
 #'
 #' @param x ([`AnvlArray`])\cr
 #'   An array.
@@ -130,9 +130,9 @@ tengen::as_array
 NULL
 
 #' @rdname as_raw
-#' @importFrom tengen as_raw
+#' @importFrom xlamisc as_raw
 #' @export
-tengen::as_raw
+xlamisc::as_raw
 
 #' @title Get the Data Type of an Array
 #'
@@ -147,13 +147,13 @@ tengen::as_raw
 #' [`GraphBox`] that carries one during tracing. Use [`peek_dtype()`] for the
 #' data type such a value would take.
 #'
-#' This is implemented via the generic [`tengen::dtype()`].
+#' This is implemented via the generic [`xlamisc::dtype()`].
 #'
 #' @param x ([`AnvlArray`] | [`GraphBox`] | [`AbstractArray`])\cr
 #'   An array. See Details for the values that have no data type.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns ([`DataType`][tengen::DataType])
-#' @seealso [tengen::dtype()], [peek_dtype()], [RData]
+#' @returns ([`DataType`][xlamisc::DataType])
+#' @seealso [xlamisc::dtype()], [peek_dtype()], [RData]
 #' @name dtype
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
@@ -168,9 +168,9 @@ tengen::as_raw
 NULL
 
 #' @rdname dtype
-#' @importFrom tengen dtype
+#' @importFrom xlamisc dtype
 #' @export
-tengen::dtype
+xlamisc::dtype
 
 #' @title Get the Number of Axes of an Array
 #'
@@ -180,7 +180,7 @@ tengen::dtype
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @returns (`integer(1)`)
-#' @seealso [tengen::naxes()]
+#' @seealso [xlamisc::naxes()]
 #' @name naxes
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
@@ -188,9 +188,9 @@ tengen::dtype
 NULL
 
 #' @rdname naxes
-#' @importFrom tengen naxes
+#' @importFrom xlamisc naxes
 #' @export
-tengen::naxes
+xlamisc::naxes
 
 #' @title Check If an Object Is a DataType
 #'
@@ -198,7 +198,7 @@ tengen::naxes
 #'
 #' @param x An object to test.
 #' @returns (`logical(1)`)
-#' @seealso [as_dtype()], [tengen::is_dtype()]
+#' @seealso [as_dtype()], [xlamisc::is_dtype()]
 #' @name is_dtype
 #' @examples
 #' is_dtype("f32")
@@ -206,9 +206,9 @@ tengen::naxes
 NULL
 
 #' @rdname is_dtype
-#' @importFrom tengen is_dtype
+#' @importFrom xlamisc is_dtype
 #' @export
-tengen::is_dtype
+xlamisc::is_dtype
 
 #' @title Convert to a DataType
 #'
@@ -216,11 +216,11 @@ tengen::is_dtype
 #' (e.g. `"f32"`, `"i64"`, `"bool"`) or existing `DataType` objects (they are returned unchanged).
 #'
 #' @details
-#' This is implemented via the generic [`tengen::as_dtype()`].
+#' This is implemented via the generic [`xlamisc::as_dtype()`].
 #'
 #' @param x A character string or `DataType` to convert.
 #' @returns (`DataType`)
-#' @seealso [is_dtype()], [tengen::as_dtype()], [`tengen::DataType`]
+#' @seealso [is_dtype()], [xlamisc::as_dtype()], [`xlamisc::DataType`]
 #' @name as_dtype
 #'
 #' @examples
@@ -229,9 +229,9 @@ tengen::is_dtype
 NULL
 
 #' @rdname as_dtype
-#' @importFrom tengen as_dtype
+#' @importFrom xlamisc as_dtype
 #' @export
-tengen::as_dtype
+xlamisc::as_dtype
 
 #' @title Create a Shape Object
 #'

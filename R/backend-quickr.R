@@ -112,7 +112,7 @@ compile_quickr <- function(
   default_dtypes = NULL
 ) {
   desc <- local_descriptor(default_dtypes = default_dtypes, backend = "quickr")
-  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, mode = "toplevel")
+  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree)
   check_single_backend(graph, expected = "quickr")
   list(fun = graph_to_quickr_function(graph, unwrap = unwrap, flat = flat))
 }
@@ -240,8 +240,8 @@ AnvlBackendQuickr <- function() {
     platform = function(x) "cpu",
     device = function(x) x$device,
     new_device = function(x) quickr_device(x),
-    print_data = function(x, footer) {
-      print(x$data)
+    print_data = function(x, footer, ...) {
+      print(x$data, ...)
       cat(footer, "\n")
     },
     jit = function(f, static, cache_size, unwrap = FALSE, device = NULL) {

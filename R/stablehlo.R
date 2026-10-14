@@ -18,21 +18,16 @@ hlo_tensor.AnvlArray <- function(value, ..., func = NULL) {
 #' @title HloEnv
 #' @description
 #' Environment for storing graph value to func value mappings.
-#' This is a mutable class.
-#' @param parent (`HloEnv` | `NULL`)\cr
-#'   Parent environment for lookups.
+#' This is a mutable class. Every graph is lowered against an environment of
+#' its own: a sub-graph reads nothing of the graph around it except through
+#' its inputs.
 #' @param gval_to_fval (`hashtab`)\cr
 #'   Mapping from graph values to func values.
 #' @return (`HloEnv`)
 #' @keywords internal
-HloEnv <- function(parent = NULL, gval_to_fval = NULL) {
-  if (!is.null(parent) && !inherits(parent, "HloEnv")) {
-    cli_abort("parent must be an HloEnv or NULL")
-  }
-
+HloEnv <- function(gval_to_fval = NULL) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
-  env$parent <- parent
   env$gval_to_fval <- gval_to_fval %||% hashtab()
 
   structure(env, class = "HloEnv")
@@ -44,15 +39,7 @@ env_add <- function(env, gval, fval) {
 }
 
 env_get <- function(env, gval) {
-  fval <- env$gval_to_fval[[gval]]
-  if (!is.null(fval)) {
-    return(fval)
-  }
-  parent <- env$parent
-  if (!is.null(parent)) {
-    return(env_get(parent, gval))
-  }
-  cli_abort("GraphValue not found in environment")
+  env$gval_to_fval[[gval]] %||% cli_abort("GraphValue not found in environment")
 }
 
 #' @title Lower a Graph to StableHLO
@@ -66,10 +53,9 @@ env_get <- function(env, gval) {
 #' The rule for translating a primitive to stablehlo is `prim_<name>[["stablehlo"]]`.
 #'
 #' The arguments of the resulting function are, in this order: the graph's
-#' constants (when `constants_as_inputs = TRUE`), the graph's inputs, and the
-#' phantom donated inputs (when `donate_unaliased_outputs = TRUE`), one per
-#' output that is not already aliased to a donated input, in the order of the
-#' outputs.
+#' constants, the graph's inputs, and the phantom donated inputs (when
+#' `donate_unaliased_outputs = TRUE`), one per output that is not already
+#' aliased to a donated input, in the order of the outputs.
 #'
 #' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
@@ -80,14 +66,13 @@ env_get <- function(env, gval) {
 #'   the module) and `""` for a closure/region lowering (e.g. a while body or
 #'   a scatter update computation) that builds an anonymous nested function
 #'   inside an enclosing build.
-#' @param constants_as_inputs (`logical(1)`)\cr
-#'   If `TRUE` (default), constants are registered as inputs to the StableHLO function
-#'   so they can be passed in at execution time.
-#'   If `FALSE`, they are not added as inputs. Set to `FALSE` for closures.
-#'   Note that `GraphLiteral`s are always inlined into the StableHLO function.
-#' @param env (`HloEnv` | `NULL`)\cr
-#'   Optional environment for reusing variable mappings across nested function lowerings
-#'   (e.g. for higher-order primitives like `prim_while`).
+#' @param captured (`list(FuncValue)`)\cr
+#'   Values of the enclosing function to bind the graph's last `length(captured)`
+#'   inputs to. The lowered function reads them the way an MLIR region captures
+#'   a value from above, instead of declaring them as inputs. Used for the
+#'   sub-graphs of higher-order primitives (e.g. `nv_while`), whose trailing
+#'   inputs are the values they close over. The graph's constants always become
+#'   inputs, and `GraphLiteral`s are always inlined.
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
 #'   Donated buffers can be aliased with outputs of the same type, enabling in-place
@@ -108,8 +93,7 @@ env_get <- function(env, gval) {
 #'   Of length 3:
 #'   - the [`stablehlo::Func`]
 #'   - The graph's constants: the [`GraphValue`]s holding [`ConcreteArray`]s,
-#'     whose data must be passed as the leading inputs at execution time when
-#'     `constants_as_inputs = TRUE`.
+#'     whose data must be passed as the leading inputs at execution time.
 #'   - A list of phantom-output specs, one per phantom donated input
 #'     appended when `donate_unaliased_outputs = TRUE`. Each entry is a
 #'     `list(dtype, shape)` describing the buffer the executor must
@@ -140,8 +124,7 @@ env_get <- function(env, gval) {
 stablehlo <- function(
   graph,
   id = "main",
-  constants_as_inputs = TRUE,
-  env = NULL,
+  captured = list(),
   donate = character(),
   donate_unaliased_outputs = FALSE,
   platform = NULL
@@ -151,13 +134,17 @@ stablehlo <- function(
     local_platform(platform)
   }
   # GraphNode -> FuncValue
-  env <- HloEnv(parent = env)
+  env <- HloEnv()
   # A top-level lowering builds the module's `main` func (whose hlo_return
   # finalizes the module). A closure/region lowering (id = "", e.g. a scatter
   # update computation or a while body) builds an anonymous nested func
   # inside the enclosing build.
   func <- stablehlo::local_func(id = id)
-  inps <- if (constants_as_inputs) c(graph$constants, graph$inputs) else graph$inputs
+  n_declared <- length(graph$inputs) - length(captured)
+  inps <- c(graph$constants, graph$inputs[seq_len(n_declared)])
+  for (i in seq_along(captured)) {
+    env_add(env, graph$inputs[[n_declared + i]], captured[[i]])
+  }
 
   # Compute which inputs are donated (only graph$inputs, not constants)
   donate_flat <- if (length(donate) > 0L && !is.null(graph$in_tree)) {
@@ -214,14 +201,6 @@ stablehlo <- function(
     list(dtype = out_aval$dtype, shape = shape(out_aval))
   })
 
-  # A closure reads the constants from the enclosing lowering; `env_get()`
-  # errors for one that is missing.
-  if (!constants_as_inputs) {
-    for (const in graph$constants) {
-      env_get(env, const)
-    }
-  }
-
   outputs <- lower_graph_calls(graph, env, func)
   func <- do.call(hlo_return, outputs)
 
@@ -265,9 +244,6 @@ lower_graph_calls <- function(graph, env, func) {
       }
     })
     rule <- prim[["stablehlo"]]
-    if (is_higher_order_primitive(prim)) {
-      params <- c(params, list(.env = env))
-    }
     # Forward this call's known output types (already inferred at trace time) to
     # rules that opt in by declaring an `output_types` parameter, letting them
     # pass the types to their hlo_* builder and skip stablehlo's re-inference.
@@ -325,17 +301,17 @@ lower_graph_calls <- function(graph, env, func) {
 #' f()
 #' @export
 current_platform <- function() {
-  globals[["LOWERING_PLATFORM"]]
+  globals[["lowering_platform"]]
 }
 
 #' @rdname current_platform
 #' @export
 local_platform <- function(platform, envir = parent.frame()) {
-  old <- globals[["LOWERING_PLATFORM"]]
-  globals[["LOWERING_PLATFORM"]] <- platform
+  old <- globals[["lowering_platform"]]
+  globals[["lowering_platform"]] <- platform
   withr::defer(
     {
-      globals[["LOWERING_PLATFORM"]] <- old
+      globals[["lowering_platform"]] <- old
     },
     envir = envir
   )

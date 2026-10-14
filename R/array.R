@@ -10,19 +10,19 @@
 #' along that axis, and the **shape** is the vector of all axis sizes. For
 #' example, `nv_array(1:6, shape = c(2, 3))` has two axes; the size of axis `1`
 #' is `2` and the size of axis `2` is `3`, so its shape is `c(2, 3)`. Use
-#' [`naxes()`][tengen::naxes] for the number of axes, [`axes()`] for the axis
-#' indices, and [`shape()`][tengen::shape] for the axis sizes. We speak of the *size of an
+#' [`naxes()`][xlamisc::naxes] for the number of axes, [`axes()`] for the axis
+#' indices, and [`shape()`][xlamisc::shape] for the axis sizes. We speak of the *size of an
 #' axis* rather than an array's "dimensions", as the latter is generally
 #' overloaded as it is used to refer to both the axis and its size.
 #'
 #'
 #' @section Extractors:
 #' The following generic functions can be used to extract information from an `AnvlArray`:
-#' - [`dtype()`][tengen::dtype]: Get the data type of the array.
-#' - [`shape()`][tengen::shape]: Get the shape (axis sizes) of the array.
-#' - [`naxes()`][tengen::naxes]: Get the number of axes.
+#' - [`dtype()`][xlamisc::dtype]: Get the data type of the array.
+#' - [`shape()`][xlamisc::shape]: Get the shape (axis sizes) of the array.
+#' - [`naxes()`][xlamisc::naxes]: Get the number of axes.
 #' - [`axes()`]: Get the axis indices.
-#' - [`device()`][tengen::device]: Get the device of the array.
+#' - [`device()`][xlamisc::device]: Get the device of the array.
 #' - [`platform()`]: Get the platform (e.g. `"cpu"`, `"cuda"`).
 #'
 #' @section Serialization:
@@ -56,7 +56,7 @@
 #'   no elements -- so `shape` is required there.
 #'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = integer()`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   The data type at which to create the array: a [`tengen::DataType`] or one
+#'   The data type at which to create the array: a [`xlamisc::DataType`] or one
 #'   of `r roxy_dtypes()`.
 #'   A value it cannot hold at all is an error (`nv_array(3e9, dtype =
 #'   "i32")` overflows). A `double` at an integer data type is truncated.
@@ -504,6 +504,103 @@ nv_empty <- function(shape, dtype, device = NULL) {
   )
 }
 
+#' @title Create an Array of a Given Data Type
+#' @description
+#' Shorthands for [`nv_array()`] with the data type fixed by the function name:
+#' `nv_float32(data)` is `nv_array(data, dtype = "f32")`.
+#'
+#' | Function | Data type |
+#' |----------|-----------|
+#' | `nv_bool()` | `bool` |
+#' | `nv_int8()` | `i8` |
+#' | `nv_int16()` | `i16` |
+#' | `nv_int32()` | `i32` |
+#' | `nv_int64()` | `i64` |
+#' | `nv_uint8()` | `ui8` |
+#' | `nv_uint16()` | `ui16` |
+#' | `nv_uint32()` | `ui32` |
+#' | `nv_uint64()` | `ui64` |
+#' | `nv_float32()` | `f32` |
+#' | `nv_float64()` | `f64` |
+#'
+#' @inheritParams AnvlArray
+#' @inheritSection AnvlArray Out of Range values
+#' @return ([`AnvlArray`])
+#' @seealso [`nv_array()`], [`nv_convert()`] to change the data type of an existing array.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_float32(1:4)
+#' nv_uint8(c(0, 255))
+#' nv_int64(1:6, shape = c(2, 3))
+#' nv_bool(c(TRUE, FALSE))
+#' @name nv_dtype_constructors
+NULL
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_bool <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "bool", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int8 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i8", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int16 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i16", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i32", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_int64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "i64", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint8 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui8", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint16 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui16", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui32", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_uint64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "ui64", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_float32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "f32", device = device, byrow = byrow)
+}
+
+#' @rdname nv_dtype_constructors
+#' @export
+nv_float64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+  nv_array(data, shape = shape, dtype = "f64", device = device, byrow = byrow)
+}
+
 #' @rdname AbstractArray
 #' @export
 nv_aval <- function(dtype, shape) {
@@ -774,7 +871,7 @@ backend.QuickrDevice <- function(x, ...) {
 #'
 #' To convert an [`arrayish`] value to an abstract array, use [`to_abstract()`].
 #'
-#' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
+#' @param dtype ([`xlamisc::DataType`] | `character(1)`)\cr
 #'   The data type of the array. For `nv_aval()` only, `"double"`,
 #'   `"integer"` or `"logical"` create an [`RData`] instead.
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
@@ -893,7 +990,7 @@ ConcreteArray <- function(data) {
 #'   to be named, since the default takes it from an R value's storage type.
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array.
-#' @param dtype ([`tengen::DataType`])\cr
+#' @param dtype ([`xlamisc::DataType`])\cr
 #'   The data type. For the default, see [`default_dtypes()`].
 #' @return ([`LiteralArray`])
 #'
@@ -947,7 +1044,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #'
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array.
-#' @param dtype ([`tengen::DataType`])\cr
+#' @param dtype ([`xlamisc::DataType`])\cr
 #'   The data type.
 #' @param axis (`integer(1)`)\cr
 #'   The axis along which values increase.
@@ -1009,7 +1106,7 @@ print.IotaArray <- function(x, ...) {
 #' Compare two abstract arrays for type equality.
 #'
 #' An [`RData`] has no data type to compare, so it is an error here, just as
-#' [`dtype()`][tengen::dtype] is. Give it a data type first, e.g. with
+#' [`dtype()`][xlamisc::dtype] is. Give it a data type first, e.g. with
 #' [`nv_convert()`].
 #' @param e1 ([`AbstractArray`])\cr
 #'   First array to compare. Must not be an [`RData`].
@@ -1114,7 +1211,7 @@ print.AnvlArray <- function(x, header = TRUE, ...) {
   }
   dtype_str <- as.character(dtype(x))
   footer <- sprintf("[ %s%s{%s} ]", toupper(platform(x)), dtype_str, paste0(shape(x), collapse = ","))
-  globals$backends[[x$backend]]$print_data(x, footer)
+  globals$backends[[x$backend]]$print_data(x, footer, ...)
   invisible(x)
 }
 

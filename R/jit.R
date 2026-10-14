@@ -480,5 +480,5 @@ static_path <- function(path, name, i) {
 dispatch_arg_device <- function(info) {
   is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1L))
   first <- Position(isTRUE, is_array)
-  if (is.na(first)) NULL else tengen::device(info$leaves[[first]])
+  if (is.na(first)) NULL else xlamisc::device(info$leaves[[first]])
 }

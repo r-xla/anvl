@@ -51,8 +51,8 @@ Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} 
 no elements -- so \code{shape} is required there.
 To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = integer()}.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-The data type at which to create the array: a \code{\link[tengen:DataType]{tengen::DataType}} or one
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
+The data type at which to create the array: a \code{\link[xlamisc:DataType]{xlamisc::DataType}} or one
 of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64.
 A value it cannot hold at all is an error (\code{nv_array(3e9, dtype = "i32")} overflows). A \code{double} at an integer data type is truncated.
 The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} of
@@ -107,8 +107,8 @@ An array's \strong{axes} are the indices that identify its directions, numbered
 along that axis, and the \strong{shape} is the vector of all axis sizes. For
 example, \code{nv_array(1:6, shape = c(2, 3))} has two axes; the size of axis \code{1}
 is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2, 3)}. Use
-\code{\link[tengen:naxes]{naxes()}} for the number of axes, \code{\link[=axes]{axes()}} for the axis
-indices, and \code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
+\code{\link[xlamisc:naxes]{naxes()}} for the number of axes, \code{\link[=axes]{axes()}} for the axis
+indices, and \code{\link[xlamisc:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
 axis} rather than an array's "dimensions", as the latter is generally
 overloaded as it is used to refer to both the axis and its size.
 }
@@ -117,11 +117,11 @@ overloaded as it is used to refer to both the axis and its size.
 
 The following generic functions can be used to extract information from an \code{AnvlArray}:
 \itemize{
-\item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
-\item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
+\item \code{\link[xlamisc:dtype]{dtype()}}: Get the data type of the array.
+\item \code{\link[xlamisc:shape]{shape()}}: Get the shape (axis sizes) of the array.
+\item \code{\link[xlamisc:naxes]{naxes()}}: Get the number of axes.
 \item \code{\link[=axes]{axes()}}: Get the axis indices.
-\item \code{\link[tengen:device]{device()}}: Get the device of the array.
+\item \code{\link[xlamisc:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
 }
 }

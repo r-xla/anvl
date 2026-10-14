@@ -27,8 +27,8 @@ NULL
 #' @param new_device (`function(x)`)\cr Constructs a backend-specific device
 #'   object from a device identifier (e.g. `"cpu"` or `"cuda:1"`). Called by
 #'   [`nv_device()`].
-#' @param print_data (`function(x, footer)`)\cr Prints the array data with a
-#'   footer.
+#' @param print_data (`function(x, footer, ...)`)\cr Prints the array data with a
+#'   footer, passing `...` (e.g. `max_rows` for the pjrt backend) on to the backend's printer.
 #' @param jit (`function(f, static, cache_size, <options>, device = NULL)`)\cr
 #'   Creates the backend's implementation of a JIT-compiled function and returns
 #'   it as a `function`. The formals in place of `<options>` are the
@@ -170,7 +170,14 @@ register_backend(
         dtype <- as_dtype(dtype)
       }
       shape <- shape %||% r_data_shape(data)
-      data <- as.vector(data, plain_storage_mode(dtype))
+      # Not `as.vector(data, mode)`: it does not dispatch, so it reinterprets the
+      # bits of a `bit64::integer64` instead of converting its values.
+      data <- switch(
+        plain_storage_mode(dtype),
+        double = as.double(data),
+        integer = as.integer(data),
+        logical = as.logical(data)
+      )
       structure(
         list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"
@@ -201,8 +208,8 @@ register_backend(
     new_device = function(type) {
       cli_abort("{.val plain} backend does not support creating devices.")
     },
-    print_data = function(x, footer) {
-      print(x$data)
+    print_data = function(x, footer, ...) {
+      print(x$data, ...)
       cat(footer, "\n")
     },
     jit = function(f, static, cache_size, ...) {

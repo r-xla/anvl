@@ -33,7 +33,7 @@ Transfers array data to R and returns it as an R \code{\link[base:array]{array}}
 Only in the case of scalars is the result a vector of length 1, as R \code{arrays} cannot have 0 axes.
 }
 \details{
-This is implemented via the generic \code{\link[tengen:as_array]{tengen::as_array()}}.
+This is implemented via the generic \code{\link[xlamisc:as_array]{xlamisc::as_array()}}.
 }
 \section{Data types}{
 

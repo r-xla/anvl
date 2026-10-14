@@ -8,9 +8,9 @@ is_cuda <- function() {
 }
 
 # Set the fallback anvl read from `ANVL_DEFAULT_<name>` when it was loaded
-# (`"DTYPES"` or `"DEVICE"`) for the calling scope.
+# (`"dtypes"` or `"device"`) for the calling scope.
 local_env_default <- function(name, value, envir = parent.frame()) {
-  key <- paste0("ENV_DEFAULT_", name)
+  key <- paste0("env_default_", name)
   old <- globals[[key]]
   globals[[key]] <- value
   withr::defer(assign(key, old, envir = globals), envir = envir)
@@ -22,7 +22,7 @@ local_env_default <- function(name, value, envir = parent.frame()) {
 # `ANVL_DEFAULT_DTYPES` sets (see `setup.R`).
 local_registered_default_dtypes <- function(envir = parent.frame()) {
   withr::local_options(list(anvl.default_dtypes = NULL), .local_envir = envir)
-  local_env_default("DTYPES", NULL, envir)
+  local_env_default("dtypes", NULL, envir)
 }
 
 is_cpu <- function() {
@@ -35,7 +35,7 @@ is_cpu <- function() {
 # sets (see `setup.R`).
 local_unset_default_device <- function(envir = parent.frame()) {
   withr::local_options(list(anvl.default_device = NULL), .local_envir = envir)
-  local_env_default("DEVICE", NULL, envir)
+  local_env_default("device", NULL, envir)
 }
 
 if (nzchar(system.file(package = "torch"))) {

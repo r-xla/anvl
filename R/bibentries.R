@@ -41,6 +41,79 @@ bibentries <- c(
     year = "1989",
     publisher = "Ellis Horwood",
     isbn = "0-7458-0289-3"
+  ),
+  dekker1971floating = bibentry(
+    bibtype = "article",
+    title = "A floating-point technique for extending the available precision",
+    author = person("T. J.", "Dekker"),
+    journal = "Numerische Mathematik",
+    year = "1971",
+    volume = "18",
+    pages = "224--242",
+    doi = "10.1007/BF01397083"
+  ),
+  loader2000fast = bibentry(
+    bibtype = "misc",
+    title = "Fast and Accurate Computation of Binomial Probabilities",
+    author = person("Catherine", "Loader"),
+    year = "2000",
+    url = "https://www.r-project.org/doc/reports/CLoader-dbinom-2002.pdf"
+  ),
+  didonato1992algorithm = bibentry(
+    bibtype = "article",
+    title = "Algorithm 708: Significant Digit Computation of the Incomplete Beta Function Ratios",
+    author = c(person("Armido R.", "DiDonato"), person("Alfred H.", "Morris")),
+    journal = "ACM Transactions on Mathematical Software",
+    year = "1992",
+    volume = "18",
+    number = "3",
+    pages = "360--373",
+    doi = "10.1145/131766.131776"
   )
 )
 # nolint end
+
+# Formats the complete entries for the given keys for an `@references` section.
+format_bib <- function(...) {
+  str <- vapply(
+    list(...),
+    function(key) tools::toRd(bibentries[[key]]),
+    character(1)
+  )
+  paste0(str, collapse = "\n\n")
+}
+
+# A short inline citation listing all authors, e.g. "A (Year)", "A & B (Year)",
+# "A, B & C (Year)", or "A et al. (Year)" for four or more.
+cite_bib <- function(...) {
+  str <- vapply(
+    list(...),
+    function(key) {
+      x <- bibentries[[key]]
+      sprintf("%s (%s)", format_authors(x$author), x$year)
+    },
+    character(1)
+  )
+  if (length(str) >= 3L) {
+    str <- c(toString(head(str, -1L)), tail(str, 1L))
+  }
+  paste0(str, collapse = " and ")
+}
+
+format_authors <- function(authors) {
+  families <- vapply(
+    authors,
+    # Organizational/mononymous authors (e.g. person(given = "R Core Team"))
+    # have no family name.
+    function(p) p$family %||% as.character(p),
+    character(1)
+  )
+  n <- length(families)
+  if (n <= 2L) {
+    paste(families, collapse = " & ")
+  } else if (n == 3L) {
+    paste0(toString(families[1:2]), " & ", families[3L])
+  } else {
+    paste(families[1L], "et al.")
+  }
+}

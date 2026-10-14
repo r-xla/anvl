@@ -7,11 +7,11 @@
 common_dtype(lhs_dtype, rhs_dtype)
 }
 \arguments{
-\item{lhs_dtype, rhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{lhs_dtype, rhs_dtype}{(\code{\link[xlamisc:DataType]{xlamisc::DataType}})\cr
 The two data types.}
 }
 \value{
-(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+(\code{\link[xlamisc:DataType]{xlamisc::DataType}})\cr
 The narrowest common data type.
 }
 \description{

@@ -16,7 +16,7 @@ and whatever the implementation wants for \code{"DEFAULT"}.}
 One of \code{"THREE_FRY"} (default), \code{"PHILOX"} or \code{"DEFAULT"}, the last
 leaving the choice to the implementation.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the generated random values. Can be any numeric data type.}
 
 \item{shape}{(\code{integer()})\cr

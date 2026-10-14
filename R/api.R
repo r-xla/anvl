@@ -16,7 +16,7 @@
 #'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Data type of the result.
 #'   The default (`NULL`) uses the [default data type][default_dtypes] for `nv_fill` and
 #'   `dtype(like)` for `nv_fill_like`.
@@ -65,14 +65,15 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   }
   clash <- which(shape_lhs != shape_rhs & shape_lhs != 1L & shape_rhs != 1L)
   if (length(clash)) {
-    d_lhs <- shape_lhs[clash[[1L]]]
-    d_rhs <- shape_rhs[clash[[1L]]]
+    size_lhs <- shape_lhs[clash[[1L]]]
+    size_rhs <- shape_rhs[clash[[1L]]]
     cli_abort(c(
       "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
-      x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
+      x = "Sizes {size_lhs} and {size_rhs} meet, and neither is 1."
     ))
   }
-  pmax(shape_lhs, shape_rhs)
+  # Not `pmax()`: a size-1 axis meeting a size-0 one broadcasts to 0.
+  ifelse(shape_lhs == 1L, shape_rhs, shape_lhs)
 }
 
 #' @title Broadcast Scalars to Common Shape
@@ -590,6 +591,7 @@ nv_static_slice <- prim_static_slice
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged, data type and shape included.
+#' @template section_print_order
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the value is printed and handed back unchanged
@@ -2323,7 +2325,8 @@ nv_matmul <- jit(
 #'   Triangular matrix with the input's shape, and its data type -- or the
 #'   default float data type (see [`default_dtypes()`]) where the input was an
 #'   integer one. The values in the triangle not selected by `lower` are
-#'   implementation-defined.
+#'   implementation-defined. A matrix that is not positive definite factors
+#'   to `NaN`.
 #' @seealso [nv_solve()], [prim_chol()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the factor has the matrix's shape and data type
@@ -2344,7 +2347,8 @@ nv_chol <- jit(
 #' @description
 #' Solves the linear system `a %*% x = b` for `x`. Uses LU decomposition
 #' with partial pivoting internally, so `a` need only be square and
-#' non-singular.
+#' non-singular. Unlike [base::solve()], a singular `a` is not an error: the
+#' result then holds non-finite values.
 #' @details
 #' \deqn{A x = b}
 #' \deqn{P A = L U}
@@ -2545,6 +2549,7 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' @title Determinant
 #' @description
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
+#' A singular matrix has determinant `0`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @return ([`arrayish`])\cr
@@ -2576,6 +2581,10 @@ nv_det <- jit(function(x) {
 #' Matching base R's `det_ge_real`, the magnitude is computed in log
 #' space when `logarithm = TRUE` (\eqn{\sum_i \log|U_{ii}|}) and as a
 #' direct product when `logarithm = FALSE` (\eqn{\prod_i |U_{ii}|}).
+#'
+#' A singular matrix has determinant `0`: `modulus` is `-Inf` (with
+#' `logarithm = TRUE`) or `0` (with `logarithm = FALSE`), and `sign` is `0`.
+#' This deviates from [base::determinant()], which reports `sign` `1`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @param logarithm (`logical(1)`)\cr
@@ -2639,7 +2648,8 @@ nv_determinant <- jit(
 #' @title Matrix Inverse
 #' @description
 #' Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
-#' solving `x %*% y = I` for `y`.
+#' solving `x %*% y = I` for `y`. Unlike [base::solve()], a singular `x` is
+#' not an error: the result then holds non-finite values.
 #'
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
@@ -3008,7 +3018,11 @@ nv_mean <- jit(
     assert_flag(nan_rm)
     x <- as_anvl_array(x)
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    if (!is_dtype_float(peek_dtype(x))) {
+      # Summed at the result's float data type, as an integer sum can overflow.
+      x <- nv_convert(x, default_float())
+    }
+    if (nan_rm) {
       is_nan <- nv_is_nan(x)
       total <- prim_sum(nv_ifelse(is_nan, 0L, x), axes = axes, drop = drop)
       count <- prim_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
@@ -3387,11 +3401,19 @@ nv_cummin <- jit(
 #'   Result of the executed branch: an array, or a tree of them in the sense
 #'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
 #'   the structure, data types and shapes both branches share.
+#' @section Gradients:
+#' [gradient()] differentiates through the branch the predicate selects, including
+#' the values the branches close over; a value only the other branch uses gets a
+#' zero. See [prim_if()].
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # both branches must return the same structure, data types and shapes
 #' nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
+#'
+#' # the gradient flows through the branch that is taken
+#' f <- function(p, x) nv_if(p, \() sum(x * x), \() sum(x))
+#' jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), nv_array(c(1, 2, 3)))
 #' @export
 nv_if <- prim_if
 
@@ -3411,6 +3433,10 @@ nv_if <- prim_if
 #'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- in its
 #'   final state after the loop terminates, with `init`'s structure, data
 #'   types and shapes.
+#' @section Gradients:
+#' [gradient()] cannot differentiate a while loop: its trip count is only known
+#' at run time, so there is no static size for the per-iteration states the
+#' backward pass needs.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the loop state is a named list, and each member keeps its data type
@@ -3726,10 +3752,10 @@ nv_squeeze <- function(x, axes = NULL) {
     axes <- resolve_axes(axes, length(shp), unique = TRUE)
     not_one <- axes[shp[axes] != 1L]
     if (length(not_one)) {
-      d <- not_one[[1L]]
-      cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
+      axis <- not_one[[1L]]
+      cli_abort("Cannot squeeze axis {axis}: its size is {shp[axis]}, but must be 1")
     }
-    new_shape <- shp[-axes]
+    new_shape <- shp[setdiff(seq_along(shp), axes)]
   }
   if (length(new_shape) == 0L) {
     new_shape <- integer(0L)

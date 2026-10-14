@@ -157,7 +157,7 @@ new_primitive <- function(
 # and `graph_desc_add()` clears the marker once inference has passed.
 mark_primitive_body <- function(body) {
   rlang::expr({
-    base::assign("INFER_PRIMITIVE", self, envir = utils::getFromNamespace("globals", "anvl"))
+    base::assign("infer_primitive", self, envir = utils::getFromNamespace("globals", "anvl"))
     !!body
   })
 }

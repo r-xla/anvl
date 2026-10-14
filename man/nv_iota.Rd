@@ -18,7 +18,7 @@ last axis.}
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result, required here. Can be any numeric data type.
 For \code{nv_iota_like()} it may be \code{NULL}, which uses \code{dtype(like)}.}
 

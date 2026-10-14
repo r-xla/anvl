@@ -20,5 +20,5 @@ is_dtype("f32")
 is_dtype(as_dtype("f32"))
 }
 \seealso{
-\code{\link[=as_dtype]{as_dtype()}}, \code{\link[tengen:is_dtype]{tengen::is_dtype()}}
+\code{\link[=as_dtype]{as_dtype()}}, \code{\link[xlamisc:is_dtype]{xlamisc::is_dtype()}}
 }

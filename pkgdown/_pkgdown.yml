@@ -82,6 +82,7 @@ reference:
       - nv_matrix
       - nv_scalar
       - nv_empty
+      - nv_dtype_constructors
       - nv_fill
       - nv_iota
       - nv_seq
@@ -326,6 +327,8 @@ reference:
     contents:
       - nv_normal
       - nv_uniform
+      - nv_binomial
+      - nv_exponential
       - nv_rbinom
       - nv_sample
       - nv_sample_int
