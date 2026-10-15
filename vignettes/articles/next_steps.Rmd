@@ -182,12 +182,12 @@ chol(nv_array(m))
 ## Random Numbers
 
 R's `rnorm()` and friends are only called once, while tracing, so their result is fixed in the compiled function.
-Use {anvl}'s own generators instead, which take the random state as an explicit input and return a new one:
+Use {anvl}'s own generators instead, whose state the compiled function takes and advances on every call:
 
 ```{r}
-draw <- jit(function(state) nv_rnorm(state, shape = 2L))
-res <- draw(nv_rng_state(42L))
-res$values
+draw <- jit(function() nv_rnorm(2L))
+draw()
+draw()
 ```
 
 See the [Random Number Generation](random-numbers.html) article for more.

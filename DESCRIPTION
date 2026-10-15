@@ -44,7 +44,7 @@ Suggests:
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
 Remotes:
-    r-xla/pjrt,
+    r-xla/pjrt@feat/dispatch-input-slots,
     r-xla/xlamisc,
     r-xla/stablehlo
 Additional_repositories: https://r-xla.r-universe.dev
@@ -70,7 +70,6 @@ Collate:
     'api-like.R'
     'api-rng.R'
     'api-subset.R'
-    'api-utilities.R'
     'asserts.R'
     'backend-pjrt.R'
     'backend-quickr.R'
@@ -85,6 +84,8 @@ Collate:
     'rdata.R'
     'reexports.R'
     'reverse.R'
+    'side-effects.R'
+    'rng.R'
     'roxygen.R'
     'rules-reverse.R'
     'rules-stablehlo.R'

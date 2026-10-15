@@ -9,6 +9,9 @@ traverse_gnodes <- function(graph, fn) {
   for (output in graph$outputs) {
     fn(output)
   }
+  for (side_effect in graph$side_effects) {
+    fn(side_effect$output)
+  }
 }
 
 # A shallow copy of `graph` for a pass to modify: `AnvlGraph` has reference
@@ -25,7 +28,8 @@ copy_graph <- function(graph) {
     static_args_flat = graph$static_args_flat,
     # Positional, one entry per input: a pass may replace an input in place but
     # must not reorder or drop one, so this carries over as it is.
-    rdata_types = graph$rdata_types
+    rdata_types = graph$rdata_types,
+    side_effects = graph$side_effects
   )
 }
 

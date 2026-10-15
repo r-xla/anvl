@@ -233,6 +233,42 @@
         return %1
       }
 
+# format.AnvlGraph() / names the side effects of a graph after its inputs and its outputs
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: ui32[2], random_state = %x2: ui32[4]) {
+        (%1, %2): (ui32[2], ui32[4]) = sample_bits [shape = 2, dtype = "ui32"] (%x2)
+        %3: ui32[2] = add(%x1, %1)
+        return (%3, random_state = %2)
+      }
+
+# format.AnvlGraph() / carries the side effects of a loop body as members of the loop state
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: i32[], random_state = %x2: ui32[4]) {
+        (%1, %2): (ui32[4], ui32[4]) = fork_random_state(%x2)
+        (%3, %4): (i32[], ui32[4]) = while [
+          cond = (%x3: i32[], %x4: ui32[4]) {
+            %5: bool[] = lt(%x3, 3:i32)
+            return %5
+          },
+          body = (%x5: i32[], %x6: ui32[4]) {
+            (%6, %7): (ui8[], ui32[4]) = sample_bits [
+              shape = integer(0), dtype = "ui8"
+            ] (%x6)
+            %8: i32[] = convert [dtype = i32] (%6)
+            %9: i32[] = add(%x5, %8)
+            return (%9, %7)
+          },
+          n_captures = 0
+        ] (%x1, %1)
+        return (%3, random_state = %2)
+      }
+
 # format.AnvlGraph() / has nothing between the signature and the return when there are no calls
 
     Code

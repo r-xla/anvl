@@ -612,3 +612,18 @@ test_that("gradient() inside a sub-graph takes an R argument at the data type it
   })
   expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
 })
+
+describe("transform_gradient", {
+  it("keeps the side effects of the graph it differentiates", {
+    graph <- trace_fn(function(x) x * nv_runif(integer()), list(x = nv_aval("f32", integer())))
+    grad <- transform_gradient(graph, "x")
+    expect_named(grad$side_effects, "random_state")
+    expect_identical(grad$side_effects$random_state$input, graph$side_effects$random_state$input)
+    expect_identical(grad$side_effects$random_state$advance, 1)
+    # the random state is an input of the lowered program, which does not
+    # return it
+    func <- stablehlo(grad)[[1L]]
+    expect_null(func$inputs[[length(func$inputs)]]$alias)
+    expect_length(func$outputs, 1L)
+  })
+})

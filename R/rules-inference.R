@@ -1866,38 +1866,17 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
-infer_rng_bit_generator <- function(state, rng_algorithm, dtype, shape) {
-  assert_array_dtype(state, "uint", naxes = 1L)
-  if (dtype(state) != as_dtype("ui64")) {
-    cli_abort(c(
-      "{.arg state} must be {.val ui64}.",
-      x = "Got {.val {as.character(dtype(state))}}."
-    ))
-  }
-
-  assert_choice_param(rng_algorithm, c("DEFAULT", "THREE_FRY", "PHILOX"))
-
-  state_size <- shape(state)[[1L]]
-  if (rng_algorithm == "THREE_FRY" && state_size != 2L) {
-    cli_abort(c(
-      "{.val THREE_FRY} requires an {.arg state} of length {.val {2L}}.",
-      x = "Got {.val {state_size}}."
-    ))
-  }
-  if (rng_algorithm == "PHILOX" && !(state_size %in% c(2L, 3L))) {
-    cli_abort(c(
-      "{.val PHILOX} requires an {.arg state} of length {.val {2L}} or {.val {3L}}.",
-      x = "Got {.val {state_size}}."
-    ))
-  }
-
-  out_dtype <- assert_dtype_param(dtype, categories = c("int", "uint", "float"))
-
-  # (C1)
+infer_sample_bits <- function(random_state, shape, dtype) {
+  shape <- assert_shapevec(shape)
+  dtype <- assert_dtype_param(dtype, categories = "uint")
   list(
-    state = AbstractArray(dtype = "ui64", shape = state$shape),
-    values = AbstractArray(dtype = out_dtype, shape = Shape(assert_shapevec(shape)))
+    values = AbstractArray(dtype = dtype, shape = Shape(shape)),
+    random_state = random_state
   )
+}
+
+infer_fork_random_state <- function(random_state) {
+  list(child = random_state, random_state = random_state)
 }
 
 infer_cholesky <- function(x, lower) {

@@ -98,16 +98,22 @@ prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {
 # reshaped to the reversed shape and reversed back; XLA folds the transposes
 # into the layout, and a rank <= 1 side has nothing to reverse.
 prim_reshape[["stablehlo"]] <- function(x, shape, output_types) {
+  list(hlo_reshape_cols(x, shape, output_types = output_types))
+}
+
+# `x` reshaped to `shape` in column-major order, as R's `dim<-` does; a
+# StableHLO reshape works in row-major order.
+hlo_reshape_cols <- function(x, shape, output_types = NULL) {
   rank_in <- length(shape(x))
   rank_out <- length(shape)
   if (rank_in > 1L) {
     x <- hlo_transpose(x, rev(seq_len(rank_in)) - 1L)
   }
   if (rank_out <= 1L) {
-    return(list(hlo_reshape(x, shape, output_types = output_types)))
+    return(hlo_reshape(x, shape, output_types = output_types))
   }
   out <- hlo_reshape(x, rev(shape))
-  list(hlo_transpose(out, rev(seq_len(rank_out)) - 1L, output_types = output_types))
+  hlo_transpose(out, rev(seq_len(rank_out)) - 1L, output_types = output_types)
 }
 
 prim_concatenate[["stablehlo"]] <- function(..., axis, output_types) {
@@ -669,8 +675,195 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 
 # RNG jit rules --------------------------------------------------------
 
-prim_rng_bit_generator[["stablehlo"]] <- function(state, rng_algorithm, dtype, shape) {
-  hlo_rng_bit_generator(state, rng_algorithm, dtype, shape)
+# A random state is `ui32[4]`: the low and the high word of a ThreeFry-2x32 key
+# k, then of a 64-bit counter c. The generator is built from integer arithmetic
+# rather than taken from XLA's `rng_bit_generator`, whose bits the StableHLO
+# spec leaves to the implementation.
+#
+# A sampling call splits (k, c): it draws from the fresh key
+# k' = ThreeFry_k(c) and leaves (k, c + 1) behind. The elements of the draw are
+# counted in column-major order from 0. In a `ui64` draw, element `t` is the
+# hash of counter `t` under k'. A narrower draw takes the low and the high word
+# of the hash of counter `t %/% 2` for the elements `t` and `t + 1`, truncated to
+# `dtype`.
+#
+# Each sampling call, and each fork, is a call of a function of the program
+# built once per lowering (and draw shape and data type), so that a program
+# with many sampling calls lowers and compiles quickly.
+prim_sample_bits[["stablehlo"]] <- function(random_state, shape, dtype) {
+  shape <- as.integer(shape)
+  dtype <- as.character(as_dtype(dtype))
+  callee <- lowering_func(paste0("sample_bits_", dtype, "_", shape_id(shape)), function(id) {
+    func <- local_func(id)
+    state <- random_state_words(stablehlo::hlo_input("random_state", "ui32", shape = 4L, func = func))
+    values <- threefry_draw(threefry2x32(state$key, state$counter), shape, dtype)
+    stablehlo::hlo_return(values, random_state_hlo(state$key, counter_plus_one(state$counter)), func = func)
+  })
+  stablehlo::hlo_call(callee, random_state, simplify = FALSE)
+}
+
+# The fork returns the child (ThreeFry_k(c), 0) of the random state (k, c) and
+# leaves (k, c + 1) behind.
+prim_fork_random_state[["stablehlo"]] <- function(random_state) {
+  callee <- lowering_func("fork_random_state", function(id) {
+    func <- local_func(id)
+    state <- random_state_words(stablehlo::hlo_input("random_state", "ui32", shape = 4L, func = func))
+    zero <- hlo_scalar(0L, dtype = "ui32", func = func)
+    stablehlo::hlo_return(
+      random_state_hlo(threefry2x32(state$key, state$counter), list(zero, zero)),
+      random_state_hlo(state$key, counter_plus_one(state$counter)),
+      func = func
+    )
+  })
+  stablehlo::hlo_call(callee, random_state, simplify = FALSE)
+}
+
+# `shape` as part of a function name.
+shape_id <- function(shape) {
+  if (length(shape)) paste(shape, collapse = "x") else "scalar"
+}
+
+# The random state `x`, a `ui32[4]` FuncValue, as its key and its counter, each
+# two `ui32` scalars, low word first.
+random_state_words <- function(x) {
+  word <- function(i) hlo_reshape(hlo_slice(x, i, i + 1L, 1L), integer())
+  list(key = list(word(0L), word(1L)), counter = list(word(2L), word(3L)))
+}
+
+# The random state, a `ui32[4]` FuncValue, of the key `key` and the counter
+# `counter`, each two `ui32` scalars, low word first.
+random_state_hlo <- function(key, counter) {
+  words <- lapply(c(key, counter), hlo_reshape, 1L)
+  do.call(hlo_concatenate, c(words, list(dimension = 0L)))
+}
+
+# The 64-bit counter `counter` (two `ui32` scalars, low word first) plus one,
+# wrapping around at 2^64.
+counter_plus_one <- function(counter) {
+  func <- counter[[1L]]$func
+  lo <- hlo_add(counter[[1L]], hlo_scalar(1L, dtype = "ui32", func = func))
+  # the low word wrapped around to 0: carry one into the high word
+  wrapped <- hlo_compare(lo, hlo_scalar(0L, dtype = "ui32", func = func), "EQ", "UNSIGNED")
+  list(lo, hlo_add(counter[[2L]], hlo_convert(wrapped, "ui32")))
+}
+
+# The values of shape `shape` and unsigned data type `dtype` a draw from the
+# key `key` (two `ui32` scalars) gives, hashing the counters 0, 1, 2, ...
+threefry_draw <- function(key, shape, dtype) {
+  func <- key[[1L]]$func
+  # the two words of the hashes of the counters 0, 1, ... in column-major order
+  # over `shape`
+  hashes <- function(shape) {
+    if (prod(shape) > .Machine$integer.max) {
+      cli_abort(c(
+        "Cannot draw from more than {.Machine$integer.max} hashes at once.",
+        i = "Draw fewer values at once."
+      ))
+    }
+    keys <- lapply(key, hlo_broadcast_in_dim, integer(), shape)
+    threefry2x32(keys, list(hlo_index_cols(shape, func), hlo_fill_u(0L, "ui32", shape, func)))
+  }
+  if (dtype == "ui64") {
+    return(join_u32(hashes(shape)))
+  }
+  # Pairs of elements share a hash, whose two words are interleaved along the
+  # first axis. When that axis has an even size, the pairs lie within a column
+  # and the hashes are computed in the draw's shape; otherwise they are
+  # computed as a vector.
+  n <- prod(shape)
+  in_shape <- length(shape) >= 2L && shape[[1L]] %% 2L == 0L
+  half <- if (in_shape) replace(shape, 1L, shape[[1L]] %/% 2L) else assert_hash_count(n)
+  words <- lapply(hashes(half), hlo_reshape, append(half, 1L, after = 1L))
+  pairs <- hlo_concatenate(words[[1L]], words[[2L]], dimension = 1L)
+  values <- if (in_shape) {
+    hlo_reshape(pairs, shape)
+  } else if (n %% 2L == 0L) {
+    # the transpose's column-major order is the order of the draw
+    hlo_reshape_cols(hlo_transpose(pairs, c(1L, 0L)), shape)
+  } else {
+    hlo_reshape_cols(hlo_slice(hlo_reshape(pairs, 2L * half), 0L, n, 1L), shape)
+  }
+  if (dtype != "ui32") {
+    # keep the low bits, so that the conversion is exact
+    mask <- hlo_fill_u(as.integer(2^dtype_width(as_dtype(dtype)) - 1), "ui32", shape, func)
+    values <- hlo_convert(hlo_and(values, mask), dtype)
+  }
+  values
+}
+
+# The number of hashes a narrow draw of `n` elements computed as a vector
+# needs, as the axis size of that vector, an R integer.
+assert_hash_count <- function(n) {
+  # an odd draw is sliced from a vector of the words of all its hashes
+  limit <- if (n %% 2L == 1L) n + 1 else n / 2L
+  if (limit > .Machine$integer.max) {
+    cli_abort(c(
+      "Cannot draw {n} random values of less than 64 bits at once in a shape whose first axis has an odd size.",
+      i = "Draw a shape whose first axis has an even size, or fewer values at once."
+    ))
+  }
+  as.integer(ceiling(n / 2L))
+}
+
+# The column-major index of each element of `shape`, a `ui32` array of that
+# shape. `shape` holds fewer than 2^31 elements.
+hlo_index_cols <- function(shape, func) {
+  index <- NULL
+  stride <- 1L
+  for (axis in seq_along(shape)) {
+    if (shape[[axis]] >= 2L) {
+      iota <- hlo_iota(iota_dimension = axis - 1L, dtype = "ui32", shape = shape, func = func)
+      if (stride != 1L) {
+        iota <- hlo_multiply(iota, hlo_fill_u(stride, "ui32", shape, func))
+      }
+      index <- if (is.null(index)) iota else hlo_add(index, iota)
+    }
+    stride <- as.integer(stride * shape[[axis]])
+  }
+  index %||% hlo_fill_u(0L, "ui32", shape, func)
+}
+
+# `value` as an array of the unsigned `dtype` and shape `shape`.
+hlo_fill_u <- function(value, dtype, shape, func) {
+  hlo_broadcast_in_dim(hlo_scalar(value, dtype = dtype, func = func), integer(), shape)
+}
+
+# The low and high 32 bits `x` as one `ui64` array.
+join_u32 <- function(x) {
+  shp <- shape(x[[1L]]$value_type)
+  hi <- hlo_shift_left(hlo_convert(x[[2L]], "ui64"), hlo_fill_u(32L, "ui64", shp, x[[1L]]$func))
+  hlo_or(hlo_convert(x[[1L]], "ui64"), hi)
+}
+
+# ThreeFry-2x32 with 20 rounds (Salmon et al., 2011), as XLA implements it: the
+# key `key` and the input `x` are each two `ui32` arrays of the same shape, and
+# so is the result.
+threefry2x32 <- function(key, x) {
+  shp <- shape(x[[1L]]$value_type)
+  func <- x[[1L]]$func
+  const <- function(value) hlo_fill_u(value, "ui32", shp, func)
+  rotate_left <- function(v, d) {
+    hlo_or(hlo_shift_left(v, const(d)), hlo_shift_right_logical(v, const(32L - d)))
+  }
+  rotations <- list(c(13L, 15L, 26L, 6L), c(17L, 29L, 16L, 24L))
+  rounds <- function(x, r) {
+    for (d in rotations[[r]]) {
+      x[[1L]] <- hlo_add(x[[1L]], x[[2L]])
+      x[[2L]] <- hlo_xor(x[[1L]], rotate_left(x[[2L]], d))
+    }
+    x
+  }
+
+  # 0x1BD11BDA is the parity constant of the key schedule
+  ks <- list(key[[1L]], key[[2L]], hlo_xor(hlo_xor(const(0x1BD11BDAL), key[[1L]]), key[[2L]]))
+  x[[1L]] <- hlo_add(x[[1L]], ks[[1L]])
+  x[[2L]] <- hlo_add(x[[2L]], ks[[2L]])
+  for (i in 1:5) {
+    x <- rounds(x, (i - 1L) %% 2L + 1L)
+    x[[1L]] <- hlo_add(x[[1L]], ks[[i %% 3L + 1L]])
+    x[[2L]] <- hlo_add(hlo_add(x[[2L]], ks[[(i + 1L) %% 3L + 1L]]), const(i))
+  }
+  x
 }
 
 prim_print[["stablehlo"]] <- function(x, header, footer) {

@@ -128,6 +128,26 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
+## Side Effects
+
+A side effect is a value outside the traced function that primitives read and update, such as the
+global random state. It is registered once with `register_side_effect()` (`R/side-effects.R`), with
+a `get()` returning its value as plain R data, an `advance(n)` advancing it on the host, and how a
+trace advances (`advance_box`) or forks (`fork`) it; a primitive declares the ones it uses with
+`new_primitive(side_effects = )`. Never thread such a value by hand: `graph_desc_add()` passes the
+current value as the last operands, takes the updated one off the last outputs, and counts the
+call as one step; `side_effects_branches()` / `side_effects_carry()` / `side_effects_take()` thread
+it through the sub-graphs of higher-order primitives. Every construct advances a side effect by a
+number of steps known at trace time (`nv_scan()`: steps times the body's, `nv_if()`: the larger
+branch's, `nv_while()`: one, as it forks), which a graph records in `$side_effects[[name]]$advance`.
+A program takes a side effect as an input after its own and never returns it: `stablehlo()` lowers
+it to a plain input, and the pjrt backend hands it to the dispatcher as an implicit input and
+advances it on the host after a successful run (`on_success`). A higher-order primitive opens each
+sub-trace with a `side_effects_mode` (`?GraphDescriptor`): `"input"` for a body that hands the
+updated value back (`nv_while()`, `nv_scan()`), `"capture"` for one that closes over it (`nv_if()`,
+`gradient()`), and none for a function that cannot thread it (a reduction, a scatter's
+`update_fn`), where using a side effect is an error.
+
 ## Jit-wrapping
 
 API functions are wrapped in `jit()` at the definition itself, with `static`

@@ -21,7 +21,11 @@ unwrapped to its underlying \code{AnvlPrimitiveDef}.}
 \item{args}{(\code{list} of \code{\link{arrayish}})\cr
 The arguments to the primitive: \code{\link{GraphBox}}es, \code{\link{AnvlArray}}s (registered
 as constants of the graph) or R values (materialized at their default data
-type).}
+type).
+
+For a primitive that uses side effects the current
+value of each is passed as one more argument after \code{args}, named after the
+side effect.}
 
 \item{params}{(\code{list})\cr
 The parameters to the primitive.}
@@ -44,7 +48,8 @@ error. Every other primitive takes its device from its operands and leaves
 this \code{NULL}.}
 }
 \value{
-(\code{list} of \code{\link{GraphBox}})
+(\code{list} of \code{\link{GraphBox}})\cr
+The outputs of the call, without the updated values of its side effects.
 }
 \description{
 Record a call of a primitive as a \code{\link{GraphStatement}} in a graph descriptor. Inside a primitive body created

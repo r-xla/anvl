@@ -53,9 +53,12 @@ env_get <- function(env, gval) {
 #' The rule for translating a primitive to stablehlo is `prim_<name>[["stablehlo"]]`.
 #'
 #' The arguments of the resulting function are, in this order: the graph's
-#' constants, the graph's inputs, and the phantom donated inputs (when
-#' `donate_unaliased_outputs = TRUE`), one per output that is not already
-#' aliased to a donated input, in the order of the outputs.
+#' constants, the graph's inputs, the values of the graph's side effects (such
+#' as the global random state, see [nv_set_seed()]), and the phantom donated
+#' inputs (when `donate_unaliased_outputs = TRUE`), one per output that is not
+#' already aliased to a donated input, in the order of the outputs. Its results
+#' are the graph's outputs: a side effect's updated value is not returned, as
+#' the host advances it itself (see [`AnvlGraph`]).
 #'
 #' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
@@ -90,7 +93,7 @@ env_get <- function(env, gval) {
 #'   leaves the current value untouched — recursive calls from higher-order
 #'   primitives inherit the platform of the enclosing call.
 #' @return (`list`)\cr
-#'   Of length 3:
+#'   Of length 4:
 #'   - the [`stablehlo::Func`]
 #'   - The graph's constants: the [`GraphValue`]s holding [`ConcreteArray`]s,
 #'     whose data must be passed as the leading inputs at execution time.
@@ -98,6 +101,11 @@ env_get <- function(env, gval) {
 #'     appended when `donate_unaliased_outputs = TRUE`. Each entry is a
 #'     `list(dtype, shape)` describing the buffer the executor must
 #'     allocate. Empty when no phantoms were added.
+#'   - The other [`stablehlo::Func`]s the function calls, which a program
+#'     must define next to it: functions the lowering rules build once and
+#'     call wherever they need them, e.g. the ThreeFry hash of
+#'     [prim_sample_bits()]. Empty for most graphs, and always for a nested
+#'     lowering (`id = ""`), whose calls the top-level lowering collects.
 #' @seealso [`trace_fn()`], [`jit()`], [`current_platform()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -139,20 +147,30 @@ stablehlo <- function(
   # finalizes the module). A closure/region lowering (id = "", e.g. a scatter
   # update computation or a while body) builds an anonymous nested func
   # inside the enclosing build.
+  # A top-level lowering collects the functions its rules build (see
+  # `lowering_func()`).
+  if (nzchar(id)) {
+    local_lowering_funcs()
+  }
   func <- stablehlo::local_func(id = id)
+  side_effect_inputs <- lapply(graph$side_effects, `[[`, "input")
+  if (any(vapply(side_effect_inputs, is.null, logical(1L)))) {
+    cli_abort("Internal error: a graph that closes over a side effect cannot be lowered on its own.")
+  }
   n_declared <- length(graph$inputs) - length(captured)
-  inps <- c(graph$constants, graph$inputs[seq_len(n_declared)])
+  inps <- c(graph$constants, graph$inputs[seq_len(n_declared)], side_effect_inputs)
   for (i in seq_along(captured)) {
     env_add(env, graph$inputs[[n_declared + i]], captured[[i]])
   }
 
   # Compute which inputs are donated (only graph$inputs, not constants)
   donate_flat <- if (length(donate) > 0L && !is.null(graph$in_tree)) {
-    # Constants are never donated, inputs may be
-    c(
+    # Constants and side effects are never donated, inputs may be
+    mask <- c(
       rep(FALSE, length(graph$constants)),
       pjrt::tree_leaf_mask(graph$in_tree, donate)
     )
+    c(mask, rep(FALSE, max(0L, length(inps) - length(mask))))
   } else {
     rep(FALSE, length(inps))
   }
@@ -204,7 +222,39 @@ stablehlo <- function(
   outputs <- lower_graph_calls(graph, env, func)
   func <- do.call(hlo_return, outputs)
 
-  list(func, graph$constants, phantom_specs)
+  list(func, graph$constants, phantom_specs, if (nzchar(id)) lowering_funcs() else list())
+}
+
+# Opens the registry of the functions the rules of a top-level lowering build
+# once and call wherever they need them, for the calling scope.
+local_lowering_funcs <- function(envir = parent.frame()) {
+  old <- globals[["lowering_funcs"]]
+  globals[["lowering_funcs"]] <- new.env(parent = emptyenv())
+  withr::defer(
+    {
+      globals[["lowering_funcs"]] <- old
+    },
+    envir = envir
+  )
+}
+
+# The functions of the current lowering's registry, sorted by id.
+lowering_funcs <- function() {
+  funcs <- globals[["lowering_funcs"]]
+  lapply(sort(names(funcs)), function(id) funcs[[id]])
+}
+
+# The function `id` of the current lowering, which `build(id)` builds (and
+# finalizes) on first use.
+lowering_func <- function(id, build) {
+  funcs <- globals[["lowering_funcs"]]
+  if (is.null(funcs)) {
+    cli_abort("Internal error: a lowering function is only available in a top-level lowering.")
+  }
+  if (is.null(funcs[[id]])) {
+    funcs[[id]] <- build(id)
+  }
+  funcs[[id]]
 }
 
 # Lower `graph`'s calls into `func`, reading its inputs and constants from `env`

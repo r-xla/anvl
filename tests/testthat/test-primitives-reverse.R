@@ -353,20 +353,23 @@ describe("prim_if", {
     expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(6, 12, 18))
   })
 
-  it("leaves an RNG state a branch returns undifferentiated", {
-    f <- function(p, x, st) {
-      r <- nv_if(
+  it("leaves the RNG state a branch draws from undifferentiated", {
+    local_nv_seed(NULL)
+    f <- function(p, x) {
+      a <- nv_if(
         p,
-        function() {
-          d <- nv_rnorm(integer(), st, dtype = "f64")
-          list(st = d$state, a = nv_sum(x) * d$values)
-        },
-        function() list(st = st, a = nv_sum(x))
+        function() nv_sum(x) * nv_rnorm(integer(), dtype = "f64"),
+        function() nv_sum(x)
       )
-      r$a + nv_rnorm(integer(), r$st, dtype = "f64")$values
+      a + nv_rnorm(integer(), dtype = "f64")
     }
-    grad <- jit(gradient(f, wrt = "x"))(false_, x, nv_rng_state(1L))$x
+    grad <- jit(gradient(f, wrt = "x"))(false_, x)$x
     expect_equal(as.numeric(grad), c(1, 1, 1))
+
+    # through the branch that draws, the gradient is that draw
+    z <- with_nv_seed(1L, as.numeric(nv_rnorm(integer(), dtype = "f64")))
+    grad <- with_nv_seed(1L, jit(gradient(f, wrt = "x"))(true_, x)$x)
+    expect_equal(as.numeric(grad), rep(z, 3L))
   })
 
   it("lets a branch take the gradient of a value it closes over", {

@@ -82,13 +82,12 @@ distribution_float <- function(params) {
 #' @references
 #' `r format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
-#' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
+#' @return ([`arrayish`])\cr
 #' `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an [`arrayish`] with the
 #' shape of `x`/`q`/`p` and the float data type described under Data Types.
 #'
-#' `nv_rnorm()` returns a named `list` of two [`arrayish`]: `state`, the updated
-#' RNG state with the input `state`'s data type and shape, and `values`, the
-#' sample of shape `shape` and the data type described under `dtype`.
+#' `nv_rnorm()` returns the sample, an [`arrayish`] of shape `shape` and the data
+#' type described under `dtype`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -475,13 +474,12 @@ nv_qnorm <- jit(
 #' @templateVar dist unif
 #' @templateVar params `min` or `max`
 #' @template section_distribution_dtype
-#' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
+#' @return ([`arrayish`])\cr
 #' `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an [`arrayish`] with the
 #' same shape as `x`/`q`/`p` and the float data type described under Data Types.
 #'
-#' `nv_runif()` returns a named `list` of two [`arrayish`]: `state`, the updated
-#' RNG state with the input `state`'s data type and shape, and `values`, the
-#' sample of shape `shape` and the data type described under `dtype`.
+#' `nv_runif()` returns the sample, an [`arrayish`] of shape `shape` and the data
+#' type described under `dtype`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.25, 1, 1.5))
@@ -506,14 +504,12 @@ nv_qnorm <- jit(
 #' nv_qunif(p, lower_tail = FALSE)
 #' nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 #'
-#' # `state` is the updated RNG state, `values` the sample
-#' state <- nv_rng_state(42L)
-#' result <- nv_runif(c(2, 3), state)
-#' result$values
+#' nv_set_seed(42L)
+#' nv_runif(c(2, 3))
 #'
 #' # `min`/`max` may also be arrays of the same shape as the sample
 #' lower <- nv_array(matrix(c(0, 10, 20, 30, 40, 50), nrow = 2))
-#' nv_runif(c(2, 3), state, min = lower, max = lower + 1)$values
+#' nv_runif(c(2, 3), min = lower, max = lower + 1)
 NULL
 
 #' @rdname nv_uniform

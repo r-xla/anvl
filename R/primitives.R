@@ -2519,14 +2519,17 @@ prim_if <- new_primitive(
 
     current_desc <- current_descriptor(silent = TRUE)
 
-    desc_true <- local_descriptor()
+    desc_true <- local_descriptor(side_effects_mode = "capture")
     true_graph <- trace_fn(true, list(), desc = desc_true)
-    desc_false <- local_descriptor()
+    desc_false <- local_descriptor(side_effects_mode = "capture")
     false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
+    # A branch that uses a side effect closes over its value and hands nothing
+    # back; the call advances it by the larger of the branches' advances.
+    branched <- side_effects_branches(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
@@ -2539,6 +2542,7 @@ prim_if <- new_primitive(
       infer_fn = infer_cond,
       desc = current_desc
     )
+    side_effects_branched(current_desc, branched)
     unflatten(true_graph$out_tree, out)
   },
   subgraphs = c("true", "false"),
@@ -2609,7 +2613,7 @@ prim_while <- new_primitive(
 
     desc_cond <- local_descriptor()
     cond_graph <- trace_fn(cond, init, desc = desc_cond)
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "input")
     body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
@@ -2620,17 +2624,30 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
+    # A body that uses side effects carries them as the last members of the
+    # loop state, which `cond` takes too but does not read. The loop runs a
+    # number of times not known while tracing, so it forks: the body advances a
+    # value derived from the current one, which the loop itself advances by one
+    # step, and drops it at the end.
+    carried <- side_effects_carry(current_desc, body_graph, fork = TRUE)
+    cond_graph$inputs <- c(
+      cond_graph$inputs,
+      lapply(carried$names, function(name) GraphValue(side_effect(name)$aval))
+    )
+    operands <- c(flatten(init), carried$operands)
+
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
     captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = c(flatten(init), captures),
+      args = c(operands, captures),
       params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried$names, out, keep = rep(FALSE, length(carried$names)))
 
     unflatten(body_graph$out_tree, out)
   },
@@ -2750,8 +2767,14 @@ prim_scan <- new_primitive(
       list(carry = st$carry, out = st$out)
     }
 
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "input")
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # A body that uses side effects carries them as the last leaves of the
+    # carry.
+    n_user_carry <- n_carry
+    carried <- side_effects_carry(current_desc, body_graph, at = n_carry)
+    init_flat <- c(init_flat, carried$operands)
+    n_carry <- n_carry + length(carried$names)
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
     captures <- purify_subgraphs(current_desc, list(body_graph))
@@ -2798,6 +2821,10 @@ prim_scan <- new_primitive(
       infer_fn = infer_fn,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried$names, out, at = n_user_carry)
+    for (i in seq_along(carried$names)) {
+      side_effect_advance(current_desc, carried$names[[i]], steps * carried$advance[[i]])
+    }
     unflatten(body_graph$out_tree, out)
   },
   subgraphs = "body",
@@ -3010,56 +3037,100 @@ prim_print <- new_primitive(
 )
 
 # RNG primitives
-#' @title Primitive RNG Bit Generator
+#' @title Primitive Random Bits
 #' @description
-#' Generates pseudo-random numbers using the specified algorithm and returns
-#' the updated RNG state together with the generated values.
-#' @param state ([`arrayish`])\cr
-#'   RNG state: a 1-D array of the `ui64` data type. Its length depends on
-#'   `rng_algorithm` -- exactly 2 for `"THREE_FRY"`, 2 or 3 for `"PHILOX"`,
-#'   and whatever the implementation wants for `"DEFAULT"`.
-#' @param rng_algorithm (`character(1)`)\cr
-#'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
-#'   leaving the choice to the implementation.
-#' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values. Can be any numeric data type.
+#' Draws random bits from the active random state (see [nv_set_seed()]) with
+#' the ThreeFry-2x32 counter-based generator of
+#' `r cite_bib("salmon2011parallel")`, and advances that random state by one
+#' step.
+#'
+#' The random state is not an argument: the primitive reads the random state of
+#' the trace it is called in and leaves the advanced one behind for the next
+#' draw. A random state is a key \eqn{k} and a counter \eqn{c}. A call splits it:
+#' it draws from the fresh key \eqn{k' = \mathrm{ThreeFry}_k(c)}, hashing
+#' \eqn{k'} with the counters \eqn{0, 1, 2, \ldots}, and leaves
+#' \eqn{(k, c + 1)} behind, however many values it drew. So the size of a draw
+#' does not change what later draws give, and two draws of `1` do not give the
+#' values of one draw of `2`.
+#'
+#' In a `"ui64"` draw, the value at position \eqn{t} (counted from 0 in
+#' column-major order) is the hash of counter \eqn{t}, its first word the low 32
+#' bits. A narrower draw takes the low and then the high word of the hash of
+#' counter \eqn{\lfloor t/2 \rfloor} for the positions \eqn{t} and
+#' \eqn{t + 1}, truncated to `dtype`.
+#'
+#' The generator is built from integer arithmetic rather than taken from XLA's
+#' `rng_bit_generator`, whose bits the StableHLO specification leaves to the
+#' implementation, so a random state gives the same bits on every device and
+#' platform.
 #' @template param_shape
-#' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state with the input `state`'s data type
-#'   and shape, and `values`, the random values with the given `dtype` and
-#'   `shape`.
-#' @templateVar primitive_id rng_bit_generator
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
+#' @return ([`arrayish`])\cr
+#'   The random bits, of data type `dtype` and shape `shape`. The draws fill
+#'   `shape` in column-major order, so a draw of `c(2, 3)` holds the values of a
+#'   draw of `6`, reshaped to `c(2, 3)`.
+#' @references
+#' `r format_bib("salmon2011parallel")`
+#' @templateVar primitive_id sample_bits
 #' @template section_rules
-#' @section StableHLO:
-#' `r roxy_spec("rng_bit_generator")`
-#' @seealso [nv_runif()], [nv_rnorm()]
+#' @seealso [nv_runif()], [nv_rnorm()], [prim_fork_random_state()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # THREE_FRY, the default, takes a two-element state
-#' state <- nv_array(c(0L, 0L), dtype = "ui64")
-#' prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
-#'
-#' # the updated state feeds the next draw, so the two differ
-#' out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
-#' prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
-#'
-#' # PHILOX also accepts a three-element state
-#' prim_rng_bit_generator(
-#'   nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
-#'   dtype = "i32", shape = 4L
-#' )
+#' nv_set_seed(1L)
+#' prim_sample_bits(c(2, 3), "ui32")
 #' @export
-prim_rng_bit_generator <- new_primitive(
-  "rng_bit_generator",
-  function(state, rng_algorithm = "THREE_FRY", dtype, shape) {
+prim_sample_bits <- new_primitive(
+  "sample_bits",
+  function(shape, dtype) {
     graph_desc_add(
       self,
-      list(state = state),
-      params = list(rng_algorithm = rng_algorithm, dtype = dtype, shape = shape),
-      infer_fn = infer_rng_bit_generator
-    )
+      list(),
+      params = list(shape = shape, dtype = dtype),
+      infer_fn = infer_sample_bits
+    )[[1L]]
   },
-  static = 2:4
+  static = c("shape", "dtype"),
+  side_effects = "random_state"
 )
+
+#' @title Primitive Fork of the Random State
+#' @description
+#' Splits the active random state \eqn{(k, c)} (see [nv_set_seed()]) like a
+#' sampling call of [prim_sample_bits()] does, advancing it by one step to
+#' \eqn{(k, c + 1)}, and returns the child random state
+#' \eqn{(\mathrm{ThreeFry}_k(c), 0)} instead of drawing from it. [nv_while()]
+#' forks the random state for a loop body that samples: the loop runs a number
+#' of times that is not known while it is traced, so the body advances the
+#' child as often as it runs, and the loop advances the random state outside of
+#' it by one step.
+#' @return ([`arrayish`])\cr
+#'   The child random state, a `"ui32"` array of shape `4`: the low and the high
+#'   word of its key, then of its counter, which is `0`.
+#' @templateVar primitive_id fork_random_state
+#' @template section_rules
+#' @seealso [prim_sample_bits()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_set_seed(1L)
+#' prim_fork_random_state()
+#' @export
+prim_fork_random_state <- new_primitive(
+  "fork_random_state",
+  function() {
+    fork_random_state(current_descriptor(silent = TRUE))
+  },
+  side_effects = "random_state"
+)
+
+# The child random state a fork of the random state of the trace `desc` returns,
+# a GraphBox; the fork is a call of `prim_fork_random_state()` in `desc`.
+fork_random_state <- function(desc) {
+  graph_desc_add(
+    prim_fork_random_state,
+    list(),
+    infer_fn = infer_fork_random_state,
+    desc = desc
+  )[[1L]]
+}
 
 #' @title Primitive Scatter
 #' @description

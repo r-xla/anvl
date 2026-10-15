@@ -25,7 +25,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
     phantom_specs <- lapply(compiled$phantom_specs, function(spec) {
       list(dtype = as.character(spec$dtype), shape = as.integer(spec$shape))
     })
-    list(
+    entry <- list(
       exec = compiled$exec,
       const_arrays = compiled$const_arrays,
       input_dtypes = compiled$input_dtypes,
@@ -33,8 +33,11 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       client = pjrt::pjrt_client(pjrt::platform(compiled$device)),
       device = compiled$device,
       out_tree = compiled$out_tree,
-      out_avals = compiled$out_avals
+      out_avals = compiled$out_avals,
+      implicit_inputs = compiled$implicit_inputs,
+      on_success = compiled$on_success
     )
+    entry
   }
 }
 
@@ -133,6 +136,12 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `device`: The `PJRTDevice` the executable was compiled for.
 #'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
 #'     executor must allocate for an output (see [`stablehlo()`]).
+#'   - `implicit_inputs`: One `list(get, dtype, shape)` per side effect the
+#'     program uses, through which pjrt's dispatcher supplies its value as an
+#'     input after the call's own.
+#'   - `on_success`: `NULL`, or a function pjrt's dispatcher calls after every
+#'     successful run, which advances the side effects the program uses by the
+#'     number of steps it advances them (see [`AnvlGraph`]).
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -144,7 +153,7 @@ compile_pjrt <- function(
   fallback_device = NULL,
   default_dtypes = NULL
 ) {
-  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt")
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt", side_effects_mode = "input")
   graph <- trace_fn(
     f,
     desc = desc,
@@ -157,6 +166,7 @@ compile_pjrt <- function(
   # constants, which would otherwise hide a closed-over constant from a foreign
   # backend and let `check_single_backend()` pass incorrectly.
   check_single_backend(graph, expected = "pjrt")
+  check_side_effects(graph, "pjrt")
 
   # jit() always runs the full set of graph optimization passes.
   graph <- optimize_graph(graph, optimize = TRUE)
@@ -186,8 +196,22 @@ compile_pjrt <- function(
   compile_graph_pjrt(graph, donate = donate, device = device)
 }
 
+# The program takes the values of the side effects `graph` uses as inputs after
+# its own (see `stablehlo()`), which pjrt's dispatcher supplies through the
+# entry's implicit inputs; it returns none of them. After a successful run, the
+# entry's `on_success` advances them on the host by the number of steps the
+# program advanced them, which is known from the trace.
 compile_graph_pjrt <- function(graph, donate = character(), device) {
   platform_name <- if (is.character(device)) device else platform(device)
+  input_dtypes <- graph_input_dtypes(graph)
+  # pjrt needs these to create templates for the outputs
+  # We also provide dtype and shape because these are created BEFORE the first execution
+  out_avals <- lapply(graph$outputs, function(x) {
+    list(
+      dtype = as.character(x$aval$dtype),
+      shape = shape(x$aval)
+    )
+  })
   out <- stablehlo(
     graph,
     donate = donate,
@@ -215,16 +239,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 
   out_tree <- graph$out_tree
 
-  # pjrt needs these to create templates for the outputs
-  # We also provide dtype and shape because these are created BEFORE the first execution
-  out_avals <- lapply(graph$outputs, function(x) {
-    list(
-      dtype = as.character(x$aval$dtype),
-      shape = shape(x$aval)
-    )
-  })
-
-  src <- stablehlo::repr(func)
+  # the functions `func` calls are defined next to it
+  src <- paste(vapply(c(out[[4L]], list(func)), stablehlo::repr, character(1L)), collapse = "\n\n")
   program <- pjrt_program(src = src, format = "mlir")
   exec <- pjrt_compile(program, device = device)
 
@@ -237,10 +253,31 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     # names one -- the dispatcher uploads the R data at that dtype, which is how
     # an `f64` program gets the exact R double; an array input takes `NA`, and a
     # call without any R input needs no declaration at all.
-    input_dtypes = graph_input_dtypes(graph),
+    input_dtypes = input_dtypes,
     device = device(exec),
-    phantom_specs = phantom_specs
+    phantom_specs = phantom_specs,
+    implicit_inputs = unname(lapply(names(graph$side_effects), function(name) {
+      side_effect <- side_effect(name)
+      list(get = side_effect$get, dtype = as.character(dtype(side_effect$aval)), shape = shape(side_effect$aval))
+    })),
+    on_success = side_effects_on_success(graph)
   )
+}
+
+# The function advancing the side effects `graph` uses by the steps the graph
+# advances them, or `NULL` when it uses none.
+side_effects_on_success <- function(graph) {
+  if (!length(graph$side_effects)) {
+    return(NULL)
+  }
+  advances <- lapply(names(graph$side_effects), function(name) {
+    list(advance = side_effect(name)$advance, n = graph$side_effects[[name]]$advance)
+  })
+  function() {
+    for (a in advances) {
+      a$advance(a$n)
+    }
+  }
 }
 
 #' PJRT Backend

@@ -48,3 +48,30 @@ test_that("donate: nested list inputs", {
     c(0L, 1L)
   )
 })
+
+describe("stablehlo() of a graph with side effects", {
+  graph <- trace_fn(function(x) x + nv_runif(2L), list(x = nv_aval("f32", 2L)))
+
+  it("takes their values after the inputs and returns none of them", {
+    out <- stablehlo(graph)
+    func <- out[[1L]]
+    expect_length(func$inputs, 2L)
+    expect_null(func$inputs[[1L]]$alias)
+    expect_null(func$inputs[[2L]]$alias)
+    expect_length(func$outputs, 1L)
+  })
+
+  it("never donates a side effect's value", {
+    graph <- trace_fn(function(s) s + prim_sample_bits(4L, "ui32"), list(s = nv_aval("ui32", 4L)))
+    inputs <- stablehlo(graph, donate = "s")[[1L]]$inputs
+    # the donated input `s` is aliased with the output, the random state is not
+    expect_identical(inputs[[1L]]$alias, 0L)
+    expect_null(inputs[[2L]]$alias)
+  })
+
+  it("adds no phantom input for the result of a side effect", {
+    out <- stablehlo(graph, donate_unaliased_outputs = TRUE, platform = "cpu")
+    expect_length(out[[3L]], 1L)
+    expect_identical(out[[1L]]$inputs[[3L]]$alias, 0L)
+  })
+})
