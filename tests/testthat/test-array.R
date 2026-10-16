@@ -40,8 +40,16 @@ describe("AnvlArray serialization", {
     y <- roundtrip(x)
     expect_identical(dtype(y), dtype(x))
     expect_identical(shape(y), shape(x))
-    expect_identical(device(y), device(x))
     expect_identical(as_array(y), as_array(x))
+  })
+
+  it("loads a pjrt array onto the default device", {
+    skip_if(!is_cpu())
+    x <- nv_array(c(1, 2, 3))
+    local_default_device("cpu:1")
+    y <- roundtrip(x)
+    expect_identical(device(y), default_device())
+    expect_identical(device(y), nv_device("cpu:1"))
   })
 
   it("can compute with a reloaded array", {

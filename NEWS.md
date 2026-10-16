@@ -1,6 +1,7 @@
 # anvl (development version)
 
-* `AnvlArray`s can now be saved with `saveRDS()` and friends. Arrays of the
+* `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
+  the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
 
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`

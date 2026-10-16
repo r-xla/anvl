@@ -135,6 +135,13 @@ Arrays can be serialized to and from the
 \item \code{\link[=nv_serialize]{nv_serialize()}} / \code{\link[=nv_unserialize]{nv_unserialize()}}:
 Serialize/deserialize arrays to/from raw vectors.
 }
+
+An array can also be saved like any R object, e.g. with \code{\link[=saveRDS]{saveRDS()}}.
+Its device is not saved: an array of the pjrt backend loads onto the
+\link[=default_device]{default device} at the time it is read, so an array saved
+on a GPU also loads on a machine without one. anvl arranges this by setting
+pjrt's \code{pjrt.unserialize_device} option when it is loaded, so load anvl
+before reading arrays.
 }
 
 \section{Backend}{
