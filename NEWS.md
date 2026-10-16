@@ -1,27 +1,37 @@
 # anvl (development version)
 
-## Breaking changes
-
-* Random draws use a global random state, which `nv_set_seed()` seeds
-  (`with_nv_seed()` / `local_nv_seed()` for a scope); unset, it is derived from
-  base R's RNG on the first draw. The samplers lose their `state` argument and
-  return only the sample; `nv_rng_state()` is removed.
-* `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`, which draws
-  random bits with ThreeFry-2x32, built from integer arithmetic, so a seed gives
-  the same bits on every device. Every call splits the global random state and
-  advances its counter by one, so a jitted function draws what the same code run
-  eagerly draws; `nv_while()` forks it and advances it by one.
-
-## Features
-
-* `nv_get_random_state()` and `nv_set_random_state()` save and restore the
-  global random state, as plain R values, to continue a sequence where it
-  stopped.
-* New `prim_fork_random_state()` returns a child random state.
-* `prim_print()` / `nv_print()` gain `ordered`: ordered prints run in the order
-  of the code, also through loops and branches.
+* Breaking: random draws use a global random state, which `nv_set_seed()` seeds
+  (`with_nv_seed()` / `local_nv_seed()` for a scope) and `nv_get_random_state()` /
+  `nv_set_random_state()` save and restore. The samplers lose their `state`
+  argument; `nv_rng_state()` is removed.
+* Breaking: `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`, which
+  draws with ThreeFry-2x32 from a fresh key per call, so that a jitted function
+  draws what the same code run eagerly draws. New `prim_fork_random_state()`.
+* `prim_print()` / `nv_print()` gain `ordered`, to print in the order of the code.
 * `new_primitive()` gains `side_effects`, for primitives that read and update a
-  value outside of the traced function, such as the global random state.
+  value outside of the traced function.
+* Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* Bugfix: `nv_rbinom()` and `nv_sample_int()` reject a `size` or `n` that does not
+  fit into `dtype`; `nv_rbinom()` accepts `size = 0`. `nv_sample()` gives a clear
+  error for an empty population.
+* Bugfix: `nv_seq()` counts down at an unsigned data type instead of erroring.
+* Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
+  of its input.
+* Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in
+  `x` at exponent 0.
+* Bugfix: The gradient of `nv_pad()` / `prim_pad()` works for negative edge
+  padding.
+* Bugfix: The gradient of `prim_broadcast_in_axes()` is no longer permuted for
+  broadcast axes that are not in increasing order.
+* Bugfix: An `NA` in an `array()` subset index now gives an informative error.
+* Bugfix: the common data type of arrays and R values no longer depends on the order of the
+  arguments; the R values take the data type the arrays agree on.
+* Bugfix: `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+* Bugfix: `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
+* Bugfix: `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+* Bugfix: `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
+  summed at the default float.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the binomial distribution: `nv_dbinom()`, `nv_pbinom()` and
@@ -30,34 +40,10 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
-
-## Bug fixes
-
-* `nv_seq()` counts down at an unsigned data type instead of erroring.
-* The gradient of an empty strided `prim_static_slice()` has the shape of its
-  input.
-* The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in `x` at
-  exponent 0.
-* The gradient of `nv_pad()` / `prim_pad()` works for negative edge padding.
-* The gradient of `prim_broadcast_in_axes()` is no longer permuted for broadcast
-  axes that are not in increasing order.
-* The gradient of `prim_dot_general()` with respect to `lhs` is right when `lhs`
-  has batching axes but no free axes.
-* `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0 axis to
-  size 0.
-* An `NA` in an `array()` subset index now gives an informative error.
-* The common data type of arrays and R values no longer depends on the order of
-  the arguments; the R values take the data type the arrays agree on.
-* `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
-* `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
-* `nv_rnorm()` no longer returns non-finite values when a uniform draw is `0`,
-  and, like `rnorm()`, returns `NaN` for a `NaN` `mean` or a non-finite or
-  negative `sd`.
-* `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input,
-  which is now summed at the default float.
-* `nv_rbinom()` and `nv_sample_int()` reject a `size` or `n` that does not fit
-  into `dtype`; `nv_rbinom()` accepts `size = 0`.
-* `nv_sample()` gives a clear error for an empty population.
+* Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
+  `lhs` has batching axes but no free axes.
+* Bugfix: `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
+  axis to size 0.
 
 # anvl 0.5.1
 

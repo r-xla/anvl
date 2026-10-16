@@ -136,10 +136,9 @@ transform_gradient <- function(graph, wrt) {
     if (is.null(input)) {
       cli_abort("Internal error: a graph that closes over a side effect cannot be differentiated on its own.")
     }
-    desc$side_effects[[name]] <- list(input = input, current = register_gval(desc, input), advance = 0)
+    side_effect_enter(desc, name, input)
   }
-  res <- graph_value_and_grad(graph, wrt, extra = side_effect_outputs(graph))
-  side_effects_set(graph, res$extra)
+  res <- graph_value_and_grad(graph, wrt)
   desc$outputs <- lapply(res$grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
   desc$is_static_flat <- graph$is_static_flat
@@ -151,9 +150,9 @@ transform_gradient <- function(graph, wrt) {
 # Here we compute the gradients of a graph and write it into the current descriptor
 # This can either be a call to the gradient (inputs are provided)
 # Or just the gradient itself, i.e. then the inputs are NULL (used for transform_gradient).
-# `extra` are further nodes of `graph` -- the values it leaves its side effects
-# at -- whose boxes in the current descriptor are returned as `extra`.
-graph_value_and_grad <- function(graph, wrt, inputs = NULL, extra = list()) {
+# The values `graph` leaves its side effects at become their current values,
+# which advance by `graph`'s advances.
+graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
   reqs <- compute_requirements(graph, wrt)
@@ -166,10 +165,13 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL, extra = list()) {
 
   box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
   rebuilt_box <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
+  for (name in names(graph$side_effects)) {
+    side_effect_set(desc, name, rebuilt_box(graph$side_effects[[name]]$output))
+    side_effect_advance(desc, name, graph$side_effects[[name]]$advance)
+  }
   list(
     value = lapply(graph$outputs, rebuilt_box),
-    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of),
-    extra = lapply(extra, rebuilt_box)
+    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
   )
 }
 
@@ -691,31 +693,13 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
       call = call
     )
   }
-  graph <- trace_gradient_fn(f, prep)
-  res <- graph_value_and_grad(
-    graph,
-    wrt,
-    gradient_operands(graph, prep$args_flat),
-    extra = side_effect_outputs(graph)
-  )
-  side_effects_set(graph, res$extra)
+  # A side effect `f` uses closes over the enclosing trace's value; the replay
+  # makes the value `f` leaves behind the current one.
+  desc <- local_descriptor(side_effects_mode = "capture")
+  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
+  res <- graph_value_and_grad(graph, wrt, gradient_operands(graph, prep$args_flat))
   list(
     value = unflatten(graph$out_tree, res$value),
     grad = unflatten(gradient_out_tree(graph, wrt), res$grad)
   )
-}
-
-# Traces `f`, the function `gradient()` differentiates, from the prepared
-# arguments `prep`. A side effect `f` uses closes over the enclosing trace's
-# value; the graph records the value it leaves behind in its `side_effects`,
-# for `side_effects_set()` once the graph is replayed.
-trace_gradient_fn <- function(f, prep) {
-  desc <- local_descriptor(side_effects_mode = "capture")
-  trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
-}
-
-# The nodes `graph` leaves its side effects at, one per side effect, as
-# `graph_value_and_grad()` takes them in `extra`.
-side_effect_outputs <- function(graph) {
-  lapply(graph$side_effects, `[[`, "output")
 }

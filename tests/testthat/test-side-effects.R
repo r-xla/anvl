@@ -13,8 +13,7 @@ local_counter <- function(from = "program", start = 0L, envir = parent.frame()) 
     build = if (from == "program") function(func) hlo_scalar(start, dtype = "i32", func = func),
     receive = function(value) {
       store$received <- as_array(value)
-    },
-    backends = "pjrt"
+    }
   )
   withr::defer(
     {
@@ -44,23 +43,7 @@ describe("register_side_effect", {
   })
 
   it("takes the value either from the host or from the program", {
-    expect_error(
-      register_side_effect("x", AbstractArray(dtype = "i32", shape = integer()), backends = "pjrt"),
-      "either from the host"
-    )
-  })
-
-  it("advances only a counted side effect on the host", {
-    expect_error(
-      register_side_effect(
-        "x",
-        AbstractArray(dtype = "i32", shape = integer()),
-        get = function() 0L,
-        advance = function(n) NULL,
-        backends = "pjrt"
-      ),
-      "only a counted side effect"
-    )
+    expect_error(register_side_effect("x", AbstractArray(dtype = "i32", shape = integer())), "from the host")
   })
 })
 

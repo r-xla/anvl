@@ -130,27 +130,14 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 
 ## Side Effects
 
-A side effect is a value outside the traced function that primitives read and update: the global
-random state, the token that orders prints (`prim_print(ordered = TRUE)`), later e.g. an error code.
-It is registered once with `register_side_effect()` (`R/side-effects.R`), saying where the value
-comes from (`get()` from the host, which a program takes as an input, or `build()` inside the
-program), how it passes through loops and branches (carried as data, or `counted` with a static
-number of steps: `nv_scan()` steps times the body's, `nv_if()` the larger branch's, `nv_while()` one,
-as it forks), and where it goes (nowhere, `advance(n)` on the host for a counted one, or
-`receive(value)` returned to the host). A primitive declares the side effects it uses with
-`new_primitive(side_effects = )`, and a call can use fewer (`graph_desc_add(side_effects = )`).
-Never thread such a value by hand: `graph_desc_add()` passes the current value as the last operands,
-takes the updated one off the last outputs and counts the call as one step;
-`side_effects_branches()` / `side_effects_carry()` / `side_effects_take()` thread it through the
-sub-graphs of higher-order primitives. A graph records its side effects in `$side_effects` (with the
-`advance` of a counted one), apart from `$inputs` / `$outputs`. `stablehlo()` lowers host values to
-inputs after the graph's own, builds the others in the program, and returns received ones after the
-outputs; the pjrt backend hands them to the dispatcher as implicit inputs and outputs and an
-`on_success` that advances and receives. A higher-order primitive opens each sub-trace with a
-`side_effects_mode` (`?GraphDescriptor`): `"input"` for a body that hands the updated value back
-(`nv_while()`, `nv_scan()`), `"capture"` for one that closes over it (`nv_if()`, `gradient()`), and
-none for a function that cannot thread it (a reduction, a scatter's `update_fn`), where using a side
-effect is an error.
+A side effect is a value outside the traced function that primitives read and update, such as the
+global random state or the token that orders prints. It is registered once with
+`register_side_effect()` (`R/side-effects.R`): where its value comes from (the host or the
+program), whether it is carried through loops and branches or counted, and whether the host
+receives it. A primitive declares the ones it uses with `new_primitive(side_effects = )`. Never
+thread such a value by hand: `graph_desc_add()` and the `side_effects_*()` helpers thread it
+through traces and sub-graphs; a sub-trace's `side_effects_mode` (`?GraphDescriptor`) says how it
+takes them. The internals vignette describes the mechanism.
 
 ## Jit-wrapping
 

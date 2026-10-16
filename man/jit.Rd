@@ -56,8 +56,8 @@ Wraps a function so that it is traced and compiled on first call. Subsequent
 calls with the same input structure, shapes, and dtypes hit an LRU cache and
 skip recompilation.
 
-A function that draws random numbers also reads and advances the global RNG
-state (see \code{\link[=nv_set_seed]{nv_set_seed()}}), so two calls with the same arguments draw
+A function that draws random numbers also reads and advances the global
+random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}), so two calls with the same arguments draw
 different samples.
 }
 \section{Backend and device}{

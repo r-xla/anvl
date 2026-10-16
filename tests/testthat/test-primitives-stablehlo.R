@@ -98,19 +98,39 @@ describe("prim_sample_bits", {
     expect_error(lower(c(3L, as.integer(2^30 + 1))), "first axis has an odd size")
   })
 
-  it("is lowered to integer arithmetic rather than rng_bit_generator", {
-    local_nv_seed(NULL)
-    graph <- trace_fn(function() prim_sample_bits(3L, "ui32"), list())
-    expect_false(grepl("rng_bit_generator", stablehlo::repr(stablehlo(graph)[[1L]])))
+  it("refuses a draw from more hashes than an R integer holds", {
+    lower <- function(shape) stablehlo(trace_fn(function() prim_sample_bits(shape, "ui64"), list()))
+    expect_error(lower(c(65536L, 32768L)), "more than 2147483647 hashes")
   })
 })
 
-describe("prim_fork_random_state", {
-  it("returns a ui32 random state of shape 4", {
+describe("prim_fork_random_state() and the generator of prim_sample_bits()", {
+  # Known answers of ThreeFry-2x32 with 20 rounds from a reference
+  # implementation outside of anvl, which reproduces the test vector of Salmon et
+  # al. (2011). The seed 1 is the key with low word 1 and high word 0.
+
+  it("forks the random state into its split and a zero counter", {
     local_nv_seed(1L)
-    out <- prim_fork_random_state()
-    expect_dtype(out, "ui32")
-    expect_shape(out, 4L)
+    expect_identical(as.numeric(as_array(prim_fork_random_state())), c(3023415290, 2531993477, 0, 0))
+    expect_identical(unclass(nv_get_random_state())[[3L]], 1)
+  })
+
+  it("draws ui64 values from the split, from counter 0", {
+    local_nv_seed(1L)
+    # the values 6733707815133362247, 4925054666428519553 and
+    # 11939314369203855122, each as its low and its high 32-bit word
+    words <- nv_bitcast_convert(prim_sample_bits(3L, "ui64"), dtype = "ui32")
+    expect_identical(
+      as.numeric(as_array(words)),
+      c(3326851143, 1567813524, 64623745, 1146703648, 1578950418, 2779838249)
+    )
+  })
+
+  it("draws ui32 values as the low and then the high words of the hashes", {
+    local_nv_seed(1L)
+    expect_identical(as.numeric(as_array(prim_sample_bits(3L, "ui32"))), c(3326851143, 1567813524, 64623745))
+    # the next sampling call splits at counter 1
+    expect_identical(as.numeric(as_array(prim_sample_bits(2L, "ui32"))), c(3551563625, 1672607787))
   })
 })
 
@@ -1328,6 +1348,12 @@ test_that("prim_print hands its argument back untouched", {
 })
 
 describe("prim_print(ordered = TRUE)", {
+  # The integers the prints of `f(...)` show, in the order they came out.
+  printed <- function(f, ...) {
+    out <- capture.output(invisible(f(...)))
+    as.integer(trimws(grep("^ *-?[0-9]+$", out, value = TRUE)))
+  }
+
   it("runs ordered prints in the order of the code", {
     f <- jit(function(x) {
       for (i in 1:8) {
@@ -1335,9 +1361,7 @@ describe("prim_print(ordered = TRUE)", {
       }
       x
     })
-    out <- capture.output(invisible(f(nv_array(0L))))
-    values <- as.integer(trimws(grep("^ *[0-9]+$", out, value = TRUE)))
-    expect_identical(values, 1:8)
+    expect_identical(printed(f, nv_array(0L)), 1:8)
   })
 
   it("orders the prints of a loop iteration by iteration and after the code before it", {
@@ -1350,9 +1374,7 @@ describe("prim_print(ordered = TRUE)", {
       })
       prim_print(nv_scalar(-2L), ordered = TRUE)
     })
-    out <- capture.output(invisible(f()))
-    values <- as.integer(trimws(grep("^ *-?[0-9]+$", out, value = TRUE)))
-    expect_identical(values, c(-1L, 0L, 100L, 1L, 101L, 2L, 102L, 3L, 103L, -2L))
+    expect_identical(printed(f), c(-1L, 0L, 100L, 1L, 101L, 2L, 102L, 3L, 103L, -2L))
   })
 
   it("orders the prints of the branch nv_if takes", {
@@ -1363,9 +1385,8 @@ describe("prim_print(ordered = TRUE)", {
       })
       prim_print(nv_scalar(4L), ordered = TRUE)
     })
-    values <- function(p) as.integer(trimws(grep("^ *[0-9]+$", capture.output(invisible(f(p))), value = TRUE)))
-    expect_identical(values(TRUE), c(1L, 2L, 4L))
-    expect_identical(values(FALSE), c(1L, 3L, 4L))
+    expect_identical(printed(f, TRUE), c(1L, 2L, 4L))
+    expect_identical(printed(f, FALSE), c(1L, 3L, 4L))
   })
 
   it("threads a token from one ordered print to the next", {
@@ -1384,6 +1405,16 @@ describe("prim_print(ordered = TRUE)", {
     func <- stablehlo(graph)[[1L]]
     expect_length(func$inputs, 1L)
     expect_length(func$outputs, 1L)
+  })
+
+  it("leaves the names of a loop's state in its errors", {
+    f <- jit(function() {
+      nv_while(list(i = 0L, s = 0L), function(i, s) i < 3L, function(i, s) {
+        prim_print(i, ordered = TRUE)
+        list(i = i + 1L, s = nv_scalar(1))
+      })
+    })
+    expect_error(f(), "`s` enters as")
   })
 
   it("leaves an unordered print without a token", {

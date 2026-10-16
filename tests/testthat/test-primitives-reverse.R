@@ -353,7 +353,7 @@ describe("prim_if", {
     expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(6, 12, 18))
   })
 
-  it("leaves the RNG state a branch draws from undifferentiated", {
+  it("leaves the random state a branch draws from undifferentiated", {
     local_nv_seed(NULL)
     f <- function(p, x) {
       a <- nv_if(

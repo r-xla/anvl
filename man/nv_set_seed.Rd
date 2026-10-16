@@ -57,20 +57,13 @@ A \code{\link[=jit]{jit()}}-compiled function makes the same sampling calls as t
 run without \code{\link[=jit]{jit()}}, in the same order, so it draws the same values: the
 compiled program takes the global random state as an input, and after the
 call returns, the global random state is advanced by the number of sampling
-calls the program makes, which is known when the function is traced. A call
-that fails does not advance it.
+calls the program makes, which is known when the function is traced.
 
-For that number to be known, \code{\link[=nv_scan]{nv_scan()}} advances the global random state
-by its number of steps times the sampling calls of its body, \code{\link[=nv_if]{nv_if()}} by
-the larger number of sampling calls of its two branches, whichever of them
-runs, and \code{\link[=nv_while]{nv_while()}}, whose number of iterations is not known while it is
-traced, by one if its body samples: it forks the global random state (see
-\code{\link[=prim_fork_random_state]{prim_fork_random_state()}}) and its body draws from the child random state.
-So a draw in a loop body gives a new sample on every iteration. Sampling is
-not possible in the condition of \code{\link[=nv_while]{nv_while()}}, in the functions of a
-reduction or a scatter, or in any other function that a primitive traces
-without threading the random state. The vignette "Random Numbers" explains
-the mechanism in detail.
+A draw in a loop body gives a new sample on every iteration. How \code{\link[=nv_scan]{nv_scan()}},
+\code{\link[=nv_if]{nv_if()}} and \code{\link[=nv_while]{nv_while()}} advance the global random state, so that the
+number of sampling calls of a program is known when it is traced, is
+explained in the vignette "Random Numbers". Sampling is not possible in the
+condition of \code{\link[=nv_while]{nv_while()}} or in the functions of a reduction or a scatter.
 }
 \section{Seeding from base R}{
 

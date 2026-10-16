@@ -986,6 +986,9 @@ graph_desc_add <- function(
     primitive <- attr(primitive, "definition")
   }
   side_effects <- side_effects %||% primitive$side_effects
+  if (!all(side_effects %in% primitive$side_effects)) {
+    cli_abort("Internal error: a call can only use the side effects its primitive declares.")
+  }
   if (length(side_effects)) {
     args <- c(args, stats::setNames(lapply(side_effects, side_effect_get, desc = desc), side_effects))
   }

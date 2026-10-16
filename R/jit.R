@@ -8,8 +8,8 @@
 #' calls with the same input structure, shapes, and dtypes hit an LRU cache and
 #' skip recompilation.
 #'
-#' A function that draws random numbers also reads and advances the global RNG
-#' state (see [nv_set_seed()]), so two calls with the same arguments draw
+#' A function that draws random numbers also reads and advances the global
+#' random state (see [nv_set_seed()]), so two calls with the same arguments draw
 #' different samples.
 #'
 #' @param f (`function`)\cr

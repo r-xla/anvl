@@ -162,7 +162,6 @@ How does the compiled program know $c$?
 When `jit()` traces a function, it counts the sampling calls the function makes; call that number $N$.
 The program takes the global random state $(k, c)$ as an input, splits at the counters $c, c + 1, \ldots, c + N - 1$, and returns no random state.
 When the call has returned, {anvl} sets the global random state to $(k, c + N)$ itself.
-A call that fails does not advance it.
 
 ```{r}
 nv_set_seed(1L)

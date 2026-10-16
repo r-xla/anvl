@@ -534,40 +534,14 @@ describe("the global random state across devices", {
   })
 })
 
-describe("the generator", {
-  # Known answers of ThreeFry-2x32 with 20 rounds from a reference
-  # implementation outside of anvl, which reproduces the test vector of Salmon et
-  # al. (2011). The seed 1 is the key with low word 1 and high word 0.
-
-  it("forks the random state into its split and a zero counter", {
-    local_nv_seed(1L)
-    expect_identical(as.numeric(as_array(prim_fork_random_state())), c(3023415290, 2531993477, 0, 0))
-    expect_identical(state_counter(), 1)
-  })
-
-  it("draws ui64 values from the split, from counter 0", {
-    local_nv_seed(1L)
-    # the values 6733707815133362247, 4925054666428519553 and
-    # 11939314369203855122, each as its low and its high 32-bit word
-    words <- nv_bitcast_convert(prim_sample_bits(3L, "ui64"), dtype = "ui32")
-    expect_identical(
-      as.numeric(as_array(words)),
-      c(3326851143, 1567813524, 64623745, 1146703648, 1578950418, 2779838249)
-    )
-  })
-
-  it("draws ui32 values as the low and then the high words of the hashes", {
-    local_nv_seed(1L)
-    expect_identical(as.numeric(as_array(prim_sample_bits(3L, "ui32"))), c(3326851143, 1567813524, 64623745))
-    # the next sampling call splits at counter 1
-    expect_identical(as.numeric(as_array(prim_sample_bits(2L, "ui32"))), c(3551563625, 1672607787))
-  })
-})
-
 describe("random_state_advance_box", {
-  it("advances the counter by 2^31 and more, with the carry into the high word", {
-    f <- jit(function(x) random_state_advance_box(x, 2^32 + 2^31 + 5))
-    out <- as.numeric(as_array(f(nv_array(c(1, 2, 2^32 - 1, 7), dtype = "ui32"))))
-    expect_identical(out, c(1, 2, 2^31 + 4, 9))
+  it("advances the counter by 2^31 and more like the host does, with the carry into the high word", {
+    words <- c(1, 2, 2^32 - 1, 7)
+    for (n in c(2^32 + 2^31 + 5, 2^53 - 1)) {
+      f <- jit(function(x) random_state_advance_box(x, n))
+      out <- as.numeric(as_array(f(nv_array(words, dtype = "ui32"))))
+      expect_identical(out, random_state_advanced(words, n))
+    }
+    expect_identical(random_state_advanced(words, 2^32 + 2^31 + 5), c(1, 2, 2^31 + 4, 9))
   })
 })

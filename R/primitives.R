@@ -2546,7 +2546,7 @@ prim_if <- new_primitive(
       desc = current_desc
     )
     out <- side_effects_take(current_desc, branched$carried, out)
-    side_effects_branched(current_desc, branched)
+    side_effects_advance_branches(current_desc, branched)
     unflatten(true_graph$out_tree, out)
   },
   subgraphs = c("true", "false"),
@@ -2651,7 +2651,8 @@ prim_while <- new_primitive(
       infer_fn = infer_while,
       desc = current_desc
     )
-    out <- side_effects_take(current_desc, carried$names, out, keep = !carried$forked)
+    forked <- vapply(carried$names, side_effect_is_counted, logical(1L))
+    out <- side_effects_take(current_desc, carried$names, out, keep = !forked)
 
     unflatten(body_graph$out_tree, out)
   },
@@ -3055,8 +3056,7 @@ prim_print <- new_primitive(
 register_side_effect(
   "print_token",
   aval = AbstractArray(dtype = "ui32", shape = integer()),
-  build = function(func) hlo_scalar(0L, dtype = "ui32", func = func),
-  backends = "pjrt"
+  build = function(func) hlo_scalar(0L, dtype = "ui32", func = func)
 )
 
 # RNG primitives

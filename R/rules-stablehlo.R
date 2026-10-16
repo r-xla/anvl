@@ -675,45 +675,34 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 
 # RNG jit rules --------------------------------------------------------
 
-# A random state is `ui32[4]`: the low and the high word of a ThreeFry-2x32 key
-# k, then of a 64-bit counter c. The generator is built from integer arithmetic
-# rather than taken from XLA's `rng_bit_generator`, whose bits the StableHLO
-# spec leaves to the implementation.
-#
-# A sampling call splits (k, c): it draws from the fresh key
-# k' = ThreeFry_k(c) and leaves (k, c + 1) behind. The elements of the draw are
-# counted in column-major order from 0. In a `ui64` draw, element `t` is the
-# hash of counter `t` under k'. A narrower draw takes the low and the high word
-# of the hash of counter `t %/% 2` for the elements `t` and `t + 1`, truncated to
-# `dtype`.
-#
-# Each sampling call, and each fork, is a call of a function of the program
-# built once per lowering (and draw shape and data type), so that a program
-# with many sampling calls lowers and compiles quickly.
+# A random state is `ui32[4]`: the low and the high word of a ThreeFry-2x32 key,
+# then of a 64-bit counter. ?prim_sample_bits says which values a sampling call
+# draws. Each sampling call and each fork is a call of a function built once per
+# lowering (and draw shape and data type), so that many sampling calls lower
+# and compile quickly.
 prim_sample_bits[["stablehlo"]] <- function(random_state, shape, dtype) {
   shape <- as.integer(shape)
   dtype <- as.character(as_dtype(dtype))
-  callee <- lowering_func(paste0("sample_bits_", dtype, "_", shape_id(shape)), function(id) {
-    func <- local_func(id)
-    state <- random_state_words(stablehlo::hlo_input("random_state", "ui32", shape = 4L, func = func))
-    values <- threefry_draw(threefry2x32(state$key, state$counter), shape, dtype)
-    stablehlo::hlo_return(values, random_state_hlo(state$key, counter_plus_one(state$counter)), func = func)
+  random_state_call(paste0("sample_bits_", dtype, "_", shape_id(shape)), random_state, function(state) {
+    threefry_draw(threefry2x32(state$key, state$counter), shape, dtype)
   })
-  stablehlo::hlo_call(callee, random_state, simplify = FALSE)
 }
 
-# The fork returns the child (ThreeFry_k(c), 0) of the random state (k, c) and
-# leaves (k, c + 1) behind.
 prim_fork_random_state[["stablehlo"]] <- function(random_state) {
-  callee <- lowering_func("fork_random_state", function(id) {
+  random_state_call("fork_random_state", random_state, function(state) {
+    zero <- hlo_scalar(0L, dtype = "ui32", func = state$key[[1L]]$func)
+    random_state_hlo(threefry2x32(state$key, state$counter), list(zero, zero))
+  })
+}
+
+# A call of the function `id` of the lowering, built on first use, that takes
+# the random state (k, c) and returns what `body()` computes from its words
+# (see `random_state_words()`) and the random state (k, c + 1).
+random_state_call <- function(id, random_state, body) {
+  callee <- lowering_func(id, function(id) {
     func <- local_func(id)
     state <- random_state_words(stablehlo::hlo_input("random_state", "ui32", shape = 4L, func = func))
-    zero <- hlo_scalar(0L, dtype = "ui32", func = func)
-    stablehlo::hlo_return(
-      random_state_hlo(threefry2x32(state$key, state$counter), list(zero, zero)),
-      random_state_hlo(state$key, counter_plus_one(state$counter)),
-      func = func
-    )
+    stablehlo::hlo_return(body(state), random_state_hlo(state$key, counter_plus_one(state$counter)), func = func)
   })
   stablehlo::hlo_call(callee, random_state, simplify = FALSE)
 }
@@ -755,10 +744,8 @@ threefry_draw <- function(key, shape, dtype) {
   # over `shape`
   hashes <- function(shape) {
     if (prod(shape) > .Machine$integer.max) {
-      cli_abort(c(
-        "Cannot draw from more than {.Machine$integer.max} hashes at once.",
-        i = "Draw fewer values at once."
-      ))
+      limit <- .Machine$integer.max
+      cli_abort(c("Cannot draw from more than {limit} hashes at once.", i = "Draw fewer values at once."))
     }
     keys <- lapply(key, hlo_broadcast_in_dim, integer(), shape)
     threefry2x32(keys, list(hlo_index_cols(shape, func), hlo_fill_u(0L, "ui32", shape, func)))
@@ -866,43 +853,34 @@ threefry2x32 <- function(key, x) {
   x
 }
 
+# An ordered print also takes the token and returns it, which orders it after
+# the print that returned the token and before the one that takes it next.
 prim_print[["stablehlo"]] <- function(x, print_token = NULL, header, footer) {
   backend_config <- stablehlo::CustomOpBackendConfig(list(
     stablehlo::StringAttr(name = "print_header", value = header),
     stablehlo::StringAttr(name = "print_footer", value = footer)
   ))
-
   # row-major layout in minor-to-major order: [N-1, ..., 1, 0]
   row_major <- rev(seq_len(length(shape(x))) - 1L)
-
-  # has side-effect
-  if (is.null(print_token)) {
-    hlo_custom_call(
-      x,
-      call_target_name = "print_tensor",
-      api_version = 4L,
-      has_side_effect = TRUE,
-      backend_config = backend_config,
-      operand_layouts = list(row_major),
-      result_layouts = list()
+  ordered <- !is.null(print_token)
+  token <- do.call(
+    hlo_custom_call,
+    c(
+      list(x),
+      if (ordered) list(print_token),
+      list(
+        call_target_name = if (ordered) "print_tensor_ordered" else "print_tensor",
+        api_version = 4L,
+        has_side_effect = TRUE,
+        backend_config = backend_config,
+        output_types = if (ordered) list(stablehlo::ValueType("ui32", shape = integer())),
+        operand_layouts = c(list(row_major), if (ordered) list(integer())),
+        result_layouts = if (ordered) list(integer()) else list()
+      )
     )
-    # we just return the input
-    return(list(x))
-  }
-  # An ordered print also takes the token and returns it, which orders it after
-  # the print that returned the token and before the one that takes it next.
-  token <- hlo_custom_call(
-    x,
-    print_token,
-    call_target_name = "print_tensor_ordered",
-    api_version = 4L,
-    has_side_effect = TRUE,
-    backend_config = backend_config,
-    output_types = list(stablehlo::ValueType("ui32", shape = integer())),
-    operand_layouts = list(row_major, integer()),
-    result_layouts = list(integer())
   )
-  list(x, if (inherits(token, "FuncValue")) token else token[[1L]])
+  # the input is returned as it is
+  c(list(x), if (ordered) list(token))
 }
 
 # higher order primitives --------------------------------------------------------

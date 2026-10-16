@@ -25,7 +25,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
     phantom_specs <- lapply(compiled$phantom_specs, function(spec) {
       list(dtype = as.character(spec$dtype), shape = as.integer(spec$shape))
     })
-    entry <- list(
+    list(
       exec = compiled$exec,
       const_arrays = compiled$const_arrays,
       input_dtypes = compiled$input_dtypes,
@@ -38,7 +38,6 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       implicit_outputs = compiled$implicit_outputs,
       on_success = compiled$on_success
     )
-    entry
   }
 }
 
@@ -170,7 +169,6 @@ compile_pjrt <- function(
   # constants, which would otherwise hide a closed-over constant from a foreign
   # backend and let `check_single_backend()` pass incorrectly.
   check_single_backend(graph, expected = "pjrt")
-  check_side_effects(graph, "pjrt")
 
   # jit() always runs the full set of graph optimization passes.
   graph <- optimize_graph(graph, optimize = TRUE)
@@ -200,23 +198,10 @@ compile_pjrt <- function(
   compile_graph_pjrt(graph, donate = donate, device = device)
 }
 
-# The program takes the values of the side effects `graph` takes from the host
-# as inputs after its own (see `stablehlo()`), which pjrt's dispatcher supplies
-# through the entry's implicit inputs, and returns those the host receives as
-# implicit outputs. After a successful run, the entry's `on_success` advances
-# the counted ones on the host by the number of steps the program advanced them,
-# which is known from the trace, and hands the received ones on.
+# pjrt's dispatcher supplies the side effects the program takes from the host as
+# implicit inputs, and hands those it returns to the entry's `on_success`.
 compile_graph_pjrt <- function(graph, donate = character(), device) {
   platform_name <- if (is.character(device)) device else platform(device)
-  input_dtypes <- graph_input_dtypes(graph)
-  # pjrt needs these to create templates for the outputs
-  # We also provide dtype and shape because these are created BEFORE the first execution
-  out_avals <- lapply(graph$outputs, function(x) {
-    list(
-      dtype = as.character(x$aval$dtype),
-      shape = shape(x$aval)
-    )
-  })
   out <- stablehlo(
     graph,
     donate = donate,
@@ -244,6 +229,15 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 
   out_tree <- graph$out_tree
 
+  # pjrt needs these to create templates for the outputs
+  # We also provide dtype and shape because these are created BEFORE the first execution
+  out_avals <- lapply(graph$outputs, function(x) {
+    list(
+      dtype = as.character(x$aval$dtype),
+      shape = shape(x$aval)
+    )
+  })
+
   # the functions `func` calls are defined next to it
   src <- paste(vapply(c(out[[4L]], list(func)), stablehlo::repr, character(1L)), collapse = "\n\n")
   program <- pjrt_program(src = src, format = "mlir")
@@ -258,7 +252,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     # names one -- the dispatcher uploads the R data at that dtype, which is how
     # an `f64` program gets the exact R double; an array input takes `NA`, and a
     # call without any R input needs no declaration at all.
-    input_dtypes = input_dtypes,
+    input_dtypes = graph_input_dtypes(graph),
     device = device(exec),
     phantom_specs = phantom_specs,
     implicit_inputs = unname(lapply(side_effects_from_host(graph), function(name) {
@@ -273,15 +267,14 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
   )
 }
 
-# The function pjrt's dispatcher calls after a successful run of the program of
-# `graph`, with the values of the side effects the host receives: it advances
-# the counted side effects the host advances by the steps the graph advances
-# them, and hands the received values on. `NULL` when there is nothing to do.
+# The function pjrt's dispatcher calls after a run of the program of `graph`,
+# with the values of the side effects the host receives: it advances the
+# counted side effects by the steps the graph advances them and hands the
+# received values on. `NULL` when there is nothing to do.
 side_effects_on_success <- function(graph) {
   names <- names(graph$side_effects)
-  advanced <- Filter(function(name) !is.null(side_effect(name)$advance), names)
-  advances <- lapply(advanced, function(name) {
-    list(advance = side_effect(name)$advance, n = graph$side_effects[[name]]$advance)
+  advances <- lapply(Filter(side_effect_is_counted, names), function(name) {
+    list(advance = side_effect(name)$counted$advance, n = graph$side_effects[[name]]$advance)
   })
   receivers <- lapply(side_effects_to_host(graph), function(name) side_effect(name)$receive)
   if (!length(advances) && !length(receivers)) {

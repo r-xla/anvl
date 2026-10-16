@@ -22,20 +22,13 @@ NULL
 #' run without [jit()], in the same order, so it draws the same values: the
 #' compiled program takes the global random state as an input, and after the
 #' call returns, the global random state is advanced by the number of sampling
-#' calls the program makes, which is known when the function is traced. A call
-#' that fails does not advance it.
+#' calls the program makes, which is known when the function is traced.
 #'
-#' For that number to be known, [nv_scan()] advances the global random state
-#' by its number of steps times the sampling calls of its body, [nv_if()] by
-#' the larger number of sampling calls of its two branches, whichever of them
-#' runs, and [nv_while()], whose number of iterations is not known while it is
-#' traced, by one if its body samples: it forks the global random state (see
-#' [prim_fork_random_state()]) and its body draws from the child random state.
-#' So a draw in a loop body gives a new sample on every iteration. Sampling is
-#' not possible in the condition of [nv_while()], in the functions of a
-#' reduction or a scatter, or in any other function that a primitive traces
-#' without threading the random state. The vignette "Random Numbers" explains
-#' the mechanism in detail.
+#' A draw in a loop body gives a new sample on every iteration. How [nv_scan()],
+#' [nv_if()] and [nv_while()] advance the global random state, so that the
+#' number of sampling calls of a program is known when it is traced, is
+#' explained in the vignette "Random Numbers". Sampling is not possible in the
+#' condition of [nv_while()] or in the functions of a reduction or a scatter.
 #'
 #' @section Seeding from base R:
 #' When the global random state is not set, the next draw derives it from base
@@ -167,7 +160,7 @@ abort_if_tracing <- function(what) {
 
 abort_if_no_rng <- function() {
   backend <- active_backend()
-  if (!backend %in% side_effect("random_state")$backends) {
+  if (backend != "pjrt") {
     cli_abort("The {backend} backend does not support random draws, so it has no global random state.")
   }
 }
@@ -203,32 +196,6 @@ with_nv_seed <- function(seed, code) {
   code
 }
 
-# The global random state as a side effect, which `prim_sample_bits()` and
-# `prim_fork_random_state()` use. Its value lives in `globals$random_state`, an
-# R double vector of the four 32-bit words of the key and the counter, low word
-# first; reading it while it is not set derives it from base R's RNG. A program
-# takes it from the host as a `ui32[4]` input. It is counted, so that the host
-# can advance it by the number of steps a program advances it, which is known
-# when the program is traced, and the program never returns it.
-register_side_effect(
-  "random_state",
-  aval = AbstractArray(dtype = "ui32", shape = 4L),
-  get = function() {
-    if (is.null(globals$random_state)) {
-      globals$random_state <- random_state_from_r()
-    }
-    globals$random_state
-  },
-  counted = list(
-    advance_box = function(box, n) random_state_advance_box(box, n),
-    fork = function(desc) fork_random_state(desc)
-  ),
-  advance = function(n) {
-    globals$random_state <- random_state_advanced(globals$random_state, n)
-  },
-  backends = "pjrt"
-)
-
 # A fresh random state from two uniform draws of base R's RNG, each giving one
 # 32-bit word of the key, and the counter `0`. A uniform draw of R's default
 # generator has 32 random bits.
@@ -245,8 +212,8 @@ random_state_from_seed <- function(seed) {
 # The random state `words` with its counter advanced by `n` steps, wrapping
 # around at 2^64.
 random_state_advanced <- function(words, n) {
-  lo <- words[[3L]] + n
-  c(words[[1L]], words[[2L]], lo %% 2^32, (words[[4L]] + lo %/% 2^32) %% 2^32)
+  lo <- words[[3L]] + n %% 2^32
+  c(words[[1L]], words[[2L]], lo %% 2^32, (words[[4L]] + n %/% 2^32 + lo %/% 2^32) %% 2^32)
 }
 
 # The random state `box`, a `ui32[4]` GraphBox, with its counter advanced by `n`
@@ -268,3 +235,27 @@ random_state_advance_box <- function(box, n) {
     nv_convert(nv_shift_right_logical(counter, 32L), dtype = "ui32")
   )
 }
+
+# The global random state as a side effect, which `prim_sample_bits()` and
+# `prim_fork_random_state()` use. Its value lives in `globals$random_state`, an
+# R double vector of the four 32-bit words of the key and the counter, low word
+# first; reading it while it is not set derives it from base R's RNG. A program
+# takes it from the host as a `ui32[4]` input. It is counted, so that the host
+# advances it by the steps a program advanced it, and no program returns it.
+register_side_effect(
+  "random_state",
+  aval = AbstractArray(dtype = "ui32", shape = 4L),
+  get = function() {
+    if (is.null(globals$random_state)) {
+      globals$random_state <- random_state_from_r()
+    }
+    globals$random_state
+  },
+  counted = list(
+    advance_box = random_state_advance_box,
+    fork = fork_random_state,
+    advance = function(n) {
+      globals$random_state <- random_state_advanced(globals$random_state, n)
+    }
+  )
+)
