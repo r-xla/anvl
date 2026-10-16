@@ -4,12 +4,18 @@
 \alias{prim_print}
 \title{Primitive Print}
 \usage{
-prim_print(x)
+prim_print(x, ordered = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
+
+\item{ordered}{(\code{logical(1)})\cr
+Whether the print is ordered: an ordered print runs after every ordered
+print before it in the program and before every one after it, also through
+loops and branches. It threads a token through the prints that orders them
+(see the section "Order of prints"). Default \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -22,9 +28,13 @@ Bare R inputs print at their category's default data type.
 }
 \section{Order of prints}{
 
-A print is currently not ordered with respect to other prints.
-Due to compiler reordering it is possible that the order of the
-prints differs from their location in the code.
+Prints are not ordered by default: the compiler may run the prints of a
+program in any order that respects the data they print, so their output may
+come in a different order than the prints in the code. With \code{ordered = TRUE}
+a print is ordered with respect to every other ordered print of the program:
+each takes a token from the one before it and hands it on to the next, so
+they run in the order of the code, iteration by iteration in a loop.
+Prints in different calls are always printed in the order of the calls.
 }
 
 \section{Implemented Rules}{

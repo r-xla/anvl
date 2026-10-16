@@ -454,10 +454,21 @@ Drawing random numbers does not fit this picture, as it reads and advances the g
 The global random state is one: all random draws -- `nv_runif()`, `nv_rnorm()`, and the other samplers -- build on `prim_sample_bits()`, which reads it and advances it.
 See the [random numbers](random-numbers.html) article for the user-facing side, including which numbers a draw gives.
 
-A side effect is registered once with `register_side_effect()`, with the data type and shape of its value, a function `get()` that returns the value as plain R data, a function `advance(n)` that advances it on the host by `n` steps, and how a trace advances it or forks it.
-The global random state is the `random_state` binding of {anvl}'s internal `globals` environment: the four 32-bit words of its key and counter, as R doubles, which `nv_set_seed()` writes to.
-A program takes it as a `ui32[4]` input.
-A primitive declares the side effects it uses with the `side_effects` argument of `new_primitive()`:
+A side effect is registered once with `register_side_effect()`, with the data type and shape of its value and three choices:
+
+- **Where the value comes from**: from the host, through a function `get()` that returns it as plain R data and that the program takes as an input; or from the program itself, through a function `build()` that builds it in the lowered program.
+- **How it passes through loops and branches**: *carried* as data, so that a loop carries it from one iteration to the next and `nv_if()` returns the value of the branch that ran; or *counted*: every use advances it by one step, and every construct by a number of steps known when it is traced.
+- **Where it goes after a run**: nowhere, as the program never returns it; for a counted side effect, `advance(n)`, which advances it on the host by the steps the program advanced it; or `receive(value)`, which gets the value the program then returns.
+
+| Side effect | Comes from | Through loops and branches | After a run |
+|---|---|---|---|
+| global random state | the host: `globals$random_state`, four 32-bit words | counted | `advance(n)` on the host |
+| token that orders prints | the program: a `ui32` scalar `0` | carried | dropped |
+
+The global random state comes from the `random_state` binding of {anvl}'s internal `globals` environment, the four 32-bit words of its key and counter as R doubles, which `nv_set_seed()` writes to; a program takes it as a `ui32[4]` input.
+The token that orders prints is a `ui32` scalar that an ordered print (`prim_print(ordered = TRUE)`) takes and returns: a print that takes the token another one returned depends on it and so runs after it.
+A side effect handed back to the host, such as an error code that checks record, uses `receive()`.
+A primitive declares the side effects it uses with the `side_effects` argument of `new_primitive()`, and a call can use fewer of them, as an unordered print uses none:
 
 ```r
 prim_sample_bits <- new_primitive("sample_bits", function(shape, dtype) {
@@ -478,7 +489,7 @@ Where a side effect comes from on its first use is decided by the `side_effects_
 
 A side effect is only registered on its first use, so a function that does not draw takes no extra input.
 The graph records the side effects it uses in its `side_effects` field, apart from its `inputs` and `outputs`, so that `in_tree` and `out_tree` keep describing what the user passes and gets back.
-Each entry also records the number of steps the graph advances the side effect by, its `advance`, which is known when the graph is traced:
+For a counted side effect, each entry also records the number of steps the graph advances it by, its `advance`, which is known when the graph is traced:
 
 ```{r}
 graph <- trace_fn(function(x) x + prim_sample_bits(2L, "ui32"), list(x = nv_aval("ui32", 2L)))
@@ -488,14 +499,14 @@ graph$side_effects$random_state$advance
 
 For the higher-order primitives, this means:
 
-- `nv_scan()`: if the body uses a side effect, it becomes one more member of the carry, so every iteration reads the value the previous one left behind, and the loop's final value becomes the enclosing trace's current value. The loop advances it by its number of steps times the body's advance.
-- `nv_while()`: its number of iterations is not known while it is traced, so it forks: it calls the side effect's `fork`, which for the random state adds a call of `prim_fork_random_state()` to the enclosing trace, advancing it by one step, and carries the child value it returns instead. The loop's final value is dropped.
-- `nv_if()`: the branches close over the current value and hand nothing back; after the call, the enclosing trace advances it by the larger of the two branches' advances, with the side effect's `advance_box`.
+- `nv_scan()`: if the body uses a side effect, it becomes one more member of the carry, so every iteration reads the value the previous one left behind, and the loop's final value becomes the enclosing trace's current value. A counted side effect advances by the number of steps times the body's advance.
+- `nv_while()`: a carried side effect is carried like in `nv_scan()`. The number of iterations is not known while the loop is traced, so a counted side effect forks instead: the loop calls its `fork`, which for the random state adds a call of `prim_fork_random_state()` to the enclosing trace, advancing it by one step, and carries the child value it returns. The loop's final value of a counted side effect is dropped.
+- `nv_if()`: the branches close over the current value. For a carried side effect, both return the value they leave behind as one more output, and the output of the `if` becomes the enclosing trace's current value. A counted side effect is handed back by neither: after the call, the enclosing trace advances it by the larger of the two branches' advances, with the side effect's `advance_box`.
 - `gradient()`: the differentiated function closes over the value, and once the graph has been replayed by the reverse-mode transformation, the value it leaves behind becomes the enclosing trace's current value.
 
-At the top level, `stablehlo()` lowers each side effect of the graph to one more argument after the graph's inputs, but to no result: the program never returns a side effect.
-Instead, the pjrt backend hands the side effect to pjrt's dispatcher as an *implicit input* of the program, which the dispatcher reads with `get()` and uploads before every run, and gives the dispatcher an `on_success` function, which advances the side effect on the host by the graph's `advance` after every successful run.
-Neither is part of the cache key: whether a program uses a side effect is decided by the program, not by the arguments of the call.
+At the top level, `stablehlo()` lowers a side effect from the host to one more argument after the graph's inputs, builds a side effect from the program inside it, and returns a side effect the host receives as one more result after the graph's outputs; the program returns no other side effect.
+The pjrt backend hands the arguments and results to pjrt's dispatcher as *implicit inputs and outputs* of the program: it reads an implicit input with `get()` and uploads it before every run, and after every successful run it calls the entry's `on_success` with the implicit outputs, which advances the counted side effects on the host by the graph's `advance` and hands the received values on.
+None of this is part of the cache key: whether a program uses a side effect is decided by the program, not by the arguments of the call.
 
 Since eager calls of `nv_*` functions also run through `jit()`, every draw -- eager or compiled -- advances the same random state, and the split of the draws into compiled functions does not change the numbers:
 
@@ -510,7 +521,7 @@ identical(as_array(x), as_array(out$x))
 identical(as_array(y), as_array(out$y))
 ```
 
-The global random state does not support the quickr backend, so quickr cannot run a function that draws random numbers.
+Neither the global random state nor the print token support the quickr backend, so quickr cannot run a function that draws random numbers or prints in order.
 
 ## Backend and Device in `jit()`
 

@@ -866,7 +866,7 @@ threefry2x32 <- function(key, x) {
   x
 }
 
-prim_print[["stablehlo"]] <- function(x, header, footer) {
+prim_print[["stablehlo"]] <- function(x, print_token = NULL, header, footer) {
   backend_config <- stablehlo::CustomOpBackendConfig(list(
     stablehlo::StringAttr(name = "print_header", value = header),
     stablehlo::StringAttr(name = "print_footer", value = footer)
@@ -876,17 +876,33 @@ prim_print[["stablehlo"]] <- function(x, header, footer) {
   row_major <- rev(seq_len(length(shape(x))) - 1L)
 
   # has side-effect
-  hlo_custom_call(
+  if (is.null(print_token)) {
+    hlo_custom_call(
+      x,
+      call_target_name = "print_tensor",
+      api_version = 4L,
+      has_side_effect = TRUE,
+      backend_config = backend_config,
+      operand_layouts = list(row_major),
+      result_layouts = list()
+    )
+    # we just return the input
+    return(list(x))
+  }
+  # An ordered print also takes the token and returns it, which orders it after
+  # the print that returned the token and before the one that takes it next.
+  token <- hlo_custom_call(
     x,
-    call_target_name = "print_tensor",
+    print_token,
+    call_target_name = "print_tensor_ordered",
     api_version = 4L,
     has_side_effect = TRUE,
     backend_config = backend_config,
-    operand_layouts = list(row_major),
-    result_layouts = list()
+    output_types = list(stablehlo::ValueType("ui32", shape = integer())),
+    operand_layouts = list(row_major, integer()),
+    result_layouts = list(integer())
   )
-  # we just return the input
-  list(x)
+  list(x, if (inherits(token, "FuncValue")) token else token[[1L]])
 }
 
 # higher order primitives --------------------------------------------------------

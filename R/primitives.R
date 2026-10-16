@@ -4,6 +4,7 @@
 #' @include promotion.R
 #' @include primitive.R
 #' @include jit.R
+#' @include side-effects.R
 
 # `operands` names the two arguments: `lhs` / `rhs` for an operator whose two
 # sides play the same role, names of their own where they differ.
@@ -2527,8 +2528,10 @@ prim_if <- new_primitive(
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
-    # A branch that uses a side effect closes over its value and hands nothing
-    # back; the call advances it by the larger of the branches' advances.
+    # A branch that uses a side effect closes over its value. Both branches
+    # return the value they leave behind of a carried side effect as one more
+    # output; a counted one the call advances by the larger of the branches'
+    # advances.
     branched <- side_effects_branches(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
@@ -2542,6 +2545,7 @@ prim_if <- new_primitive(
       infer_fn = infer_cond,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, branched$carried, out)
     side_effects_branched(current_desc, branched)
     unflatten(true_graph$out_tree, out)
   },
@@ -2626,9 +2630,9 @@ prim_while <- new_primitive(
 
     # A body that uses side effects carries them as the last members of the
     # loop state, which `cond` takes too but does not read. The loop runs a
-    # number of times not known while tracing, so it forks: the body advances a
-    # value derived from the current one, which the loop itself advances by one
-    # step, and drops it at the end.
+    # number of times not known while tracing, so a counted side effect forks:
+    # the body advances a value derived from the current one, which the loop
+    # itself advances by one step, and drops it at the end.
     carried <- side_effects_carry(current_desc, body_graph, fork = TRUE)
     cond_graph$inputs <- c(
       cond_graph$inputs,
@@ -2647,7 +2651,7 @@ prim_while <- new_primitive(
       infer_fn = infer_while,
       desc = current_desc
     )
-    out <- side_effects_take(current_desc, carried$names, out, keep = rep(FALSE, length(carried$names)))
+    out <- side_effects_take(current_desc, carried$names, out, keep = !carried$forked)
 
     unflatten(body_graph$out_tree, out)
   },
@@ -2969,6 +2973,7 @@ prim_top_k <- new_primitive(
 #' Bare R inputs print at their category's default data type.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
+#' @template param_print_ordered
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
 #' @template section_print_order
@@ -2986,7 +2991,8 @@ prim_top_k <- new_primitive(
 #' @export
 prim_print <- new_primitive(
   "print",
-  function(x) {
+  function(x, ordered = FALSE) {
+    assert_flag(ordered)
     # HACK: the header and footer are pre-computed here and passed as "params",
     # although they are not really ones: stablehlo does not carry the dtype the
     # way anvl prints it.
@@ -3026,14 +3032,31 @@ prim_print <- new_primitive(
     # `f32`. The stablehlo rule threads the operand through the same way, and
     # marks the custom call `has_side_effect` so it survives with its result
     # unused.
+    # An ordered print takes the token that orders prints and hands it on
+    # (see the side effect "print_token").
     graph_desc_add(
       self,
       list(x = as_anvl_array(x)),
       list(header = header, footer = footer),
-      infer_fn = infer_identity
+      infer_fn = infer_print,
+      side_effects = if (ordered) "print_token" else character()
     )
     x
-  }
+  },
+  static = "ordered",
+  side_effects = "print_token"
+)
+
+# The token that orders the prints of a program (see `prim_print(ordered =
+# TRUE)`): a `ui32` scalar that an ordered print takes and returns, so that a
+# print that takes the token another one returned runs after it. It is created
+# in the program, carried through loops and branches like any value, and
+# dropped at the end.
+register_side_effect(
+  "print_token",
+  aval = AbstractArray(dtype = "ui32", shape = integer()),
+  build = function(func) hlo_scalar(0L, dtype = "ui32", func = func),
+  backends = "pjrt"
 )
 
 # RNG primitives

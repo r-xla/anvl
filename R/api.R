@@ -589,6 +589,7 @@ nv_static_slice <- prim_static_slice
 #' is used for printing.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
+#' @template param_print_ordered
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged, data type and shape included.
 #' @template section_print_order
@@ -599,6 +600,14 @@ nv_static_slice <- prim_static_slice
 #' nv_print(x)
 #' # RData is printed at the default dtype
 #' nv_print(1)
+#'
+#' # ordered prints run in the order of the code
+#' f <- jit(function(x) {
+#'   nv_print(x, ordered = TRUE)
+#'   nv_print(x * 2, ordered = TRUE)
+#'   x
+#' })
+#' invisible(f(x))
 #' @export
 nv_print <- prim_print
 

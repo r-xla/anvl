@@ -143,9 +143,10 @@ GraphStatement <- function(primitive, inputs, params, outputs) {
 #'   The side effects the graph uses, named by side
 #'   effect and in the order they were registered in: a
 #'   `list(input, output, advance)` each, the [`GraphValue`] the value enters
-#'   through, the node of the value the graph leaves behind, and the number of
-#'   steps the graph advances the value by, which is known when it is traced.
-#'   `input` is `NULL` for a side effect the graph closes over.
+#'   through, the node of the value the graph leaves behind, and, for a counted
+#'   side effect such as the global random state, the number of steps the graph
+#'   advances the value by, which is known when it is traced. `input` is `NULL`
+#'   for a side effect the graph closes over.
 #' @return (`AnvlGraph`)
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the inputs are %x1 and %x2; each line is one statement, and `sum`
@@ -961,10 +962,22 @@ is_graph_box <- function(x) {
 #'   program is compiled for, and disagreeing with another device in it is an
 #'   error. Every other primitive takes its device from its operands and leaves
 #'   this `NULL`.
+#' @param side_effects (`NULL` | `character()`)\cr
+#'   The side effects this call uses, of those the primitive declares (see
+#'   [new_primitive()]); `NULL` for all of them. A call that does not use a side
+#'   effect neither reads nor advances it, e.g. an unordered [prim_print()].
 #' @return (`list` of [`GraphBox`])\cr
 #'   The outputs of the call, without the updated values of its side effects.
 #' @export
-graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL, device = NULL) {
+graph_desc_add <- function(
+  primitive,
+  args,
+  params = list(),
+  infer_fn,
+  desc = NULL,
+  device = NULL,
+  side_effects = NULL
+) {
   desc <- desc %||% current_descriptor(silent = TRUE)
   if (!is.null(device)) {
     desc$devices <- c(desc$devices, nv_device(device))
@@ -972,7 +985,7 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   if (inherits(primitive, "AnvlPrimitive")) {
     primitive <- attr(primitive, "definition")
   }
-  side_effects <- primitive$side_effects
+  side_effects <- side_effects %||% primitive$side_effects
   if (length(side_effects)) {
     args <- c(args, stats::setNames(lapply(side_effects, side_effect_get, desc = desc), side_effects))
   }

@@ -35,6 +35,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       out_tree = compiled$out_tree,
       out_avals = compiled$out_avals,
       implicit_inputs = compiled$implicit_inputs,
+      implicit_outputs = compiled$implicit_outputs,
       on_success = compiled$on_success
     )
     entry
@@ -137,11 +138,14 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
 #'     executor must allocate for an output (see [`stablehlo()`]).
 #'   - `implicit_inputs`: One `list(get, dtype, shape)` per side effect the
-#'     program uses, through which pjrt's dispatcher supplies its value as an
-#'     input after the call's own.
+#'     program takes from the host, through which pjrt's dispatcher supplies its
+#'     value as an input after the call's own.
+#'   - `implicit_outputs`: One `list(dtype, shape)` per side effect whose value
+#'     the program returns to the host, after its own outputs.
 #'   - `on_success`: `NULL`, or a function pjrt's dispatcher calls after every
-#'     successful run, which advances the side effects the program uses by the
-#'     number of steps it advances them (see [`AnvlGraph`]).
+#'     successful run with the side effects' returned values, which advances
+#'     the side effects the host advances by the number of steps the program
+#'     advances them (see [`AnvlGraph`]) and hands the returned values on.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -196,11 +200,12 @@ compile_pjrt <- function(
   compile_graph_pjrt(graph, donate = donate, device = device)
 }
 
-# The program takes the values of the side effects `graph` uses as inputs after
-# its own (see `stablehlo()`), which pjrt's dispatcher supplies through the
-# entry's implicit inputs; it returns none of them. After a successful run, the
-# entry's `on_success` advances them on the host by the number of steps the
-# program advanced them, which is known from the trace.
+# The program takes the values of the side effects `graph` takes from the host
+# as inputs after its own (see `stablehlo()`), which pjrt's dispatcher supplies
+# through the entry's implicit inputs, and returns those the host receives as
+# implicit outputs. After a successful run, the entry's `on_success` advances
+# the counted ones on the host by the number of steps the program advanced them,
+# which is known from the trace, and hands the received ones on.
 compile_graph_pjrt <- function(graph, donate = character(), device) {
   platform_name <- if (is.character(device)) device else platform(device)
   input_dtypes <- graph_input_dtypes(graph)
@@ -256,26 +261,38 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     input_dtypes = input_dtypes,
     device = device(exec),
     phantom_specs = phantom_specs,
-    implicit_inputs = unname(lapply(names(graph$side_effects), function(name) {
+    implicit_inputs = unname(lapply(side_effects_from_host(graph), function(name) {
       side_effect <- side_effect(name)
       list(get = side_effect$get, dtype = as.character(dtype(side_effect$aval)), shape = shape(side_effect$aval))
+    })),
+    implicit_outputs = unname(lapply(side_effects_to_host(graph), function(name) {
+      aval <- side_effect(name)$aval
+      list(dtype = as.character(dtype(aval)), shape = shape(aval))
     })),
     on_success = side_effects_on_success(graph)
   )
 }
 
-# The function advancing the side effects `graph` uses by the steps the graph
-# advances them, or `NULL` when it uses none.
+# The function pjrt's dispatcher calls after a successful run of the program of
+# `graph`, with the values of the side effects the host receives: it advances
+# the counted side effects the host advances by the steps the graph advances
+# them, and hands the received values on. `NULL` when there is nothing to do.
 side_effects_on_success <- function(graph) {
-  if (!length(graph$side_effects)) {
-    return(NULL)
-  }
-  advances <- lapply(names(graph$side_effects), function(name) {
+  names <- names(graph$side_effects)
+  advanced <- Filter(function(name) !is.null(side_effect(name)$advance), names)
+  advances <- lapply(advanced, function(name) {
     list(advance = side_effect(name)$advance, n = graph$side_effects[[name]]$advance)
   })
-  function() {
+  receivers <- lapply(side_effects_to_host(graph), function(name) side_effect(name)$receive)
+  if (!length(advances) && !length(receivers)) {
+    return(NULL)
+  }
+  function(outputs) {
     for (a in advances) {
       a$advance(a$n)
+    }
+    for (i in seq_along(receivers)) {
+      receivers[[i]](outputs[[i]])
     }
   }
 }

@@ -207,7 +207,9 @@ with_nv_seed <- function(seed, code) {
 # `prim_fork_random_state()` use. Its value lives in `globals$random_state`, an
 # R double vector of the four 32-bit words of the key and the counter, low word
 # first; reading it while it is not set derives it from base R's RNG. A program
-# takes it as a `ui32[4]` input.
+# takes it from the host as a `ui32[4]` input. It is counted, so that the host
+# can advance it by the number of steps a program advances it, which is known
+# when the program is traced, and the program never returns it.
 register_side_effect(
   "random_state",
   aval = AbstractArray(dtype = "ui32", shape = 4L),
@@ -217,11 +219,13 @@ register_side_effect(
     }
     globals$random_state
   },
+  counted = list(
+    advance_box = function(box, n) random_state_advance_box(box, n),
+    fork = function(desc) fork_random_state(desc)
+  ),
   advance = function(n) {
     globals$random_state <- random_state_advanced(globals$random_state, n)
   },
-  advance_box = function(box, n) random_state_advance_box(box, n),
-  fork = function(desc) fork_random_state(desc),
   backends = "pjrt"
 )
 

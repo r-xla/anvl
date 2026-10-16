@@ -18,6 +18,8 @@
   global random state, as plain R values, to continue a sequence where it
   stopped.
 * New `prim_fork_random_state()` returns a child random state.
+* `prim_print()` / `nv_print()` gain `ordered`: ordered prints run in the order
+  of the code, also through loops and branches.
 * `new_primitive()` gains `side_effects`, for primitives that read and update a
   value outside of the traced function, such as the global random state.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`

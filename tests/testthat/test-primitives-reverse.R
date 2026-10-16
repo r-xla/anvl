@@ -1314,4 +1314,9 @@ describe("prim_print", {
     g <- jit(gradient(f, wrt = "x"))
     expect_equal(prints_of_seven(g(nv_scalar(TRUE), x)), 1L)
   })
+
+  it("passes the gradient through an ordered print", {
+    grad <- expect_output(jit(gradient(function(x) nv_sum(prim_print(x, ordered = TRUE) * x)))(x))
+    expect_equal(as.numeric(grad[[1L]]), c(2, 4, 6))
+  })
 })

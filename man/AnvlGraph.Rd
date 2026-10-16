@@ -57,9 +57,10 @@ gives the data type and shape, this gives the R type it is uploaded from.}
 The side effects the graph uses, named by side
 effect and in the order they were registered in: a
 \code{list(input, output, advance)} each, the \code{\link{GraphValue}} the value enters
-through, the node of the value the graph leaves behind, and the number of
-steps the graph advances the value by, which is known when it is traced.
-\code{input} is \code{NULL} for a side effect the graph closes over.}
+through, the node of the value the graph leaves behind, and, for a counted
+side effect such as the global random state, the number of steps the graph
+advances the value by, which is known when it is traced. \code{input} is \code{NULL}
+for a side effect the graph closes over.}
 }
 \value{
 (\code{AnvlGraph})

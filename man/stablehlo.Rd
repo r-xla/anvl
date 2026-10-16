@@ -79,12 +79,14 @@ XLA executable with \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}}.
 The rule for translating a primitive to stablehlo is \verb{prim_<name>[["stablehlo"]]}.
 
 The arguments of the resulting function are, in this order: the graph's
-constants, the graph's inputs, the values of the graph's side effects (such
-as the global random state, see \code{\link[=nv_set_seed]{nv_set_seed()}}), and the phantom donated
-inputs (when \code{donate_unaliased_outputs = TRUE}), one per output that is not
-already aliased to a donated input, in the order of the outputs. Its results
-are the graph's outputs: a side effect's updated value is not returned, as
-the host advances it itself (see \code{\link{AnvlGraph}}).
+constants, the graph's inputs, the values of the graph's side effects that
+come from the host (such as the global random state, see \code{\link[=nv_set_seed]{nv_set_seed()}}),
+and the phantom donated inputs (when \code{donate_unaliased_outputs = TRUE}), one
+per output that is not already aliased to a donated input, in the order of
+the outputs. A side effect whose value is created in the program, such as the
+token that orders prints, is built inside it. Its results are the graph's
+outputs, then the values of the side effects the host receives; any other
+side effect's updated value is not returned.
 
 This is a low-level function; most users should use \code{\link[=jit]{jit()}} instead.
 }

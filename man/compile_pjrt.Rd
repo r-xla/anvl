@@ -65,11 +65,14 @@ for an array one. \code{NULL} for a call whose inputs are all arrays.
 \item \code{phantom_specs}: One \code{list(dtype, shape)} per phantom donated input the
 executor must allocate for an output (see \code{\link[=stablehlo]{stablehlo()}}).
 \item \code{implicit_inputs}: One \code{list(get, dtype, shape)} per side effect the
-program uses, through which pjrt's dispatcher supplies its value as an
-input after the call's own.
+program takes from the host, through which pjrt's dispatcher supplies its
+value as an input after the call's own.
+\item \code{implicit_outputs}: One \code{list(dtype, shape)} per side effect whose value
+the program returns to the host, after its own outputs.
 \item \code{on_success}: \code{NULL}, or a function pjrt's dispatcher calls after every
-successful run, which advances the side effects the program uses by the
-number of steps it advances them (see \code{\link{AnvlGraph}}).
+successful run with the side effects' returned values, which advances
+the side effects the host advances by the number of steps the program
+advances them (see \code{\link{AnvlGraph}}) and hands the returned values on.
 }
 }
 \description{
