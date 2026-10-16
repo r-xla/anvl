@@ -10,12 +10,128 @@ test_that("prim_cos", {
   expect_equal(c(out), c(1, 0, -1, 0), tolerance = 1e-15)
 })
 
-test_that("prim_rng_bit_generator", {
-  out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
-  expect_named(out, c("state", "values"))
-  expect_dtype(out$state, "ui64")
-  expect_shape(out$state, 2L)
-  expect_shape(out$values, c(2L, 2L))
+describe("prim_sample_bits", {
+  # Makes the random state with the key and the counter `words` (low word
+  # first) the global random state.
+  set_state <- function(words) {
+    nv_set_random_state(structure(as.numeric(words), class = "AnvlRandomState"))
+  }
+  # The values of an unsigned integer array as decimal strings, which hold
+  # every bit of a `ui32` or `ui64`, in an array of its shape.
+  bits <- function(x) {
+    # a `ui64` of 2^63 or more reads back wrapped, which is fine for comparing
+    a <- as_array(x, check = FALSE)
+    if (length(shape(x))) array(as.character(a), shape(x)) else as.character(a)
+  }
+
+  it("splits with ThreeFry-2x32 as the known-answer vectors of the reference give it", {
+    local_nv_seed(NULL)
+    # a 32-bit word given in hex, as a number
+    h <- function(s) strtoi(substr(s, 1L, 4L), 16L) * 65536 + strtoi(substr(s, 5L, 8L), 16L)
+    kat <- list(
+      list(ctr = c("00000000", "00000000"), key = c("00000000", "00000000"), out = c("6b200159", "99ba4efe")),
+      list(ctr = c("ffffffff", "ffffffff"), key = c("ffffffff", "ffffffff"), out = c("1cb996fc", "bb002be7")),
+      list(ctr = c("243f6a88", "85a308d3"), key = c("13198a2e", "03707344"), out = c("c4923a9c", "483df7a0"))
+    )
+    for (k in kat) {
+      set_state(h(c(k$key, k$ctr)))
+      # the fork returns the split (ThreeFry_k(c)) as the child's key
+      expect_identical(as.numeric(as_array(prim_fork_random_state()))[1:2], h(k$out))
+    }
+  })
+
+  it("fills a shape in column-major order", {
+    local_nv_seed(NULL)
+    # an even first axis, an odd one with an even and with an odd number of
+    # elements, and size-1 axes take different paths for narrow draws
+    shapes <- list(integer(), 1L, 0L, 5L, c(4L, 3L), c(3L, 2L), c(3L, 3L), c(2L, 3L, 2L), c(4L, 1L, 3L), c(3L, 1L, 3L))
+    for (shape in shapes) {
+      for (dtype in c("ui8", "ui32", "ui64")) {
+        set_state(c(7, 0, 11, 0))
+        shaped <- prim_sample_bits(shape, dtype)
+        expect_shape(shaped, shape)
+        set_state(c(7, 0, 11, 0))
+        flat <- prim_sample_bits(prod(shape), dtype)
+        # as.vector() reads an R array in column-major order
+        expect_identical(as.vector(bits(shaped)), as.vector(bits(flat)))
+      }
+    }
+  })
+
+  it("takes the low and the high word of a hash for two narrow draws", {
+    local_nv_seed(NULL)
+    set_state(c(5, 0, 3, 0))
+    # bitcasting puts the low and the high word of each value next to each
+    # other, as the leading axis
+    wide <- as_array(nv_bitcast_convert(prim_sample_bits(2L, "ui64"), dtype = "ui32"))
+    set_state(c(5, 0, 3, 0))
+    narrow <- as_array(prim_sample_bits(4L, "ui32"))
+    expect_identical(as.numeric(narrow), as.numeric(wide))
+    # a narrower data type truncates the 32-bit words
+    set_state(c(5, 0, 3, 0))
+    expect_identical(as.numeric(as_array(prim_sample_bits(4L, "ui16"))), as.numeric(narrow) %% 2^16)
+  })
+
+  it("draws every unsigned data type", {
+    local_nv_seed(1L)
+    for (dtype in c("ui8", "ui16", "ui32", "ui64")) {
+      out <- prim_sample_bits(c(2L, 3L), dtype)
+      expect_dtype(out, dtype)
+      expect_shape(out, c(2L, 3L))
+      # the bits are random, not a constant: 64 draws of 8 bits or more repeat
+      # a value only rarely
+      values <- as.numeric(as.character(as_array(prim_sample_bits(64L, dtype), check = FALSE)))
+      expect_gt(length(unique(values)), 40L)
+    }
+  })
+
+  it("draws a shape with no elements", {
+    local_nv_seed(1L)
+    expect_shape(prim_sample_bits(c(2L, 0L), "ui32"), c(2L, 0L))
+  })
+
+  it("lowers a narrow draw of more elements than an R integer holds", {
+    local_nv_seed(NULL)
+    lower <- function(shape) stablehlo(trace_fn(function() prim_sample_bits(shape, "ui32"), list()))
+    expect_no_error(lower(c(2L, as.integer(2^30 + 1))))
+    expect_no_error(lower(c(3L, as.integer(2^30))))
+    expect_error(lower(c(3L, as.integer(2^30 + 1))), "first axis has an odd size")
+  })
+
+  it("refuses a draw from more hashes than an R integer holds", {
+    lower <- function(shape) stablehlo(trace_fn(function() prim_sample_bits(shape, "ui64"), list()))
+    expect_error(lower(c(65536L, 32768L)), "more than 2147483647 hashes")
+  })
+})
+
+describe("prim_fork_random_state() and the generator of prim_sample_bits()", {
+  # Known answers of ThreeFry-2x32 with 20 rounds from a reference
+  # implementation outside of anvl, which reproduces the test vector of Salmon et
+  # al. (2011). The seed 1 is the key with low word 1 and high word 0.
+
+  it("forks the random state into its split and a zero counter", {
+    local_nv_seed(1L)
+    expect_identical(as.numeric(as_array(prim_fork_random_state())), c(3023415290, 2531993477, 0, 0))
+    expect_identical(unclass(nv_get_random_state())[[3L]], 1)
+  })
+
+  it("draws ui64 values from the split, from counter 0", {
+    local_nv_seed(1L)
+    # the values 6733707815133362247, 4925054666428519553 and
+    # 11939314369203855122, each as its low and its high 32-bit word
+    words <- nv_bitcast_convert(prim_sample_bits(3L, "ui64"), dtype = "ui32")
+    expect_identical(
+      as.numeric(as_array(words)),
+      c(3326851143, 1567813524, 64623745, 1146703648, 1578950418, 2779838249)
+    )
+  })
+
+  it("draws ui32 values as the low and then the high words of the hashes", {
+    local_nv_seed(1L)
+    expect_identical(as.numeric(as_array(prim_sample_bits(3L, "ui32"))), c(3326851143, 1567813524, 64623745))
+    # the next sampling call splits at counter 1
+    expect_identical(as.numeric(as_array(prim_sample_bits(2L, "ui32"))), c(3551563625, 1672607787))
+  })
 })
 
 describe("prim_bitcast_convert", {
@@ -1229,6 +1345,82 @@ test_that("prim_print hands its argument back untouched", {
   x <- nv_array(c(1, 2, 3), dtype = "f32")
   same <- expect_output(jit(function(x) prim_print(x))(x))
   expect_equal(same, x)
+})
+
+describe("prim_print(ordered = TRUE)", {
+  # The integers the prints of `f(...)` show, in the order they came out.
+  printed <- function(f, ...) {
+    out <- capture.output(invisible(f(...)))
+    as.integer(trimws(grep("^ *-?[0-9]+$", out, value = TRUE)))
+  }
+
+  it("runs ordered prints in the order of the code", {
+    f <- jit(function(x) {
+      for (i in 1:8) {
+        prim_print(x + i, ordered = TRUE)
+      }
+      x
+    })
+    expect_identical(printed(f, nv_array(0L)), 1:8)
+  })
+
+  it("orders the prints of a loop iteration by iteration and after the code before it", {
+    f <- jit(function() {
+      prim_print(nv_scalar(-1L), ordered = TRUE)
+      nv_while(list(i = 0L), function(i) i < 4L, function(i) {
+        prim_print(i, ordered = TRUE)
+        prim_print(i + 100L, ordered = TRUE)
+        list(i = i + 1L)
+      })
+      prim_print(nv_scalar(-2L), ordered = TRUE)
+    })
+    expect_identical(printed(f), c(-1L, 0L, 100L, 1L, 101L, 2L, 102L, 3L, 103L, -2L))
+  })
+
+  it("orders the prints of the branch nv_if takes", {
+    f <- jit(function(p) {
+      prim_print(nv_scalar(1L), ordered = TRUE)
+      nv_if(p, function() prim_print(nv_scalar(2L), ordered = TRUE), function() {
+        prim_print(nv_scalar(3L), ordered = TRUE)
+      })
+      prim_print(nv_scalar(4L), ordered = TRUE)
+    })
+    expect_identical(printed(f, TRUE), c(1L, 2L, 4L))
+    expect_identical(printed(f, FALSE), c(1L, 3L, 4L))
+  })
+
+  it("threads a token from one ordered print to the next", {
+    graph <- trace_fn(
+      function(x) {
+        prim_print(x, ordered = TRUE)
+        prim_print(x, ordered = TRUE)
+      },
+      list(x = nv_aval("f32", 2L))
+    )
+    expect_named(graph$side_effects, "print_token")
+    calls <- graph$statements
+    # the second print takes the token the first returns
+    expect_identical(calls[[2L]]$inputs[[2L]], calls[[1L]]$outputs[[2L]])
+    # the token is built in the program, which neither takes nor returns it
+    func <- stablehlo(graph)[[1L]]
+    expect_length(func$inputs, 1L)
+    expect_length(func$outputs, 1L)
+  })
+
+  it("leaves the names of a loop's state in its errors", {
+    f <- jit(function() {
+      nv_while(list(i = 0L, s = 0L), function(i, s) i < 3L, function(i, s) {
+        prim_print(i, ordered = TRUE)
+        list(i = i + 1L, s = nv_scalar(1))
+      })
+    })
+    expect_error(f(), "`s` enters as")
+  })
+
+  it("leaves an unordered print without a token", {
+    graph <- trace_fn(function(x) prim_print(x), list(x = nv_aval("f32", 2L)))
+    expect_length(graph$side_effects, 0L)
+  })
 })
 
 describe("prim_sort", {

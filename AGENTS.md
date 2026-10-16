@@ -128,6 +128,17 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
+## Side Effects
+
+A side effect is a value outside the traced function that primitives read and update, such as the
+global random state or the token that orders prints. It is registered once with
+`register_side_effect()` (`R/side-effects.R`): where its value comes from (the host or the
+program), whether it is carried through loops and branches or counted, and whether the host
+receives it. A primitive declares the ones it uses with `new_primitive(side_effects = )`. Never
+thread such a value by hand: `graph_desc_add()` and the `side_effects_*()` helpers thread it
+through traces and sub-graphs; a sub-trace's `side_effects_mode` (`?GraphDescriptor`) says how it
+takes them. The internals vignette describes the mechanism.
+
 ## Jit-wrapping
 
 API functions are wrapped in `jit()` at the definition itself, with `static`

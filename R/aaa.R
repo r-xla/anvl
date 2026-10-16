@@ -73,4 +73,10 @@ globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
 globals[["descriptor_stash"]] <- list()
 globals[["current_descriptor"]] <- NULL
 globals[["lowering_platform"]] <- NULL
+# The functions the current top-level lowering builds once (see `lowering_func()`).
+globals[["lowering_funcs"]] <- NULL
+# The registered side effects, by name (see `register_side_effect()`).
+globals$side_effects <- list()
+# The value of the global random state, the side effect "random_state" (see R/rng.R).
+globals$random_state <- NULL
 utils::globalVariables(c("globals", "self"))

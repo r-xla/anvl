@@ -1,5 +1,20 @@
 # anvl (development version)
 
+* Breaking: random draws use a global random state, which `nv_set_seed()` seeds
+  (`with_nv_seed()` / `local_nv_seed()` for a scope) and `nv_get_random_state()` /
+  `nv_set_random_state()` save and restore. The samplers lose their `state`
+  argument; `nv_rng_state()` is removed.
+* Breaking: `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`, which
+  draws with ThreeFry-2x32 from a fresh key per call, so that a jitted function
+  draws what the same code run eagerly draws. New `prim_fork_random_state()`.
+* `prim_print()` / `nv_print()` gain `ordered`, to print in the order of the code.
+* `new_primitive()` gains `side_effects`, for primitives that read and update a
+  value outside of the traced function.
+* Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* Bugfix: `nv_rbinom()` and `nv_sample_int()` reject a `size` or `n` that does not
+  fit into `dtype`; `nv_rbinom()` accepts `size = 0`. `nv_sample()` gives a clear
+  error for an empty population.
 * Bugfix: `nv_seq()` counts down at an unsigned data type instead of erroring.
 * Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
   of its input.

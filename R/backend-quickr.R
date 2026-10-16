@@ -111,8 +111,12 @@ compile_quickr <- function(
   flat = FALSE,
   default_dtypes = NULL
 ) {
-  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "quickr")
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "quickr", side_effects_mode = "input")
   graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree)
+  # quickr runs no side effects: no random draws, no ordered prints
+  if (length(graph$side_effects)) {
+    cli_abort("The quickr backend does not support the side effect {.val {names(graph$side_effects)[[1L]]}}.")
+  }
   check_single_backend(graph, expected = "quickr")
   list(fun = graph_to_quickr_function(graph, unwrap = unwrap, flat = flat))
 }
