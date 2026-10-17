@@ -55,13 +55,25 @@ along which axis each output of \code{f} is stacked.
 A primitive applied to a value that is mapped over needs a \code{vectorize} rule
 (see \code{\link[=rule_vectorize]{rule_vectorize()}}); calling one that has none raises an error.
 Values that are not mapped over can go through any primitive. Without a rule
-so far are control flow (\code{\link[=prim_if]{prim_if()}}, \code{\link[=prim_while]{prim_while()}}, \code{\link[=prim_scan]{prim_scan()}}),
-\code{\link[=prim_reduce]{prim_reduce()}}, \code{\link[=prim_rng_bit_generator]{prim_rng_bit_generator()}}, \code{\link[=prim_convolution]{prim_convolution()}} and
-the decompositions \code{\link[=prim_qr]{prim_qr()}}, \code{\link[=prim_lu]{prim_lu()}}, \code{\link[=prim_svd]{prim_svd()}} and
-\code{\link[=prim_eigh]{prim_eigh()}}.
-Some operands cannot be mapped over yet: the start indices of
-\code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}} and \code{\link[=prim_dynamic_update_slice]{prim_dynamic_update_slice()}}, and the
-padding value of \code{\link[=prim_pad]{prim_pad()}}.
+so far are \code{\link[=prim_convolution]{prim_convolution()}} and the decompositions \code{\link[=prim_qr]{prim_qr()}},
+\code{\link[=prim_lu]{prim_lu()}}, \code{\link[=prim_svd]{prim_svd()}} and \code{\link[=prim_eigh]{prim_eigh()}}. Some operands cannot be mapped over yet: the start
+indices of \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}} and \code{\link[=prim_dynamic_update_slice]{prim_dynamic_update_slice()}}, and
+the padding value of \code{\link[=prim_pad]{prim_pad()}}.
+
+A few primitives are applied to one slice after the other, in a
+\code{\link[=prim_scan]{prim_scan()}} over the batch, instead of to the whole batch at once:
+\code{\link[=prim_rng_bit_generator]{prim_rng_bit_generator()}} mapped over its state and \code{\link[=prim_reduce]{prim_reduce()}}
+mapped over its initial value. A \code{\link[=prim_if]{prim_if()}} whose predicate is mapped over evaluates each
+branch that some slice takes for all slices, and selects between their
+results; a slice that does not take a branch runs it on the inputs of one
+that does, so that its gradient stays free of \code{NaN}s from inputs the branch
+is not meant for. Gradients then match those of the slices one at a time,
+except where the slice whose inputs are borrowed has an infinite derivative
+itself: an argument that is not mapped over then gets \code{NaN} instead of
+\code{Inf}. A \code{\link[=prim_while]{prim_while()}} whose condition is mapped over runs
+until it is \code{FALSE} for every slice, applying the body to the slices that
+are done too and discarding the result. Side effects such as
+\code{\link[=prim_print]{prim_print()}} then also happen for slices that do not take that path.
 }
 
 \examples{

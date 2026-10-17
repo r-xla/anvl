@@ -36,6 +36,7 @@ the updated RNG state together with the generated values.
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 

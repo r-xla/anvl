@@ -609,6 +609,16 @@ nv_print <- prim_print
 #'
 #' [`nv_if()`] is the other conditional: it mirrors R's `if` construct and
 #' branches between two *functions*, evaluating only the selected one.
+#' @section Gradients:
+#' Both `yes` and `no` are computed everywhere, and the gradient flows through
+#' both: the one not selected receives a zero cotangent, which its own
+#' derivative multiplies. Where that derivative is infinite, the gradient is
+#' `NaN`, e.g. for `nv_ifelse(x > 0, sqrt(x), 0)` at `x = 0`. To guard
+#' against this, also mask the input of the branch, so that it sees a value of
+#' no consequence where it is not selected:
+#' `nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0)`. The reverse rule
+#' of `nv_ifelse()` then hands the `NaN` to the constant instead of `x`, at
+#' any order of differentiation.
 #' @param test ([`arrayish`])\cr
 #'   Predicate array. Must be a boolean or an R logical, and scalar or the same
 #'   shape as the non-scalar arguments.

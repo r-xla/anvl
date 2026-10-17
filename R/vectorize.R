@@ -40,13 +40,25 @@
 #' A primitive applied to a value that is mapped over needs a `vectorize` rule
 #' (see [`rule_vectorize()`]); calling one that has none raises an error.
 #' Values that are not mapped over can go through any primitive. Without a rule
-#' so far are control flow ([`prim_if()`], [`prim_while()`], [`prim_scan()`]),
-#' [`prim_reduce()`], [`prim_rng_bit_generator()`], [`prim_convolution()`] and
-#' the decompositions [`prim_qr()`], [`prim_lu()`], [`prim_svd()`] and
-#' [`prim_eigh()`].
-#' Some operands cannot be mapped over yet: the start indices of
-#' [`prim_dynamic_slice()`] and [`prim_dynamic_update_slice()`], and the
-#' padding value of [`prim_pad()`].
+#' so far are [`prim_convolution()`] and the decompositions [`prim_qr()`],
+#' [`prim_lu()`], [`prim_svd()`] and [`prim_eigh()`]. Some operands cannot be mapped over yet: the start
+#' indices of [`prim_dynamic_slice()`] and [`prim_dynamic_update_slice()`], and
+#' the padding value of [`prim_pad()`].
+#'
+#' A few primitives are applied to one slice after the other, in a
+#' [`prim_scan()`] over the batch, instead of to the whole batch at once:
+#' [`prim_rng_bit_generator()`] mapped over its state and [`prim_reduce()`]
+#' mapped over its initial value. A [`prim_if()`] whose predicate is mapped over evaluates each
+#' branch that some slice takes for all slices, and selects between their
+#' results; a slice that does not take a branch runs it on the inputs of one
+#' that does, so that its gradient stays free of `NaN`s from inputs the branch
+#' is not meant for. Gradients then match those of the slices one at a time,
+#' except where the slice whose inputs are borrowed has an infinite derivative
+#' itself: an argument that is not mapped over then gets `NaN` instead of
+#' `Inf`. A [`prim_while()`] whose condition is mapped over runs
+#' until it is `FALSE` for every slice, applying the body to the slices that
+#' are done too and discarding the result. Side effects such as
+#' [`prim_print()`] then also happen for slices that do not take that path.
 #' @seealso [`rule_vectorize()`], [`gradient()`], `r roxy_article("vectorize")`
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -248,7 +260,7 @@ expand_out_axes <- function(out_axes, out_tree, n) {
 # one per graph input), where those that `batched` flags carry a leading batch
 # axis of size `size`. A call none of whose inputs is batched is replayed as it
 # is; every other call goes through its primitive's vectorize rule, and its
-# outputs are batched where the rule says so. Returns
+# outputs are batched where the rule says so (see `partly_batched()`). Returns
 # the boxes of the outputs as `outputs`, and which of them are batched as
 # `batched`.
 graph_vectorize <- function(graph, inputs, batched, size) {
@@ -300,6 +312,60 @@ graph_vectorize <- function(graph, inputs, batched, size) {
   )
 }
 
+# The outputs of `graph_vectorize()`, those `out_batched` flags with the batch
+# axis -- broadcast if the graph did not give it to them -- and the others
+# without, which they must then come out as.
+graph_vectorize_as <- function(graph, inputs, batched, size, out_batched) {
+  res <- graph_vectorize(graph, inputs, batched, size)
+  Map(
+    function(out, is_batched, want) {
+      if (want) {
+        return(batch_operand(out, is_batched, size))
+      }
+      if (is_batched) {
+        cli_abort("Internal error: an output that must not be batched is.")
+      }
+      out
+    },
+    res$outputs,
+    res$batched,
+    out_batched
+  )
+}
+
+# Which outputs of `graph` `graph_vectorize()` may batch, given which of its
+# inputs `batched` flags, without replaying it: those that depend on a batched
+# input. A rule may leave some of them unbatched still, which
+# `graph_vectorize_as()` then broadcasts where needed.
+graph_batched_outputs <- function(graph, batched) {
+  is_batched <- hashtab()
+  for (i in seq_along(graph$inputs)) {
+    is_batched[[graph$inputs[[i]]]] <- batched[[i]]
+  }
+  batched_of <- function(g) !is_graph_literal(g) && isTRUE(is_batched[[g]])
+  for (call in graph$statements) {
+    b <- any(vapply(call$inputs, batched_of, logical(1L)))
+    for (out in call$outputs) {
+      is_batched[[out]] <- b
+    }
+  }
+  vapply(graph$outputs, batched_of, logical(1L))
+}
+
+# Which of the values a loop carries are batched: those that enter batched, and
+# those its body batches from the batched ones among the carry and `other` (the
+# inputs of `body` after the carry), until that adds no more.
+carry_batched <- function(body, carry, other) {
+  n <- length(carry)
+  repeat {
+    out <- graph_batched_outputs(body, c(carry, other))[seq_len(n)]
+    if (!any(out & !carry)) {
+      return(carry)
+    }
+    carry <- carry | out
+  }
+}
+
 apply_vectorize_rule <- function(primitive, inputs, batched, params, size) {
   rule <- primitive[["vectorize"]]
   if (is.null(rule)) {
@@ -346,6 +412,12 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size) {
   out <- do.call(prim_fn, c(operands, params))
   out <- if (is_graph_box(out)) list(out) else out
   list(outputs = out, batched = rep(TRUE, length(out)))
+}
+
+# The outputs of a vectorize rule, of which only those `batched` flags carry
+# the batch axis.
+partly_batched <- function(outputs, batched) {
+  structure(outputs, batched = batched)
 }
 
 # A vectorize rule must return what the call returned, each with the batch axis
@@ -527,4 +599,27 @@ move_axis <- function(x, from, to) {
   perm <- seq_len(naxes(x))[-from]
   perm <- append(perm, from, after = to - 1L)
   prim_transpose(x, perm)
+}
+
+# The rule of a primitive that cannot work on the whole batch at once: applies
+# `apply`, a function of the operands of one slice returning its outputs, to
+# one slice after the other, in a `prim_scan()` over the batch axis.
+vectorize_by_loop <- function(apply, inputs, batched, size) {
+  body <- function(carry, x) {
+    operands <- inputs
+    operands[batched] <- x
+    list(carry = carry, out = apply(operands))
+  }
+  prim_scan(list(0L), inputs[batched], body, steps = size)$out
+}
+
+# `x` without a gradient: its reverse rule gives `x` a zero cotangent, whatever
+# reaches it. A float goes through a bitcast to the unsigned integer of its
+# width and back, which XLA removes; any other value has no gradient anyway.
+no_gradient <- function(x) {
+  if (!is_dtype_float(dtype(x))) {
+    return(x)
+  }
+  bits <- prim_bitcast_convert(x, paste0("ui", dtype_width(dtype(x))))
+  prim_bitcast_convert(bits, dtype(x))
 }

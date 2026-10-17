@@ -285,3 +285,177 @@ prim_triangular_solve[["vectorize"]] <- rule_vectorize(function(inputs, batched,
   }
   list(out)
 })
+
+# The reducer is kept as it is: it works on scalars. An initial value that is
+# mapped over is not a scalar any more, so then the reduction goes slice by
+# slice.
+prim_reduce[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  if (any(batched[-1L])) {
+    apply <- function(operands) graph_desc_add(prim_reduce, operands, params = params, infer_fn = infer_reduce)
+    return(vectorize_by_loop(apply, inputs, batched, size))
+  }
+  p <- params
+  p$axes <- p$axes + 1L
+  graph_desc_add(prim_reduce, inputs, params = p, infer_fn = infer_reduce)
+})
+
+# Each slice of the state draws its own numbers, one slice after the other.
+prim_rng_bit_generator[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  vectorize_by_loop(function(operands) do.call(prim_rng_bit_generator, c(operands, params)), inputs, batched, size)
+})
+
+# With a predicate that is not mapped over, both branches are vectorized. With
+# one that is, each slice may take another branch: each branch that some slice
+# takes is evaluated, and each slice selects its result.
+#
+# A slice that does not take a branch still runs it, and its result there is
+# discarded, but its derivative is not: `0 * Inf` from, e.g., a `sqrt()` the
+# slice guards against would reach the gradient as `NaN`. So a branch runs a
+# slice that does not take it on the mapped inputs of one that does, slice `k`:
+# it reads each of them through `ifelse(pred, x, x[k])`. The branch is valid
+# there, as slice `k` takes it. The reverse rule of `prim_ifelse()` gives the
+# slices that do not take the branch no cotangent, and `x[k]` none either, as it
+# passes `no_gradient()`. A branch that no slice takes has no slice `k` and is
+# not run at all. Inputs that are not mapped over stay as they are, so a
+# weight matrix the branches share is not copied for every slice.
+prim_if[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  pred <- inputs[[1L]]
+  captures <- inputs[-1L]
+  captures_batched <- batched[-1L]
+  branch <- function(graph, captures) {
+    function() graph_vectorize_as(graph, captures, captures_batched, size, rep(TRUE, length(graph$outputs)))
+  }
+  if (!batched[[1L]]) {
+    # Only outputs that either branch makes depend on the values mapped over
+    # are batched.
+    out_batched <- graph_batched_outputs(params$true, captures_batched) |
+      graph_batched_outputs(params$false, captures_batched)
+    branch_as <- function(graph) {
+      function() graph_vectorize_as(graph, captures, captures_batched, size, out_batched)
+    }
+    return(partly_batched(prim_if(pred, branch_as(params$true), branch_as(params$false)), out_batched))
+  }
+  if (size == 0L) {
+    return(lapply(params$true$outputs, \(out) zeros(dtype(out$aval), c(0L, shape(out$aval)))))
+  }
+  select <- function(test, yes, no) prim_ifelse(prim_broadcast_in_axes(test, shape(yes), 1L), yes, no)
+  # The branch `graph`, taken by the slices `takes` flags.
+  run <- function(graph, takes) {
+    k <- prim_which_max(takes, axis = 1L)
+    branch_captures <- captures
+    branch_captures[captures_batched] <- lapply(captures[captures_batched], function(x) {
+      # A gather rather than a dynamic slice, so that an enclosing
+      # `vectorize()` can map over `k` too.
+      inner_axes <- seq_len(naxes(x) - 1L)
+      x_k <- prim_gather(
+        x,
+        prim_reshape(k, 1L),
+        slice_sizes = c(1L, shape(x)[-1L]),
+        offset_axes = inner_axes,
+        collapsed_slice_axes = 1L,
+        x_batching_axes = integer(),
+        start_indices_batching_axes = integer(),
+        start_index_map = 1L,
+        index_vector_axis = 1L
+      )
+      x_k <- prim_broadcast_in_axes(no_gradient(x_k), shape(x), inner_axes + 1L)
+      select(takes, x, x_k)
+    })
+    none <- function() lapply(graph$outputs, \(out) zeros(dtype(out$aval), c(size, shape(out$aval))))
+    prim_if(prim_any(takes, axes = 1L), branch(graph, branch_captures), none)
+  }
+  Map(\(yes, no) select(pred, yes, no), run(params$true, pred), run(params$false, prim_not(pred)))
+})
+
+# The state is batched where it enters batched or the body makes it so. With a
+# condition that is mapped over, the loop runs while it holds for any slice, and
+# a slice for which it no longer holds keeps its state; then all of the state is
+# batched. The condition of every slice is carried along with the state, so it
+# is evaluated once per step.
+prim_while[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  is_state <- seq_len(length(inputs) - params$n_captures)
+  captures <- inputs[-is_state]
+  captures_batched <- batched[-is_state]
+  state_batched <- carry_batched(params$body, batched[is_state], captures_batched)
+  pred_batched <- graph_batched_outputs(params$cond, c(state_batched, captures_batched))
+  if (pred_batched) {
+    state_batched[] <- TRUE
+  }
+  state_in_batched <- c(state_batched, captures_batched)
+  pred_of <- function(state) {
+    graph_vectorize_as(params$cond, c(state, captures), state_in_batched, size, pred_batched)[[1L]]
+  }
+  body_of <- function(state) {
+    graph_vectorize_as(params$body, c(state, captures), state_in_batched, size, state_batched)
+  }
+
+  init <- Map(
+    function(x, is_batched, want) if (want) batch_operand(x, is_batched, size) else x,
+    inputs[is_state],
+    batched[is_state],
+    state_batched
+  )
+  names(init) <- paste0("s", is_state)
+  if (!pred_batched) {
+    body <- function(...) {
+      new <- body_of(list(...))
+      names(new) <- names(init)
+      new
+    }
+    out <- unname(prim_while(init, function(...) pred_of(list(...)), body))
+    return(partly_batched(out, state_batched))
+  }
+
+  # `pred` is the condition of every slice for the state the step starts from.
+  init$pred <- pred_of(unname(init))
+  cond <- function(...) prim_any(list(...)$pred, axes = 1L)
+  body <- function(...) {
+    state <- list(...)
+    pred <- state$pred
+    state <- unname(state[names(state) != "pred"])
+    new <- Map(
+      function(n, o) prim_ifelse(prim_broadcast_in_axes(pred, shape(n), 1L), n, o),
+      body_of(state),
+      state
+    )
+    names(new) <- names(init)[is_state]
+    c(new, list(pred = pred_of(unname(new))))
+  }
+  out <- prim_while(init, cond, body)
+  partly_batched(unname(out[is_state]), state_batched)
+})
+
+# As `prim_while()`, the carry is batched where it enters batched or the body
+# makes it so, and a stacked output where the body makes it depend on what is
+# batched. A slice of `xs` the loop reads carries the batch axis in front of the
+# steps axis, which the loop runs over, so the two swap places on the way in,
+# and on the stacked outputs on the way out.
+prim_scan[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  is_carry <- seq_len(params$n_carry)
+  is_xs <- params$n_carry + seq_len(params$n_xs)
+  captures <- inputs[-c(is_carry, is_xs)]
+  other_batched <- batched[-is_carry]
+  carry_b <- carry_batched(params$body, batched[is_carry], other_batched)
+  out_b <- graph_batched_outputs(params$body, c(carry_b, other_batched))[-is_carry]
+
+  init <- Map(
+    function(x, is_batched, want) if (want) batch_operand(x, is_batched, size) else x,
+    inputs[is_carry],
+    batched[is_carry],
+    carry_b
+  )
+  xs <- Map(function(x, is_batched) if (is_batched) move_axis(x, 1L, 2L) else x, inputs[is_xs], batched[is_xs])
+  body <- function(carry, x) {
+    out <- graph_vectorize_as(
+      params$body,
+      c(carry, x, captures),
+      c(carry_b, other_batched),
+      size,
+      c(carry_b, out_b)
+    )
+    list(carry = out[is_carry], out = out[-is_carry])
+  }
+  out <- prim_scan(init, xs, body, steps = params$steps, reverse = params$reverse)
+  ys <- Map(function(y, is_batched) if (is_batched) move_axis(y, 2L, 1L) else y, out$out, out_b)
+  partly_batched(c(out$carry, ys), c(carry_b, out_b))
+})

@@ -738,6 +738,162 @@ describe("prim_triangular_solve", {
   })
 })
 
+describe("prim_reduce", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x) prim_reduce(x, 0, axes = 2L, reducer = function(a, b) a + b * b),
+      x = rand_array(c(3L, 2L, 4L))
+    )
+  })
+
+  it("vectorizes with an initial value that is mapped over", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, init) prim_reduce(x, init, axes = 1L, reducer = function(a, b) prim_pmax(a, b)),
+      x = rand_array(c(3L, 2L, 4L)),
+      init = rand_array(3L)
+    )
+  })
+})
+
+describe("prim_rng_bit_generator", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    state <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(3L, 2L), dtype = "ui64")
+    autotest_vectorize(
+      function(state) prim_rng_bit_generator(state, "THREE_FRY", dtype = "ui32", shape = c(2L, 2L)),
+      state = state
+    )
+  })
+})
+
+describe("prim_if", {
+  it("vectorizes an empty batch", {
+    f <- function(x) prim_if(x > 0, function() list(sqrt(x)), function() list(x * 0))[[1L]]
+    out <- jit(vectorize(f))(nv_array(numeric(), shape = 0L, dtype = "f32"))
+    expect_equal(shape(out), 0L)
+  })
+
+  it("leaves an output unbatched that does not depend on the arguments mapped over", {
+    f <- function(x, w) prim_if(sum(w) > 0, function() list(x * 2, w + 1), function() list(x, w))
+    w <- nv_array(c(1, 2), dtype = "f32")
+    out <- jit(vectorize(f, in_axes = list(x = 1L), out_axes = list(1L, NULL)))(rand_array(c(3L, 2L)), w)
+    expect_equal(as_r(out[[2L]]), array(c(2, 3), dim = 2L))
+  })
+
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(pred, x, y) prim_if(pred, function() list(x * 2, sum(y)), function() list(y - 1, sum(x))),
+      pred = rand_array(3L, dtype = "bool", sample = \(n) c(TRUE, FALSE, TRUE)),
+      x = rand_array(c(3L, 2L)),
+      y = rand_array(c(3L, 2L))
+    )
+  })
+})
+
+describe("prim_while", {
+  it("leaves state unbatched that does not depend on the arguments mapped over", {
+    f <- function(x) {
+      out <- prim_while(
+        list(i = nv_scalar(0L, dtype = "i32"), x = x),
+        function(i, x) i < 3L,
+        function(i, x) list(i = i + 1L, x = x * 2)
+      )
+      list(out$i, out$x)
+    }
+    out <- jit(vectorize(f, out_axes = list(NULL, 1L)))(nv_array(c(1, 2), dtype = "f32"))
+    expect_equal(as_r(out[[1L]]), 3L)
+    expect_equal(as_r(out[[2L]]), array(c(8, 16), dim = 2L))
+  })
+
+  # Applies `x * 2 + y` `n` times; `y` is read but not carried.
+  double_n <- function(n, x, y) {
+    out <- prim_while(
+      list(i = nv_scalar(0L, dtype = "i32"), x = x),
+      function(i, x) i < n,
+      function(i, x) list(i = i + 1L, x = x * 2 + y)
+    )
+    list(out$i, out$x)
+  }
+
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      double_n,
+      n = nv_array(c(1L, 3L, 2L), dtype = "i32"),
+      x = rand_array(c(3L, 2L)),
+      y = rand_array(c(3L, 2L))
+    )
+  })
+
+  it("batches the state the body makes depend on the arguments mapped over", {
+    f <- function(y) {
+      prim_while(
+        list(i = nv_scalar(0L, dtype = "i32"), acc = nv_scalar(0, dtype = "f32")),
+        function(i, acc) i < 3L,
+        function(i, acc) list(i = i + 1L, acc = acc + y)
+      )$acc
+    }
+    out <- jit(vectorize(f))(nv_array(c(1, 2), dtype = "f32"))
+    expect_equal(as_r(out), array(c(3, 6), dim = 2L))
+  })
+})
+
+describe("prim_scan", {
+  it("leaves a carry and a stacked output unbatched that do not depend on the arguments mapped over", {
+    f <- function(x) {
+      out <- prim_scan(
+        list(n = nv_scalar(0, dtype = "f32"), acc = x),
+        NULL,
+        function(carry, xs) list(carry = list(n = carry$n + 1, acc = carry$acc + x), out = list(carry$n)),
+        steps = 3L
+      )
+      list(out$carry$n, out$carry$acc, out$out[[1L]])
+    }
+    out <- jit(vectorize(f, out_axes = list(NULL, 1L, NULL)))(nv_array(c(1, 2), dtype = "f32"))
+    expect_equal(as_r(out[[1L]]), 3)
+    expect_equal(as_r(out[[2L]]), array(c(4, 8), dim = 2L))
+    expect_equal(as_r(out[[3L]]), array(c(0, 1, 2), dim = 3L))
+  })
+
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(init, xs, y) {
+        out <- prim_scan(
+          list(c = init),
+          list(xs),
+          function(carry, x) list(carry = list(c = carry$c + x[[1L]]), out = list(carry$c * x[[1L]] + y)),
+          steps = 4L
+        )
+        list(out$carry$c, out$out[[1L]])
+      },
+      init = rand_array(c(3L, 2L)),
+      xs = rand_array(c(3L, 4L, 2L)),
+      y = rand_array(c(3L, 2L))
+    )
+  })
+
+  it("vectorizes in reverse and without xs", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(init) {
+        out <- prim_scan(
+          list(init),
+          NULL,
+          function(carry, x) list(carry = list(carry[[1L]] * 2), out = list(carry[[1L]])),
+          steps = 3L,
+          reverse = TRUE
+        )
+        list(out$carry[[1L]], out$out[[1L]])
+      },
+      init = rand_array(c(3L, 2L))
+    )
+  })
+})
+
 # Every primitive with a vectorize rule must have been applied by one of the
 # `autotest_vectorize()` calls above (see helper-vectorize.R).
 describe("vectorize rules", {

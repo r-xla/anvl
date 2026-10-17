@@ -163,6 +163,26 @@ describe("vectorize", {
     expect_equal(as_r(out$w), as_r(x)[, c(2L, 1L)])
   })
 
+  it("gives no NaN gradient from the branch a slice does not take", {
+    # sqrt() has an infinite derivative at 0, where the slice takes the other
+    # branch; `w` is shared, so the gradients of all slices add up in it.
+    f <- function(w, x) prim_if(x > 0, function() sqrt(w * x), function() x * 0)
+    loss <- function(w, x) sum(vectorize(f, in_axes = list(x = 1L))(w, x))
+    w <- nv_scalar(2, dtype = "f32")
+    x <- nv_array(c(0, -1, 4), dtype = "f32")
+    grad <- jit(gradient(loss))(w, x)
+    expect_equal(as_r(grad$x), array(c(0, 0, sqrt(2) / 4), dim = 3L), tolerance = 1e-6)
+    expect_equal(as_r(grad$w), 1 / sqrt(2), tolerance = 1e-6)
+
+    second <- function(w, x) {
+      g <- gradient(loss)(w, x)
+      sum(g$x) + g$w
+    }
+    grad2 <- jit(gradient(second))(w, x)
+    expect_equal(as_r(grad2$x), array(c(0, 0, sqrt(2) / 32), dim = 3L), tolerance = 1e-5)
+    expect_equal(as_r(grad2$w), -sqrt(2) / 16, tolerance = 1e-5)
+  })
+
   it("is differentiable", {
     f <- function(w, x) sum(vectorize(function(x) sum(x * w), in_axes = list(x = 1L))(x)^2L)
     w <- nv_array(c(1, 2), dtype = "f32")

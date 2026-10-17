@@ -90,9 +90,31 @@ outer_product <- vectorize(vectorize(function(a, b) a * b, in_axes = list(b = 1L
 jit(outer_product)(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(10, 20), dtype = "f32"))
 ```
 
+## Control Flow
+
+Control flow can depend on the arguments mapped over.
+Each instance may then take a different path, which `vectorize()` resolves in the way you would by hand:
+`nv_if()` evaluates each branch that some instance takes and selects the result of each instance, and `nv_while()` runs until the condition is `FALSE` for every instance, keeping the state of the instances that finished earlier.
+A branch, or the loop body, then also runs for instances that do not take it, so side effects such as printing happen for them too; a branch runs such an instance on the inputs of one that does take it.
+Their results are discarded, and gradients are those of each instance's own path.
+Below, each instance halves its value until it is smaller than one, counting the steps:
+
+```{r}
+halvings <- function(x) {
+  nv_while(
+    list(x = x, n = nv_scalar(0L)),
+    function(x, n) x >= 1,
+    function(x, n) list(x = x / 2, n = n + 1L)
+  )$n
+}
+
+jit(vectorize(halvings))(nv_array(c(0.5, 3, 20), dtype = "f32"))
+```
+
 ## Limitations
 
 `vectorize()` needs a rule for every primitive that a value mapped over goes through.
-So far, there is none for control flow, `prim_reduce()`, `prim_rng_bit_generator()`, `prim_convolution()` and the decompositions `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, so they can only be applied to values that are not mapped over.
+`prim_convolution()` and the decompositions `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()` have none yet, so they can only be applied to values that are not mapped over.
 Nor can the start indices of `prim_dynamic_slice()` and `prim_dynamic_update_slice()`, or the padding value of `prim_pad()`, be mapped over yet.
+A few primitives cannot work on the whole batch at once and are applied to one instance after the other in a loop instead: `prim_rng_bit_generator()` mapped over its state and `prim_reduce()` mapped over its initial value.
 See `?vectorize` for details, and `?rule_vectorize` for adding a rule to a primitive of your own.

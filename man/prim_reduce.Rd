@@ -55,6 +55,7 @@ function (like \code{+}) is associative.
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 

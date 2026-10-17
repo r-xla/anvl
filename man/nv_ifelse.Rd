@@ -29,6 +29,19 @@ Selects elements from \code{yes} or \code{no} based on \code{test}, mirroring R'
 \code{\link[=nv_if]{nv_if()}} is the other conditional: it mirrors R's \code{if} construct and
 branches between two \emph{functions}, evaluating only the selected one.
 }
+\section{Gradients}{
+
+Both \code{yes} and \code{no} are computed everywhere, and the gradient flows through
+both: the one not selected receives a zero cotangent, which its own
+derivative multiplies. Where that derivative is infinite, the gradient is
+\code{NaN}, e.g. for \code{nv_ifelse(x > 0, sqrt(x), 0)} at \code{x = 0}. To guard
+against this, also mask the input of the branch, so that it sees a value of
+no consequence where it is not selected:
+\code{nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0)}. The reverse rule
+of \code{nv_ifelse()} then hands the \code{NaN} to the constant instead of \code{x}, at
+any order of differentiation.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 test <- nv_array(c(TRUE, FALSE, TRUE))
