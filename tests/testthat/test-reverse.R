@@ -218,7 +218,7 @@ test_that("wrt non-existent argument", {
   }
   expect_error(
     jit(gradient(f, wrt = "y"))(nv_scalar(2)),
-    "wrt must be"
+    "must be a subset of the formal arguments"
   )
 })
 

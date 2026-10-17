@@ -15,7 +15,7 @@ We refer to such a rewriting of code as a **transformation**, of which there are
 1. `AnvlGraph` $\rightarrow$ `AnvlGraph`:
    It is possible to transform `AnvlGraph`s into other `AnvlGraph`s.
    Their purpose is to change the functionality of the code.
-   At the time of writing, there is essentially only one such transformation, namely reverse-mode automatic differentiation via `gradient()`.
+   At the time of writing, there are two such transformations: reverse-mode automatic differentiation via `gradient()`, and batching via `vectorize()`.
 1. `AnvlGraph` $\rightarrow$ executable:
    In order to perform the actual computation, the `AnvlGraph` needs to be converted into an executable.
    The main backend is `"pjrt"` (via {stablehlo} and {pjrt}, compiling with XLA). There is also an experimental [quickr](https://github.com/t-kalinowski/quickr) backend.

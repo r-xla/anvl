@@ -32,6 +32,7 @@ Performs logical OR along the specified axes.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

@@ -27,6 +27,7 @@ Element-wise arithmetic right bit shift.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

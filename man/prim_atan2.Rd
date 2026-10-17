@@ -30,6 +30,7 @@ The operands are named \code{y} and \code{x}, in that order, after
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

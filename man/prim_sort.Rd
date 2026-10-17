@@ -46,6 +46,7 @@ axes are preserved.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

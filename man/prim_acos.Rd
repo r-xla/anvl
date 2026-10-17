@@ -23,6 +23,7 @@ Element-wise inverse cosine.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

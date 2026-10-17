@@ -28,6 +28,7 @@ Element-wise minimum of two arrays, like \code{\link[base:pmin]{base::pmin()}}.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

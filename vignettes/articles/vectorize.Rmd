@@ -1,0 +1,98 @@
+---
+title: "Vectorization"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+In this article, you will learn how to write a function for a single instance and apply it to a whole batch with `vectorize()`.
+
+## Mapping a Function over a Batch
+
+Many computations are easiest to write for one instance: one observation, one parameter vector, one sequence.
+`vectorize()` takes such a function and returns one that maps it over an axis of its arguments, much like `base::Vectorize()`.
+Unlike `Vectorize()`, it does not call the function once per instance.
+It traces the function once and turns every operation into one that works on the whole batch, so the result runs as a single program.
+
+Below, `f` computes the squared norm of a single vector.
+Vectorized, it computes one norm per row of a matrix:
+
+```{r}
+library(anvl)
+
+f <- function(x) sum(x^2)
+x <- nv_array(matrix(1:6, nrow = 3L), dtype = "f32")
+
+jit(vectorize(f))(x)
+```
+
+As with `gradient()`, the result of `vectorize()` must be called inside `jit()`, because it transforms the traced program of `f`.
+
+## Choosing the Batch Axes with `in_axes`
+
+By default, `vectorize()` maps over axis `1` of every argument that is an array.
+`in_axes` changes this.
+A single axis applies to all of them, so `in_axes = 2L` maps over the columns instead:
+
+```{r}
+jit(vectorize(f, in_axes = 2L))(x)
+```
+
+A named list gives each argument its own batch axis.
+An argument that the list leaves out or gives `NULL` is passed to every application of `f` unchanged.
+Here, every row of `x` is multiplied by the same weights `w`:
+
+```{r}
+g <- function(x, w) sum(x * w)
+w <- nv_array(c(2, -1), dtype = "f32")
+
+jit(vectorize(g, in_axes = list(x = 1L)))(x, w)
+```
+
+All arguments that are mapped over must have the same size along their batch axes.
+Every array in a nested argument uses that argument's batch axis.
+
+## Placing the Batch Axis with `out_axes`
+
+The outputs are stacked along axis `1` by default.
+`out_axes` puts the batch axis elsewhere.
+A single axis applies to every output, and a list that follows the structure of the output gives each part its own axis.
+`NULL` returns an output as it is, which is allowed for an output that does not depend on the arguments mapped over:
+
+```{r}
+h <- function(x, w) list(scaled = x * w, total = sum(w))
+
+h_vec <- vectorize(h, in_axes = list(x = 1L), out_axes = list(scaled = 2L, total = NULL))
+jit(h_vec)(x, w)
+```
+
+## Composing with Other Transformations
+
+`vectorize()` composes with `gradient()` and with itself.
+A common use is computing one gradient per observation, e.g. to clip them individually.
+The loss below is written for a single observation `x`; vectorizing its gradient over `x` gives the gradient of every observation with respect to the shared parameters `w`:
+
+```{r}
+loss <- function(w, x) sum(x * w)^2
+per_example_grad <- jit(vectorize(gradient(loss, wrt = "w"), in_axes = list(x = 1L)))
+
+per_example_grad(w, x)
+```
+
+Nesting two calls maps over two axes, here forming all pairwise products of two vectors:
+
+```{r}
+outer_product <- vectorize(vectorize(function(a, b) a * b, in_axes = list(b = 1L)), in_axes = list(a = 1L))
+jit(outer_product)(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(10, 20), dtype = "f32"))
+```
+
+## Limitations
+
+`vectorize()` needs a rule for every primitive that a value mapped over goes through.
+So far, there is none for indexing with `prim_gather()` and `prim_scatter()`, `prim_chol()`, `prim_triangular_solve()`, control flow, `prim_reduce()`, `prim_rng_bit_generator()`, `prim_convolution()` and the decompositions `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, so they can only be applied to values that are not mapped over.
+Nor can the start indices of `prim_dynamic_slice()` and `prim_dynamic_update_slice()`, or the padding value of `prim_pad()`, be mapped over yet.
+See `?vectorize` for details, and `?rule_vectorize` for adding a rule to a primitive of your own.

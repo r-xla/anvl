@@ -169,25 +169,6 @@ gradient_out_tree <- function(graph, wrt) {
   }
 }
 
-# The boxes of the current descriptor that the inputs of `graph` -- traced by
-# `gradient()` from `args_flat` -- are bound to, one per argument that is not
-# static. An R value the descriptor has not given a data type yet materializes
-# at the one the traced body settled it at, which the descriptor's own finalize
-# then takes into account like any other use of it there.
-gradient_operands <- function(graph, args_flat) {
-  desc <- current_descriptor()
-  Map(
-    function(x, input) {
-      if (is_rdata_box(x)) {
-        x <- materialize_rdata(x, input$aval$dtype)
-      }
-      maybe_box_arrayish(x, desc)
-    },
-    args_flat[!graph$is_static_flat],
-    graph$inputs
-  )
-}
-
 validate_gradient_output <- function(out_gvals) {
   if (length(out_gvals) != 1L) {
     cli_abort("gradient can only be computed for functions that return a single output")
@@ -445,10 +426,7 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
       # through `trans`, in case an upstream alternative forward replaced one
       # of them.
       new_inputs <- lapply(call$inputs, translate_gnode)
-      new_call <- GraphStatement(call$primitive, new_inputs, call$params, call$outputs)
-
-      desc$statements$add(new_call)
-      register_gvals(desc, call$outputs)
+      replay_statement(desc, call, new_inputs)
 
       # Without a backward rule `backwards[[i]]` stays NULL. `run_backward_pass`
       # treats that as "skip if no input requires grad, otherwise abort":
@@ -458,7 +436,7 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
       if (!is.null(rule$backward)) {
         backwards[[i]] <- list(
           fn = rule$backward,
-          inputs = lapply(new_call$inputs, GraphBox, desc = desc),
+          inputs = lapply(new_inputs, GraphBox, desc = desc),
           outputs = lapply(call$outputs, GraphBox, desc = desc),
           params = call$params
         )
@@ -630,37 +608,16 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #' result$grad
 gradient <- function(f, wrt = NULL) {
   assert_function(f)
-  wrt <- resolve_wrt(f, wrt)
-  f_gradient <- function() {
-    args <- as.list(match.call())[-1L]
-    args <- lapply(args, eval, envir = parent.frame())
-    trace_value_and_grad(f, args, wrt, "gradient")$grad
-  }
-  formals(f_gradient) <- formals2(f)
-  f_gradient
+  wrt <- resolve_transformation_args(f, wrt, "wrt")
+  transformation_fn(f, function(args) trace_value_and_grad(f, args, wrt, "gradient")$grad)
 }
 
 #' @rdname gradient
 #' @export
 value_and_gradient <- function(f, wrt = NULL) {
   assert_function(f)
-  wrt <- resolve_wrt(f, wrt)
-  f_value_and_grad <- function() {
-    args <- as.list(match.call())[-1L]
-    args <- lapply(args, eval, envir = parent.frame())
-    trace_value_and_grad(f, args, wrt, "value_and_gradient")
-  }
-  formals(f_value_and_grad) <- formals2(f)
-  f_value_and_grad
-}
-
-# The `wrt` of gradient() / value_and_gradient() as names of `f`'s formals.
-resolve_wrt <- function(f, wrt, call = rlang::caller_env()) {
-  wrt <- resolve_arg_names(f, wrt, "wrt")
-  if (!is.null(wrt) && !all(wrt %in% formalArgs(f))) {
-    cli_abort("wrt must be a subset of the formal arguments of f", call = call)
-  }
-  wrt
+  wrt <- resolve_transformation_args(f, wrt, "wrt")
+  transformation_fn(f, function(args) trace_value_and_grad(f, args, wrt, "value_and_gradient"))
 }
 
 # gradient() / value_and_gradient() (named by `fn`) at the call's arguments:
@@ -678,7 +635,7 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
     )
   }
   graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
-  res <- graph_value_and_grad(graph, wrt, gradient_operands(graph, prep$args_flat))
+  res <- graph_value_and_grad(graph, wrt, graph_operands(graph, prep$args_flat))
   list(
     value = unflatten(graph$out_tree, res$value),
     grad = unflatten(gradient_out_tree(graph, wrt), res$grad)

@@ -37,6 +37,8 @@ navbar:
         href: articles/jit.html
       - text: Automatic Differentiation
         href: articles/autodiff.html
+      - text: Vectorization
+        href: articles/vectorize.html
       - text: Static Shape Restriction
         href: articles/static_shapes.html
       - text: Subsetting
@@ -374,6 +376,7 @@ reference:
     contents:
       - jit
       - gradient
+      - vectorize
 
   - title: Backend
     desc: Backend-related functionality and implementations
@@ -462,6 +465,8 @@ reference:
       - AnvlPrimitiveDef
       - graph_desc_add
       - rule_reverse
+      - rule_vectorize
+      - param_axes
 
   - subtitle: Implemented Primitives
     contents:

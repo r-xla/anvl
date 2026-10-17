@@ -47,7 +47,8 @@ article_titles <- c(
   `random-numbers` = "Random Number Generation",
   static_shapes = "Static Shape Restriction",
   subsetting = "Subsetting",
-  `type-promotion` = "Data Types and Promotion Rules"
+  `type-promotion` = "Data Types and Promotion Rules",
+  vectorize = "Vectorization"
 )
 
 # URL of a pkgdown article, e.g. `article_url("subsetting")`. The articles are

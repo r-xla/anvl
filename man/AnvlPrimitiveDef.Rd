@@ -23,7 +23,9 @@ called through is an \code{\link{AnvlPrimitive}}, which carries
 its \code{AnvlPrimitiveDef} as \verb{attr(<fn>, "definition")}. The graph records the
 \code{AnvlPrimitiveDef} in each \code{\link{GraphStatement}}.
 Note that \code{[[} and \verb{[[<-} access the interpretation rules.
-To access other fields, use \code{$} and \verb{$<-}.
+To access other fields, use \code{$} and \verb{$<-}. \code{\link[=new_primitive]{new_primitive()}} stores the
+\code{AnvlPrimitive} in the field \code{fn}, so a rule can call the primitive it
+belongs to.
 
 A primitive is considered higher-order if it has subgraphs.
 }

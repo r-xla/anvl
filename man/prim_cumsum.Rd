@@ -31,6 +31,7 @@ OR rather than a running count. \code{\link[=nv_cumsum]{nv_cumsum()}} counts ins
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

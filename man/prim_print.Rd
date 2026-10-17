@@ -32,6 +32,7 @@ prints differs from their location in the code.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

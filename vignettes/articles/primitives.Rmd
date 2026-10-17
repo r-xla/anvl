@@ -23,11 +23,13 @@ primitives_list <- lapply(prims, function(p) {
   has_stablehlo <- !is.null(p_meta$rules[["stablehlo"]])
   has_quickr <- !is.null(p_meta$rules[["quickr"]])
   has_reverse <- !is.null(p_meta$rules[["reverse"]])
+  has_vectorize <- !is.null(p_meta$rules[["vectorize"]])
 
   data.frame(
     Name = p_meta$name,
     StableHLO = if (has_stablehlo) "\u2713" else "\u2717",
     Reverse = if (has_reverse) "\u2713" else "\u2717",
+    Vectorize = if (has_vectorize) "\u2713" else "\u2717",
     Quickr = if (has_quickr) "\u2713" else "\u2717"
   )
 })

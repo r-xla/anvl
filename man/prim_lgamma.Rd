@@ -23,6 +23,7 @@ Element-wise natural logarithm of the absolute value of the gamma function.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

@@ -17,6 +17,12 @@
 * Bugfix: `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
 * Bugfix: `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
   summed at the default float.
+* New `vectorize()` maps a function over axes of its arguments (`in_axes`,
+  `out_axes`), like `base::Vectorize()` but as one traced program; it composes
+  with `gradient()`. New `rule_vectorize()` gives a primitive its rule.
+* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
+  differentiated by `gradient()` closes over now counts toward the device
+  `jit()` detects, as it already did for the jitted function itself.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the binomial distribution: `nv_dbinom()`, `nv_pbinom()` and

@@ -36,6 +36,7 @@ A boolean input is reduced with a logical AND, so the result is a boolean.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

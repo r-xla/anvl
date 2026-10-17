@@ -24,6 +24,7 @@ Element-wise ceiling.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

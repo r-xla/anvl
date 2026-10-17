@@ -29,6 +29,7 @@ Permutes the axes of an array.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 

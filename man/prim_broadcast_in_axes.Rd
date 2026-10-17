@@ -32,6 +32,7 @@ Broadcasts an array to a new shape by replicating the data along new or size-1 a
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
+\item \code{vectorize}
 }
 }
 
