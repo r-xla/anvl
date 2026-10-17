@@ -189,3 +189,99 @@ prim_bitcast_convert[["vectorize"]] <- rule_vectorize(function(inputs, batched, 
   }
   list(out)
 })
+
+# Axes before the last two are batch axes already.
+prim_chol[["vectorize"]] <- rule_vectorize()
+
+# The batch axis is a batching axis of both operands when both are batched. When
+# only `x` is, it is a window axis spanning the whole batch; when only the
+# indices are, it is one more axis of indices. Either way it lands first among
+# the output's axes.
+prim_gather[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  p <- params
+  x <- inputs[[1L]]
+  idx <- inputs[[2L]]
+  p$collapsed_slice_axes <- p$collapsed_slice_axes + batched[[1L]]
+  p$start_index_map <- p$start_index_map + batched[[1L]]
+  if (all(batched)) {
+    p$x_batching_axes <- c(1L, p$x_batching_axes + 1L)
+    p$start_indices_batching_axes <- c(1L, p$start_indices_batching_axes + 1L)
+    p$slice_sizes <- c(1L, p$slice_sizes)
+    p$offset_axes <- p$offset_axes + 1L
+    p$index_vector_axis <- p$index_vector_axis + 1L
+  } else if (batched[[1L]]) {
+    p$x_batching_axes <- p$x_batching_axes + 1L
+    p$slice_sizes <- c(size, p$slice_sizes)
+    p$offset_axes <- c(1L, p$offset_axes + 1L)
+  } else {
+    p$start_indices_batching_axes <- p$start_indices_batching_axes + 1L
+    p$offset_axes <- p$offset_axes + 1L
+    p$index_vector_axis <- p$index_vector_axis + 1L
+  }
+  if (batched[[2L]]) {
+    # Indices sorted within one slice need not be across the batch. Unique
+    # ones stay unique when the batch axis is a batching axis, which tells the
+    # slices apart, but not when it is one more axis of indices.
+    p$indices_are_sorted <- FALSE
+    p$unique_indices <- p$unique_indices && batched[[1L]]
+  }
+  list(do.call(prim_gather, c(list(x, idx), p)))
+})
+
+# Every slice of the result needs its own `x`, and its own updates, so both are
+# broadcast if they are not mapped over. Indices that are mapped over make the
+# batch axis a batching axis of `x`, the indices and the update, so each slice
+# of `x` only receives the updates of its own slice. Indices that are not stay
+# as they are: the batch axis is then a window axis of the update that spans
+# all of `x`'s batch axis. The update computation is kept as it is: it closes
+# over constants only.
+prim_scatter[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  x <- batch_operand(inputs[[1L]], batched[[1L]], size)
+  idx <- inputs[[2L]]
+  update <- batch_operand(inputs[[3L]], batched[[3L]], size)
+  p <- params
+  p$x_batching_axes <- p$x_batching_axes + 1L
+  p$inserted_window_axes <- p$inserted_window_axes + 1L
+  p$scatter_axes_to_x_axes <- p$scatter_axes_to_x_axes + 1L
+  p$update_window_axes <- p$update_window_axes + 1L
+  if (batched[[2L]]) {
+    p$x_batching_axes <- c(1L, p$x_batching_axes)
+    p$scatter_indices_batching_axes <- c(1L, p$scatter_indices_batching_axes + 1L)
+    p$index_vector_axis <- p$index_vector_axis + 1L
+    # Sorted within one slice need not mean sorted across the batch; unique
+    # ones stay unique, as the batching axis tells the slices apart.
+    p$indices_are_sorted <- FALSE
+  } else {
+    p$update_window_axes <- c(1L, p$update_window_axes)
+  }
+  graph_desc_add(prim_scatter, c(list(x, idx, update), inputs[-(1:3)]), params = p, infer_fn = infer_scatter)
+})
+
+# A matrix shared by the whole batch is solved against once: the right-hand
+# sides of all slices are laid side by side -- as columns when `a` is on the
+# left, as rows when it is on the right -- instead of broadcasting `a`.
+prim_triangular_solve[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  a <- inputs[[1L]]
+  b <- inputs[[2L]]
+  solve <- function(a, b) {
+    prim_triangular_solve(
+      a,
+      b,
+      left_side = params$left_side,
+      lower = params$lower,
+      unit_diagonal = params$unit_diagonal,
+      transpose_a = params$transpose_a
+    )
+  }
+  if (batched[[1L]] || naxes(a) != 2L) {
+    return(list(solve(batch_operand(a, batched[[1L]], size), batch_operand(b, batched[[2L]], size))))
+  }
+  s <- shape(b)
+  out <- if (params$left_side) {
+    side_by_side <- prim_reshape(prim_transpose(b, c(2L, 1L, 3L)), c(s[[2L]], size * s[[3L]]))
+    prim_transpose(prim_reshape(solve(a, side_by_side), s[c(2L, 1L, 3L)]), c(2L, 1L, 3L))
+  } else {
+    prim_reshape(solve(a, prim_reshape(b, c(size * s[[2L]], s[[3L]]))), s)
+  }
+  list(out)
+})

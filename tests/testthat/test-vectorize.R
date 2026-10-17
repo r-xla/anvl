@@ -156,6 +156,13 @@ describe("vectorize", {
     expect_equal(as_r(out$w), 2 * xr^2 * rep(c(1, 2), each = 3L))
   })
 
+  it("composes with gradient() through indexing", {
+    loss <- function(w, x) sum(w[array(c(2L, 1L))] * x)
+    w <- nv_array(c(1, 2), dtype = "f32")
+    out <- jit(vectorize(gradient(loss, wrt = "w"), in_axes = list(x = 1L)))(w, x)
+    expect_equal(as_r(out$w), as_r(x)[, c(2L, 1L)])
+  })
+
   it("is differentiable", {
     f <- function(w, x) sum(vectorize(function(x) sum(x * w), in_axes = list(x = 1L))(x)^2L)
     w <- nv_array(c(1, 2), dtype = "f32")

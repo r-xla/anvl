@@ -93,6 +93,6 @@ jit(outer_product)(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(10, 20), dtyp
 ## Limitations
 
 `vectorize()` needs a rule for every primitive that a value mapped over goes through.
-So far, there is none for indexing with `prim_gather()` and `prim_scatter()`, `prim_chol()`, `prim_triangular_solve()`, control flow, `prim_reduce()`, `prim_rng_bit_generator()`, `prim_convolution()` and the decompositions `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, so they can only be applied to values that are not mapped over.
+So far, there is none for control flow, `prim_reduce()`, `prim_rng_bit_generator()`, `prim_convolution()` and the decompositions `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, so they can only be applied to values that are not mapped over.
 Nor can the start indices of `prim_dynamic_slice()` and `prim_dynamic_update_slice()`, or the padding value of `prim_pad()`, be mapped over yet.
 See `?vectorize` for details, and `?rule_vectorize` for adding a rule to a primitive of your own.

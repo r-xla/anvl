@@ -55,11 +55,10 @@ along which axis each output of \code{f} is stacked.
 A primitive applied to a value that is mapped over needs a \code{vectorize} rule
 (see \code{\link[=rule_vectorize]{rule_vectorize()}}); calling one that has none raises an error.
 Values that are not mapped over can go through any primitive. Without a rule
-so far are \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_chol]{prim_chol()}},
-\code{\link[=prim_triangular_solve]{prim_triangular_solve()}}, control flow (\code{\link[=prim_if]{prim_if()}}, \code{\link[=prim_while]{prim_while()}},
-\code{\link[=prim_scan]{prim_scan()}}), \code{\link[=prim_reduce]{prim_reduce()}}, \code{\link[=prim_rng_bit_generator]{prim_rng_bit_generator()}},
-\code{\link[=prim_convolution]{prim_convolution()}} and the decompositions \code{\link[=prim_qr]{prim_qr()}}, \code{\link[=prim_lu]{prim_lu()}},
-\code{\link[=prim_svd]{prim_svd()}} and \code{\link[=prim_eigh]{prim_eigh()}}.
+so far are control flow (\code{\link[=prim_if]{prim_if()}}, \code{\link[=prim_while]{prim_while()}}, \code{\link[=prim_scan]{prim_scan()}}),
+\code{\link[=prim_reduce]{prim_reduce()}}, \code{\link[=prim_rng_bit_generator]{prim_rng_bit_generator()}}, \code{\link[=prim_convolution]{prim_convolution()}} and
+the decompositions \code{\link[=prim_qr]{prim_qr()}}, \code{\link[=prim_lu]{prim_lu()}}, \code{\link[=prim_svd]{prim_svd()}} and
+\code{\link[=prim_eigh]{prim_eigh()}}.
 Some operands cannot be mapped over yet: the start indices of
 \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}} and \code{\link[=prim_dynamic_update_slice]{prim_dynamic_update_slice()}}, and the
 padding value of \code{\link[=prim_pad]{prim_pad()}}.

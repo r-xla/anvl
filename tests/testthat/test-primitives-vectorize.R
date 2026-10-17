@@ -9,6 +9,13 @@ unit <- function(n) stats::runif(n, -0.9, 0.9)
 small_ints <- function(n) sample(0:5, n, replace = TRUE)
 coin <- function(n) stats::runif(n) > 0.5
 
+# The parameters of the call of `prim_<name>` in the graph of `f` vectorized as
+# `in_axes` says, traced with the abstract arguments `args`.
+vectorized_params <- function(f, args, in_axes, name) {
+  graph <- trace_fn(vectorize(f, in_axes = in_axes), args)
+  Find(\(s) s$primitive$name == name, graph$statements)$params
+}
+
 describe("element-wise unary primitives", {
   it("vectorizes the ones on the real line", {
     withr::local_seed(1L)
@@ -420,6 +427,314 @@ describe("vectorize rules on operands of more axes", {
     x <- rand_array(c(3L, 2L, 4L))
     autotest_vectorize(function(x, y) prim_sort(list(x, y), axis = 1L), x = x, y = rand_array(c(3L, 2L, 4L)))
     autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = x)
+  })
+})
+
+describe("prim_gather", {
+  it("keeps unique indices unique only where a batching axis tells the slices apart", {
+    f <- function(x, idx) {
+      prim_gather(
+        x,
+        idx,
+        slice_sizes = 1L,
+        offset_axes = integer(),
+        collapsed_slice_axes = 1L,
+        x_batching_axes = integer(),
+        start_indices_batching_axes = integer(),
+        start_index_map = 1L,
+        index_vector_axis = 2L,
+        unique_indices = TRUE
+      )
+    }
+    args <- list(x = nv_aval("f32", c(3L, 5L)), idx = nv_aval("i32", c(3L, 2L, 1L)))
+    expect_true(vectorized_params(f, args, list(x = 1L, idx = 1L), "gather")$unique_indices)
+    args$x <- nv_aval("f32", 5L)
+    expect_false(vectorized_params(f, args, list(idx = 1L), "gather")$unique_indices)
+  })
+
+  it("vectorizes a gather of single elements", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx) {
+        prim_gather(
+          x,
+          idx,
+          slice_sizes = 1L,
+          offset_axes = integer(),
+          collapsed_slice_axes = 1L,
+          x_batching_axes = integer(),
+          start_indices_batching_axes = integer(),
+          start_index_map = 1L,
+          index_vector_axis = 2L
+        )
+      },
+      x = rand_array(c(3L, 5L)),
+      idx = rand_array(c(3L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:5, n, replace = TRUE))
+    )
+  })
+
+  it("vectorizes a gather of rows", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx) {
+        prim_gather(
+          x,
+          idx,
+          slice_sizes = c(1L, 3L),
+          offset_axes = 2L,
+          collapsed_slice_axes = 1L,
+          x_batching_axes = integer(),
+          start_indices_batching_axes = integer(),
+          start_index_map = 1L,
+          index_vector_axis = 2L
+        )
+      },
+      x = rand_array(c(3L, 4L, 3L)),
+      idx = rand_array(c(3L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE))
+    )
+  })
+
+  it("vectorizes a gather with batching axes of its own", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx) {
+        prim_gather(
+          x,
+          idx,
+          slice_sizes = c(1L, 1L),
+          offset_axes = integer(),
+          collapsed_slice_axes = 2L,
+          x_batching_axes = 1L,
+          start_indices_batching_axes = 1L,
+          start_index_map = 2L,
+          index_vector_axis = 3L
+        )
+      },
+      x = rand_array(c(3L, 2L, 5L)),
+      idx = rand_array(c(3L, 2L, 3L, 1L), dtype = "i32", sample = \(n) sample(1:5, n, replace = TRUE))
+    )
+  })
+
+  it("vectorizes a gather of windows of two axes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx) {
+        prim_gather(
+          x,
+          idx,
+          slice_sizes = c(1L, 3L, 2L),
+          offset_axes = c(2L, 3L),
+          collapsed_slice_axes = 1L,
+          x_batching_axes = integer(),
+          start_indices_batching_axes = integer(),
+          start_index_map = 1L,
+          index_vector_axis = 3L
+        )
+      },
+      x = rand_array(c(3L, 4L, 3L, 2L)),
+      idx = rand_array(c(3L, 2L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE))
+    )
+  })
+})
+
+describe("prim_scatter", {
+  scatter_rows <- function(x, idx, update, update_fn = NULL) {
+    prim_scatter(
+      x,
+      idx,
+      update,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      update_fn = update_fn
+    )
+  }
+
+  it("keeps indices that are not mapped over as they are, with their hints", {
+    f <- function(x, idx, update) {
+      prim_scatter(
+        x,
+        idx,
+        update,
+        update_window_axes = integer(),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(),
+        scatter_indices_batching_axes = integer(),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        indices_are_sorted = TRUE,
+        unique_indices = TRUE
+      )
+    }
+    args <- list(x = nv_aval("f32", c(3L, 5L)), idx = nv_aval("i32", c(2L, 1L)), update = nv_aval("f32", c(3L, 2L)))
+    p <- vectorized_params(f, args, list(x = 1L, update = 1L), "scatter")
+    expect_identical(p$scatter_indices_batching_axes, integer())
+    expect_true(p$indices_are_sorted)
+    expect_true(p$unique_indices)
+
+    args$idx <- nv_aval("i32", c(3L, 2L, 1L))
+    p <- vectorized_params(f, args, list(x = 1L, idx = 1L, update = 1L), "scatter")
+    expect_false(p$indices_are_sorted)
+    expect_true(p$unique_indices)
+  })
+
+  it("vectorizes a scatter of single elements", {
+    withr::local_seed(1L)
+    # Two distinct indices per slice, so that which update wins is defined.
+    idx <- nv_array(c(1L, 2L, 3L, 4L, 5L, 1L), shape = c(3L, 2L, 1L), dtype = "i32")
+    autotest_vectorize(
+      function(x, idx, update) scatter_rows(x, idx, update),
+      x = rand_array(c(3L, 5L)),
+      idx = idx,
+      update = rand_array(c(3L, 2L))
+    )
+  })
+
+  it("vectorizes a scatter with an update function", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx, update) scatter_rows(x, idx, update, update_fn = function(old, new) old + new),
+      x = rand_array(c(3L, 5L)),
+      idx = rand_array(c(3L, 4L, 1L), dtype = "i32", sample = \(n) sample(1:5, n, replace = TRUE)),
+      update = rand_array(c(3L, 4L))
+    )
+  })
+
+  it("vectorizes a scatter of rows", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx, update) {
+        prim_scatter(
+          x,
+          idx,
+          update,
+          update_window_axes = 2L,
+          inserted_window_axes = 1L,
+          x_batching_axes = integer(),
+          scatter_indices_batching_axes = integer(),
+          scatter_axes_to_x_axes = 1L,
+          index_vector_axis = 2L,
+          update_fn = function(old, new) old + new
+        )
+      },
+      x = rand_array(c(3L, 4L, 3L)),
+      idx = rand_array(c(3L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE)),
+      update = rand_array(c(3L, 2L, 3L))
+    )
+  })
+
+  it("vectorizes a scatter of windows of two axes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, idx, update) {
+        prim_scatter(
+          x,
+          idx,
+          update,
+          update_window_axes = c(2L, 3L),
+          inserted_window_axes = 1L,
+          x_batching_axes = integer(),
+          scatter_indices_batching_axes = integer(),
+          scatter_axes_to_x_axes = 1L,
+          index_vector_axis = 2L,
+          update_fn = function(old, new) old + new
+        )
+      },
+      x = rand_array(c(3L, 4L, 3L, 2L)),
+      idx = rand_array(c(3L, 2L, 1L), dtype = "i32", sample = \(n) sample(1:4, n, replace = TRUE)),
+      update = rand_array(c(3L, 2L, 3L, 2L))
+    )
+  })
+})
+
+describe("prim_chol", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    spd <- vapply(
+      1:3,
+      function(i) {
+        m <- matrix(stats::rnorm(9L), 3L)
+        crossprod(m) + diag(3)
+      },
+      numeric(9L)
+    )
+    x <- nv_array(as.vector(t(spd)), shape = c(3L, 3L, 3L), dtype = "f32")
+    autotest_vectorize(function(x) prim_chol(x, lower = TRUE), x = x, tolerance = 1e-4)
+  })
+})
+
+describe("prim_triangular_solve", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    lower <- vapply(
+      1:3,
+      function(i) {
+        m <- matrix(stats::rnorm(9L), 3L)
+        m[upper.tri(m)] <- 0
+        m + 3 * diag(3)
+      },
+      numeric(9L)
+    )
+    a <- nv_array(as.vector(t(lower)), shape = c(3L, 3L, 3L), dtype = "f32")
+    autotest_vectorize(
+      function(a, b) {
+        prim_triangular_solve(a, b, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = FALSE)
+      },
+      a = a,
+      b = rand_array(c(3L, 3L, 2L)),
+      tolerance = 1e-4
+    )
+  })
+
+  it("vectorizes with matrices that have batch axes of their own", {
+    withr::local_seed(1L)
+    lower <- vapply(
+      1:6,
+      function(i) {
+        m <- matrix(stats::rnorm(9L), 3L)
+        m[upper.tri(m)] <- 0
+        m + 3 * diag(3)
+      },
+      numeric(9L)
+    )
+    a <- nv_array(
+      as.vector(aperm(array(lower, c(3L, 3L, 3L, 2L)), c(3L, 4L, 1L, 2L))),
+      shape = c(3L, 2L, 3L, 3L),
+      dtype = "f32"
+    )
+    autotest_vectorize(
+      function(a, b) {
+        prim_triangular_solve(a, b, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = FALSE)
+      },
+      a = a,
+      b = rand_array(c(3L, 2L, 3L, 2L)),
+      tolerance = 1e-4
+    )
+  })
+
+  it("vectorizes with the matrix on the right and transposed", {
+    withr::local_seed(1L)
+    lower <- vapply(
+      1:3,
+      function(i) {
+        m <- matrix(stats::rnorm(9L), 3L)
+        m[upper.tri(m)] <- 0
+        m + 3 * diag(3)
+      },
+      numeric(9L)
+    )
+    a <- nv_array(as.vector(t(lower)), shape = c(3L, 3L, 3L), dtype = "f32")
+    autotest_vectorize(
+      function(a, b) {
+        prim_triangular_solve(a, b, left_side = FALSE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
+      },
+      a = a,
+      b = rand_array(c(3L, 2L, 3L)),
+      tolerance = 1e-4
+    )
   })
 })
 
