@@ -35,9 +35,9 @@
 #' An array can also be saved like any R object, e.g. with [`saveRDS()`].
 #' Its device is not saved: an array of the pjrt backend loads onto the
 #' [default device][default_device] at the time it is read, so an array saved
-#' on a GPU also loads on a machine without one. anvl arranges this by setting
-#' pjrt's `pjrt.unserialize_device` option when it is loaded, so load anvl
-#' before reading arrays.
+#' on a GPU also loads on a machine without one. anvl arranges this with
+#' [`pjrt::set_unserialize_device()`] when it is loaded, so load anvl before
+#' reading arrays.
 #'
 #' @section Backend:
 #' An `AnvlArray` is backend-dependent: it belongs to exactly one backend
