@@ -114,7 +114,7 @@ jit(vectorize(halvings))(nv_array(c(0.5, 3, 20), dtype = "f32"))
 ## Limitations
 
 `vectorize()` needs a rule for every primitive that a value mapped over goes through.
-`prim_convolution()` and the decompositions `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()` have none yet, so they can only be applied to values that are not mapped over.
+The decompositions `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()` have none yet, so they can only be applied to values that are not mapped over.
 Nor can the start indices of `prim_dynamic_slice()` and `prim_dynamic_update_slice()`, or the padding value of `prim_pad()`, be mapped over yet.
-A few primitives cannot work on the whole batch at once and are applied to one instance after the other in a loop instead: `prim_rng_bit_generator()` mapped over its state and `prim_reduce()` mapped over its initial value.
+A few primitives cannot work on the whole batch at once and are applied to one instance after the other in a loop instead: `prim_rng_bit_generator()` mapped over its state, `prim_reduce()` mapped over its initial value, and a grouped `prim_convolution()` mapped over its kernel.
 See `?vectorize` for details, and `?rule_vectorize` for adding a rule to a primitive of your own.

@@ -894,6 +894,58 @@ describe("prim_scan", {
   })
 })
 
+describe("prim_convolution", {
+  conv1d <- function(feature_group_count = 1L) {
+    function(x, kernel) {
+      prim_convolution(
+        x,
+        kernel,
+        x_batch_axis = 1L,
+        x_feature_axis = 2L,
+        x_spatial_axes = 3L,
+        kernel_output_feature_axis = 1L,
+        kernel_input_feature_axis = 2L,
+        kernel_spatial_axes = 3L,
+        output_batch_axis = 1L,
+        output_feature_axis = 2L,
+        output_spatial_axes = 3L,
+        window_strides = 1L,
+        padding = matrix(c(1L, 0L), nrow = 1L),
+        x_dilation = 1L,
+        kernel_dilation = 1L,
+        feature_group_count = feature_group_count
+      )
+    }
+  }
+
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      conv1d(),
+      x = rand_array(c(3L, 2L, 2L, 5L)),
+      kernel = rand_array(c(3L, 4L, 2L, 3L)),
+      tolerance = 1e-5
+    )
+  })
+
+  it("vectorizes a grouped convolution", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      conv1d(2L),
+      x = rand_array(c(3L, 2L, 4L, 5L)),
+      kernel = rand_array(c(3L, 2L, 2L, 3L)),
+      tolerance = 1e-5
+    )
+  })
+
+  it("vectorizes an empty batch", {
+    out <- jit(vectorize(conv1d()))(rand_array(c(0L, 2L, 2L, 5L)), rand_array(c(0L, 4L, 2L, 3L)))
+    expect_equal(shape(out), c(0L, 2L, 4L, 4L))
+    out <- jit(vectorize(conv1d(), in_axes = list(x = 1L)))(rand_array(c(0L, 2L, 2L, 5L)), rand_array(c(4L, 2L, 3L)))
+    expect_equal(shape(out), c(0L, 2L, 4L, 4L))
+  })
+})
+
 # Every primitive with a vectorize rule must have been applied by one of the
 # `autotest_vectorize()` calls above (see helper-vectorize.R).
 describe("vectorize rules", {

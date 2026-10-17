@@ -40,15 +40,16 @@
 #' A primitive applied to a value that is mapped over needs a `vectorize` rule
 #' (see [`rule_vectorize()`]); calling one that has none raises an error.
 #' Values that are not mapped over can go through any primitive. Without a rule
-#' so far are [`prim_convolution()`] and the decompositions [`prim_qr()`],
-#' [`prim_lu()`], [`prim_svd()`] and [`prim_eigh()`]. Some operands cannot be mapped over yet: the start
+#' so far are the decompositions [`prim_qr()`], [`prim_lu()`], [`prim_svd()`]
+#' and [`prim_eigh()`]. Some operands cannot be mapped over yet: the start
 #' indices of [`prim_dynamic_slice()`] and [`prim_dynamic_update_slice()`], and
 #' the padding value of [`prim_pad()`].
 #'
 #' A few primitives are applied to one slice after the other, in a
 #' [`prim_scan()`] over the batch, instead of to the whole batch at once:
-#' [`prim_rng_bit_generator()`] mapped over its state and [`prim_reduce()`]
-#' mapped over its initial value. A [`prim_if()`] whose predicate is mapped over evaluates each
+#' [`prim_rng_bit_generator()`] mapped over its state, [`prim_reduce()`] mapped
+#' over its initial value, and a grouped [`prim_convolution()`] mapped over its
+#' kernel. A [`prim_if()`] whose predicate is mapped over evaluates each
 #' branch that some slice takes for all slices, and selects between their
 #' results; a slice that does not take a branch runs it on the inputs of one
 #' that does, so that its gradient stays free of `NaN`s from inputs the branch
@@ -599,6 +600,23 @@ move_axis <- function(x, from, to) {
   perm <- seq_len(naxes(x))[-from]
   perm <- append(perm, from, after = to - 1L)
   prim_transpose(x, perm)
+}
+
+# `x`, whose batch axis is first, with that axis folded into its axis `axis`
+# (counted without the batch axis). Along the merged axis, the elements of
+# `axis` run fastest, so each slice of the batch is one contiguous block.
+merge_batch_axis <- function(x, axis) {
+  x <- move_axis(x, 1L, axis + 1L)
+  s <- shape(x)
+  prim_reshape(x, c(s[seq_len(axis - 1L)], s[[axis]] * s[[axis + 1L]], s[-seq_len(axis + 1L)]))
+}
+
+# Undoes `merge_batch_axis()`: splits a batch axis of size `size` off the axis
+# `axis` of `x` and moves it in front.
+split_batch_axis <- function(x, axis, size) {
+  s <- shape(x)
+  x <- prim_reshape(x, c(s[seq_len(axis - 1L)], s[[axis]] %/% size, size, s[-seq_len(axis)]))
+  move_axis(x, axis + 1L, 1L)
 }
 
 # The rule of a primitive that cannot work on the whole batch at once: applies
