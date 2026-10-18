@@ -372,6 +372,42 @@ propagate_requirements <- function(graph, required_env) {
   required_env
 }
 
+# The values of `graph` that depend on any of `sources`, as a
+# hashtab(gval -> TRUE): what a call computes from one of them, of whatever
+# data type, and the sources themselves.
+graph_depends_on <- function(graph, sources) {
+  env <- hashtab()
+  for (src in sources) {
+    env[[src]] <- TRUE
+  }
+  for (call in graph$statements) {
+    if (any(vapply(call$inputs, \(x) !is_graph_literal(x) && isTRUE(env[[x]]), logical(1L)))) {
+      for (out in call$outputs) {
+        env[[out]] <- TRUE
+      }
+    }
+  }
+  env
+}
+
+# The values `graph` reads -- as an operand of one of its calls or as an
+# output -- as a hashtab(gval -> TRUE).
+graph_reads <- function(graph) {
+  env <- hashtab()
+  mark <- function(gvals) {
+    for (g in gvals) {
+      if (!is_graph_literal(g)) {
+        env[[g]] <- TRUE
+      }
+    }
+  }
+  for (call in graph$statements) {
+    mark(call$inputs)
+  }
+  mark(graph$outputs)
+  env
+}
+
 # Replays `graph`'s forward pass into `desc`, call by call. `split_vjp()` uses
 # it to rebuild a branch of `prim_if()`, `graph_apply()` to rerun a closed
 # graph, `graph_value_and_grad()` to replay what `gradient()` traced into the

@@ -1,5 +1,6 @@
 # anvl (development version)
 
+* `gradient()` differentiates through `nv_scan()` / `prim_scan()`.
 * Bugfix: `nv_seq()` counts down at an unsigned data type instead of erroring.
 * Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
   of its input.
