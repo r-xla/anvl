@@ -38,8 +38,10 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
 
   read_env_defaults()
 
-  # Arrays read with readRDS() and friends load onto anvl's default device.
-  pjrt::set_unserialize_device(function() default_device("pjrt"))
+  # Arrays read with readRDS() and friends load onto anvl's default device:
+  # pjrt uploads an unserialized buffer to the device this entry returns.
+  pjrt_the <- getFromNamespace("the", "pjrt")
+  pjrt_the[["unserialize_device"]] <- function() default_device("pjrt")
 }
 
 # Read `ANVL_DEFAULT_DTYPES` / `ANVL_DEFAULT_DEVICE`, the fallbacks of the
