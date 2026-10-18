@@ -20,7 +20,7 @@ parse_default_dtypes_env <- function(value) {
 # The `anvl.default_dtypes` option, falling back to the `ANVL_DEFAULT_DTYPES`
 # environment variable read when anvl was loaded (see `read_env_defaults()`).
 default_dtypes_setting <- function() {
-  getOption("anvl.default_dtypes") %||% globals[["ENV_DEFAULT_DTYPES"]]
+  getOption("anvl.default_dtypes") %||% globals[["env_default_dtypes"]]
 }
 
 resolve_option_default_dtypes <- function(value, backend) {
@@ -40,9 +40,7 @@ option_default_dtypes <- function(backend) {
 }
 
 apply_default_dtypes <- function(baseline, override) {
-  for (category in names(override)) {
-    baseline[[category]] <- as_dtype(override[[category]])
-  }
+  baseline[names(override)] <- lapply(override, as_dtype)
   baseline
 }
 
@@ -145,12 +143,14 @@ default_dtypes_from_key <- function(key) {
   list(float = as_dtype(key[["float"]]), int = as_dtype(key[["int"]]))
 }
 
-# Used for context managers: insert dtypes into default default_dtypes
+# The `anvl.default_dtypes` option value `local_default_dtypes()` and
+# `with_default_dtypes()` set: the current one with `dtypes` merged into the
+# entry of `backend`.
 merged_default_dtypes <- function(dtypes, backend) {
   # A program is compiled for one backend, and a trace reads the entry of that
   # backend, so an override filed under another could not reach it. Naming one
   # explicitly is a mistake worth reporting rather than a silent no-op.
-  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  desc <- globals[["current_descriptor"]]
   if (!is.null(backend) && !is.null(desc) && !identical(backend, desc$backend)) {
     cli_abort(c(
       "Cannot set the default data types of the {.val {backend}} backend here.",
@@ -274,17 +274,12 @@ with_dtypes <- function(f, dtypes) {
   cfg <- jit_config(f)
   .dtypes_f <- cfg$f %||% f
 
-  wrapper <- if (length(.dtypes_defaults)) {
-    function() {
+  wrapper <- function() {
+    if (length(.dtypes_defaults)) {
       local_default_dtypes(.dtypes_defaults)
-      .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-      convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
     }
-  } else {
-    function() {
-      .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-      convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
-    }
+    .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+    convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
   }
   formals(wrapper) <- formals2(.dtypes_f)
 
@@ -354,10 +349,10 @@ convertible_dtype_category <- function(dtype) {
 
 # The default dtypes (see `default_dtypes()`) that are active here.
 current_default_dtypes <- function() {
-  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  desc <- globals[["current_descriptor"]]
   if (is.null(desc)) {
-    # Eager mode: The active backend's default_dtypes with a possible
-    # overwrite by the anvl.default_dtypes option
+    # Eager mode: the active backend's defaults, with the anvl.default_dtypes
+    # option over them.
     return(effective_default_dtypes(active_backend()))
   }
   # Insert options over desc$default_dtypes -- the pair the dispatcher keyed

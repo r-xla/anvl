@@ -57,8 +57,7 @@ Of length 3:
 \itemize{
 \item the \code{\link[stablehlo:Func]{stablehlo::Func}}
 \item The graph's constants: the \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s,
-whose data must be passed as the leading inputs at execution time when
-\code{constants_as_inputs = TRUE}.
+whose data must be passed as the leading inputs at execution time.
 \item A list of phantom-output specs, one per phantom donated input
 appended when \code{donate_unaliased_outputs = TRUE}. Each entry is a
 \code{list(dtype, shape)} describing the buffer the executor must
@@ -75,10 +74,9 @@ XLA executable with \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}}.
 The rule for translating a primitive to stablehlo is \verb{prim_<name>[["stablehlo"]]}.
 
 The arguments of the resulting function are, in this order: the graph's
-constants (when \code{constants_as_inputs = TRUE}), the graph's inputs, and the
-phantom donated inputs (when \code{donate_unaliased_outputs = TRUE}), one per
-output that is not already aliased to a donated input, in the order of the
-outputs.
+constants, the graph's inputs, and the phantom donated inputs (when
+\code{donate_unaliased_outputs = TRUE}), one per output that is not already
+aliased to a donated input, in the order of the outputs.
 
 This is a low-level function; most users should use \code{\link[=jit]{jit()}} instead.
 }

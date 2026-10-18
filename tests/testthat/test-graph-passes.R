@@ -276,7 +276,7 @@ describe("remove_unused_constants", {
     f <- function(x) {
       x + y
     }
-    graph <- transform_gradient(trace_fn(f, list(x = nv_scalar(1, "f32"))), wrt = "x")
+    graph <- graph_gradient(trace_fn(f, list(x = nv_scalar(1, "f32"))), wrt = "x")
     new_graph <- remove_unused_constants(graph)
     # Function should run without error
     expect_true(is_graph(new_graph))

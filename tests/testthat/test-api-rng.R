@@ -24,6 +24,16 @@ test_that("nv_rnorm", {
   expect_dtype(out[[2]], "f64")
 })
 
+test_that("nv_rnorm is NaN for an invalid mean or sd, like rnorm()", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  means <- c(0, Inf, NaN, 0, 0, 0, 3)
+  sds <- c(1, 1, 1, -1, Inf, NaN, 0)
+  out <- as.vector(nv_rnorm(7L, state, dtype = "f64", mean = nv_array(means), sd = nv_array(sds))$values)
+  expect_equal(is.nan(out), suppressWarnings(is.nan(rnorm(7L, means, sds))))
+  # an infinite mean or a zero sd is the mean
+  expect_equal(out[c(2L, 7L)], c(Inf, 3))
+})
+
 test_that("nv_rnorm accepts arrayish mean and sd", {
   state <- nv_array(c(1, 2), dtype = "ui64")
 
@@ -113,6 +123,11 @@ test_that("nv_rbinom", {
   # Test with non-multiple-of-8 shape (tests slicing)
   out3 <- nv_rbinom(nv_array(c(1, 2), dtype = "ui64"), dtype = "i32", shape = c(3, 3))
   expect_shape(out3[[2]], c(3L, 3L))
+})
+
+test_that("nv_rbinom draws zeros for zero trials, like rbinom()", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  expect_identical(as.vector(nv_rbinom(3L, state, size = 0L, dtype = "i32")$values), c(0L, 0L, 0L))
 })
 
 test_that("nv_runif with min == max returns the pair, state advanced", {
@@ -236,11 +251,12 @@ test_that("nv_sample from a population array", {
   # Unlike R's `sample()`, a length-one population is not a count
   expect_true(all(as.vector(nv_sample(x = nv_array(6), shape = 5L, state = state)[[2]]) == 6))
 
-  # Population must be 1-D
+  # Population must be 1-D and not empty
   expect_error(
     nv_sample(x = nv_array(matrix(1:6, nrow = 2)), shape = 3L, state = state),
     "must be a 1-D array"
   )
+  expect_error(nv_sample(3L, state, x = nv_array(numeric(0), shape = 0L)), "must not be empty")
 })
 
 test_that("nv_sample and nv_sample_int compose inside jit", {
@@ -298,4 +314,16 @@ test_that("nv_rnorm takes the sample's dtype from mean and sd", {
     "must be a float data type"
   )
   expect_error(draw(mean = nv_scalar(1L), sd = nv_scalar(2L)), "Pass `dtype`")
+})
+
+describe("box_muller", {
+  it("maps a uniform of exactly 0 to a finite sample", {
+    for (dt in c("f32", "f64")) {
+      u1 <- nv_array(c(0, 0.5), dtype = dt)
+      u2 <- nv_array(c(0.125, 0), dtype = dt)
+      z <- as.vector(as_array(box_muller(u1, u2)))
+      expect_true(all(is.finite(z)))
+      expect_equal(z, c(0, 0, 0, sqrt(-2 * log(0.5))), tolerance = 1e-6)
+    }
+  })
 })

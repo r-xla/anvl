@@ -69,9 +69,8 @@ NULL
 NULL
 
 globals <- new.env()
-globals$nv_types <- "AnvlArray"
 globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
-globals[["DESCRIPTOR_STASH"]] <- list()
-globals[["CURRENT_DESCRIPTOR"]] <- NULL
-globals[["LOWERING_PLATFORM"]] <- NULL
+globals[["descriptor_stash"]] <- list()
+globals[["current_descriptor"]] <- NULL
+globals[["lowering_platform"]] <- NULL
 utils::globalVariables(c("globals", "self"))

@@ -48,7 +48,7 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
 # `anvl.default_dtypes` / `anvl.default_device` options.
 read_env_defaults <- function() {
   dtypes <- Sys.getenv("ANVL_DEFAULT_DTYPES")
-  globals[["ENV_DEFAULT_DTYPES"]] <- if (nzchar(dtypes)) parse_default_dtypes_env(dtypes)
+  globals[["env_default_dtypes"]] <- if (nzchar(dtypes)) parse_default_dtypes_env(dtypes)
   device <- Sys.getenv("ANVL_DEFAULT_DEVICE")
-  globals[["ENV_DEFAULT_DEVICE"]] <- if (nzchar(device)) device
+  globals[["env_default_device"]] <- if (nzchar(device)) device
 }

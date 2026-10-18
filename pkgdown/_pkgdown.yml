@@ -327,6 +327,8 @@ reference:
     contents:
       - nv_normal
       - nv_uniform
+      - nv_binomial
+      - nv_exponential
       - nv_rbinom
       - nv_sample
       - nv_sample_int
@@ -428,7 +430,7 @@ reference:
   - subtitle: Transformations
     contents:
       - trace_fn
-      - transform_gradient
+      - graph_gradient
       - graph_to_quickr_r_function
       - compile_pjrt
       - stablehlo

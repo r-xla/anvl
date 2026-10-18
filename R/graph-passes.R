@@ -11,8 +11,10 @@ traverse_gnodes <- function(graph, fn) {
   }
 }
 
-remove_unused_constants <- function(graph) {
-  new_graph <- AnvlGraph(
+# A shallow copy of `graph` for a pass to modify: `AnvlGraph` has reference
+# semantics, so a pass must not change the graph it was given.
+copy_graph <- function(graph) {
+  AnvlGraph(
     statements = graph$statements,
     in_tree = graph$in_tree,
     out_tree = graph$out_tree,
@@ -25,6 +27,10 @@ remove_unused_constants <- function(graph) {
     # must not reorder or drop one, so this carries over as it is.
     rdata_types = graph$rdata_types
   )
+}
+
+remove_unused_constants <- function(graph) {
+  new_graph <- copy_graph(graph)
 
   is_used <- hashtab()
   traverse_gnodes(new_graph, function(gval) {
@@ -53,20 +59,7 @@ inline_scalarish_constants <- function(graph) {
     ))
   }
 
-  # Create a copy of the graph
-  new_graph <- AnvlGraph(
-    statements = graph$statements,
-    in_tree = graph$in_tree,
-    out_tree = graph$out_tree,
-    inputs = graph$inputs,
-    outputs = graph$outputs,
-    constants = graph$constants,
-    is_static_flat = graph$is_static_flat,
-    static_args_flat = graph$static_args_flat,
-    # Positional, one entry per input: a pass may replace an input in place but
-    # must not reorder or drop one, so this carries over as it is.
-    rdata_types = graph$rdata_types
-  )
+  new_graph <- copy_graph(graph)
 
   map <- hashtab()
   for (const in new_graph$constants) {
@@ -74,28 +67,13 @@ inline_scalarish_constants <- function(graph) {
       map[[const]] <- scalarish_to_lit(const)
     }
   }
-  for (i in seq_along(new_graph$inputs)) {
-    replacement <- map[[new_graph$inputs[[i]]]]
-    if (!is.null(replacement)) {
-      new_graph$inputs[[i]] <- replacement
-    }
-  }
-
-  for (i in seq_along(new_graph$statements)) {
-    pcall <- new_graph$statements[[i]]
-    for (j in seq_along(pcall$inputs)) {
-      replacement <- map[[pcall$inputs[[j]]]]
-      if (!is.null(replacement)) {
-        new_graph$statements[[i]]$inputs[[j]] <- replacement
-      }
-    }
-  }
-  for (i in seq_along(new_graph$outputs)) {
-    replacement <- map[[new_graph$outputs[[i]]]]
-    if (!is.null(replacement)) {
-      new_graph$outputs[[i]] <- replacement
-    }
-  }
+  replace_nodes <- function(nodes) lapply(nodes, \(node) map[[node]] %||% node)
+  new_graph$inputs <- replace_nodes(new_graph$inputs)
+  new_graph$statements <- lapply(new_graph$statements, function(call) {
+    call$inputs <- replace_nodes(call$inputs)
+    call
+  })
+  new_graph$outputs <- replace_nodes(new_graph$outputs)
   new_graph$constants <- new_graph$constants[vapply(
     new_graph$constants,
     function(const) is.null(map[[const]]),

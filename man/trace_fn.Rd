@@ -50,7 +50,7 @@ Executes \code{f} with abstract array arguments and records every primitive oper
 an \code{\link{AnvlGraph}}.
 
 The resulting graph can be lowered to StableHLO (via \code{\link[=stablehlo]{stablehlo()}}) or transformed
-(e.g. via \code{\link[=transform_gradient]{transform_gradient()}}).
+(e.g. via \code{\link[=graph_gradient]{graph_gradient()}}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

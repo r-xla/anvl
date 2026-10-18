@@ -35,7 +35,8 @@ operands' common data type -- or the default float data type (see
 \description{
 Solves the linear system \code{a \%*\% x = b} for \code{x}. Uses LU decomposition
 with partial pivoting internally, so \code{a} need only be square and
-non-singular.
+non-singular. Unlike \code{\link[base:solve]{base::solve()}}, a singular \code{a} is not an error: the
+result then holds non-finite values.
 }
 \details{
 \deqn{A x = b}

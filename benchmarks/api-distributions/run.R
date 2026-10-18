@@ -11,6 +11,10 @@
 ##   Rscript run.R diff                       what changed since the previous run
 ##   Rscript run.R export --out <dir>         publish a snapshot for the site
 ##   Rscript run.R merge --from <dir>         fold another machine's store in
+##   Rscript run.R plan --queue <dir>         cut the grid into parts for workers
+##   Rscript run.R work --queue <dir>         sweep parts until none are left
+##   Rscript run.R finalise --queue <dir>     assemble cells no worker finished
+##   Rscript run.R queue --queue <dir>        how far a queue has got
 ##
 ## Everything it writes goes to the store (NV_SWEEP_STORE), never into the
 ## package tree. See README.md.
@@ -28,15 +32,19 @@ suppressWarnings(suppressMessages({
 }))
 here <- function() HERE
 
-for (f in c("util.R", "engine.R", "cells.R", "provenance.R", "store.R", "validate.R")) {
+for (f in c("util.R", "engine.R", "cells.R", "provenance.R", "store.R", "validate.R", "queue.R")) {
   source(file.path(HERE, "R", f))
 }
 
 ## ---- argument parsing ------------------------------------------------------
 
 parse_args <- function(argv) {
-  cmd <- if (length(argv) && !startsWith(argv[1L], "--")) argv[1L] else "run"
-  argv <- argv[argv != cmd]
+  given <- length(argv) && !startsWith(argv[1L], "--")
+  cmd <- if (given) argv[1L] else "run"
+  ## only the command word itself: `queue --queue queue` names a directory
+  if (given) {
+    argv <- argv[-1L]
+  }
   o <- list(
     depth = "smoke",
     depth_given = NULL,
@@ -63,7 +71,20 @@ parse_args <- function(argv) {
     per_binade = NULL,
     focus_per_binade = NULL,
     random = NULL,
-    run = NULL
+    run = NULL,
+    ## the work queue (R/queue.R): its directory, the planned part size, the
+    ## most parts a cell is cut into, earlier costs to size parts by, the time
+    ## by which a worker must be done (epoch seconds), when a claim is given
+    ## up for dead, and the memory (MB) past which a worker stops for a fresh
+    ## process to take over
+    queue = NULL,
+    unit_minutes = NULL,
+    max_parts = NULL,
+    costs = NULL,
+    until = NULL,
+    stale_minutes = NULL,
+    max_memory = NULL,
+    release = FALSE
   )
   i <- 1L
   while (i <= length(argv)) {
@@ -133,6 +154,38 @@ parse_args <- function(argv) {
         o$run <- val()
         i <- i + 1L
       },
+      queue = {
+        o$queue <- val()
+        i <- i + 1L
+      },
+      `unit-minutes` = {
+        o$unit_minutes <- as.numeric(val())
+        i <- i + 1L
+      },
+      `max-parts` = {
+        o$max_parts <- as.integer(val())
+        i <- i + 1L
+      },
+      costs = {
+        o$costs <- val()
+        i <- i + 1L
+      },
+      until = {
+        o$until <- as.numeric(val())
+        i <- i + 1L
+      },
+      hours = {
+        o$until <- as.numeric(Sys.time()) + 3600 * as.numeric(val())
+        i <- i + 1L
+      },
+      `stale-minutes` = {
+        o$stale_minutes <- as.numeric(val())
+        i <- i + 1L
+      },
+      `max-memory` = {
+        o$max_memory <- as.numeric(val())
+        i <- i + 1L
+      },
       backends = {
         o$backends <- trimws(strsplit(val(), ",")[[1L]])
         o$backends_given <- TRUE
@@ -144,6 +197,9 @@ parse_args <- function(argv) {
       },
       `dry-run` = {
         o$dry_run <- TRUE
+      },
+      release = {
+        o$release <- TRUE
       },
       quiet = {
         o$quiet <- TRUE
@@ -223,24 +279,30 @@ cell_functions <- function(spec, row) {
   }
 }
 
-run_cell <- function(spec, row, opt, pv, dir) {
+## One cell's functions, and where it is defined, where its distribution
+## lives and where anvl switches algorithm -- all at the parameters the
+## implementation receives. Branch points are anvl's own, so a JAX cell does
+## not get them.
+cell_setup <- function(spec, row) {
   cf <- cell_functions(spec, row)
-  key <- cell_key(row$cell_id)
-
-  ## Where the function is defined, where its distribution lives, and where
-  ## anvl switches algorithm -- all at the parameters the implementation
-  ## receives. Branch points are anvl's own, so a JAX cell does not get them.
   domain <- if (is.null(spec$domain)) c(-Inf, Inf) else spec$domain(cf$ref_params, cf$flags)
   support <- if (is.null(spec$support)) NULL else spec$support(cf$ref_params, cf$flags)
   branch <- if (row$backend == "anvl" && !is.null(spec$branch_points)) {
     spec$branch_points(cf$ref_params, cf$flags, row$dtype)
   }
-  pts <- exact_points(row$dtype, domain, support, branch)
+  list(cf = cf, domain = domain, pts = exact_points(row$dtype, domain, support, branch))
+}
 
-  t0 <- Sys.time()
-  out <- tryCatch(
+## The exact points, then the sweep: the whole cell, or with `chunks` one part
+## of it, finished or (`finish = FALSE`) as its reducers' state. Returns the
+## sweep with the points as attribute "points", or a "sweep_error". A part
+## evaluates the points too: they give the behaviour at +-0 that classifies
+## its samples, and the parts of a cell must classify alike.
+cell_sweep <- function(cs, row, opt, chunks = NULL, finish = TRUE) {
+  cf <- cs$cf
+  tryCatch(
     {
-      pr <- run_points(cf$fun, cf$ref, row$dtype, cf$outputs, pts, domain, stable = cf$stable)
+      pr <- run_points(cf$fun, cf$ref, row$dtype, cf$outputs, cs$pts, cs$domain, stable = cf$stable)
       sw <- run_sweep(
         cf$fun,
         cf$ref,
@@ -249,9 +311,11 @@ run_cell <- function(spec, row, opt, pv, dir) {
         cf$outputs,
         progress = !opt$quiet,
         topk = opt$topk,
-        domain = domain,
+        domain = cs$domain,
         ctx = attr(pr, "context"),
-        stable = cf$stable
+        stable = cf$stable,
+        chunks = chunks,
+        finish = finish
       )
       attr(pr, "context") <- NULL
       attr(sw, "points") <- pr
@@ -261,6 +325,19 @@ run_cell <- function(spec, row, opt, pv, dir) {
       structure(conditionMessage(e), class = "sweep_error")
     }
   )
+}
+
+run_cell <- function(spec, row, opt, pv, dir) {
+  cs <- cell_setup(spec, row)
+  t0 <- Sys.time()
+  out <- cell_sweep(cs, row, opt)
+  record_cell(row, opt, pv, dir, cs$cf, out, as.numeric(difftime(Sys.time(), t0, units = "secs")))
+}
+
+## Write one cell's tables to the store under `pv`'s run: its finished sweep
+## with the points as attribute, or its error. `elapsed` is what the cell cost.
+record_cell <- function(row, opt, pv, dir, cf, out, elapsed) {
+  key <- cell_key(row$cell_id)
   if (inherits(out, "sweep_error")) {
     res <- cbind(
       row[rep(1L, 1L), ],
@@ -470,7 +547,7 @@ run_cell <- function(spec, row, opt, pv, dir) {
         unexplained_to = rs$unexplained_to,
         ## the exact points, summarised apart from the sweep's counts
         as.data.frame(ps),
-        elapsed_sec = as.numeric(difftime(Sys.time(), t0, units = "secs")),
+        elapsed_sec = elapsed,
         error = NA_character_
       )
     )
@@ -1348,6 +1425,88 @@ cmd_selftest <- function(opt) {
     check(
       "the inverse Mills ratio is within a few ulp at z = -50 and -100",
       near(inv_mills_ref(-50), 0x1.9028ed635bd0cp+5) && near(inv_mills_ref(-100), 0x1.900a3cea7d44dp+6)
+    ),
+    check("no exponential-family gradient reference is NaN at x = +-Inf or +-the largest finite x", {
+      xe <- c(-Inf, -.Machine$double.xmax, .Machine$double.xmax, Inf)
+      flagged <- c(
+        list(list(sp_all$nv_dexp, list(log = FALSE)), list(sp_all$nv_dexp, list(log = TRUE))),
+        unlist(
+          lapply(c("nv_pexp", "nv_qexp"), function(nm) {
+            lapply(1:4, function(k) list(sp_all[[nm]], list(lower_tail = k <= 2, log_p = k %% 2 == 0)))
+          }),
+          recursive = FALSE
+        )
+      )
+      !any(vapply(
+        flagged,
+        function(sf) any(vapply(sf[[1L]]$params, function(q) anyNA(unlist(sf[[1L]]$ref_grad(xe, q, sf[[2L]]))), TRUE)),
+        TRUE
+      ))
+    }),
+    check(
+      "dexp d/dx at t = 740 (large rate) is -1.4e-301, not 0: rate^2 is applied before exp(-t) underflows",
+      near(
+        sp_all$nv_dexp$ref_grad(0x1.94abaf44d6f1ep-26, list(rate = pi * 1e10), list(log = FALSE))$x,
+        -0x1.1b80f45a754bap-998
+      )
+    ),
+    check(
+      "log dexp d/drate at the largest finite x (large rate) is 1/rate - x, not -Inf where rate * x overflows",
+      near(
+        sp_all$nv_dexp$ref_grad(.Machine$double.xmax, list(rate = pi * 1e10), list(log = TRUE))$rate,
+        -0x1.fffffffffffffp+1023
+      )
+    ),
+    check(
+      "pexp's lower log_p stable reference at q = 1e-300 (small rate) is log(rate) + log(q), not -Inf where rate * q underflows",
+      near(
+        sp_all$nv_pexp$ref_stable(1e-300, list(rate = pi * 1e-10), list(lower_tail = TRUE, log_p = TRUE)),
+        -0x1.64540d1292137p+9
+      )
+    ),
+    check(
+      "qexp lower log_p d/dp at p = -720 (small rate) is 1.7e-304, not 0: exp(p) is divided by rate before it underflows",
+      near(
+        sp_all$nv_qexp$ref_grad(-720, list(rate = pi * 1e-10), list(lower_tail = TRUE, log_p = TRUE))$p,
+        0x1.c641058cb3e7ap-1008
+      )
+    ),
+    check(
+      "qexp lower log_p d/dp at p = +0 is +Inf, the limit from inside the domain, not -Inf from expm1(-0)",
+      identical(sp_all$nv_qexp$ref_grad(0, list(rate = 1), list(lower_tail = TRUE, log_p = TRUE))$p, Inf)
+    ),
+    check(
+      "qexp lower d/drate at the smallest subnormal p (small rate) divides by rate^2 in one step, not twice",
+      near(
+        sp_all$nv_qexp$ref_grad(2^-1074, list(rate = pi * 1e-10), list(lower_tail = TRUE, log_p = FALSE))$rate,
+        -0x1.193907f0a4bb8p-1011
+      )
+    ),
+    check(
+      "dbinom's stable density at a subnormal size * prob is 5.2e-309, not 0: x / (n p) overflows there, so the logs are differenced",
+      near(
+        sp_all$nv_dbinom$ref_stable(105554688211119 * 2^-1074, list(x = 1, size = 10), list(log = FALSE)),
+        1055546882111190 * 2^-1074,
+        n = 256
+      )
+    ),
+    check(
+      "dbinom's stable density at x = 0 is (1 - p)^n where 1 - p is exact, not exp(n log1p(-p))",
+      identical(sp_all$nv_dbinom$ref_stable(0.5, list(x = 0, size = 1000), list(log = FALSE)), 2^-1000)
+    ),
+    check(
+      "pbinom's lower log_p stable reference at q = 25.5 (size 1e6, prob 0.3) is finite where base R's is -Inf",
+      near(
+        sp_all$nv_pbinom$ref_stable(25.5, list(size = 1e6, prob = 0.3), list(lower_tail = TRUE, log_p = TRUE)),
+        -0x1.5c0e2f8499441p+18
+      )
+    ),
+    check(
+      "pbinom's lower log_p stable reference at q = 37.5 (size 1e6, prob 1e-3) is -844, where base R gives a finite -603",
+      near(
+        sp_all$nv_pbinom$ref_stable(37.5, list(size = 1e6, prob = 1e-3), list(lower_tail = TRUE, log_p = TRUE)),
+        -0x1.a615c35146fcp+9
+      )
     )
   )
 
@@ -1565,9 +1724,190 @@ cmd_selftest <- function(opt) {
     )
   )
 
+  ## Sweeping in parts (R/queue.R). At smoke depth a cell is one chunk, so the
+  ## chunk is made small enough to cut: 2^10 samples, which makes a chunk one
+  ## f32 binade and eight f64 binades, and puts chunk seams inside the weakref
+  ## cell's no-finite-error region on [1e-30, 1e-20) -- chunks 116 to 120.
+  cat("\nsweeping in parts:\n")
+  chunk_index <- CHUNK_INDEX
+  assign("CHUNK_INDEX", 2^10, envir = globalenv())
+  sp_st <- load_specs(include_selftest = TRUE)["selftest"]
+  g_st <- build_grid(sp_st, "anvl")
+  o_st <- list(depth = "smoke", topk = opt$topk, quiet = TRUE)
+  whole_vs_parts <- function(id, cuts) {
+    row <- g_st[g_st$cell_id == id, , drop = FALSE]
+    cs <- cell_setup(sp_st$selftest, row)
+    w <- cell_sweep(cs, row, o_st)
+    parts <- lapply(cuts, function(ch) cell_sweep(cs, row, o_st, chunks = ch, finish = FALSE))
+    a <- sweep_assemble(rev(parts), row$dtype, "smoke", cs$cf$outputs, opt$topk, cs$cf$stable)
+    timeless <- function(x) lapply(x, function(r) `$<-`(r, "summary", `$<-`(r$summary, "elapsed_sec", NULL)))
+    ## and not vacuously: some output found errors to keep
+    identical(timeless(unclass(w)[names(a)]), timeless(a)) && any(vapply(a, function(r) nrow(r$detail) > 0, TRUE))
+  }
+  seams <- list(1:116, 117:118, 119L, 120:256)
+  singles <- as.list(1:256)
+  qdir <- tempfile("selftest-queue")
+  plan_opt_st <- utils::modifyList(
+    opt,
+    list(
+      queue = qdir,
+      depth = "smoke",
+      backends = "anvl",
+      filter = "spec=selftest,dtype=f64,param_set=weakref|clean",
+      max_parts = 4L,
+      dry_run = FALSE,
+      quiet = TRUE
+    )
+  )
+  whole_store <- tempfile("selftest-whole")
+  parts_store <- tempfile("selftest-parts")
+  utils::capture.output({
+    cmd_run(utils::modifyList(plan_opt_st, list(store = whole_store)))
+    cmd_plan(plan_opt_st)
+    cmd_work(utils::modifyList(plan_opt_st, list(store = parts_store)))
+  })
+  same_tables <- function(a, b) {
+    all(vapply(
+      setdiff(TABLES, c("runs", "validations", "validation_samples")),
+      function(t) {
+        norm <- function(d) {
+          if (is.null(d)) {
+            return(NULL)
+          }
+          d <- d[setdiff(names(d), c("run_id", "elapsed_sec"))]
+          d <- d[do.call(order, unname(as.list(d))), , drop = FALSE]
+          rownames(d) <- NULL
+          d
+        }
+        identical(norm(store_read(a, t)), norm(store_read(b, t)))
+      },
+      TRUE
+    ))
+  }
+  pl_st <- queue_plan(qdir)
+  claims <- local({
+    q2 <- tempfile("selftest-claims")
+    o2 <- utils::modifyList(
+      plan_opt_st,
+      list(queue = q2, filter = "spec=selftest,dtype=f64,kind=value,param_set=clean,flags=broken=FALSE", max_parts = 2L)
+    )
+    utils::capture.output(cmd_plan(o2))
+    p2 <- queue_plan(q2)
+    a <- claim_next(q2, p2, NULL, Inf, 1800, "A")
+    b <- claim_next(q2, p2, NULL, Inf, 1800, "B")
+    c0 <- claim_next(q2, p2, NULL, Inf, 1800, "C")
+    Sys.setFileTime(a$part$claim, Sys.time() - 3600)
+    d <- claim_next(q2, p2, NULL, Inf, 1800, "D")
+    list(a = a, b = b, c = c0, d = d, q = q2)
+  })
+  ## evaluated here, while the chunk is small: check() forces its argument
+  ## only after the chunk size is restored below
+  wp_seams <- whole_vs_parts(sprintf(p, "f64", "value", "weakref", "FALSE"), seams)
+  wp_singles <- whole_vs_parts(sprintf(p, "f64", "value", "weakref", "FALSE"), singles)
+  wp_grad <- whole_vs_parts(sprintf(p, "f32", "grad", "clean", "TRUE"), seams)
+  wp_refused <- local({
+    row <- g_st[g_st$cell_id == sprintf(p, "f64", "value", "clean", "FALSE"), , drop = FALSE]
+    cs <- cell_setup(sp_st$selftest, row)
+    pa <- lapply(list(1:100, 100:256), function(ch) cell_sweep(cs, row, o_st, chunks = ch, finish = FALSE))
+    identical(tryCatch(sweep_assemble(pa, "f64", "smoke", "value"), error = function(e) "refused"), "refused")
+  })
+  ## past --max-memory a worker stops after its part and asks for a restart;
+  ## a fresh worker carries on from there
+  wp_restart <- local({
+    q3 <- tempfile("selftest-restart")
+    o3 <- utils::modifyList(
+      plan_opt_st,
+      list(
+        queue = q3,
+        filter = "spec=selftest,dtype=f64,kind=value,param_set=clean,flags=broken=FALSE",
+        max_parts = 2L,
+        store = tempfile("selftest-restart-store")
+      )
+    )
+    utils::capture.output(cmd_plan(o3))
+    sink(nullfile())
+    r1 <- cmd_work(utils::modifyList(o3, list(max_memory = 1)))
+    n1 <- sum(queue_state(q3, queue_plan(q3), Inf)$done)
+    r2 <- cmd_work(o3)
+    sink()
+    all2 <- all(queue_state(q3, queue_plan(q3), Inf)$done)
+    unlink(c(q3, o3$store), recursive = TRUE)
+    isTRUE(attr(r1, "restart")) && n1 == 1L && !isTRUE(attr(r2, "restart")) && all2
+  })
+  assign("CHUNK_INDEX", chunk_index, envir = globalenv())
+  pq <- c(
+    check("past --max-memory a worker stops after its part and asks to be restarted; the next carries on", wp_restart),
+    check(
+      "a cell swept in parts, cut inside a failure region, is identical to the cell swept whole (f64 value)",
+      wp_seams
+    ),
+    check("... and cut into every one of its 256 chunks", wp_singles),
+    check("... and for an f32 gradient cell, both outputs", wp_grad),
+    check("parts that do not cover the cell exactly once are refused", wp_refused),
+    check(
+      "a queue's workers and their assembly write the tables a single run writes",
+      same_tables(whole_store, parts_store)
+    ),
+    check("... every result under the plan's one run ID, with one provenance row", {
+      r <- store_read(parts_store, "results")
+      ru <- store_read(parts_store, "runs")
+      all(r$run_id == pl_st$run_id) && nrow(ru) == 1L && ru$run_id == pl_st$run_id && all(pl_st$units$parts == 4L)
+    }),
+    check(
+      "two workers never hold one part, and a full queue says so",
+      !is.null(claims$a$part) &&
+        !is.null(claims$b$part) &&
+        claims$a$part$unit != claims$b$part$unit &&
+        is.null(claims$c$part) &&
+        grepl("claimed", claims$c$reason)
+    ),
+    check(
+      "a claim whose heartbeat has stopped is taken over, as the next attempt",
+      identical(claims$d$part$unit, claims$a$part$unit) &&
+        claims$d$part$attempt == 1L &&
+        grepl("\\.2$", claims$d$part$claim)
+    ),
+    check("a claim's heartbeat beats while R is busy in one long call, and stops when told", {
+      cl <- tempfile("selftest-claim")
+      dir.create(cl)
+      old <- Sys.time() - 3600
+      age <- function() as.numeric(Sys.time()) - as.numeric(file.mtime(cl))
+      Sys.setFileTime(cl, old)
+      b <- start_heartbeat(cl, every = 1)
+      Sys.sleep(2.5) # R blocked, as in a long chunk
+      fresh <- age() < 3
+      stop_heartbeat(b)
+      Sys.sleep(1.5)
+      Sys.setFileTime(cl, old)
+      Sys.sleep(1.5)
+      stopped <- age() > 3000
+      unlink(cl, recursive = TRUE)
+      fresh && stopped
+    }),
+    check("a later cost source overrides an earlier one, whatever the depth; within one, the plan's depth wins", {
+      cst <- data.frame(
+        cell_id = c("a", "a", "b", "d", "d"),
+        depth = c("full", "smoke", "full", "smoke", "full"),
+        priority = c(1, 2, 1, 2, 2),
+        elapsed_sec = c(3600, 1, 100, 1, 50)
+      )
+      {
+        e <- cell_estimates(data.frame(cell_id = c("a", "b", "c", "d")), "full", cst)
+        identical(as.numeric(e), c(8192, 100, NA, 50)) && identical(attr(e, "source"), c(2, 1, NA, 2))
+      }
+    }),
+    check("nothing is claimed that cannot finish before the deadline", {
+      unlink(file.path(claims$q, "claims", "*"), recursive = TRUE)
+      e <- claim_next(claims$q, queue_plan(claims$q), NULL, as.numeric(Sys.time()) + 10, 1800, "E")
+      is.null(e$part) && grepl("deadline", e$reason)
+    })
+  )
+  unlink(c(qdir, whole_store, parts_store, claims$q), recursive = TRUE)
+
   cat("\nassertions:\n")
   ok <- c(
     sp,
+    pq,
     ca0,
     ca,
     zv,
@@ -2252,10 +2592,15 @@ main <- function() {
     export = cmd_export(a$opt),
     merge = cmd_merge(a$opt),
     `validate-refs` = cmd_validate_refs(a$opt),
+    plan = cmd_plan(a$opt),
+    ## exit status 3: stopped past --max-memory, to be started again
+    work = if (isTRUE(attr(cmd_work(a$opt), "restart"))) quit(status = 3L),
+    finalise = cmd_finalise(a$opt),
+    queue = cmd_queue(a$opt),
     stop(
       "unknown command '",
       a$cmd,
-      "'; expected list, run, status, diff, export, merge, selftest or validate-refs",
+      "'; expected list, run, status, diff, export, merge, selftest, validate-refs, plan, work, finalise or queue",
       call. = FALSE
     )
   )

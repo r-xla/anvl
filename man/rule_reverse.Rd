@@ -41,5 +41,5 @@ rule_reverse(function(inputs, outputs, grads, params, required) {
 })
 }
 \seealso{
-\code{\link[=transform_gradient]{transform_gradient()}}
+\code{\link[=graph_gradient]{graph_gradient()}}
 }

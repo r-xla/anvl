@@ -8,8 +8,5 @@ at2vt <- function(x) {
 # A tensor `stablehlo::ValueType` of `dtype` and `shape`, for lowering rules
 # that declare custom-call output types.
 vt <- function(dtype, shape) {
-  if (!is_shape(shape)) {
-    shape <- Shape(shape)
-  }
-  stablehlo::ValueType(stablehlo::TensorType(dtype = as_dtype(dtype), shape = shape))
+  stablehlo::ValueType(stablehlo::TensorType(dtype = as_dtype(dtype), shape = as_shape(shape)))
 }
