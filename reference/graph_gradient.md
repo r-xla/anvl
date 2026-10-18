@@ -8,7 +8,7 @@ with respect to the inputs specified by `wrt`.
 ## Usage
 
 ``` r
-transform_gradient(graph, wrt)
+graph_gradient(graph, wrt)
 ```
 
 ## Arguments
@@ -61,7 +61,7 @@ graph
 #>   %1: f32[] = mul(%x1, %x2)
 #>   return %1
 #> }
-transform_gradient(graph, "lhs")
+graph_gradient(graph, "lhs")
 #> <AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
 #>   %1: f32[] = mul(%x1, %x2)
 #>   %2: f32[] = mul(%c1, %x2)

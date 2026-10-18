@@ -51,7 +51,7 @@ value of `f`, and that same `list` of gradients.
 the [Automatic
 Differentiation](https://r-xla.github.io/anvl/articles/autodiff.html)
 article,
-[`transform_gradient()`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
+[`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)
 for the low-level graph transformation.
 
 ## Examples

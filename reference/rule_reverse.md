@@ -42,7 +42,7 @@ rule_reverse(backward = NULL, forward = NULL)
 
 ## See also
 
-[`transform_gradient()`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
+[`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)
 
 ## Examples
 
@@ -59,7 +59,7 @@ rule_reverse(function(inputs, outputs, grads, params, required) {
 #> {
 #>     list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #> }
-#> <environment: 0x56444808f2f0>
+#> <environment: 0x55a7f42aff38>
 #> 
 #> attr(,"class")
 #> [1] "anvl_rule_reverse"

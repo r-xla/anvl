@@ -72,6 +72,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/eq_type.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/graph_desc_add.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/graph_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/graph_to_quickr_function.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/graph_to_quickr_r_function.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/index.html</loc></url>
@@ -354,7 +355,6 @@
 <url><loc>https://r-xla.github.io/anvl/reference/subgraphs.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/to_abstract.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/trace_fn.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/reference/transform_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/unwrap_if_array.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/with_dtypes.html</loc></url>
 </urlset>

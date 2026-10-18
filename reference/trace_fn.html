@@ -8,10 +8,10 @@
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Trace an R Function into a Graph — trace_fn"><meta name="description" content="Executes f with abstract array arguments and records every primitive operation into
 an AnvlGraph.
 The resulting graph can be lowered to StableHLO (via stablehlo()) or transformed
-(e.g. via transform_gradient())."><meta property="og:description" content="Executes f with abstract array arguments and records every primitive operation into
+(e.g. via graph_gradient())."><meta property="og:description" content="Executes f with abstract array arguments and records every primitive operation into
 an AnvlGraph.
 The resulting graph can be lowered to StableHLO (via stablehlo()) or transformed
-(e.g. via transform_gradient())."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+(e.g. via graph_gradient())."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -86,7 +86,7 @@ The resulting graph can be lowered to StableHLO (via stablehlo()) or transformed
     <p>Executes <code>f</code> with abstract array arguments and records every primitive operation into
 an <code><a href="AnvlGraph.html">AnvlGraph</a></code>.</p>
 <p>The resulting graph can be lowered to StableHLO (via <code><a href="stablehlo.html">stablehlo()</a></code>) or transformed
-(e.g. via <code><a href="transform_gradient.html">transform_gradient()</a></code>).</p>
+(e.g. via <code><a href="graph_gradient.html">graph_gradient()</a></code>).</p>
     </div>
 
     <div class="section level2">

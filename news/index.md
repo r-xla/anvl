@@ -2,6 +2,8 @@
 
 ## anvl (development version)
 
+- Breaking: `transform_gradient()` is renamed to
+  [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md).
 - Bugfix: [`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md)
   counts down at an unsigned data type instead of erroring.
 - Bugfix: The gradient of an empty strided

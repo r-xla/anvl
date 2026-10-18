@@ -166,7 +166,7 @@ prim_mul[["reverse"]]
     ## [1] "anvl_rule_reverse"
 
 The
-[`transform_gradient()`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
+[`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)
 function uses these rules to compute the gradient of a function. For
 this specific transformation, we walk the graph backwards and apply the
 derivative rules, which appends the “reverse pass” to the graph. Besides
@@ -175,7 +175,7 @@ specifies with respect to which arguments to compute the gradient.
 
 ``` r
 
-bwd_graph <- transform_gradient(graph, wrt = c("x", "y"))
+bwd_graph <- graph_gradient(graph, wrt = c("x", "y"))
 bwd_graph
 ```
 
@@ -541,7 +541,7 @@ the gradient of the function w.r.t. `x` does not depend on the captured
 f <- function(x) {
   x + y
 }
-transform_gradient(trace_fn(f, list(x = nv_scalar(1))), wrt = "x")
+graph_gradient(trace_fn(f, list(x = nv_scalar(1))), wrt = "x")
 ```
 
 In principle, the compiler is able to do this itself, but because we

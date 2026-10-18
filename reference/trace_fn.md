@@ -7,7 +7,7 @@ operation into an
 The resulting graph can be lowered to StableHLO (via
 [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)) or
 transformed (e.g. via
-[`transform_gradient()`](https://r-xla.github.io/anvl/reference/transform_gradient.md)).
+[`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)).
 
 ## Usage
 

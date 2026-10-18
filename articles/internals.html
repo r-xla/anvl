@@ -287,14 +287,14 @@ populated. The derivative rules are stored as functions under the
 <span><span class="co">## </span></span>
 <span><span class="co">## attr(,"class")</span></span>
 <span><span class="co">## [1] "anvl_rule_reverse"</span></span></code></pre>
-<p>The <code><a href="../reference/transform_gradient.html">transform_gradient()</a></code> function uses these rules to
+<p>The <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code> function uses these rules to
 compute the gradient of a function. For this specific transformation, we
 walk the graph backwards and apply the derivative rules, which appends
 the “reverse pass” to the graph. Besides the forward graph, the
 transformation takes in the <code>wrt</code> argument, which specifies
 with respect to which arguments to compute the gradient.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bwd_graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/transform_gradient.html">transform_gradient</a></span><span class="op">(</span><span class="va">graph</span>, wrt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">bwd_graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/graph_gradient.html">graph_gradient</a></span><span class="op">(</span><span class="va">graph</span>, wrt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bwd_graph</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span></span>
 <span><span class="co">##   %1: f32[] = mul(%x1, %x2)</span></span>
@@ -575,7 +575,7 @@ depend on the captured <code>y</code>:</p>
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">y</span></span>
 <span><span class="op">}</span></span>
-<span><span class="fu"><a href="../reference/transform_gradient.html">transform_gradient</a></span><span class="op">(</span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">f</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, wrt <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/graph_gradient.html">graph_gradient</a></span><span class="op">(</span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">f</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, wrt <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span></span></code></pre></div>
 <p>In principle, the compiler is able to do this itself, but because we
 pass constants as inputs to the program, we need to handle it
 ourselves.</p>

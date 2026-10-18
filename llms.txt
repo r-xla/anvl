@@ -867,7 +867,7 @@ Internal data structures and functions
 
 - [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md) :
   Trace an R Function into a Graph
-- [`transform_gradient()`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
+- [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)
   : Transform a Graph to Its Gradient
 - [`graph_to_quickr_r_function()`](https://r-xla.github.io/anvl/reference/graph_to_quickr_r_function.md)
   : Convert an AnvlGraph to a Plain R Function
