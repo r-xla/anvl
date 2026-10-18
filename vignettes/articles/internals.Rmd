@@ -101,12 +101,12 @@ Each primitive is an exported `prim_*` function; `[[` on it reads a rule:
 prim_mul[["reverse"]]
 ```
 
-The `transform_gradient()` function uses these rules to compute the gradient of a function.
+The `graph_gradient()` function uses these rules to compute the gradient of a function.
 For this specific transformation, we walk the graph backwards and apply the derivative rules, which appends the "reverse pass" to the graph.
 Besides the forward graph, the transformation takes in the `wrt` argument, which specifies with respect to which arguments to compute the gradient.
 
 ```{r}
-bwd_graph <- transform_gradient(graph, wrt = c("x", "y"))
+bwd_graph <- graph_gradient(graph, wrt = c("x", "y"))
 bwd_graph
 ```
 
@@ -280,7 +280,7 @@ Captured constants can become unused when we apply code transformations like bel
 f <- function(x) {
   x + y
 }
-transform_gradient(trace_fn(f, list(x = nv_scalar(1))), wrt = "x")
+graph_gradient(trace_fn(f, list(x = nv_scalar(1))), wrt = "x")
 ```
 
 In principle, the compiler is able to do this itself, but because we pass constants as inputs to the program, we need to handle it ourselves.
