@@ -430,7 +430,7 @@ reference:
   - subtitle: Transformations
     contents:
       - trace_fn
-      - transform_gradient
+      - graph_gradient
       - graph_to_quickr_r_function
       - compile_pjrt
       - stablehlo
