@@ -1,5 +1,9 @@
 # anvl (development version)
 
+* Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* Bugfix: `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
+  gives a clear error for an empty population.
 * Bugfix: `nv_seq()` counts down at an unsigned data type instead of erroring.
 * Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
   of its input.
