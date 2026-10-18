@@ -38,7 +38,7 @@ nv_sample_int(shape, state, n, dtype = NULL)
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Numeric type of the sampled integers. The sampled values are converted
-  to it. `NULL` (default) uses the [default integer
+  to it, so it must hold `n`. `NULL` (default) uses the [default integer
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value

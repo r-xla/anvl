@@ -2,6 +2,16 @@
 
 ## anvl (development version)
 
+- Bugfix:
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
+  returns `NaN` for a `NaN` `mean` or a non-finite or negative `sd`,
+  like [`rnorm()`](https://rdrr.io/r/stats/Normal.html).
+- Bugfix:
+  [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md)
+  accepts `size = 0`, like
+  [`rbinom()`](https://rdrr.io/r/stats/Binomial.html), and
+  [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md)
+  gives a clear error for an empty population.
 - Breaking: `transform_gradient()` is renamed to
   [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md).
 - Bugfix: [`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md)

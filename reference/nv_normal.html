@@ -203,7 +203,9 @@ promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code> <c
 structure, use a Cholesky decomposition.</p>
 <p><code>mean</code> and <code>sd</code> are <code><a href="arrayish.html">arrayish</a></code>, so they may vary across the sample: they
 are applied to the draws after they have been reshaped to <code>shape</code>, and so
-may either be scalars or have exactly that shape.</p>
+may either be scalars or have exactly that shape. As in base R's <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm()</a></code>,
+an element whose <code>mean</code> is <code>NaN</code>, or whose <code>sd</code> is not finite or negative, is
+<code>NaN</code>. The RNG state is advanced regardless.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

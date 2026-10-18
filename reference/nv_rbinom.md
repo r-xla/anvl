@@ -28,7 +28,8 @@ nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
 - size:
 
   (`integer(1)`)  
-  Number of trials.
+  Number of trials. `0` gives a sample of zeros, like
+  [`rbinom()`](https://rdrr.io/r/stats/Binomial.html).
 
 - prob:
 
@@ -41,7 +42,7 @@ nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
   [`DataType`](https://r-xla.github.io/xlamisc/reference/DataType.html))  
   Numeric type of the sample. `NULL` (default) uses the [default integer
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md). The
-  number of successes are converted to it.
+  number of successes are converted to it, so it must hold `size`.
 
 ## Value
 

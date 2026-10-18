@@ -33,8 +33,8 @@ nv_sample(shape, state, x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  The population vector to sample from. An R value materializes at its
-  [default data
+  The population vector to sample from. Must not be empty. An R value
+  materializes at its [default data
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md).
 
 ## Value

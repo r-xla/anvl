@@ -132,7 +132,10 @@ covariance structure, use a Cholesky decomposition.
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md), so
 they may vary across the sample: they are applied to the draws after
 they have been reshaped to `shape`, and so may either be scalars or have
-exactly that shape.
+exactly that shape. As in base R's
+[`rnorm()`](https://rdrr.io/r/stats/Normal.html), an element whose
+`mean` is `NaN`, or whose `sd` is not finite or negative, is `NaN`. The
+RNG state is advanced regardless.
 
 ## References
 
