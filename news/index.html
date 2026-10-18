@@ -77,27 +77,27 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
-<ul><li>Bugfix: <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> returns <code>NaN</code> for a <code>NaN</code> <code>mean</code> or a non-finite or negative <code>sd</code>, like <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm()</a></code>.</li>
-<li>Bugfix: <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code> accepts <code>size = 0</code>, like <code><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom()</a></code>, and <code><a href="../reference/nv_sample.html">nv_sample()</a></code> gives a clear error for an empty population.</li>
-<li>Breaking: <code>transform_gradient()</code> is renamed to <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code>.</li>
-<li>Bugfix: <code><a href="../reference/nv_seq.html">nv_seq()</a></code> counts down at an unsigned data type instead of erroring.</li>
-<li>Bugfix: The gradient of an empty strided <code><a href="../reference/prim_static_slice.html">prim_static_slice()</a></code> has the shape of its input.</li>
-<li>Bugfix: The gradient of <code>x^y</code> is 0 instead of <code>NaN</code> in <code>y</code> at base 0 and in <code>x</code> at exponent 0.</li>
-<li>Bugfix: The gradient of <code><a href="../reference/nv_pad.html">nv_pad()</a></code> / <code><a href="../reference/prim_pad.html">prim_pad()</a></code> works for negative edge padding.</li>
-<li>Bugfix: The gradient of <code><a href="../reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> is no longer permuted for broadcast axes that are not in increasing order.</li>
-<li>Bugfix: An <code>NA</code> in an <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code> subset index now gives an informative error.</li>
-<li>Bugfix: the common data type of arrays and R values no longer depends on the order of the arguments; the R values take the data type the arrays agree on.</li>
-<li>Bugfix: <code>nv_squeeze(x, axes = integer(0))</code> no longer drops every axis.</li>
-<li>Bugfix: <code><a href="../reference/nv_subset.html">nv_subset()</a></code> accepts an R value as <code>x</code>, like <code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> does.</li>
-<li>Bugfix: <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> no longer returns <code>Inf</code> / <code>-Inf</code> when a uniform draw is exactly 0.</li>
-<li>Bugfix: <code><a href="../reference/nv_mean.html">nv_mean()</a></code>, <code><a href="../reference/nv_var.html">nv_var()</a></code> and <code><a href="../reference/nv_sd.html">nv_sd()</a></code> no longer overflow on an integer input, which is now summed at the default float.</li>
-<li>New <code><a href="../reference/nv_dtype_constructors.html">nv_bool()</a></code>, <code>nv_int{8,16,32,64}()</code>, <code>nv_uint{8,16,32,64}()</code>, <code><a href="../reference/nv_dtype_constructors.html">nv_float32()</a></code> and <code><a href="../reference/nv_dtype_constructors.html">nv_float64()</a></code> create an array of the data type in their name.</li>
-<li>New functions for the binomial distribution: <code><a href="../reference/nv_binomial.html">nv_dbinom()</a></code>, <code><a href="../reference/nv_binomial.html">nv_pbinom()</a></code> and <code><a href="../reference/nv_binomial.html">nv_qbinom()</a></code>.</li>
-<li>New functions for the exponential distribution: <code><a href="../reference/nv_exponential.html">nv_dexp()</a></code>, <code><a href="../reference/nv_exponential.html">nv_pexp()</a></code>, and <code><a href="../reference/nv_exponential.html">nv_qexp()</a></code>.</li>
-<li>
-<code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> now lower to a LAPACK (CPU) / cuSOLVER (CUDA) <code>potrf</code> custom call, which is about ten times faster on CPU.</li>
-<li>Bugfix: the gradient of <code><a href="../reference/prim_dot_general.html">prim_dot_general()</a></code> with respect to <code>lhs</code> is right when <code>lhs</code> has batching axes but no free axes.</li>
-<li>Bugfix: <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> broadcasts a size-1 axis that meets a size-0 axis to size 0.</li>
+<ul><li><p><code>AnvlArray</code>s can now be saved with <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code> and friends; they load onto the default device, not the one they were saved from. Arrays of the pjrt backend no longer cache their device in a <code>$device</code> field.</p></li>
+<li><p>Bugfix: <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> returns <code>NaN</code> for a <code>NaN</code> <code>mean</code> or a non-finite or negative <code>sd</code>, like <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm()</a></code>.</p></li>
+<li><p>Bugfix: <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code> accepts <code>size = 0</code>, like <code><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom()</a></code>, and <code><a href="../reference/nv_sample.html">nv_sample()</a></code> gives a clear error for an empty population.</p></li>
+<li><p>Breaking: <code>transform_gradient()</code> is renamed to <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code>.</p></li>
+<li><p>Bugfix: <code><a href="../reference/nv_seq.html">nv_seq()</a></code> counts down at an unsigned data type instead of erroring.</p></li>
+<li><p>Bugfix: The gradient of an empty strided <code><a href="../reference/prim_static_slice.html">prim_static_slice()</a></code> has the shape of its input.</p></li>
+<li><p>Bugfix: The gradient of <code>x^y</code> is 0 instead of <code>NaN</code> in <code>y</code> at base 0 and in <code>x</code> at exponent 0.</p></li>
+<li><p>Bugfix: The gradient of <code><a href="../reference/nv_pad.html">nv_pad()</a></code> / <code><a href="../reference/prim_pad.html">prim_pad()</a></code> works for negative edge padding.</p></li>
+<li><p>Bugfix: The gradient of <code><a href="../reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> is no longer permuted for broadcast axes that are not in increasing order.</p></li>
+<li><p>Bugfix: An <code>NA</code> in an <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code> subset index now gives an informative error.</p></li>
+<li><p>Bugfix: the common data type of arrays and R values no longer depends on the order of the arguments; the R values take the data type the arrays agree on.</p></li>
+<li><p>Bugfix: <code>nv_squeeze(x, axes = integer(0))</code> no longer drops every axis.</p></li>
+<li><p>Bugfix: <code><a href="../reference/nv_subset.html">nv_subset()</a></code> accepts an R value as <code>x</code>, like <code><a href="../reference/nv_subset_assign.html">nv_subset_assign()</a></code> does.</p></li>
+<li><p>Bugfix: <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> no longer returns <code>Inf</code> / <code>-Inf</code> when a uniform draw is exactly 0.</p></li>
+<li><p>Bugfix: <code><a href="../reference/nv_mean.html">nv_mean()</a></code>, <code><a href="../reference/nv_var.html">nv_var()</a></code> and <code><a href="../reference/nv_sd.html">nv_sd()</a></code> no longer overflow on an integer input, which is now summed at the default float.</p></li>
+<li><p>New <code><a href="../reference/nv_dtype_constructors.html">nv_bool()</a></code>, <code>nv_int{8,16,32,64}()</code>, <code>nv_uint{8,16,32,64}()</code>, <code><a href="../reference/nv_dtype_constructors.html">nv_float32()</a></code> and <code><a href="../reference/nv_dtype_constructors.html">nv_float64()</a></code> create an array of the data type in their name.</p></li>
+<li><p>New functions for the binomial distribution: <code><a href="../reference/nv_binomial.html">nv_dbinom()</a></code>, <code><a href="../reference/nv_binomial.html">nv_pbinom()</a></code> and <code><a href="../reference/nv_binomial.html">nv_qbinom()</a></code>.</p></li>
+<li><p>New functions for the exponential distribution: <code><a href="../reference/nv_exponential.html">nv_dexp()</a></code>, <code><a href="../reference/nv_exponential.html">nv_pexp()</a></code>, and <code><a href="../reference/nv_exponential.html">nv_qexp()</a></code>.</p></li>
+<li><p><code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> now lower to a LAPACK (CPU) / cuSOLVER (CUDA) <code>potrf</code> custom call, which is about ten times faster on CPU.</p></li>
+<li><p>Bugfix: the gradient of <code><a href="../reference/prim_dot_general.html">prim_dot_general()</a></code> with respect to <code>lhs</code> is right when <code>lhs</code> has batching axes but no free axes.</p></li>
+<li><p>Bugfix: <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> broadcasts a size-1 axis that meets a size-0 axis to size 0.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.1" id="anvl-051">anvl 0.5.1<a class="anchor" aria-label="anchor" href="#anvl-051"></a></h2>

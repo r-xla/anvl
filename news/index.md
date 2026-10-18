@@ -2,53 +2,72 @@
 
 ## anvl (development version)
 
+- `AnvlArray`s can now be saved with
+  [`saveRDS()`](https://rdrr.io/r/base/readRDS.html) and friends; they
+  load onto the default device, not the one they were saved from. Arrays
+  of the pjrt backend no longer cache their device in a `$device` field.
+
 - Bugfix:
   [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
   returns `NaN` for a `NaN` `mean` or a non-finite or negative `sd`,
   like [`rnorm()`](https://rdrr.io/r/stats/Normal.html).
+
 - Bugfix:
   [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md)
   accepts `size = 0`, like
   [`rbinom()`](https://rdrr.io/r/stats/Binomial.html), and
   [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md)
   gives a clear error for an empty population.
+
 - Breaking: `transform_gradient()` is renamed to
   [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md).
+
 - Bugfix: [`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md)
   counts down at an unsigned data type instead of erroring.
+
 - Bugfix: The gradient of an empty strided
   [`prim_static_slice()`](https://r-xla.github.io/anvl/reference/prim_static_slice.md)
   has the shape of its input.
+
 - Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0
   and in `x` at exponent 0.
+
 - Bugfix: The gradient of
   [`nv_pad()`](https://r-xla.github.io/anvl/reference/nv_pad.md) /
   [`prim_pad()`](https://r-xla.github.io/anvl/reference/prim_pad.md)
   works for negative edge padding.
+
 - Bugfix: The gradient of
   [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/reference/prim_broadcast_in_axes.md)
   is no longer permuted for broadcast axes that are not in increasing
   order.
+
 - Bugfix: An `NA` in an [`array()`](https://rdrr.io/r/base/array.html)
   subset index now gives an informative error.
+
 - Bugfix: the common data type of arrays and R values no longer depends
   on the order of the arguments; the R values take the data type the
   arrays agree on.
+
 - Bugfix: `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+
 - Bugfix:
   [`nv_subset()`](https://r-xla.github.io/anvl/reference/nv_subset.md)
   accepts an R value as `x`, like
   [`nv_subset_assign()`](https://r-xla.github.io/anvl/reference/nv_subset_assign.md)
   does.
+
 - Bugfix:
   [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md) no
   longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+
 - Bugfix:
   [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md),
   [`nv_var()`](https://r-xla.github.io/anvl/reference/nv_var.md) and
   [`nv_sd()`](https://r-xla.github.io/anvl/reference/nv_sd.md) no longer
   overflow on an integer input, which is now summed at the default
   float.
+
 - New
   [`nv_bool()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md),
   `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`,
@@ -56,24 +75,29 @@
   and
   [`nv_float64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
   create an array of the data type in their name.
+
 - New functions for the binomial distribution:
   [`nv_dbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md),
   [`nv_pbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md)
   and
   [`nv_qbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md).
+
 - New functions for the exponential distribution:
   [`nv_dexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md),
   [`nv_pexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md),
   and
   [`nv_qexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md).
+
 - [`nv_chol()`](https://r-xla.github.io/anvl/reference/nv_chol.md) /
   [`prim_chol()`](https://r-xla.github.io/anvl/reference/prim_chol.md)
   now lower to a LAPACK (CPU) / cuSOLVER (CUDA) `potrf` custom call,
   which is about ten times faster on CPU.
+
 - Bugfix: the gradient of
   [`prim_dot_general()`](https://r-xla.github.io/anvl/reference/prim_dot_general.md)
   with respect to `lhs` is right when `lhs` has batching axes but no
   free axes.
+
 - Bugfix:
   [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/reference/nv_broadcast_arrays.md)
   broadcasts a size-1 axis that meets a size-0 axis to size 0.

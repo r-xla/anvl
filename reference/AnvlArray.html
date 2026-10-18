@@ -221,7 +221,12 @@ overloaded as it is used to refer to both the axis and its size.</p>
 <a href="https://huggingface.co/docs/safetensors/index" class="external-link">safetensors</a> format:</p><ul><li><p><code><a href="nv_save.html">nv_save()</a></code> / <code><a href="nv_save.html">nv_read()</a></code>: Save/load arrays to/from a file.</p></li>
 <li><p><code><a href="nv_serialize.html">nv_serialize()</a></code> / <code><a href="nv_serialize.html">nv_unserialize()</a></code>:
 Serialize/deserialize arrays to/from raw vectors.</p></li>
-</ul></div>
+</ul><p>An array can also be saved like any R object, e.g. with <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code>.
+Its device is not saved: an array of the pjrt backend loads onto the
+<a href="default_device.html">default device</a> at the time it is read, so an array saved
+on a GPU also loads on a machine without one. anvl arranges this when it
+is loaded, so load anvl before reading arrays.</p>
+    </div>
     <div class="section level2">
     <h2 id="backend">Backend<a class="anchor" aria-label="anchor" href="#backend"></a></h2>
 
@@ -305,8 +310,9 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span>shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1e+45 *</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5.6052 2.8026   -nan</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    -nan   -nan   -nan</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

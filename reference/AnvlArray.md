@@ -175,6 +175,14 @@ Arrays can be serialized to and from the
   [`nv_unserialize()`](https://r-xla.github.io/anvl/reference/nv_serialize.md):
   Serialize/deserialize arrays to/from raw vectors.
 
+An array can also be saved like any R object, e.g. with
+[`saveRDS()`](https://rdrr.io/r/base/readRDS.html). Its device is not
+saved: an array of the pjrt backend loads onto the [default
+device](https://r-xla.github.io/anvl/reference/default_device.md) at the
+time it is read, so an array saved on a GPU also loads on a machine
+without one. anvl arranges this when it is loaded, so load anvl before
+reading arrays.
+
 ## Backend
 
 An `AnvlArray` is backend-dependent: it belongs to exactly one backend
@@ -264,8 +272,9 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  0 0 0
-#>  0 0 0
+#> 1e+45 *
+#>  5.6052 2.8026   -nan
+#>    -nan   -nan   -nan
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
