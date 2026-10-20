@@ -17,7 +17,9 @@ GraphDescriptor(
   static_args_flat = NULL,
   devices = character(),
   default_dtypes = NULL,
-  backend
+  backend,
+  side_effects_mode = NULL,
+  parent = NULL
 )
 }
 \arguments{
@@ -68,6 +70,29 @@ of the \code{anvl.default_dtypes} option applies to the trace, so switching the
 active backend inside a traced body changes nothing.
 \code{\link[=local_descriptor]{local_descriptor()}} fills it in from \code{\link[=active_backend]{active_backend()}}, so only a
 direct call has to name it.}
+
+\item{side_effects_mode}{(\code{NULL} | \code{character(1)})\cr
+How the trace takes a side effect on its first
+use:
+\itemize{
+\item \code{"input"}: as a fresh input of the graph, which the graph records in its
+\code{side_effects} rather than among its inputs; or, for one the program
+creates itself, such as the token that orders prints, by the calls that
+create it. The graph returns those the host receives there. The top
+level of \code{\link[=jit]{jit()}} takes side effects this way.
+\item \code{"loop"}: as a fresh input of the graph, which the graph also returns
+there. The bodies of \code{\link[=nv_while]{nv_while()}} and \code{\link[=nv_scan]{nv_scan()}} take side effects this
+way, and hand them on to the next iteration.
+\item \code{"capture"}: as the current value of \code{parent}, which the graph closes
+over. The branches of \code{\link[=nv_if]{nv_if()}} and the function
+\code{\link[=gradient]{gradient()}} differentiates take side effects this way.
+\item \code{NULL}: not at all. Such a trace cannot hand an updated value back, so
+using a side effect there is an error.
+}}
+
+\item{parent}{(\code{NULL} | \code{GraphDescriptor})\cr
+The trace this one is opened in, or \code{NULL} for a trace at the top level.
+\code{\link[=local_descriptor]{local_descriptor()}} fills it in.}
 }
 \value{
 (\code{GraphDescriptor})

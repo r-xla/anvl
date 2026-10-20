@@ -347,6 +347,24 @@ describe("eq_type", {
     expect_error(eq_type(x, 1), "must be AbstractArrays")
     expect_error(eq_type(1, x), "must be AbstractArrays")
   })
+
+  it("compares tokens only equal to tokens", {
+    x <- AbstractArray("f32", integer())
+    expect_true(eq_type(AbstractToken(), AbstractToken()))
+    expect_false(eq_type(AbstractToken(), x))
+    expect_false(eq_type(x, AbstractToken()))
+  })
+})
+
+describe("AbstractToken", {
+  it("is shown as a token", {
+    expect_identical(repr(AbstractToken()), "token")
+    expect_identical(format(AbstractToken()), "AbstractToken()")
+  })
+
+  it("is lowered to a stablehlo token", {
+    expect_true(at2vt(AbstractToken()) == stablehlo::ValueType("token"))
+  })
 })
 
 test_that("to_abstract", {

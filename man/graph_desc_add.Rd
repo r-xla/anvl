@@ -10,7 +10,8 @@ graph_desc_add(
   params = list(),
   infer_fn,
   desc = NULL,
-  device = NULL
+  device = NULL,
+  side_effects = NULL
 )
 }
 \arguments{
@@ -21,7 +22,11 @@ unwrapped to its underlying \code{AnvlPrimitiveDef}.}
 \item{args}{(\code{list} of \code{\link{arrayish}})\cr
 The arguments to the primitive: \code{\link{GraphBox}}es, \code{\link{AnvlArray}}s (registered
 as constants of the graph) or R values (materialized at their default data
-type).}
+type).
+
+For a primitive that uses side effects the current
+value of each is passed as one more argument after \code{args}, named after the
+side effect.}
 
 \item{params}{(\code{list})\cr
 The parameters to the primitive.}
@@ -42,9 +47,15 @@ the device of an array input to the same trace: it decides what that
 program is compiled for, and disagreeing with another device in it is an
 error. Every other primitive takes its device from its operands and leaves
 this \code{NULL}.}
+
+\item{side_effects}{(\code{NULL} | \code{character()})\cr
+The side effects this call uses, of those the primitive declares (see
+\code{\link[=new_primitive]{new_primitive()}}); \code{NULL} for all of them. A call that does not use a side
+effect neither reads nor advances it, e.g. an unordered \code{\link[=prim_print]{prim_print()}}.}
 }
 \value{
-(\code{list} of \code{\link{GraphBox}})
+(\code{list} of \code{\link{GraphBox}})\cr
+The outputs of the call, without the updated values of its side effects.
 }
 \description{
 Record a call of a primitive as a \code{\link{GraphStatement}} in a graph descriptor. Inside a primitive body created

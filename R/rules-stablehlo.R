@@ -10,9 +10,9 @@ index_dtype_of <- function(output_types, i) {
   as.character(output_types[[i]]$type$dtype)
 }
 
-region_input <- function(dtype, shape = integer()) {
+# An input of the region under construction, of the `stablehlo::ValueType` `vt`.
+region_input <- function(vt) {
   func <- stablehlo::.current_func()
-  vt <- stablehlo::ValueType(dtype, shape = shape)
   id <- stablehlo::ValueId()
   func$inputs <- stablehlo::FuncInputs(c(
     func$inputs,
@@ -757,10 +757,7 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   # `region_input()` names them with auto value ids, which is what keeps one
   # scan lowered inside another's body from redefining the outer region's.
   declare_state <- function() {
-    vals <- lapply(state, function(s) {
-      vt <- s$value_type
-      region_input(as.character(vt$type$dtype), shape(vt))
-    })
+    vals <- lapply(state, function(s) region_input(s$value_type))
     list(i = vals[[1L]], rest = vals[-1L])
   }
 
@@ -1141,8 +1138,8 @@ pivots_to_permutation <- function(pivots, n) {
   init_i <- hlo_scalar(0L, dtype = "i32", func = func)
 
   cond_func <- stablehlo::local_func("")
-  i <- region_input("i32")
-  region_input("i32", n) # unused in cond; declared to match state shape
+  i <- region_input(vt("i32", integer()))
+  region_input(vt("i32", n)) # unused in cond; declared to match state shape
   cond_func <- hlo_return(hlo_compare(
     i,
     hlo_scalar(k, dtype = "i32"),
@@ -1155,8 +1152,8 @@ pivots_to_permutation <- function(pivots, n) {
   # perm[j], where j = pivots[i] - 1 converts pivots' 1-based value to a
   # 0-based index.
   body_func <- stablehlo::local_func("")
-  i <- region_input("i32")
-  perm <- region_input("i32", n)
+  i <- region_input(vt("i32", integer()))
+  perm <- region_input(vt("i32", n))
   # constant in the region
   pivots_in_body <- stablehlo::FuncValue(
     pivots$value_id,

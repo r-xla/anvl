@@ -10,6 +10,7 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
+  side_effects = character(),
   register = TRUE
 )
 }
@@ -28,6 +29,15 @@ Names of parameters that are subgraphs (for higher-order primitives).}
 
 \item{static}{(\code{character()} | \code{integer()})\cr
 Passed to \code{\link[=jit]{jit()}}.}
+
+\item{side_effects}{(\code{character()})\cr
+Names of the side effects the primitive uses: values outside of the traced
+function that it reads and updates, such as the token that orders
+prints (see \code{\link[=prim_print]{prim_print()}}).
+\code{\link[=graph_desc_add]{graph_desc_add()}} passes the current value of each to the call as one
+more operand, named after the side effect, after \code{args}; the inference
+and interpretation rules return the updated values as the last outputs, in
+the same order, and \code{graph_desc_add()} does not return them.}
 
 \item{register}{(\code{logical(1)})\cr
 Whether to add the primitive to anvl's internal registry of primitives,

@@ -73,4 +73,6 @@ globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
 globals[["descriptor_stash"]] <- list()
 globals[["current_descriptor"]] <- NULL
 globals[["lowering_platform"]] <- NULL
+# The registered side effects, by name (see `register_side_effect()`).
+globals$side_effects <- list()
 utils::globalVariables(c("globals", "self"))

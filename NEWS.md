@@ -1,5 +1,8 @@
 # anvl (development version)
 
+* `new_primitive()` gains `side_effects`, for primitives that read and update a
+  value outside of the traced function. New `AbstractToken()`, the type of a
+  value that only orders operations.
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.

@@ -612,3 +612,22 @@ test_that("gradient() inside a sub-graph takes an R argument at the data type it
   })
   expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
 })
+
+describe("graph_gradient", {
+  it("keeps the side effects of the graph it differentiates", {
+    s <- local_steps()
+    graph <- trace_fn(
+      function(x) x * nv_convert(s$step(), dtype = "f32"),
+      list(x = nv_aval("f32", integer()))
+    )
+    grad <- graph_gradient(graph, "x")
+    expect_named(grad$side_effects, "steps")
+    expect_identical(grad$side_effects$steps$input, graph$side_effects$steps$input)
+    expect_identical(grad$side_effects$steps$advance, 1)
+    # the side effect's value is an input of the lowered program, which does
+    # not return it
+    func <- stablehlo(grad)[[1L]]
+    expect_null(func$inputs[[length(func$inputs)]]$alias)
+    expect_length(func$outputs, 1L)
+  })
+})

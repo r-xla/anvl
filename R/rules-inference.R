@@ -2015,11 +2015,11 @@ infer_while <- function(..., cond, body, n_captures) {
   inputs_body <- lapply(body$inputs[state_idx], function(inp) inp$aval)
   # The names of `init`, read off the body's input tree rather than passed as a
   # param (which would reach the lowering rules).
+  # The side effects a body carries come after the state.
   state_names <- pjrt::tree_child_names(body$in_tree)
-  labels <- if (length(state_names) == length(outs)) {
-    state_names
-  } else {
-    sprintf("state %d", seq_along(outs))
+  labels <- sprintf("state %d", seq_along(outs))
+  if (length(state_names) <= length(outs)) {
+    labels[seq_along(state_names)] <- state_names
   }
   describe <- function(idx, a, b, verbs) {
     sprintf(
