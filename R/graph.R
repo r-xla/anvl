@@ -154,11 +154,10 @@ GraphStatement <- function(primitive, inputs, params, outputs) {
 #' @param side_effects (named `list()`)\cr
 #'   The side effects the graph uses, named by side
 #'   effect and in the order they were registered in: a
-#'   `list(input, output, advance)` each, the [`GraphValue`] the value enters
-#'   through, the node of the value the graph leaves behind, and, for a counted
-#'   side effect, the number of steps the graph
-#'   advances the value by, which is known when it is traced. `input` is `NULL`
-#'   for a side effect the graph closes over.
+#'   `list(input, output)` each, the [`GraphValue`]s the values enter
+#'   through and the nodes of the values the graph leaves behind. `input` is
+#'   `NULL` for a side effect the graph closes over or builds itself, and
+#'   `output` for one a program drops at its end.
 #' @return (`AnvlGraph`)
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the inputs are %x1 and %x2; each line is one statement, and `sum`
@@ -821,9 +820,6 @@ trace_fn <- function(
     do.call(f_flat, inputs_flat),
     error = function(e) rlang::cnd_signal(name_failing_primitive(e))
   )
-  if (identical(desc$side_effects_mode, "loop")) {
-    side_effects_close(desc)
-  }
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -985,7 +981,7 @@ is_graph_box <- function(x) {
 #' @param side_effects (`NULL` | `character()`)\cr
 #'   The side effects this call uses, of those the primitive declares (see
 #'   [new_primitive()]); `NULL` for all of them. A call that does not use a side
-#'   effect neither reads nor advances it, e.g. an unordered [prim_print()].
+#'   effect neither reads nor updates it, e.g. an unordered [prim_print()].
 #' @return (`list` of [`GraphBox`])\cr
 #'   The outputs of the call, without the updated values of its side effects.
 #' @export
@@ -1009,10 +1005,9 @@ graph_desc_add <- function(
   if (!all(side_effects %in% primitive$side_effects)) {
     cli_abort("Internal error: a call can only use the side effects its primitive declares.")
   }
-  # A call takes the values of each side effect it uses, as arguments named like
-  # them: the current ones of a carried side effect, and those of its step of a
-  # counted one, which it does not hand back.
-  values <- lapply(side_effects, side_effect_use, desc = desc)
+  # A call takes the current values of each side effect it uses, as arguments
+  # named like them.
+  values <- lapply(side_effects, side_effect_get, desc = desc)
   args <- c(args, unlist(values, recursive = FALSE))
 
   # Box each input; an R value that no promotion rule materialized settles on
@@ -1032,9 +1027,9 @@ graph_desc_add <- function(
   gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))
   call <- GraphStatement(primitive, gnodes_in, params, gvals_out)
   desc$statements$add(call)
-  # The last outputs become the new values of the carried side effects and are
-  # not returned.
-  side_effects_take(desc, Filter(Negate(side_effect_is_counted), side_effects), register_gvals(desc, gvals_out))
+  # The last outputs become the new values of the side effects and are not
+  # returned.
+  side_effects_take(desc, side_effects, register_gvals(desc, gvals_out))
 }
 
 # A primitive is named for the `prim_*()` that exports it, so the call an error

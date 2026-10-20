@@ -73,7 +73,7 @@ the program returns to the host, after its own outputs.
 \item \code{on_success}: \code{NULL}, or a function pjrt's dispatcher calls after every
 successful run with the side effects' returned values, which calls
 each side effect's \code{after_run()} with the values the program returns of
-it and the uses the program made of it.
+it.
 }
 }
 \description{

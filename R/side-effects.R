@@ -4,39 +4,29 @@ NULL
 
 # Registers a side effect: a value outside of a traced function that
 # primitives read and update (`new_primitive(side_effects = )`), such as the
-# global random state or the token that orders prints. Its value is one or
-# more values, of the types `avals` (a named list of `AbstractArray`s and
-# `AbstractToken`s), which a call of a primitive takes as arguments named like
-# them. Side effects used together come in the order they were first
-# registered in. The internals vignette describes the mechanism.
+# token that orders prints. Its value is one or more values, of the types
+# `avals` (a named list of `AbstractArray`s and `AbstractToken`s), which a call
+# of a primitive takes as arguments named like them and returns updated as its
+# last outputs, so that every use takes the values the previous one returned.
+# Side effects used together come in the order they were first registered in.
+# The internals vignette describes the mechanism.
 #
 # - Where the values come from: either `get()`, for values that live outside of
-#   the program, such as the random state, which returns them as a list of
-#   arrays the program takes as inputs; or `build(desc)`, for values the
-#   program creates itself, such as a token, which adds the calls that create
-#   them to the trace `desc` and returns them as a list of GraphBoxes.
-# - `counted`: `NULL` for values every use updates, which are handed from use
-#   to use. Otherwise, the values after `n` uses do not depend on what the uses
-#   compute, only on `n`, so a use need not hand them on: `counted` is a
-#   `list(at, fork)`, where `at(values, n)` traces the values `n` uses after
-#   `values` (a list of GraphBoxes), which the `n + 1`-th use of a trace takes,
-#   and `fork(desc)` adds a use to `desc` that returns the values a loop with
-#   an unknown number of iterations starts from (see `side_effects_carry()`).
+#   the program, which returns them as a list of arrays the program takes as
+#   inputs; or `build(desc)`, for values the program creates itself, such as a
+#   token, which adds the calls that create them to the trace `desc` and
+#   returns them as a list of GraphBoxes.
 # - `after_run`: `NULL`, or a function the host calls after every run of a
-#   program that uses the side effect, as `after_run(values, uses)`, e.g. to
-#   update values that outlive the program or to raise an error a check
-#   recorded. `uses` is the number of uses the program made. `values` are the
-#   values the program leaves behind for a carried side effect, which the
-#   program returns for that purpose, and `list()` for a counted one, whose
-#   values the host knows from `uses`, so that the program need not return
-#   them.
+#   program that uses the side effect, as `after_run(values)`, with the values
+#   the program leaves behind, which the program returns for that purpose, e.g.
+#   to update values that outlive the program. Without it, the program drops
+#   the values at its end.
 # - `labels`: what a printed graph names the values after (see `GraphValue()`).
 register_side_effect <- function(
   name,
   avals,
   get = NULL,
   build = NULL,
-  counted = NULL,
   after_run = NULL,
   labels = names(avals)
 ) {
@@ -49,7 +39,6 @@ register_side_effect <- function(
     labels = labels,
     get = get,
     build = build,
-    counted = counted,
     after_run = after_run
   )
   invisible(NULL)
@@ -58,11 +47,6 @@ register_side_effect <- function(
 # The side effect registered under `name`.
 side_effect <- function(name) {
   globals$side_effects[[name]] %||% cli_abort("No side effect is registered under the name {.val {name}}.")
-}
-
-# Whether the side effect `name` is counted rather than carried.
-side_effect_is_counted <- function(name) {
-  !is.null(side_effect(name)$counted)
 }
 
 # `x`, a list named by side effects, in the order they were registered in.
@@ -76,10 +60,9 @@ side_effects_widths <- function(names) {
 }
 
 # The current values of the side effect `name` in the trace `desc`, a named
-# list of GraphBoxes (for a counted one, those the trace started from),
-# registered on first use as `desc$side_effects_mode` says (see
-# `GraphDescriptor()`): as fresh inputs, or as the current values of the parent
-# trace, which the trace closes over and whose steps it continues.
+# list of GraphBoxes, registered on first use as `desc$side_effects_mode` says
+# (see `GraphDescriptor()`): as fresh inputs, or as the current values of the
+# parent trace, which the trace closes over.
 side_effect_get <- function(desc, name) {
   entry <- desc$side_effects[[name]]
   if (!is.null(entry)) {
@@ -102,19 +85,15 @@ side_effect_get <- function(desc, name) {
       )
     ))
   }
-  current <- side_effect_get(desc$parent, name)
-  side_effect_enter(desc, name, NULL, current = current, advance = desc$parent$side_effects[[name]]$advance)
+  side_effect_enter(desc, name, NULL, current = side_effect_get(desc$parent, name))
 }
 
 # Registers the side effect `name` in the trace `desc`, entering it through the
 # GraphValues `input` (`NULL` for one the trace closes over or builds), with
-# the current values `current`. An entry is a `list(input, current, advance, output)`: for
-# a counted side effect, `advance` is the number of steps from `current` to the
-# values of the next use, and `output` the values a loop body hands to the next
-# iteration (see `side_effects_close()`).
-side_effect_enter <- function(desc, name, input, current = lapply(input, register_gval, desc = desc), advance = 0) {
+# the current values `current`. An entry is a `list(input, current)`.
+side_effect_enter <- function(desc, name, input, current = lapply(input, register_gval, desc = desc)) {
   current <- side_effect_label(name, current)
-  desc$side_effects[[name]] <- list(input = input, current = current, advance = advance, output = NULL)
+  desc$side_effects[[name]] <- list(input = input, current = current)
   current
 }
 
@@ -146,70 +125,28 @@ side_effect_set <- function(desc, name, boxes) {
   invisible(desc)
 }
 
-# Records that the trace `desc` advanced the counted side effect `name` by `n`
-# more steps.
-side_effect_advance <- function(desc, name, n) {
-  desc$side_effects[[name]]$advance <- desc$side_effects[[name]]$advance + n
-  invisible(desc)
-}
-
-# The values of the side effect `name` the current trace is at in `desc`: the
-# current ones of a carried side effect, and those of the next step of a
-# counted one.
-side_effect_at <- function(desc, name) {
-  current <- side_effect_get(desc, name)
-  if (!side_effect_is_counted(name)) {
-    return(current)
-  }
-  side_effect_label(name, side_effect(name)$counted$at(current, desc$side_effects[[name]]$advance))
-}
-
-# The values a use of the side effect `name` in the trace `desc` takes, which
-# advances a counted side effect by one step.
-side_effect_use <- function(desc, name) {
-  values <- side_effect_at(desc, name)
-  if (side_effect_is_counted(name)) {
-    side_effect_advance(desc, name, 1)
-  }
-  values
-}
-
-# Gives the counted side effects of the loop body traced in `desc` their
-# outputs: the values after its last use, which it hands to the next
-# iteration.
-side_effects_close <- function(desc) {
-  for (name in names(desc$side_effects)) {
-    if (side_effect_is_counted(name)) {
-      desc$side_effects[[name]]$output <- lapply(side_effect_at(desc, name), `[[`, "gnode")
-    }
-  }
-  invisible(desc)
-}
-
 # The side effects of the trace `desc` as the graph built from it records them:
-# a `list(input, output, advance)` per side effect, in registration order, the
-# input and output a list of GraphValues each, or `NULL`. A top-level trace
-# returns only the side effects the host receives (see
-# `side_effect_is_received()`), and a counted side effect has no output
-# outside of a loop body.
+# a `list(input, output)` per side effect, in registration order, the input and
+# output a list of GraphValues each, or `NULL`. A top-level trace returns only
+# the side effects the host receives (see `side_effect_is_received()`).
 side_effects_of_desc <- function(desc) {
   entries <- side_effects_ordered(desc$side_effects)
   Map(
     function(name, entry) {
-      output <- if (side_effect_is_counted(name)) entry$output else lapply(entry$current, `[[`, "gnode")
+      output <- lapply(entry$current, `[[`, "gnode")
       if (identical(desc$side_effects_mode, "input") && !side_effect_is_received(name)) {
         output <- NULL
       }
-      list(input = entry$input, output = output, advance = entry$advance)
+      list(input = entry$input, output = output)
     },
     names(entries),
     entries
   )
 }
 
-# Makes the current values of the carried side effects among `names` in `desc`
-# those that `out`, the boxes a higher-order call returns, holds at the
-# positions after `at`, and returns `out` without the side effects' values.
+# Makes the current values of the side effects `names` in `desc` those that
+# `out`, the boxes a call returns, holds at the positions after `at`, and
+# returns `out` without the side effects' values.
 side_effects_take <- function(desc, names, out, at = length(out) - sum(side_effects_widths(names))) {
   if (!length(names)) {
     return(out)
@@ -218,33 +155,21 @@ side_effects_take <- function(desc, names, out, at = length(out) - sum(side_effe
   positions <- at + seq_len(sum(widths))
   values <- split(out[positions], rep(seq_along(names), widths))
   for (i in seq_along(names)) {
-    if (side_effect_is_counted(names[[i]])) {
-      side_effect_label(names[[i]], values[[i]])
-    } else {
-      side_effect_set(desc, names[[i]], unname(values[[i]]))
-    }
+    side_effect_set(desc, names[[i]], unname(values[[i]]))
   }
   out[-positions]
 }
 
 # Prepares the branches `graphs` of a `prim_if()` call in the trace `desc`,
 # which close over the side effects they use. Both branches return the values
-# they leave behind of a carried side effect as more outputs (a branch that does
-# not use it the values it closes over), for `side_effects_take()`. A counted
-# side effect is handed back by neither: the branches continue the steps of
-# `desc`, which continues after the larger of the branches'. Returns the names
-# of the carried side effects.
+# they leave behind of every side effect either uses as more outputs (a branch
+# that does not use it the values it closes over), for `side_effects_take()`.
+# Returns the names of the side effects.
 side_effects_branches <- function(desc, graphs) {
   used <- unlist(lapply(graphs, function(graph) names(graph$side_effects)))
   names <- intersect(names(globals$side_effects), used)
-  counted <- names[vapply(names, side_effect_is_counted, logical(1L))]
-  carried <- setdiff(names, counted)
-  for (name in counted) {
-    ends <- vapply(graphs, function(graph) graph$side_effects[[name]]$advance %||% 0, numeric(1L))
-    desc$side_effects[[name]]$advance <- max(desc$side_effects[[name]]$advance, ends)
-  }
   for (graph in graphs) {
-    for (name in carried) {
+    for (name in names) {
       output <- graph$side_effects[[name]]$output
       if (is.null(output)) {
         output <- lapply(side_effect_get(desc, name), `[[`, "gnode")
@@ -254,38 +179,29 @@ side_effects_branches <- function(desc, graphs) {
     }
     graph$side_effects <- list()
   }
-  carried
+  names
 }
 
 # Makes the body `graph` of a `prim_while()` or `prim_scan()` call in the trace
 # `desc` carry the side effects it uses: their values become inputs and outputs
-# of the body, at the positions after `at`. The body starts from the values
-# `desc` is at. With `fork = TRUE` (a `prim_while()` body, which runs a number
-# of times that is not known when it is traced) a counted side effect starts
-# from the values its `fork` derives instead, which advances `desc` by one step.
-# Returns the names, the operands the call passes for them, and the steps one
-# iteration advances each by.
-side_effects_carry <- function(desc, graph, at = length(graph$inputs), fork = FALSE) {
+# of the body, at the positions after `at`. The body starts from the current
+# values of `desc`. Returns the names, and the operands the call passes for
+# them.
+side_effects_carry <- function(desc, graph, at = length(graph$inputs)) {
   side_effects <- graph$side_effects
   flat <- function(field) unname(unlist(lapply(side_effects, `[[`, field), recursive = FALSE))
   graph$inputs <- append(graph$inputs, flat("input"), after = at)
   graph$outputs <- append(graph$outputs, flat("output"), after = at)
   graph$side_effects <- list()
   names <- names(side_effects)
-  operands <- lapply(names, function(name) {
-    if (fork && side_effect_is_counted(name)) side_effect(name)$counted$fork(desc) else side_effect_at(desc, name)
-  })
-  list(
-    names = names,
-    operands = unname(unlist(operands, recursive = FALSE)),
-    advance = vapply(side_effects, `[[`, numeric(1L), "advance", USE.NAMES = FALSE)
-  )
+  operands <- lapply(names, side_effect_get, desc = desc)
+  list(names = names, operands = unname(unlist(operands, recursive = FALSE)))
 }
 
 # Whether a program returns the values of the side effect `name` to the host:
-# those of a carried side effect the host calls `after_run()` for.
+# those of a side effect the host calls `after_run()` for.
 side_effect_is_received <- function(name) {
-  !side_effect_is_counted(name) && !is.null(side_effect(name)$after_run)
+  !is.null(side_effect(name)$after_run)
 }
 
 # The side effects of the top-level graph `graph` that its program takes from

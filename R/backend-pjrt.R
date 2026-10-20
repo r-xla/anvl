@@ -145,7 +145,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `on_success`: `NULL`, or a function pjrt's dispatcher calls after every
 #'     successful run with the side effects' returned values, which calls
 #'     each side effect's `after_run()` with the values the program returns of
-#'     it and the uses the program made of it.
+#'     it.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -282,19 +282,18 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 
 # The function pjrt's dispatcher calls after a run of the program of `graph`,
 # with the values the program returns of the side effects the host receives:
-# it calls `after_run()` of every side effect of the graph that has one (see
-# `register_side_effect()`). `NULL` when there is none.
+# it calls the `after_run()` of each of them (see `register_side_effect()`).
+# `NULL` when there is none.
 side_effects_on_success <- function(graph) {
-  names <- Filter(function(name) !is.null(side_effect(name)$after_run), names(graph$side_effects))
-  if (!length(names)) {
+  to_host <- side_effects_to_host(graph)
+  if (!length(to_host)) {
     return(NULL)
   }
-  to_host <- side_effects_to_host(graph)
   # the outputs of each side effect the host receives, one after the other
   owner <- rep(to_host, side_effects_widths(to_host))
   function(outputs) {
-    for (name in names) {
-      side_effect(name)$after_run(outputs[owner == name], graph$side_effects[[name]]$advance)
+    for (name in to_host) {
+      side_effect(name)$after_run(outputs[owner == name])
     }
   }
 }

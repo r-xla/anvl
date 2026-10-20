@@ -56,11 +56,10 @@ gives the data type and shape, this gives the R type it is uploaded from.}
 \item{side_effects}{(named \code{list()})\cr
 The side effects the graph uses, named by side
 effect and in the order they were registered in: a
-\code{list(input, output, advance)} each, the \code{\link{GraphValue}} the value enters
-through, the node of the value the graph leaves behind, and, for a counted
-side effect, the number of steps the graph
-advances the value by, which is known when it is traced. \code{input} is \code{NULL}
-for a side effect the graph closes over.}
+\code{list(input, output)} each, the \code{\link{GraphValue}}s the values enter
+through and the nodes of the values the graph leaves behind. \code{input} is
+\code{NULL} for a side effect the graph closes over or builds itself, and
+\code{output} for one a program drops at its end.}
 }
 \value{
 (\code{AnvlGraph})

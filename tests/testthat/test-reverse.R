@@ -615,19 +615,19 @@ test_that("gradient() inside a sub-graph takes an R argument at the data type it
 
 describe("graph_gradient", {
   it("keeps the side effects of the graph it differentiates", {
-    s <- local_steps()
+    x <- local_counter(from = "host")
     graph <- trace_fn(
-      function(x) x * nv_convert(s$step(), dtype = "f32"),
-      list(x = nv_aval("f32", integer()))
+      function(y) y * nv_convert(x$tick(), dtype = "f32"),
+      list(y = nv_aval("f32", integer()))
     )
-    grad <- graph_gradient(graph, "x")
-    expect_named(grad$side_effects, "steps")
-    expect_identical(grad$side_effects$steps$input, graph$side_effects$steps$input)
-    expect_identical(grad$side_effects$steps$advance, 1)
-    # the side effect's value is an input of the lowered program, which does
-    # not return it
+    grad <- graph_gradient(graph, "y")
+    expect_named(grad$side_effects, "counter")
+    expect_identical(grad$side_effects$counter$input, graph$side_effects$counter$input)
+    # the counter is the last input of the lowered program (after the seed of
+    # the backward pass and `y`), which returns it after the gradient, as the
+    # forward pass leaves it
     func <- stablehlo(grad)[[1L]]
-    expect_null(func$inputs[[length(func$inputs)]]$alias)
-    expect_length(func$outputs, 1L)
+    expect_length(func$inputs, 3L)
+    expect_length(func$outputs, 2L)
   })
 })

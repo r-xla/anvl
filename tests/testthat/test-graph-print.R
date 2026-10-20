@@ -185,9 +185,9 @@ describe("format.AnvlGraph()", {
   })
 
   it("names the side effects of a graph after its inputs and its outputs", {
-    s <- local_steps()
+    counter <- local_counter(from = "host")
     graph <- trace_fn(
-      function(x) nv_print(x + s$step(), ordered = TRUE),
+      function(x) nv_print(x + counter$tick(), ordered = TRUE),
       list(x = nv_aval("i32", 2L))
     )
     expect_snapshot(graph)

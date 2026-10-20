@@ -153,8 +153,7 @@ graph_gradient <- function(graph, wrt) {
 # Here we compute the gradients of a graph and write it into the current descriptor
 # This can either be a call to the gradient (inputs are provided)
 # Or just the gradient itself, i.e. then the inputs are NULL (used for graph_gradient).
-# The values `graph` leaves its side effects at become their current values,
-# and the steps it continues its counted side effects to the current ones.
+# The values `graph` leaves its side effects at become their current values.
 graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
@@ -170,9 +169,7 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   rebuilt_box <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
   for (name in names(graph$side_effects)) {
     output <- graph$side_effects[[name]]$output
-    if (side_effect_is_counted(name)) {
-      desc$side_effects[[name]]$advance <- graph$side_effects[[name]]$advance
-    } else if (!is.null(output)) {
+    if (!is.null(output)) {
       side_effect_set(desc, name, lapply(output, rebuilt_box))
     }
   }

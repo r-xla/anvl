@@ -132,13 +132,11 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 
 A side effect is a value outside the traced function that primitives read and update, such as the
 token that orders prints. It is registered once with `register_side_effect()` (`R/side-effects.R`):
-where its value comes from (the host or the program), whether it is carried through loops and
-branches or counted, and whether the host receives it. A primitive declares the ones it uses with
-`new_primitive(side_effects = )`. Never pass such a value by hand: `graph_desc_add()` hands it to a
-call (a carried one is threaded, a counted one is computed from the trace's starting value and the
-number of uses before the call) and the `side_effects_*()` helpers take it through sub-graphs; a
-sub-trace's `side_effects_mode` (`?GraphDescriptor`) says how it takes them. A value without data
-that only orders operations, like the print token, has the type
+where its value comes from (the host or the program) and whether the host receives it after a run.
+A primitive declares the ones it uses with `new_primitive(side_effects = )`. Never pass such a
+value by hand: `graph_desc_add()` threads it from call to call and the `side_effects_*()` helpers
+take it through sub-graphs; a sub-trace's `side_effects_mode` (`?GraphDescriptor`) says how it
+takes them. A value without data that only orders operations, like the print token, has the type
 `AbstractToken()`. The internals vignette describes the mechanism.
 
 ## Jit-wrapping

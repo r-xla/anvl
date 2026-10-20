@@ -118,52 +118,54 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
   testthat::expect_equal(grads[[2L]], expected2)
 }
 
-# A counted side effect "steps", whose value, an `i32` scalar, comes from
-# `store$value` on the host and is `n` more after `n` uses; after a run, the
-# host adds the uses the program made to `store$value`. A fork of it, which
-# `nv_while()` makes for a body that uses it, starts the loop from 100 times
-# the value of its use. Returns the store and the primitive `step`, which
-# returns the value of its use. The side effect is removed when `envir` exits.
-local_steps <- function(start = 0L, envir = parent.frame()) {
+# A side effect counting the calls of the primitive `tick` it returns. Its
+# value starts at `start` in the program (`from = "program"`) or comes from
+# `store$value` on the host (`from = "host"`); with `received = TRUE` the host
+# receives the value a program leaves behind in `store$received`, otherwise the
+# program drops it. Both are removed when `envir` exits.
+local_counter <- function(from = "program", start = 0L, received = TRUE, envir = parent.frame()) {
   store <- new.env(parent = emptyenv())
   store$value <- start
-  infer <- function(steps) list(steps)
-
-  step <- new_primitive(
-    "step",
-    function() graph_desc_add(self, list(), infer_fn = infer)[[1L]],
-    side_effects = "steps",
-    register = FALSE
-  )
-  step[["stablehlo"]] <- function(steps) list(steps)
-
-  fork_steps <- new_primitive(
-    "fork_steps",
-    function() graph_desc_add(self, list(), infer_fn = infer)[[1L]],
-    side_effects = "steps",
-    register = FALSE
-  )
-  fork_steps[["stablehlo"]] <- function(steps) {
-    list(hlo_multiply(steps, hlo_scalar(100L, dtype = "i32", func = steps$func)))
-  }
-
   register_side_effect(
-    "steps",
-    avals = list(steps = AbstractArray(dtype = "i32", shape = integer())),
-    get = function() list(store$value),
-    counted = list(
-      at = function(values, n) if (n == 0) values else list(steps = values$steps + as.integer(n)),
-      fork = function(desc) list(steps = graph_desc_add(fork_steps, list(), infer_fn = infer, desc = desc)[[1L]])
-    ),
-    after_run = function(values, uses) {
-      store$value <- store$value + as.integer(uses)
+    "counter",
+    avals = list(counter = AbstractArray(dtype = "i32", shape = integer())),
+    get = if (from == "host") function() list(store$value),
+    build = if (from == "program") {
+      function(desc) {
+        list(
+          counter = graph_desc_add(
+            prim_fill,
+            list(),
+            params = list(value = start, dtype = "i32", shape = integer()),
+            infer_fn = infer_fill,
+            desc = desc
+          )[[1L]]
+        )
+      }
+    },
+    after_run = if (received) {
+      function(values) {
+        store$received <- as_array(values[[1L]])
+      }
     }
   )
   withr::defer(
     {
-      globals$side_effects$steps <- NULL
+      globals$side_effects$counter <- NULL
     },
     envir = envir
   )
-  list(store = store, step = step)
+
+  tick <- new_primitive(
+    "tick",
+    function() {
+      graph_desc_add(self, list(), infer_fn = function(counter) list(value = counter, counter = counter))[[1L]]
+    },
+    side_effects = "counter",
+    register = FALSE
+  )
+  tick[["stablehlo"]] <- function(counter) {
+    list(counter, hlo_add(counter, hlo_scalar(1L, dtype = "i32", func = counter$func)))
+  }
+  list(store = store, tick = tick)
 }

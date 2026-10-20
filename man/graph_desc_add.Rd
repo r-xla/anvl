@@ -51,7 +51,7 @@ this \code{NULL}.}
 \item{side_effects}{(\code{NULL} | \code{character()})\cr
 The side effects this call uses, of those the primitive declares (see
 \code{\link[=new_primitive]{new_primitive()}}); \code{NULL} for all of them. A call that does not use a side
-effect neither reads nor advances it, e.g. an unordered \code{\link[=prim_print]{prim_print()}}.}
+effect neither reads nor updates it, e.g. an unordered \code{\link[=prim_print]{prim_print()}}.}
 }
 \value{
 (\code{list} of \code{\link{GraphBox}})\cr

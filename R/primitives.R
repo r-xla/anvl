@@ -2529,9 +2529,7 @@ prim_if <- new_primitive(
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
     # A branch that uses a side effect closes over its value. Both branches
-    # return the value they leave behind of a carried side effect as one more
-    # output; a counted one the call advances by the larger of the branches'
-    # advances.
+    # return the value they leave behind as one more output.
     carried <- side_effects_branches(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
@@ -2628,11 +2626,8 @@ prim_while <- new_primitive(
     }
 
     # A body that uses side effects carries them as the last members of the
-    # loop state, which `cond` takes too but does not read. The loop runs a
-    # number of times not known while tracing, so a counted side effect forks:
-    # the body advances a value derived from the current one, which the loop
-    # itself advances by one step, and drops it at the end.
-    carried <- side_effects_carry(current_desc, body_graph, fork = TRUE)
+    # loop state, which `cond` takes too but does not read.
+    carried <- side_effects_carry(current_desc, body_graph)
     cond_graph$inputs <- c(
       cond_graph$inputs,
       unname(unlist(
@@ -2828,9 +2823,6 @@ prim_scan <- new_primitive(
       desc = current_desc
     )
     out <- side_effects_take(current_desc, carried$names, out, at = n_user_carry)
-    for (i in which(vapply(carried$names, side_effect_is_counted, logical(1L)))) {
-      side_effect_advance(current_desc, carried$names[[i]], steps * carried$advance[[i]])
-    }
     unflatten(body_graph$out_tree, out)
   },
   subgraphs = "body",

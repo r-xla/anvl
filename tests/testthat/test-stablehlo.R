@@ -50,30 +50,30 @@ test_that("donate: nested list inputs", {
 })
 
 describe("stablehlo() of a graph with side effects", {
-  it("takes their values after the inputs and returns none of them the host does not receive", {
-    s <- local_steps()
-    graph <- trace_fn(function(x) x + s$step(), list(x = nv_aval("i32", 2L)))
+  it("takes the values the host supplies after the inputs and returns those it receives after the outputs", {
+    x <- local_counter(from = "host")
+    graph <- trace_fn(function(y) y + x$tick(), list(y = nv_aval("i32", 2L)))
     func <- stablehlo(graph)[[1L]]
-    # `x`, then the value of the counted side effect
+    # `y`, then the counter
     expect_length(func$inputs, 2L)
     expect_true(all(vapply(func$inputs, function(input) is.null(input$alias), logical(1L))))
-    expect_length(func$outputs, 1L)
+    # the sum, then the counter
+    expect_length(func$outputs, 2L)
   })
 
   it("never donates a side effect's value", {
-    s <- local_steps()
-    graph <- trace_fn(function(x) x + s$step(), list(x = nv_aval("i32", 4L)))
-    inputs <- stablehlo(graph, donate = "x")[[1L]]$inputs
-    # the donated input `x` is aliased with the output, the side effect is not
+    x <- local_counter(from = "host")
+    graph <- trace_fn(function(y) y + x$tick(), list(y = nv_aval("i32", 4L)))
+    inputs <- stablehlo(graph, donate = "y")[[1L]]$inputs
+    # the donated input `y` is aliased with the output, the counter is not
     expect_identical(inputs[[1L]]$alias, 0L)
     expect_null(inputs[[2L]]$alias)
   })
 
-  it("adds no phantom input for the result of a side effect", {
-    s <- local_steps()
-    graph <- trace_fn(function(x) x + s$step(), list(x = nv_aval("i32", 2L)))
-    out <- stablehlo(graph, donate_unaliased_outputs = TRUE, platform = "cpu")
-    expect_length(out[[3L]], 1L)
-    expect_identical(out[[1L]]$inputs[[3L]]$alias, 0L)
+  it("builds a value the program creates itself, and takes no input for it", {
+    graph <- trace_fn(function(y) nv_print(y, ordered = TRUE), list(y = nv_aval("f32", 2L)))
+    func <- stablehlo(graph)[[1L]]
+    expect_length(func$inputs, 1L)
+    expect_length(func$outputs, 1L)
   })
 })
