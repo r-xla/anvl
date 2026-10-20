@@ -1,10 +1,8 @@
+# One-off: check Windows against the PJRT plugin from r-xla/pjrt-builds'
+# windows-jax-build branch. Do not merge.
 on:
-  schedule:
-    - cron: '0 1 * * 1'
   push:
-    branches: [main, master]
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    branches: [test/windows-jax-pjrt]
   workflow_dispatch:
 
 name: R-CMD-check.yaml
@@ -31,21 +29,9 @@ jobs:
         env:
           FULL: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
         run: |
-          if [ "$FULL" = "true" ]; then
-            config='[
-              {"os": "macos", "runner": "macos-latest", "r": "release", "device": "cpu"},
-              {"os": "macos-intel", "runner": "macos-15-intel", "r": "release", "device": "cpu"},
-              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "device": "cpu"},
-              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "device": "cpu", "torch": true},
-              {"os": "windows", "runner": "windows-latest", "r": "release", "device": "cpu"},
-              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "oldrel-1", "device": "cpu"},
-              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "oldrel-2", "device": "cpu"}
-            ]'
-          else
-            config='[
-              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "device": "cpu", "torch": true}
-            ]'
-          fi
+          config='[
+            {"os": "windows", "runner": "windows-latest", "r": "release", "device": "cpu"}
+          ]'
           echo "config=$(echo "$config" | tr -d '\n' | tr -s ' ')" >> "$GITHUB_OUTPUT"
 
   R-CMD-check:
@@ -69,6 +55,7 @@ jobs:
       ANVL_DEFAULT_DEVICE: ${{ matrix.config.device }}
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
+      PJRT_PLUGIN_URL_CPU: https://github.com/r-xla/pjrt-builds/releases/download/pjrt-windows-test/pjrt-6b73c4c-windows-x86_64.tar.gz
 
     steps:
       - name: Install protobuf
