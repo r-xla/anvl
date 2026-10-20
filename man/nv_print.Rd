@@ -4,12 +4,16 @@
 \alias{nv_print}
 \title{Print Array}
 \usage{
-nv_print(x)
+nv_print(x, ordered = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
+
+\item{ordered}{(\code{logical(1)})\cr
+Whether the print is ordered: an ordered print runs after every ordered
+print before it in the program and before every one after it.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -23,9 +27,12 @@ is used for printing.
 }
 \section{Order of prints}{
 
-A print is currently not ordered with respect to other prints.
-Due to compiler reordering it is possible that the order of the
-prints differs from their location in the code.
+Prints are not ordered by default: the compiler may run the prints of a
+program in any order that respects the data they print, so their output may
+come in a different order than the prints in the code. With \code{ordered = TRUE}
+a print is ordered with respect to every other ordered print of the program.
+Note that this can have some performance implications due to restricting
+the order of execution.
 }
 
 \examples{
@@ -35,6 +42,14 @@ x <- nv_array(c(1, 2, 3))
 nv_print(x)
 # RData is printed at the default dtype
 nv_print(1)
+
+# ordered prints run in the order of the code
+f <- jit(function(x) {
+  nv_print(x, ordered = TRUE)
+  nv_print(x * 2, ordered = TRUE)
+  x
+})
+invisible(f(x))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

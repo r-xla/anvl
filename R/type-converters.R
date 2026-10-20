@@ -1,6 +1,9 @@
 # The `stablehlo::ValueType` of an `AbstractArray` (not an `RData`): a tensor
 # type of its data type and shape.
 at2vt <- function(x) {
+  if (is_abstract_token(x)) {
+    return(stablehlo::ValueType("token"))
+  }
   stopifnot(inherits(x, "AbstractArray"))
   stablehlo::ValueType(stablehlo::TensorType(x$dtype, x$shape))
 }

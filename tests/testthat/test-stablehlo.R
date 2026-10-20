@@ -48,3 +48,32 @@ test_that("donate: nested list inputs", {
     c(0L, 1L)
   )
 })
+
+describe("stablehlo() of a graph with side effects", {
+  it("takes the values the host supplies after the inputs and returns those it receives after the outputs", {
+    x <- local_counter(from = "host")
+    graph <- trace_fn(function(y) y + x$tick(), list(y = nv_aval("i32", 2L)))
+    func <- stablehlo(graph)[[1L]]
+    # `y`, then the counter
+    expect_length(func$inputs, 2L)
+    expect_true(all(vapply(func$inputs, function(input) is.null(input$alias), logical(1L))))
+    # the sum, then the counter
+    expect_length(func$outputs, 2L)
+  })
+
+  it("never donates a side effect's value", {
+    x <- local_counter(from = "host")
+    graph <- trace_fn(function(y) y + x$tick(), list(y = nv_aval("i32", 4L)))
+    inputs <- stablehlo(graph, donate = "y")[[1L]]$inputs
+    # the donated input `y` is aliased with the output, the counter is not
+    expect_identical(inputs[[1L]]$alias, 0L)
+    expect_null(inputs[[2L]]$alias)
+  })
+
+  it("builds a value the program creates itself, and takes no input for it", {
+    graph <- trace_fn(function(y) nv_print(y, ordered = TRUE), list(y = nv_aval("f32", 2L)))
+    func <- stablehlo(graph)[[1L]]
+    expect_length(func$inputs, 1L)
+    expect_length(func$outputs, 1L)
+  })
+})

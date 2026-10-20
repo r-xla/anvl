@@ -446,6 +446,76 @@ f(list(w = nv_scalar(2), b = nv_scalar(5)), nv_scalar(3))
 jit_cache_size(f)
 ```
 
+### Side Effects
+
+An `AnvlGraph` describes a pure function: its outputs depend only on its inputs, and running it changes nothing else.
+Printing in the order of the code does not fit this picture: the compiler may run two prints in any order that respects the data they print, so ordering them needs a value that passes from one print to the next, which the user never sees.
+{anvl} handles such values as **side effects**: a value that some primitives read and update, which the user never passes, and which {anvl} **threads** through the trace instead.
+
+A side effect is registered once with `register_side_effect()`, with the types of its values (`AbstractArray()`s and `AbstractToken()`s), which a call takes as arguments named like them and returns, updated, as its last outputs, and two choices:
+
+- **Where the values come from**: from outside of the program, through a function `get()` that returns them, which the program takes as inputs; or from the program itself, through a function `build(desc)` that adds the calls that create them to the trace, where their first use needs them.
+- **What happens after a run**: nothing, so that the program drops the values at its end, or `after_run(values)`, which the host calls with the values the program leaves behind, which it returns for that purpose.
+
+| Side effect | Values | Come from | After a run |
+|---|---|---|---|
+| token that orders prints | `print_token` (a token) | `build()`: a call of `prim_create_token()` | dropped |
+
+The token that orders prints is a StableHLO token, of the type `AbstractToken()`, which an ordered print (`prim_print(ordered = TRUE)`) takes and returns: a print that takes the token another one returned depends on it and so runs after it.
+A token holds no data, so it costs nothing to carry, and never reaches R.
+A primitive declares the side effects it uses with the `side_effects` argument of `new_primitive()`, and a call can use fewer of them, as an unordered print uses none:
+
+```r
+prim_print <- new_primitive("print", function(x, ordered = FALSE) {
+  ...
+  graph_desc_add(
+    self, list(x = as_anvl_array(x)), list(header = header, footer = footer),
+    infer_fn = infer_print, side_effects = if (ordered) "print_token" else character()
+  )
+  x
+}, static = "ordered", side_effects = "print_token")
+```
+
+While tracing, the `GraphDescriptor` holds the *current* values of each side effect it has used, and `graph_desc_add()` passes them to the call as more operands.
+The call outputs the updated values last, which become the new current ones, so the next ordered print takes the token the previous one returned.
+Where a side effect comes from on its first use is decided by the `side_effects_mode` whoever opens the trace passes to `local_descriptor()`:
+
+- `"input"`: the values are fresh inputs of the graph, or, for a side effect the program builds, created by the calls its `build()` adds; the graph returns the values of the side effects the host receives.
+  The top-level trace of `jit()` takes side effects this way.
+- `"loop"`: the values are fresh inputs of the graph, which also returns its last values, for the next iteration to take.
+  The bodies of `nv_while()` and `nv_scan()` take side effects this way.
+- `"capture"`: the values are the current ones of the enclosing trace, which the graph closes over like any other captured value.
+  The branches of `nv_if()` and the function differentiated by `gradient()` take side effects this way.
+- Neither: using a side effect is an error.
+  This is the case for the condition of `nv_while()` and the functions of a reduction or scatter, which have no way to hand updated values back.
+
+A side effect is only registered on its first use, so a function that does not print in order carries no token.
+The graph records the side effects it uses in its `side_effects` field, apart from its `inputs` and `outputs`, so that `in_tree` and `out_tree` keep describing what the user passes and gets back:
+
+```{r}
+graph <- trace_fn(
+  function(x) {
+    nv_print(x, ordered = TRUE)
+    nv_print(x * 2, ordered = TRUE)
+  },
+  list(x = nv_aval("f32", 2L))
+)
+graph
+names(graph$side_effects)
+```
+
+For the higher-order primitives, this means:
+
+- `nv_scan()` and `nv_while()`: if the body uses a side effect, its values become more members of the loop state, so every iteration takes the values the previous one returns, and the loop's final values become the enclosing trace's current ones. The condition of `nv_while()` takes them too, but does not read them.
+- `nv_if()`: the branches close over the current values. Both return the values they leave behind as more outputs -- a branch that does not use the side effect the values it closes over -- and the outputs of the `if` become the enclosing trace's current ones.
+- `gradient()`: the differentiated function closes over the values, and once the graph has been replayed by the reverse-mode transformation, the values it leaves behind become the enclosing trace's current ones.
+
+At the top level, `stablehlo()` lowers the values of a side effect from outside of the program to more arguments after the graph's inputs, and returns the values of a side effect the host receives as more results after the graph's outputs.
+The pjrt backend hands them to pjrt's dispatcher as *implicit inputs and outputs* of the program: before every run it reads the implicit inputs with `get()`, and after every successful run it calls the entry's `on_success` with the implicit outputs, which calls each side effect's `after_run()` with its outputs.
+None of this is part of the cache key: whether a program uses a side effect is decided by the program, not by the arguments of the call.
+
+The print token does not support the quickr backend, so quickr cannot run a function that prints in order.
+
 ## Backend and Device in `jit()`
 
 A compiled program runs on one backend and on one device of that backend.

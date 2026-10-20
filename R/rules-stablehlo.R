@@ -10,9 +10,9 @@ index_dtype_of <- function(output_types, i) {
   as.character(output_types[[i]]$type$dtype)
 }
 
-region_input <- function(dtype, shape = integer()) {
+# An input of the region under construction, of the `stablehlo::ValueType` `vt`.
+region_input <- function(vt) {
   func <- stablehlo::.current_func()
-  vt <- stablehlo::ValueType(dtype, shape = shape)
   id <- stablehlo::ValueId()
   func$inputs <- stablehlo::FuncInputs(c(
     func$inputs,
@@ -673,27 +673,38 @@ prim_rng_bit_generator[["stablehlo"]] <- function(state, rng_algorithm, dtype, s
   hlo_rng_bit_generator(state, rng_algorithm, dtype, shape)
 }
 
-prim_print[["stablehlo"]] <- function(x, header, footer) {
+prim_create_token[["stablehlo"]] <- function() {
+  list(hlo_after_all())
+}
+
+# An ordered print also takes the token and returns it, which orders it after
+# the print that returned the token and before the one that takes it next.
+prim_print[["stablehlo"]] <- function(x, print_token = NULL, header, footer) {
   backend_config <- stablehlo::CustomOpBackendConfig(list(
     stablehlo::StringAttr(name = "print_header", value = header),
     stablehlo::StringAttr(name = "print_footer", value = footer)
   ))
-
   # row-major layout in minor-to-major order: [N-1, ..., 1, 0]
   row_major <- rev(seq_len(length(shape(x))) - 1L)
-
-  # has side-effect
-  hlo_custom_call(
-    x,
-    call_target_name = "print_tensor",
-    api_version = 4L,
-    has_side_effect = TRUE,
-    backend_config = backend_config,
-    operand_layouts = list(row_major),
-    result_layouts = list()
+  ordered <- !is.null(print_token)
+  token <- do.call(
+    hlo_custom_call,
+    c(
+      list(x),
+      if (ordered) list(print_token),
+      list(
+        call_target_name = if (ordered) "print_tensor_ordered" else "print_tensor",
+        api_version = 4L,
+        has_side_effect = TRUE,
+        backend_config = backend_config,
+        output_types = if (ordered) list(stablehlo::ValueType("token")),
+        operand_layouts = c(list(row_major), if (ordered) list(integer())),
+        result_layouts = if (ordered) list(integer()) else list()
+      )
+    )
   )
-  # we just return the input
-  list(x)
+  # the input is returned as it is
+  c(list(x), if (ordered) list(token))
 }
 
 # higher order primitives --------------------------------------------------------
@@ -757,10 +768,7 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   # `region_input()` names them with auto value ids, which is what keeps one
   # scan lowered inside another's body from redefining the outer region's.
   declare_state <- function() {
-    vals <- lapply(state, function(s) {
-      vt <- s$value_type
-      region_input(as.character(vt$type$dtype), shape(vt))
-    })
+    vals <- lapply(state, function(s) region_input(s$value_type))
     list(i = vals[[1L]], rest = vals[-1L])
   }
 
@@ -1141,8 +1149,8 @@ pivots_to_permutation <- function(pivots, n) {
   init_i <- hlo_scalar(0L, dtype = "i32", func = func)
 
   cond_func <- stablehlo::local_func("")
-  i <- region_input("i32")
-  region_input("i32", n) # unused in cond; declared to match state shape
+  i <- region_input(vt("i32", integer()))
+  region_input(vt("i32", n)) # unused in cond; declared to match state shape
   cond_func <- hlo_return(hlo_compare(
     i,
     hlo_scalar(k, dtype = "i32"),
@@ -1155,8 +1163,8 @@ pivots_to_permutation <- function(pivots, n) {
   # perm[j], where j = pivots[i] - 1 converts pivots' 1-based value to a
   # 0-based index.
   body_func <- stablehlo::local_func("")
-  i <- region_input("i32")
-  perm <- region_input("i32", n)
+  i <- region_input(vt("i32", integer()))
+  perm <- region_input(vt("i32", n))
   # constant in the region
   pivots_in_body <- stablehlo::FuncValue(
     pivots$value_id,

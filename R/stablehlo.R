@@ -53,9 +53,13 @@ env_get <- function(env, gval) {
 #' The rule for translating a primitive to stablehlo is `prim_<name>[["stablehlo"]]`.
 #'
 #' The arguments of the resulting function are, in this order: the graph's
-#' constants, the graph's inputs, and the phantom donated inputs (when
+#' constants, the graph's inputs, the values of the graph's side effects that
+#' come from the host, and the phantom donated inputs (when
 #' `donate_unaliased_outputs = TRUE`), one per output that is not already
-#' aliased to a donated input, in the order of the outputs.
+#' aliased to a donated input, in the order of the outputs. A side effect whose value is created in the program, such as the
+#' token that orders prints, is built inside it. Its results are the graph's
+#' outputs, then the values of the side effects the host receives; any other
+#' side effect's updated value is not returned.
 #'
 #' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
@@ -140,19 +144,24 @@ stablehlo <- function(
   # update computation or a while body) builds an anonymous nested func
   # inside the enclosing build.
   func <- stablehlo::local_func(id = id)
+  if (any(vapply(graph$side_effects[side_effects_from_host(graph)], function(s) is.null(s$input), logical(1L)))) {
+    cli_abort("Internal error: a graph that closes over a side effect cannot be lowered on its own.")
+  }
+  side_effect_inputs <- side_effects_values(graph, side_effects_from_host(graph), "input")
   n_declared <- length(graph$inputs) - length(captured)
-  inps <- c(graph$constants, graph$inputs[seq_len(n_declared)])
+  inps <- c(graph$constants, graph$inputs[seq_len(n_declared)], side_effect_inputs)
   for (i in seq_along(captured)) {
     env_add(env, graph$inputs[[n_declared + i]], captured[[i]])
   }
 
   # Compute which inputs are donated (only graph$inputs, not constants)
   donate_flat <- if (length(donate) > 0L && !is.null(graph$in_tree)) {
-    # Constants are never donated, inputs may be
-    c(
+    # Constants and side effects are never donated, inputs may be
+    mask <- c(
       rep(FALSE, length(graph$constants)),
       pjrt::tree_leaf_mask(graph$in_tree, donate)
     )
+    c(mask, rep(FALSE, max(0L, length(inps) - length(mask))))
   } else {
     rep(FALSE, length(inps))
   }
@@ -201,18 +210,19 @@ stablehlo <- function(
     list(dtype = out_aval$dtype, shape = shape(out_aval))
   })
 
-  outputs <- lower_graph_calls(graph, env, func)
+  received <- side_effects_values(graph, side_effects_to_host(graph), "output")
+  outputs <- lower_graph_calls(graph, env, func, c(graph$outputs, received))
   func <- do.call(hlo_return, outputs)
 
   list(func, graph$constants, phantom_specs)
 }
 
 # Lower `graph`'s calls into `func`, reading its inputs and constants from `env`
-# and returning one FuncValue per graph output. stablehlo() uses it for a whole
+# and returning one FuncValue per node of `outputs`. stablehlo() uses it for a whole
 # function; a rule that inlines a sub-graph into a region it builds by hand
 # (prim_scan's loop body) first seeds `env` with the region's values for the
 # sub-graph's inputs.
-lower_graph_calls <- function(graph, env, func) {
+lower_graph_calls <- function(graph, env, func, outputs = graph$outputs) {
   gnode_to_fval <- function(gnode) {
     fval <- env_get(env, gnode)
     if (!identical(fval$func, func)) {
@@ -266,7 +276,7 @@ lower_graph_calls <- function(graph, env, func) {
     do_call(call)
   }
 
-  lapply(graph$outputs, \(x) {
+  lapply(outputs, \(x) {
     # an output is a literal only when the function returns one directly
     if (is_graph_literal(x)) literal_to_fval(x) else gnode_to_fval(x)
   })

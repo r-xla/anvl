@@ -419,11 +419,13 @@ reference:
   - subtitle: Abstract Types
     contents:
       - nv_aval
+      - AbstractValue
       - AbstractArray
       - ConcreteArray
       - LiteralArray
       - RData
       - IotaArray
+      - AbstractToken
       - to_abstract
       - arrayish
 

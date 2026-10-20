@@ -592,7 +592,8 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
 
 # Printing hands its argument back unchanged, so the cotangent passes through.
 prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  list(if (required[[1L]]) grads[[1L]])
+  # an ordered print's token has no gradient
+  c(list(if (required[[1L]]) grads[[1L]]), rep(list(NULL), length(inputs) - 1L))
 })
 
 # convert reverse -----------------

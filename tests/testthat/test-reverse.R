@@ -612,3 +612,22 @@ test_that("gradient() inside a sub-graph takes an R argument at the data type it
   })
   expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
 })
+
+describe("graph_gradient", {
+  it("keeps the side effects of the graph it differentiates", {
+    x <- local_counter(from = "host")
+    graph <- trace_fn(
+      function(y) y * nv_convert(x$tick(), dtype = "f32"),
+      list(y = nv_aval("f32", integer()))
+    )
+    grad <- graph_gradient(graph, "y")
+    expect_named(grad$side_effects, "counter")
+    expect_identical(grad$side_effects$counter$input, graph$side_effects$counter$input)
+    # the counter is the last input of the lowered program (after the seed of
+    # the backward pass and `y`), which returns it after the gradient, as the
+    # forward pass leaves it
+    func <- stablehlo(grad)[[1L]]
+    expect_length(func$inputs, 3L)
+    expect_length(func$outputs, 2L)
+  })
+})

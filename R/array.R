@@ -913,7 +913,7 @@ AbstractArray <- function(dtype, shape) {
 
   structure(
     list(dtype = dtype, shape = shape),
-    class = "AbstractArray"
+    class = c("AbstractArray", "AbstractValue")
   )
 }
 
@@ -923,6 +923,59 @@ is_abstract_array <- function(x) {
 
 is_concrete_array <- function(x) {
   inherits(x, "ConcreteArray")
+}
+
+#' @title Abstract Value
+#' @description
+#' The class that the types of the values in an [`AnvlGraph`] inherit from:
+#' an [`AbstractArray`] (with its subclasses [`ConcreteArray`],
+#' [`LiteralArray`], [`IotaArray`] and [`RData`]) for an array, and an
+#' [`AbstractToken`] for a token. It has no constructor of its own.
+#' @seealso [AbstractArray], [AbstractToken]
+#' @examples
+#' inherits(nv_aval("f32", 2L), "AbstractValue")
+#' inherits(AbstractToken(), "AbstractValue")
+#' @name AbstractValue
+NULL
+
+is_abstract_value <- function(x) {
+  inherits(x, "AbstractValue")
+}
+
+#' @title Abstract Token
+#' @description
+#' The type of a token: a value without data that orders operations with side
+#' effects, such as the prints of [`prim_print(ordered = TRUE)`][prim_print].
+#' An operation that takes a token another one returned runs after it. A
+#' program creates its tokens and threads them from one operation to the next;
+#' a token has no data type or shape and never reaches R.
+#' @return (`AbstractToken`)
+#' @seealso [AbstractValue], [AbstractArray]
+#' @examples
+#' AbstractToken()
+#' @export
+AbstractToken <- function() {
+  structure(list(), class = c("AbstractToken", "AbstractValue"))
+}
+
+is_abstract_token <- function(x) {
+  inherits(x, "AbstractToken")
+}
+
+#' @export
+repr.AbstractToken <- function(x, ...) {
+  "token"
+}
+
+#' @export
+format.AbstractToken <- function(x, ...) {
+  "AbstractToken()"
+}
+
+#' @export
+print.AbstractToken <- function(x, ...) {
+  cat(format(x), "\n")
+  invisible(x)
 }
 
 #' @method dtype AbstractArray
@@ -976,7 +1029,7 @@ ConcreteArray <- function(data) {
       shape = Shape(shape(data)),
       data = data
     ),
-    class = c("ConcreteArray", "AbstractArray")
+    class = c("ConcreteArray", "AbstractArray", "AbstractValue")
   )
 }
 
@@ -1031,7 +1084,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
       dtype = dtype,
       shape = shape
     ),
-    class = c("LiteralArray", "AbstractArray")
+    class = c("LiteralArray", "AbstractArray", "AbstractValue")
   )
 }
 
@@ -1076,7 +1129,7 @@ IotaArray <- function(shape, dtype, axis, start = 1L) {
   assert_int(start)
   structure(
     list(shape = shape, dtype = dtype, axis = axis, start = start),
-    class = c("IotaArray", "AbstractArray")
+    class = c("IotaArray", "AbstractArray", "AbstractValue")
   )
 }
 
@@ -1113,11 +1166,12 @@ print.IotaArray <- function(x, ...) {
 #'
 #' An [`RData`] has no data type to compare, so it is an error here, just as
 #' [`dtype()`][xlamisc::dtype] is. Give it a data type first, e.g. with
-#' [`nv_convert()`].
-#' @param e1 ([`AbstractArray`])\cr
-#'   First array to compare. Must not be an [`RData`].
-#' @param e2 ([`AbstractArray`])\cr
-#'   Second array to compare. Must not be an [`RData`].
+#' [`nv_convert()`]. Two [`AbstractToken`]s are of the same type, and a token
+#' and an array are not.
+#' @param e1 ([`AbstractValue`])\cr
+#'   First type to compare. Must not be an [`RData`].
+#' @param e2 ([`AbstractValue`])\cr
+#'   Second type to compare. Must not be an [`RData`].
 #' @return (`logical(1)`)
 #' @examples
 #' a <- nv_aval("f32", c(2L, 3L))
@@ -1141,8 +1195,11 @@ print.IotaArray <- function(x, ...) {
 #' try(neq_type(r, r))
 #' @export
 eq_type <- function(e1, e2) {
-  if (!inherits(e1, "AbstractArray") || !inherits(e2, "AbstractArray")) {
-    cli_abort("e1 and e2 must be AbstractArrays")
+  if (!is_abstract_value(e1) || !is_abstract_value(e2)) {
+    cli_abort("e1 and e2 must be AbstractValues")
+  }
+  if (is_abstract_token(e1) || is_abstract_token(e2)) {
+    return(is_abstract_token(e1) && is_abstract_token(e2))
   }
   if (is_rdata(e1) || is_rdata(e2)) {
     cli_abort(

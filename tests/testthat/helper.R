@@ -117,3 +117,55 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
   testthat::expect_equal(grads[[1L]], expected1)
   testthat::expect_equal(grads[[2L]], expected2)
 }
+
+# A side effect counting the calls of the primitive `tick` it returns. Its
+# value starts at `start` in the program (`from = "program"`) or comes from
+# `store$value` on the host (`from = "host"`); with `received = TRUE` the host
+# receives the value a program leaves behind in `store$received`, otherwise the
+# program drops it. Both are removed when `envir` exits.
+local_counter <- function(from = "program", start = 0L, received = TRUE, envir = parent.frame()) {
+  store <- new.env(parent = emptyenv())
+  store$value <- start
+  register_side_effect(
+    "counter",
+    avals = list(counter = AbstractArray(dtype = "i32", shape = integer())),
+    get = if (from == "host") function() list(store$value),
+    build = if (from == "program") {
+      function(desc) {
+        list(
+          counter = graph_desc_add(
+            prim_fill,
+            list(),
+            params = list(value = start, dtype = "i32", shape = integer()),
+            infer_fn = infer_fill,
+            desc = desc
+          )[[1L]]
+        )
+      }
+    },
+    after_run = if (received) {
+      function(values) {
+        store$received <- as_array(values[[1L]])
+      }
+    }
+  )
+  withr::defer(
+    {
+      globals$side_effects$counter <- NULL
+    },
+    envir = envir
+  )
+
+  tick <- new_primitive(
+    "tick",
+    function() {
+      graph_desc_add(self, list(), infer_fn = function(counter) list(value = counter, counter = counter))[[1L]]
+    },
+    side_effects = "counter",
+    register = FALSE
+  )
+  tick[["stablehlo"]] <- function(counter) {
+    list(counter, hlo_add(counter, hlo_scalar(1L, dtype = "i32", func = counter$func)))
+  }
+  list(store = store, tick = tick)
+}

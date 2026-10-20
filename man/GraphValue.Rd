@@ -4,11 +4,16 @@
 \alias{GraphValue}
 \title{Graph Value}
 \usage{
-GraphValue(aval)
+GraphValue(aval, label = NULL)
 }
 \arguments{
-\item{aval}{(\code{\link{AbstractArray}})\cr
-The abstract value of the variable.}
+\item{aval}{(\code{\link{AbstractValue}})\cr
+The type of the value: an \code{\link{AbstractArray}}, or an \code{\link{AbstractToken}} for a
+token.}
+
+\item{label}{(\code{NULL} | \code{character(1)})\cr
+What the value is, for a printed graph to name it after, e.g. \code{"token"} for
+the token that orders prints, which is printed as \verb{\%token1}.}
 }
 \value{
 (\code{GraphValue})

@@ -4,6 +4,7 @@
 #' @include promotion.R
 #' @include primitive.R
 #' @include jit.R
+#' @include side-effects.R
 
 # `operands` names the two arguments: `lhs` / `rhs` for an operator whose two
 # sides play the same role, names of their own where they differ.
@@ -2519,14 +2520,17 @@ prim_if <- new_primitive(
 
     current_desc <- current_descriptor(silent = TRUE)
 
-    desc_true <- local_descriptor()
+    desc_true <- local_descriptor(side_effects_mode = "capture")
     true_graph <- trace_fn(true, list(), desc = desc_true)
-    desc_false <- local_descriptor()
+    desc_false <- local_descriptor(side_effects_mode = "capture")
     false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
+    # A branch that uses a side effect closes over its value. Both branches
+    # return the value they leave behind as one more output.
+    carried <- side_effects_branches(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
@@ -2539,6 +2543,7 @@ prim_if <- new_primitive(
       infer_fn = infer_cond,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried, out)
     unflatten(true_graph$out_tree, out)
   },
   subgraphs = c("true", "false"),
@@ -2609,7 +2614,7 @@ prim_while <- new_primitive(
 
     desc_cond <- local_descriptor()
     cond_graph <- trace_fn(cond, init, desc = desc_cond)
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
@@ -2620,17 +2625,30 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
+    # A body that uses side effects carries them as the last members of the
+    # loop state, which `cond` takes too but does not read.
+    carried <- side_effects_carry(current_desc, body_graph)
+    cond_graph$inputs <- c(
+      cond_graph$inputs,
+      unname(unlist(
+        lapply(carried$names, side_effect_graph_values),
+        recursive = FALSE
+      ))
+    )
+    operands <- c(flatten(init), carried$operands)
+
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
     captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = c(flatten(init), captures),
+      args = c(operands, captures),
       params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried$names, out)
 
     unflatten(body_graph$out_tree, out)
   },
@@ -2750,8 +2768,14 @@ prim_scan <- new_primitive(
       list(carry = st$carry, out = st$out)
     }
 
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # A body that uses side effects carries them as the last leaves of the
+    # carry.
+    n_user_carry <- n_carry
+    carried <- side_effects_carry(current_desc, body_graph, at = n_carry)
+    init_flat <- c(init_flat, carried$operands)
+    n_carry <- n_carry + length(carried$operands)
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
     captures <- purify_subgraphs(current_desc, list(body_graph))
@@ -2798,6 +2822,7 @@ prim_scan <- new_primitive(
       infer_fn = infer_fn,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried$names, out, at = n_user_carry)
     unflatten(body_graph$out_tree, out)
   },
   subgraphs = "body",
@@ -2942,6 +2967,7 @@ prim_top_k <- new_primitive(
 #' Bare R inputs print at their category's default data type.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
+#' @template param_print_ordered
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
 #' @template section_print_order
@@ -2959,7 +2985,8 @@ prim_top_k <- new_primitive(
 #' @export
 prim_print <- new_primitive(
   "print",
-  function(x) {
+  function(x, ordered = FALSE) {
+    assert_flag(ordered)
     # HACK: the header and footer are pre-computed here and passed as "params",
     # although they are not really ones: stablehlo does not carry the dtype the
     # way anvl prints it.
@@ -2999,14 +3026,55 @@ prim_print <- new_primitive(
     # `f32`. The stablehlo rule threads the operand through the same way, and
     # marks the custom call `has_side_effect` so it survives with its result
     # unused.
+    # An ordered print takes the token that orders prints and hands it on
+    # (see the side effect "print_token").
     graph_desc_add(
       self,
       list(x = as_anvl_array(x)),
       list(header = header, footer = footer),
-      infer_fn = infer_identity
+      infer_fn = infer_print,
+      side_effects = if (ordered) "print_token" else character()
     )
     x
+  },
+  static = "ordered",
+  side_effects = "print_token"
+)
+
+#' @title Primitive Token Creation
+#' @description
+#' Creates a token (see [AbstractToken()]), which orders operations with side
+#' effects: an operation that takes a token runs after the one that returned
+#' it. A trace creates the token that orders its prints with it, where the
+#' first ordered print (see [prim_print()]) needs one.
+#' @return ([`arrayish`])\cr
+#'   A token.
+#' @templateVar primitive_id create_token
+#' @template section_rules
+#' @seealso [AbstractToken()], [prim_print()]
+#' @examples
+#' graph <- trace_fn(prim_create_token, list())
+#' graph
+#' @export
+prim_create_token <- new_primitive(
+  "create_token",
+  function() {
+    graph_desc_add(self, list(), infer_fn = infer_create_token)[[1L]]
   }
+)
+
+# The token that orders the prints of a program (see `prim_print(ordered =
+# TRUE)`): an ordered print takes it and returns a new one, so that a print
+# that takes the token another one returned runs after it. A program creates it
+# where its first ordered print needs it, carries it through loops and branches
+# like any value, and drops it at the end.
+register_side_effect(
+  "print_token",
+  avals = list(print_token = AbstractToken()),
+  build = function(desc) {
+    list(print_token = graph_desc_add(prim_create_token, list(), infer_fn = infer_create_token, desc = desc)[[1L]])
+  },
+  labels = "token"
 )
 
 # RNG primitives

@@ -10,11 +10,11 @@ eq_type(e1, e2)
 neq_type(e1, e2)
 }
 \arguments{
-\item{e1}{(\code{\link{AbstractArray}})\cr
-First array to compare. Must not be an \code{\link{RData}}.}
+\item{e1}{(\code{\link{AbstractValue}})\cr
+First type to compare. Must not be an \code{\link{RData}}.}
 
-\item{e2}{(\code{\link{AbstractArray}})\cr
-Second array to compare. Must not be an \code{\link{RData}}.}
+\item{e2}{(\code{\link{AbstractValue}})\cr
+Second type to compare. Must not be an \code{\link{RData}}.}
 }
 \value{
 (\code{logical(1)})
@@ -24,7 +24,8 @@ Compare two abstract arrays for type equality.
 
 An \code{\link{RData}} has no data type to compare, so it is an error here, just as
 \code{\link[xlamisc:dtype]{dtype()}} is. Give it a data type first, e.g. with
-\code{\link[=nv_convert]{nv_convert()}}.
+\code{\link[=nv_convert]{nv_convert()}}. Two \code{\link{AbstractToken}}s are of the same type, and a token
+and an array are not.
 }
 \examples{
 a <- nv_aval("f32", c(2L, 3L))

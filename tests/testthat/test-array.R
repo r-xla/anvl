@@ -127,6 +127,7 @@ test_that("AbstractArray", {
   )
   expect_snapshot(x)
   expect_true(inherits(x, "AbstractArray"))
+  expect_true(inherits(x, "AbstractValue"))
   expect_true(eq_type(x, x))
 
   expect_false(
@@ -344,8 +345,30 @@ describe("eq_type", {
 
   it("errors for values that are not AbstractArrays", {
     x <- AbstractArray("f32", integer())
-    expect_error(eq_type(x, 1), "must be AbstractArrays")
-    expect_error(eq_type(1, x), "must be AbstractArrays")
+    expect_error(eq_type(x, 1), "must be AbstractValues")
+    expect_error(eq_type(1, x), "must be AbstractValues")
+  })
+
+  it("compares tokens only equal to tokens", {
+    x <- AbstractArray("f32", integer())
+    expect_true(eq_type(AbstractToken(), AbstractToken()))
+    expect_false(eq_type(AbstractToken(), x))
+    expect_false(eq_type(x, AbstractToken()))
+  })
+})
+
+describe("AbstractToken", {
+  it("is an AbstractValue", {
+    expect_s3_class(AbstractToken(), "AbstractValue")
+  })
+
+  it("is shown as a token", {
+    expect_identical(repr(AbstractToken()), "token")
+    expect_identical(format(AbstractToken()), "AbstractToken()")
+  })
+
+  it("is lowered to a stablehlo token", {
+    expect_true(at2vt(AbstractToken()) == stablehlo::ValueType("token"))
   })
 })
 

@@ -1231,6 +1231,123 @@ test_that("prim_print hands its argument back untouched", {
   expect_equal(same, x)
 })
 
+describe("prim_create_token", {
+  it("creates a token", {
+    graph <- trace_fn(prim_create_token, list())
+    expect_true(is_abstract_token(graph$outputs[[1L]]$aval))
+    func <- stablehlo(graph)[[1L]]
+    expect_match(repr(func), "stablehlo.after_all", fixed = TRUE)
+  })
+})
+
+describe("prim_print(ordered = TRUE)", {
+  # The integers the prints of `f(...)` show, in the order they came out.
+  printed <- function(f, ...) {
+    out <- capture.output(invisible(f(...)))
+    as.integer(trimws(grep("^ *-?[0-9]+$", out, value = TRUE)))
+  }
+
+  it("runs ordered prints in the order of the code", {
+    f <- jit(function(x) {
+      for (i in 1:8) {
+        prim_print(x + i, ordered = TRUE)
+      }
+      x
+    })
+    expect_identical(printed(f, nv_array(0L)), 1:8)
+  })
+
+  it("orders the prints of a loop iteration by iteration and after the code before it", {
+    f <- jit(function() {
+      prim_print(nv_scalar(-1L), ordered = TRUE)
+      nv_while(list(i = 0L), function(i) i < 4L, function(i) {
+        prim_print(i, ordered = TRUE)
+        prim_print(i + 100L, ordered = TRUE)
+        list(i = i + 1L)
+      })
+      prim_print(nv_scalar(-2L), ordered = TRUE)
+    })
+    expect_identical(printed(f), c(-1L, 0L, 100L, 1L, 101L, 2L, 102L, 3L, 103L, -2L))
+  })
+
+  it("orders the prints of the branch nv_if takes", {
+    f <- jit(function(p) {
+      prim_print(nv_scalar(1L), ordered = TRUE)
+      nv_if(p, function() prim_print(nv_scalar(2L), ordered = TRUE), function() {
+        prim_print(nv_scalar(3L), ordered = TRUE)
+      })
+      prim_print(nv_scalar(4L), ordered = TRUE)
+    })
+    expect_identical(printed(f, TRUE), c(1L, 2L, 4L))
+    expect_identical(printed(f, FALSE), c(1L, 3L, 4L))
+  })
+
+  it("orders the prints of the steps of nv_scan", {
+    f <- jit(function() {
+      nv_scan(
+        init = nv_scalar(0L),
+        body = function(carry, x) {
+          prim_print(carry, ordered = TRUE)
+          list(carry = carry + 1L, out = carry)
+        },
+        steps = 3L
+      )$carry
+    })
+    expect_identical(printed(f), 0:2)
+  })
+
+  it("threads a token from one ordered print to the next", {
+    graph <- trace_fn(
+      function(x) {
+        prim_print(x, ordered = TRUE)
+        prim_print(x, ordered = TRUE)
+      },
+      list(x = nv_aval("f32", 2L))
+    )
+    expect_named(graph$side_effects, "print_token")
+    calls <- graph$statements
+    # the first print takes the token the program creates, the second the one
+    # the first returns
+    expect_identical(calls[[2L]]$inputs[[2L]], calls[[1L]]$outputs[[1L]])
+    expect_identical(calls[[3L]]$inputs[[2L]], calls[[2L]]$outputs[[2L]])
+    expect_true(is_abstract_token(calls[[2L]]$outputs[[2L]]$aval))
+    # the token is built in the program, which neither takes nor returns it
+    func <- stablehlo(graph)[[1L]]
+    expect_length(func$inputs, 1L)
+    expect_length(func$outputs, 1L)
+  })
+
+  it("leaves the names of a loop's state in its errors", {
+    f <- jit(function() {
+      nv_while(list(i = 0L, s = 0L), function(i, s) i < 3L, function(i, s) {
+        prim_print(i, ordered = TRUE)
+        list(i = i + 1L, s = nv_scalar(1))
+      })
+    })
+    expect_error(f(), "`s` enters as")
+  })
+
+  it("creates the token where the first ordered print needs it, not as an input", {
+    graph <- trace_fn(
+      function(x) {
+        y <- x + 1
+        prim_print(y, ordered = TRUE)
+      },
+      list(x = nv_aval("f32", 2L))
+    )
+    names <- vapply(graph$statements, function(call) call$primitive$name, character(1L))
+    expect_identical(tail(names, 2L), c("create_token", "print"))
+    expect_identical(sum(names == "create_token"), 1L)
+    expect_null(graph$side_effects$print_token$input)
+    expect_null(graph$side_effects$print_token$output)
+  })
+
+  it("leaves an unordered print without a token", {
+    graph <- trace_fn(function(x) prim_print(x), list(x = nv_aval("f32", 2L)))
+    expect_length(graph$side_effects, 0L)
+  })
+})
+
 describe("prim_sort", {
   it("sorts a 1D vector", {
     x <- nv_array(c(3, 1, 4, 2, 5))

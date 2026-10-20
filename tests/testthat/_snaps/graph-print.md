@@ -233,6 +233,22 @@
         return %1
       }
 
+# format.AnvlGraph() / names the side effects of a graph after its inputs and its outputs
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: i32[2], %counter1: i32[]) {
+        (%1, %counter2): (i32[], i32[]) = tick(%counter1)
+        %2: i32[2] = broadcast_in_axes [shape = 2, broadcast_axes = integer(0)] (%1)
+        %3: i32[2] = add(%x1, %2)
+        %token1: token = create_token()
+        (%4, %token2): (i32[2], token) = print [
+          header = "AnvlArray", footer = "[ i32{2} ]"
+        ] (%3, %token1)
+        return (%3, %counter2)
+      }
+
 # format.AnvlGraph() / has nothing between the signature and the return when there are no calls
 
     Code
