@@ -41,7 +41,7 @@
     Code
       graph
     Output
-      <AnvlGraph> (%x1: i32[], %key1: ui32[2], %counter1: ui64[]) {
+      <AnvlGraph> [%c1: i32[]] (%x1: i32[], %key1: ui32[2], %counter1: ui64[]) {
         (%key2, %counter2): (ui32[2], ui64[]) = fork_random_state(%key1, %counter1)
         (%1, %key3, %counter3): (i32[], ui32[2], ui64[]) = while [
           cond = (%x2: i32[], %key4: ui32[2], %counter5: ui64[], %x3: i32[]) {
@@ -55,7 +55,7 @@
             return (%5, %key5, %counter7)
           },
           n_captures = 1
-        ] (0:i32, %key2, %counter2, %x1)
+        ] (%c1, %key2, %counter2, %x1)
         %counter4: ui64[] = add(%counter1, 1:ui64)
         %2: ui32[3] = sample_bits [shape = 3, dtype = "ui32"] (%key1, %counter4)
         return (%1, %2)

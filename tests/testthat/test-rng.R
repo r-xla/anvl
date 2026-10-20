@@ -615,7 +615,7 @@ describe("the global random state in a traced graph", {
   it("draws after an nv_while loop at the counter after its fork", {
     graph <- trace_fn(
       function(n) {
-        out <- nv_while(list(i = 0L), function(i) i < n, function(i) {
+        out <- nv_while(list(i = nv_scalar(0L, dtype = "i32")), function(i) i < n, function(i) {
           prim_sample_bits(2L, "ui32")
           list(i = i + 1L)
         })
