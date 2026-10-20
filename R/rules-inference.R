@@ -894,8 +894,13 @@ infer_fill <- function(value, shape, dtype) {
   ))
 }
 
-infer_identity <- function(x, ...) {
-  list(x)
+# A print hands its operand back, and an ordered one the token too.
+infer_create_token <- function() {
+  list(AbstractToken())
+}
+
+infer_print <- function(x, print_token = NULL, ...) {
+  c(list(x), if (!is.null(print_token)) list(print_token = print_token))
 }
 
 # ---------------------------------------------------------------------------

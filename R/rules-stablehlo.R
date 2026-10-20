@@ -673,27 +673,38 @@ prim_rng_bit_generator[["stablehlo"]] <- function(state, rng_algorithm, dtype, s
   hlo_rng_bit_generator(state, rng_algorithm, dtype, shape)
 }
 
-prim_print[["stablehlo"]] <- function(x, header, footer) {
+prim_create_token[["stablehlo"]] <- function() {
+  list(hlo_after_all())
+}
+
+# An ordered print also takes the token and returns it, which orders it after
+# the print that returned the token and before the one that takes it next.
+prim_print[["stablehlo"]] <- function(x, print_token = NULL, header, footer) {
   backend_config <- stablehlo::CustomOpBackendConfig(list(
     stablehlo::StringAttr(name = "print_header", value = header),
     stablehlo::StringAttr(name = "print_footer", value = footer)
   ))
-
   # row-major layout in minor-to-major order: [N-1, ..., 1, 0]
   row_major <- rev(seq_len(length(shape(x))) - 1L)
-
-  # has side-effect
-  hlo_custom_call(
-    x,
-    call_target_name = "print_tensor",
-    api_version = 4L,
-    has_side_effect = TRUE,
-    backend_config = backend_config,
-    operand_layouts = list(row_major),
-    result_layouts = list()
+  ordered <- !is.null(print_token)
+  token <- do.call(
+    hlo_custom_call,
+    c(
+      list(x),
+      if (ordered) list(print_token),
+      list(
+        call_target_name = if (ordered) "print_tensor_ordered" else "print_tensor",
+        api_version = 4L,
+        has_side_effect = TRUE,
+        backend_config = backend_config,
+        output_types = if (ordered) list(stablehlo::ValueType("token")),
+        operand_layouts = c(list(row_major), if (ordered) list(integer())),
+        result_layouts = if (ordered) list(integer()) else list()
+      )
+    )
   )
-  # we just return the input
-  list(x)
+  # the input is returned as it is
+  c(list(x), if (ordered) list(token))
 }
 
 # higher order primitives --------------------------------------------------------

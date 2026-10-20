@@ -1,5 +1,6 @@
 # anvl (development version)
 
+* `prim_print()` / `nv_print()` gain `ordered`, to print in the order of the code.
 * `new_primitive()` gains `side_effects`, for primitives that read and update a
   value outside of the traced function. New `AbstractToken()`, the type of a
   value that only orders operations.

@@ -2975,6 +2975,7 @@ prim_top_k <- new_primitive(
 #' Bare R inputs print at their category's default data type.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
+#' @template param_print_ordered
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
 #' @template section_print_order
@@ -2992,7 +2993,8 @@ prim_top_k <- new_primitive(
 #' @export
 prim_print <- new_primitive(
   "print",
-  function(x) {
+  function(x, ordered = FALSE) {
+    assert_flag(ordered)
     # HACK: the header and footer are pre-computed here and passed as "params",
     # although they are not really ones: stablehlo does not carry the dtype the
     # way anvl prints it.
@@ -3032,14 +3034,62 @@ prim_print <- new_primitive(
     # `f32`. The stablehlo rule threads the operand through the same way, and
     # marks the custom call `has_side_effect` so it survives with its result
     # unused.
+    # An ordered print takes the token that orders prints and hands it on
+    # (see the side effect "print_token").
     graph_desc_add(
       self,
       list(x = as_anvl_array(x)),
       list(header = header, footer = footer),
-      infer_fn = infer_identity
+      infer_fn = infer_print,
+      side_effects = if (ordered) "print_token" else character()
     )
     x
+  },
+  static = "ordered",
+  side_effects = "print_token"
+)
+
+#' @title Primitive Token Creation
+#' @description
+#' Creates a token (see [AbstractToken()]), which orders operations with side
+#' effects: an operation that takes a token runs after the one that returned
+#' it. A trace creates the token that orders its prints with it, where the
+#' first ordered print (see [prim_print()]) needs one.
+#' @return ([`arrayish`])\cr
+#'   A token.
+#' @templateVar primitive_id create_token
+#' @template section_rules
+#' @seealso [AbstractToken()], [prim_print()]
+#' @examples
+#' graph <- trace_fn(prim_create_token, list())
+#' graph
+#' @export
+prim_create_token <- new_primitive(
+  "create_token",
+  function() {
+    graph_desc_add(self, list(), infer_fn = infer_create_token)[[1L]]
   }
+)
+
+# The token that orders the prints of a program (see `prim_print(ordered =
+# TRUE)`): an ordered print takes it and returns a new one, so that a print
+# that takes the token another one returned runs after it. A program creates it
+# where its first ordered print needs it, carries it through loops and branches
+# like any value, and drops it at the end.
+register_side_effect(
+  "print_token",
+  # REVIEW: Why do we need to specify avals here?
+  # ANSWER: Because the token does not always come from `build()`: in the body
+  # of a loop it enters as a fresh input, a GraphValue of this aval, before
+  # any value of it exists (side_effect_graph_values()), and the condition of
+  # nv_while() takes one too. The avals also give the number of values and
+  # their names. For a side effect only ever built, `build()` could supply
+  # them, but loops need them up front.
+  avals = list(print_token = AbstractToken()),
+  build = function(desc) {
+    list(print_token = graph_desc_add(prim_create_token, list(), infer_fn = infer_create_token, desc = desc)[[1L]])
+  },
+  labels = "token"
 )
 
 # RNG primitives
