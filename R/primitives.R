@@ -3070,13 +3070,6 @@ prim_create_token <- new_primitive(
 # like any value, and drops it at the end.
 register_side_effect(
   "print_token",
-  # REVIEW: Why do we need to specify avals here?
-  # ANSWER: Because the token does not always come from `build()`: in the body
-  # of a loop it enters as a fresh input, a GraphValue of this aval, before
-  # any value of it exists (side_effect_graph_values()), and the condition of
-  # nv_while() takes one too. The avals also give the number of values and
-  # their names. For a side effect only ever built, `build()` could supply
-  # them, but loops need them up front.
   avals = list(print_token = AbstractToken()),
   build = function(desc) {
     list(print_token = graph_desc_add(prim_create_token, list(), infer_fn = infer_create_token, desc = desc)[[1L]])

@@ -15,14 +15,6 @@ GraphValue <- function(aval, label = NULL) {
   # hot-path constructor: no input validation
   env <- new.env(parent = emptyenv())
   env$aval <- aval
-  # REVIEW: Do we prevent collisions between multiple graph values with the same label?
-  # ANSWER: A label only affects printing: nodes are told apart by identity
-  # (environments), never by label. The printer numbers labelled nodes per
-  # label over the whole graph and its sub-graphs, so two `key` nodes print as
-  # `%key1` and `%key2`. One gap: a label `x` or `c` would print names like
-  # the inputs' `%x1` or the constants' `%c1` but count separately, so two
-  # nodes could print the same name. I would make register_side_effect()
-  # refuse such labels (and empty ones).
   env$label <- label
 
   structure(env, class = "GraphValue")
