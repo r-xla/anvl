@@ -54,8 +54,8 @@ NULL
 #' `nv_set_random_state()` makes a saved one the global random state again. A
 #' random state is an `AnvlRandomState`, a list of two arrays: `random_key`, the
 #' key, a `"ui32"` array of its two 32-bit words as JAX holds them, and
-#' `random_counter`, the counter, a `"ui64"` scalar. [nv_save()] can write it to
-#' a file and [nv_read()] read it back. `NULL` is the random state that is not
+#' `random_counter`, the counter, a `"ui64"` scalar. [saveRDS()] can write it to
+#' a file; its arrays load onto the default device. `NULL` is the random state that is not
 #' set. The counter wraps around at \eqn{2^{64}}, where its draws repeat, so
 #' restore a random state that `nv_get_random_state()` returned rather than one
 #' made up.
@@ -179,8 +179,7 @@ abort_if_no_rng <- function() {
 }
 
 # `x` if it is a random state: an `AnvlRandomState`, or a list like it of a
-# `ui32` key of shape 2 and a `ui64` scalar counter (as `nv_read()` gives one
-# back that `nv_save()` saved).
+# `ui32` key of shape 2 and a `ui64` scalar counter.
 assert_random_state <- function(x) {
   is_array_of <- function(a, dtype, shape) is_anvl_array(a) && dtype(a) == dtype && identical(shape(a), shape)
   if (

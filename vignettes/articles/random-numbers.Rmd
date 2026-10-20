@@ -261,7 +261,7 @@ Sampling is not possible in the condition of `nv_while()`, nor in the functions 
 
 ### Why the advance must be known in advance
 
-Fixing every advance when a function is traced, rather than when it runs, is what lets every sampling call compute its counter from the counter the program starts from, so that no sampling call waits for another, and the random state a program returns is the one it took, advanced by a number known in advance.
+Fixing every advance when a function is traced, rather than when it runs, is what lets every sampling call compute its counter from the counter the program starts from, so that no sampling call waits for another, and that lets the host advance the random state after a call by a number known in advance, without the program returning it.
 The same property will let a future `vmap()` or `parallel_map()` of a function give each element the counter a hand-written loop over the elements would give it.
 The price is the fork of `nv_while()`, which is the one construct whose eager counterpart draws differently.
 
@@ -278,10 +278,10 @@ nv_set_random_state(random_state)
 nv_runif(3L)
 ```
 
-As the random state is a list of arrays, `nv_save()` can write it to a file and `nv_read()` read it back:
+Like any array, the random state can be written to a file with `saveRDS()` and read back with `readRDS()`:
 
 ```{r}
-path <- tempfile(fileext = ".safetensors")
-nv_save(nv_get_random_state(), path)
-nv_set_random_state(nv_read(path))
+path <- tempfile(fileext = ".rds")
+saveRDS(nv_get_random_state(), path)
+nv_set_random_state(readRDS(path))
 ```

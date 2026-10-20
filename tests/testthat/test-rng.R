@@ -143,13 +143,13 @@ describe("nv_get_random_state", {
     expect_identical(as_array(nv_runif(3L)), a)
   })
 
-  it("survives a round trip through nv_save() and nv_read()", {
+  it("survives a round trip through a file", {
     local_nv_seed(7L)
     nv_runif(2L)
-    path <- withr::local_tempfile(fileext = ".safetensors")
-    nv_save(nv_get_random_state(), path)
+    path <- withr::local_tempfile(fileext = ".rds")
+    saveRDS(nv_get_random_state(), path)
     a <- as_array(nv_runif(3L))
-    nv_set_random_state(nv_read(path))
+    nv_set_random_state(readRDS(path))
     expect_identical(as_array(nv_runif(3L)), a)
   })
 
@@ -483,9 +483,9 @@ describe("the global random state in sub-graphs", {
     expect_identical(out[[2L]], c(0, 1, 1, 0))
   })
 
-  it("is taken by the graph transform_gradient() builds from a graph that samples", {
+  it("is taken by the graph graph_gradient() builds from a graph that samples", {
     graph <- trace_fn(function(x) nv_sum(x * nv_runif(2L)), list(x = nv_aval("f32", 2L)))
-    grad <- transform_gradient(graph, "x")
+    grad <- graph_gradient(graph, "x")
     state <- grad$side_effects$random_state
     expect_named(state$input, c("random_key", "random_counter"))
     expect_identical(state$advance, 1)

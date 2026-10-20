@@ -743,7 +743,7 @@ name_failing_primitive <- function(e) {
 #' an [`AnvlGraph`].
 #'
 #' The resulting graph can be lowered to StableHLO (via [`stablehlo()`]) or transformed
-#' (e.g. via [`transform_gradient()`]).
+#' (e.g. via [`graph_gradient()`]).
 #'
 #' When `f` uses a side effect, the graph records it in its `side_effects` field rather
 #' than among its inputs and outputs (see [`AnvlGraph`]).

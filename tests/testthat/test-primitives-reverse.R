@@ -410,7 +410,7 @@ describe("prim_if", {
       function(p, x) nv_if(p, function() nv_sum(sin(x) * x), function() nv_sum(x)),
       list(p = true_, x = x)
     )
-    grad <- transform_gradient(g, "x")
+    grad <- graph_gradient(g, "x")
     ifs <- Filter(function(s) s$primitive$name == "if", grad$statements)
     expect_length(ifs, 2L)
     prims_of <- function(graph) vapply(graph$statements, function(s) s$primitive$name, character(1L))

@@ -92,8 +92,8 @@ stopped, e.g. when resuming a model fit, save the random state itself:
 \code{nv_set_random_state()} makes a saved one the global random state again. A
 random state is an \code{AnvlRandomState}, a list of two arrays: \code{random_key}, the
 key, a \code{"ui32"} array of its two 32-bit words as JAX holds them, and
-\code{random_counter}, the counter, a \code{"ui64"} scalar. \code{\link[=nv_save]{nv_save()}} can write it to
-a file and \code{\link[=nv_read]{nv_read()}} read it back. \code{NULL} is the random state that is not
+\code{random_counter}, the counter, a \code{"ui64"} scalar. \code{\link[=saveRDS]{saveRDS()}} can write it to
+a file; its arrays load onto the default device. \code{NULL} is the random state that is not
 set. The counter wraps around at \eqn{2^{64}}, where its draws repeat, so
 restore a random state that \code{nv_get_random_state()} returned rather than one
 made up.

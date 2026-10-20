@@ -12,6 +12,14 @@
 * `new_primitive()` gains `side_effects`, for primitives that read and update a
   value outside of the traced function. New `AbstractToken()`, the type of a
   value that only orders operations.
+* `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
+  the default device, not the one they were saved from. Arrays of the
+  pjrt backend no longer cache their device in a `$device` field.
+* Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* Bugfix: `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
+  gives a clear error for an empty population.
+* Breaking: `transform_gradient()` is renamed to `graph_gradient()`.
 * Bugfix: `nv_seq()` counts down at an unsigned data type instead of erroring.
 * Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
   of its input.
