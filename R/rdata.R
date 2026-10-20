@@ -51,7 +51,7 @@ RData <- function(shape, r_type) {
   r_type <- match.arg(r_type, c("double", "integer", "logical"))
   structure(
     list(r_type = r_type, shape = shape),
-    class = c("RData", "AbstractArray")
+    class = c("RData", "AbstractArray", "AbstractValue")
   )
 }
 

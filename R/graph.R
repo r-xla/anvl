@@ -4,8 +4,9 @@
 #' @title Graph Value
 #' @description
 #' Value in an [`AnvlGraph`]. This is a mutable class.
-#' @param aval ([`AbstractArray`])\cr
-#'   The abstract value of the variable.
+#' @param aval ([`AbstractValue`])\cr
+#'   The type of the value: an [`AbstractArray`], or an [`AbstractToken`] for a
+#'   token.
 #' @param label (`NULL` | `character(1)`)\cr
 #'   What the value is, for a printed graph to name it after, e.g. `"token"` for
 #'   the token that orders prints, which is printed as `%token1`.

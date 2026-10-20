@@ -10,11 +10,11 @@ eq_type(e1, e2)
 neq_type(e1, e2)
 }
 \arguments{
-\item{e1}{(\code{\link{AbstractArray}} | \code{\link{AbstractToken}})\cr
-First array to compare. Must not be an \code{\link{RData}}.}
+\item{e1}{(\code{\link{AbstractValue}})\cr
+First type to compare. Must not be an \code{\link{RData}}.}
 
-\item{e2}{(\code{\link{AbstractArray}} | \code{\link{AbstractToken}})\cr
-Second array to compare. Must not be an \code{\link{RData}}.}
+\item{e2}{(\code{\link{AbstractValue}})\cr
+Second type to compare. Must not be an \code{\link{RData}}.}
 }
 \value{
 (\code{logical(1)})

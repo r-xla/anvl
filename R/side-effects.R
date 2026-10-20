@@ -5,7 +5,7 @@ NULL
 # Registers a side effect: a value outside of a traced function that
 # primitives read and update (`new_primitive(side_effects = )`), such as the
 # token that orders prints. Its value is one or more values, of the types
-# `avals` (a named list of `AbstractArray`s and `AbstractToken`s), which a call
+# `avals` (a named list of `AbstractValue`s), which a call
 # of a primitive takes as arguments named like them and returns updated as its
 # last outputs, so that every use takes the values the previous one returned.
 # Side effects used together come in the order they were first registered in.

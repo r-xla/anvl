@@ -419,6 +419,7 @@ reference:
   - subtitle: Abstract Types
     contents:
       - nv_aval
+      - AbstractValue
       - AbstractArray
       - ConcreteArray
       - LiteralArray

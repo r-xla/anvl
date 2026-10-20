@@ -20,5 +20,5 @@ a token has no data type or shape and never reaches R.
 AbstractToken()
 }
 \seealso{
-\link{AbstractArray}
+\link{AbstractValue}, \link{AbstractArray}
 }
