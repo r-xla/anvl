@@ -21,8 +21,8 @@ NULL
 #' A [jit()]-compiled function makes the same sampling calls as the same code
 #' run without [jit()], in the same order, so it draws the same values: the
 #' compiled program takes the global random state as an input, and after the
-#' call returns, the global random state is advanced by the number of sampling
-#' calls the program makes, which is known when the function is traced.
+#' call the global random state is advanced by the number of sampling calls the
+#' program makes, which is known when the function is traced.
 #'
 #' A draw in a loop body gives a new sample on every iteration. How [nv_scan()],
 #' [nv_if()] and [nv_while()] advance the global random state, so that the
@@ -52,17 +52,19 @@ NULL
 #' stopped, e.g. when resuming a model fit, save the random state itself:
 #' `nv_get_random_state()` returns the global random state, and
 #' `nv_set_random_state()` makes a saved one the global random state again. A
-#' random state is an `AnvlRandomState`: plain R values, the key and the
-#' counter, each a 64-bit unsigned integer stored as its two 32-bit words, so
-#' [saveRDS()] can write it to a file. `NULL` is the random state that is not
+#' random state is an `AnvlRandomState`, a list of two arrays: `random_key`, the
+#' key, a `"ui32"` array of its two 32-bit words as JAX holds them, and
+#' `random_counter`, the counter, a `"ui64"` scalar. [nv_save()] can write it to
+#' a file and [nv_read()] read it back. `NULL` is the random state that is not
 #' set. The counter wraps around at \eqn{2^{64}}, where its draws repeat, so
 #' restore a random state that `nv_get_random_state()` returned rather than one
 #' made up.
 #'
 #' @section Devices:
-#' The global random state is held by R and copied to the device of each call
-#' that draws from it, and the generator is built from integer arithmetic, so a
-#' seed gives the same random bits whatever devices the draws run on. The
+#' The global random state is held in arrays, which a call that draws from it
+#' takes as inputs (copied to its device if they are on another one). The generator is built from integer
+#' arithmetic, so a seed gives the same random bits whatever devices the draws
+#' run on. The
 #' samples computed from them, e.g. by [nv_rnorm()], can differ in the last
 #' digits between platforms, as their floating point functions do.
 #' @param seed (`integer(1)` | `NULL`)\cr
@@ -113,14 +115,20 @@ nv_set_seed <- function(seed) {
   globals$random_state <- if (!is.null(seed)) random_state_from_seed(assert_int(seed, coerce = TRUE))
   invisible(NULL)
 }
+# REVIEW: Unify the *_seed and *_random_state functions (?)
+# ANSWER: I think so: a saved random state is just a seed that continues a
+# sequence instead of starting one. I would let nv_set_seed(), local_nv_seed()
+# and with_nv_seed() take an integer seed, an `AnvlRandomState` or `NULL`,
+# drop nv_set_random_state(), and keep nv_get_random_state() to save the
+# state (the counterpart of reading `.Random.seed` in base R).
 
 #' @rdname nv_set_seed
 #' @export
 nv_get_random_state <- function() {
   abort_if_tracing("read")
   abort_if_no_rng()
-  words <- globals$random_state
-  if (!is.null(words)) structure(words, class = "AnvlRandomState")
+  state <- globals$random_state
+  if (!is.null(state)) structure(state, class = "AnvlRandomState")
 }
 
 #' @rdname nv_set_seed
@@ -134,8 +142,13 @@ nv_set_random_state <- function(random_state) {
 
 #' @export
 format.AnvlRandomState <- function(x, ...) {
-  hex <- function(lo, hi) paste0("0x", format_hex32(hi), format_hex32(lo))
-  sprintf("<AnvlRandomState> key %s, counter %s", hex(x[[1L]], x[[2L]]), hex(x[[3L]], x[[4L]]))
+  # a 64-bit value of its high and low 32-bit word
+  hex <- function(high, low) paste0("0x", format_hex32(high), format_hex32(low))
+  # the key's first word is its high word, as in JAX; a bitcast counter gives
+  # its low word first
+  key <- as.numeric(as_array(x$random_key))
+  counter <- as.numeric(as_array(nv_bitcast_convert(x$random_counter, dtype = "ui32")))
+  sprintf("<AnvlRandomState> key %s, counter %s", hex(key[[1L]], key[[2L]]), hex(counter[[2L]], counter[[1L]]))
 }
 
 #' @export
@@ -165,27 +178,31 @@ abort_if_no_rng <- function() {
   }
 }
 
-# `x` if it is a random state: an `AnvlRandomState` of four 32-bit words.
+# `x` if it is a random state: an `AnvlRandomState`, or a list like it of a
+# `ui32` key of shape 2 and a `ui64` scalar counter (as `nv_read()` gives one
+# back that `nv_save()` saved).
 assert_random_state <- function(x) {
-  if (!inherits(x, "AnvlRandomState")) {
+  is_array_of <- function(a, dtype, shape) is_anvl_array(a) && dtype(a) == dtype && identical(shape(a), shape)
+  if (
+    !is.list(x) ||
+      !setequal(names(x), c("random_key", "random_counter")) ||
+      !is_array_of(x$random_key, "ui32", 2L) ||
+      !is_array_of(x$random_counter, "ui64", integer())
+  ) {
     cli_abort(c(
       "{.arg random_state} must be a random state returned by {.fn nv_get_random_state}.",
-      x = "Got {.cls {class(x)[[1L]]}}."
+      i = "A random state is a {.cls ui32} key of shape 2 and a {.cls ui64} scalar counter."
     ))
   }
-  words <- unclass(x)
-  if (!is.double(words) || length(words) != 4L || anyNA(words) || any(words < 0 | words >= 2^32 | words %% 1 != 0)) {
-    cli_abort("{.arg random_state} must hold four 32-bit words.")
-  }
-  x
+  structure(x[c("random_key", "random_counter")], class = "AnvlRandomState")
 }
 
 #' @rdname nv_set_seed
 #' @export
 local_nv_seed <- function(seed, envir = parent.frame()) {
-  words <- globals$random_state
+  state <- globals$random_state
   nv_set_seed(seed)
-  withr::defer(assign("random_state", words, envir = globals), envir = envir)
+  withr::defer(assign("random_state", state, envir = globals), envir = envir)
   invisible(NULL)
 }
 
@@ -196,66 +213,70 @@ with_nv_seed <- function(seed, code) {
   code
 }
 
+# The random state of the key words `key` (two whole R doubles in [0, 2^32),
+# in the order of JAX's key data) and the counter `0`.
+random_state_of_key <- function(key) {
+  list(random_key = nv_array(key, dtype = "ui32"), random_counter = nv_scalar(0L, dtype = "ui64"))
+}
+
 # A fresh random state from two uniform draws of base R's RNG, each giving one
-# 32-bit word of the key, and the counter `0`. A uniform draw of R's default
-# generator has 32 random bits.
+# 32-bit word of the key. A uniform draw of R's default generator has 32
+# random bits.
 random_state_from_r <- function() {
-  c(floor(stats::runif(2L) * 2^32), 0, 0)
+  random_state_of_key(floor(stats::runif(2L) * 2^32))
 }
 
-# The random state of the integer `seed`: the key `seed` read as an unsigned
-# 32-bit integer, and the counter `0`.
+# The random state of the integer `seed`: the key of JAX's `key(seed)`, the
+# words 0 and `seed` read as an unsigned 32-bit integer.
 random_state_from_seed <- function(seed) {
-  c(seed %% 2^32, 0, 0, 0)
+  random_state_of_key(c(0, seed %% 2^32))
 }
 
-# The random state `words` with its counter advanced by `n` steps, wrapping
-# around at 2^64.
-random_state_advanced <- function(words, n) {
-  lo <- words[[3L]] + n %% 2^32
-  c(words[[1L]], words[[2L]], lo %% 2^32, (words[[4L]] + n %/% 2^32 + lo %/% 2^32) %% 2^32)
+# The values `values` of the random state (see its registration below), its
+# key and counter, with the counter advanced by `n` steps (below 2^53), traced
+# into the current trace.
+random_state_at <- function(values, n) {
+  if (n == 0) {
+    return(values)
+  }
+  list(random_key = values$random_key, random_counter = counter_plus(values$random_counter, n))
 }
 
-# The random state `box`, a `ui32[4]` GraphBox, with its counter advanced by `n`
-# steps (below 2^53), traced into the current trace.
-random_state_advance_box <- function(box, n) {
-  words <- nv_convert(nv_static_slice(box, 3L, 4L, 1L), dtype = "ui64")
-  counter <- nv_or(
-    nv_static_slice(words, 1L, 1L, 1L),
-    nv_shift_left(nv_static_slice(words, 2L, 2L, 1L), 32L)
-  )
-  # `n` enters as two R integers, its low 30 bits and the rest
-  high <- nv_shift_left(nv_fill(as.integer(n %/% 2^30), 1L, dtype = "ui64"), 30L)
-  counter <- counter + as.integer(n %% 2^30) + high
-  # the low word is cleared of the high one first, so that the conversion is
-  # exact
-  nv_concatenate(
-    nv_static_slice(box, 1L, 2L, 1L),
-    nv_convert(nv_shift_right_logical(nv_shift_left(counter, 32L), 32L), dtype = "ui32"),
-    nv_convert(nv_shift_right_logical(counter, 32L), dtype = "ui32")
-  )
+# The `ui64` counter `counter` plus `n` (a whole R double below 2^53), wrapping
+# around at 2^64. `n` enters as R integers: its low 31 bits, and the rest
+# shifted into place.
+counter_plus <- function(counter, n) {
+  counter <- counter + as.integer(n %% 2^31)
+  if (n >= 2^31) {
+    counter <- counter + nv_shift_left(nv_fill(as.integer(n %/% 2^31), integer(), dtype = "ui64"), 31L)
+  }
+  counter
 }
+
+# The global random state's counter after `n` uses, computed by anvl.
+counter_advanced <- jit(counter_plus, static = "n")
 
 # The global random state as a side effect, which `prim_sample_bits()` and
-# `prim_fork_random_state()` use. Its value lives in `globals$random_state`, an
-# R double vector of the four 32-bit words of the key and the counter, low word
-# first; reading it while it is not set derives it from base R's RNG. A program
-# takes it from the host as a `ui32[4]` input. It is counted, so that the host
-# advances it by the steps a program advanced it, and no program returns it.
+# `prim_fork_random_state()` use. It lives in `globals$random_state`, its key,
+# a `ui32[2]` array (the words of JAX's key data), and its counter, a `ui64` scalar array;
+# reading it while it is not set derives it from base R's RNG. A program takes
+# both as inputs and returns neither: after a run, the counter is advanced by
+# the uses the program made.
 register_side_effect(
   "random_state",
-  aval = AbstractArray(dtype = "ui32", shape = 4L),
+  avals = list(
+    random_key = AbstractArray(dtype = "ui32", shape = 2L),
+    random_counter = AbstractArray(dtype = "ui64", shape = integer())
+  ),
   get = function() {
     if (is.null(globals$random_state)) {
       globals$random_state <- random_state_from_r()
     }
-    globals$random_state
+    unname(globals$random_state)
   },
-  counted = list(
-    advance_box = random_state_advance_box,
-    fork = fork_random_state,
-    advance = function(n) {
-      globals$random_state <- random_state_advanced(globals$random_state, n)
-    }
-  )
+  counted = list(at = random_state_at, fork = fork_random_state),
+  after_run = function(values, uses) {
+    globals$random_state$random_counter <- counter_advanced(globals$random_state$random_counter, uses)
+  },
+  labels = c("key", "counter")
 )

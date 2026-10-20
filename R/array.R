@@ -919,6 +919,42 @@ is_concrete_array <- function(x) {
   inherits(x, "ConcreteArray")
 }
 
+#' @title Abstract Token
+#' @description
+#' The type of a token: a value without data that orders operations with side
+#' effects, such as the prints of [`prim_print(ordered = TRUE)`][prim_print].
+#' An operation that takes a token another one returned runs after it. A
+#' program creates its tokens and threads them from one operation to the next;
+#' a token has no data type or shape and never reaches R.
+#' @return (`AbstractToken`)
+#' @seealso [AbstractArray]
+#' @examples
+#' AbstractToken()
+#' @export
+AbstractToken <- function() {
+  structure(list(), class = "AbstractToken")
+}
+
+is_abstract_token <- function(x) {
+  inherits(x, "AbstractToken")
+}
+
+#' @export
+repr.AbstractToken <- function(x, ...) {
+  "token"
+}
+
+#' @export
+format.AbstractToken <- function(x, ...) {
+  "AbstractToken()"
+}
+
+#' @export
+print.AbstractToken <- function(x, ...) {
+  cat(format(x), "\n")
+  invisible(x)
+}
+
 #' @method dtype AbstractArray
 #' @export
 dtype.AbstractArray <- function(x, ...) {
@@ -1107,10 +1143,11 @@ print.IotaArray <- function(x, ...) {
 #'
 #' An [`RData`] has no data type to compare, so it is an error here, just as
 #' [`dtype()`][xlamisc::dtype] is. Give it a data type first, e.g. with
-#' [`nv_convert()`].
-#' @param e1 ([`AbstractArray`])\cr
+#' [`nv_convert()`]. Two [`AbstractToken`]s are of the same type, and a token
+#' and an array are not.
+#' @param e1 ([`AbstractArray`] | [`AbstractToken`])\cr
 #'   First array to compare. Must not be an [`RData`].
-#' @param e2 ([`AbstractArray`])\cr
+#' @param e2 ([`AbstractArray`] | [`AbstractToken`])\cr
 #'   Second array to compare. Must not be an [`RData`].
 #' @return (`logical(1)`)
 #' @examples
@@ -1135,8 +1172,11 @@ print.IotaArray <- function(x, ...) {
 #' try(neq_type(r, r))
 #' @export
 eq_type <- function(e1, e2) {
+  if (is_abstract_token(e1) || is_abstract_token(e2)) {
+    return(is_abstract_token(e1) && is_abstract_token(e2))
+  }
   if (!inherits(e1, "AbstractArray") || !inherits(e2, "AbstractArray")) {
-    cli_abort("e1 and e2 must be AbstractArrays")
+    cli_abort("e1 and e2 must be AbstractArrays or AbstractTokens")
   }
   if (is_rdata(e1) || is_rdata(e2)) {
     cli_abort(

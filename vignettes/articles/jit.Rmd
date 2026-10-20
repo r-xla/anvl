@@ -147,6 +147,10 @@ Concretely, the function's execution path -- the specific sequence of primitive 
 1. The *abstract* representation (shape and dtype) of each dynamic input, and
 2. The *value* of each static input.
 
+Two side effects are exceptions that tracing handles itself: drawing random numbers, which reads and advances the global random state, and ordered printing (`nv_print(ordered = TRUE)`).
+A jitted function may do both: every call advances the global random state by the draws it makes, as the same code run eagerly would, and its ordered prints come out in the order of the code.
+The [random numbers](random-numbers.html) article explains how.
+
 The next subsections each show what tracing does to particular R code and where its behavior might be surprising.
 
 ### R loops are unrolled

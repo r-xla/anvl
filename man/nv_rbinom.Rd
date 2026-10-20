@@ -11,7 +11,7 @@ nv_rbinom(shape, size = 1L, prob = 0.5, dtype = NULL)
 Shape of the result.}
 
 \item{size}{(\code{integer(1)})\cr
-Number of trials, at most the largest value of \code{dtype}.}
+Number of trials.}
 
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
@@ -32,8 +32,7 @@ When \code{size = 1} (the default), this is a Bernoulli distribution.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Bernoulli samples
-nv_set_seed(42L)
-nv_rbinom(c(2, 3))
+with_nv_seed(42L, nv_rbinom(c(2, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

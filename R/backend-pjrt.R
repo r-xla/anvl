@@ -136,15 +136,16 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `device`: The `PJRTDevice` the executable was compiled for.
 #'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
 #'     executor must allocate for an output (see [`stablehlo()`]).
-#'   - `implicit_inputs`: One `list(get, dtype, shape)` per side effect the
-#'     program takes from the host, through which pjrt's dispatcher supplies its
-#'     value as an input after the call's own.
-#'   - `implicit_outputs`: One `list(dtype, shape)` per side effect whose value
+#'   - `implicit_inputs`: One `list(get, dtype, shape)` per value of a side
+#'     effect the program takes from outside of it, which pjrt's dispatcher
+#'     supplies as an input after the call's own: `get()` takes no arguments
+#'     and returns the current value, an array of `dtype` and `shape`.
+#'   - `implicit_outputs`: One `list(dtype, shape)` per value of a side effect
 #'     the program returns to the host, after its own outputs.
 #'   - `on_success`: `NULL`, or a function pjrt's dispatcher calls after every
-#'     successful run with the side effects' returned values, which advances
-#'     the side effects the host advances by the number of steps the program
-#'     advances them (see [`AnvlGraph`]) and hands the returned values on.
+#'     successful run with the side effects' returned values, which calls
+#'     each side effect's `after_run()` with the values the program returns of
+#'     it and the uses the program made of it.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -255,37 +256,46 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     input_dtypes = graph_input_dtypes(graph),
     device = device(exec),
     phantom_specs = phantom_specs,
-    implicit_inputs = unname(lapply(side_effects_from_host(graph), function(name) {
-      side_effect <- side_effect(name)
-      list(get = side_effect$get, dtype = as.character(dtype(side_effect$aval)), shape = shape(side_effect$aval))
-    })),
-    implicit_outputs = unname(lapply(side_effects_to_host(graph), function(name) {
-      aval <- side_effect(name)$aval
-      list(dtype = as.character(dtype(aval)), shape = shape(aval))
-    })),
+    implicit_inputs = unlist(
+      lapply(side_effects_from_host(graph), function(name) {
+        side_effect <- side_effect(name)
+        Map(
+          function(aval, i) {
+            list(get = function() side_effect$get()[[i]], dtype = as.character(dtype(aval)), shape = shape(aval))
+          },
+          unname(side_effect$avals),
+          seq_along(side_effect$avals)
+        )
+      }),
+      recursive = FALSE
+    ),
+    implicit_outputs = unlist(
+      lapply(side_effects_to_host(graph), function(name) {
+        lapply(unname(side_effect(name)$avals), function(aval) {
+          list(dtype = as.character(dtype(aval)), shape = shape(aval))
+        })
+      }),
+      recursive = FALSE
+    ),
     on_success = side_effects_on_success(graph)
   )
 }
 
 # The function pjrt's dispatcher calls after a run of the program of `graph`,
-# with the values of the side effects the host receives: it advances the
-# counted side effects by the steps the graph advances them and hands the
-# received values on. `NULL` when there is nothing to do.
+# with the values the program returns of the side effects the host receives:
+# it calls `after_run()` of every side effect of the graph that has one (see
+# `register_side_effect()`). `NULL` when there is none.
 side_effects_on_success <- function(graph) {
-  names <- names(graph$side_effects)
-  advances <- lapply(Filter(side_effect_is_counted, names), function(name) {
-    list(advance = side_effect(name)$counted$advance, n = graph$side_effects[[name]]$advance)
-  })
-  receivers <- lapply(side_effects_to_host(graph), function(name) side_effect(name)$receive)
-  if (!length(advances) && !length(receivers)) {
+  names <- Filter(function(name) !is.null(side_effect(name)$after_run), names(graph$side_effects))
+  if (!length(names)) {
     return(NULL)
   }
+  to_host <- side_effects_to_host(graph)
+  # the outputs of each side effect the host receives, one after the other
+  owner <- rep(to_host, side_effects_widths(to_host))
   function(outputs) {
-    for (a in advances) {
-      a$advance(a$n)
-    }
-    for (i in seq_along(receivers)) {
-      receivers[[i]](outputs[[i]])
+    for (name in names) {
+      side_effect(name)$after_run(outputs[owner == name], graph$side_effects[[name]]$advance)
     }
   }
 }

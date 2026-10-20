@@ -58,7 +58,7 @@ NULL
 #' @import checkmate
 #' @import xlamisc
 #' @importFrom pjrt pjrt_buffer pjrt_scalar pjrt_execute pjrt_compile pjrt_program elt_type
-#' @importFrom utils hashtab
+#' @importFrom utils hashtab maphash
 #' @importFrom utils head tail getFromNamespace install.packages
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%
@@ -73,7 +73,8 @@ globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
 globals[["descriptor_stash"]] <- list()
 globals[["current_descriptor"]] <- NULL
 globals[["lowering_platform"]] <- NULL
-# The functions the current top-level lowering builds once (see `lowering_func()`).
+# The functions the current top-level lowering builds once (see `lowering_func()`), a
+# `hashtab()` keyed by function id while a lowering is under way, `NULL` otherwise.
 globals[["lowering_funcs"]] <- NULL
 # The registered side effects, by name (see `register_side_effect()`).
 globals$side_effects <- list()

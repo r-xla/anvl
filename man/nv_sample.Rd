@@ -11,7 +11,7 @@ nv_sample(shape, x)
 Shape of the result.}
 
 \item{x}{(\code{\link{arrayish}})\cr
-The population vector to sample from. Must not be empty.
+The population vector to sample from.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
 }
 \value{
@@ -28,8 +28,7 @@ integers \code{1} to \code{n} is \code{\link[=nv_sample_int]{nv_sample_int()}} a
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the sample takes the population's data type
-nv_set_seed(42L)
-nv_sample(5, nv_array(c(10, 20, 30)))
+with_nv_seed(42L, nv_sample(5, nv_array(c(10, 20, 30))))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

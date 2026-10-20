@@ -56,8 +56,8 @@ number of sampling calls: \code{\link[=nv_rnorm]{nv_rnorm()}} by two, the others
 A \code{\link[=jit]{jit()}}-compiled function makes the same sampling calls as the same code
 run without \code{\link[=jit]{jit()}}, in the same order, so it draws the same values: the
 compiled program takes the global random state as an input, and after the
-call returns, the global random state is advanced by the number of sampling
-calls the program makes, which is known when the function is traced.
+call the global random state is advanced by the number of sampling calls the
+program makes, which is known when the function is traced.
 
 A draw in a loop body gives a new sample on every iteration. How \code{\link[=nv_scan]{nv_scan()}},
 \code{\link[=nv_if]{nv_if()}} and \code{\link[=nv_while]{nv_while()}} advance the global random state, so that the
@@ -90,9 +90,10 @@ A seed restarts a sequence from its beginning. To continue one where it
 stopped, e.g. when resuming a model fit, save the random state itself:
 \code{nv_get_random_state()} returns the global random state, and
 \code{nv_set_random_state()} makes a saved one the global random state again. A
-random state is an \code{AnvlRandomState}: plain R values, the key and the
-counter, each a 64-bit unsigned integer stored as its two 32-bit words, so
-\code{\link[=saveRDS]{saveRDS()}} can write it to a file. \code{NULL} is the random state that is not
+random state is an \code{AnvlRandomState}, a list of two arrays: \code{random_key}, the
+key, a \code{"ui32"} array of its two 32-bit words as JAX holds them, and
+\code{random_counter}, the counter, a \code{"ui64"} scalar. \code{\link[=nv_save]{nv_save()}} can write it to
+a file and \code{\link[=nv_read]{nv_read()}} read it back. \code{NULL} is the random state that is not
 set. The counter wraps around at \eqn{2^{64}}, where its draws repeat, so
 restore a random state that \code{nv_get_random_state()} returned rather than one
 made up.
@@ -100,9 +101,10 @@ made up.
 
 \section{Devices}{
 
-The global random state is held by R and copied to the device of each call
-that draws from it, and the generator is built from integer arithmetic, so a
-seed gives the same random bits whatever devices the draws run on. The
+The global random state is held in arrays, which a call that draws from it
+takes as inputs (copied to its device if they are on another one). The generator is built from integer
+arithmetic, so a seed gives the same random bits whatever devices the draws
+run on. The
 samples computed from them, e.g. by \code{\link[=nv_rnorm]{nv_rnorm()}}, can differ in the last
 digits between platforms, as their floating point functions do.
 }

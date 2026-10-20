@@ -105,10 +105,6 @@ suppressPackageStartupMessages({
 })
 
 per_call <- o$`per-call`
-# the 32-bit words a sampling call contributes: a ui32 draw of P values takes
-# the first P words of its hashes, a ui64 or f64 draw two words per value
-words_per_call <- if (o$mode == "bits" && o$dtype == "ui32") per_call else 2L * per_call
-hashes_per_call <- (words_per_call + 1L) %/% 2L
 
 ## ThreeFry-2x32 with 20 rounds of the keys (k0, k1) and the counters (x0, x1),
 ## `ui32` arrays of one shape.
@@ -130,31 +126,30 @@ threefry <- function(k0, k1, x0, x1) {
 }
 
 ## The numbers of the sampling calls with the counters (c_lo, c_hi) under the
-## key (k0, k1), in the order the stream writes them: the `ui32` words of a bits
-## stream bitcast to `i32`, the 64-bit values of a ui64 stream bitcast to `i64`,
-## and the `f64` values of a unif stream, computed as nv_runif() computes them.
-## A bitcast keeps the bits, and reads back into R as an integer or a bit64
-## integer64 that writeBin() writes with these bits.
+## key (k0, k1), in the order the stream writes them, as JAX computes them: the
+## key of a call is the hash of its counter (high word first), and its value at
+## position t the hash of (0, t) under that key. A `ui32` value is the hash's
+## two words xor'd, a 64-bit value its first word above its second. The stream
+## writes the `ui32` values bitcast to `i32`, the `ui64` values bitcast to
+## `i64`, and the `f64` values of a unif stream, computed as nv_runif()
+## computes them. A bitcast keeps the bits, and reads back into R as an integer
+## or a bit64 integer64 that writeBin() writes with these bits.
 calls_numbers <- jit(function(k0, k1, c_lo, c_hi) {
   m <- shape(c_lo)
-  keys <- threefry(nv_broadcast_to(k0, m), nv_broadcast_to(k1, m), c_lo, c_hi)
+  keys <- threefry(nv_broadcast_to(k0, m), nv_broadcast_to(k1, m), c_hi, c_lo)
   zero <- nv_fill(0L, m, dtype = "ui32")
-  hashes <- lapply(seq_len(hashes_per_call) - 1L, function(t) {
-    threefry(keys[[1L]], keys[[2L]], nv_fill(t, m, dtype = "ui32"), zero)
+  # one hash per value of a call
+  hashes <- lapply(seq_len(per_call) - 1L, function(t) {
+    threefry(keys[[1L]], keys[[2L]], zero, nv_fill(t, m, dtype = "ui32"))
   })
+  # one row per value of a call, one column per call
+  rows <- function(values) do.call(nv_concatenate, c(lapply(values, nv_reshape, c(1L, m)), list(axis = 1L)))
   if (o$mode == "bits" && o$dtype == "ui32") {
-    # one row per word of a call, one column per call
-    words <- unlist(lapply(hashes, function(h) lapply(h, nv_reshape, c(1L, m))), recursive = FALSE)
-    words <- do.call(nv_concatenate, c(words[seq_len(words_per_call)], list(axis = 1L)))
-    return(nv_bitcast_convert(words, dtype = "i32"))
+    return(nv_bitcast_convert(rows(lapply(hashes, function(h) nv_xor(h[[1L]], h[[2L]]))), dtype = "i32"))
   }
-  values <- lapply(hashes, function(h) {
-    nv_reshape(
-      nv_or(nv_convert(h[[1L]], dtype = "ui64"), nv_shift_left(nv_convert(h[[2L]], dtype = "ui64"), 32L)),
-      c(1L, m)
-    )
-  })
-  values <- do.call(nv_concatenate, c(values, list(axis = 1L)))
+  values <- rows(lapply(hashes, function(h) {
+    nv_or(nv_shift_left(nv_convert(h[[1L]], dtype = "ui64"), 32L), nv_convert(h[[2L]], dtype = "ui64"))
+  }))
   if (o$mode == "bits") {
     return(nv_bitcast_convert(values, dtype = "i64"))
   }
@@ -199,7 +194,7 @@ real_numbers <- function(seed, m) {
 
 ## The check: the first 64 sampling calls of seed S.
 local({
-  key <- c(o$seed %% 2^32, 0)
+  key <- c(0, o$seed %% 2^32)
   vectorized <- block_numbers(key, 0, 64L)
   real <- real_numbers(o$seed, 64L)
   if (!identical(vectorized, real)) {
@@ -214,7 +209,7 @@ counters <- rep(0, o$streams)
 
 next_block <- function() {
   xs <- lapply(seq_len(o$streams), function(k) {
-    x <- block_numbers(c(seeds[[k]] %% 2^32, 0), counters[[k]], o$calls)
+    x <- block_numbers(c(0, seeds[[k]] %% 2^32), counters[[k]], o$calls)
     counters[[k]] <<- counters[[k]] + o$calls
     x
   })

@@ -8,11 +8,23 @@ local_counter <- function(from = "program", start = 0L, envir = parent.frame()) 
   store$value <- start
   register_side_effect(
     "counter",
-    aval = AbstractArray(dtype = "i32", shape = integer()),
-    get = if (from == "host") function() store$value,
-    build = if (from == "program") function(func) hlo_scalar(start, dtype = "i32", func = func),
-    receive = function(value) {
-      store$received <- as_array(value)
+    avals = list(counter = AbstractArray(dtype = "i32", shape = integer())),
+    get = if (from == "host") function() list(store$value),
+    build = if (from == "program") {
+      function(desc) {
+        list(
+          counter = graph_desc_add(
+            prim_fill,
+            list(),
+            params = list(value = start, dtype = "i32", shape = integer()),
+            infer_fn = infer_fill,
+            desc = desc
+          )[[1L]]
+        )
+      }
+    },
+    after_run = function(values, uses) {
+      store$received <- as_array(values[[1L]])
     }
   )
   withr::defer(
@@ -53,6 +65,39 @@ describe("new_primitive(side_effects = )", {
       new_primitive("clash", function(random_state) random_state, side_effects = "random_state", register = FALSE),
       "must not have an argument named like one of its side effects"
     )
+  })
+})
+
+describe("a counted side effect in a trace", {
+  it("is taken by every use one step further, and returned by none", {
+    graph <- trace_fn(function() list(prim_sample_bits(2L, "ui32"), prim_sample_bits(3L, "ui32")), list())
+    state <- graph$side_effects$random_state
+    calls <- graph$statements
+    # the first draw splits at the counter the program takes, the second at one
+    # more, which is computed from it rather than handed on by the first
+    expect_identical(calls[[1L]]$inputs, unname(state$input))
+    expect_identical(calls[[2L]]$inputs[[1L]], state$input$random_counter)
+    expect_identical(calls[[3L]]$inputs, list(state$input$random_key, calls[[2L]]$outputs[[1L]]))
+    expect_length(calls[[1L]]$outputs, 1L)
+    # the graph returns no random state, but counts the uses it made
+    expect_null(state$output)
+    expect_length(calls, 3L)
+    expect_identical(state$advance, 2)
+  })
+
+  it("continues its steps in the branches of nv_if and after the larger of them", {
+    graph <- trace_fn(
+      function(p) {
+        prim_sample_bits(1L, "ui32")
+        nv_if(p, function() prim_sample_bits(1L, "ui32"), function() {
+          prim_sample_bits(1L, "ui32")
+          prim_sample_bits(1L, "ui32")
+        })
+        prim_sample_bits(1L, "ui32")
+      },
+      list(p = nv_aval("bool", integer()))
+    )
+    expect_identical(graph$side_effects$random_state$advance, 4)
   })
 })
 
@@ -120,7 +165,7 @@ describe("a carried side effect in jit", {
     })
     expect_identical(as.vector(as_array(f())), 0:2)
     expect_identical(x$store$received, 3L)
-    expect_identical(unclass(nv_get_random_state())[[3L]], 3)
+    expect_identical(state_words()[[3L]], 3)
   })
 
   it("is threaded through a function differentiated by gradient()", {

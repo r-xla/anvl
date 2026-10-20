@@ -150,13 +150,10 @@ box_muller <- function(u1, u2) {
 #'
 #' `mean` and `sd` are [`arrayish`], so they may vary across the sample: they
 #' are applied to the draws after they have been reshaped to `shape`, and so
-#' may either be scalars or have exactly that shape. As in base R's `rnorm()`,
-#' an element whose `mean` is `NaN`, or whose `sd` is not finite or negative, is
-#' `NaN`. The global random state is advanced regardless.
+#' may either be scalars or have exactly that shape.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
-#' nv_set_seed(42L)
-#' nv_rnorm(c(2, 3))
+#' with_nv_seed(42L, nv_rnorm(c(2, 3)))
 #'
 #' # `sd` may also be an array of the same shape as the sample
 #' sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
@@ -191,11 +188,7 @@ nv_rnorm <- jit(
     # flat buffer of ceil(n/2) * 2 draws.
     # was:    mean(Z) = 0, var(Z) = 1
     # now:    mean(N) = mean, var(N) = sd^2
-    N <- Z * sd + mean
-
-    # an invalid parameter is NaN to match base R
-    valid <- !nv_is_nan(mean) & nv_is_finite(sd) & (sd >= 0L)
-    nv_ifelse(valid, N, NaN)
+    Z * sd + mean
   },
   static = c("shape", "dtype")
 )
@@ -206,7 +199,7 @@ nv_rnorm <- jit(
 #' When `size = 1` (the default), this is a Bernoulli distribution.
 #' @template param_shape
 #' @param size (`integer(1)`)\cr
-#'   Number of trials, at most the largest value of `dtype`.
+#'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
@@ -218,8 +211,7 @@ nv_rnorm <- jit(
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Bernoulli samples
-#' nv_set_seed(42L)
-#' nv_rbinom(c(2, 3))
+#' with_nv_seed(42L, nv_rbinom(c(2, 3)))
 #' @export
 nv_rbinom <- jit(
   function(shape, size = 1L, prob = 0.5, dtype = NULL) {
@@ -229,8 +221,7 @@ nv_rbinom <- jit(
       arg = "dtype",
       hint = "A boolean cannot hold a count; use an integer data type and compare it."
     )
-    checkmate::assert_int(size, lower = 0L)
-    assert_fits_dtype(size, dtype)
+    checkmate::assert_int(size, lower = 1L)
     checkmate::assert_number(prob, lower = 0, upper = 1)
     shape <- assert_shapevec(shape)
 
@@ -265,8 +256,7 @@ nv_rbinom <- jit(
 #' To sample from a population other than `1:n`, use [nv_sample()].
 #' @template param_shape
 #' @param n (`integer(1)`)\cr
-#'   Size of the population, i.e. the integers `1` to `n` are sampled. At most
-#'   the largest value of `dtype`.
+#'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sampled integers.
 #'   The sampled values are converted to it.
@@ -277,8 +267,7 @@ nv_rbinom <- jit(
 #' @seealso [nv_sample()] to sample from an arbitrary population.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # roll six dice
-#' nv_set_seed(42L)
-#' nv_sample_int(6, 6L)
+#' with_nv_seed(42L, nv_sample_int(6, 6L))
 #' @export
 nv_sample_int <- jit(
   function(shape, n, dtype = NULL) {
@@ -289,7 +278,6 @@ nv_sample_int <- jit(
       hint = "A boolean cannot hold an index; use an integer data type."
     )
     assert_int(n, lower = 1L)
-    assert_fits_dtype(n, dtype)
     shape <- assert_shapevec(shape)
 
     idx <- sample_indices(as.integer(n), prod(shape))
@@ -307,7 +295,7 @@ nv_sample_int <- jit(
 #' integers `1` to `n` is [nv_sample_int()] and never an overload of `x`.
 #' @template param_shape
 #' @param x ([`arrayish`])\cr
-#'   The population vector to sample from. Must not be empty.
+#'   The population vector to sample from.
 #'   An R value materializes at its [default data type][default_dtypes].
 #' @return ([`arrayish`])\cr
 #'   The sample, of shape `shape` and `x`'s data type.
@@ -315,8 +303,7 @@ nv_sample_int <- jit(
 #' @seealso [nv_sample_int()] to sample the integers `1` to `n`.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the sample takes the population's data type
-#' nv_set_seed(42L)
-#' nv_sample(5, nv_array(c(10, 20, 30)))
+#' with_nv_seed(42L, nv_sample(5, nv_array(c(10, 20, 30))))
 #' @export
 nv_sample <- jit(
   function(shape, x) {
@@ -327,35 +314,12 @@ nv_sample <- jit(
       cli_abort("{.arg x} must be a 1-D array, but has {length(x_shape)} axes.")
     }
     n <- x_shape[1L]
-    if (n == 0L) {
-      cli_abort("{.arg x} must not be empty: there is nothing to sample from.")
-    }
 
     idx <- sample_indices(n, prod(shape))
     nv_reshape(nv_subset(x, idx), shape)
   },
   static = "shape"
 )
-
-# Error unless the count `value` -- a number of trials or a population size --
-# fits into the numeric data type `dtype` of the sample that holds it.
-assert_fits_dtype <- function(value, dtype, arg = rlang::caller_arg(value)) {
-  dtype <- as_dtype(dtype)
-  upper <- if (is_dtype_uint(dtype)) {
-    2^dtype_width(dtype) - 1
-  } else if (is_dtype_int(dtype)) {
-    2^(dtype_width(dtype) - 1L) - 1
-  } else {
-    Inf
-  }
-  if (value > upper) {
-    cli_abort(c(
-      "{.arg {arg}} must fit into the data type of the sample, {.val {as.character(dtype)}}.",
-      x = "Got {value}, but the largest {.val {as.character(dtype)}} is {upper}."
-    ))
-  }
-  invisible(value)
-}
 
 # Draw `n_sample` uniformly distributed indices into a population of size `n`,
 # with replacement.

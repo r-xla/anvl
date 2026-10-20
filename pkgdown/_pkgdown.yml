@@ -428,6 +428,7 @@ reference:
       - LiteralArray
       - RData
       - IotaArray
+      - AbstractToken
       - to_abstract
       - arrayish
 

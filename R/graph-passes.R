@@ -10,7 +10,10 @@ traverse_gnodes <- function(graph, fn) {
     fn(output)
   }
   for (side_effect in graph$side_effects) {
-    fn(side_effect$output)
+    # the values of a side effect the graph returns, if it returns it
+    for (output in side_effect$output) {
+      fn(output)
+    }
   }
 }
 

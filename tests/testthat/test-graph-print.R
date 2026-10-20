@@ -185,20 +185,9 @@ describe("format.AnvlGraph()", {
   })
 
   it("names the side effects of a graph after its inputs and its outputs", {
-    graph <- trace_fn(function(x) x + prim_sample_bits(2L, "ui32"), list(x = nv_aval("ui32", 2L)))
-    expect_snapshot(graph)
-  })
-
-  it("carries the side effects of a loop body as members of the loop state", {
     graph <- trace_fn(
-      function(x) {
-        nv_while(
-          list(i = x),
-          \(i) i < 3L,
-          \(i) list(i = i + nv_convert(prim_sample_bits(integer(), "ui8"), "i32"))
-        )
-      },
-      list(x = nv_scalar(0L, dtype = "i32"))
+      function(x) nv_print(x + prim_sample_bits(2L, "ui32"), ordered = TRUE),
+      list(x = nv_aval("ui32", 2L))
     )
     expect_snapshot(graph)
   })

@@ -155,10 +155,10 @@ stablehlo <- function(
     local_lowering_funcs()
   }
   func <- stablehlo::local_func(id = id)
-  if (any(vapply(graph$side_effects, function(s) is.null(s$input), logical(1L)))) {
+  if (any(vapply(graph$side_effects[side_effects_from_host(graph)], function(s) is.null(s$input), logical(1L)))) {
     cli_abort("Internal error: a graph that closes over a side effect cannot be lowered on its own.")
   }
-  side_effect_inputs <- lapply(side_effects_from_host(graph), function(name) graph$side_effects[[name]]$input)
+  side_effect_inputs <- side_effects_values(graph, side_effects_from_host(graph), "input")
   n_declared <- length(graph$inputs) - length(captured)
   inps <- c(graph$constants, graph$inputs[seq_len(n_declared)], side_effect_inputs)
   for (i in seq_along(captured)) {
@@ -221,10 +221,7 @@ stablehlo <- function(
     list(dtype = out_aval$dtype, shape = shape(out_aval))
   })
 
-  for (name in side_effects_built(graph)) {
-    env_add(env, graph$side_effects[[name]]$input, side_effect(name)$build(func))
-  }
-  received <- lapply(side_effects_to_host(graph), function(name) graph$side_effects[[name]]$output)
+  received <- side_effects_values(graph, side_effects_to_host(graph), "output")
   outputs <- lower_graph_calls(graph, env, func, c(graph$outputs, received))
   func <- do.call(hlo_return, outputs)
 
@@ -235,7 +232,7 @@ stablehlo <- function(
 # once and call wherever they need them, for the calling scope.
 local_lowering_funcs <- function(envir = parent.frame()) {
   old <- globals[["lowering_funcs"]]
-  globals[["lowering_funcs"]] <- new.env(parent = emptyenv())
+  globals[["lowering_funcs"]] <- hashtab()
   withr::defer(
     {
       globals[["lowering_funcs"]] <- old
@@ -246,8 +243,11 @@ local_lowering_funcs <- function(envir = parent.frame()) {
 
 # The functions of the current lowering's registry, sorted by id.
 lowering_funcs <- function() {
-  funcs <- globals[["lowering_funcs"]]
-  lapply(sort(names(funcs)), function(id) funcs[[id]])
+  funcs <- list()
+  maphash(globals[["lowering_funcs"]], function(id, func) {
+    funcs[[id]] <<- func
+  })
+  unname(funcs[sort(names(funcs))])
 }
 
 # The function `id` of the current lowering, which `build(id)` builds (and

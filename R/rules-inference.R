@@ -895,6 +895,10 @@ infer_fill <- function(value, shape, dtype) {
 }
 
 # A print hands its operand back, and an ordered one the token too.
+infer_create_token <- function() {
+  list(AbstractToken())
+}
+
 infer_print <- function(x, print_token = NULL, ...) {
   c(list(x), if (!is.null(print_token)) list(print_token = print_token))
 }
@@ -1867,17 +1871,14 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
-infer_sample_bits <- function(random_state, shape, dtype) {
+infer_sample_bits <- function(random_key, random_counter, shape, dtype) {
   shape <- assert_shapevec(shape)
   dtype <- assert_dtype_param(dtype, categories = "uint")
-  list(
-    values = AbstractArray(dtype = dtype, shape = Shape(shape)),
-    random_state = random_state
-  )
+  list(AbstractArray(dtype = dtype, shape = Shape(shape)))
 }
 
-infer_fork_random_state <- function(random_state) {
-  list(child = random_state, random_state = random_state)
+infer_fork_random_state <- function(random_key, random_counter) {
+  list(random_key, random_counter)
 }
 
 infer_cholesky <- function(x, lower) {

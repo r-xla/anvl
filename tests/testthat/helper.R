@@ -117,3 +117,29 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
   testthat::expect_equal(grads[[1L]], expected1)
   testthat::expect_equal(grads[[2L]], expected2)
 }
+
+# The 32-bit words of `x`, a `ui32` or `ui64` array, low word first.
+u32_words <- function(x) {
+  if (dtype(x) == "ui64") {
+    x <- nv_bitcast_convert(x, dtype = "ui32")
+  }
+  as.numeric(as_array(x))
+}
+
+# The four 32-bit words of the random state `random_state`, by default the
+# global one: those of its key, then of its counter, low word first.
+state_words <- function(random_state = nv_get_random_state()) {
+  c(u32_words(random_state$random_key), u32_words(random_state$random_counter))
+}
+
+# The random state with the four 32-bit words `words`, as `state_words()` gives
+# them.
+random_state_of_words <- function(words) {
+  structure(
+    list(
+      random_key = nv_array(words[1:2], dtype = "ui32"),
+      random_counter = nv_bitcast_convert(nv_array(words[3:4], dtype = "ui32"), dtype = "ui64")
+    ),
+    class = "AnvlRandomState"
+  )
+}

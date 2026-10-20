@@ -4,9 +4,6 @@ draws <- function(seed, n, shape = 1L) {
   with_nv_seed(seed, lapply(seq_len(n), function(i) as_array(nv_runif(shape))))
 }
 
-# The four 32-bit words of the global random state.
-state_words <- function() unclass(nv_get_random_state())
-
 # The counter of the global random state, as long as it is below 2^32.
 state_counter <- function() state_words()[[3L]]
 
@@ -20,8 +17,7 @@ draws_from <- function(random_state, n, shape = 1L) {
 # The random state that prim_fork_random_state() returns from the global random
 # state seeded with `seed`.
 forked_state <- function(seed) {
-  words <- with_nv_seed(seed, as.numeric(as_array(prim_fork_random_state())))
-  structure(words, class = "AnvlRandomState")
+  structure(with_nv_seed(seed, prim_fork_random_state()), class = "AnvlRandomState")
 }
 
 describe("nv_set_seed", {
@@ -36,9 +32,9 @@ describe("nv_set_seed", {
     expect_identical(as_array(nv_runif(3L)), b)
   })
 
-  it("starts from the seed as the key and a zero counter", {
+  it("starts from the key JAX's key(seed) gives and a zero counter", {
     local_nv_seed(-1L)
-    expect_identical(state_words(), c(2^32 - 1, 0, 0, 0))
+    expect_identical(state_words(), c(0, 2^32 - 1, 0, 0))
   })
 
   it("is not needed: an unset random state is derived from base R's RNG", {
@@ -124,15 +120,16 @@ describe("nv_get_random_state", {
     expect_null(nv_get_random_state())
   })
 
-  it("returns the global random state as plain R values", {
+  it("returns the global random state, its key and counter as arrays", {
     local_nv_seed(7L)
     nv_runif(3L)
     random_state <- nv_get_random_state()
     expect_s3_class(random_state, "AnvlRandomState")
-    expect_identical(unclass(random_state), c(7, 0, 1, 0))
+    expect_named(random_state, c("random_key", "random_counter"))
+    expect_identical(state_words(random_state), c(0, 7, 1, 0))
     nv_runif(3L)
-    # a copy: later draws leave it intact
-    expect_identical(unclass(random_state), c(7, 0, 1, 0))
+    # later draws leave it intact
+    expect_identical(state_words(random_state), c(0, 7, 1, 0))
   })
 
   it("lets nv_set_random_state() continue the sequence where it stopped", {
@@ -146,13 +143,13 @@ describe("nv_get_random_state", {
     expect_identical(as_array(nv_runif(3L)), a)
   })
 
-  it("survives a round trip through a file", {
+  it("survives a round trip through nv_save() and nv_read()", {
     local_nv_seed(7L)
     nv_runif(2L)
-    path <- withr::local_tempfile(fileext = ".rds")
-    saveRDS(nv_get_random_state(), path)
+    path <- withr::local_tempfile(fileext = ".safetensors")
+    nv_save(nv_get_random_state(), path)
     a <- as_array(nv_runif(3L))
-    nv_set_random_state(readRDS(path))
+    nv_set_random_state(nv_read(path))
     expect_identical(as_array(nv_runif(3L)), a)
   })
 
@@ -183,23 +180,33 @@ describe("nv_set_random_state", {
 
   it("rejects what is not a random state", {
     expect_error(nv_set_random_state(c(1, 2, 3, 4)), "must be a random state returned by")
-    bad <- function(words) structure(words, class = "AnvlRandomState")
-    expect_error(nv_set_random_state(bad(c(1, 2, 3))), "four 32-bit words")
-    expect_error(nv_set_random_state(bad(c(1, 2, 3, 2^32))), "four 32-bit words")
-    expect_error(nv_set_random_state(bad(c(1, 2, 3, 0.5))), "four 32-bit words")
+    key <- nv_array(c(1, 2), dtype = "ui32")
+    counter <- nv_scalar(0L, dtype = "ui64")
+    expect_error(nv_set_random_state(list(random_key = key)), "must be a random state")
+    expect_error(nv_set_random_state(list(random_key = c(1, 2), random_counter = counter)), "must be a random state")
+    expect_error(
+      nv_set_random_state(list(random_key = nv_array(1:2, dtype = "i32"), random_counter = counter)),
+      "must be a random state"
+    )
+    expect_error(
+      nv_set_random_state(list(random_key = key, random_counter = nv_array(0L, dtype = "ui64"))),
+      "must be a random state"
+    )
   })
 
   it("carries the counter into its high word", {
     local_nv_seed(1L)
-    nv_set_random_state(structure(c(1, 0, 2^32 - 1, 0), class = "AnvlRandomState"))
+    nv_set_random_state(random_state_of_words(c(1, 0, 2^32 - 1, 0)))
     a <- as_array(nv_runif(1L))
     expect_identical(state_words(), c(1, 0, 0, 1))
     b <- as_array(nv_runif(1L))
     expect_identical(state_words(), c(1, 0, 1, 1))
     # the program sees the carried counter too
-    nv_set_random_state(structure(c(1, 0, 2^32 - 1, 0), class = "AnvlRandomState"))
+    nv_set_random_state(random_state_of_words(c(1, 0, 2^32 - 1, 0)))
     expect_identical(as_array(jit(function() list(nv_runif(1L), nv_runif(1L)))()[[2L]]), b)
     expect_false(identical(a, b))
+    # the high word of the counter reaches the hash
+    expect_false(identical(b, draws(1L, 1L)[[1L]]))
   })
 })
 
@@ -247,7 +254,7 @@ describe("the global random state in jit", {
     eager <- with_nv_seed(1L, list(lapply(f(), as_array), state_words()))
     jitted <- with_nv_seed(1L, list(lapply(jit(f)(), as_array), state_words()))
     expect_identical(jitted, eager)
-    expect_identical(eager[[2L]], c(1, 0, 3, 0))
+    expect_identical(eager[[2L]], c(0, 1, 3, 0))
   })
 
   it("gives the draws of the same calls made eagerly through nested jit()", {
@@ -304,16 +311,19 @@ describe("the global random state in jit", {
     expect_length(graph$inputs, 0L)
     expect_length(graph$outputs, 2L)
     expect_named(graph$side_effects, "random_state")
-    input <- graph$side_effects$random_state$input$aval
-    expect_identical(as.character(dtype(input)), "ui32")
-    expect_identical(shape(input), 4L)
+    input <- lapply(graph$side_effects$random_state$input, `[[`, "aval")
+    expect_identical(
+      lapply(input, function(aval) as.character(dtype(aval))),
+      list(random_key = "ui32", random_counter = "ui64")
+    )
+    expect_identical(lapply(input, shape), list(random_key = 2L, random_counter = integer()))
     expect_identical(graph$side_effects$random_state$advance, 3)
   })
 
-  it("is an input of the program, which returns no random state", {
+  it("is an input of the program, its key and counter, which returns no random state", {
     graph <- trace_fn(nv_runif, list(2L))
     func <- stablehlo(graph)[[1L]]
-    expect_length(func$inputs, 1L)
+    expect_length(func$inputs, 2L)
     expect_length(func$outputs, 1L)
     expect_null(func$inputs[[1L]]$alias)
   })
@@ -450,6 +460,39 @@ describe("the global random state in sub-graphs", {
     })
   })
 
+  it("is used by prim_sample_bits() called in a function differentiated by gradient()", {
+    f <- jit(function(x) {
+      grad <- gradient(function(x) nv_sum(x * nv_convert(prim_sample_bits(3L, "ui8"), dtype = "f32")))(x)
+      list(grad = grad$x, after = prim_sample_bits(1L, "ui8"))
+    })
+    out <- with_nv_seed(1L, f(nv_array(c(1, 1, 1))))
+    with_nv_seed(1L, {
+      expect_identical(as.numeric(as_array(out$grad)), as.numeric(as_array(prim_sample_bits(3L, "ui8"))))
+      expect_identical(as_array(out$after), as_array(prim_sample_bits(1L, "ui8")))
+    })
+  })
+
+  it("is drawn from once by value_and_gradient(), for the value and the gradient", {
+    f <- jit(function(x) value_and_gradient(function(x) nv_sum(x * nv_runif(2L, dtype = "f64")))(x))
+    x <- nv_array(c(2, 3), dtype = "f64")
+    out <- with_nv_seed(1L, list(f(x), state_words()))
+    u <- with_nv_seed(1L, as.vector(nv_runif(2L, dtype = "f64")))
+    expect_equal(as.vector(out[[1L]]$grad$x), u)
+    expect_equal(as.vector(out[[1L]]$value), sum(c(2, 3) * u))
+    # one sampling call
+    expect_identical(out[[2L]], c(0, 1, 1, 0))
+  })
+
+  it("is taken by the graph transform_gradient() builds from a graph that samples", {
+    graph <- trace_fn(function(x) nv_sum(x * nv_runif(2L)), list(x = nv_aval("f32", 2L)))
+    grad <- transform_gradient(graph, "x")
+    state <- grad$side_effects$random_state
+    expect_named(state$input, c("random_key", "random_counter"))
+    expect_identical(state$advance, 1)
+    names <- vapply(grad$statements, function(call) call$primitive$name, character(1L))
+    expect_identical(sum(names == "sample_bits"), 1L)
+  })
+
   it("is forked by an nv_while nested in the body of nv_scan, once per step", {
     f <- jit(function() {
       out <- nv_scan(
@@ -534,14 +577,83 @@ describe("the global random state across devices", {
   })
 })
 
-describe("random_state_advance_box", {
-  it("advances the counter by 2^31 and more like the host does, with the carry into the high word", {
+describe("random_state_at", {
+  it("advances the counter by 2^31 and more, with the carry into the high word", {
     words <- c(1, 2, 2^32 - 1, 7)
-    for (n in c(2^32 + 2^31 + 5, 2^53 - 1)) {
-      f <- jit(function(x) random_state_advance_box(x, n))
-      out <- as.numeric(as_array(f(nv_array(words, dtype = "ui32"))))
-      expect_identical(out, random_state_advanced(words, n))
+    # the advanced counters, low word first
+    expected <- list(c(4, 8), c(2^31 + 4, 9), c(2^32 - 2, 2^21 + 7))
+    ns <- c(5, 2^32 + 2^31 + 5, 2^53 - 1)
+    state <- random_state_of_words(words)
+    for (i in seq_along(ns)) {
+      f <- jit(function(key, counter) random_state_at(list(random_key = key, random_counter = counter), ns[[i]]))
+      out <- f(state$random_key, state$random_counter)
+      expect_identical(state_words(out), c(1, 2, expected[[i]]))
     }
-    expect_identical(random_state_advanced(words, 2^32 + 2^31 + 5), c(1, 2, 2^31 + 4, 9))
+  })
+})
+
+describe("the global random state in a traced graph", {
+  it("gives every sampling call the key and its own counter, computed from the one the graph takes", {
+    graph <- trace_fn(function() list(prim_sample_bits(2L, "ui32"), prim_sample_bits(3L, "ui32")), list())
+    expect_snapshot(graph)
+  })
+
+  it("forks the random state for nv_while and carries the counter through its body", {
+    graph <- trace_fn(
+      function(x) {
+        nv_while(
+          list(i = x),
+          \(i) i < 3L,
+          \(i) list(i = i + nv_convert(prim_sample_bits(integer(), "ui8"), "i32"))
+        )
+      },
+      list(x = nv_scalar(0L, dtype = "i32"))
+    )
+    expect_snapshot(graph)
+  })
+
+  it("draws after an nv_while loop at the counter after its fork", {
+    graph <- trace_fn(
+      function(n) {
+        out <- nv_while(list(i = 0L), function(i) i < n, function(i) {
+          prim_sample_bits(2L, "ui32")
+          list(i = i + 1L)
+        })
+        list(out$i, prim_sample_bits(3L, "ui32"))
+      },
+      list(n = nv_aval("i32", integer()))
+    )
+    expect_snapshot(graph)
+  })
+
+  it("carries the random state through the steps of nv_scan by its counter", {
+    graph <- trace_fn(
+      function() {
+        prim_sample_bits(2L, "ui32")
+        nv_scan(
+          init = nv_scalar(0L, dtype = "i32"),
+          body = function(carry, x) {
+            list(carry = carry, out = list(prim_sample_bits(1L, "ui32"), prim_sample_bits(1L, "ui32")))
+          },
+          steps = 3L
+        )$out
+      },
+      list()
+    )
+    expect_snapshot(graph)
+  })
+
+  it("lets the branches of nv_if continue the counter of the random state", {
+    graph <- trace_fn(
+      function(p) {
+        prim_sample_bits(2L, "ui32")
+        nv_if(p, \() prim_sample_bits(1L, "ui32"), \() {
+          prim_sample_bits(1L, "ui32")
+          prim_sample_bits(1L, "ui32")
+        })
+      },
+      list(p = nv_scalar(TRUE))
+    )
+    expect_snapshot(graph)
   })
 })

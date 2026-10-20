@@ -6,12 +6,24 @@
 #' Value in an [`AnvlGraph`]. This is a mutable class.
 #' @param aval ([`AbstractArray`])\cr
 #'   The abstract value of the variable.
+#' @param label (`NULL` | `character(1)`)\cr
+#'   What the value is, for a printed graph to name it after, e.g. `"key"` for
+#'   the key of the random state, which is printed as `%key1`.
 #' @return (`GraphValue`)
 #' @export
-GraphValue <- function(aval) {
+GraphValue <- function(aval, label = NULL) {
   # hot-path constructor: no input validation
   env <- new.env(parent = emptyenv())
   env$aval <- aval
+  # REVIEW: Do we prevent collisions between multiple graph values with the same label?
+  # ANSWER: A label only affects printing: nodes are told apart by identity
+  # (environments), never by label. The printer numbers labelled nodes per
+  # label over the whole graph and its sub-graphs, so two `key` nodes print as
+  # `%key1` and `%key2`. One gap: a label `x` or `c` would print names like
+  # the inputs' `%x1` or the constants' `%c1` but count separately, so two
+  # nodes could print the same name. I would make register_side_effect()
+  # refuse such labels (and empty ones).
+  env$label <- label
 
   structure(env, class = "GraphValue")
 }
@@ -248,8 +260,13 @@ AnvlGraph <- function(
 #'   How the trace takes a side effect on its first
 #'   use:
 #'   - `"input"`: as a fresh input of the graph, which the graph records in its
-#'     `side_effects` rather than among its inputs. The top level of [jit()] and
-#'     the bodies of [nv_while()] and [nv_scan()] take side effects this way.
+#'     `side_effects` rather than among its inputs; or, for one the program
+#'     creates itself, such as the token that orders prints, by the calls that
+#'     create it. The graph returns those the host receives there. The top
+#'     level of [jit()] takes side effects this way.
+#'   - `"loop"`: as a fresh input of the graph, which the graph also returns
+#'     there. The bodies of [nv_while()] and [nv_scan()] take side effects this
+#'     way, and hand them on to the next iteration.
 #'   - `"capture"`: as the current value of `parent`, which the graph closes
 #'     over. The branches of [nv_if()] and the function
 #'     [gradient()] differentiates take side effects this way.
@@ -315,8 +332,8 @@ GraphDescriptor <- function(
   # One entry per input, set by finalize: the R storage type of an input the
   # caller supplies as bare R data, `NA` for one that arrives as an array.
   env$rdata_types <- NULL
-  # The side effects the trace has used so far, a `list(input, current)` each
-  # (see side_effect_get()).
+  # The side effects the trace has used so far, an entry each (see
+  # side_effect_enter()).
   env$side_effects <- list()
   env$side_effects_mode <- side_effects_mode
   # The trace this one is opened in.
@@ -625,7 +642,7 @@ purify_subgraphs <- function(desc, graphs) {
   for (graph in graphs) {
     # Every graph gets an input per capture, also for those only another graph
     # uses, so that all of them take the call's operands the same way.
-    fresh <- lapply(captures, function(gval) GraphValue(aval = abstract_aval(gval$aval)))
+    fresh <- lapply(captures, function(gval) GraphValue(aval = abstract_aval(gval$aval), label = gval$label))
     # Its calls read that input in place of the outer value, which makes the
     # graph a pure function of its inputs.
     map <- hashtab()
@@ -804,6 +821,9 @@ trace_fn <- function(
     do.call(f_flat, inputs_flat),
     error = function(e) rlang::cnd_signal(name_failing_primitive(e))
   )
+  if (identical(desc$side_effects_mode, "loop")) {
+    side_effects_close(desc)
+  }
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -989,9 +1009,11 @@ graph_desc_add <- function(
   if (!all(side_effects %in% primitive$side_effects)) {
     cli_abort("Internal error: a call can only use the side effects its primitive declares.")
   }
-  if (length(side_effects)) {
-    args <- c(args, stats::setNames(lapply(side_effects, side_effect_get, desc = desc), side_effects))
-  }
+  # A call takes the values of each side effect it uses, as arguments named like
+  # them: the current ones of a carried side effect, and those of its step of a
+  # counted one, which it does not hand back.
+  values <- lapply(side_effects, side_effect_use, desc = desc)
+  args <- c(args, unlist(values, recursive = FALSE))
 
   # Box each input; an R value that no promotion rule materialized settles on
   # its default dtype here. `gnodes_in` is unnamed for the GraphStatement,
@@ -1010,12 +1032,9 @@ graph_desc_add <- function(
   gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))
   call <- GraphStatement(primitive, gnodes_in, params, gvals_out)
   desc$statements$add(call)
-  # The last outputs become the new values of the side effects and are not
-  # returned; each call advances them by one step.
-  for (name in side_effects) {
-    side_effect_advance(desc, name, 1)
-  }
-  side_effects_take(desc, side_effects, register_gvals(desc, gvals_out))
+  # The last outputs become the new values of the carried side effects and are
+  # not returned.
+  side_effects_take(desc, Filter(Negate(side_effect_is_counted), side_effects), register_gvals(desc, gvals_out))
 }
 
 # A primitive is named for the `prim_*()` that exports it, so the call an error

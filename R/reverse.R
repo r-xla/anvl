@@ -130,13 +130,16 @@ transform_gradient <- function(graph, wrt) {
   force(graph)
   desc <- local_descriptor()
   # The gradient takes the side effects of `graph` as `graph` does, and hands
-  # back the values its forward pass leaves them at.
+  # back the values its forward pass leaves them at. One the graph builds, the
+  # replay of its calls builds again.
   for (name in names(graph$side_effects)) {
     input <- graph$side_effects[[name]]$input
-    if (is.null(input)) {
+    if (is.null(input) && is.null(side_effect(name)$build)) {
       cli_abort("Internal error: a graph that closes over a side effect cannot be differentiated on its own.")
     }
-    side_effect_enter(desc, name, input)
+    if (!is.null(input)) {
+      side_effect_enter(desc, name, input)
+    }
   }
   res <- graph_value_and_grad(graph, wrt)
   desc$outputs <- lapply(res$grad, \(box) box$gnode)
@@ -151,7 +154,7 @@ transform_gradient <- function(graph, wrt) {
 # This can either be a call to the gradient (inputs are provided)
 # Or just the gradient itself, i.e. then the inputs are NULL (used for transform_gradient).
 # The values `graph` leaves its side effects at become their current values,
-# which advance by `graph`'s advances.
+# and the steps it continues its counted side effects to the current ones.
 graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
@@ -166,8 +169,12 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
   rebuilt_box <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
   for (name in names(graph$side_effects)) {
-    side_effect_set(desc, name, rebuilt_box(graph$side_effects[[name]]$output))
-    side_effect_advance(desc, name, graph$side_effects[[name]]$advance)
+    output <- graph$side_effects[[name]]$output
+    if (side_effect_is_counted(name)) {
+      desc$side_effects[[name]]$advance <- graph$side_effects[[name]]$advance
+    } else if (!is.null(output)) {
+      side_effect_set(desc, name, lapply(output, rebuilt_box))
+    }
   }
   list(
     value = lapply(graph$outputs, rebuilt_box),
@@ -316,7 +323,7 @@ split_vjp <- function(graph, needed) {
   # array it closed over stays a constant.
   map <- hashtab()
   inputs <- lapply(graph$inputs, function(g) {
-    map[[g]] <- GraphValue(aval = g$aval)
+    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
   })
   captured <- Filter(\(g) !is_concrete_array(g$aval), bwd$constants)
   residuals <- Filter(\(g) is.null(map[[g]]), captured)
@@ -326,7 +333,7 @@ split_vjp <- function(graph, needed) {
     if (is.null(desc_fwd$gval_to_box[[g]])) {
       cli_abort("Internal error: the backward pass of a sub-graph read a value from outside it.")
     }
-    map[[g]] <- GraphValue(aval = g$aval)
+    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
   }
   substitute_gnodes(bwd, map)
   bwd$inputs <- c(bwd$inputs, inputs, lapply(residuals, \(g) map[[g]]))
@@ -382,7 +389,7 @@ propagate_requirements <- function(graph, required_env) {
       logical(1L)
     ))
     for (out_node in call$outputs) {
-      required_env[[out_node]] <- requires && is_dtype_float(out_node$aval$dtype)
+      required_env[[out_node]] <- requires && is_abstract_array(out_node$aval) && is_dtype_float(out_node$aval$dtype)
     }
   }
   required_env
@@ -547,9 +554,10 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     }
 
     output_grads <- lapply(call$outputs, \(output) {
-      # Output grad may be NULL if there is dead code.
-      grad_env[[output]] %||%
-        zeros(dtype(output), shape(output))
+      # A token has no gradient. Output grad may be NULL if there is dead code.
+      if (!is_abstract_token(output$aval)) {
+        grad_env[[output]] %||% zeros(dtype(output), shape(output))
+      }
     })
 
     bwd <- backwards[[i]]

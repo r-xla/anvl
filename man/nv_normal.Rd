@@ -99,9 +99,7 @@ structure, use a Cholesky decomposition.
 
 \code{mean} and \code{sd} are \code{\link{arrayish}}, so they may vary across the sample: they
 are applied to the draws after they have been reshaped to \code{shape}, and so
-may either be scalars or have exactly that shape. As in base R's \code{rnorm()},
-an element whose \code{mean} is \code{NaN}, or whose \code{sd} is not finite or negative, is
-\code{NaN}. The global random state is advanced regardless.
+may either be scalars or have exactly that shape.
 }
 
 \examples{
@@ -123,8 +121,7 @@ nv_qnorm(p, lower_tail = FALSE)
 nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_set_seed(42L)
-nv_rnorm(c(2, 3))
+with_nv_seed(42L, nv_rnorm(c(2, 3)))
 
 # `sd` may also be an array of the same shape as the sample
 sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))

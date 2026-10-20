@@ -135,9 +135,12 @@ global random state or the token that orders prints. It is registered once with
 `register_side_effect()` (`R/side-effects.R`): where its value comes from (the host or the
 program), whether it is carried through loops and branches or counted, and whether the host
 receives it. A primitive declares the ones it uses with `new_primitive(side_effects = )`. Never
-thread such a value by hand: `graph_desc_add()` and the `side_effects_*()` helpers thread it
-through traces and sub-graphs; a sub-trace's `side_effects_mode` (`?GraphDescriptor`) says how it
-takes them. The internals vignette describes the mechanism.
+pass such a value by hand: `graph_desc_add()` hands it to a call (a carried one is threaded, a
+counted one is computed from the trace's starting value and the number of uses before the call,
+e.g. the random state's counter plus that number) and the `side_effects_*()` helpers take it
+through sub-graphs; a sub-trace's `side_effects_mode` (`?GraphDescriptor`) says how it takes them.
+A value without data that only orders operations, like the print token, has the type
+`AbstractToken()`. The internals vignette describes the mechanism.
 
 ## Jit-wrapping
 

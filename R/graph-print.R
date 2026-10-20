@@ -42,6 +42,9 @@ format_shape_suffix <- function(shp) {
 # fact about the input. An output that happens to *be* an input
 # (`jit(identity)`) is still just a value of its data type.
 format_aval_short <- function(aval, r_type = NA_character_) {
+  if (is_abstract_token(aval)) {
+    return("token")
+  }
   out <- sprintf("%s[%s]", as.character(dtype(aval)), shape2string(shape(aval), parenthesize = FALSE))
   if (!is.na(r_type)) {
     # An input the caller supplies as bare R data, which the program uploads at
@@ -67,9 +70,14 @@ build_node_ids <- function(inputs, constants, statements) {
 # from outside are inputs of its own, which its statement passes operands for --
 # so its nodes are all its own.
 name_graph_nodes <- function(inputs, constants, statements, node_ids, counters) {
+  # A labelled node is named after its label, numbered per label.
   name_node <- function(node, counter, prefix) {
     if (!is.null(node_ids[[node]]) || is_graph_literal(node)) {
       return(invisible(NULL))
+    }
+    if (!is.null(node$label)) {
+      counter <- prefix <- node$label
+      counters[[counter]] <- counters[[counter]] %||% 0L
     }
     counters[[counter]] <- counters[[counter]] + 1L
     node_ids[[node]] <- paste0(prefix, counters[[counter]])
@@ -342,8 +350,16 @@ format_call <- function(
 # counts.
 #
 # `typed_captures` spells a constant's data type too, for a graph formatted on
-# its own. The side effects a graph uses come after its inputs and outputs,
-# named: `random_state = %x2: ui32[4]` and `random_state = %5`.
+# its own. The values of the side effects a graph uses come after its inputs and
+# outputs: `%key1: ui32[2]` for a labelled value (see `GraphValue()`), and
+# `name = %x2: ui32[2]` otherwise.
+# What a side effect's value `value`, the node `node`, is introduced by in a
+# graph's signature or return: nothing for a labelled node, whose name says
+# what it is, and its name otherwise.
+side_effect_prefix <- function(node, value) {
+  if (is.null(node$label)) paste0(value, " = ") else ""
+}
+
 format_graph_lines <- function(
   inputs,
   constants,
@@ -373,11 +389,17 @@ format_graph_lines <- function(
     character(1L)
   )
   for (name in names(side_effects)) {
-    node <- side_effects[[name]]$input
-    if (!is.null(node)) {
+    nodes <- side_effects[[name]]$input
+    for (value in names(nodes)) {
+      node <- nodes[[value]]
       input_strs <- c(
         input_strs,
-        sprintf("%s = %s: %s", name, format_node_id(node, node_ids, digits), format_aval_short(node$aval))
+        sprintf(
+          "%s%s: %s",
+          side_effect_prefix(node, value),
+          format_node_id(node, node_ids, digits),
+          format_aval_short(node$aval)
+        )
       )
     }
   }
@@ -405,12 +427,17 @@ format_graph_lines <- function(
 
   output_ids <- c(
     vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits),
-    vapply(
-      names(side_effects),
-      function(name) sprintf("%s = %s", name, format_node_id(side_effects[[name]]$output, node_ids, digits)),
-      character(1L),
-      USE.NAMES = FALSE
-    )
+    unlist(lapply(side_effects, function(side_effect) {
+      nodes <- side_effect$output
+      vapply(
+        names(nodes),
+        function(value) {
+          paste0(side_effect_prefix(nodes[[value]], value), format_node_id(nodes[[value]], node_ids, digits))
+        },
+        character(1L),
+        USE.NAMES = FALSE
+      )
+    }))
   )
   ret <- if (length(output_ids) == 1L) {
     paste0(indent, "return ", output_ids)
@@ -449,7 +476,7 @@ format_graph_body <- function(
   width = getOption("width", 80L),
   digits = getOption("digits")
 ) {
-  side_effect_inputs <- Filter(Negate(is.null), lapply(side_effects, `[[`, "input"))
+  side_effect_inputs <- unname(unlist(lapply(side_effects, `[[`, "input"), recursive = FALSE))
   node_ids <- build_node_ids(c(inputs, side_effect_inputs), constants, statements)
   lines <- format_graph_lines(
     inputs = inputs,

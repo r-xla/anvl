@@ -11,8 +11,7 @@ nv_sample_int(shape, n, dtype = NULL)
 Shape of the result.}
 
 \item{n}{(\code{integer(1)})\cr
-Size of the population, i.e. the integers \code{1} to \code{n} are sampled. At most
-the largest value of \code{dtype}.}
+Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Numeric type of the sampled integers.
@@ -32,8 +31,7 @@ To sample from a population other than \code{1:n}, use \code{\link[=nv_sample]{n
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # roll six dice
-nv_set_seed(42L)
-nv_sample_int(6, 6L)
+with_nv_seed(42L, nv_sample_int(6, 6L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

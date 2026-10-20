@@ -122,8 +122,7 @@ nv_qunif(p, min = -1, max = 2)
 nv_qunif(p, lower_tail = FALSE)
 nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 
-nv_set_seed(42L)
-nv_runif(c(2, 3))
+with_nv_seed(42L, nv_runif(c(2, 3)))
 
 # `min`/`max` may also be arrays of the same shape as the sample
 lower <- nv_array(matrix(c(0, 10, 20, 30, 40, 50), nrow = 2))

@@ -76,8 +76,13 @@ How the trace takes a side effect on its first
 use:
 \itemize{
 \item \code{"input"}: as a fresh input of the graph, which the graph records in its
-\code{side_effects} rather than among its inputs. The top level of \code{\link[=jit]{jit()}} and
-the bodies of \code{\link[=nv_while]{nv_while()}} and \code{\link[=nv_scan]{nv_scan()}} take side effects this way.
+\code{side_effects} rather than among its inputs; or, for one the program
+creates itself, such as the token that orders prints, by the calls that
+create it. The graph returns those the host receives there. The top
+level of \code{\link[=jit]{jit()}} takes side effects this way.
+\item \code{"loop"}: as a fresh input of the graph, which the graph also returns
+there. The bodies of \code{\link[=nv_while]{nv_while()}} and \code{\link[=nv_scan]{nv_scan()}} take side effects this
+way, and hand them on to the next iteration.
 \item \code{"capture"}: as the current value of \code{parent}, which the graph closes
 over. The branches of \code{\link[=nv_if]{nv_if()}} and the function
 \code{\link[=gradient]{gradient()}} differentiates take side effects this way.
