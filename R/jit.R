@@ -44,6 +44,12 @@
 #'   backend takes is rejected when the function is called on a backend that
 #'   does not, since the backend is not known until then.
 #'
+#'
+#' @section Stochastic Functions:
+#' A function that draws random numbers also reads and advances the global
+#' random state (see [nv_set_seed()]), so two calls with the same arguments draw
+#' different samples.
+#'
 #' @section Backend and device:
 #' A jitted function runs on the active backend *when it is called*
 #' ([`active_backend()`], set with [`with_backend()`] / [`local_backend()`]),

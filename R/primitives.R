@@ -4,6 +4,7 @@
 #' @include promotion.R
 #' @include primitive.R
 #' @include jit.R
+#' @include side-effects.R
 
 # `operands` names the two arguments: `lhs` / `rhs` for an operator whose two
 # sides play the same role, names of their own where they differ.
@@ -2519,14 +2520,19 @@ prim_if <- new_primitive(
 
     current_desc <- current_descriptor(silent = TRUE)
 
-    desc_true <- local_descriptor()
+    desc_true <- local_descriptor(side_effects_mode = "capture")
     true_graph <- trace_fn(true, list(), desc = desc_true)
-    desc_false <- local_descriptor()
+    desc_false <- local_descriptor(side_effects_mode = "capture")
     false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
+    # A branch that uses a side effect closes over its value. Both branches
+    # return the value they leave behind of a carried side effect as one more
+    # output; a counted one the call advances by the larger of the branches'
+    # advances.
+    carried <- side_effects_branches(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
@@ -2539,6 +2545,7 @@ prim_if <- new_primitive(
       infer_fn = infer_cond,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried, out)
     unflatten(true_graph$out_tree, out)
   },
   subgraphs = c("true", "false"),
@@ -2609,7 +2616,7 @@ prim_while <- new_primitive(
 
     desc_cond <- local_descriptor()
     cond_graph <- trace_fn(cond, init, desc = desc_cond)
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
@@ -2620,17 +2627,33 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
+    # A body that uses side effects carries them as the last members of the
+    # loop state, which `cond` takes too but does not read. The loop runs a
+    # number of times not known while tracing, so a counted side effect forks:
+    # the body advances a value derived from the current one, which the loop
+    # itself advances by one step, and drops it at the end.
+    carried <- side_effects_carry(current_desc, body_graph, fork = TRUE)
+    cond_graph$inputs <- c(
+      cond_graph$inputs,
+      unname(unlist(
+        lapply(carried$names, side_effect_graph_values),
+        recursive = FALSE
+      ))
+    )
+    operands <- c(flatten(init), carried$operands)
+
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
     captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = c(flatten(init), captures),
+      args = c(operands, captures),
       params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried$names, out)
 
     unflatten(body_graph$out_tree, out)
   },
@@ -2750,8 +2773,14 @@ prim_scan <- new_primitive(
       list(carry = st$carry, out = st$out)
     }
 
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # A body that uses side effects carries them as the last leaves of the
+    # carry.
+    n_user_carry <- n_carry
+    carried <- side_effects_carry(current_desc, body_graph, at = n_carry)
+    init_flat <- c(init_flat, carried$operands)
+    n_carry <- n_carry + length(carried$operands)
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
     captures <- purify_subgraphs(current_desc, list(body_graph))
@@ -2798,6 +2827,10 @@ prim_scan <- new_primitive(
       infer_fn = infer_fn,
       desc = current_desc
     )
+    out <- side_effects_take(current_desc, carried$names, out, at = n_user_carry)
+    for (i in which(vapply(carried$names, side_effect_is_counted, logical(1L)))) {
+      side_effect_advance(current_desc, carried$names[[i]], steps * carried$advance[[i]])
+    }
     unflatten(body_graph$out_tree, out)
   },
   subgraphs = "body",
@@ -2942,6 +2975,7 @@ prim_top_k <- new_primitive(
 #' Bare R inputs print at their category's default data type.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
+#' @template param_print_ordered
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
 #' @template section_print_order
@@ -2959,7 +2993,8 @@ prim_top_k <- new_primitive(
 #' @export
 prim_print <- new_primitive(
   "print",
-  function(x) {
+  function(x, ordered = FALSE) {
+    assert_flag(ordered)
     # HACK: the header and footer are pre-computed here and passed as "params",
     # although they are not really ones: stablehlo does not carry the dtype the
     # way anvl prints it.
@@ -2999,67 +3034,233 @@ prim_print <- new_primitive(
     # `f32`. The stablehlo rule threads the operand through the same way, and
     # marks the custom call `has_side_effect` so it survives with its result
     # unused.
+    # An ordered print takes the token that orders prints and hands it on
+    # (see the side effect "print_token").
     graph_desc_add(
       self,
       list(x = as_anvl_array(x)),
       list(header = header, footer = footer),
-      infer_fn = infer_identity
+      infer_fn = infer_print,
+      side_effects = if (ordered) "print_token" else character()
     )
     x
+  },
+  static = "ordered",
+  side_effects = "print_token"
+)
+
+#' @title Primitive Token Creation
+#' @description
+#' Creates a token (see [AbstractToken()]), which orders operations with side
+#' effects: an operation that takes a token runs after the one that returned
+#' it. A trace creates the token that orders its prints with it, where the
+#' first ordered print (see [prim_print()]) needs one.
+#' @return ([`arrayish`])\cr
+#'   A token.
+#' @templateVar primitive_id create_token
+#' @template section_rules
+#' @seealso [AbstractToken()], [prim_print()]
+#' @examples
+#' graph <- trace_fn(prim_create_token, list())
+#' graph
+#' @export
+prim_create_token <- new_primitive(
+  "create_token",
+  function() {
+    graph_desc_add(self, list(), infer_fn = infer_create_token)[[1L]]
   }
 )
 
+# The token that orders the prints of a program (see `prim_print(ordered =
+# TRUE)`): an ordered print takes it and returns a new one, so that a print
+# that takes the token another one returned runs after it. A program creates it
+# where its first ordered print needs it, carries it through loops and branches
+# like any value, and drops it at the end.
+register_side_effect(
+  "print_token",
+  # REVIEW: Why do we need to specify avals here?
+  # ANSWER: Because the token does not always come from `build()`: in the body
+  # of a loop it enters as a fresh input, a GraphValue of this aval, before
+  # any value of it exists (side_effect_graph_values()), and the condition of
+  # nv_while() takes one too. The avals also give the number of values and
+  # their names. For a side effect only ever built, `build()` could supply
+  # them, but loops need them up front.
+  avals = list(print_token = AbstractToken()),
+  build = function(desc) {
+    list(print_token = graph_desc_add(prim_create_token, list(), infer_fn = infer_create_token, desc = desc)[[1L]])
+  },
+  labels = "token"
+)
+
 # RNG primitives
-#' @title Primitive RNG Bit Generator
+#' @title Primitive Random Bits
 #' @description
-#' Generates pseudo-random numbers using the specified algorithm and returns
-#' the updated RNG state together with the generated values.
-#' @param state ([`arrayish`])\cr
-#'   RNG state: a 1-D array of the `ui64` data type. Its length depends on
-#'   `rng_algorithm` -- exactly 2 for `"THREE_FRY"`, 2 or 3 for `"PHILOX"`,
-#'   and whatever the implementation wants for `"DEFAULT"`.
-#' @param rng_algorithm (`character(1)`)\cr
-#'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
-#'   leaving the choice to the implementation.
-#' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values. Can be any numeric data type.
+#' Draws random bits from the active random state (see [nv_set_seed()]) with
+#' the ThreeFry-2x32 counter-based generator of
+#' `r cite_bib("salmon2011parallel")`, and advances that random state by one
+#' step.
+#'
+#' The random state is not an argument. A random state is a key \eqn{k} and a
+#' counter \eqn{c}, and a call splits it: it draws from the fresh key
+#' \eqn{k' = \mathrm{ThreeFry}_k(c)}, hashing \eqn{k'} with the counters
+#' \eqn{0, 1, 2, \ldots}, and advances the random state to \eqn{(k, c + 1)},
+#' however many values it drew. Deriving keys from a key with a keyed hash is
+#' the idea of the splittable generators of
+#' `r cite_bib("claessen2013splittable")`; the keys and bits are exactly those
+#' of `r cite_bib("jax2018github")`: \eqn{k'} is JAX's `fold_in(k, c)`, the key
+#' of the \eqn{c}-th draw of JAX's `stateful_rng()`, whose counter has 32 bits
+#' where this one has 64, and the draw is JAX's `random.bits(k', shape)`. So the size of a draw does not change what later
+#' draws give, and two draws of `1` do not give the values of one draw of `2`.
+#' Under [jit()] the calls do not hand the random state on to one another: a
+#' call takes the key \eqn{k} and the counter it splits at as its operands, the
+#' \eqn{j}-th call of a program that starts from \eqn{(k, c)} the counter
+#' \eqn{c + j}.
+#'
+#' The value at position \eqn{t} (counted from 0 in row-major order)
+#' is computed from the hash of the counter \eqn{t} (the 64-bit counter
+#' \eqn{c} is hashed with its high word first): in a `"ui64"` draw, the hash's
+#' first 32-bit word is the value's high half and its second word the low half;
+#' a narrower draw takes the two words xor'd, truncated to `dtype`.
+#'
+#' The same algorithm is used on every platform, so a random state gives the
+#' same bits on every device and platform.
+#' @section Properties:
+#' For a fixed key, ThreeFry-2x32 is a bijection of 64-bit blocks, a keyed
+#' permutation like a block cipher. Hence
+#' * the keys that the sampling calls of a random state derive from its 64-bit
+#'   counter are distinct until the counter wraps around after \eqn{2^{64}}
+#'   calls, from where the keys, and so the draws, repeat: that is the period of
+#'   a random state;
+#' * the positions of a draw hash distinct inputs, so the \eqn{n} 64-bit hashes
+#'   of a draw are distinct. Modelling the permutation as uniformly random, as
+#'   is usual for a block cipher, they are a sample *without replacement* from
+#'   the \eqn{2^{64}} possible blocks rather than \eqn{n} independent uniform
+#'   ones: no two of them coincide, where two independent uniform 64-bit values
+#'   coincide with probability \eqn{2^{-64}}.
+#'
+#' A value that takes each of \eqn{2^w} values on exactly \eqn{2^{64-w}} hashes
+#' inherits this: its values in a draw are drawn without replacement from an
+#' urn with \eqn{2^{64-w}} balls of each of \eqn{2^w} colours. Such values are a
+#' `"ui32"` value, the xor of the hash's two 32-bit words (\eqn{w = 32}); a
+#' `"ui16"` or `"ui8"` value, the low bits of that xor; a `"f32"` uniform of
+#' [nv_runif()] and the other samplers, the 23 highest bits of a `"ui32"`
+#' value; and a `"f64"` uniform, bits 11 to 62 of a `"ui64"` value, all but its
+#' highest and its 11 lowest bits (\eqn{w = 52}). Each value is exactly
+#' uniform, but two positions of a draw coincide with probability
+#' \eqn{(2^{64-w}-1)/(2^{64}-1)} instead of \eqn{2^{-w}}, a relative deficit of
+#' \eqn{(2^w-1)/(2^{64}-1) \approx 2^{w-64}}: \eqn{2^{-12}} for `"f64"`
+#' uniforms, \eqn{2^{-32}} for `"ui32"` values and \eqn{2^{-41}} for `"f32"`
+#' uniforms. Keeping fewer bits does not weaken the dependence between two
+#' positions -- a function of the value at one position and the same function
+#' at another have correlation \eqn{-1/(2^{64}-1)}, whatever \eqn{w} -- it
+#' hides it among the coincidences that \eqn{2^w} values have anyway. A mean of
+#' \eqn{n} values of a draw has \eqn{(2^{64}-n)/(2^{64}-1)} times the variance
+#' of a mean of independent ones, so standard errors computed as for
+#' independent values are conservative, by a relative
+#' \eqn{6 \cdot 10^{-11}}{6e-11} at most. If different keys give independent
+#' permutations, the draws of different sampling calls are independent: the
+#' dependence is confined to a draw.
+#'
+#' How visible this is follows from the PRP/PRF switching lemma: under the
+#' model, no test tells the hashes of a draw of \eqn{n} values, or any values
+#' computed from them, from independent uniform ones with an advantage above
+#' \eqn{n(n-1)/2^{65}}{n (n - 1) / 2^65}, about \eqn{1/8} for the largest draw
+#' of \eqn{2^{31}-1} values. The best test looks for a repeated value: a
+#' `"ui64"` draw of that size never repeats one, where independent values would
+#' with probability \eqn{0.118}. With fewer bits the expected number of
+#' coinciding pairs still falls short by about \eqn{n^2/2^{65}}{n^2 / 2^65},
+#' but against a standard deviation of about
+#' \eqn{n/2^{(w+1)/2}}{n / 2^((w + 1) / 2)}: counting coinciding `"f64"`
+#' uniforms needs draws of the largest size totalling about
+#' \eqn{6 \cdot 10^{14}}{6e14} values to see the deficit at three standard
+#' deviations, and for `"ui32"` values (\eqn{7 \cdot 10^{20}}{7e20}) and
+#' `"f32"` uniforms (\eqn{3 \cdot 10^{23}}{3e23}) it is out of reach.
+#'
+#' Keys derived from different random states, such as those of different seeds
+#' or of the child random state [nv_while()] forks (see
+#' [prim_fork_random_state()]), are not related by the bijection: as keys are
+#' 64-bit values, two of them can coincide by chance. By the birthday bound, the
+#' probability that some two of \eqn{n} keys drawn uniformly from the
+#' \eqn{N = 2^{64}} possible keys coincide is
+#' \deqn{p(n) = 1 - \prod_{i = 1}^{n - 1} \left(1 - \frac{i}{N}\right)
+#'   \approx 1 - \exp\left(-\frac{n (n - 1)}{2 N}\right),}{
+#'   p(n) = 1 - prod_{i = 1}^{n - 1} (1 - i / N) ~ 1 - exp(-n (n - 1) / (2 N)),}
+#' which reaches \eqn{1/2} at
+#' \eqn{n \approx \sqrt{2 \ln(2) N} \approx 1.18 \cdot 2^{32}}{n ~ sqrt(2 ln(2) N) ~ 1.18 * 2^32}
+#' keys.
 #' @template param_shape
-#' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state with the input `state`'s data type
-#'   and shape, and `values`, the random values with the given `dtype` and
-#'   `shape`.
-#' @templateVar primitive_id rng_bit_generator
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
+#' @return ([`arrayish`])\cr
+#'   The random bits, of data type `dtype` and shape `shape`. The draws fill
+#'   `shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` holds
+#'   JAX's draw of that shape element for element, which is not a draw of `6`
+#'   filled into `c(2, 3)` in R's column-major order.
+#' @references
+#' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
+#' @templateVar primitive_id sample_bits
 #' @template section_rules
-#' @section StableHLO:
-#' `r roxy_spec("rng_bit_generator")`
-#' @seealso [nv_runif()], [nv_rnorm()]
+#' @seealso [nv_runif()], [nv_rnorm()], [prim_fork_random_state()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # THREE_FRY, the default, takes a two-element state
-#' state <- nv_array(c(0L, 0L), dtype = "ui64")
-#' prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
-#'
-#' # the updated state feeds the next draw, so the two differ
-#' out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
-#' prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
-#'
-#' # PHILOX also accepts a three-element state
-#' prim_rng_bit_generator(
-#'   nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
-#'   dtype = "i32", shape = 4L
-#' )
+#' with_nv_seed(1L, prim_sample_bits(c(2, 3), "ui32"))
 #' @export
-prim_rng_bit_generator <- new_primitive(
-  "rng_bit_generator",
-  function(state, rng_algorithm = "THREE_FRY", dtype, shape) {
+prim_sample_bits <- new_primitive(
+  "sample_bits",
+  function(shape, dtype) {
     graph_desc_add(
       self,
-      list(state = state),
-      params = list(rng_algorithm = rng_algorithm, dtype = dtype, shape = shape),
-      infer_fn = infer_rng_bit_generator
-    )
+      list(),
+      params = list(shape = shape, dtype = dtype),
+      infer_fn = infer_sample_bits
+    )[[1L]]
   },
-  static = 2:4
+  static = c("shape", "dtype"),
+  side_effects = "random_state"
 )
+
+#' @title Primitive Fork of the Random State
+#' @description
+#' Splits the active random state \eqn{(k, c)} (see [nv_set_seed()]) like a
+#' sampling call of [prim_sample_bits()] does, advancing it by one step to
+#' \eqn{(k, c + 1)}, and returns the child random state
+#' \eqn{(\mathrm{ThreeFry}_k(c), 0)} instead of drawing from it: its key is
+#' JAX's `fold_in(k, c)`. [nv_while()]
+#' forks the random state for a loop body that samples: the loop runs a number
+#' of times that is not known while it is traced, so the body advances the
+#' child as often as it runs, and the loop advances the random state outside of
+#' it by one step.
+#' @references
+#' `r format_bib("claessen2013splittable", "jax2018github")`
+#' @return (`list()`)\cr
+#'   The child random state: `random_key`, its key, a `"ui32"` array of shape
+#'   `2` (the words of JAX's key data), and `random_counter`, its counter, a
+#'   `"ui64"` scalar `0`.
+#' @templateVar primitive_id fork_random_state
+#' @template section_rules
+#' @seealso [prim_sample_bits()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' with_nv_seed(1L, prim_fork_random_state())
+#' @export
+prim_fork_random_state <- new_primitive(
+  "fork_random_state",
+  function() {
+    fork_random_state(current_descriptor(silent = TRUE))
+  },
+  side_effects = "random_state"
+)
+
+# The child random state a fork of the random state of the trace `desc` returns,
+# its key and counter as GraphBoxes; the fork is a call of
+# `prim_fork_random_state()` in `desc`.
+fork_random_state <- function(desc) {
+  out <- graph_desc_add(
+    prim_fork_random_state,
+    list(),
+    infer_fn = infer_fork_random_state,
+    desc = desc
+  )
+  side_effect_label("random_state", list(random_key = out[[1L]], random_counter = out[[2L]]))
+}
 
 #' @title Primitive Scatter
 #' @description

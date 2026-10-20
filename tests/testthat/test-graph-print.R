@@ -184,6 +184,14 @@ describe("format.AnvlGraph()", {
     expect_snapshot(graph)
   })
 
+  it("names the side effects of a graph after its inputs and its outputs", {
+    graph <- trace_fn(
+      function(x) nv_print(x + prim_sample_bits(2L, "ui32"), ordered = TRUE),
+      list(x = nv_aval("ui32", 2L))
+    )
+    expect_snapshot(graph)
+  })
+
   it("has nothing between the signature and the return when there are no calls", {
     expect_snapshot(trace_fn(identity, list(x = nv_scalar(1, dtype = "f32"))))
   })

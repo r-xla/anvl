@@ -1,9 +1,20 @@
 # anvl (development version)
 
+* Breaking: random draws use a global random state, which `nv_set_seed()` seeds
+  (`with_nv_seed()` / `local_nv_seed()` for a scope) and `nv_get_random_state()` /
+  `nv_set_random_state()` save and restore. The samplers lose their `state`
+  argument; `nv_rng_state()` is removed.
+* Breaking: `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`, which
+  draws with ThreeFry-2x32 from a fresh key per call, exactly as JAX's stateful
+  generator does, so that a jitted function draws what the same code run eagerly
+  draws. New `prim_fork_random_state()`.
+* `prim_print()` / `nv_print()` gain `ordered`, to print in the order of the code.
+* `new_primitive()` gains `side_effects`, for primitives that read and update a
+  value outside of the traced function. New `AbstractToken()`, the type of a
+  value that only orders operations.
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
-
 * Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
   negative `sd`, like `rnorm()`.
 * Bugfix: `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`

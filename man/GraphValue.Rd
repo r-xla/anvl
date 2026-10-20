@@ -4,11 +4,15 @@
 \alias{GraphValue}
 \title{Graph Value}
 \usage{
-GraphValue(aval)
+GraphValue(aval, label = NULL)
 }
 \arguments{
 \item{aval}{(\code{\link{AbstractArray}})\cr
 The abstract value of the variable.}
+
+\item{label}{(\code{NULL} | \code{character(1)})\cr
+What the value is, for a printed graph to name it after, e.g. \code{"key"} for
+the key of the random state, which is printed as \verb{\%key1}.}
 }
 \value{
 (\code{GraphValue})

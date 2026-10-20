@@ -33,7 +33,10 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       client = pjrt::pjrt_client(pjrt::platform(compiled$device)),
       device = compiled$device,
       out_tree = compiled$out_tree,
-      out_avals = compiled$out_avals
+      out_avals = compiled$out_avals,
+      implicit_inputs = compiled$implicit_inputs,
+      implicit_outputs = compiled$implicit_outputs,
+      on_success = compiled$on_success
     )
   }
 }
@@ -133,6 +136,16 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `device`: The `PJRTDevice` the executable was compiled for.
 #'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
 #'     executor must allocate for an output (see [`stablehlo()`]).
+#'   - `implicit_inputs`: One `list(get, dtype, shape)` per value of a side
+#'     effect the program takes from outside of it, which pjrt's dispatcher
+#'     supplies as an input after the call's own: `get()` takes no arguments
+#'     and returns the current value, an array of `dtype` and `shape`.
+#'   - `implicit_outputs`: One `list(dtype, shape)` per value of a side effect
+#'     the program returns to the host, after its own outputs.
+#'   - `on_success`: `NULL`, or a function pjrt's dispatcher calls after every
+#'     successful run with the side effects' returned values, which calls
+#'     each side effect's `after_run()` with the values the program returns of
+#'     it and the uses the program made of it.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -144,7 +157,7 @@ compile_pjrt <- function(
   fallback_device = NULL,
   default_dtypes = NULL
 ) {
-  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt")
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt", side_effects_mode = "input")
   graph <- trace_fn(
     f,
     desc = desc,
@@ -186,6 +199,8 @@ compile_pjrt <- function(
   compile_graph_pjrt(graph, donate = donate, device = device)
 }
 
+# pjrt's dispatcher supplies the side effects the program takes from the host as
+# implicit inputs, and hands those it returns to the entry's `on_success`.
 compile_graph_pjrt <- function(graph, donate = character(), device) {
   platform_name <- if (is.character(device)) device else platform(device)
   out <- stablehlo(
@@ -224,7 +239,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     )
   })
 
-  src <- stablehlo::repr(func)
+  # the functions `func` calls are defined next to it
+  src <- paste(vapply(c(out[[4L]], list(func)), stablehlo::repr, character(1L)), collapse = "\n\n")
   program <- pjrt_program(src = src, format = "mlir")
   exec <- pjrt_compile(program, device = device)
 
@@ -239,8 +255,49 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     # call without any R input needs no declaration at all.
     input_dtypes = graph_input_dtypes(graph),
     device = device(exec),
-    phantom_specs = phantom_specs
+    phantom_specs = phantom_specs,
+    implicit_inputs = unlist(
+      lapply(side_effects_from_host(graph), function(name) {
+        side_effect <- side_effect(name)
+        Map(
+          function(aval, i) {
+            list(get = function() side_effect$get()[[i]], dtype = as.character(dtype(aval)), shape = shape(aval))
+          },
+          unname(side_effect$avals),
+          seq_along(side_effect$avals)
+        )
+      }),
+      recursive = FALSE
+    ),
+    implicit_outputs = unlist(
+      lapply(side_effects_to_host(graph), function(name) {
+        lapply(unname(side_effect(name)$avals), function(aval) {
+          list(dtype = as.character(dtype(aval)), shape = shape(aval))
+        })
+      }),
+      recursive = FALSE
+    ),
+    on_success = side_effects_on_success(graph)
   )
+}
+
+# The function pjrt's dispatcher calls after a run of the program of `graph`,
+# with the values the program returns of the side effects the host receives:
+# it calls `after_run()` of every side effect of the graph that has one (see
+# `register_side_effect()`). `NULL` when there is none.
+side_effects_on_success <- function(graph) {
+  names <- Filter(function(name) !is.null(side_effect(name)$after_run), names(graph$side_effects))
+  if (!length(names)) {
+    return(NULL)
+  }
+  to_host <- side_effects_to_host(graph)
+  # the outputs of each side effect the host receives, one after the other
+  owner <- rep(to_host, side_effects_widths(to_host))
+  function(outputs) {
+    for (name in names) {
+      side_effect(name)$after_run(outputs[owner == name], graph$side_effects[[name]]$advance)
+    }
+  }
 }
 
 #' PJRT Backend

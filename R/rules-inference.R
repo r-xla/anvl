@@ -894,8 +894,13 @@ infer_fill <- function(value, shape, dtype) {
   ))
 }
 
-infer_identity <- function(x, ...) {
-  list(x)
+# A print hands its operand back, and an ordered one the token too.
+infer_create_token <- function() {
+  list(AbstractToken())
+}
+
+infer_print <- function(x, print_token = NULL, ...) {
+  c(list(x), if (!is.null(print_token)) list(print_token = print_token))
 }
 
 # ---------------------------------------------------------------------------
@@ -1866,38 +1871,14 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
-infer_rng_bit_generator <- function(state, rng_algorithm, dtype, shape) {
-  assert_array_dtype(state, "uint", naxes = 1L)
-  if (dtype(state) != as_dtype("ui64")) {
-    cli_abort(c(
-      "{.arg state} must be {.val ui64}.",
-      x = "Got {.val {as.character(dtype(state))}}."
-    ))
-  }
+infer_sample_bits <- function(random_key, random_counter, shape, dtype) {
+  shape <- assert_shapevec(shape)
+  dtype <- assert_dtype_param(dtype, categories = "uint")
+  list(AbstractArray(dtype = dtype, shape = Shape(shape)))
+}
 
-  assert_choice_param(rng_algorithm, c("DEFAULT", "THREE_FRY", "PHILOX"))
-
-  state_size <- shape(state)[[1L]]
-  if (rng_algorithm == "THREE_FRY" && state_size != 2L) {
-    cli_abort(c(
-      "{.val THREE_FRY} requires an {.arg state} of length {.val {2L}}.",
-      x = "Got {.val {state_size}}."
-    ))
-  }
-  if (rng_algorithm == "PHILOX" && !(state_size %in% c(2L, 3L))) {
-    cli_abort(c(
-      "{.val PHILOX} requires an {.arg state} of length {.val {2L}} or {.val {3L}}.",
-      x = "Got {.val {state_size}}."
-    ))
-  }
-
-  out_dtype <- assert_dtype_param(dtype, categories = c("int", "uint", "float"))
-
-  # (C1)
-  list(
-    state = AbstractArray(dtype = "ui64", shape = state$shape),
-    values = AbstractArray(dtype = out_dtype, shape = Shape(assert_shapevec(shape)))
-  )
+infer_fork_random_state <- function(random_key, random_counter) {
+  list(random_key, random_counter)
 }
 
 infer_cholesky <- function(x, lower) {
@@ -2015,11 +1996,11 @@ infer_while <- function(..., cond, body, n_captures) {
   inputs_body <- lapply(body$inputs[state_idx], function(inp) inp$aval)
   # The names of `init`, read off the body's input tree rather than passed as a
   # param (which would reach the lowering rules).
+  # The side effects a body carries come after the state.
   state_names <- pjrt::tree_child_names(body$in_tree)
-  labels <- if (length(state_names) == length(outs)) {
-    state_names
-  } else {
-    sprintf("state %d", seq_along(outs))
+  labels <- sprintf("state %d", seq_along(outs))
+  if (length(state_names) <= length(outs)) {
+    labels[seq_along(state_names)] <- state_names
   }
   describe <- function(idx, a, b, verbs) {
     sprintf(

@@ -1,5 +1,6 @@
 ---
 title: "Random Number Generation"
+bibliography: references.bib
 ---
 
 ```{r, include = FALSE}
@@ -9,91 +10,278 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this article, you will learn how to generate random numbers in {anvl}, which is different from base R, where random number generation uses a global state (`.Random.seed`) that is automatically updated after each call:
-
-```{r}
-set.seed(42)
-.Random.seed[2:4]
-rnorm(3)
-.Random.seed[2:4]
-rnorm(3)
-.Random.seed[2:4]
-```
-
-In {anvl}, the random state must be explicitly passed around.
-This is because we are following a functional programming paradigm where functions are pure and don't have side effects.
-
-**Note:** This explicit state-passing behavior might change in the future to provide a more R-like experience, but for now you need to manage the state yourself.
-
-To generate random numbers, you first need to create an initial RNG state, which is simply a `ui64[2]`.
-You can convert a seed into a state using `nv_rng_state()`:
+In this article, we will explain how {anvl} generates (pseudo) random numbers.
+As in base R, random number generation uses a global state, the *global random state*, that every draw advances, and `nv_set_seed()` seeds it like `set.seed()` does:
 
 ```{r}
 library(anvl)
-state <- nv_rng_state(42L)
-state
+nv_set_seed(42L)
+nv_runif(3L)
+nv_runif(3L)
+nv_set_seed(42L)
+nv_runif(3L)
 ```
+
+Calling `nv_set_seed()` is optional.
+While the global random state is not set, the first draw derives it from base R's RNG, so a `set.seed()` before the first draw makes the draws reproducible as well.
+This happens only once, though: after the first draw, calling `set.seed()` again does not reseed {anvl}'s random state; call `nv_set_seed()` for that.
 
 The available samplers are listed in the [distributions](../reference/index.html#distributions) section of the reference.
-All of them return a named list of two elements:
-
-1. `state` -- the **new** RNG state, to be used for subsequent random number
-   generation.
-2. `values` -- the generated random numbers.
-
-Let's generate some uniform random numbers:
+For example, below we sample a matrix of shape $2 \times 3$ from a normal distribution.
 
 ```{r}
-result <- nv_runif(state, dtype = "f32", shape = c(2, 3))
-result$state
-result$values
-```
-
-For normally distributed random numbers:
-
-```{r}
-result <- nv_rnorm(state, shape = c(2, 3), mean = 0, sd = 1)
-result$values
-```
-
-`mean` and `sd` are arrayish, so they may vary across the sample.
-
-```{r}
-sds <- nv_matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2)
-nv_rnorm(state, shape = c(2, 3), sd = sds)$values
+nv_rnorm(c(2, 3), mean = 0, sd = 1)
 ```
 
 To draw integers, use `nv_sample_int()`, the counterpart to R's `sample.int()`:
 
 ```{r}
 # roll six dice
-nv_sample_int(6L, state, 6L)$values
+nv_sample_int(6L, 6L)
 ```
 
 `nv_sample()` draws from an arbitrary population instead.
-Unlike R's `sample()`, its population argument is never overloaded with a count, so `nv_sample(5L, state, nv_array(6))` samples from the population `6` rather than from `1:6`:
+Unlike R's `sample()`, its population argument is never overloaded with a count, so `nv_sample(5L, nv_array(6))` samples from the population `6` rather than from `1:6`:
 
 ```{r}
 population <- nv_array(c(10, 20, 30))
-nv_sample(8L, state, population)$values
+nv_sample(8L, population)
 ```
 
-One thing to avoid is to reuse the same state for multiple calls as done in the example below:
+## Seeding for a scope
+
+`with_nv_seed()` and `local_nv_seed()` are the counterparts of `withr::with_seed()` and `withr::local_seed()`.
+They seed the global random state for one expression or for the calling function only, and restore the random state from before afterwards, so the draws around them are not affected:
 
 ```{r}
-result1 <- nv_runif(state, dtype = "f32", shape = 3L)
-result2 <- nv_runif(state, dtype = "f32", shape = 3L)
-list(first = result1$values, second = result2$values)
+nv_set_seed(1L)
+with_nv_seed(42L, nv_runif(2L))
+with_nv_seed(42L, nv_runif(2L))
+# the global random state continues as if the two calls had not happened
+nv_runif(2L)
+nv_set_seed(1L)
+nv_runif(2L)
 ```
 
-As you can see, both calls produced identical random numbers because we used the same state for both.
-To get different random numbers in subsequent calls, you need to pass the **new** state returned by the previous call:
+Inside a function, `local_nv_seed()` keeps the seed until the function returns:
 
 ```{r}
-result1 <- nv_runif(state, dtype = "f32", shape = 3L)
-new_state <- result1$state
-result2 <- nv_runif(new_state, dtype = "f32", shape = 3L)
-list(first = result1$values, second = result2$values)
+simulate <- function(n) {
+  local_nv_seed(123L)
+  nv_rnorm(n)
+}
+simulate(3L)
+simulate(3L)
 ```
 
-Now we get different random numbers because we properly propagated the state.
+## The generator
+
+{anvl} draws random numbers with the counter-based ThreeFry-2x32 generator [@salmon2011parallel].
+A counter-based generator does not step through a sequence of internal states, as base R's Mersenne Twister does.
+Instead, it computes each random number directly, by hashing a *key* $k$ together with a *counter* $c$, and the result $\mathrm{TF}_k(c)$ is 64 random bits.
+This plays well with parallel computation, as each random number can be generated independently.
+Although there are other algorithms such as Philox that are faster on GPU [@salmon2011parallel], we use the same algorithm on all platforms for consistency.
+In the future, we might add support for other generators as well.
+
+### Splitting keys
+
+A generator is *splittable* if it can derive new, independent keys from a key, so that separate computations can draw from one seed without coordinating with each other.
+@claessen2013splittable showed how to build one from a cryptographic hash: a new key is the hash of the key together with the new key's position.
+Their generator uses the Threefish-256 block cipher, and splits lazily: a split only appends a bit to a path of splits, and the path is hashed into a new key once it is full.
+
+JAX builds its generator on the same idea, with ThreeFry-2x32 [@jax2018github].
+Its `fold_in(key, n)` derives a key by hashing the key with the counter $n$, and its stateful generator, `jax.experimental.random.stateful_rng()`, derives the key of its $n$-th draw as `fold_in(key, n)` and then increments $n$.
+The global random state of {anvl} is exactly such a generator, and it derives its keys and draws its bits exactly as JAX does:
+
+- a seed $s$ gives the key of JAX's `jax.random.key(s)`, the 32-bit words $0$ and $s$;
+- the key of a draw is JAX's `fold_in(k, c)`: the hash of the counter, its high 32-bit word first;
+- a draw is JAX's `jax.random.bits(k', shape)`.
+
+So `prim_sample_bits()` gives the same bits as JAX for the same seed, which the tests of {anvl} check against values computed from JAX's code.
+The one difference is the counter: JAX's has 32 bits and {anvl}'s 64.
+The two agree on the first $2^{32}$ draws, and beyond them {anvl} keeps deriving new keys, where a 32-bit counter wraps around and repeats them.
+The samplers that turn bits into samples are {anvl}'s own, though: `nv_runif()` and `nv_rnorm()` do not give the numbers of JAX's `uniform()` and `normal()`.
+
+## Which numbers a draw gives
+
+This section states precisely which numbers a draw gives.
+It is what makes a draw reproducible, and what tells you when two programs that look alike draw the same numbers and when they do not.
+
+### Random states and sampling calls
+
+A *random state* is a pair $(k, c)$ of a key and a counter, two 64-bit unsigned integers.
+`nv_set_seed(s)` makes the global random state $(k_s, 0)$, where $k_s$ is the key of JAX's `jax.random.key(s)`.
+
+Every sampler is built from calls of the primitive `prim_sample_bits()`, which we call *sampling calls*.
+A sampling call on the random state $(k, c)$
+
+1. *splits* it: it derives the fresh key $k' = \mathrm{TF}_k(c)$, JAX's `fold_in(k, c)`;
+2. draws its values from $k'$ as JAX's `jax.random.bits()` does: the value at position $t = 0, 1, 2, \ldots$ (counted in row-major order, as JAX counts) is computed from the hash $\mathrm{TF}_{k'}(t)$, whose two 32-bit words are a 64-bit value's high and low half, and are xor'd into a narrower value, which keeps its low bits;
+3. advances the random state to $(k, c + 1)$, however many values it drew.
+
+So the counter of the global random state counts sampling calls, not values:
+
+```{r}
+nv_set_seed(42L)
+nv_get_random_state()
+invisible(nv_runif(1000L))
+nv_get_random_state()
+nv_rnorm(3L)
+nv_get_random_state()
+```
+
+`nv_runif()` makes one sampling call; `nv_rnorm()` makes two, one for each of the two batches of uniforms the Box-Muller transform takes.
+The global key $k$ itself is only ever used to derive keys, never to draw values.
+
+Two consequences follow.
+First, the size of a draw does not change what later draws give, as the next sampling call splits at $c + 1$ either way:
+
+```{r}
+nv_set_seed(1L)
+invisible(nv_runif(1L))
+nv_runif(3L)
+nv_set_seed(1L)
+invisible(nv_runif(1000L))
+nv_runif(3L)
+```
+
+Second, two draws of one value do not give the values of one draw of two values: the first are drawn from two keys, the second from one.
+
+```{r}
+nv_set_seed(1L)
+c(as_array(nv_runif(1L)), as_array(nv_runif(1L)))
+nv_set_seed(1L)
+nv_runif(2L)
+```
+
+A sampler's number of sampling calls is part of what it draws: if a sampler made more or fewer of them, every draw after it would change.
+
+### Compiled functions draw what eager code draws
+
+`jit()` does not change which sampling calls a function makes, nor their order, so the $j$-th sampling call of a call of a compiled function splits at the counter $c + j$, exactly as the $j$-th of the same calls made one after the other without `jit()`.
+A compiled function therefore draws the same numbers as the same code run eagerly:
+
+```{r}
+f <- function() list(nv_runif(2L), nv_rnorm(2L))
+nv_set_seed(1L)
+f()
+nv_set_seed(1L)
+jit(f)()
+```
+
+How does the compiled program know $c$?
+When `jit()` traces a function, it counts the sampling calls the function makes; call that number $N$.
+The program takes the global random state $(k, c)$ as an input, splits at the counters $c, c + 1, \ldots, c + N - 1$, and returns no random state: once the call has run, {anvl} advances the global random state to $(k, c + N)$ itself.
+The sampling calls do not hand the random state on to one another, so none of them waits for another: in the traced graph, each takes the key and its own counter, $c + j$, computed from the counter the program takes.
+
+```{r}
+trace_fn(function() list(prim_sample_bits(2L, "ui32"), prim_sample_bits(3L, "ui32")), list())
+```
+
+```{r}
+nv_set_seed(1L)
+g <- jit(function() list(nv_runif(2L), nv_rnorm(2L), nv_runif(2L)))
+invisible(g())
+nv_get_random_state()
+```
+
+For this to work, $N$ must be known when the function is traced, before it runs.
+In straight-line code it is: it is the number of sampling calls in the trace.
+Loops and branches need rules of their own.
+
+### Loops and branches
+
+A loop body or a branch is traced once, but runs any number of times or not at all.
+Its $j$-th sampling call splits at $c + j$, where $(k, c)$ is the random state it starts from, and $N_{\mathrm{body}}$ is the number of sampling calls it makes.
+What the construct advances the random state outside of it by is then:
+
+| Construct | Advance | Same as eager code |
+|---|---|---|
+| `nv_scan(..., steps = n)` | $n \cdot N_{\mathrm{body}}$ | yes: an R `for` loop over the body |
+| `nv_if(pred, a, b)` | $\max(N_a, N_b)$, whichever branch runs | when $N_a = N_b$ |
+| `nv_while(cond, body)` | $1$, however often the body runs | no |
+
+`nv_scan()` runs its body a fixed number of times, so step $i$ (counted from 0) starts from the random state $(k, c + i \cdot N_{\mathrm{body}})$, and the loop draws what the same body called in an R `for` loop draws:
+
+```{r}
+step <- function() nv_runif(1L)
+nv_set_seed(1L)
+jit(function() nv_scan(nv_scalar(0), body = function(carry, x) list(carry = carry, out = step()), steps = 3L)$out)()
+nv_set_seed(1L)
+for (i in 1:3) print(as_array(step()))
+```
+
+`nv_if()` runs one of two branches, which may make different numbers of sampling calls.
+Both branches split from the random state the call meets, and the call advances it by the larger of the two numbers, whichever branch runs; the branch with fewer sampling calls leaves a few counters unused.
+So the draws after an `nv_if()` do not depend on which branch ran, and `nv_if(pred, f, f)` draws exactly what `f` draws.
+
+```{r}
+h <- jit(function(pred) nv_if(pred, function() nv_runif(1L), function() nv_rnorm(1L)))
+nv_set_seed(1L)
+invisible(h(TRUE))
+nv_get_random_state()
+nv_set_seed(1L)
+invisible(h(FALSE))
+nv_get_random_state()
+```
+
+`nv_while()` runs its body a number of times that is not known while it is traced, so no number of sampling calls of the body can be counted in advance.
+It *forks* the random state instead: before the loop, it splits the random state $(k, c)$ once, like a sampling call, but instead of drawing from the fresh key $k_w = \mathrm{TF}_k(c)$, it makes $(k_w, 0)$ the random state of the loop body, which advances it as often as it runs.
+The random state outside the loop advances by one, to $(k, c + 1)$, however often the body ran:
+
+```{r}
+walk <- jit(function(n) {
+  nv_while(
+    list(i = 0L, pos = nv_scalar(0)),
+    function(i, pos) i < n,
+    function(i, pos) list(i = i + 1L, pos = pos + nv_rnorm(integer()))
+  )$pos
+})
+for (n in c(1L, 10L, 100L)) {
+  nv_set_seed(1L)
+  walk(n)
+  print(nv_get_random_state())
+}
+```
+
+The fork is available as `prim_fork_random_state()`, which returns the child random state $(k_w, 0)$:
+
+```{r}
+nv_set_seed(1L)
+prim_fork_random_state()
+nv_get_random_state()
+```
+
+A body that makes no sampling call forks nothing and advances nothing.
+Because of the fork, the numbers an `nv_while()` loop draws differ from those of the same body run in an R `while` loop, which splits the global random state once per sampling call of every iteration.
+Moving a prototype from an R `while` loop to `nv_while()` therefore changes the numbers, as does adding the first sampling call to a loop body that did not make one before.
+
+The function that `gradient()` differentiates is traced once and runs once, so it advances the random state by its number of sampling calls, like straight-line code.
+Sampling is not possible in the condition of `nv_while()`, nor in the functions of a reduction or a scatter, where a random state could not be handed back.
+
+### Why the advance must be known in advance
+
+Fixing every advance when a function is traced, rather than when it runs, is what lets every sampling call compute its counter from the counter the program starts from, so that no sampling call waits for another, and that lets the host advance the random state after a call by a number known in advance, without the program returning it.
+The same property will let a future `vmap()` or `parallel_map()` of a function give each element the counter a hand-written loop over the elements would give it.
+The price is the fork of `nv_while()`, which is the one construct whose eager counterpart draws differently.
+
+## Saving and restoring the random state
+
+`nv_get_random_state()` returns the global random state, its key and its counter as arrays; `nv_set_random_state()` makes a saved random state the global random state again.
+Where `nv_set_seed()` restarts a sequence from its beginning, the two continue it where it stopped, e.g. to resume a simulation:
+
+```{r}
+nv_set_seed(42L)
+random_state <- nv_get_random_state()
+nv_runif(3L)
+nv_set_random_state(random_state)
+nv_runif(3L)
+```
+
+Like any array, the random state can be written to a file with `saveRDS()` and read back with `readRDS()`:
+
+```{r}
+path <- tempfile(fileext = ".rds")
+saveRDS(nv_get_random_state(), path)
+nv_set_random_state(readRDS(path))
+```

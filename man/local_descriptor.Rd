@@ -8,7 +8,8 @@ local_descriptor(..., envir = parent.frame())
 }
 \arguments{
 \item{...}{(\code{any})\cr
-Additional arguments to pass to the \code{\link{GraphDescriptor}} constructor.}
+Additional arguments to pass to the \code{\link{GraphDescriptor}} constructor,
+except \code{parent}.}
 
 \item{envir}{(\code{environment})\cr
 Environment where exit handler will be registered for cleaning up the
@@ -23,4 +24,6 @@ The graph is automatically removed when exiting the current scope.
 After the graph is either cleaned up automatically (by exiting the scope)
 or finalized, the previously built graph is restored,
 i.e., accessible via \code{\link[=current_descriptor]{current_descriptor()}}.
+That previously built graph, \code{NULL} if there is none, is the \code{parent} of the
+new one.
 }

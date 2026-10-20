@@ -446,6 +446,87 @@ f(list(w = nv_scalar(2), b = nv_scalar(5)), nv_scalar(3))
 jit_cache_size(f)
 ```
 
+### Side Effects
+
+An `AnvlGraph` describes a pure function: its outputs depend only on its inputs, and running it changes nothing else.
+Drawing random numbers does not fit this picture, as it reads and advances the global random state, which lives outside the program.
+{anvl} handles such values as **side effects**: a value that some primitives read and update, which the user never passes, and which {anvl} **threads** through the trace instead.
+The global random state is one: all random draws -- `nv_runif()`, `nv_rnorm()`, and the other samplers -- build on `prim_sample_bits()`, which reads it and advances it.
+See the [random numbers](random-numbers.html) article for the user-facing side, including which numbers a draw gives.
+
+A side effect is registered once with `register_side_effect()`, with the types of its values (`AbstractArray()`s and `AbstractToken()`s), which a call takes as arguments named like them, and three choices:
+
+- **Where the values come from**: from outside of the program, through a function `get()` that returns them as arrays, which the program takes as inputs; or from the program itself, through a function `build(desc)` that adds the calls that create them to the trace, where their first use needs them.
+- **How they pass from use to use**: *carried*, so that every use returns the updated values, which the next use takes, a loop carries from one iteration to the next, and `nv_if()` returns from the branch that ran; or *counted*: the values after $n$ uses depend on $n$ alone, not on what the uses compute, which the side effect's `at(values, n)` says, so that no use has to hand them on.
+- **What happens after a run**: nothing, or `after_run(values, uses)`, which the host calls with the number of uses the program made and, for a carried side effect, the values the program leaves behind, which it returns for that purpose. A counted side effect's values the host knows from `uses`, so the program never returns them.
+
+| Side effect | Values | Come from | From use to use | After a run |
+|---|---|---|---|---|
+| global random state | `random_key` (`ui32[2]`), `random_counter` (`ui64[]`) | `get()`: `globals$random_state` | counted: `at()` adds $n$ to the counter | `after_run()` adds the program's uses to the counter |
+| token that orders prints | `print_token` (a token) | `build()`: a call of `prim_create_token()` | carried | dropped |
+
+The global random state lives in the `random_state` binding of {anvl}'s internal `globals` environment, as two arrays, its key and its counter, which `nv_set_seed()` creates; a program takes them as inputs and returns neither, and after a run `after_run()` adds the number of sampling calls the program made to the counter, with a small computation of {anvl}'s own.
+The token that orders prints is a StableHLO token, of the type `AbstractToken()`, which an ordered print (`prim_print(ordered = TRUE)`) takes and returns: a print that takes the token another one returned depends on it and so runs after it.
+A token holds no data, so it costs nothing to carry, and never reaches R.
+A primitive declares the side effects it uses with the `side_effects` argument of `new_primitive()`, and a call can use fewer of them, as an unordered print uses none:
+
+```r
+prim_sample_bits <- new_primitive("sample_bits", function(shape, dtype) {
+  graph_desc_add(self, list(), params = list(shape = shape, dtype = dtype), infer_fn = infer_sample_bits)[[1L]]
+}, static = c("shape", "dtype"), side_effects = "random_state")
+```
+
+While tracing, the `GraphDescriptor` holds the *current* values of each side effect it has used, and `graph_desc_add()` passes them to the call as more operands.
+A carried side effect is threaded: the call outputs the updated values last, which become the new current ones, so the next ordered print takes the token the previous one returned.
+A counted side effect is not: the call returns nothing for it, and takes the values `at()` gives for the number of uses before it in the trace, its `advance`.
+For the random state, that is the key and the counter the trace started from plus the number of sampling calls before this one, so every sampling call shows in the graph which key and counter it splits, and none waits for another.
+Where a side effect comes from on its first use is decided by the `side_effects_mode` whoever opens the trace passes to `local_descriptor()`:
+
+- `"input"`: the values are fresh inputs of the graph, or, for a side effect the program builds, created by the calls its `build()` adds; the graph returns the values of the side effects the host receives.
+  The top-level trace of `jit()` takes side effects this way.
+- `"loop"`: the values are fresh inputs of the graph, which also returns them: a carried side effect's last values, and a counted one's after its last use, which the next iteration takes.
+  The bodies of `nv_while()` and `nv_scan()` take side effects this way.
+- `"capture"`: the values are the current ones of the enclosing trace, which the graph closes over like any other captured value; a counted side effect continues the enclosing trace's uses.
+  The branches of `nv_if()` and the function differentiated by `gradient()` take side effects this way.
+- Neither: using a side effect is an error.
+  This is the case for the condition of `nv_while()` and the functions of a reduction or scatter, which have no way to hand updated values back.
+
+A side effect is only registered on its first use, so a function that does not draw takes no extra input.
+The graph records the side effects it uses in its `side_effects` field, apart from its `inputs` and `outputs`, so that `in_tree` and `out_tree` keep describing what the user passes and gets back.
+For a counted side effect, each entry also records the uses of the graph, its `advance`, which is known when the graph is traced:
+
+```{r}
+graph <- trace_fn(function(x) x + prim_sample_bits(2L, "ui32"), list(x = nv_aval("ui32", 2L)))
+graph
+graph$side_effects$random_state$advance
+```
+
+For the higher-order primitives, this means:
+
+- `nv_scan()`: if the body uses a side effect, its values become more members of the carry, so every iteration takes the values the previous one returns. A carried side effect's final values become the enclosing trace's current ones. A counted side effect enters at the enclosing trace's next use, the body returns its values after one iteration's uses, and the enclosing trace continues after the number of steps times the body's advance.
+- `nv_while()`: a carried side effect is carried like in `nv_scan()`. The number of iterations is not known while the loop is traced, so a counted side effect forks instead: the loop calls its `fork`, which for the random state adds a call of `prim_fork_random_state()` to the enclosing trace, one use there, and carries the child's values it returns, a new key and the counter 0. The loop's final values of a counted side effect are dropped.
+- `nv_if()`: the branches close over the current values. For a carried side effect, both return the values they leave behind as more outputs, and the outputs of the `if` become the enclosing trace's current ones. A counted side effect is handed back by neither: both branches continue the enclosing trace's uses, which then continue after the larger of the two branches' advances.
+- `gradient()`: the differentiated function closes over the values, and once the graph has been replayed by the reverse-mode transformation, the values it leaves behind become the enclosing trace's current ones, and its uses the enclosing trace's.
+
+At the top level, `stablehlo()` lowers the values of a side effect from outside of the program to more arguments after the graph's inputs, and returns the values of a side effect the host receives as more results after the graph's outputs.
+The pjrt backend hands them to pjrt's dispatcher as *implicit inputs and outputs* of the program: before every run it reads the implicit inputs with `get()`, arrays it passes on (copied to the program's device if they are on another one), and after every successful run it calls the entry's `on_success` with the implicit outputs, which calls each side effect's `after_run()` with its outputs and the graph's `advance`.
+None of this is part of the cache key: whether a program uses a side effect is decided by the program, not by the arguments of the call.
+
+Since eager calls of `nv_*` functions also run through `jit()`, every draw -- eager or compiled -- advances the same random state, and the split of the draws into compiled functions does not change the numbers:
+
+```{r}
+nv_set_seed(1L)
+x <- nv_runif(2L)
+y <- nv_runif(2L)
+nv_set_seed(1L)
+f <- jit(function() list(x = nv_runif(2L), y = nv_runif(2L)))
+out <- f()
+identical(as_array(x), as_array(out$x))
+identical(as_array(y), as_array(out$y))
+```
+
+Neither the global random state nor the print token support the quickr backend, so quickr cannot run a function that draws random numbers or prints in order.
+
 ## Backend and Device in `jit()`
 
 A compiled program runs on one backend and on one device of that backend.
