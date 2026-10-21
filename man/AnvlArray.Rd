@@ -39,7 +39,9 @@ Alternatively a \code{raw()} vector holding the native little-endian byte
 payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \code{shape}
 are then required (only supported on the \code{"pjrt"} backend).
 Raw payloads are read in column-major element order, or row-major
-with \code{byrow = TRUE}.}
+with \code{byrow = TRUE}. An existing \code{\link{AnvlArray}} is returned unchanged if
+the \code{shape}, \code{dtype} and \code{device} given agree with it, and is an error
+otherwise.}
 
 \item{shape}{(\code{NULL} | \code{integer()})\cr
 The output shape of the array.
@@ -47,14 +49,14 @@ The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
 Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
 no elements -- so \code{shape} is required there.
-To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = integer()}.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-The data type at which to create the array: a \code{\link[tengen:DataType]{tengen::DataType}} or one
-of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. \code{data} is built at it rather than converted to it,
-and a value it cannot hold at all is an error (\code{nv_array(3e9, dtype = "i32")} overflows); a \code{double} at an integer data type is truncated.
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
+The data type at which to create the array: a \code{\link[xlamisc:DataType]{xlamisc::DataType}} or one
+of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64.
+A value it cannot hold at all is an error (\code{nv_array(3e9, dtype = "i32")} overflows). A \code{double} at an integer data type is truncated.
 The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} of
-\code{data}'s category.}
+\code{data}'s category. \code{\link[=nv_empty]{nv_empty()}}, which has no \code{data}, requires it.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -63,8 +65,9 @@ The device the data lives on, given either as:
 \code{"cuda:<n>"}), which is resolved against the backend in use, or
 \item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
 \code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
-\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
-is backend-specific, it also determines the backend.
+\code{\link{quickr_device}} for the \code{"quickr"} backend. It must belong to the
+active backend (\code{\link[=active_backend]{active_backend()}}); a device of another backend is an
+error.
 }
 
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
@@ -72,7 +75,7 @@ The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 \item{byrow}{(\code{logical(1)})\cr
 When constructing from an R object and the result has at least two
 axes, fill the array in row-major order rather than the
-default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'s \code{byrow}.
+default column-major order.
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
 
@@ -84,8 +87,9 @@ Defaults to \code{1} when \code{data} is a scalar.}
 Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
 
-\item{like}{(\code{\link{AnvlArray}})\cr
-An existing array. Any of \code{shape}, \code{dtype} and \code{device} that are \code{NULL}
+\item{like}{(\code{\link{AnvlArray}} | \code{\link{GraphBox}})\cr
+An existing array; an R value is an error. Any of \code{shape} (which
+\code{nv_scalar_like()} does not take), \code{dtype} and \code{device} that are \code{NULL}
 (the default) are taken from \code{like}.}
 }
 \value{
@@ -103,8 +107,8 @@ An array's \strong{axes} are the indices that identify its directions, numbered
 along that axis, and the \strong{shape} is the vector of all axis sizes. For
 example, \code{nv_array(1:6, shape = c(2, 3))} has two axes; the size of axis \code{1}
 is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2, 3)}. Use
-\code{\link[tengen:naxes]{naxes()}} for the number of axes and
-\code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
+\code{\link[xlamisc:naxes]{naxes()}} for the number of axes, \code{\link[=axes]{axes()}} for the axis
+indices, and \code{\link[xlamisc:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
 axis} rather than an array's "dimensions", as the latter is generally
 overloaded as it is used to refer to both the axis and its size.
 }
@@ -113,10 +117,11 @@ overloaded as it is used to refer to both the axis and its size.
 
 The following generic functions can be used to extract information from an \code{AnvlArray}:
 \itemize{
-\item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
-\item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
-\item \code{\link[tengen:device]{device()}}: Get the device of the array.
+\item \code{\link[xlamisc:dtype]{dtype()}}: Get the data type of the array.
+\item \code{\link[xlamisc:shape]{shape()}}: Get the shape (axis sizes) of the array.
+\item \code{\link[xlamisc:naxes]{naxes()}}: Get the number of axes.
+\item \code{\link[=axes]{axes()}}: Get the axis indices.
+\item \code{\link[xlamisc:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
 }
 }
@@ -130,6 +135,12 @@ Arrays can be serialized to and from the
 \item \code{\link[=nv_serialize]{nv_serialize()}} / \code{\link[=nv_unserialize]{nv_unserialize()}}:
 Serialize/deserialize arrays to/from raw vectors.
 }
+
+An array can also be saved like any R object, e.g. with \code{\link[=saveRDS]{saveRDS()}}.
+Its device is not saved: an array of the pjrt backend loads onto the
+\link[=default_device]{default device} at the time it is read, so an array saved
+on a GPU also loads on a machine without one. anvl arranges this when it
+is loaded, so load anvl before reading arrays.
 }
 
 \section{Backend}{
@@ -150,11 +161,11 @@ presence of such values.
 \item Creating \code{float} arrays where we convert the \code{NA} to \code{NaN}.
 \item When creating an \code{i32} from an R \code{integer()}.
 There, we throw a warning, but the resulting \code{AnvlArray} gets the bit
-representation of \code{NAinteger_}, which is \code{-INT_MIN}.
+representation of \code{NA_integer_}, which is \code{INT_MIN} (\code{-2147483648}).
 Disallowing this would prevent round-trips between the data types.
 }
 
-See the "Gotchas" vignette for more information.
+See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for more information.
 }
 
 \section{Out of Range values}{
@@ -198,7 +209,7 @@ device(x)
 platform(x)
 
 # --- Transforming arrays with jit ---
-add_one <- jit(function(x) x + 1)
+add_one <- jit(function(x) x + 1L)
 add_one(nv_array(1:4))
 
 # --- Eager mode (calling operations directly) ---

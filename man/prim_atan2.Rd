@@ -11,8 +11,8 @@ prim_atan2(y, x)
 Ordinate and abscissa of the point, of the same shape. Can be any float
 data type.
 \code{y} and \code{x} must have the same data type. An R value among them assumes
-the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr

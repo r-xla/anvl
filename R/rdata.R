@@ -42,7 +42,8 @@ NULL
 #' print(graph)
 #' # the actual inputs to the compiled program
 #' graph$inputs
-#' # the data types of the R values; AnvlArrays get NA here
+#' # the R storage types of the inputs passed as R values; NA for inputs passed
+#' # as AnvlArrays
 #' graph$rdata_types
 #' @export
 RData <- function(shape, r_type) {
@@ -61,7 +62,7 @@ is_rdata <- function(x) {
 #' @method dtype RData
 #' @export
 dtype.RData <- function(x, ...) {
-  abort_no_dtype(default_dtype_r(x$r_type))
+  abort_no_dtype()
 }
 
 
@@ -87,20 +88,20 @@ shape.logical <- shape.numeric
 #' @method dtype numeric
 #' @export
 dtype.numeric <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
+  abort_no_dtype()
 }
 
 #' @method dtype logical
 #' @export
 dtype.logical <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
+  abort_no_dtype()
 }
 
-abort_no_dtype <- function(default_dtype) {
+abort_no_dtype <- function() {
   cli_abort(
     c(
       "An R value has no data type of its own until it is used.",
-      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it materializes at the default ({.val {as.character(default_dtype)}}).", # nolint
+      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it materializes at the default.", # nolint
       i = "Give it one explicitly with {.fn nv_convert}."
     ),
     call = NULL
@@ -242,7 +243,7 @@ rdata_mat_hit <- function(box, dtype) {
   if (is.null(hit)) {
     return(NULL)
   }
-  reachable <- identical(hit$desc, box$desc) || identical(hit$desc, .current_descriptor(silent = TRUE))
+  reachable <- identical(hit$desc, box$desc) || identical(hit$desc, current_descriptor(silent = TRUE))
   if (reachable) hit else NULL
 }
 
@@ -250,7 +251,7 @@ rdata_mat_hit <- function(box, dtype) {
 # `desc` at `dtype` as a constant, and return its GraphBox. Tracing only. The
 # value is built from the R data itself, so it arrives with every digit it had,
 # which is what keeps `x_f64 / sqrt(2)` exact.
-build_r_at <- function(x, dtype, desc = .current_descriptor()) {
+build_r_at <- function(x, dtype, desc = current_descriptor()) {
   force(desc)
   if (!is_valid_r_lit(x) && !is_valid_r_array(x)) {
     # An `NA` reaches here: it is a length-1 numeric, but there is no dtype it
@@ -276,17 +277,17 @@ r_const_at <- function(x, dtype, desc) {
 
 #' @title Peek at a Data Type
 #' @description
-#' The data type `x` would take if it was converted to an `AnvlArray`.
+#' The data type `x` would take if it materialized.
 #' Relevant for R objects and their [`RData`] trace-time analogon: for those it
 #' is the default of the active backend (see [`default_dtypes()`]), which the
 #' value has not materialized at yet.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
-#' @return ([`tengen::DataType`])\cr
+#' @return ([`xlamisc::DataType`])\cr
 #'   The data type `x` has, or the [default data type][default_dtypes] it would
 #'   materialize at if it is still a bare R value.
-#' @seealso [as_anvl_arrays()], [RData], [shape()][tengen::shape]
+#' @seealso [as_anvl_arrays()], [RData], [shape()][xlamisc::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)
 #' peek_dtype(1L)
@@ -317,36 +318,14 @@ has_no_dtype <- function(x) {
 
 # Input slots -----------------------------------------------------------------
 
-# Reserve `desc`'s next input slot for an R argument: an input like any other,
-# except that its aval is an `RData` and so has no data type yet. The slot holds
-# it until finalize_rdata_inputs() (or, for an inline trace,
-# finalize_inline_rdata_inputs()) replaces it with the value the body
-# materialized, which keeps the input order the same as the argument order (the
-# caller supplies its inputs in that order).
-#
-# `outer` links an inline trace's input to the enclosing trace's box the
-# argument came from. The value is fresh rather than shared so the inline body's
-# materializations land in `desc` -- where transform_gradient() can
-# differentiate the converts between them -- and cannot clobber the outer
-# input's memo.
-register_rdata_input <- function(desc, aval, outer = NULL) {
-  gval <- GraphValue(aval)
-  desc$inputs <- c(desc$inputs, list(gval))
-  if (!is.null(outer)) {
-    desc$rdata_outer[[gval]] <- outer
-  }
-  GraphBox(gval, desc)
-}
-
 # Which of a descriptor's inputs are R arguments whose data type is still open.
 is_open_rdata_input <- function(gval) {
   is_rdata(gval$aval)
 }
 
-# modifies the descriptor in-place
-# and finalizes the rdata inputs by:
-# 1. Resolving the data type the input gets
-# 2. Appending pre_calls with the conversions.
+# Finalize a top-level trace's open R inputs, modifying `desc` in place: each
+# input takes the single data type it is uploaded at, and every other data type
+# the trace built it at is defined by a convert appended to the pre-statements.
 finalize_rdata_inputs <- function(desc) {
   inputs <- desc$inputs
   is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
@@ -354,7 +333,7 @@ finalize_rdata_inputs <- function(desc) {
     return(invisible(NULL))
   }
   r_types <- rep(NA_character_, length(inputs))
-  pre_calls <- list()
+  pre_statements <- list()
   for (i in which(is_open)) {
     gval <- inputs[[i]]
     aval <- gval$aval
@@ -366,23 +345,29 @@ finalize_rdata_inputs <- function(desc) {
     inputs[[i]] <- main$gnode
     r_types[[i]] <- aval$r_type
     for (other in setdiff(requested, resolved)) {
-      # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
-      # always results in the same value
-      pre_calls[[length(pre_calls) + 1L]] <- PrimitiveCall(
-        primitive = prim_convert,
-        inputs = list(main$gnode),
-        params = list(dtype = as_dtype(other)),
-        outputs = list(mat[[other]]$gnode)
-      )
+      convert <- rdata_convert_statement(main$gnode, other, mat[[other]]$gnode)
+      pre_statements[[length(pre_statements) + 1L]] <- convert
     }
   }
   desc$inputs <- inputs
   desc$rdata_types <- r_types
-  desc$pre_calls <- c(desc$pre_calls, pre_calls)
+  desc$pre_statements <- c(desc$pre_statements, pre_statements)
   invisible(NULL)
 }
 
-# The dtypes a finished trace built `node`'s R value at directly. Only these
+# A `prim_convert` statement defining `output` from `input` at `dtype`. The
+# upload dtype is resolved so that it holds every requested one, which is what
+# makes this convert give the value `output` would have been built at.
+rdata_convert_statement <- function(input, dtype, output) {
+  GraphStatement(
+    primitive = prim_convert,
+    inputs = list(input),
+    params = list(dtype = as_dtype(dtype)),
+    outputs = list(output)
+  )
+}
+
+# The dtypes a finished trace built an input's R value at directly. Only these
 # can be uploaded (or serve as a graph input); the memo also holds the results
 # of converting out of the value's category, which the program computes from
 # one of these.
@@ -391,68 +376,6 @@ rdata_requested_dtypes <- function(aval, mat) {
     function(dt) rdata_in_category(aval$r_type, as_dtype(dt)),
     names(mat)
   )
-}
-
-# Finalize Rdata inputs of a sub-trace.
-# E.g. used with gradent()
-finalize_inline_rdata_inputs <- function(desc) {
-  inputs <- desc$inputs
-  is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
-  if (!any(is_open)) {
-    return(invisible(NULL))
-  }
-  pre_calls <- list()
-  add_convert <- function(input, dtype, output) {
-    # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
-    # always results in the same value
-    pre_calls[[length(pre_calls) + 1L]] <<- PrimitiveCall(
-      primitive = prim_convert,
-      inputs = list(input),
-      params = list(dtype = as_dtype(dtype)),
-      outputs = list(output)
-    )
-  }
-  for (i in which(is_open)) {
-    gval <- inputs[[i]]
-    aval <- gval$aval
-    mat <- rdata_mat(desc, gval)
-    requested <- rdata_requested_dtypes(aval, mat)
-    resolved <- resolve_upload_dtype(aval, requested, desc$default_dtypes)
-    outer <- desc$rdata_outer[[gval]]
-    local_box <- mat[[resolved]]
-    # In the examples below, `x` is `nv_scalar(1, "f64")` and `b` is the R
-    # value this iteration settles.
-    if (is.null(local_box)) {
-      # The sub-trace never built at the resolved data type
-      # (e.g., if sub-trace uses input 1 at f16 and bf16, resolved would be f32, i.e. the one that
-      # can hold both, even though nobody requested it)
-      main <- materialize_rdata(outer, as_dtype(resolved))$gnode
-    } else if (is.null(rdata_mat(outer$desc, outer$gnode)[[resolved]])) {
-      # The value at `resolved` exists in this graph and nowhere else: hand
-      # the gval itself up, so the enclosing trace's own finalize defines it
-      # (as the upload input, or a convert from it) ahead of this graph's
-      # calls, and later uses there reuse it.
-      # e.g. the body builds `q` at `f64`, the enclosing trace never uses `b`:
-      #   jit(\(a, b) gradient(\(p, q) p * q, wrt = "p")(a, b))(x, 2)
-      main <- local_box$gnode
-      rdata_mat_set(outer$desc, outer$gnode, resolved, register_gval(outer$desc, main))
-    } else {
-      # The enclosing trace built `resolved` too, so the body's gval is a
-      # second value for it: take the outer one as the input and define the
-      # body's from it.
-      # e.g. `a + b` builds `b` at `f64` before the body builds its own:
-      #   jit(\(a, b) { w <- a + b; gradient(\(p, q) p * q, wrt = "p")(a, b) })(x, 2)
-      main <- materialize_rdata(outer, as_dtype(resolved))$gnode
-      add_convert(main, resolved, local_box$gnode)
-    }
-    inputs[[i]] <- main
-    for (other in setdiff(requested, resolved)) {
-      add_convert(main, other, mat[[other]]$gnode)
-    }
-  }
-  desc$inputs <- inputs
-  desc$pre_calls <- c(desc$pre_calls, pre_calls)
-  invisible(NULL)
 }
 
 # What a dtype can hold, as (precision, range): a float's mantissa and exponent
@@ -513,15 +436,15 @@ resolve_upload_dtype <- function(aval, requested, defaults = current_default_dty
     return(as.character(default_dtype_r(aval$r_type, defaults)))
   }
   dtypes <- lapply(requested, as_dtype)
-  holds_all <- vapply(dtypes, function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d)), logical(1L))
+  holds_every_request <- function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d))
+  holds_all <- vapply(dtypes, holds_every_request, logical(1L))
   if (!any(holds_all)) {
     # None of them holds the others, so the upload has to widen -- but only as
     # far as it takes. The natural dtype would always do (`f64` holds every
     # float), and it is what the value would be built at on its own; taking it
     # here would put an `f64` input into a program that has no other `f64` in
     # it, purely because one argument was asked for at two narrow floats.
-    holds <- function(cand) all(vapply(dtypes, dtype_holds, logical(1L), dtype = as_dtype(cand)))
-    narrowest <- Find(holds, rdata_build_candidates(aval$r_type))
+    narrowest <- Find(function(cand) holds_every_request(as_dtype(cand)), rdata_build_candidates(aval$r_type))
     return(narrowest %||% as.character(rdata_natural_dtype(aval$r_type)))
   }
   # Several candidates hold them all only when they are equivalent; ordering by
@@ -536,7 +459,7 @@ resolve_upload_dtype <- function(aval, requested, defaults = current_default_dty
 # of the R value before handing it over.
 graph_input_dtypes <- function(graph) {
   r_types <- graph$rdata_types
-  if (is.null(r_types) || !any(!is.na(r_types))) {
+  if (is.null(r_types) || all(is.na(r_types))) {
     return(NULL)
   }
   ifelse(

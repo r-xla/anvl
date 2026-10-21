@@ -150,7 +150,7 @@ describe("resolve_upload_dtype", {
     expect_equal(graph_input_dtypes(graph), c(NA, NA, "f32"))
     expect_equal(repr(graph$inputs[[3L]]$aval), "f32[]")
     expect_equal(graph$rdata_types, c(NA_character_, NA_character_, "double"))
-    converts <- Filter(function(call) call$primitive$name == "convert", graph$calls)
+    converts <- Filter(function(call) call$primitive$name == "convert", graph$statements)
     expect_length(converts, 2L)
     expect_setequal(
       vapply(converts, function(call) as.character(call$outputs[[1L]]$aval$dtype), character(1L)),
@@ -296,6 +296,15 @@ describe("an R value at its use site", {
       nv_while(list(i = x), function(i) i < nv_add(x, a), function(i) list(i = nv_add(i, a)))
     })
     expect_identical(as_array(g(3L, nv_scalar(2, dtype = "f64"))$i), 5)
+  })
+
+  it("materializes at its default where a sub-graph returns it as it is", {
+    # Nothing in the branch meets the value, so it reaches the branch's outputs
+    # still open, and is captured there at the default of its category.
+    f <- jit(function(p, b) nv_if(p, function() b, function() b))
+    out <- f(nv_scalar(TRUE), 2)
+    expect_dtype(out, default_float())
+    expect_equal(as_array(out), 2)
   })
 
   it("is built straight at a narrow or unsigned data type", {
@@ -679,7 +688,7 @@ describe("staging an R value out of its own category", {
     # conversion in the program at all, so the trace records no call.
     calls <- function(r_type, dtype) {
       graph <- trace_fn(function(x) prim_convert(x, dtype), list(x = nv_aval(r_type, integer())))
-      length(graph$calls)
+      length(graph$statements)
     }
     expect_equal(calls("double", "f32"), 0L)
     expect_equal(calls("integer", "i64"), 0L)

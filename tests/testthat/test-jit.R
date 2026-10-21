@@ -135,7 +135,7 @@ test_that("evaluates each argument exactly once, also under S3 dispatch", {
   double_it <- jit(function(x) prim_add(x, x))
   nv_double <- function(x) UseMethod("nv_double")
   nv_double.AnvlArray <- double_it
-  nv_double.AnvlBox <- double_it
+  nv_double.GraphBox <- double_it
 
   n <- 0L
   expect_equal(nv_double(count(nv_scalar(1))), nv_scalar(2))

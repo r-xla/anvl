@@ -6,6 +6,8 @@
 \title{Cumulative Product}
 \usage{
 nv_cumprod(x, axis = NULL, nan_rm = FALSE)
+
+\method{cumprod}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

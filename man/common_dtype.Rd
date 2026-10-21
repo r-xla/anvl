@@ -2,20 +2,20 @@
 % Please edit documentation in R/promotion.R
 \name{common_dtype}
 \alias{common_dtype}
-\title{Type Promotion Rules}
+\title{Common Data Type}
 \usage{
 common_dtype(lhs_dtype, rhs_dtype)
 }
 \arguments{
-\item{lhs_dtype, rhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{lhs_dtype, rhs_dtype}{(\code{\link[xlamisc:DataType]{xlamisc::DataType}})\cr
 The two data types.}
 }
 \value{
-(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+(\code{\link[xlamisc:DataType]{xlamisc::DataType}})\cr
 The narrowest common data type.
 }
 \description{
-Compute the common data type.
+Compute the common data type of two data types.
 
 Two integer data types meet at one that holds every value of both: a signed
 and an unsigned one at the narrowest signed data type wide enough for the
@@ -25,7 +25,7 @@ become a float on its own -- so \code{ui64} and a signed integer have no common
 data type and the pair is an error. Convert one side with \code{\link[=nv_convert]{nv_convert()}}
 to decide what they meet at.
 
-See the \emph{Type Promotion} article for more information.
+See the \href{https://r-xla.github.io/anvl/articles/type-promotion.html}{Data Types and Promotion Rules} article for more information.
 }
 \examples{
 common_dtype("i32", "f32")

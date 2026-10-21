@@ -6,6 +6,8 @@
 \title{Arc Cosine}
 \usage{
 nv_acos(x)
+
+\method{acos}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

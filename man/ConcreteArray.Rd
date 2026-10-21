@@ -10,6 +10,9 @@ ConcreteArray(data)
 \item{data}{(\code{\link{AnvlArray}})\cr
 The actual array data.}
 }
+\value{
+(\code{\link{ConcreteArray}})
+}
 \description{
 An \code{\link{AbstractArray}} that also holds a reference to the actual array data.
 Usually represents a closed-over constant in a program.

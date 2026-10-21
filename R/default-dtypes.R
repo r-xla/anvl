@@ -20,7 +20,7 @@ parse_default_dtypes_env <- function(value) {
 # The `anvl.default_dtypes` option, falling back to the `ANVL_DEFAULT_DTYPES`
 # environment variable read when anvl was loaded (see `read_env_defaults()`).
 default_dtypes_setting <- function() {
-  getOption("anvl.default_dtypes") %||% globals[["ENV_DEFAULT_DTYPES"]]
+  getOption("anvl.default_dtypes") %||% globals[["env_default_dtypes"]]
 }
 
 resolve_option_default_dtypes <- function(value, backend) {
@@ -40,9 +40,7 @@ option_default_dtypes <- function(backend) {
 }
 
 apply_default_dtypes <- function(baseline, override) {
-  for (category in names(override)) {
-    baseline[[category]] <- as_dtype(override[[category]])
-  }
+  baseline[names(override)] <- lapply(override, as_dtype)
   baseline
 }
 
@@ -54,11 +52,8 @@ effective_default_dtypes <- function(backend) {
 #' @title Default Data Types
 #' @description
 #' The default data types for the [active backend][active_backend()].
-#' They decide the data type an R value is materialized at when it cannot be
-#' inferred from another operand.
-#'
-#' This includes array creation via (`nv_array(1)`) or passing R values to unary functions
-#' (`prim_exp(1)`).
+#' They are the data types an R value settles on when it meets no typed array,
+#' e.g. `nv_array(1)` or `prim_exp(1)`.
 #'
 #' `default_dtypes()` reports both categories at once; `default_float()` and
 #' `default_int()` report one each.
@@ -68,47 +63,24 @@ effective_default_dtypes <- function(backend) {
 #' [`local_default_dtypes()`] and [`with_default_dtypes()`] set the option for
 #' a scope.
 #'
-#' Below, we configure any backend to use the default `f64` for floats and `i64` for integers:
-#'
-#' ```
-#' options(anvl.default_dtypes = c(float = "f64", int = "i64"))
-#' ```
-#'
-#' You can also only change the float dtype, leaving
-#' the backend's default integer dtype unchanged:
-#'
-#' ```
-#' options(anvl.default_dtypes = c(float = "f64"))
-#' ```
-#'
-#' It is also possible to specify the defaults per-backend:
-#'
-#' ```
-#' options(anvl.default_dtypes = list(
-#'   pjrt = list(float = "f64", int = "i64"),
-#'   quickr = list(int = "i32")
-#' ))
-#' ```
-#'
-#' An entry that names a backend wins over the categories beside it.
+#' The option maps the categories `float` and `int` to data types, e.g.
+#' `c(float = "f64", int = "i64")`, and applies to every backend. It may name
+#' only one of them, like `c(float = "f64")`, in which case the other category
+#' keeps the backend's default. To set the defaults of a single backend, give
+#' a list with an entry named after that backend instead:
+#' `list(float = "f64", pjrt = list(int = "i64"))` sets `f64` for every
+#' backend and additionally `i64` for `"pjrt"`. An entry that names a backend
+#' wins over the categories beside it.
 #'
 #' When the option is not set, the `ANVL_DEFAULT_DTYPES` environment variable
 #' (read once, when anvl is loaded) is used instead, written as `category=dtype` pairs that apply to every
 #' backend, e.g. `ANVL_DEFAULT_DTYPES="float=f64,int=i64"`.
 #'
-#' The defaults decide only what a value becomes when *nothing else does*: an R
-#' value that meets a typed array of its own category still takes that array's
-#' data type, whatever the default (`vignette("type-promotion")`). The data
-#' type you name is taken on trust, so one that does not fit is an error where
-#' the data is allocated or the program compiled rather than where it is set.
-#' Which ones fit is the backend's own business -- see the *Supported data
-#' types* section of [`AnvlBackendPjrt()`] and of [`AnvlBackendQuickr()`],
-#' which has only `f64`, `i32` and `bool`, so both `"f32"` and `"i64"` are
-#' errors there. A compiled program is keyed on the defaults it was compiled
-#' under, so changing them never serves a stale program.
+#' @return `default_dtypes()`: (named `list`)\cr
+#'   Elements `float` and `int`, each a [`DataType`].
 #'
-#' @return `default_dtypes()` returns a named `list` with elements `float` and
-#'   `int`, each a [`DataType`]
+#'   `default_float()`, `default_int()`: ([`DataType`])\cr
+#'   The default of one category.
 #' @seealso [`local_default_dtypes()`], [`with_default_dtypes()`],
 #'   [`with_dtypes()`]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -171,12 +143,14 @@ default_dtypes_from_key <- function(key) {
   list(float = as_dtype(key[["float"]]), int = as_dtype(key[["int"]]))
 }
 
-# Used for context managers: insert dtypes into default default_dtypes
+# The `anvl.default_dtypes` option value `local_default_dtypes()` and
+# `with_default_dtypes()` set: the current one with `dtypes` merged into the
+# entry of `backend`.
 merged_default_dtypes <- function(dtypes, backend) {
   # A program is compiled for one backend, and a trace reads the entry of that
   # backend, so an override filed under another could not reach it. Naming one
   # explicitly is a mistake worth reporting rather than a silent no-op.
-  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  desc <- globals[["current_descriptor"]]
   if (!is.null(backend) && !is.null(desc) && !identical(backend, desc$backend)) {
     cli_abort(c(
       "Cannot set the default data types of the {.val {backend}} backend here.",
@@ -185,6 +159,7 @@ merged_default_dtypes <- function(dtypes, backend) {
     ))
   }
   backend <- backend %||% active_backend()
+  assert_dtype_categories(dtypes, c("float", "int"))
   new <- as_default_dtypes(dtypes)
   current <- default_dtypes_setting()
   if (is.null(current)) {
@@ -216,13 +191,7 @@ merged_default_dtypes <- function(dtypes, backend) {
 #' @details
 #' Inside a [`jit()`]ted body the defaults the program was keyed on are the
 #' *baseline* and an override applies to its scope, so one program can use
-#' different precisions in different parts of itself. Only that baseline is
-#' part of the compilation cache key, so **an override in a body must not
-#' change between calls: write it out literally rather than reading it from a
-#' variable.** `with_default_dtypes(c(float = prec), ...)` with a `prec` that
-#' later changes keeps serving the program traced at the first value, exactly
-#' as a changing `dtype` argument would -- and just as silently. Nothing
-#' checks this for you.
+#' different precisions in different parts of itself.
 #'
 #' @param dtypes (named `character()` | named `list()`)\cr
 #'   A mapping of the data type categories (`float` and `int`) to data types,
@@ -268,11 +237,8 @@ with_default_dtypes <- function(dtypes, code, backend = NULL) {
 #' names is converted to that data type, the defaults (see
 #' [`default_dtypes()`]) are set to the `float` / `int` entries for the
 #' duration of the call, and every returned array of a named category is
-#' converted as well.
-#'
-#' ```r
-#' nv_add_f64 <- with_dtypes(nv_add, c(float = "f64"))
-#' ```
+#' converted as well. For example, `with_dtypes(nv_add, c(float = "f64"))` is
+#' an `nv_add()` that computes floats at `f64`.
 #'
 #' A category `dtypes` does not name is left alone, in the arguments, in the
 #' body and in the result.
@@ -308,17 +274,12 @@ with_dtypes <- function(f, dtypes) {
   cfg <- jit_config(f)
   .dtypes_f <- cfg$f %||% f
 
-  wrapper <- if (length(.dtypes_defaults)) {
-    function() {
+  wrapper <- function() {
+    if (length(.dtypes_defaults)) {
       local_default_dtypes(.dtypes_defaults)
-      .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-      convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
     }
-  } else {
-    function() {
-      .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-      convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
-    }
+    .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+    convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
   }
   formals(wrapper) <- formals2(.dtypes_f)
 
@@ -344,17 +305,16 @@ convert_call <- function(f, args, targets) {
   convert_tree(do.call(f, args), targets)
 }
 
-assert_dtype_categories <- function(dtypes) {
-  categories <- names(dtypes)
+assert_dtype_categories <- function(dtypes, categories = c("float", "int", "uint")) {
+  given <- names(dtypes)
   ok <- length(dtypes) &&
-    !is.null(categories) &&
-    !anyDuplicated(categories) &&
-    all(categories %in% c("float", "int", "uint"))
+    !is.null(given) &&
+    !anyDuplicated(given) &&
+    all(given %in% categories)
   if (!ok) {
     cli_abort(c(
       "{.arg dtypes} must map the data type categories to data types.",
-      i = "The categories are {.val float}, {.val int} and {.val uint},
-           e.g. {.code c(float = \"f64\")}."
+      i = "The categories are {.val {categories}}, e.g. {.code c(float = \"f64\")}."
     ))
   }
   lapply(dtypes, as_dtype)
@@ -389,10 +349,10 @@ convertible_dtype_category <- function(dtype) {
 
 # The default dtypes (see `default_dtypes()`) that are active here.
 current_default_dtypes <- function() {
-  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  desc <- globals[["current_descriptor"]]
   if (is.null(desc)) {
-    # Eager mode: The active backend's default_dtypes with a possible
-    # overwrite by the anvl.default_dtypes option
+    # Eager mode: the active backend's defaults, with the anvl.default_dtypes
+    # option over them.
     return(effective_default_dtypes(active_backend()))
   }
   # Insert options over desc$default_dtypes -- the pair the dispatcher keyed

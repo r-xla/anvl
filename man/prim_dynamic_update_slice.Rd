@@ -10,8 +10,8 @@ prim_dynamic_update_slice(x, update, ...)
 \item{x}{(\code{\link{arrayish}})\cr
 The array to write into. Can be any data type.
 \code{x} and \code{update} must have the same data type. An R value among them
-assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
@@ -19,8 +19,8 @@ number of axes as \code{x}, with \code{shape(update) <= shape(x)} per axis.
 Shares \code{x}'s data type.}
 
 \item{...}{(\code{\link{arrayish}})\cr
-Scalar start indices, one per axis of \code{x}. Each must be a scalar of
-the same integer data type.}
+Scalar start indices of an integer data type, one per axis of \code{x}. They
+are brought to one data type among themselves, never \code{x}'s.}
 }
 \value{
 (\code{\link{arrayish}})\cr

@@ -6,6 +6,8 @@
 \title{All Reduction}
 \usage{
 nv_all(x, axes = NULL, drop = TRUE)
+
+\method{all}{AnvlArray}(..., na.rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -18,6 +20,14 @@ to the last axis. If \code{NULL} (default), reduces over all axes.}
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
 set to 1 if \code{FALSE}.}
+
+\item{...}{(\code{\link{arrayish}})\cr
+The arrays to reduce, and, when there is only one, further named arguments
+of \code{\link[=nv_all]{nv_all()}}, such as \code{axes}.}
+
+\item{na.rm}{(\code{logical(1)})\cr
+Only used for R values among \code{...}, which are reduced by base R, as a
+boolean array has no missing values.}
 }
 \value{
 (\code{\link{arrayish}})\cr

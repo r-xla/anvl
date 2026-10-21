@@ -30,6 +30,20 @@ make_unary_op <- function(infer_fn) {
 }
 
 
+# The start indices of a dynamic slice must share one data type, so a bare R
+# integer among them takes the data type of the index arrays it meets instead
+# of settling on the default. Index arrays that disagree among themselves are
+# left for `assert_start_indices()` to refuse, so that mistake has one wording.
+promote_start_indices <- function(indices) {
+  arrays <- Filter(function(idx) !is_rdata(to_abstract(idx)), indices)
+  if (length(unique(lapply(arrays, peek_dtype))) > 1L) {
+    return(indices)
+  }
+  # Named only for the messages; the graph keeps them positional.
+  names(indices) <- sprintf("..%d", seq_along(indices))
+  unname(apply_promotion(indices, promotion_rdata_common()))
+}
+
 #' @title Primitive Fill
 #' @description
 #' Creates an array of a given shape and data type, filled with a scalar value.
@@ -178,6 +192,7 @@ prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Power
+#' @description
 #' Raises `x` to the power of `y` element-wise.
 #' @templateVar dtypes any numeric data type
 #' @template params_prim_x_y
@@ -298,7 +313,7 @@ prim_dot_general <- new_primitive(
 #' @template param_unary_x
 #' @param perm (`integer()`)\cr
 #'   Specifies the new ordering of axes. Must be a permutation of
-#'   `seq_len(naxes(x))`, the axis indices of `x`.
+#'   [`axes(x)`][axes], the axis indices of `x`.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type and shape `shape(x)[perm]`.
@@ -420,7 +435,8 @@ prim_concatenate <- new_primitive(
 #' @template param_unary_x
 #' @param start_indices (`integer()`)\cr
 #'   Start indices (inclusive), one per axis. Must satisfy
-#'   `1 <= start_indices <= end_indices` per axis.
+#'   `1 <= start_indices <= end_indices + 1` per axis, where
+#'   `start_indices == end_indices + 1` selects an empty axis.
 #' @param end_indices (`integer()`)\cr
 #'   End indices (inclusive), one per axis. Must satisfy
 #'   `end_indices <= shape(x)` per axis. Unlike StableHLO's exclusive
@@ -458,9 +474,7 @@ prim_static_slice <- new_primitive(
   function(x, start_indices, end_indices, strides) {
     graph_desc_add(
       self,
-      args = list(
-        x = x
-      ),
+      args = list(x = x),
       params = list(
         start_indices = start_indices,
         end_indices = end_indices,
@@ -483,8 +497,8 @@ prim_static_slice <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
-#'   the same integer data type.
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= shape(x)`
@@ -517,7 +531,7 @@ prim_static_slice <- new_primitive(
 prim_dynamic_slice <- new_primitive(
   "dynamic_slice",
   function(x, ..., slice_sizes) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     graph_desc_add(
       self,
       args = c(list(x = x), start_indices),
@@ -525,8 +539,9 @@ prim_dynamic_slice <- new_primitive(
       infer_fn = infer_dynamic_slice
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` needs no promotion: it is the only operand of its kind. The start
+  # indices are promoted among themselves by `promote_start_indices()`, which
+  # is a group of their own -- they never take `x`'s data type.
   static = "slice_sizes"
 )
 
@@ -544,8 +559,8 @@ prim_dynamic_slice <- new_primitive(
 #'   number of axes as `x`, with `shape(update) <= shape(x)` per axis.
 #'   Shares `x`'s data type.
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
-#'   the same integer data type.
+#'   Scalar start indices of an integer data type, one per axis of `x`. They
+#'   are brought to one data type among themselves, never `x`'s.
 #' @section Out of Bounds Behavior:
 #' Start indices are clamped before the update is written:
 #' `adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)`.
@@ -576,7 +591,7 @@ prim_dynamic_slice <- new_primitive(
 prim_dynamic_update_slice <- new_primitive(
   "dynamic_update_slice",
   function(x, update, ...) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     graph_desc_add(
       self,
@@ -951,7 +966,7 @@ prim_reduce <- new_primitive(
     # `x` and `init` agree: the rule above brought them together or refused.
     op_dtype <- dtype(x)
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
     desc_red <- local_descriptor()
 
     # Unnamed, so the two scalars are matched positionally and `reducer` may
@@ -962,16 +977,14 @@ prim_reduce <- new_primitive(
       nv_aval(op_dtype, integer()),
       nv_aval(op_dtype, integer())
     )
-    reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red, mode = "subgraph")
-
-    for (const in reducer_graph$constants) {
-      get_box_or_register_const(current_desc, const)
-    }
+    reducer_graph <- trace_fn(reducer, dummy_args, desc = desc_red)
+    inline_region_captures(reducer_graph, "reducer")
+    captures <- purify_subgraphs(current_desc, list(reducer_graph))
 
     graph_desc_add(
       self,
-      args = operands,
-      params = list(axes = axes, drop = drop, reducer = reducer_graph),
+      args = c(operands, captures),
+      params = list(axes = axes, drop = drop, reducer = reducer_graph, n_captures = length(captures)),
       infer_fn = infer_reduce,
       desc = current_desc
     )[[1L]]
@@ -980,16 +993,14 @@ prim_reduce <- new_primitive(
   static = c("axes", "reducer", "drop")
 )
 
-make_arg_extreme <- function() {
-  function(x, axis, drop = TRUE) {
-    axis <- resolve_axis(axis, naxes(x))
-    graph_desc_add(
-      self,
-      args = list(x = x),
-      params = list(axis = axis, drop = drop),
-      infer_fn = infer_arg_extreme
-    )[[1L]]
-  }
+arg_extreme_op <- function(x, axis, drop = TRUE) {
+  axis <- resolve_axis(axis, naxes(x))
+  graph_desc_add(
+    self,
+    args = list(x = x),
+    params = list(axis = axis, drop = drop),
+    infer_fn = infer_arg_extreme
+  )[[1L]]
 }
 
 #' @title Primitive Index of the Maximum
@@ -1019,7 +1030,7 @@ make_arg_extreme <- function() {
 #' # the index comes out at the default integer data type
 #' prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_max <- new_primitive("which_max", make_arg_extreme(), static = 2:3)
+prim_which_max <- new_primitive("which_max", arg_extreme_op, static = 2:3)
 
 #' @title Primitive Index of the Minimum
 #' @description
@@ -1046,7 +1057,7 @@ prim_which_max <- new_primitive("which_max", make_arg_extreme(), static = 2:3)
 #' # the index comes out at the default integer data type
 #' prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_min <- new_primitive("which_min", make_arg_extreme(), static = 2:3)
+prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3)
 
 # comparison primitives --------------------------------------------------------
 
@@ -1492,7 +1503,7 @@ prim_bitcast_convert <- new_primitive(
 #' # an R value materializes at its default data type
 #' prim_abs(-1)
 #' @export
-prim_abs <- new_primitive("abs", make_unary_op(infer_abs))
+prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni))
 
 #' @title Primitive Square Root
 #' @description
@@ -1702,7 +1713,7 @@ prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sign(-3)
 #' @export
-prim_sign <- new_primitive("sign", make_unary_op(infer_sign))
+prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni))
 
 #' @title Primitive Exponential
 #' @description
@@ -2198,9 +2209,7 @@ prim_clamp <- new_primitive(
       operands,
       list(),
       infer_fn = infer_clamp
-    )[[
-      1L
-    ]]
+    )[[1L]]
   }
 )
 
@@ -2263,15 +2272,13 @@ prim_iota <- new_primitive(
   function(axis, shape, dtype, start = 1L, device = NULL) {
     shape <- assert_shapevec(shape)
     axis <- resolve_axis(axis, length(shape))
-    result <- graph_desc_add(
+    graph_desc_add(
       self,
       list(),
       list(axis = axis, shape = shape, dtype = dtype, start = start),
       infer_fn = infer_iota,
       device = device
     )[[1L]]
-
-    result
   },
   static = 1:5
 )
@@ -2373,8 +2380,11 @@ prim_round <- new_primitive(
 #' @title Primitive Convert Data Type
 #' @description
 #' Converts the elements of an array to a different data type.
-#' Bare R inputs are directly materialized at the requested data type
-#' and are checked for out-of-range or missing values.
+#' An R value in the target's category (an R integer at `i8`, say) is
+#' materialized at the target directly and checked for out-of-range or missing
+#' values. Any other R value (e.g. an R double at an integer data type) is built
+#' at `f64`, `i32` or `bool` according to its storage type and converted like an
+#' array, without that check.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
@@ -2395,10 +2405,9 @@ prim_round <- new_primitive(
 prim_convert <- new_primitive(
   "convert",
   function(x, dtype) {
-    # We need to be careful w.r.t. to handling R inputs so we prim_convert(pi, "f64")
-    # is faithful and does not round-trip through f32
     dtype <- assert_dtype_param(dtype, "dtype")
-    # Directly materialize
+    # An R value materializes directly at `dtype`, so that
+    # `prim_convert(pi, "f64")` is exact and does not round-trip through `f32`.
     if (currently_tracing() && is_valid_r(x)) {
       return(build_r_at(x, dtype))
     }
@@ -2451,9 +2460,7 @@ prim_ifelse <- new_primitive(
       self,
       c(list(test = test), operands),
       infer_fn = infer_select
-    )[[
-      1L
-    ]]
+    )[[1L]]
   }
 )
 
@@ -2510,31 +2517,25 @@ prim_if <- new_primitive(
       ))
     }
 
-    # Build sub-graphs for each branch (no inputs, just capture closed-over values)
-    # We need to ensure that constants that are captured in both branches receive the same
-    # GraphValue if they capture the same constant
-
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
     desc_true <- local_descriptor()
-    true_graph <- trace_fn(true, list(), desc = desc_true, mode = "subgraph")
+    true_graph <- trace_fn(true, list(), desc = desc_true)
     desc_false <- local_descriptor()
-
-    register_consts(desc_false, desc_true$constants)
-    false_graph <- trace_fn(false, list(), desc = desc_false, mode = "subgraph")
-
-    register_consts(current_desc, desc_false$constants)
+    false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
 
-    # TODO: Apply promotion rules to the outputs of the branches
+    # What the branches close over becomes their inputs -- both take all of it,
+    # in the same order -- and the call's operands after `pred`.
+    captures <- purify_subgraphs(current_desc, list(true_graph, false_graph))
 
     out <- graph_desc_add(
       self,
-      list(pred = pred),
-      params = list(true = true_graph, false = false_graph),
+      c(list(pred = pred), captures),
+      params = list(true = true_graph, false = false_graph, n_captures = length(captures)),
       infer_fn = infer_cond,
       desc = current_desc
     )
@@ -2603,18 +2604,13 @@ prim_while <- new_primitive(
       cli_abort("{.arg init} must have only named arguments.")
     }
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
+    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     desc_cond <- local_descriptor()
-
-    cond_graph <- trace_fn(cond, init, desc = desc_cond, mode = "subgraph")
-
+    cond_graph <- trace_fn(cond, init, desc = desc_cond)
     desc_body <- local_descriptor()
-
-    # ensure that constant ids are the same between cond and body
-    # inputs don't matter, because we don't inline the sub-graphs into the parent graph
-    register_consts(desc_body, desc_cond$constants)
-    body_graph <- trace_fn(body, init, desc_body, mode = "subgraph")
+    body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
       cli_abort("cond and body must have the same input structure")
@@ -2624,13 +2620,14 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
-    # now we register the constants of both sub-graphs (body includes cond's constants) into the graph
-    register_consts(current_desc, body_graph$constants)
+    # `cond` and `body` take the state, then what either of them closes over;
+    # the call's operands are the same.
+    captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = flatten(init),
-      params = list(cond = cond_graph, body = body_graph),
+      args = c(flatten(init), captures),
+      params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
@@ -2698,7 +2695,8 @@ prim_scan <- new_primitive(
     steps <- assert_int(steps, lower = 0L, coerce = TRUE)
     assert_flag(reverse)
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
+    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     init_flat <- flatten(init)
     xs_flat <- flatten(xs)
@@ -2753,13 +2751,12 @@ prim_scan <- new_primitive(
     }
 
     desc_body <- local_descriptor()
-    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
-    # The body is lowered inline into the parent's loop region, so whatever it
-    # closed over has to be a constant of the parent graph too -- the same
-    # reason `prim_while()` and `prim_if()` register theirs.
-    register_consts(current_desc, body_graph$constants)
+    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # The body takes the carry, the `xs` slices, then what it closes over; the
+    # call's operands are the carry, `xs`, then the same captures.
+    captures <- purify_subgraphs(current_desc, list(body_graph))
 
-    infer_fn <- function(..., body, steps, reverse, n_carry, n_xs) {
+    infer_fn <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
       ins <- list(...)
       outs_body <- lapply(body$outputs, \(out) out$aval)
       carry_in <- ins[seq_len(n_carry)]
@@ -2789,13 +2786,14 @@ prim_scan <- new_primitive(
 
     out <- graph_desc_add(
       self,
-      args = c(init_flat, xs_flat),
+      args = c(init_flat, xs_flat, captures),
       params = list(
         body = body_graph,
         steps = steps,
         reverse = reverse,
         n_carry = n_carry,
-        n_xs = n_xs
+        n_xs = n_xs,
+        n_captures = length(captures)
       ),
       infer_fn = infer_fn,
       desc = current_desc
@@ -2946,6 +2944,7 @@ prim_top_k <- new_primitive(
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
+#' @template section_print_order
 #' @templateVar primitive_id print
 #' @template section_rules
 #' @section StableHLO:
@@ -2964,7 +2963,7 @@ prim_print <- new_primitive(
     # HACK: the header and footer are pre-computed here and passed as "params",
     # although they are not really ones: stablehlo does not carry the dtype the
     # way anvl prints it.
-    # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
+    # TODO: We should also include the platform/device, but it is currently not available in GraphDescriptor
     #
     # Both are read off the operand *before* it is materialized, because a
     # print is not a use site that should get to name a data type. An R value
@@ -2984,13 +2983,13 @@ prim_print <- new_primitive(
     # header says `RData` for the same reason: what is on screen is an R value
     # that has not taken a data type, not an `AnvlArray`.
     aval <- to_abstract(x)
-    dims <- paste0(shape(aval), collapse = ",")
+    shape_str <- paste0(shape(aval), collapse = ",")
     if (is_rdata(aval)) {
       header <- "RData"
-      footer <- sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
+      footer <- sprintf("[ %s{%s} printed at %s ]", aval$r_type, shape_str, as.character(peek_dtype(aval)))
     } else {
       header <- "AnvlArray"
-      footer <- sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
+      footer <- sprintf("[ %s{%s} ]", as.character(dtype(aval)), shape_str)
     }
     # `x` is printed, not consumed: the call takes a rendering of it and the
     # original is handed straight back. Inserting a print therefore cannot
@@ -3165,7 +3164,7 @@ prim_scatter <- new_primitive(
     unique_indices = FALSE,
     update_fn = NULL
   ) {
-    # otherwise, delayed promise evaluation means they might be added to the update_descriptor
+    # Otherwise, delayed promise evaluation may add them to the update computation's descriptor.
     force(x)
     force(scatter_indices)
     force(update)
@@ -3181,13 +3180,12 @@ prim_scatter <- new_primitive(
       cli_abort("update_fn must be a function")
     }
 
-    current_desc <- .current_descriptor(silent = TRUE)
+    current_desc <- current_descriptor(silent = TRUE)
 
-    # Trace the update computation function
-    # For scatter, the update computation takes 2 scalar arguments (current, update)
+    # The update computation is traced with two scalars (the current value and
+    # the update) at `x`'s data type.
     desc_update <- local_descriptor()
 
-    # Create dummy arguments for tracing - use the input's dtype
     # `x` and `update` agree: the rule above brought them together or refused.
     x_dtype <- peek_dtype(x)
 
@@ -3196,14 +3194,13 @@ prim_scatter <- new_primitive(
       AbstractArray(dtype = x_dtype, shape = Shape(integer()))
     )
 
-    update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update, mode = "subgraph")
+    update_fn_graph <- trace_fn(update_fn, dummy_args, desc = desc_update)
+    inline_region_captures(update_fn_graph, "update_fn")
+    captures <- purify_subgraphs(current_desc, list(update_fn_graph))
 
-    # Register constants from the update computation graph
-    register_consts(current_desc, update_fn_graph$constants)
-
-    out <- graph_desc_add(
+    graph_desc_add(
       self,
-      args = list(x = x, scatter_indices = scatter_indices, update = update),
+      args = c(list(x = x, scatter_indices = scatter_indices, update = update), captures),
       params = list(
         update_window_axes = update_window_axes,
         inserted_window_axes = inserted_window_axes,
@@ -3213,13 +3210,12 @@ prim_scatter <- new_primitive(
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
-        update_fn = update_fn_graph
+        update_fn = update_fn_graph,
+        n_captures = length(captures)
       ),
       infer_fn = infer_scatter,
       desc = current_desc
-    )
-
-    out[[1L]]
+    )[[1L]]
   },
   subgraphs = "update_fn",
   static = 4:12
@@ -3239,10 +3235,10 @@ prim_scatter <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param start_indices ([`arrayish`])\cr
-#'   Array of starting indices, of the same integer data type.
-#'   Contains index vectors that map to
-#'   positions in `x` via `start_index_map`. The axis
-#'   specified by `index_vector_axis` holds the index vectors.
+#'   Array of starting indices, of an integer data type, which it keeps -- the
+#'   indices take no part in `x`'s. Contains index vectors that map to
+#'   positions in `x` via `start_index_map`. The axis specified by
+#'   `index_vector_axis` holds the index vectors.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice to gather from `x` in each axis.
 #'   Must have length equal to `naxes(x)`.
@@ -3342,8 +3338,8 @@ prim_gather <- new_primitive(
       infer_fn = infer_gather
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` and `start_indices` are operands of different kinds and never meet at
+  # one data type, so there is nothing for a promotion rule to do.
   static = 3:11
 )
 
@@ -3365,10 +3361,12 @@ prim_gather <- new_primitive(
 #' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as the input.
 #'   The values in the triangle not specified by `lower` are implementation-defined.
+#'   A matrix that is not positive definite factors to `NaN`.
 #' @templateVar primitive_id chol
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("cholesky")`
+#' Lowers to a `"potrf"` [hlo_custom_call()] (backed by LAPACK on CPU and
+#' cuSOLVER on CUDA) + postprocessing.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # create a positive-definite matrix

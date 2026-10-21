@@ -1,4 +1,4 @@
-# length(grads) == length(outputs)
+# A backward rule receives one cotangent per output: length(grads) == length(outputs).
 prim_add[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   grad <- grads[[1L]]
   list(
@@ -67,13 +67,16 @@ prim_pow[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   y <- inputs[[2L]]
   out <- outputs[[1L]]
   grad <- grads[[1L]]
+  # As in JAX, the derivatives are 0 where they would otherwise read 0^-1 or
+  # log(0) at base 0: x^0 is constant in x, and 0^y is constant in y.
   list(
     if (required[[1L]]) {
-      one <- ones_like(x)
-      prim_mul(prim_mul(grad, y), prim_pow(x, prim_sub(y, one)))
+      dx <- prim_mul(y, prim_pow(x, prim_sub(y, ones_like(y))))
+      prim_mul(grad, prim_ifelse(prim_eq(y, zeros_like(y)), zeros_like(dx), dx))
     },
     if (required[[2L]]) {
-      prim_mul(grad, prim_mul(prim_log(x), out))
+      safe_x <- prim_ifelse(prim_eq(x, zeros_like(x)), ones_like(x), x)
+      prim_mul(grad, prim_mul(prim_log(safe_x), out))
     }
   )
 })
@@ -376,33 +379,20 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   cd_lhs <- contracting_axes[[1L]]
   cd_rhs <- contracting_axes[[2L]]
   # remaining axes
-  rem_axes <- function(x, b_axes, c_axes) {
-    ii <- c(b_axes, c_axes)
-    seq_len(naxes(x))[if (length(ii)) -ii else TRUE]
-  }
-  rd_lhs <- rem_axes(lhs, bd_lhs, cd_lhs)
-  rd_rhs <- rem_axes(rhs, bd_rhs, cd_rhs)
+  rd_lhs <- without(axes(lhs), c(bd_lhs, cd_lhs))
+  rd_rhs <- without(axes(rhs), c(bd_rhs, cd_rhs))
 
-  # output axes
+  # output axes: the batching axes, then the remaining axes of lhs, then those of rhs
   bd_out <- seq_along(bd_lhs)
-  d_lhs_out <- seq_along(rd_lhs) +
-    if (length(bd_out)) bd_out[length(bd_out)] else 0L
-  d_rhs_out <- seq_along(rd_rhs) +
-    if (length(d_lhs_out)) d_lhs_out[length(d_lhs_out)] else 0L
+  d_lhs_out <- length(bd_lhs) + seq_along(rd_lhs)
+  d_rhs_out <- length(bd_lhs) + length(rd_lhs) + seq_along(rd_rhs)
 
-  conv_perm <- function(x) {
-    ids_new <- integer(length(x))
-    for (i in seq_along(x)) {
-      ids_new[x[i]] <- i
-    }
-    ids_new
-  }
-
+  # `order()` of a permutation is its inverse.
   cd_lhs2 <- cd_lhs[order(cd_rhs)]
-  perm_lhs <- conv_perm(c(bd_lhs, rd_lhs, cd_lhs2))
+  perm_lhs <- order(c(bd_lhs, rd_lhs, cd_lhs2))
 
   cd_rhs2 <- cd_rhs[order(cd_lhs)]
-  perm_rhs <- conv_perm(c(bd_rhs, rd_rhs, cd_rhs2))
+  perm_rhs <- order(c(bd_rhs, rd_rhs, cd_rhs2))
 
   list(
     if (required[[1L]]) {
@@ -429,14 +419,10 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 })
 
 prim_transpose[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  perm <- params$perm
   grad <- grads[[1L]]
-  inv <- integer(length(perm))
-  for (i in seq_along(perm)) {
-    inv[perm[[i]]] <- i
-  }
   list(
-    if (required[[1L]]) prim_transpose(grad, inv)
+    # `order()` of a permutation is its inverse.
+    if (required[[1L]]) prim_transpose(grad, order(params$perm))
   )
 })
 
@@ -448,6 +434,12 @@ prim_reshape[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   )
 })
 
+# The axes of `x` that `grad`, the cotangent of a reduction of `x` over `axes`,
+# broadcasts back along.
+reduction_broadcast_axes <- function(x, grad, axes, drop) {
+  if (drop) without(seq_along(shape(x)), axes) else seq_along(shape(grad))
+}
+
 prim_sum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   axes <- params$axes
   drop <- params$drop
@@ -455,12 +447,7 @@ prim_sum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) {
-      baxes <- if (drop) {
-        without(seq_along(shape(x)), axes)
-      } else {
-        seq_along(shape(grad))
-      }
-      prim_broadcast_in_axes(grad, shape(x), baxes)
+      prim_broadcast_in_axes(grad, shape(x), reduction_broadcast_axes(x, grad, axes, drop))
     }
   )
 })
@@ -479,11 +466,7 @@ prim_max[["reverse"]] <- prim_min[["reverse"]] <- rule_reverse(function(
 
   list(
     if (required[[1L]]) {
-      baxes <- if (drop) {
-        without(seq_along(shape(x)), axes)
-      } else {
-        seq_along(shape(grad))
-      }
+      baxes <- reduction_broadcast_axes(x, grad, axes, drop)
 
       y <- outputs[[1L]]
       y_bc <- prim_broadcast_in_axes(y, shape(x), baxes)
@@ -501,7 +484,6 @@ prim_max[["reverse"]] <- prim_min[["reverse"]] <- rule_reverse(function(
 })
 
 prim_broadcast_in_axes[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  shape <- params$shape
   broadcast_axes <- params$broadcast_axes
   x <- inputs[[1L]]
   y <- outputs[[1L]]
@@ -510,23 +492,21 @@ prim_broadcast_in_axes[["reverse"]] <- rule_reverse(function(inputs, outputs, gr
   list(
     if (required[[1L]]) {
       # Sum grad over the axes that were introduced by broadcasting
-      new_axes <- setdiff(seq_len(naxes(y)), broadcast_axes)
+      new_axes <- setdiff(axes(y), broadcast_axes)
       expand_axes <- broadcast_axes[(shape(y)[broadcast_axes] != 1L) & (shape(x) == 1L)]
       reduce_axes <- c(new_axes, expand_axes)
 
       g <- if (length(reduce_axes)) prim_sum(grad, axes = reduce_axes, drop = FALSE) else grad
 
-      # Drop the singular added axes
+      # Drop the size-1 axes that broadcasting added
       if (length(new_axes)) {
-        reshape_dims <- shape(g)
-        reshape_dims <- reshape_dims[-new_axes]
-        g <- prim_reshape(g, reshape_dims)
+        g <- prim_reshape(g, shape(g)[-new_axes])
       }
 
-      # If broadcast_axes are not in increasing order, reorder the
-      # remaining axes back to the original input axis order.
+      # The remaining axes are those of the output, in increasing order, so
+      # axis `i` of `x` sits at position `rank(broadcast_axes)[i]` of `g`.
       if (is.unsorted(broadcast_axes)) {
-        g <- prim_transpose(g, order(broadcast_axes))
+        g <- prim_transpose(g, rank(broadcast_axes))
       }
       g
     }
@@ -552,6 +532,69 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
+# In forward-mode, the two branches capture constants via lexical scoping
+# and they are turned into pure functions that receive these constants as arguments
+# (both true and false get the same arguments)
+# In reverse-mode, we could simply compute the forward-reverse graph and select
+# either branche's graph via prim_if
+# The problem with this is that it re-runs the forward pass and as both is part of
+# an if-condition we can't rely on XLA to optimize this away (?)
+# So now we instead run a modified forward pass that also outputs any intermediate
+# values (residuals) that are needed by the reverse pass
+prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+  pred <- inputs[[1L]]
+  operands <- inputs[-1L]
+  needed <- which(required[-1L])
+  n_out <- length(params$true$outputs)
+  vjps <- lapply(list(params$true, params$false), split_vjp, needed = needed)
+
+  # The function the forward `if` runs for branch `k` (1 = true, 2 = false).
+
+  # we return in the form of (outputs, true_residuals, false_residuals)
+  # During reverse, the true path returns 0 for false's residuals and
+  # the false path returns 0 for true's residuals
+  branch_forward <- function(k) {
+    function() {
+      # Run the branch's forward graph on the `if`'s operands: its outputs,
+      # then the residuals its backward pass reads.
+      outs <- graph_apply(vjps[[k]]$fwd, operands)
+      # Both branches must return the same structure, so each returns a slot
+      # for every branch's residuals: its own values in its own slots, zeros
+      # of the right aval in the other branch's, which that branch's backward
+      # never runs to read.
+      res <- lapply(seq_along(vjps), function(j) {
+        if (j == k) {
+          outs[n_out + seq_along(vjps[[k]]$residual_avals)]
+        } else {
+          lapply(vjps[[j]]$residual_avals, \(a) zeros(a$dtype, shape(a)))
+        }
+      })
+      # `out` are the `if`'s results. `res[[k]]` holds branch k's residuals
+      # when branch k ran, which is exactly when the backward `if` runs branch
+      # k's backward to read them.
+      list(out = outs[seq_len(n_out)], res = res)
+    }
+  }
+  fwd <- prim_if(pred, branch_forward(1L), branch_forward(2L))
+
+  list(
+    outputs = fwd$out,
+    backward = function(inputs, outputs, grads, params, required) {
+      branch_backward <- function(k) {
+        function() graph_apply(vjps[[k]]$bwd, c(grads, operands, fwd$res[[k]]))
+      }
+      grads_in <- vector("list", length(inputs))
+      grads_in[needed + 1L] <- prim_if(pred, branch_backward(1L), branch_backward(2L))
+      grads_in
+    }
+  )
+})
+
+# Printing hands its argument back unchanged, so the cotangent passes through.
+prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  list(if (required[[1L]]) grads[[1L]])
+})
+
 # convert reverse -----------------
 
 # A conversion is the identity, and so passes the cotangent through, only
@@ -571,12 +614,10 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 })
 
 # for comparison primitives --------------------------
-# There are cases, where one wants to propagate through them, because a float was converted
-# to an int/bool that eventually influenced the output
-# But, we never read the final gradients of such inputs (because we can only differentiate
-# with respect to floats)
-# so it's okay if the dtype of the gradient does not match the input type
-# Instead, we just return zeros, which take any dtype required
+# The backward pass has to propagate through them when a float was converted to
+# an int/bool that eventually influenced the output. The gradients of such
+# inputs are never read (only floats can be differentiated), so their dtype
+# need not match the input's: the rules return zeros.
 
 reverse_zero_bin <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
@@ -603,7 +644,6 @@ reverse_zero_uni <- rule_reverse(function(inputs, outputs, grads, params, requir
     if (required[[1L]]) zeros_like(x)
   )
 })
-
 
 prim_floor[["reverse"]] <- reverse_zero_uni
 prim_ceiling[["reverse"]] <- reverse_zero_uni
@@ -689,11 +729,16 @@ prim_pad[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) {
-      # select the non-padded elements
-      out_shape <- shape(outputs[[1L]])
+      # A negative edge padding trimmed the interior-padded operand: pad the
+      # cotangent back with zeros there, then select the non-padded elements.
+      trimmed_low <- pmax(-edge_padding_low, 0L)
+      trimmed_high <- pmax(-edge_padding_high, 0L)
+      if (any(trimmed_low > 0L | trimmed_high > 0L)) {
+        grad <- prim_pad(grad, zeros(dtype(grad), integer()), trimmed_low, trimmed_high, integer(length(trimmed_low)))
+      }
       strides <- interior_padding + 1L
-      start_indices <- edge_padding_low + 1L
-      end_indices <- out_shape - edge_padding_high
+      start_indices <- pmax(edge_padding_low, 0L) + 1L
+      end_indices <- shape(grad) - pmax(edge_padding_high, 0L)
       prim_static_slice(grad, start_indices, end_indices, strides)
     },
     if (required[[2L]]) {
@@ -727,12 +772,7 @@ prim_all[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
 
 prim_any[["reverse"]] <- prim_all[["reverse"]]
 
-prim_bitcast_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  x <- inputs[[1L]]
-  list(
-    if (required[[1L]]) zeros_like(x)
-  )
-})
+prim_bitcast_convert[["reverse"]] <- reverse_zero_uni
 
 prim_atan2[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   y <- inputs[[1L]]
@@ -754,7 +794,7 @@ prim_atan2[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
 # Implementation trick: instead of computing σ explicitly and gathering, sort
 # (π, grad) ascending — the second output is grad permuted by argsort(π) = σ,
 # which is exactly the input gradient.
-prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   axis <- params$axis
   decreasing <- params$decreasing
   stable <- params$stable
@@ -801,7 +841,7 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # the last axis.
 # The forward always runs with indices, even when the call asked for the values
 # only, so the backward has them without a second top_k.
-prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
   x <- inputs[[1L]]
   out <- prim_top_k(x, k = params$k, indices = TRUE)
   indices <- out[[2L]]
@@ -852,12 +892,11 @@ prim_concatenate[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 
   offset <- 1L
   end_indices <- shape(grad)
-  start_indices <- rep(1L, length(shape(inputs[[1L]])))
+  start_indices <- rep(1L, length(end_indices))
+  strides <- rep(1L, length(end_indices))
   for (i in seq_len(n_inputs)) {
-    input_shape <- shape(inputs[[i]])
-    axis_size <- input_shape[axis]
+    axis_size <- shape(inputs[[i]])[axis]
     if (required[[i]]) {
-      strides <- rep(1L, length(input_shape))
       start_indices[axis] <- offset
       end_indices[axis] <- offset + axis_size - 1L
       input_grads[[i]] <- prim_static_slice(grad, start_indices, end_indices, strides)
@@ -942,9 +981,8 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
-# Because we compute indices in the forward pass, we simply scatter
-# into the zeros
-# This is also how PyTorch does it
+# The forward pass computes the indices, so the backward pass scatters the
+# cotangent at them into zeros, as PyTorch does.
 .cum_extreme_reverse <- function(inputs, outputs, grads, params, required) {
   if (!required[[1L]]) {
     return(list(NULL))
@@ -986,8 +1024,9 @@ prim_static_slice[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
       input_shape <- shape(x)
       grad_shape <- shape(grad)
       edge_padding_low <- start_indices - 1L
-      edge_padding_high <- input_shape - start_indices - (grad_shape - 1L) * strides
       interior_padding <- strides - 1L
+      # An axis of size zero has no gaps to fill with interior padding.
+      edge_padding_high <- input_shape - edge_padding_low - grad_shape - pmax(grad_shape - 1L, 0L) * interior_padding
       prim_pad(
         grad,
         zeros(dtype(grad), integer()),
@@ -1018,7 +1057,7 @@ prim_dynamic_slice[["reverse"]] <- rule_reverse(function(inputs, outputs, grads,
 
 prim_dynamic_update_slice[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   update <- inputs[[2L]]
-  start_indices <- inputs[-(1:2)]
+  start_indices <- inputs[-c(1L, 2L)]
   grad <- grads[[1L]]
 
   result <- vector("list", length(inputs))
@@ -1136,47 +1175,53 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
     x_batching_axes = x_batching_axes
   )
 
+  # Scatter into (replacing) and gather from `x` at the forward scatter's positions.
+  scatter_at <- function(x, update, unique_indices) {
+    prim_scatter(
+      x = x,
+      scatter_indices = scatter_indices,
+      update = update,
+      update_window_axes = update_window_axes,
+      inserted_window_axes = inserted_window_axes,
+      x_batching_axes = x_batching_axes,
+      scatter_indices_batching_axes = scatter_indices_batching_axes,
+      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis,
+      indices_are_sorted = indices_are_sorted,
+      unique_indices = unique_indices,
+      update_fn = function(old, new) new
+    )
+  }
+  gather_at <- function(x, unique_indices) {
+    prim_gather(
+      x = x,
+      start_indices = scatter_indices,
+      slice_sizes = slice_sizes,
+      offset_axes = update_window_axes,
+      collapsed_slice_axes = inserted_window_axes,
+      x_batching_axes = x_batching_axes,
+      start_indices_batching_axes = scatter_indices_batching_axes,
+      start_index_map = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis,
+      indices_are_sorted = indices_are_sorted,
+      unique_indices = unique_indices
+    )
+  }
+
   list(
     # Gradient for `x`: zero out overwritten positions.
     # Works for both unique and non-unique: scattering zero is idempotent.
-    if (required[[1L]]) {
-      prim_scatter(
-        x = grad,
-        scatter_indices = scatter_indices,
-        update = zeros_like(update),
-        update_window_axes = update_window_axes,
-        inserted_window_axes = inserted_window_axes,
-        x_batching_axes = x_batching_axes,
-        scatter_indices_batching_axes = scatter_indices_batching_axes,
-        scatter_axes_to_x_axes = scatter_axes_to_x_axes,
-        index_vector_axis = index_vector_axis,
-        indices_are_sorted = indices_are_sorted,
-        unique_indices = unique_indices,
-        update_fn = function(old, new) new
-      )
-    },
+    if (required[[1L]]) scatter_at(grad, zeros_like(update), unique_indices),
     # Gradient for scatter_indices: not differentiable
     if (required[[2L]]) zeros_like(scatter_indices),
     # Gradient for update: gather from gradient at update positions
     if (required[[3L]]) {
       if (unique_indices) {
-        prim_gather(
-          x = grad,
-          start_indices = scatter_indices,
-          slice_sizes = slice_sizes,
-          offset_axes = update_window_axes,
-          collapsed_slice_axes = inserted_window_axes,
-          x_batching_axes = x_batching_axes,
-          start_indices_batching_axes = scatter_indices_batching_axes,
-          start_index_map = scatter_axes_to_x_axes,
-          index_vector_axis = index_vector_axis,
-          indices_are_sorted = indices_are_sorted,
-          unique_indices = TRUE
-        )
+        gather_at(grad, unique_indices = TRUE)
       } else {
         # Non-unique indices: use the ID trick to determine which updates won.
         # https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
-        # Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2 or 2 was assigned to position 1.
+        # Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2 or 3 was assigned to position 1.
         # -->
         # 1. x <- c(0, 0)
         # 2. Assign unique indices x[c(1, 1)] <- c(1, 2)
@@ -1193,50 +1238,17 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
         update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
 
         # b) Scatter IDs to see which update "wins" at each position
-        scattered_ids <- prim_scatter(
-          x = prim_fill(0L, dtype = id_dtype, shape = x_shape),
-          scatter_indices = scatter_indices,
-          update = update_ids,
-          update_window_axes = update_window_axes,
-          inserted_window_axes = inserted_window_axes,
-          x_batching_axes = x_batching_axes,
-          scatter_indices_batching_axes = scatter_indices_batching_axes,
-          scatter_axes_to_x_axes = scatter_axes_to_x_axes,
-          index_vector_axis = index_vector_axis,
-          indices_are_sorted = indices_are_sorted,
-          unique_indices = FALSE,
-          update_fn = function(old, new) new
+        scattered_ids <- scatter_at(
+          prim_fill(0L, dtype = id_dtype, shape = x_shape),
+          update_ids,
+          unique_indices = FALSE
         )
 
         # c) Gather scattered IDs back to update positions
-        gathered_ids <- prim_gather(
-          x = scattered_ids,
-          start_indices = scatter_indices,
-          slice_sizes = slice_sizes,
-          offset_axes = update_window_axes,
-          collapsed_slice_axes = inserted_window_axes,
-          x_batching_axes = x_batching_axes,
-          start_indices_batching_axes = scatter_indices_batching_axes,
-          start_index_map = scatter_axes_to_x_axes,
-          index_vector_axis = index_vector_axis,
-          indices_are_sorted = indices_are_sorted,
-          unique_indices = FALSE
-        )
+        gathered_ids <- gather_at(scattered_ids, unique_indices = FALSE)
 
         # d) Gather gradient and mask: only winning updates get gradient
-        grad_at_positions <- prim_gather(
-          x = grad,
-          start_indices = scatter_indices,
-          slice_sizes = slice_sizes,
-          offset_axes = update_window_axes,
-          collapsed_slice_axes = inserted_window_axes,
-          x_batching_axes = x_batching_axes,
-          start_indices_batching_axes = scatter_indices_batching_axes,
-          start_index_map = scatter_axes_to_x_axes,
-          index_vector_axis = index_vector_axis,
-          indices_are_sorted = indices_are_sorted,
-          unique_indices = FALSE
-        )
+        grad_at_positions <- gather_at(grad, unique_indices = FALSE)
         mask <- prim_eq(update_ids, gathered_ids)
         prim_ifelse(mask, grad_at_positions, zeros_like(grad_at_positions))
       }
@@ -1261,7 +1273,7 @@ triangular_mask <- function(n, lower, unit_diagonal) {
 #' @name prim_chol
 #' @rdname prim_chol
 #' @references
-#' `r xlamisc::format_bib("murray2016differentiation", "walter2012structured")`
+#' `r format_bib("murray2016differentiation", "walter2012structured")`
 prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   lower <- params$lower
   if (length(shape(outputs[[1L]])) > 2L) {
@@ -1276,7 +1288,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   # i.e., we want cholesky(x + dx) \approx cholesky(x) + dcholesky(x) %*% dx
   # but here x + dx needs to be positive semi-definite.
   # this is satisfied if dx is symmetric (dx is small)
-  # Because the property only needs to hold for symmetric inputs dx, their are an infinite number
+  # Because the property only needs to hold for symmetric inputs dx, there are an infinite number
   # of solutions.
   # We use the solution that is identical to the one used by {torch} (which we compare against
   # in the test)
@@ -1302,7 +1314,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
     L <- t(L)
     grad <- t(grad)
   }
-  # We almost use Murray (2016) equation 10, but use M / 2 intead of phi(M) which are both
+  # We almost use Murray (2016) equation 10, but use M / 2 instead of phi(M) which are both
   # equivalent for symmetric perturbations
   P <- phi(nv_matmul(t(L), grad))
   half <- prim_fill(0.5, dtype = dtype(P), shape = shape(P))
@@ -1323,7 +1335,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
 #' @name prim_triangular_solve
 #' @rdname prim_triangular_solve
 #' @references
-#' `r xlamisc::format_bib("giles2008extended")`
+#' `r format_bib("giles2008extended")`
 prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   left_side <- params$left_side
   lower <- params$lower
@@ -1341,60 +1353,35 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
     ))
   }
 
-  # op(A) is A or A^T depending on transpose_a
-  adj_transpose <- !transpose_a
-
-  if (left_side) {
-    # From the paper: grad_b = op(A)^{-1} * grad
-    grad_b <- prim_triangular_solve(
-      a,
-      grad,
-      left_side = TRUE,
-      lower = lower,
-      unit_diagonal = unit_diagonal,
-      transpose_a = adj_transpose
-    )
-    # From the paper: dx/da = -A^{-1} * dA * A^{-1} * B
-    # Similar to cholesky, where the perturbation needs to be symmetric, here the perturbation
-    # of A can be assumed to be a lower triangular matrix.
-    # Out derivative therefore only works when the input is a lower triangular matrix.
-    # I.e. dy/dx_{i, j} = 0 for the upper/lower triangular matrix
-    # But because the contangent can be anything, we need to handle this here.
-    # (we could either modify the contangent or mask the results; we choose the latter)
-    # Also if unit_diagonal = TRUE the diagonal elements are not read and hence also have no effect
-    # i.e. we also zero out those.
-    grad_a <- if (required[[1L]]) {
-      raw <- prim_negate(nv_matmul(grad_b, t(x)))
-      n <- shape(a)[length(shape(a))]
-      mask <- triangular_mask(n, lower, unit_diagonal)
-      if (transpose_a) {
-        raw <- t(raw)
-      }
-      prim_ifelse(mask, raw, zeros_like(raw))
+  # op(A) is A or A^T depending on transpose_a.
+  # From the paper: grad_b = op(A)^{-1} * grad (left side), grad * op(A)^{-1} (right side,
+  # where x @ op(a) = b).
+  grad_b <- prim_triangular_solve(
+    a,
+    grad,
+    left_side = left_side,
+    lower = lower,
+    unit_diagonal = unit_diagonal,
+    transpose_a = !transpose_a
+  )
+  # From the paper: dx/da = -A^{-1} * dA * A^{-1} * B
+  # Similar to cholesky, where the perturbation needs to be symmetric, here the perturbation
+  # of A can be assumed to be a lower triangular matrix.
+  # Our derivative therefore only works when the input is a lower triangular matrix.
+  # I.e. dy/dx_{i, j} = 0 for the upper/lower triangular matrix
+  # But because the cotangent can be anything, we need to handle this here.
+  # (we could either modify the cotangent or mask the results; we choose the latter)
+  # Also if unit_diagonal = TRUE the diagonal elements are not read and hence also have no effect
+  # i.e. we also zero out those.
+  grad_a <- if (required[[1L]]) {
+    raw <- prim_negate(if (left_side) nv_matmul(grad_b, t(x)) else nv_matmul(t(x), grad_b))
+    n <- shape(a)[length(shape(a))]
+    mask <- triangular_mask(n, lower, unit_diagonal)
+    if (transpose_a) {
+      raw <- t(raw)
     }
-    if (!required[[2L]]) grad_b <- NULL
-  } else {
-    # Right side: x @ op(a) = b
-    grad_b <- prim_triangular_solve(
-      a,
-      grad,
-      left_side = FALSE,
-      lower = lower,
-      unit_diagonal = unit_diagonal,
-      transpose_a = adj_transpose
-    )
-    # Same masking logic as the left_side case above.
-    grad_a <- if (required[[1L]]) {
-      raw <- prim_negate(nv_matmul(t(x), grad_b))
-      n <- shape(a)[length(shape(a))]
-      mask <- triangular_mask(n, lower, unit_diagonal)
-      if (transpose_a) {
-        raw <- t(raw)
-      }
-      prim_ifelse(mask, raw, zeros_like(raw))
-    }
-    if (!required[[2L]]) grad_b <- NULL
+    prim_ifelse(mask, raw, zeros_like(raw))
   }
 
-  list(grad_a, grad_b)
+  list(grad_a, if (required[[2L]]) grad_b)
 })

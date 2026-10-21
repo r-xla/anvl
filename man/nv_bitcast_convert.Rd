@@ -11,7 +11,7 @@ nv_bitcast_convert(x, dtype)
 One input. Can be any data type except \code{bool}.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Any target data type except \code{bool}.
 One of the same bit width as the input's leaves the shape unchanged; a
 narrower one adds a \emph{leading} axis holding the pieces; a wider one consumes
@@ -26,12 +26,12 @@ Has the given \code{dtype}, and the shape described under \code{dtype}.
 }
 \description{
 Reinterprets the bits of an array as a different data type without modifying
-the underlying data. If the target type is narrower, an extra trailing
-axis is added; if wider, the last axis is consumed.
+the underlying data. If the target type is narrower, a new leading axis is
+added; if wider, the first axis is consumed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the bits of one i32 reread as four i8, in a new trailing axis
+# the bits of one i32 reread as four i8, in a new leading axis
 x <- nv_array(1L, dtype = "i32")
 nv_bitcast_convert(x, dtype = "i8")
 \dontshow{\}) # examplesIf}

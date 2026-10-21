@@ -2,7 +2,7 @@
 % Please edit documentation in R/device.R
 \name{default_device}
 \alias{default_device}
-\title{Get the default device}
+\title{Get the Default Device}
 \usage{
 default_device(backend = NULL)
 }
@@ -20,6 +20,11 @@ Returns the default device of the active backend: the device the
 the one the \code{ANVL_DEFAULT_DEVICE} environment variable names (e.g.
 \code{ANVL_DEFAULT_DEVICE=cuda}, read once when anvl is loaded), else the first
 CPU device.
+}
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+default_device()
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_device]{nv_device()}}, \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_default_device]{local_default_device()}}

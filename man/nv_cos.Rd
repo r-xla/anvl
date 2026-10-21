@@ -6,6 +6,8 @@
 \title{Cosine}
 \usage{
 nv_cos(x)
+
+\method{cos}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

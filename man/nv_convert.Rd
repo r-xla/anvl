@@ -10,7 +10,7 @@ nv_convert(x, dtype)
 \item{x}{(\code{\link{arrayish}})\cr
 The input to convert.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Target data type.}
 }
 \value{

@@ -19,8 +19,9 @@ The device the data lives on, given either as:
 \code{"cuda:<n>"}), which is resolved against the backend in use, or
 \item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
 \code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
-\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
-is backend-specific, it also determines the backend.
+\code{\link{quickr_device}} for the \code{"quickr"} backend. It must belong to the
+active backend (\code{\link[=active_backend]{active_backend()}}); a device of another backend is an
+error.
 }
 
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
@@ -43,8 +44,8 @@ state
 Other rng:
 \code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
-\code{\link[=nv_runif]{nv_runif()}},
 \code{\link[=nv_sample]{nv_sample()}},
-\code{\link[=nv_sample_int]{nv_sample_int()}}
+\code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link{nv_uniform}}
 }
 \concept{rng}

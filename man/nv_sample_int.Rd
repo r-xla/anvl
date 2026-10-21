@@ -18,9 +18,9 @@ default data types, and the returned \code{state} has them too.}
 \item{n}{(\code{integer(1)})\cr
 Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Numeric type of the sampled integers.
-The sampled values are converted to it.
+The sampled values are converted to it, so it must hold \code{n}.
 \code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.}
 }
 \value{
@@ -49,7 +49,7 @@ Other rng:
 \code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
-\code{\link[=nv_runif]{nv_runif()}},
-\code{\link[=nv_sample]{nv_sample()}}
+\code{\link[=nv_sample]{nv_sample()}},
+\code{\link{nv_uniform}}
 }
 \concept{rng}

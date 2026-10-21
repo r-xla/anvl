@@ -12,18 +12,18 @@ nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
 Axis along which values increase.
-Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
+Negative values count from the end of \code{shape}, i.e. \code{-1L} refers to the
 last axis.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result, required here. Can be any numeric data type.
 For \code{nv_iota_like()} it may be \code{NULL}, which uses \code{dtype(like)}.}
 
 \item{start}{(\code{integer(1)})\cr
-Starting value (default 1). Built at \code{dtype}, as the increments are.}
+Starting value (default 1).}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -32,8 +32,9 @@ The device the data lives on, given either as:
 \code{"cuda:<n>"}), which is resolved against the backend in use, or
 \item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
 \code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
-\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
-is backend-specific, it also determines the backend.
+\code{\link{quickr_device}} for the \code{"quickr"} backend. It must belong to the
+active backend (\code{\link[=active_backend]{active_backend()}}); a device of another backend is an
+error.
 }
 
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}

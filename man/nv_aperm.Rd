@@ -11,6 +11,8 @@ nv_aperm(x, perm = NULL)
 
 nv_transpose(x, perm = NULL)
 
+\method{t}{AnvlArray}(x)
+
 \method{aperm}{AnvlArray}(a, perm = NULL, ...)
 }
 \arguments{
@@ -40,7 +42,8 @@ another spelling of the same function. You can also use \code{aperm()}, or
 \section{The \code{t()} generic}{
 
 \code{t()} requires a matrix, whereas \code{\link[base:t]{base::t()}} also transposes a vector (into
-a one-row matrix) and reverses the axes of a higher-rank array.
+a one-row matrix). Like \code{\link[base:t]{base::t()}}, it rejects a higher-rank array; use
+\code{aperm()} to reverse its axes.
 }
 
 \section{The \code{aperm()} generic}{

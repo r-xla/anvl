@@ -1,7 +1,7 @@
-# AnvlPrimitive basics
+# AnvlPrimitiveDef basics
 
     Code
       p
     Output
-      <AnvlPrimitive:abc>
+      <AnvlPrimitiveDef:abc>
 

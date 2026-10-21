@@ -29,6 +29,14 @@ test_that("with_backend restores backend on error", {
   expect_equal(active_backend(), "pjrt")
 })
 
+describe("with_backend", {
+  it("rejects the internal plain backend", {
+    expect_error(with_backend("plain", 1), "plain")
+    expect_error(local_backend("plain"), "plain")
+    expect_equal(active_backend(), "pjrt")
+  })
+})
+
 test_that("backend() returns the backend name", {
   expect_equal(backend(nv_array(1)), "pjrt")
 })
@@ -85,5 +93,12 @@ describe("eager code", {
     x <- with_backend("quickr", nv_array(1L))
     expect_error(x + 1.5, "quickr")
     expect_error(nv_fill_like(x, 0), "belongs to the .*quickr.* backend")
+  })
+})
+
+describe("the plain backend", {
+  it("converts a bit64::integer64 payload by value", {
+    out <- jit(function() nv_array(bit64::as.integer64(c(3, 5)), dtype = "i64"))()
+    expect_equal(as.integer(as_array(out)), c(3L, 5L))
   })
 })

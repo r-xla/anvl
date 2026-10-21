@@ -30,10 +30,21 @@ branches between two \emph{functions} and evaluates only the selected one. Its
 arguments are named after that construct, where \code{\link[=nv_ifelse]{nv_ifelse()}} -- which
 selects element-wise between two \emph{arrays} -- is named after \code{\link[=ifelse]{ifelse()}}.
 }
+\section{Gradients}{
+
+\code{\link[=gradient]{gradient()}} differentiates through the branch the predicate selects, including
+the values the branches close over; a value only the other branch uses gets a
+zero. See \code{\link[=prim_if]{prim_if()}}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # both branches must return the same structure, data types and shapes
 nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
+
+# the gradient flows through the branch that is taken
+f <- function(p, x) nv_if(p, \() sum(x * x), \() sum(x))
+jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), nv_array(c(1, 2, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

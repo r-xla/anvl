@@ -2,22 +2,45 @@
 % Please edit documentation in R/backend.R
 \name{local_backend}
 \alias{local_backend}
-\title{Temporarily set the backend}
+\alias{with_backend}
+\title{Temporarily Set the Backend}
 \usage{
 local_backend(backend, envir = parent.frame())
+
+with_backend(backend, code)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
 Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 
-\item{envir}{The environment to scope the change to.}
+\item{envir}{(\code{environment})\cr
+The environment to scope the change to.}
+
+\item{code}{(any)\cr
+An expression to evaluate with the given backend.}
 }
 \value{
-(\code{character(1)})\cr
-The previous value of the option, invisibly.
+\code{local_backend()} returns the previous value of the option, as
+\code{list(anvl.backend = )}, invisibly. \code{with_backend()} returns the result
+of evaluating \code{code}.
 }
 \description{
-Sets the \code{anvl.backend} option for the duration of the calling scope. Every
+Set the \code{anvl.backend} option for a scope: \code{local_backend()} until the
+calling frame exits, \code{with_backend()} for the duration of \code{code}. Every
 array built and every operation run in that scope uses the backend, and R
 values materialize at its default data types (see \code{\link[=default_dtypes]{default_dtypes()}}).
+}
+\examples{
+\dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+f <- function() {
+  local_backend("quickr")
+  active_backend()
+}
+f()
+active_backend()
+with_backend("quickr", active_backend())
+\dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=active_backend]{active_backend()}}
 }

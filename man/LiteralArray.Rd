@@ -14,8 +14,11 @@ to be named, since the default takes it from an R value's storage type.}
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array.}
 
-\item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The data type. For the default, see \code{\link[=default_dtypes]{default_dtypes()}}).}
+\item{dtype}{(\code{\link[xlamisc:DataType]{xlamisc::DataType}})\cr
+The data type. For the default, see \code{\link[=default_dtypes]{default_dtypes()}}.}
+}
+\value{
+(\code{\link{LiteralArray}})
 }
 \description{
 An \code{\link{AbstractArray}} where all elements have the same constant value. This

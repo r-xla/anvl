@@ -5,20 +5,50 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
-nv_subset_assign(x, ..., value)
+\method{[}{AnvlArray}(x, ...) <- value
+
+nv_subset_assign(x, ..., value, inplace = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 The array to update. Can be any data type.
 An R object is materialized at its \link[=default_dtypes]{default data type}.}
 
-\item{...}{Subset specifications, one per axis. See
-\code{vignette("subsetting")} for details.}
+\item{...}{Subset specifications, one per axis. Omitted trailing
+axes select all elements.
+
+A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
+arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+\code{x} selects across the whole array, yielding a 1-D result. Under \code{\link[=jit]{jit()}},
+the values of a mask must be known at compile time, because the number of
+selected elements determines the output shape: R logical arrays and
+arrays created in or closed over by the function work, a mask computed
+from the function's inputs does not.
+
+See the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
-The value is converted to the data type of \code{x}.}
+It is brought to \code{x}'s data type: an R value is built at it when its
+category can reach it (\code{0L} serves an integer and a float \code{x} alike, while
+\code{1.5} into an \code{i32} \code{x} is an error), and an array is converted unless that
+would narrow it or leave its category (an \code{f64} value for an \code{f32} \code{x} is
+an error).}
+
+\item{inplace}{(\code{logical(1)})\cr
+Whether to write into the memory of \code{x} instead of allocating a new array.
+This avoids the copy of \code{x} that an eager subset assignment otherwise
+makes, but it consumes \code{x}: its buffer is \link[=jit]{donated}, so \code{x} -- and
+any other R variable referring to the same array -- can no longer be used
+afterwards. With \verb{[<-}, pass it among the subscripts, e.g.
+\code{x[1, inplace = TRUE] <- 0}, which rebinds \code{x} to the result.
+It is an error inside a jitted function: there, other references to \code{x}
+would stay valid, so the same code would behave differently in eager and
+in jit mode. Inside \code{jit()}, the compiler already avoids the copy anyway.
+Default is \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -35,8 +65,17 @@ x <- nv_matrix(1:12, nrow = 3)
 nv_subset_assign(x, 1, value = nv_scalar(0L))
 x[1, ] <- nv_scalar(0L)
 x
+
+# Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)
+x[x > 6] <- 0L
+x
+
+# write into the memory of `x` instead of copying it
+x[2, inplace = TRUE] <- nv_scalar(1L)
+x
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset]{nv_subset()}}, \code{vignette("subsetting")} for a comprehensive guide.
+\code{\link[=nv_subset]{nv_subset()}}, the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for a
+comprehensive guide.
 }

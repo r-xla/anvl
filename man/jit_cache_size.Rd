@@ -2,7 +2,7 @@
 % Please edit documentation in R/jit.R
 \name{jit_cache_size}
 \alias{jit_cache_size}
-\title{Number of cached programs of a jitted function}
+\title{Number of Cached Programs of a Jitted Function}
 \usage{
 jit_cache_size(f, backend = active_backend())
 }

@@ -6,6 +6,8 @@
 \title{Inverse Hyperbolic Cosine}
 \usage{
 nv_acosh(x)
+
+\method{acosh}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

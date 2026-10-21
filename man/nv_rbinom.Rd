@@ -16,15 +16,15 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{size}{(\code{integer(1)})\cr
-Number of trials.}
+Number of trials. \code{0} gives a sample of zeros, like \code{rbinom()}.}
 
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Numeric type of the sample.
 \code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.
-The number of successes are converted to it.}
+The number of successes are converted to it, so it must hold \code{size}.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
@@ -47,8 +47,8 @@ result$values
 Other rng:
 \code{\link{nv_normal}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
-\code{\link[=nv_runif]{nv_runif()}},
 \code{\link[=nv_sample]{nv_sample()}},
-\code{\link[=nv_sample_int]{nv_sample_int()}}
+\code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link{nv_uniform}}
 }
 \concept{rng}

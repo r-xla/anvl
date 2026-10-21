@@ -18,7 +18,7 @@ which case the values decrease.}
 Number of values to generate. Must be at least 1; for \code{length_out = 1} the
 result is \code{from}.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result. Must be a float data type; \code{NULL} (default) uses
 the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}), since
 the spacing is fractional. For \code{nv_linspace_like()}, \code{NULL} uses
@@ -31,8 +31,9 @@ The device the data lives on, given either as:
 \code{"cuda:<n>"}), which is resolved against the backend in use, or
 \item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
 \code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
-\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
-is backend-specific, it also determines the backend.
+\code{\link{quickr_device}} for the \code{"quickr"} backend. It must belong to the
+active backend (\code{\link[=active_backend]{active_backend()}}); a device of another backend is an
+error.
 }
 
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
@@ -75,6 +76,6 @@ nv_linspace_like(x, 0, 1, length_out = 3L)
 }
 \seealso{
 \code{\link[=nv_seq]{nv_seq()}} for consecutive integers, \code{\link[=nv_iota]{nv_iota()}} for values
-increasing along an axis of any shape, \code{\link{dtypes}} for the data type
+increasing along an axis of any shape, \code{\link{dtype_categories}} for the data type
 categories.
 }

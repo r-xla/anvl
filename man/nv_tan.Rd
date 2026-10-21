@@ -6,6 +6,8 @@
 \title{Tangent}
 \usage{
 nv_tan(x)
+
+\method{tan}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

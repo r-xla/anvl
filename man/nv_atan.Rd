@@ -6,6 +6,8 @@
 \title{Arc Tangent}
 \usage{
 nv_atan(x)
+
+\method{atan}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

@@ -2,7 +2,7 @@
 % Please edit documentation in R/device.R
 \name{is_device}
 \alias{is_device}
-\title{Test whether an object is a device}
+\title{Test Whether an Object Is a Device}
 \usage{
 is_device(x)
 }
@@ -14,5 +14,5 @@ is_device(x)
 Whether \code{x} is a device of one of the backends.
 }
 \description{
-Test whether an object is a device
+Test Whether an Object Is a Device
 }

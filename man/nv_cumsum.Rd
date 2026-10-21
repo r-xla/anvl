@@ -6,6 +6,8 @@
 \title{Cumulative Sum}
 \usage{
 nv_cumsum(x, axis = NULL, nan_rm = FALSE)
+
+\method{cumsum}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

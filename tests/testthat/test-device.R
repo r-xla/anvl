@@ -10,7 +10,8 @@ test_that("nv_device builds a device of the active backend", {
 })
 
 test_that("nv_device errors on the plain backend", {
-  expect_error(with_backend("plain", nv_device("cpu")), "plain")
+  withr::local_options(anvl.backend = "plain")
+  expect_error(nv_device("cpu"), "plain")
 })
 
 test_that("nv_device rejects a device of another backend", {
@@ -53,13 +54,13 @@ describe("default_device()", {
 
   it("falls back to the device ANVL_DEFAULT_DEVICE names", {
     local_unset_default_device()
-    local_env_default("DEVICE", "cpu:1")
+    local_env_default("device", "cpu:1")
     expect_equal(default_device(), nv_device("cpu:1"))
   })
 
   it("prefers the `anvl.default_device` option over ANVL_DEFAULT_DEVICE", {
     local_unset_default_device()
-    local_env_default("DEVICE", "cpu:1")
+    local_env_default("device", "cpu:1")
     with_default_device("cpu:0", expect_equal(default_device(), nv_device("cpu:0")))
   })
 

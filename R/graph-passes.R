@@ -1,22 +1,21 @@
-traverse_gnodes <- function(graph, fn, graph_outputs = TRUE) {
-  for (call in graph$calls) {
+# Sub-graphs are closed -- what they read of this graph is an operand of their
+# call -- so the passes below never have to look into them.
+traverse_gnodes <- function(graph, fn) {
+  for (call in graph$statements) {
     for (input in call$inputs) {
       fn(input)
     }
-    if (is_higher_order_primitive(call$primitive)) {
-      lapply(subgraphs(call), traverse_gnodes, fn = fn, graph_outputs = graph_outputs)
-    }
   }
-  if (graph_outputs) {
-    for (output in graph$outputs) {
-      fn(output)
-    }
+  for (output in graph$outputs) {
+    fn(output)
   }
 }
 
-remove_unused_constants <- function(graph) {
-  new_graph <- AnvlGraph(
-    calls = graph$calls,
+# A shallow copy of `graph` for a pass to modify: `AnvlGraph` has reference
+# semantics, so a pass must not change the graph it was given.
+copy_graph <- function(graph) {
+  AnvlGraph(
+    statements = graph$statements,
     in_tree = graph$in_tree,
     out_tree = graph$out_tree,
     inputs = graph$inputs,
@@ -28,11 +27,12 @@ remove_unused_constants <- function(graph) {
     # must not reorder or drop one, so this carries over as it is.
     rdata_types = graph$rdata_types
   )
+}
+
+remove_unused_constants <- function(graph) {
+  new_graph <- copy_graph(graph)
 
   is_used <- hashtab()
-  # here we assume that higher-order primitives capture their constants via
-  # lexical scoping and don't have constants of their own
-  # this means, the main graph contains all the constants that are used
   traverse_gnodes(new_graph, function(gval) {
     if (is_graph_value(gval) && is_concrete_array(gval$aval)) {
       is_used[[gval]] <- TRUE
@@ -46,7 +46,7 @@ remove_unused_constants <- function(graph) {
   new_graph
 }
 
-inline_scalarish_constants <- function(graph, map = NULL) {
+inline_scalarish_constants <- function(graph) {
   is_scalarish <- function(gval) {
     is_graph_value(gval) && is_concrete_array(gval$aval) && (nelts(gval$aval) == 1L)
   }
@@ -59,60 +59,21 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     ))
   }
 
-  # Create a copy of the graph
-  new_graph <- AnvlGraph(
-    calls = graph$calls,
-    in_tree = graph$in_tree,
-    out_tree = graph$out_tree,
-    inputs = graph$inputs,
-    outputs = graph$outputs,
-    constants = graph$constants,
-    is_static_flat = graph$is_static_flat,
-    static_args_flat = graph$static_args_flat,
-    # Positional, one entry per input: a pass may replace an input in place but
-    # must not reorder or drop one, so this carries over as it is.
-    rdata_types = graph$rdata_types
-  )
+  new_graph <- copy_graph(graph)
 
-  # `map` answers "what did this node become", shared with the sub-graphs so a
-  # constant captured by several of them becomes the same literal.
-  map <- map %||% hashtab()
+  map <- hashtab()
   for (const in new_graph$constants) {
-    if (is_scalarish(const) && is.null(map[[const]])) {
+    if (is_scalarish(const)) {
       map[[const]] <- scalarish_to_lit(const)
     }
   }
-  for (i in seq_along(new_graph$inputs)) {
-    replacement <- map[[new_graph$inputs[[i]]]]
-    if (!is.null(replacement)) {
-      new_graph$inputs[[i]] <- replacement
-    }
-  }
-
-  for (i in seq_along(new_graph$calls)) {
-    pcall <- new_graph$calls[[i]]
-    for (j in seq_along(pcall$inputs)) {
-      replacement <- map[[pcall$inputs[[j]]]]
-      if (!is.null(replacement)) {
-        new_graph$calls[[i]]$inputs[[j]] <- replacement
-      }
-    }
-    if (is_higher_order_primitive(pcall$primitive)) {
-      subgraph_names <- pcall$primitive$subgraphs
-      for (name in subgraph_names) {
-        if (name %in% names(pcall$params)) {
-          new_subgraph <- inline_scalarish_constants(pcall$params[[name]], map)
-          new_graph$calls[[i]]$params[[name]] <- new_subgraph
-        }
-      }
-    }
-  }
-  for (i in seq_along(new_graph$outputs)) {
-    replacement <- map[[new_graph$outputs[[i]]]]
-    if (!is.null(replacement)) {
-      new_graph$outputs[[i]] <- replacement
-    }
-  }
+  replace_nodes <- function(nodes) lapply(nodes, \(node) map[[node]] %||% node)
+  new_graph$inputs <- replace_nodes(new_graph$inputs)
+  new_graph$statements <- lapply(new_graph$statements, function(call) {
+    call$inputs <- replace_nodes(call$inputs)
+    call
+  })
+  new_graph$outputs <- replace_nodes(new_graph$outputs)
   new_graph$constants <- new_graph$constants[vapply(
     new_graph$constants,
     function(const) is.null(map[[const]]),

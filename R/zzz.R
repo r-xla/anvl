@@ -37,13 +37,18 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   register_s3_method("waldo", "compare_proxy", "AnvlArray")
 
   read_env_defaults()
+
+  # Arrays read with readRDS() and friends load onto anvl's default device:
+  # pjrt uploads an unserialized buffer to the device this entry returns.
+  pjrt_the <- getFromNamespace("the", "pjrt")
+  pjrt_the[["unserialize_device"]] <- function() default_device("pjrt")
 }
 
 # Read `ANVL_DEFAULT_DTYPES` / `ANVL_DEFAULT_DEVICE`, the fallbacks of the
 # `anvl.default_dtypes` / `anvl.default_device` options.
 read_env_defaults <- function() {
   dtypes <- Sys.getenv("ANVL_DEFAULT_DTYPES")
-  globals[["ENV_DEFAULT_DTYPES"]] <- if (nzchar(dtypes)) parse_default_dtypes_env(dtypes)
+  globals[["env_default_dtypes"]] <- if (nzchar(dtypes)) parse_default_dtypes_env(dtypes)
   device <- Sys.getenv("ANVL_DEFAULT_DEVICE")
-  globals[["ENV_DEFAULT_DEVICE"]] <- if (nzchar(device)) device
+  globals[["env_default_device"]] <- if (nzchar(device)) device
 }

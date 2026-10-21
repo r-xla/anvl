@@ -1,4 +1,4 @@
-#' @title Get the default device
+#' @title Get the Default Device
 #' @description
 #' Returns the default device of the active backend: the device the
 #' `anvl.default_device` option names (see [`local_default_device()`]), else
@@ -10,10 +10,12 @@
 #' @return (device object)\cr
 #'   Backend-specific.
 #' @seealso [`nv_device()`], [`active_backend()`], [`local_default_device()`]
+#' @examplesIf pjrt::plugins_downloaded()
+#' default_device()
 #' @export
 default_device <- function(backend = NULL) {
   backend <- backend %||% active_backend()
-  device <- getOption("anvl.default_device") %||% globals[["ENV_DEFAULT_DEVICE"]] %||% "cpu"
+  device <- getOption("anvl.default_device") %||% globals[["env_default_device"]] %||% "cpu"
   backend_device(device, backend)
 }
 
@@ -25,20 +27,27 @@ default_device <- function(backend = NULL) {
 #'
 #' This is what a call that names no device allocates on, and what a jitted
 #' function whose graph pins no device of its own compiles for.
-#' @param device (`character(1)` | device object)\cr
-#'   The device to make the default, e.g. `"cpu:1"`. A string is looked up on
-#'   whichever backend asks for the default, so an identifier only one backend
-#'   knows (`"cpu:1"` is beyond quickr's single device) makes the default an
-#'   error on the others.
+#' @param device (`NULL` | `character(1)` | device object)\cr
+#'   The device to make the default, e.g. `"cuda:0"`. A string is looked up
+#'   on whichever backend asks for the default, so an identifier only one
+#'   backend knows (quickr has no `"cuda"`) makes the default an error on the
+#'   others. `NULL` clears the option.
 #' @param code (`any`)\cr
 #'   Expression to evaluate with the default device set.
 #' @param envir (`environment`)\cr
 #'   Scope the option is reset at the end of. Defaults to the caller.
-#' @return `local_default_device()` returns the previous option value
-#'   invisibly, `with_default_device()` the value of `code`.
+#' @return `local_default_device()`: (named `list`)\cr
+#'   The previous value of the option, as `list(anvl.default_device = )`,
+#'   invisibly.
+#'
+#'   `with_default_device()`: (any)\cr
+#'   The value of `code`.
 #' @seealso [`default_device()`], [`local_backend()`]
-#' @examplesIf pjrt::plugins_downloaded()
-#' with_default_device("cpu:0", device(nv_array(1:3)))
+#' @examples
+#' getOption("anvl.default_device")
+#' # the option holds the identifier; it is resolved to a device only when
+#' # `default_device()` is called
+#' with_default_device("cuda:0", getOption("anvl.default_device"))
 #' @export
 local_default_device <- function(device, envir = parent.frame()) {
   withr::local_options(
@@ -68,10 +77,9 @@ check_default_device <- function(device) {
 #' Constructs a backend-specific device object for the active backend
 #' ([`active_backend()`]).
 #'
-#' A device identifies a compute resources, such as CPU, or a specific GPU.
-#' It is relevant for data allocation (e.g. via [nv_array()]) but also compilation ([jit]).
-#' A device belongs to the active backend ([`active_backend()`]); a device
-#' object of another backend is an error.
+#' A device identifies a compute resource, such as a CPU, or a specific GPU.
+#' It is relevant for data allocation (e.g. via [nv_array()]) but also compilation ([jit()]).
+#' A device is constructed for the active backend.
 #'
 #' @param x (`character(1)` | device object)\cr
 #'   Identifier for the device (e.g. `"cpu"`, `"cuda"`, `"cuda:<n>"`),
@@ -116,7 +124,7 @@ check_device_backend <- function(device, backend) {
   invisible(device)
 }
 
-#' Test whether an object is a device
+#' Test Whether an Object Is a Device
 #'
 #' @param x An object to test.
 #' @return (`logical(1)`)\cr

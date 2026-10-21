@@ -6,6 +6,8 @@
 \title{Square Root}
 \usage{
 nv_sqrt(x)
+
+\method{sqrt}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

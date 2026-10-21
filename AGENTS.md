@@ -32,7 +32,7 @@ config above. anvl-specific:
     read `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the override.
 - anvl tracks the **dev** versions of its r-xla dependencies:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))`.
 
 ## Two-Layer API
 
@@ -79,7 +79,7 @@ plain: written `0L` / `1L`, a call that names no dtype returns the sample at the
 
 ## Supported dtypes
 
-The data types and the words the docs use for groups of them are in `?dtypes`
+The data types and the words the docs use for groups of them are in `?dtype_categories`
 (`R/promotion.R`) and `man-roxygen/section_dtype_words.R`: *any* / *numeric* / *integer* /
 *integerish* / *signed numeric* / *float* / *boolean*. Two things to keep in mind:
 
@@ -89,8 +89,8 @@ The data types and the words the docs use for groups of them are in `?dtypes`
 ## Type Promotion
 
 An R value entering a program is not converted at the boundary -- it is built into the program at the
-dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
-is the reference for how this works and for the `.promote` rules (`promotion_common()`,
+dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. The Data Types and Promotion Rules article
+(`vignettes/articles/type-promotion.Rmd`) is the reference for how this works and for the `.promote` rules (`promotion_common()`,
 `promotion_like()`, `promotion_dtype()`, `promotion_rdata_common()`) that `nv_*` functions pass to
 `as_anvl_arrays()`. Two rules that bite while writing code:
 
@@ -122,7 +122,7 @@ another backend is an error. Only helpers *about* the backend name one (`install
 
 ## Primitive System
 
-Primitives are `JitPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitive`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.

@@ -11,12 +11,12 @@ peek_dtype(x)
 The value to ask about.}
 }
 \value{
-(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+(\code{\link[xlamisc:DataType]{xlamisc::DataType}})\cr
 The data type \code{x} has, or the \link[=default_dtypes]{default data type} it would
 materialize at if it is still a bare R value.
 }
 \description{
-The data type \code{x} would take if it was converted to an \code{AnvlArray}.
+The data type \code{x} would take if it materialized.
 Relevant for R objects and their \code{\link{RData}} trace-time analogon: for those it
 is the default of the active backend (see \code{\link[=default_dtypes]{default_dtypes()}}), which the
 value has not materialized at yet.
@@ -29,5 +29,5 @@ peek_dtype(nv_array(1:3, dtype = "i8"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=as_anvl_arrays]{as_anvl_arrays()}}, \link{RData}, \link[tengen:shape]{shape()}
+\code{\link[=as_anvl_arrays]{as_anvl_arrays()}}, \link{RData}, \link[xlamisc:shape]{shape()}
 }

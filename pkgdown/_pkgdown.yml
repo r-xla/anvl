@@ -26,19 +26,23 @@ navbar:
         href: articles/installation.html
       - text: Get Started
         href: articles/anvl.html
+      - text: Next Steps
+        href: articles/next_steps.html
     user_guide:
       text: User guide
       menu:
+      - text: Data Types and Promotion Rules
+        href: articles/type-promotion.html
       - text: JIT Deep Dive
         href: articles/jit.html
+      - text: Automatic Differentiation
+        href: articles/autodiff.html
       - text: Static Shape Restriction
         href: articles/static_shapes.html
       - text: Subsetting
         href: articles/subsetting.html
       - text: Random Number Generation
         href: articles/random-numbers.html
-      - text: Type Promotion
-        href: articles/type-promotion.html
       - text: Gotchas
         href: articles/gotchas.html
       - text: Efficiency
@@ -48,8 +52,6 @@ navbar:
     examples:
       text: Examples
       menu:
-      - text: Logistic Regression
-        href: articles/logistic-regression.html
       - text: Metropolis Hastings
         href: articles/metropolis-hastings.html
       - text: Hamiltonian Monte Carlo
@@ -82,6 +84,7 @@ reference:
       - nv_matrix
       - nv_scalar
       - nv_empty
+      - nv_dtype_constructors
       - nv_fill
       - nv_iota
       - nv_seq
@@ -97,6 +100,7 @@ reference:
       - dtype
       - shape
       - naxes
+      - axes
       - device
       - starts_with("platform")
 
@@ -105,18 +109,18 @@ reference:
     contents:
       - as_array
       - as_raw
-      - as_dtype
-      - is_dtype
       - as-AnvlArray
-      - await
 
   - subtitle: Serialization
     desc: Functions for serializing and deserializing arrays
     contents:
       - nv_save
-      - nv_read
       - nv_serialize
-      - nv_unserialize
+
+  - subtitle: Miscellaneous
+    contents:
+      - is_arrayish
+      - await
 
   - subtitle: Base R Generics
     desc: >
@@ -130,23 +134,13 @@ reference:
     desc: User-facing `nv_*` functions for array operations
 
   - subtitle: Type Conversion and Broadcasting
-    desc: Functions for type conversion, promotion, and broadcasting
+    desc: Functions for converting data types and broadcasting shapes
     contents:
       - nv_convert
       - nv_bitcast_convert
-      - nv_promote_to_common
       - nv_broadcast_scalars
       - nv_broadcast_arrays
       - nv_broadcast_to
-      - dtypes
-      - common_dtype
-      - promotion_common
-      - promotion_like
-      - promotion_dtype
-      - promotion_rdata_common
-      - promotion_grouped
-      - promotion_rule
-      - apply_promotion
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
@@ -335,7 +329,8 @@ reference:
     contents:
       - nv_normal
       - nv_uniform
-      - nv_runif
+      - nv_binomial
+      - nv_exponential
       - nv_rbinom
       - nv_sample
       - nv_sample_int
@@ -344,41 +339,60 @@ reference:
     desc: Helpers supporting the API functions
     contents:
       - nv_rng_state
-
-  - title: Transformations
-    desc: Code transformations
-    contents:
-      - jit
-      - jit_cache_size
-      - gradient
-      - value_and_gradient
-
-  - title: Debugging
-    desc: Debugging utilities and tools
-    contents:
       - nv_print
 
-  - title: Backend
-    desc: Backend-related functionality and implementations
+  - title: Data Types and Promotion
+    desc: Data types, their defaults, and the rules for promoting inputs to a common one
+
+  - subtitle: Data Types
     contents:
-      - backend
-      - active_backend
-      - local_backend
-      - with_backend
+      - dtype_categories
+      - as_dtype
+      - is_dtype
+      - common_dtype
+      - peek_dtype
       - default_dtypes
       - default_float
       - default_int
       - local_default_dtypes
       - with_dtypes
-      - install_anvl
+
+  - subtitle: Promotion Rules
+    desc: >
+      How `nv_*` functions promote their inputs; see the
+      [Data Types and Promotion Rules](../articles/type-promotion.html) article for how they are used.
+    contents:
+      - nv_promote_to_common
+      - apply_promotion
+      - promotion_rule
+      - promotion_common
+      - promotion_like
+      - promotion_dtype
+      - promotion_rdata_common
+      - promotion_grouped
+
+  - title: Transformations
+    desc: Code transformations
+    contents:
+      - jit
+      - gradient
+
+  - title: Backend
+    desc: Backend-related functionality and implementations
+    contents:
+      - backend
+      - local_backend
+      - AnvlBackendPjrt
+      - AnvlBackendQuickr
+
+  - title: Device
+    desc: Devices of the active backend and the default device
+    contents:
       - nv_device
       - default_device
       - local_default_device
       - is_device
       - quickr_device
-      - AnvlBackend
-      - AnvlBackendPjrt
-      - AnvlBackendQuickr
 
   - title: Miscellaneous
     desc: General-purpose helpers
@@ -386,6 +400,7 @@ reference:
       - arr
       - eq_type
       - neq_type
+      - map_tree
 
   - title: Internals
     desc: Internal data structures and functions
@@ -398,17 +413,10 @@ reference:
       - GraphValue
       - GraphBox
       - GraphLiteral
-      - AnvlBox
-      - graph_desc_add
+      - GraphStatement
       - local_descriptor
-      - .current_descriptor
+      - current_descriptor
       - subgraphs
-
-  - subtitle: Primitives
-    contents:
-      - new_primitive
-      - AnvlPrimitive
-      - PrimitiveCall
 
   - subtitle: Abstract Types
     contents:
@@ -418,15 +426,13 @@ reference:
       - LiteralArray
       - RData
       - IotaArray
-      - peek_dtype
       - to_abstract
       - arrayish
 
   - subtitle: Transformations
     contents:
       - trace_fn
-      - transform_gradient
-      - rule_reverse
+      - graph_gradient
       - graph_to_quickr_r_function
       - compile_pjrt
       - stablehlo
@@ -441,21 +447,29 @@ reference:
       - build_tree
       - tree_size
       - tree_path
-      - map_tree
-      - pmap_tree
 
   - subtitle: Miscellaneous
     contents:
-      - at2vt
-      - vt
-      - is_arrayish
+      - AnvlBackend
+      - active_backend
+      - jit_cache_size
       - Shape
 
   - title: Primitives
     desc: Low-level primitive operations (prim_* functions)
+
+  - subtitle: Construction
+    contents:
+      - new_primitive
+      - AnvlPrimitiveDef
+      - graph_desc_add
+      - rule_reverse
+
+  - subtitle: Implemented Primitives
     contents:
       - starts_with("prim_")
 
   - title: Package
     contents:
       - anvl-package
+      - install_anvl

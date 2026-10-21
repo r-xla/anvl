@@ -6,6 +6,8 @@
 \title{Matrix Multiplication}
 \usage{
 nv_matmul(x, y, precision = "highest")
+
+\method{\%*\%}{AnvlArray}(x, y)
 }
 \arguments{
 \item{x, y}{(\code{\link{arrayish}})\cr

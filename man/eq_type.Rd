@@ -23,7 +23,8 @@ Second array to compare. Must not be an \code{\link{RData}}.}
 Compare two abstract arrays for type equality.
 
 An \code{\link{RData}} has no data type to compare, so it is an error here, just as
-\code{\link[tengen:dtype]{dtype()}} is. Commit it first, e.g. with \code{\link[=nv_convert]{nv_convert()}}.
+\code{\link[xlamisc:dtype]{dtype()}} is. Give it a data type first, e.g. with
+\code{\link[=nv_convert]{nv_convert()}}.
 }
 \examples{
 a <- nv_aval("f32", c(2L, 3L))
@@ -40,4 +41,9 @@ eq_type(a, nv_aval("f32", c(3L, 2L)))
 
 # neq_type is the negation of eq_type
 neq_type(a, b)
+
+# an RData has no data type, so it cannot be compared
+r <- RData(c(2L, 3L), "double")
+try(eq_type(a, r))
+try(neq_type(r, r))
 }

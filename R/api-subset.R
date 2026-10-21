@@ -50,15 +50,10 @@ subset_reversed_axes <- function(subsets) {
   which(reversed[surviving])
 }
 
+# The shape a subset selects: the sizes of the axes that no scalar index drops.
 subset_spec_to_shape <- function(specs) {
-  shp <- integer()
-  for (spec in specs) {
-    if (is_subset_index(spec)) {
-      next
-    }
-    shp <- c(shp, spec$size)
-  }
-  return(shp)
+  kept <- Filter(Negate(is_subset_index), specs)
+  unlist(lapply(kept, function(spec) spec$size)) %||% integer()
 }
 
 
@@ -66,7 +61,7 @@ subset_start_positions <- function(subsets) {
   subset_start_position <- function(s) {
     if (is_subset_index(s)) {
       s$index
-    } else if (inherits(s, "SubsetIndices")) {
+    } else if (is_subset_indices(s)) {
       s$indices
     } else if (is_subset_full(s)) {
       1L
@@ -81,18 +76,17 @@ subset_start_positions <- function(subsets) {
 }
 
 # Takes a list of 1-D start arrays (one per axis). Scalar axes have length 1,
-# multi-index axes have length > 1.
+# multi-index axes have any other length (including 0, for an empty selection).
 # Returns an array where each row is one index tuple into the original array,
 # covering all combinations of the multi-index axes (cartesian product).
 # Shape [rank] if all scalar, or [multi_index_sizes..., rank] otherwise.
 dynamic_start_indices <- function(starts) {
   rank <- length(starts)
   sizes <- vapply(starts, function(s) shape(s)[1L], integer(1L))
-  multi_index_axes <- which(sizes > 1L)
+  multi_index_axes <- which(sizes != 1L)
 
   if (length(multi_index_axes) == 0L) {
-    start <- do.call(nv_concatenate, c(starts, list(axis = 1L)))
-    return(start)
+    return(do.call(nv_concatenate, c(starts, list(axis = 1L))))
   }
 
   # Each "row" (last axis) is an index tuple [d1, d2, ..., d_rank].
@@ -105,33 +99,25 @@ dynamic_start_indices <- function(starts) {
   slices <- vector("list", rank)
   multi_index_i <- 1L
   for (d in seq_len(rank)) {
-    if (identical(shape(starts[[d]]), 1L)) {
+    if (sizes[[d]] == 1L) {
       slices[[d]] <- nv_broadcast_to(starts[[d]], c(multi_index_sizes, 1L))
     } else {
       slices[[d]] <- prim_broadcast_in_axes(starts[[d]], c(multi_index_sizes, 1L), multi_index_i)
       multi_index_i <- multi_index_i + 1L
     }
   }
-  out <- do.call(nv_concatenate, c(slices, list(axis = n_gather + 1L)))
-  out
+  do.call(nv_concatenate, c(slices, list(axis = n_gather + 1L)))
 }
 
 static_start_indices <- function(starts, like = NULL) {
   sizes <- lengths(starts)
-  multi_index_axes <- which(sizes > 1L)
+  multi_index_axes <- which(sizes != 1L)
   if (length(multi_index_axes) == 0L) {
     data <- unlist(starts)
-    if (is.null(like)) {
-      return(nv_array(data, dtype = "i32"))
-    }
-    return(nv_array_like(like, data, dtype = "i32", shape = length(data)))
+    return(new_index_array(data, length(data), like = like))
   }
   grid <- as.matrix(do.call(expand.grid, starts))
-  out <- array(grid, dim = c(sizes[multi_index_axes], length(starts)))
-  if (is.null(like)) {
-    return(nv_array(out, dtype = "i32"))
-  }
-  nv_array_like(like, out, dtype = "i32", shape = dim(out))
+  new_index_array(grid, c(sizes[multi_index_axes], length(starts)), like = like)
 }
 
 
@@ -159,11 +145,7 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
     # Convert R integers to 1D arrays, reshape 0D arrays to 1D
     starts <- lapply(starts, function(s) {
       if (is.numeric(s)) {
-        if (is.null(like)) {
-          nv_array(s, dtype = "i32")
-        } else {
-          nv_array_like(like, s, dtype = "i32", shape = length(s))
-        }
+        new_index_array(s, length(s), like = like)
       } else if (naxes(s) == 0L) {
         nv_reshape(s, 1L)
       } else {
@@ -172,6 +154,113 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
     })
     dynamic_start_indices(starts)
   }
+}
+
+#' Build an index array for gather/scatter from static R integers
+#' @noRd
+new_index_array <- function(data, shape, like = NULL) {
+  data <- array(as.integer(data), dim = shape)
+  if (is.null(like)) {
+    return(nv_array(data, dtype = "i32"))
+  }
+  nv_array_like(like, data, dtype = "i32", shape = shape)
+}
+
+# Detect a whole-array mask, `x[mask]` or `x[mask] <- value` with
+# `shape(mask) == shape(x)`. Returns the mask as an R logical array, or
+# `mask = NULL` when the subscripts are not one, together with the quosures to
+# hand on to `parse_subset_specs()`.
+#
+# The check itself is simple (one bool subscript with the shape of `x`), but it
+# runs before `parse_subset_specs()` on unevaluated quosures: a missing
+# subscript or a range `a:b` must not be evaluated here, and a subscript that
+# is evaluated is spliced back so it is not evaluated (or read from the device)
+# a second time -- evaluating `x[f(a)]` twice would record `f(a)` twice in the
+# graph during tracing.
+resolve_flat_mask <- function(quos, x_shape) {
+  if (length(quos) != 1L || length(x_shape) < 2L) {
+    return(list(mask = NULL, quos = quos))
+  }
+  quo <- quos[[1L]]
+  # `x[]` or a range `a:b`: not a mask, and a range must stay unevaluated for
+  # `parse_subset_specs()`
+  if (rlang::quo_is_missing(quo) || rlang::is_call(rlang::quo_get_expr(quo), ":")) {
+    return(list(mask = NULL, quos = quos))
+  }
+
+  e <- rlang::eval_tidy(quo)
+  quos[[1L]] <- rlang::new_quosure(e)
+
+  # an index subscript rather than a mask
+  if (!is_mask_subscript(e)) {
+    return(list(mask = NULL, quos = quos))
+  }
+  mask <- as_r_mask(e)
+  # a mask whose shape differs from `x`: left to the per-axis path
+  if (!identical(dim(mask), as.integer(x_shape))) {
+    # splice the host-side mask back in so it is not read from the device twice;
+    # a scalar mask comes back without `dim`, where it would be mistaken for an R
+    # logical vector, so that one keeps its array form
+    if (!is.null(dim(mask))) {
+      quos[[1L]] <- rlang::new_quosure(mask)
+    }
+    return(list(mask = NULL, quos = quos))
+  }
+  list(mask = mask, quos = quos)
+}
+
+#' Linear indices of a whole-array mask
+#'
+#' A whole-array mask is applied to the column-major flattening of `x`, so each
+#' selected element is addressed by one linear index rather than by a tuple of
+#' `rank` indices. `which()` enumerates them in column-major order -- the order
+#' R uses for `x[mask]` -- and is much cheaper than `which(arr.ind = TRUE)`,
+#' which would dominate the cost of the whole subset.
+#' @return An `(n, 1)` index array.
+#' @noRd
+flat_mask_indices <- function(mask, like = NULL) {
+  indices <- which(mask, useNames = FALSE)
+  new_index_array(indices, c(length(indices), 1L), like = like)
+}
+
+# Gathers the linear `indices` from the flattened `x`. Jitted so that the
+# flatten and the gather run as one program.
+flat_mask_gather_core <- jit(function(x, indices) {
+  prim_gather(
+    x = nv_flatten(x),
+    start_indices = indices,
+    slice_sizes = 1L,
+    offset_axes = integer(),
+    collapsed_slice_axes = 1L,
+    x_batching_axes = integer(),
+    start_indices_batching_axes = integer(),
+    start_index_map = 1L,
+    index_vector_axis = 2L,
+    # `which()` returns the linear indices in increasing order
+    indices_are_sorted = TRUE,
+    unique_indices = TRUE
+  )
+})
+
+#' Convert a whole-array mask to scatter parameters
+#'
+#' The parameters address the column-major flattening of `x`, which is what
+#' `flatten = TRUE` tells `subset_scatter_core()` to scatter into.
+#' @noRd
+flat_mask_to_scatter <- function(mask, like = NULL) {
+  indices <- flat_mask_indices(mask, like = like)
+
+  list(
+    scatter_indices = indices,
+    update_window_axes = integer(),
+    inserted_window_axes = 1L,
+    scatter_axes_to_x_axes = 1L,
+    index_vector_axis = 2L,
+    indices_are_sorted = TRUE,
+    unique_indices = TRUE,
+    update_shape = shape(indices)[[1L]],
+    flatten = TRUE
+  )
 }
 
 #' Convert subset specs to gather parameters
@@ -187,65 +276,19 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
 #'   - index_vector_axis: integer
 #'   - indices_are_sorted: logical
 #'   - unique_indices: logical
-#'   - multi_index_subset: logical
 #' @noRd
 subset_specs_to_gather <- function(subsets, like = NULL) {
-  rank <- length(subsets)
-
-  # Identify gather axes (SubsetIndices with multiple elements)
-  multi_index_axes <- which(vapply(
-    subsets,
-    function(s) {
-      is_subset_indices(s) && s$size > 1L
-    },
-    logical(1L)
-  ))
-
-  multi_index_subset <- length(multi_index_axes) > 0L
-
-  # slice_sizes: 1 for multi_index_axes, the size for others
-  slice_sizes <- vapply(
-    seq_len(rank),
-    function(i) {
-      if (i %in% multi_index_axes) 1L else subsets[[i]]$size
-    },
-    integer(1L)
-  )
-
-  collapsed_slice_axes <- sort(c(
-    multi_index_axes,
-    which(vapply(
-      seq_len(rank),
-      function(i) {
-        !(i %in% multi_index_axes) && is_subset_index(subsets[[i]])
-      },
-      logical(1L)
-    ))
-  ))
-
-  start_indices <- subset_specs_start_indices(subsets, like = like)
-
-  # offset_axes: positions in the output for non-collapsed axes of `x`.
-  # The output interleaves batch (gather) axes and offset (slice) axes
-  # in the order of the original axes of `x`.
-  subset_index_axes <- which(vapply(subsets, is_subset_index, logical(1L)))
-  surviving_axes <- setdiff(seq_len(rank), subset_index_axes)
-  multi_among_surviving <- which(surviving_axes %in% multi_index_axes)
-  offset_axes <- setdiff(seq_along(surviving_axes), multi_among_surviving)
-
-  index_vector_axis <- length(multi_index_axes) + 1L
-
+  layout <- subset_specs_layout(subsets)
   list(
-    start_indices = start_indices,
-    slice_sizes = slice_sizes,
-    offset_axes = offset_axes,
-    collapsed_slice_axes = collapsed_slice_axes,
-    start_index_map = seq_len(rank),
-    index_vector_axis = index_vector_axis,
-    indices_are_sorted = !multi_index_subset,
+    start_indices = subset_specs_start_indices(subsets, like = like),
+    slice_sizes = layout$slice_sizes,
+    offset_axes = layout$window_axes,
+    collapsed_slice_axes = layout$addressed_axes,
+    start_index_map = seq_along(subsets),
+    index_vector_axis = layout$index_vector_axis,
+    indices_are_sorted = !layout$multi_index_subset,
     # TODO: Could improve this
-    unique_indices = !multi_index_subset,
-    multi_index_subset = multi_index_subset
+    unique_indices = !layout$multi_index_subset
   )
 }
 
@@ -264,66 +307,48 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #'   - update_shape: integer vector (expected shape of the update array)
 #' @noRd
 subset_specs_to_scatter <- function(subsets, like = NULL) {
-  rank <- length(subsets)
+  layout <- subset_specs_layout(subsets)
+  list(
+    scatter_indices = subset_specs_start_indices(subsets, like = like),
+    update_window_axes = layout$window_axes,
+    inserted_window_axes = layout$addressed_axes,
+    scatter_axes_to_x_axes = seq_along(subsets),
+    index_vector_axis = layout$index_vector_axis,
+    # TODO: Could improve this
+    indices_are_sorted = !layout$multi_index_subset,
+    unique_indices = !layout$multi_index_subset,
+    update_shape = subset_spec_to_shape(subsets)
+  )
+}
 
+# The axis layout a gather and a scatter over the same subset share:
+# - `multi_index_subset`: whether any axis is addressed by several indices.
+#   The index arrays of those multi-index axes span the batch axes of the
+#   start indices (their cartesian product).
+# - `slice_sizes`: `1` along the multi-index axes (each index addresses one element) and
+#   the selected size along every other one.
+# - `addressed_axes`: the axes of `x` that do not appear in a slice, the
+#   multi-index axes and those a scalar index drops (a gather's
+#   `collapsed_slice_axes`, a scatter's `inserted_window_axes`).
+# - `window_axes`: the output positions of the other axes. The output
+#   interleaves the batch axes and these in the order of the axes of `x`.
+# - `index_vector_axis`: the axis of the start indices that holds an index
+#   tuple, which follows the batch axes.
+subset_specs_layout <- function(subsets) {
   multi_index_axes <- which(vapply(
     subsets,
-    function(s) {
-      is_subset_indices(s) && s$size > 1L
-    },
+    function(s) is_subset_indices(s) && s$size != 1L,
     logical(1L)
   ))
-
-  multi_index_subset <- length(multi_index_axes) > 0L
-
-  # slice_sizes: 1 for gather axes (individually addressed), normal for others
-  slice_sizes <- vapply(
-    seq_len(rank),
-    function(i) {
-      if (i %in% multi_index_axes) 1L else subsets[[i]]$size
-    },
-    integer(1L)
-  )
-
-  scatter_indices <- subset_specs_start_indices(subsets, like = like)
-
-  # SubsetIndex axes are individually addressed (dropped from update),
-  # just like collapsed_slice_axes in the gather path.
   index_axes <- which(vapply(subsets, is_subset_index, logical(1L)))
-  inserted_window_axes <- sort(c(multi_index_axes, index_axes))
-  surviving_axes <- setdiff(seq_len(rank), index_axes)
-
-  if (multi_index_subset) {
-    # scatter_indices shape: [gather_shape..., rank]
-    n_gather <- length(multi_index_axes)
-    multi_among_surviving <- which(surviving_axes %in% multi_index_axes)
-    update_window_axes <- setdiff(seq_along(surviving_axes), multi_among_surviving)
-    update_shape <- vapply(
-      surviving_axes,
-      function(i) {
-        if (i %in% multi_index_axes) subsets[[i]]$size else slice_sizes[i]
-      },
-      integer(1L)
-    )
-    index_vector_axis <- n_gather + 1L
-  } else {
-    # scatter_indices shape: [rank] (no batch axes)
-    update_window_axes <- seq_along(surviving_axes)
-    update_shape <- slice_sizes[surviving_axes]
-    index_vector_axis <- 1L
-  }
-
+  surviving_axes <- setdiff(seq_along(subsets), index_axes)
+  sizes <- vapply(subsets, function(s) s$size, integer(1L))
   list(
-    scatter_indices = scatter_indices,
-    update_window_axes = update_window_axes,
-    inserted_window_axes = inserted_window_axes,
-    scatter_axes_to_x_axes = seq_len(rank),
-    index_vector_axis = index_vector_axis,
-    # TODO: Could improve this
-    indices_are_sorted = !multi_index_subset,
-    unique_indices = !multi_index_subset,
-    update_shape = update_shape,
-    multi_index_subset = multi_index_subset
+    multi_index_subset = length(multi_index_axes) > 0L,
+    slice_sizes = replace(sizes, multi_index_axes, 1L),
+    addressed_axes = sort(c(multi_index_axes, index_axes)),
+    window_axes = setdiff(seq_along(surviving_axes), which(surviving_axes %in% multi_index_axes)),
+    index_vector_axis = length(multi_index_axes) + 1L
   )
 }
 
@@ -368,15 +393,95 @@ parse_subset_specs <- function(quos, x_shape) {
   subsets
 }
 
+#' Is this subscript a boolean mask?
+#'
+#' A mask is either an R logical array or an arrayish value of dtype `bool`.
+#' Bare R logical vectors are recognised here so that `as_r_mask()` can reject
+#' them with a helpful message rather than "Invalid subset expression".
+#' @param x Evaluated subscript
+#' @noRd
+is_mask_subscript <- function(x) {
+  if (is.logical(x)) {
+    return(TRUE)
+  }
+  is_arrayish(x, convert_ok = FALSE) && identical(as.character(peek_dtype(x)), "bool")
+}
+
+#' Convert a boolean mask subscript to a plain R logical array
+#'
+#' Masks are resolved to positions with `which()`, so their values must be known
+#' on the host. For an R logical array that is free; for an arrayish mask it
+#' requires reading the array back, which is only possible when its values do
+#' not depend on the inputs of a traced function.
+#' @param e Evaluated subscript, as recognised by `is_mask_subscript()`
+#' @return An R logical array
+#' @noRd
+as_r_mask <- function(e) {
+  if (is.logical(e)) {
+    if (is.null(dim(e))) {
+      cli_abort(c(
+        "Logical vectors are not allowed as subset indices.",
+        "i" = "Use {.fn arr} to create a mask, e.g. {.code x[arr(TRUE, FALSE, TRUE), ]}."
+      ))
+    }
+    mask <- e
+    if (anyNA(mask)) {
+      cli_abort("Boolean masks must not contain missing values.")
+    }
+  } else {
+    known <- known_mask_array(e)
+    if (is.null(known)) {
+      cli_abort(c(
+        "Boolean masks that depend on the inputs of a jitted function are not supported.",
+        "x" = "The number of selected elements, and hence the output shape, depends on the data.",
+        "i" = paste0(
+          "Use a mask whose values are known at compile time: an R logical array such as ",
+          "{.code arr(TRUE, FALSE, TRUE)}, or an array created in or closed over by the function."
+        )
+      ))
+    }
+    mask <- as_array(known)
+  }
+  mask
+}
+
+#' The `AnvlArray` holding the values of an arrayish mask, if they are known
+#'
+#' Outside of tracing that is the mask itself. While tracing, a mask is known if
+#' it is an `AnvlArray` (e.g. created inside the traced function) or a boxed
+#' constant closed over from the environment; a mask computed from the inputs
+#' is not.
+#' @return (`AnvlArray | NULL`)
+#' @noRd
+known_mask_array <- function(e) {
+  if (is_anvl_array(e)) {
+    return(e)
+  }
+  if (is_graph_box(e) && is_concrete_array(e$gnode$aval)) {
+    return(e$gnode$aval$data)
+  }
+  NULL
+}
+
 #' Parse a single subset specification
 #' @param quo Quosure to parse
 #' @param axis_size Size of the axis being indexed
 #' @param axis Axis the subset applies to, used to name it in errors
 #' @return (`SubsetSpec`)\cr
-#'   One of `SubsetFull`, `SubsetRange` or `SubsetIndices`.
+#'   One of `SubsetFull`, `SubsetRange`, `SubsetIndex` or `SubsetIndices`.
 #' @noRd
 parse_subset_spec <- function(quo, axis_size, axis) {
   in_bounds <- "Axis {axis} has size {axis_size}, so indices must be between 1 and {axis_size}."
+  abort_invalid_subset <- function(detail) {
+    cli_abort(
+      c(
+        "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
+        x = detail,
+        i = "See {.url {article_url(\"subsetting\")}}."
+      ),
+      call = parent.frame()
+    )
+  }
   is_integerish <- function(x) {
     is.null(dim(x)) && test_integerish(x, len = 1L, any.missing = FALSE)
   }
@@ -427,6 +532,24 @@ parse_subset_spec <- function(quo, axis_size, axis) {
   # Evaluate the quosure
   e <- rlang::eval_tidy(quo)
 
+  # Boolean mask - selects the TRUE positions, never drops the axis
+  if (is_mask_subscript(e)) {
+    mask <- as_r_mask(e)
+    if (length(dim(mask)) != 1L) {
+      cli_abort(c(
+        "A mask for a single axis must have exactly one axis.",
+        x = "Got {length(dim(mask))} axes.",
+        "i" = "A mask over the whole array must be the only subscript and have the same shape as {.arg x}."
+      ))
+    }
+    if (length(mask) != axis_size) {
+      cli_abort(
+        "Mask of length {length(mask)} does not match an axis of size {axis_size}."
+      )
+    }
+    return(SubsetIndices(which(mask)))
+  }
+
   # Single integer - drops axis. `array(i)` (length-1, with axis attr)
   # falls through to the array branch below so the axis is kept.
   if (is_integerish(e)) {
@@ -457,6 +580,9 @@ parse_subset_spec <- function(quo, axis_size, axis) {
         x = "The array given for axis {axis} has {length(dim(e))} axes."
       ))
     }
+    if (anyNA(e)) {
+      abort_invalid_subset("For axis {axis}, the index array contains {.val {NA}}.")
+    }
     indices <- as.integer(e)
     oob <- indices < 1L | indices > axis_size
     if (any(oob)) {
@@ -473,9 +599,8 @@ parse_subset_spec <- function(quo, axis_size, axis) {
     return(SubsetIndices(indices))
   }
 
-  # A dynamic range is not supported. This used to build a SubsetRange from
-  # `e$end`, which an IotaArray does not have, so the call failed further down
-  # with a length-0 slice size instead of saying what was wrong.
+  # A dynamic range is not supported; say so here rather than letting it fail
+  # further down.
   if (inherits(e, "IotaArray")) {
     cli_abort(c(
       "A dynamic range is not supported as a subset index.",
@@ -513,27 +638,37 @@ parse_subset_spec <- function(quo, axis_size, axis) {
   } else {
     "For axis {axis}, got {.obj_type_friendly {e}}."
   }
-  cli_abort(c(
-    "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
-    x = detail,
-    i = "See {.code vignette(\"subsetting\")}."
-  ))
+  abort_invalid_subset(detail)
 }
 
 #' @title Subset an Array
 #' @description
 #' Extracts a subset from an array. You can also use the `[` operator.
 #' Supports R-style indexing including scalar indices (which drop axes),
-#' ranges (`a:b`), and `array(c(...))` for selecting multiple elements along a
-#' axis.
+#' ranges (`a:b`), `array(c(...))` for selecting multiple elements along an
+#' axis, and boolean masks.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
-#'   axes select all elements. See `vignette("subsetting")` for details.
+#'   axes select all elements.
+#'
+#'   A boolean mask (an R logical array such as `arr(TRUE, FALSE)`, or an
+#'   arrayish value of dtype `bool`) selects the elements at the `TRUE`
+#'   positions. A mask for one axis must have as many elements as the size of
+#'   that axis. A mask that is the only subscript and has the same shape as
+#'   `x` selects across the whole array, yielding a 1-D result. Under [jit()],
+#'   the values of a mask must be known at compile time, because the number of
+#'   selected elements determines the output shape: R logical arrays and
+#'   arrays created in or closed over by the function work, a mask computed
+#'   from the function's inputs does not.
+#'
+#'   See `r roxy_article("subsetting")` for details.
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type, and the shape the specifications select --
-#'   a scalar index drops its axis, a range or an index array keeps it.
-#' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
+#'   a scalar index drops its axis, a range, an index array or an axis mask
+#'   keeps it, and a whole-array mask yields a 1-D result.
+#' @seealso [nv_subset_assign()] for updating subsets,
+#'   `r roxy_article("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
@@ -545,6 +680,12 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #' # select rows 1 to 2, all columns
 #' nv_subset(x, 1:2)
 #' x[1:2, ]
+#'
+#' # Select rows 1 and 3 with a mask
+#' x[arr(TRUE, FALSE, TRUE), ]
+#'
+#' # Select all elements greater than 6 (not in `jit()`, see above)
+#' x[x > 6]
 #' @export
 nv_subset <- function(x, ...) {
   if (!is_arrayish(x)) {
@@ -553,10 +694,15 @@ nv_subset <- function(x, ...) {
       "x" = "Got {.cls {class(x)[1]}}."
     ))
   }
+  x <- as_anvl_array(x)
   x_shape <- shape(x)
   quos <- rlang::enquos(...)
 
-  subsets <- parse_subset_specs(quos, x_shape)
+  flat <- resolve_flat_mask(quos, x_shape)
+  if (!is.null(flat$mask)) {
+    return(flat_mask_gather_core(x, flat_mask_indices(flat$mask, like = x)))
+  }
+  subsets <- parse_subset_specs(flat$quos, x_shape)
   params <- subset_specs_to_gather(subsets, like = x)
 
   out <- prim_gather(
@@ -587,57 +733,83 @@ nv_subset <- function(x, ...) {
 # fused into a single program here. `scatter_indices` is passed in as a traced
 # input (never reconstructed from the static params), so distinct index *values*
 # reuse one compiled program; only distinct subset *patterns* recompile.
-subset_scatter_core <- jit(
-  function(
-    x,
-    value,
-    scatter_indices,
-    update_window_axes,
-    inserted_window_axes,
-    scatter_axes_to_x_axes,
-    index_vector_axis,
-    indices_are_sorted,
-    unique_indices,
-    update_shape
-  ) {
-    # `x` and `value` arrive at one data type: nv_subset_assign() brought them
-    # there, which is also where a value `x`'s data type cannot hold is refused.
-    if (!naxes(value)) {
-      value <- nv_broadcast_to(value, update_shape)
-    } else {
-      value_shape <- shape(value)
-      if (!identical(value_shape, update_shape)) {
-        cli_abort(c(
-          "Update shape does not match subset shape.",
-          x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
-        ))
-      }
+subset_scatter_body <- function(
+  x,
+  value,
+  scatter_indices,
+  update_window_axes,
+  inserted_window_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis,
+  indices_are_sorted,
+  unique_indices,
+  update_shape,
+  flatten = FALSE
+) {
+  # `x` and `value` arrive at one data type: nv_subset_assign() brought them
+  # there, which is also where a value `x`'s data type cannot hold is refused.
+  if (!naxes(value)) {
+    value <- nv_broadcast_to(value, update_shape)
+  } else {
+    value_shape <- shape(value)
+    if (!identical(value_shape, update_shape)) {
+      cli_abort(c(
+        "Update shape does not match subset shape.",
+        x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
+      ))
     }
+  }
 
-    prim_scatter(
-      x = x,
-      scatter_indices = scatter_indices,
-      update = value,
-      update_window_axes = update_window_axes,
-      inserted_window_axes = inserted_window_axes,
-      x_batching_axes = integer(),
-      scatter_indices_batching_axes = integer(),
-      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
-      index_vector_axis = index_vector_axis,
-      indices_are_sorted = indices_are_sorted,
-      unique_indices = unique_indices
-    )
-  },
-  static = c(
-    "update_window_axes",
-    "inserted_window_axes",
-    "scatter_axes_to_x_axes",
-    "index_vector_axis",
-    "indices_are_sorted",
-    "unique_indices",
-    "update_shape"
+  # a whole-array mask addresses the column-major flattening of `x`
+  x_shape <- shape(x)
+  if (flatten) {
+    x <- nv_flatten(x)
+  }
+
+  out <- prim_scatter(
+    x = x,
+    scatter_indices = scatter_indices,
+    update = value,
+    update_window_axes = update_window_axes,
+    inserted_window_axes = inserted_window_axes,
+    x_batching_axes = integer(),
+    scatter_indices_batching_axes = integer(),
+    scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+    index_vector_axis = index_vector_axis,
+    indices_are_sorted = indices_are_sorted,
+    unique_indices = unique_indices
   )
+  if (flatten) {
+    out <- nv_reshape(out, x_shape)
+  }
+  out
+}
+
+subset_scatter_static <- c(
+  "update_window_axes",
+  "inserted_window_axes",
+  "scatter_axes_to_x_axes",
+  "index_vector_axis",
+  "indices_are_sorted",
+  "unique_indices",
+  "update_shape",
+  "flatten"
 )
+
+subset_scatter_core <- jit(subset_scatter_body, static = subset_scatter_static)
+
+# The same program, but `x`'s buffer is donated, so the scatter writes into it
+# instead of allocating a new array (`nv_subset_assign(inplace = TRUE)`).
+# `donate` is a backend option, which `jit()` can only check once the backends
+# are registered in `.onLoad()`, so the function is created on first use.
+subset_scatter_core_inplace <- local({
+  core <- NULL
+  function() {
+    core <<- core %||%
+      jit(subset_scatter_body, static = subset_scatter_static, donate = "x")
+    core
+  }
+})
 
 #' @title Update Subset
 #' @description
@@ -646,26 +818,57 @@ subset_scatter_core <- jit(
 #' @param x ([`arrayish`])\cr
 #'   The array to update. Can be any data type.
 #'   An R object is materialized at its [default data type][default_dtypes].
-#' @param ... Subset specifications, one per axis. See
-#'   `vignette("subsetting")` for details.
+#' @inheritParams nv_subset
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
 #'   values must match it.
-#'   The value is converted to the data type of `x`.
+#'   It is brought to `x`'s data type: an R value is built at it when its
+#'   category can reach it (`0L` serves an integer and a float `x` alike, while
+#'   `1.5` into an `i32` `x` is an error), and an array is converted unless that
+#'   would narrow it or leave its category (an `f64` value for an `f32` `x` is
+#'   an error).
+#' @param inplace (`logical(1)`)\cr
+#'   Whether to write into the memory of `x` instead of allocating a new array.
+#'   This avoids the copy of `x` that an eager subset assignment otherwise
+#'   makes, but it consumes `x`: its buffer is [donated][jit], so `x` -- and
+#'   any other R variable referring to the same array -- can no longer be used
+#'   afterwards. With `[<-`, pass it among the subscripts, e.g.
+#'   `x[1, inplace = TRUE] <- 0`, which rebinds `x` to the result.
+#'   It is an error inside a jitted function: there, other references to `x`
+#'   would stay valid, so the same code would behave differently in eager and
+#'   in jit mode. Inside `jit()`, the compiler already avoids the copy anyway.
+#'   Default is `FALSE`.
 #' @return ([`arrayish`])\cr
 #'   Has `x`'s data type and shape, with the subset replaced.
-#' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
+#' @seealso [nv_subset()], `r roxy_article("subsetting")` for a
+#'   comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
 #' # set row 1 to zeros
 #' nv_subset_assign(x, 1, value = nv_scalar(0L))
 #' x[1, ] <- nv_scalar(0L)
 #' x
+#'
+#' # Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)
+#' x[x > 6] <- 0L
+#' x
+#'
+#' # write into the memory of `x` instead of copying it
+#' x[2, inplace = TRUE] <- nv_scalar(1L)
+#' x
 #' @export
 # Not wrapped in `jit()`: the `...` subscripts are captured via NSE (`enquos()`),
 # which jit's argument handling cannot trace. The parsing stays here (eager) and
 # the array work is delegated to the jitted [subset_scatter_core()].
-nv_subset_assign <- function(x, ..., value) {
+nv_subset_assign <- function(x, ..., value, inplace = FALSE) {
+  assert_flag(inplace)
+  if (inplace && currently_tracing()) {
+    cli_abort(c(
+      "{.arg inplace} cannot be used inside {.fn jit}.",
+      i = "Eagerly, it invalidates every other reference to {.arg x}; inside {.fn jit}, other references stay valid.",
+      i = "Remove {.code inplace = TRUE}: the compiler already avoids unnecessary copies of {.arg x}."
+    ))
+  }
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish `x`, but got {.cls {class(x)[1]}}")
   }
@@ -683,8 +886,14 @@ nv_subset_assign <- function(x, ..., value) {
   # because we do NSE to determine `:`-calls
   quos <- rlang::enquos(...)
 
-  subsets <- parse_subset_specs(quos, lhs_shape)
-  params <- subset_specs_to_scatter(subsets, like = x)
+  flat <- resolve_flat_mask(quos, lhs_shape)
+  if (is.null(flat$mask)) {
+    subsets <- parse_subset_specs(flat$quos, lhs_shape)
+    params <- subset_specs_to_scatter(subsets, like = x)
+  } else {
+    subsets <- list()
+    params <- flat_mask_to_scatter(flat$mask, like = x)
+  }
 
   # The scatter writes the ascending slice, so a decreasing range means the
   # value goes in back to front. A scalar value broadcasts either way.
@@ -693,7 +902,8 @@ nv_subset_assign <- function(x, ..., value) {
     value <- prim_rev(value, axes = reversed_axes)
   }
 
-  subset_scatter_core(
+  core <- if (inplace) subset_scatter_core_inplace() else subset_scatter_core
+  core(
     x = x,
     value = value,
     scatter_indices = params$scatter_indices,
@@ -703,6 +913,7 @@ nv_subset_assign <- function(x, ..., value) {
     index_vector_axis = params$index_vector_axis,
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices,
-    update_shape = params$update_shape
+    update_shape = params$update_shape,
+    flatten = params$flatten %||% FALSE
   )
 }

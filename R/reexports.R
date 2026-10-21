@@ -1,8 +1,13 @@
-#' @title Get the shape of an array
+#' @title Get the Shape of an Array
 #'
 #' @description Returns the shape of an array as an `integer()` vector.
 #'
-#' @details This is implemented via the generic [`tengen::shape()`].
+#' @details
+#' An R value has a shape when it is arrayish: a length-1 vector is a scalar
+#' with shape `integer()`, and an R array has its `dim()`. Any other R vector is
+#' an error; use [`nv_array()`] to make it an array.
+#'
+#' This is implemented via the generic [`xlamisc::shape()`].
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
@@ -12,18 +17,26 @@
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' shape(x)
+#' shape(nv_array(1:6, shape = c(2, 3)))
+#' # a length-1 R vector is a scalar
+#' shape(1)
+#' shape(TRUE)
+#' # an R array has its `dim()`
+#' shape(array(1:6, dim = c(2, 3)))
+#' # any other R vector has no shape
+#' try(shape(c(2, 3)))
 NULL
 
 #' @rdname shape
-#' @importFrom tengen shape
+#' @importFrom xlamisc shape
 #' @export
-tengen::shape
+xlamisc::shape
 
-#' @title Get the device of an array
+#' @title Get the Device of an Array
 #'
 #' @description Returns the device on which an array is allocated.
 #'
-#' @details This is implemented via the generic [`tengen::device()`].
+#' @details This is implemented via the generic [`xlamisc::device()`].
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
@@ -39,22 +52,44 @@ tengen::shape
 NULL
 
 #' @rdname device
-#' @importFrom tengen device
+#' @importFrom xlamisc device
 #' @export
-tengen::device
+xlamisc::device
 
-#' @title Convert to an R array
+#' @title Convert to an R Array
 #'
 #' @description
 #' Transfers array data to R and returns it as an R [`array`][base::array].
 #' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 axes.
 #'
 #' @details
-#' This is implemented via the generic [`tengen::as_array()`].
+#' This is implemented via the generic [`xlamisc::as_array()`].
+#'
+#' @section Data types:
+#' R has fewer data types than anvl, so the values are converted to the R
+#' type that can represent them:
+#'
+#' | Data type | R type |
+#' | --- | --- |
+#' | `f32`, `f64` | `double` |
+#' | `i8`, `i16`, `i32`, `ui8`, `ui16` | `integer` |
+#' | `i64`, `ui32`, `ui64` | [`bit64::integer64`] |
+#' | `bool` | `logical` |
+#'
+#' This has two consequences:
+#' * An `f32` value is widened to a `double` and keeps the rounding error of
+#'   the 32-bit float, e.g. `as_array(nv_scalar(0.1))` is not exactly `0.1`.
+#' * Some integer values cannot be represented in R: an `i32` or `i64` value
+#'   equal to the smallest representable integer is read as `NA`, and a
+#'   `ui64` value `>= 2^63` wraps to a negative number. The `check` argument
+#'   decides whether this is reported.
+#'
+#' To obtain a different R type, convert the array with [`nv_convert()`]
+#' first, or use the coercion functions described in [`as.double()`][as-AnvlArray].
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
-#' @param ... Additional arguments passed to methods (unused).
+#' @param ... Passed on to methods.
 #' @returns ([`array`][base::array] | `vector(1)`)\cr
 #'   An R array with the input's shape, or -- for a scalar, which R cannot
 #'   represent as an array -- a vector of length 1.
@@ -68,66 +103,84 @@ tengen::device
 NULL
 
 #' @rdname as_array
-#' @importFrom tengen as_array
+#' @importFrom xlamisc as_array
 #' @export
-tengen::as_array
+xlamisc::as_array
 
-#' @title Convert an array to a raw vector
+#' @title Convert an Array to a Raw Vector
 #'
 #' @description Returns the underlying bytes of an array as a [raw] vector.
 #'
-#' @details This is implemented via the generic [`tengen::as_raw()`].
+#' @details This is implemented via the generic [`xlamisc::as_raw()`].
 #'
-#' @param x ([`arrayish`])\cr
-#'   An array-like object.
+#' @param x ([`AnvlArray`])\cr
+#'   An array.
 #' @param ... Additional arguments passed to method:
 #'   - `row_major` (`logical(1)`)\cr
-#'     Whether to write the bytes in row-major order.
+#'     Whether to write the elements in row-major order. The default,
+#'     `FALSE`, writes them in column-major order, the order in which R
+#'     stores an array.
 #' @returns ([`raw`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, shape = c(2, 2), dtype = "f32")
+#' # column-major, the default
+#' as_raw(x)
 #' as_raw(x, row_major = TRUE)
-#' as_raw(x, row_major = FALSE)
 #' @name as_raw
 NULL
 
 #' @rdname as_raw
-#' @importFrom tengen as_raw
+#' @importFrom xlamisc as_raw
 #' @export
-tengen::as_raw
+xlamisc::as_raw
 
-#' @title Get the data type of an array
+#' @title Get the Data Type of an Array
 #'
 #' @description
 #' Returns the data type of an array (e.g. `f32`, `i64`).
 #'
-#' @details This is implemented via the generic [`tengen::dtype()`].
+#' @details
+#' An R value has no data type of its own: it only takes one when it meets a
+#' typed array, or when it materializes at the default. So `dtype()` is an
+#' error for a plain R value, and also for an [`RData`], the [`AbstractArray`]
+#' of an R value passed to a jit-compiled function, and so for the
+#' [`GraphBox`] that carries one during tracing. Use [`peek_dtype()`] for the
+#' data type such a value would take.
 #'
-#' @param x ([`arrayish`])\cr
-#'   An array-like object.
+#' This is implemented via the generic [`xlamisc::dtype()`].
+#'
+#' @param x ([`AnvlArray`] | [`GraphBox`] | [`AbstractArray`])\cr
+#'   An array. See Details for the values that have no data type.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns ([`DataType`][tengen::DataType])
-#' @seealso [tengen::dtype()]
+#' @returns ([`DataType`][xlamisc::DataType])
+#' @seealso [xlamisc::dtype()], [peek_dtype()], [RData]
 #' @name dtype
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' dtype(x)
+#' # an R value passed to a jit-compiled function has no data type
+#' try(jit(dtype)(1))
+#' # an array passed to it does
+#' jit(function(x) {
+#'   print(dtype(x))
+#'   x
+#' })(nv_scalar(1))
 NULL
 
 #' @rdname dtype
-#' @importFrom tengen dtype
+#' @importFrom xlamisc dtype
 #' @export
-tengen::dtype
+xlamisc::dtype
 
-#' @title Get the number of axes of an array
+#' @title Get the Number of Axes of an Array
 #'
-#' @description Returns the number of axes (sometimes also refered to as rank) of an array.
+#' @description Returns the number of axes (sometimes also referred to as rank) of an array.
 #' Equivalent to `length(shape(x))`.
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @returns (`integer(1)`)
-#' @seealso [tengen::naxes()]
+#' @seealso [xlamisc::naxes()]
 #' @name naxes
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
@@ -135,17 +188,17 @@ tengen::dtype
 NULL
 
 #' @rdname naxes
-#' @importFrom tengen naxes
+#' @importFrom xlamisc naxes
 #' @export
-tengen::naxes
+xlamisc::naxes
 
-#' @title Check if an object is a DataType
+#' @title Check If an Object Is a DataType
 #'
 #' @description Tests whether `x` is a `DataType` object.
 #'
 #' @param x An object to test.
 #' @returns (`logical(1)`)
-#' @seealso [as_dtype()], [tengen::is_dtype()]
+#' @seealso [as_dtype()], [xlamisc::is_dtype()]
 #' @name is_dtype
 #' @examples
 #' is_dtype("f32")
@@ -153,9 +206,9 @@ tengen::naxes
 NULL
 
 #' @rdname is_dtype
-#' @importFrom tengen is_dtype
+#' @importFrom xlamisc is_dtype
 #' @export
-tengen::is_dtype
+xlamisc::is_dtype
 
 #' @title Convert to a DataType
 #'
@@ -163,24 +216,24 @@ tengen::is_dtype
 #' (e.g. `"f32"`, `"i64"`, `"bool"`) or existing `DataType` objects (they are returned unchanged).
 #'
 #' @details
-#' This is implemented via the generic [`tengen::as_dtype()`].
+#' This is implemented via the generic [`xlamisc::as_dtype()`].
 #'
 #' @param x A character string or `DataType` to convert.
 #' @returns (`DataType`)
-#' @seealso [is_dtype()], [tengen::as_dtype()], [`tengen::DataType`]
+#' @seealso [is_dtype()], [xlamisc::as_dtype()], [`xlamisc::DataType`]
 #' @name as_dtype
 #'
-#' @examplesIf pjrt::plugins_downloaded()
+#' @examples
 #' as_dtype("f32")
 #' as_dtype("i32")
 NULL
 
 #' @rdname as_dtype
-#' @importFrom tengen as_dtype
+#' @importFrom xlamisc as_dtype
 #' @export
-tengen::as_dtype
+xlamisc::as_dtype
 
-#' @title Create a Shape object
+#' @title Create a Shape Object
 #'
 #' @description
 #' Constructs a `Shape`, the axis sizes of an array. A `Shape` *is* its integer
@@ -202,17 +255,17 @@ NULL
 #' @export
 stablehlo::Shape
 
-#' @title Get the platform of an array or buffer
+#' @title Get the Platform Name of an Array or Buffer
 #'
 #' @description
-#' Returns the platform name (e.g. `"cpu"`, `"cuda"`) identifying
-#' the compute backend.
+#' Returns the name of the hardware platform (e.g. `"cpu"`, `"cuda"`) the data
+#' lives on. This is not the backend; see [`backend()`] for that.
 #'
 #' @details
 #' Implemented via the generic [`pjrt::platform()`].
 #'
-#' @param x ([`arrayish`])\cr
-#'   An array-like object.
+#' @param x ([`AnvlArray`] | [`PJRTBuffer`][pjrt::pjrt_buffer])\cr
+#'   An array or buffer.
 #' @param ... Additional arguments passed to methods (unused).
 #' @returns (`character(1)`)
 #' @seealso [pjrt::platform()]
@@ -227,7 +280,7 @@ NULL
 #' @export
 pjrt::platform
 
-#' @title Block until an async operation completes
+#' @title Block Until an Async Operation Completes
 #'
 #' @description
 #' Block until the array's underlying computation has finished, and return the
@@ -278,10 +331,41 @@ pjrt::tree_size
 #' @export
 pjrt::tree_path
 
+#' @title Map a Function over Trees
+#' @description
+#' Apply a function to each leaf of a (possibly nested) list, keeping its
+#' structure, e.g. to a list of arrays a jitted function returns.
+#'
+#' * `map_tree()` maps over one tree.
+#' * `pmap_tree()` maps over several trees of the same structure in parallel,
+#'   calling `.f` with one leaf from each.
+#'
+#' @details
+#' These are implemented in [`pjrt::map_tree()`] and [`pjrt::pmap_tree()`].
+#' @param .x (any)\cr
+#'   A leaf or a (nested) list of leaves.
+#' @param .l (`list`)\cr
+#'   A non-empty list of trees, all with the same structure.
+#' @param .f (`function`)\cr
+#'   Function to apply. `map_tree()` calls it with each leaf of `.x`,
+#'   `pmap_tree()` with one leaf from each tree in `.l`, in order.
+#' @param ... Additional arguments passed to `.f` after the leaves.
+#' @return A tree with the same structure as `.x` (or `.l[[1]]`), where each
+#'   leaf is the result of `.f`.
+#' @examplesIf pjrt::plugins_downloaded()
+#' out <- list(a = nv_array(1:2), b = list(c = nv_scalar(3)))
+#' map_tree(out, dtype)
+#' map_tree(out, as_array)
+#' pmap_tree(list(list(a = 1, b = 2), list(a = 10, b = 20)), `+`)
+#' @name map_tree
+NULL
+
+#' @rdname map_tree
 #' @importFrom pjrt map_tree
 #' @export
 pjrt::map_tree
 
+#' @rdname map_tree
 #' @importFrom pjrt pmap_tree
 #' @export
 pjrt::pmap_tree

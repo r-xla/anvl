@@ -28,11 +28,96 @@ test_that("await on an AnvlArray returns the array invisibly", {
   expect_identical(out$value, x)
 })
 
+describe("AnvlArray serialization", {
+  roundtrip <- function(x) {
+    path <- withr::local_tempfile(fileext = ".rds")
+    saveRDS(x, path)
+    readRDS(path)
+  }
+
+  it("round-trips an array through saveRDS()", {
+    x <- nv_array(array(as.double(1:6), c(2L, 3L)), dtype = "f32")
+    y <- roundtrip(x)
+    expect_identical(dtype(y), dtype(x))
+    expect_identical(shape(y), shape(x))
+    expect_identical(as_array(y), as_array(x))
+  })
+
+  it("loads a pjrt array onto the default device", {
+    skip_if(!is_cpu())
+    x <- nv_array(c(1, 2, 3))
+    local_default_device("cpu:1")
+    y <- roundtrip(x)
+    expect_identical(device(y), default_device())
+    expect_identical(device(y), nv_device("cpu:1"))
+  })
+
+  it("can compute with a reloaded array", {
+    y <- roundtrip(nv_array(c(1, 2, 3), dtype = "f32"))
+    expect_identical(as_array(y + y), array(c(2, 4, 6)))
+  })
+
+  it("round-trips the outputs of a jitted function", {
+    f <- jit(function(x) list(a = x * 2, b = x + 1))
+    out <- f(nv_array(c(1, 2), dtype = "f32"))
+    y <- roundtrip(out)
+    expect_identical(as_array(y$a), as_array(out$a))
+    expect_identical(as_array(y$b), as_array(out$b))
+  })
+
+  it("round-trips a quickr array", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    x <- nv_array(c(1, 2, 3))
+    y <- roundtrip(x)
+    expect_identical(as_array(y), as_array(x))
+    expect_equal(device(y), device(x))
+  })
+})
+
 test_that("nv_scalar", {
   x <- nv_scalar(1L, dtype = "f32", device = "cpu")
   x
   expect_class(x, "AnvlArray")
   expect_snapshot(x)
+})
+
+describe("nv_dtype_constructors", {
+  it("create an array of the data type in their name", {
+    constructors <- list(
+      bool = nv_bool,
+      i8 = nv_int8,
+      i16 = nv_int16,
+      i32 = nv_int32,
+      i64 = nv_int64,
+      ui8 = nv_uint8,
+      ui16 = nv_uint16,
+      ui32 = nv_uint32,
+      ui64 = nv_uint64,
+      f32 = nv_float32,
+      f64 = nv_float64
+    )
+    for (dt in names(constructors)) {
+      data <- if (dt == "bool") c(TRUE, FALSE, TRUE, TRUE) else 1:4
+      x <- constructors[[dt]](data)
+      expect_dtype(x, dt)
+      expect_shape(x, 4L)
+    }
+  })
+
+  it("forward shape and byrow to nv_array", {
+    x <- nv_float64(1:6, shape = c(2L, 3L), byrow = TRUE)
+    expect_dtype(x, "f64")
+    expect_equal(as_array(x), matrix(as.double(1:6), 2L, 3L, byrow = TRUE))
+  })
+
+  it("refuse values the data type cannot hold", {
+    expect_error(nv_uint8(-1L))
+  })
+
+  it("refuse an existing array of another data type", {
+    expect_error(nv_float32(nv_array(1:3, dtype = "i32")), "Cannot change dtype")
+  })
 })
 
 test_that("AbstractArray", {
@@ -81,7 +166,7 @@ test_that("from DataType", {
 
 test_that("nv_array from nv_array", {
   skip_if(!is_cuda())
-  x <- nv_array(1, device = "cuda")
+  x <- nv_array(1, dtype = "f32", device = "cuda")
   expect_equal(platform(x), "cuda")
   expect_error(nv_array(x, device = "cpu"))
   expect_error(nv_array(x, shape = c(1, 1)))
@@ -93,6 +178,16 @@ test_that("format", {
     format(nv_array(1:4, shape = c(4, 1), dtype = "i32")),
     "AnvlArray(dtype=i32, shape=4x1)"
   )
+})
+
+describe("print.AnvlArray", {
+  it("passes print options on to the backend's printer", {
+    x <- nv_array(1:100, dtype = "i32")
+    expect_output(print(x), "truncated")
+    out <- capture.output(print(x, max_rows = 100L))
+    expect_false(any(grepl("truncated", out, fixed = TRUE)))
+    expect_true(any(grepl("^ *100$", out)))
+  })
 })
 
 test_that("nv_array(byrow = TRUE) fills row-major from a flat vector", {
@@ -1108,7 +1203,7 @@ describe("the default float", {
     expect_dtype(nv_rnorm(3, state)[[2L]], "f64")
     expect_dtype(nv_runif(3, state)[[2L]], "f64")
     expect_equal(peek_dtype(1.5), as_dtype("f64"))
-    expect_error(dtype(1.5), "f64")
+    expect_error(dtype(1.5), "no data type of its own")
     # An explicit dtype still wins, and the other categories are untouched.
     expect_dtype(nv_array(1.5, dtype = "f32"), "f32")
     expect_dtype(nv_array(1L), default_int())
@@ -1159,4 +1254,20 @@ test_that("raw payloads require dtype and shape and are pjrt-only", {
   skip_if_no_quickr()
   local_backend("quickr")
   expect_error(nv_array(as.raw(1:4), dtype = "ui8", shape = 4L), "quickr")
+})
+
+describe("axes", {
+  it("returns the axis indices of an array", {
+    expect_identical(axes(nv_array(1:6, shape = c(2, 3))), 1:2)
+  })
+  it("is empty for a scalar", {
+    expect_identical(axes(nv_scalar(1)), integer())
+  })
+  it("works on traced values", {
+    f <- jit(function(x) {
+      expect_identical(axes(x), 1:3)
+      x
+    })
+    f(nv_fill(1, c(2L, 3L, 4L)))
+  })
 })

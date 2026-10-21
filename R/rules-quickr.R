@@ -1449,7 +1449,7 @@ quickr_emit_reshape <- function(out_sym, operand_expr, shape_in, shape_out, out_
 # Primitive lowering registry ---------------------------------------------------
 
 quickr_register_prim_lowerer <- function(primitive, fun) {
-  primitives <- if (inherits(primitive, "AnvlPrimitive") || inherits(primitive, "JitPrimitive")) {
+  primitives <- if (inherits(primitive, "AnvlPrimitiveDef") || inherits(primitive, "AnvlPrimitive")) {
     list(primitive)
   } else {
     primitive
@@ -1478,8 +1478,8 @@ quickr_register_elementwise_lowerer <- function(primitive, fun) {
 quickr_supported_prims <- function() {
   sort(unlist(
     eapply(primitive_env, function(primitive) {
-      if (inherits(primitive, "JitPrimitive")) {
-        primitive <- attr(primitive, "primitive")
+      if (inherits(primitive, "AnvlPrimitive")) {
+        primitive <- attr(primitive, "definition")
       }
       if (is.null(primitive$rules[["quickr"]])) {
         NULL
@@ -1496,7 +1496,7 @@ quickr_lower_graph_calls <- function(graph, ctx) {
   new_tmp_sym <- ctx$new_tmp_sym
 
   stmts <- list()
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     # quickr rejects NaN / +-Inf as literals, so a literal holding one is bound
     # to a temp that computes it at runtime and the call reads that instead.
     for (node in call$inputs) {
@@ -1574,15 +1574,6 @@ quickr_lower_inline_graph <- function(graph, input_exprs, ctx) {
 
   for (i in seq_along(graph$inputs)) {
     node_expr[[graph$inputs[[i]]]] <- input_exprs[[i]]
-  }
-
-  for (const_node in graph$constants) {
-    if (!is_graph_value(const_node)) {
-      cli_abort("Internal error: subgraph constants must be GraphValue nodes")
-    }
-    if (is.null(node_expr[[const_node]])) {
-      cli_abort("quickr lowering: subgraph constant is not available in parent graph constants")
-    }
   }
 
   quickr_lower_graph_calls(graph, ctx)
@@ -1765,8 +1756,8 @@ local({
       true_graph <- params$true
       false_graph <- params$false
 
-      lowered_true <- quickr_lower_inline_graph(true_graph, list(), ctx)
-      lowered_false <- quickr_lower_inline_graph(false_graph, list(), ctx)
+      lowered_true <- quickr_lower_inline_graph(true_graph, inputs[-1L], ctx)
+      lowered_false <- quickr_lower_inline_graph(false_graph, inputs[-1L], ctx)
 
       if (length(out_syms) != length(lowered_true$out_exprs) || length(out_syms) != length(lowered_false$out_exprs)) {
         cli_abort("if: branch arity mismatch")
@@ -1791,6 +1782,11 @@ local({
       }
       cond_graph <- params$cond
       body_graph <- params$body
+      # The operands past the state are the sub-graphs' captures.
+      n_state <- length(inputs) - params$n_captures
+      state_idx <- seq_len(n_state)
+      captured <- inputs[n_state + seq_len(params$n_captures)]
+      inputs <- inputs[state_idx]
 
       if (length(out_syms) != length(inputs)) {
         cli_abort("while: state arity mismatch between inputs and outputs")
@@ -1803,12 +1799,12 @@ local({
       cond_sym <- as.name(paste0("cond_", as.character(out_syms[[1L]])))
 
       lower_cond <- function() {
-        lowered <- quickr_lower_inline_graph(cond_graph, out_syms, ctx)
+        lowered <- quickr_lower_inline_graph(cond_graph, c(out_syms, captured), ctx)
         c(lowered$stmts, list(rlang::call2("<-", cond_sym, lowered$out_exprs[[1L]])))
       }
 
       lower_body <- function() {
-        lowered <- quickr_lower_inline_graph(body_graph, out_syms, ctx)
+        lowered <- quickr_lower_inline_graph(body_graph, c(out_syms, captured), ctx)
         assigns <- Map(rlang::call2, rep("<-", length(out_syms)), out_syms, lowered$out_exprs)
         c(lowered$stmts, assigns)
       }
@@ -1888,7 +1884,7 @@ local({
       if (!is_graph(update_comp)) {
         cli_abort("scatter: missing update computation graph")
       }
-      if (length(update_comp$inputs) != 2L || length(update_comp$outputs) != 1L) {
+      if (length(update_comp$inputs) != length(inputs) - 1L || length(update_comp$outputs) != 1L) {
         cli_abort("scatter: update computation graph must be a scalar binary function")
       }
 
@@ -1904,7 +1900,7 @@ local({
       upd_expr <- rlang::call2("[", inputs[[3L]], ii)
 
       lower_update_comp <- function() {
-        lowered <- quickr_lower_inline_graph(update_comp, list(old_sym, upd_sym), ctx)
+        lowered <- quickr_lower_inline_graph(update_comp, c(list(old_sym, upd_sym), inputs[-(1:3)]), ctx)
         c(lowered$stmts, list(rlang::call2("<-", new_sym, lowered$out_exprs[[1L]])))
       }
 
@@ -2294,7 +2290,7 @@ quickr_abort_unsupported_prims <- function(unsupported_prims, supported_prims) {
 quickr_find_unsupported_prims <- function(graph, supported_prims) {
   unsupported_prims <- character()
 
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     prim_name <- call$primitive$name
     if (!prim_name %in% supported_prims) {
       unsupported_prims <- c(unsupported_prims, prim_name)

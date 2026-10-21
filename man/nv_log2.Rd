@@ -6,6 +6,8 @@
 \title{Base-2 Logarithm}
 \usage{
 nv_log2(x)
+
+\method{log2}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

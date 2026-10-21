@@ -2,13 +2,12 @@
 % Please edit documentation in R/stablehlo.R
 \name{stablehlo}
 \alias{stablehlo}
-\title{Lower a graph to StableHLO}
+\title{Lower a Graph to StableHLO}
 \usage{
 stablehlo(
   graph,
   id = "main",
-  constants_as_inputs = TRUE,
-  env = NULL,
+  captured = list(),
   donate = character(),
   donate_unaliased_outputs = FALSE,
   platform = NULL
@@ -25,15 +24,13 @@ the module) and \code{""} for a closure/region lowering (e.g. a while body or
 a scatter update computation) that builds an anonymous nested function
 inside an enclosing build.}
 
-\item{constants_as_inputs}{(\code{logical(1)})\cr
-If \code{TRUE} (default), constants are registered as inputs to the StableHLO function
-so they can be passed in at execution time.
-If \code{FALSE}, they are not added as inputs. Set to \code{FALSE} for closures.
-Note that \code{GraphLiteral}s are always inlined into the StableHLO function.}
-
-\item{env}{(\code{HloEnv} | \code{NULL})\cr
-Optional environment for reusing variable mappings across nested function lowerings
-(e.g. for higher-order primitives like \code{nv_while}).}
+\item{captured}{(\code{list(FuncValue)})\cr
+Values of the enclosing function to bind the graph's last \code{length(captured)}
+inputs to. The lowered function reads them the way an MLIR region captures
+a value from above, instead of declaring them as inputs. Used for the
+sub-graphs of higher-order primitives (e.g. \code{nv_while}), whose trailing
+inputs are the values they close over. The graph's constants always become
+inputs, and \code{GraphLiteral}s are always inlined.}
 
 \item{donate}{(\code{character()})\cr
 Names of the arguments whose buffers should be donated.
@@ -43,7 +40,7 @@ operations.}
 \item{donate_unaliased_outputs}{(\code{logical(1)})\cr
 If \code{TRUE} and the current target platform is \code{"cpu"}, append a
 phantom donated input for every output that isn't already aliased
-to a user-\code{donate}d input.
+to a user-\code{donate}d input. They come after all other arguments.
 This is needed internally so R keeps track of the CPU buffers memory in order
 to know when to garbage collect.}
 
@@ -59,7 +56,8 @@ primitives inherit the platform of the enclosing call.}
 Of length 3:
 \itemize{
 \item the \code{\link[stablehlo:Func]{stablehlo::Func}}
-\item The list of \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s.
+\item The graph's constants: the \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s,
+whose data must be passed as the leading inputs at execution time.
 \item A list of phantom-output specs, one per phantom donated input
 appended when \code{donate_unaliased_outputs = TRUE}. Each entry is a
 \code{list(dtype, shape)} describing the buffer the executor must
@@ -67,21 +65,43 @@ allocate. Empty when no phantoms were added.
 }
 }
 \description{
-Converts a traced \code{\link{AnvlGraph}} into the StableHLO intermediate representation (IR).
-Each graph operation is translated to its corresponding StableHLO op. The result can
-be serialized to MLIR text via \code{stablehlo::repr()} and subsequently compiled to an
-XLA executable with \code{pjrt::pjrt_compile()}.
+Converts a traced \code{\link{AnvlGraph}} into the StableHLO intermediate representation (IR),
+building a \code{\link[stablehlo:Func]{stablehlo::Func}} with the \href{https://r-xla.github.io/stablehlo/}{stablehlo} package.
+Each statement of the graph is translated to its corresponding StableHLO op. The result can
+be serialized to MLIR text via \code{\link[stablehlo:repr]{stablehlo::repr()}} and subsequently compiled to an
+XLA executable with \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}}.
 
-The rules for translating to stablehlo are stored in \verb{$rules[["stablehlo"]]} of the primitives.
+The rule for translating a primitive to stablehlo is \verb{prim_<name>[["stablehlo"]]}.
+
+The arguments of the resulting function are, in this order: the graph's
+constants, the graph's inputs, and the phantom donated inputs (when
+\code{donate_unaliased_outputs = TRUE}), one per output that is not already
+aliased to a donated input, in the order of the outputs.
 
 This is a low-level function; most users should use \code{\link[=jit]{jit()}} instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the closed-over array `x` becomes the constant input \%0, before the
+# graph's own input `y` (\%1)
 x <- nv_array(c(1, 2))
-graph <- trace_fn(function(y) y + x, list(y = nv_aval("f32", shape = c())))
-graph
-stablehlo(graph)
+graph <- trace_fn(function(y) y + x, list(y = nv_aval("f32", shape = 2)))
+out <- stablehlo(graph)
+out[[1L]]
+out[[2L]]
+
+# a donated input is aliased with an output of the same type
+graph <- trace_fn(
+  function(a, b) list(a + b, a * b),
+  list(a = nv_aval("f32", 3), b = nv_aval("f32", 3))
+)
+stablehlo(graph, donate = "a")[[1L]]
+
+# on CPU, a phantom input is appended for every output not aliased yet, and
+# the third element describes the buffers to allocate for them
+out <- stablehlo(graph, donate_unaliased_outputs = TRUE, platform = "cpu")
+out[[1L]]
+out[[3L]]
 \dontshow{\}) # examplesIf}
 }
 \seealso{

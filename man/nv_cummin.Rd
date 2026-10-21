@@ -6,6 +6,8 @@
 \title{Cumulative Minimum}
 \usage{
 nv_cummin(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
+
+\method{cummin}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

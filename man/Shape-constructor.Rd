@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{Shape}
 \alias{Shape}
-\title{Create a Shape object}
+\title{Create a Shape Object}
 \usage{
 Shape(dims = integer())
 }

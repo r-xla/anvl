@@ -28,7 +28,7 @@ observable for floats when \code{-0} / \code{+0} or \code{-NaN} / \code{+NaN} ar
 (they compare equal under the total order used here); for distinct
 values the result is identical either way.}
 
-\item{...}{No additional arguments.}
+\item{...}{Passed on to \code{nv_sort()}, e.g. \code{stable}.}
 }
 \value{
 (\code{\link{arrayish}})\cr

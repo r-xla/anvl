@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{naxes}
 \alias{naxes}
-\title{Get the number of axes of an array}
+\title{Get the Number of Axes of an Array}
 \usage{
 naxes(x)
 }
@@ -14,7 +14,7 @@ An array-like object.}
 (\code{integer(1)})
 }
 \description{
-Returns the number of axes (sometimes also refered to as rank) of an array.
+Returns the number of axes (sometimes also referred to as rank) of an array.
 Equivalent to \code{length(shape(x))}.
 }
 \examples{
@@ -24,5 +24,5 @@ naxes(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[tengen:naxes]{tengen::naxes()}}
+\code{\link[xlamisc:naxes]{xlamisc::naxes()}}
 }

@@ -17,20 +17,11 @@ The descriptor of the graph being built.}
 (\code{GraphBox})
 }
 \description{
-An \code{\link{AnvlBox}} subclass that wraps a \code{\link{GraphNode}} during graph construction (tracing).
+Wraps a \code{\link{GraphNode}} during graph construction (tracing).
 When a function is traced via \code{\link[=trace_fn]{trace_fn()}}, each intermediate array
 value is represented as a \code{GraphBox}.
 It also contains an associated \code{\link{GraphDescriptor}} in which the node "lives".
 }
-\section{Extractors}{
-
-\itemize{
-\item \code{\link[tengen:dtype]{dtype()}}
-\item \code{\link[tengen:shape]{shape()}}
-\item \code{\link[tengen:naxes]{naxes()}}
-}
-}
-
 \seealso{
-\link{AnvlBox}, \code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}
+\code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}
 }

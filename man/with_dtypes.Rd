@@ -13,7 +13,7 @@ The function to wrap.}
 \item{dtypes}{(named \code{character()} | named \code{list()})\cr
 A mapping of the data type categories (\code{float}, \code{int} and \code{uint}) to data
 types, e.g. \code{c(float = "f64", int = "i64")}. Each may be a string or a
-\code{\link[tengen:DataType]{DataType}}. A category it does not name is left as it is.}
+\code{\link[xlamisc:DataType]{DataType}}. A category it does not name is left as it is.}
 }
 \value{
 A \code{function} with the same arguments as \code{f}, a \code{JitFunction} if \code{f}
@@ -25,10 +25,8 @@ was one.
 names is converted to that data type, the defaults (see
 \code{\link[=default_dtypes]{default_dtypes()}}) are set to the \code{float} / \code{int} entries for the
 duration of the call, and every returned array of a named category is
-converted as well.
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{nv_add_f64 <- with_dtypes(nv_add, c(float = "f64"))
-}\if{html}{\out{</div>}}
+converted as well. For example, \code{with_dtypes(nv_add, c(float = "f64"))} is
+an \code{nv_add()} that computes floats at \code{f64}.
 
 A category \code{dtypes} does not name is left alone, in the arguments, in the
 body and in the result.

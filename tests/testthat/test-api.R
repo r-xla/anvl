@@ -63,6 +63,12 @@ describe("nv_broadcast_arrays()", {
       "not broadcastable"
     )
   })
+
+  it("broadcasts a size-1 axis to a size-0 one", {
+    xs <- nv_broadcast_arrays(nv_array(numeric(), shape = c(0L, 3L)), nv_array(1:3, shape = c(1L, 3L)))
+    expect_shape(xs[[1L]], c(0L, 3L))
+    expect_shape(xs[[2L]], c(0L, 3L))
+  })
 })
 
 test_that("broadcasting scalars", {
@@ -199,6 +205,17 @@ describe("nv_concatenate", {
   it("fails with incompatible shapes", {
     expect_error(
       nv_concatenate(nv_array(1, shape = c(1, 1, 1)), nv_array(2, shape = c(1, 1)), axis = 1L)
+    )
+  })
+  it("broadcasts a scalar against arrays with several axes", {
+    x <- nv_matrix(1:4, nrow = 2)
+    expect_equal(
+      nv_concatenate(x, 9L, axis = 1L),
+      nv_matrix(c(1L, 2L, 9L, 3L, 4L, 9L), nrow = 3)
+    )
+    expect_equal(
+      nv_concatenate(x, 9L, axis = 2L),
+      nv_matrix(c(1:4, 9L, 9L), nrow = 2)
     )
   })
 })
@@ -645,6 +662,28 @@ describe("nv_sign", {
 
   it("does not accept a boolean array", {
     expect_error(nv_sign(nv_array(TRUE)))
+  })
+})
+
+describe("nv_div", {
+  it("divides integers as floats, like base R", {
+    x <- nv_array(c(7L, -7L))
+    expect_dtype(nv_div(x, 2L), default_float())
+    expect_equal(as.vector(nv_div(x, 2L)), c(7L, -7L) / 2L, tolerance = 1e-6)
+    expect_equal(as.vector(x / nv_array(c(2L, 2L), dtype = "ui8")), c(3.5, -3.5), tolerance = 1e-6)
+  })
+
+  it("divides booleans as floats", {
+    expect_equal(as.vector(nv_div(nv_array(c(TRUE, FALSE)), 2L)), c(0.5, 0), tolerance = 1e-6)
+  })
+
+  it("keeps the data type of float operands", {
+    expect_dtype(nv_div(nv_array(c(1, 2), dtype = "f64"), 2L), "f64")
+  })
+
+  it("divides integers as floats under jit()", {
+    f <- jit(function(x, y) x / y)
+    expect_equal(as.vector(f(nv_array(c(1L, 3L)), nv_scalar(2L))), c(0.5, 1.5), tolerance = 1e-6)
   })
 })
 
@@ -1149,6 +1188,18 @@ describe("nv_which_max / nv_which_min nan_rm", {
   })
 })
 
+describe("nv_mean", {
+  it("averages an integer input at the default float, without overflowing the sum", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    out <- nv_mean(x)
+    expect_dtype(out, default_float())
+    expect_equal(as.vector(as_array(out)), 2e9)
+    m <- nv_array(rep(2000000000L, 4L), shape = c(2L, 2L))
+    expect_equal(as.vector(as_array(nv_mean(m, axes = 1L))), c(2e9, 2e9))
+    expect_equal(as.vector(as_array(nv_mean(x, nan_rm = TRUE))), 2e9)
+  })
+})
+
 describe("nv_var", {
   it("computes variance with Bessel's correction", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
@@ -1193,6 +1244,11 @@ describe("nv_var", {
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = 5L))
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = c(1L, 1L)))
   })
+  it("does not overflow on a large integer input", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    expect_dtype(nv_var(x), default_float())
+    expect_equal(as.vector(as_array(nv_var(x))), 0)
+  })
   it("accepts negative dims", {
     m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
     expect_equal(nv_var(m, axes = -1L), nv_var(m, axes = 2L))
@@ -1221,6 +1277,11 @@ describe("nv_sd", {
       nv_scalar(sd(vals)),
       tolerance = 1e-5
     )
+  })
+  it("does not overflow on a large integer input", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    expect_dtype(nv_sd(x), default_float())
+    expect_equal(as.vector(as_array(nv_sd(x))), 0)
   })
   it("accepts negative dims", {
     m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
@@ -1259,6 +1320,10 @@ describe("nv_squeeze", {
       },
       nv_array(1:6, shape = c(6, 1))
     )
+  })
+  it("is a no-op for no axes", {
+    x <- nv_array(1:6, shape = c(1, 6, 1))
+    expect_equal(shape(nv_squeeze(x, axes = integer(0L))), c(1L, 6L, 1L))
   })
   it("errors when squeezing non-1 axis", {
     expect_error(
@@ -1409,6 +1474,12 @@ describe("nv_seq", {
     expect_error(nv_seq(0, 10, by = 2.5), "by")
     expect_error(nv_seq(0, 10, by = -2), "Wrong sign")
     expect_error(nv_seq(10, 0, by = 2), "Wrong sign")
+  })
+  it("counts down at an unsigned dtype", {
+    x <- nv_seq(5, 1, dtype = "ui8")
+    expect_dtype(x, "ui8")
+    expect_equal(as.integer(as_array(x)), 5:1)
+    expect_equal(as.integer(as_array(nv_seq(10, 0, by = -3, dtype = "ui32"))), c(10L, 7L, 4L, 1L))
   })
 })
 
@@ -2599,6 +2670,11 @@ describe("nv_det", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f64")
     expect_equal(as_array(nv_det(empty)), 1)
   })
+
+  it("returns 0 for a singular matrix", {
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    expect_equal(as_array(nv_det(nv_array(A_mat, dtype = "f64"))), det(A_mat))
+  })
 })
 
 describe("nv_determinant", {
@@ -2625,6 +2701,16 @@ describe("nv_determinant", {
     expect_equal(as_array(out_lin$modulus), 1)
     expect_equal(as_array(out_lin$sign), 1)
   })
+
+  it("returns sign 0 for a singular matrix", {
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    out_log <- nv_determinant(nv_array(A_mat, dtype = "f64"), logarithm = TRUE)
+    expect_equal(as_array(out_log$modulus), -Inf)
+    expect_equal(as_array(out_log$sign), 0)
+    out_lin <- nv_determinant(nv_array(A_mat, dtype = "f64"), logarithm = FALSE)
+    expect_equal(as_array(out_lin$modulus), 0)
+    expect_equal(as_array(out_lin$sign), 0)
+  })
 })
 
 describe("nv_inv", {
@@ -2641,6 +2727,11 @@ describe("nv_inv", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f64")
     out <- nv_inv(empty)
     expect_shape(out, c(0L, 0L))
+  })
+
+  it("returns non-finite values for a singular matrix", {
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    expect_false(any(is.finite(as_array(nv_inv(nv_array(A_mat, dtype = "f64"))))))
   })
 })
 
@@ -2784,6 +2875,15 @@ describe("nv_mod", {
   it("is NaN for a zero divisor and passes NaN through, like base R", {
     lhs <- c(5, -5, 0, Inf, -Inf, NaN, 7)
     rhs <- c(0, 0, 0, 3, 3, 3, Inf)
+    expect_equal(
+      as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
+      lhs %% rhs
+    )
+  })
+
+  it("takes the sign of an infinite divisor, like base R", {
+    lhs <- c(5, -5, 5, -5, 0)
+    rhs <- c(Inf, Inf, -Inf, -Inf, Inf)
     expect_equal(
       as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
       lhs %% rhs

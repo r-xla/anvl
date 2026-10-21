@@ -23,5 +23,5 @@ length(nv_matrix(1:6, nrow = 2))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link[=dim.AnvlArray]{dim()}, \link[tengen:nelts]{nelts()}
+\link[=dim.AnvlArray]{dim()}, \link[xlamisc:nelts]{nelts()}
 }

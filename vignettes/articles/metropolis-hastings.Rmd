@@ -1,0 +1,237 @@
+---
+title: "Metropolis-Hastings"
+bibliography: references.bib
+---
+
+In this article, we show how to implement a random-walk Metropolis-Hastings sampler using {anvl} [@hastings1970monte].
+Metropolis-Hastings is a well known MCMC algorithm that generates samples from a target distribution by proposing moves and accepting or rejecting them based on the density ratio.
+
+## The Banana Distribution
+
+We sample from a "banana-shaped" distribution [@haario1999adaptive].
+This 2-dimensional distribution consists of two Gaussian densities, where the second is dependent on the first:
+
+$$p(\theta_1, \theta_2) = \underbrace{\frac{1}{\sqrt{200\pi}} \exp\!\left(-\frac{\theta_1^2}{200}\right)}_{p(\theta_1)} \;\cdot\; \underbrace{\frac{1}{\sqrt{2\pi}} \exp\!\left(-\frac{\bigl(\theta_2 - b\theta_1^2 + 100b\bigr)^2}{2}\right)}_{p(\theta_2 \mid \theta_1)}$$
+
+While it is trivial to sample from this distribution directly, it serves as a useful test case for our Metropolis-Hastings sampler implementation.
+The distribution has known analytical moments which we will use later to verify the correctness of our implementation.
+We set the hyperparameter $b$ to 0.01.
+
+
+
+```{r}
+library(anvl)
+b_param <- 0.01
+```
+
+```{r, echo = FALSE, fig.width = 7, fig.height = 5}
+log_p <- function(x1, x2) {
+  -x1^2 / 200 - (x2 - b_param * x1^2 + 100 * b_param)^2 / 2
+}
+
+x1_grid <- seq(-30, 30, length.out = 200)
+x2_grid <- seq(-10, 15, length.out = 200)
+z <- outer(x1_grid, x2_grid, log_p)
+
+par(mar = c(4, 4, 2, 1))
+contour(
+  x1_grid, x2_grid, exp(z), nlevels = 7,
+  xlab = expression(theta[1]), ylab = expression(theta[2]),
+  main = "Banana Distribution", col = "grey40"
+)
+```
+
+## Metropolis-Hastings Algorithm
+
+The random-walk Metropolis-Hastings algorithm proceeds as follows:
+
+1. Propose $\theta' = \theta + \varepsilon$, where $\varepsilon \sim \mathcal{N}(0, s^2 I)$
+2. Compute the acceptance ratio $\alpha = p(\theta') / p(\theta)$
+3. Accept $\theta'$ with probability $\min(1, \alpha)$
+
+In practice, we work with log-densities rather than densities directly.
+Density values can become extremely small in high-dimensional or concentrated distributions, causing floating-point underflow.
+By operating in log-space, the acceptance ratio $p(\theta') / p(\theta)$ becomes a simple difference $\log p(\theta') - \log p(\theta)$, which is numerically stable.
+Furthermore, because the algorithm only ever evaluates *ratios* of densities, any normalizing constant cancels out in the difference.
+This means we only need to know the log-density up to an additive constant.
+
+The log-density of the banana distribution (up to a constant) is:
+
+$$\log p(\theta_1, \theta_2) = -\frac{\theta_1^2}{200} - \frac{\bigl(\theta_2 - b\theta_1^2 + 100b\bigr)^2}{2}$$
+
+We implement this in {anvl} and convert the parameter to an `f64` array for maximal precision.
+
+```{r}
+b_t <- nv_scalar(b_param, dtype = "f64")
+
+log_density <- function(theta, b) {
+  theta1 <- theta[1]
+  theta2 <- theta[2]
+  -theta1^2 / 200 - (theta2 - b * theta1^2 + 100 * b)^2 / 2
+}
+```
+
+There are a few things to note in the code below:
+
+a) the accept/reject decision uses `nv_if()` and not a native R conditional.
+b) we sample a scalar uniform random number by setting `shape = integer()`
+c) the RNG state is passed around explicitly.
+
+
+```{r}
+mh_step <- function(theta, rng_state, b, proposal_sd) {
+  rng_out <- nv_rnorm(shape(theta), rng_state, dtype = "f64")
+  rng_state <- rng_out[[1L]]
+  proposal <- theta + proposal_sd * rng_out[[2L]]
+
+  log_current <- log_density(theta, b)
+  log_proposed <- log_density(proposal, b)
+  log_accept <- log_proposed - log_current
+
+  rng_out <- nv_runif(integer(), rng_state, dtype = "f64")
+  rng_state <- rng_out[[1L]]
+  u <- rng_out[[2L]]
+
+  accept <- log(u) < log_accept
+  new_theta <- nv_if(accept, \() proposal, \() theta)
+  list(theta = new_theta, rng_state = rng_state)
+}
+```
+
+Because subsequent samples are autocorrelated, we thin the output by keeping every nth sample.
+We implement this loop via `nv_while()` below, avoiding R loop overhead.
+
+```{r}
+mh_sample <- jit(function(theta, rng_state, b, proposal_sd, thin) {
+  result <- nv_while(
+    init = list(theta = theta, rng_state = rng_state, i = nv_scalar(0L)),
+    cond = \(theta, rng_state, i) i < thin,
+    body = \(theta, rng_state, i) {
+      c(mh_step(theta, rng_state, b, proposal_sd), list(i = i + 1L))
+    }
+  )[1:2]
+})
+```
+
+## Running the Sampler
+
+We specify the required parameters and run the sampler.
+Again, note that we are passing around the RNG state explicitly.
+
+```{r}
+n_samples <- 20000L
+n_warmup <- 5000L
+thin <- nv_scalar(200L)
+
+theta <- nv_array(c(0, 0), dtype = "f64")
+rng_state <- nv_rng_state(42L)
+proposal_sd <- nv_scalar(3, dtype = "f64")
+
+result <- mh_sample(theta, rng_state, b_t, proposal_sd, thin)
+theta <- result$theta
+rng_state <- result$rng_state
+
+for (i in seq_len(n_warmup)) {
+  result <- mh_sample(theta, rng_state, b_t, proposal_sd, thin)
+  theta <- result$theta
+  rng_state <- result$rng_state
+}
+
+thetas <- vector("list", n_samples)
+
+for (i in seq_len(n_samples)) {
+  result <- mh_sample(theta, rng_state, b_t, proposal_sd, thin)
+  theta <- result$theta
+  rng_state <- result$rng_state
+  thetas[[i]] <- theta
+}
+
+samples <- do.call(rbind, lapply(thetas, function(x) as.vector(x)))
+colnames(samples) <- c("theta1", "theta2")
+```
+
+Next, we compare the results with the analytical moments to see whether everything worked as expected.
+
+## Inspecting the Results
+
+The autocorrelation function (ACF) of the thinned samples shows that successive draws are nearly independent:
+
+```{r, echo = FALSE, fig.width = 7, fig.height = 4}
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+acf(samples[, 1], main = expression(theta[1]), lag.max = 40)
+acf(samples[, 2], main = expression(theta[2]), lag.max = 40)
+```
+
+The banana distribution has known analytical moments.
+Since $\theta_1 \sim \mathcal{N}(0, 100)$ and $\theta_2 \mid \theta_1 \sim \mathcal{N}(b\theta_1^2 - 100b, 1)$:
+
+- $\mathbb{E}[\theta_1] = 0$, $\text{SD}[\theta_1] = 10$
+- $\mathbb{E}[\theta_2] = 0$, $\text{SD}[\theta_2] = \sqrt{2 \cdot 10^4 b^2 + 1}$
+
+```{r, echo = FALSE}
+sample_mean <- colMeans(samples)
+sample_sd <- apply(samples, 2, sd)
+
+true_mean <- c(0, 0)
+true_sd <- c(10, sqrt(2e4 * b_param^2 + 1))
+
+comparison <- data.frame(
+  Parameter = c("theta1", "theta2"),
+  MH_Mean = sample_mean,
+  True_Mean = true_mean,
+  MH_SD = sample_sd,
+  True_SD = true_sd,
+  row.names = NULL
+)
+comparison
+```
+
+The Metropolis-Hastings estimates closely match the analytical moments,
+confirming the correctness of our implementation.
+
+We can visualize the samples against the true density contours:
+
+```{r, echo = FALSE, fig.width = 7, fig.height = 5}
+par(mar = c(4, 4, 2, 1))
+contour(
+  x1_grid, x2_grid, exp(z), nlevels = 15,
+  xlab = expression(theta[1]), ylab = expression(theta[2]),
+  main = "MH Samples vs True Density", col = "grey60"
+)
+points(
+  samples[, 1], samples[, 2],
+  pch = 16, cex = 0.3, col = adjustcolor("steelblue", 0.4)
+)
+```
+
+And overlay the analytical marginal densities on histograms of the samples.
+
+```{r, echo = FALSE, fig.width = 7, fig.height = 4}
+marginal_theta2 <- Vectorize(function(t2) {
+  integrate(function(t1) {
+    dnorm(t2, mean = b_param * t1^2 - 100 * b_param, sd = 1) *
+      dnorm(t1, mean = 0, sd = 10)
+  }, lower = -30, upper = 30)$value
+})
+
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
+
+hist(
+  samples[, 1], breaks = 40, probability = TRUE,
+  main = expression(theta[1]),
+  xlab = expression(theta[1]), col = "lightblue", border = "white"
+)
+curve(
+  dnorm(x, mean = 0, sd = 10),
+  add = TRUE, col = "red", lwd = 2
+)
+legend("topright", "Analytical", col = "red", lwd = 2, bty = "n", cex = 0.8)
+
+hist(
+  samples[, 2], breaks = 40, probability = TRUE,
+  main = expression(theta[2]),
+  xlab = expression(theta[2]), col = "lightblue", border = "white"
+)
+curve(marginal_theta2, add = TRUE, col = "red", lwd = 2, n = 200)
+legend("topright", "Analytical", col = "red", lwd = 2, bty = "n", cex = 0.8)
+```

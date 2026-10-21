@@ -13,16 +13,16 @@ default_float()
 default_int()
 }
 \value{
-\code{default_dtypes()} returns a named \code{list} with elements \code{float} and
-\code{int}, each a \code{\link[tengen:DataType]{DataType}}
+\code{default_dtypes()}: (named \code{list})\cr
+Elements \code{float} and \code{int}, each a \code{\link[xlamisc:DataType]{DataType}}.
+
+\code{default_float()}, \code{default_int()}: (\code{\link[xlamisc:DataType]{DataType}})\cr
+The default of one category.
 }
 \description{
 The default data types for the \link[=active_backend]{active backend}.
-They decide the data type an R value is materialized at when it cannot be
-inferred from another operand.
-
-This includes array creation via (\code{nv_array(1)}) or passing R values to unary functions
-(\code{prim_exp(1)}).
+They are the data types an R value settles on when it meets no typed array,
+e.g. \code{nv_array(1)} or \code{prim_exp(1)}.
 
 \code{default_dtypes()} reports both categories at once; \code{default_float()} and
 \code{default_int()} report one each.
@@ -32,41 +32,18 @@ for \code{"quickr"} -- and the \code{anvl.default_dtypes} option overrides them.
 \code{\link[=local_default_dtypes]{local_default_dtypes()}} and \code{\link[=with_default_dtypes]{with_default_dtypes()}} set the option for
 a scope.
 
-Below, we configure any backend to use the default \code{f64} for floats and \code{i64} for integers:
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = c(float = "f64", int = "i64"))
-}\if{html}{\out{</div>}}
-
-You can also only change the float dtype, leaving
-the backend's default integer dtype unchanged:
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = c(float = "f64"))
-}\if{html}{\out{</div>}}
-
-It is also possible to specify the defaults per-backend:
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = list(
-  pjrt = list(float = "f64", int = "i64"),
-  quickr = list(int = "i32")
-))
-}\if{html}{\out{</div>}}
-
-An entry that names a backend wins over the categories beside it.
+The option maps the categories \code{float} and \code{int} to data types, e.g.
+\code{c(float = "f64", int = "i64")}, and applies to every backend. It may name
+only one of them, like \code{c(float = "f64")}, in which case the other category
+keeps the backend's default. To set the defaults of a single backend, give
+a list with an entry named after that backend instead:
+\code{list(float = "f64", pjrt = list(int = "i64"))} sets \code{f64} for every
+backend and additionally \code{i64} for \code{"pjrt"}. An entry that names a backend
+wins over the categories beside it.
 
 When the option is not set, the \code{ANVL_DEFAULT_DTYPES} environment variable
 (read once, when anvl is loaded) is used instead, written as \code{category=dtype} pairs that apply to every
 backend, e.g. \code{ANVL_DEFAULT_DTYPES="float=f64,int=i64"}.
-
-The defaults decide only what a value becomes when \emph{nothing else does}: an R
-value that meets a typed array of its own category still takes that array's
-data type, whatever the default (\code{vignette("type-promotion")}). The data
-type you name is taken on trust, so one that does not fit is an error where
-the data is allocated or the program compiled rather than where it is set.
-Which ones fit is the backend's own business -- see the \emph{Supported data
-types} section of \code{\link[=AnvlBackendPjrt]{AnvlBackendPjrt()}} and of \code{\link[=AnvlBackendQuickr]{AnvlBackendQuickr()}},
-which has only \code{f64}, \code{i32} and \code{bool}, so both \code{"f32"} and \code{"i64"} are
-errors there. A compiled program is keyed on the defaults it was compiled
-under, so changing them never serves a stale program.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

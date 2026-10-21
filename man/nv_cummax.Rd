@@ -6,6 +6,8 @@
 \title{Cumulative Maximum}
 \usage{
 nv_cummax(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
+
+\method{cummax}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

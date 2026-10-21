@@ -35,6 +35,7 @@ element-wise between two \emph{arrays} -- is named after \code{\link[=ifelse]{if
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
+\item \code{reverse}
 }
 }
 

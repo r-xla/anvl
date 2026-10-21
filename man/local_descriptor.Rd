@@ -2,7 +2,7 @@
 % Please edit documentation in R/graph.R
 \name{local_descriptor}
 \alias{local_descriptor}
-\title{Create a graph}
+\title{Create a Graph}
 \usage{
 local_descriptor(..., envir = parent.frame())
 }
@@ -18,9 +18,9 @@ Environment where exit handler will be registered for cleaning up the
 (\code{\link{GraphDescriptor}})
 }
 \description{
-Creates a new \code{\link{GraphDescriptor}} which is afterwards accessible via \code{\link[=.current_descriptor]{.current_descriptor()}}.
+Creates a new \code{\link{GraphDescriptor}} which is afterwards accessible via \code{\link[=current_descriptor]{current_descriptor()}}.
 The graph is automatically removed when exiting the current scope.
 After the graph is either cleaned up automatically (by exiting the scope)
 or finalized, the previously built graph is restored,
-i.e., accessible via \code{\link[=.current_descriptor]{.current_descriptor()}}.
+i.e., accessible via \code{\link[=current_descriptor]{current_descriptor()}}.
 }

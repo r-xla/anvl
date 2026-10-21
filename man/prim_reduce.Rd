@@ -10,8 +10,8 @@ prim_reduce(x, init, axes, reducer, drop = TRUE)
 \item{x}{(\code{\link{arrayish}})\cr
 The array to reduce. Can be any data type.
 \code{x} and \code{init} must have the same data type. An R value among them
-assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 
 \item{init}{(\code{\link{arrayish}})\cr
 Scalar initial value, with no axes. Must be the neutral element

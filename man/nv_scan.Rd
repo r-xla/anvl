@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_scan}
 \alias{nv_scan}
-\title{Scan (Loop With Per-Step Outputs)}
+\title{Scan (Loop with Per-Step Outputs)}
 \usage{
 nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
 }
