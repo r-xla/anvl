@@ -358,7 +358,9 @@ requirements_from <- function(graph, targets) {
 # derivative, and the reverse rules give such values a zero -- so an RNG state
 # or a loop counter computed alongside a float does not drag the calls it feeds
 # into the backward pass. Literals are inlined constants and never do either.
-propagate_requirements <- function(graph, required_env) {
+# With `float_only = FALSE`, outputs of every data type are marked: the
+# propagation then answers which values depend on the seeded ones at all.
+propagate_requirements <- function(graph, required_env, float_only = TRUE) {
   for (call in graph$statements) {
     requires <- any(vapply(
       call$inputs,
@@ -366,45 +368,32 @@ propagate_requirements <- function(graph, required_env) {
       logical(1L)
     ))
     for (out_node in call$outputs) {
-      required_env[[out_node]] <- requires && is_dtype_float(out_node$aval$dtype)
+      required_env[[out_node]] <- requires && (!float_only || is_dtype_float(out_node$aval$dtype))
     }
   }
   required_env
 }
 
 # The values of `graph` that depend on any of `sources`, as a
-# hashtab(gval -> TRUE): what a call computes from one of them, of whatever
+# hashtab(gval -> logical): what a call computes from one of them, of whatever
 # data type, and the sources themselves.
 graph_depends_on <- function(graph, sources) {
   env <- hashtab()
   for (src in sources) {
     env[[src]] <- TRUE
   }
-  for (call in graph$statements) {
-    if (any(vapply(call$inputs, \(x) !is_graph_literal(x) && isTRUE(env[[x]]), logical(1L)))) {
-      for (out in call$outputs) {
-        env[[out]] <- TRUE
-      }
-    }
-  }
-  env
+  propagate_requirements(graph, env, float_only = FALSE)
 }
 
 # The values `graph` reads -- as an operand of one of its calls or as an
 # output -- as a hashtab(gval -> TRUE).
 graph_reads <- function(graph) {
   env <- hashtab()
-  mark <- function(gvals) {
-    for (g in gvals) {
-      if (!is_graph_literal(g)) {
-        env[[g]] <- TRUE
-      }
+  traverse_gnodes(graph, function(g) {
+    if (!is_graph_literal(g)) {
+      env[[g]] <- TRUE
     }
-  }
-  for (call in graph$statements) {
-    mark(call$inputs)
-  }
-  mark(graph$outputs)
+  })
   env
 }
 

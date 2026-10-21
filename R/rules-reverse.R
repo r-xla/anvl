@@ -633,6 +633,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
   )
   tape_idx <- carry_idx[body_input_read[carry_idx]]
   xs_read <- xs_idx[body_input_read[xs_idx]]
+  cap_read <- cap_idx[body_input_read[cap_idx]]
   fwd_inputs <- vjp$fwd$inputs
   varies <- graph_depends_on(vjp$fwd, fwd_inputs[c(carry_idx, xs_idx)])
   res_varies <- vapply(
@@ -644,7 +645,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
   fwd <- prim_scan(
     init = list(
       carry = inputs[carry_idx],
-      res = lapply(res_avals[!res_varies], \(a) zeros(a$dtype, shape(a)))
+      res = lapply(res_avals[!res_varies], zeros_like)
     ),
     xs = inputs[xs_idx],
     body = function(carry, x) {
@@ -668,7 +669,12 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
       # A scan needs a carry; where only `xs` is differentiated there is none
       # to thread, so a placeholder rides along.
       placeholder <- if (!n_carry_needed && !n_cap) list(nv_scalar(FALSE))
-      zeros_of <- function(gvals) lapply(gvals, \(g) zeros(g$aval$dtype, shape(g$aval)))
+      # The cotangent of a carry slot outside `carry_needed` is never read,
+      # and neither is a body input the backward graph does not read; both
+      # only have to fill their slot.
+      zeros_except <- function(gvals, idx) {
+        lapply(seq_along(gvals), \(i) if (!i %in% idx) zeros_like(gvals[[i]]$aval))
+      }
 
       pulled <- prim_scan(
         init = list(
@@ -683,15 +689,12 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
           xs = inputs[xs_read]
         ),
         body = function(carry, x) {
-          # The cotangent of a carry slot outside `carry_needed` is never
-          # read, and neither is a body input the backward graph does not
-          # read; both only have to fill their slot.
-          out_cts <- zeros_of(body$outputs[carry_idx])
+          out_cts <- zeros_except(body$outputs[carry_idx], carry_needed)
           out_cts[carry_needed] <- carry$carry
-          body_ins <- zeros_of(body$inputs)
+          body_ins <- zeros_except(body$inputs, c(tape_idx, xs_read, cap_read))
           body_ins[tape_idx] <- x$tape
           body_ins[xs_read] <- x$xs
-          body_ins[cap_idx] <- caps
+          body_ins[cap_read] <- inputs[cap_read]
           res <- vector("list", n_res)
           res[res_varies] <- x$res
           res[!res_varies] <- fwd$carry$res

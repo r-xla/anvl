@@ -3440,7 +3440,7 @@ nv_if <- prim_if
 #' @section Gradients:
 #' [gradient()] cannot differentiate a while loop: its trip count is only known
 #' at run time, so there is no static size for the per-iteration states the
-#' backward pass needs. [nv_scan()] with a static number of steps is
+#' backward pass needs. [nv_scan()], whose number of steps is static, is
 #' differentiable.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
