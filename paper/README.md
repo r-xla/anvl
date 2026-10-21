@@ -6,6 +6,7 @@ Source of the R Journal article on {anvl}.
 |---|---|
 | `paper.Rmd` | Article source (rendered with `rjtools::rjournal_pdf_article()`) |
 | `references.bib`, `preamble.tex`, `RJournal.sty` | Bibliography, LaTeX macros, journal style |
+| `figures/overview.tex` | TikZ source of the overview figure (`make figures/overview.pdf`) |
 | `docker/` | `Dockerfile` and `install.sh` of the image in which all results were produced |
 | `benchmarks/hmc-anvl.R` | HMC sampler; its sections are read into the article via `knitr::read_chunk()` |
 | `benchmarks/hmc-torch.R` | The same sampler with torch (autograd, eager execution) |

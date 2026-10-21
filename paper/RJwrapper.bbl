@@ -1,4 +1,4 @@
-\begin{thebibliography}{57}
+\begin{thebibliography}{58}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -15,22 +15,41 @@ Reticulate can't handle large integer values. issue \#1647, rstudio/reticulate.
 \newblock \url{https://github.com/rstudio/reticulate/issues/1647}, 2024.
 \newblock Accessed 2026-09-24.
 
-\bibitem[Abril-Pla et~al.(2023)Abril-Pla, Andreani, Carroll, Dong, Fonnesbeck,
-  Kochurov, Kumar, Lao, Luhmann, Martin, Osthege, Vieira, Wiecki, and
-  Zinkov]{ref-pymc}
-O.~Abril-Pla, V.~Andreani, C.~Carroll, L.~Dong, C.~J. Fonnesbeck, M.~Kochurov,
-  R.~Kumar, J.~Lao, C.~C. Luhmann, O.~A. Martin, M.~Osthege, R.~Vieira,
-  T.~Wiecki, and R.~Zinkov.
-\newblock {PyMC}: A modern, and comprehensive probabilistic programming
-  framework in {Python}.
-\newblock \emph{PeerJ Computer Science}, 9:\penalty0 e1516, 2023.
-\newblock \doi{10.7717/peerj-cs.1516}.
+\bibitem[Abadi et~al.(2016)Abadi, Barham, Chen, Chen, Davis, Dean, Devin,
+  Ghemawat, Irving, Isard, et~al.]{ref-abadi2016tensorflow}
+M.~Abadi, P.~Barham, J.~Chen, Z.~Chen, A.~Davis, J.~Dean, M.~Devin,
+  S.~Ghemawat, G.~Irving, M.~Isard, et~al.
+\newblock {TensorFlow}: A system for large-scale machine learning.
+\newblock In \emph{12th USENIX Symposium on Operating Systems Design and
+  Implementation (OSDI 16)}, pages 265--283, 2016.
+
+\bibitem[Allaire and Tang(2025)]{ref-r-tensorflow}
+J.~Allaire and Y.~Tang.
+\newblock \emph{tensorflow: R Interface to TensorFlow}, 2025.
+\newblock URL \url{https://CRAN.R-project.org/package=tensorflow}.
+\newblock R package version 2.20.0.
+
+\bibitem[Ansel et~al.(2024)Ansel, Yang, He, Gimelshein, Jain, Voznesensky,
+  et~al.]{ref-ansel2024pytorch}
+J.~Ansel, E.~Yang, H.~He, N.~Gimelshein, A.~Jain, M.~Voznesensky, et~al.
+\newblock {PyTorch} 2: Faster machine learning through dynamic {Python}
+  bytecode transformation and graph compilation.
+\newblock In \emph{Proceedings of the 29th ACM International Conference on
+  Architectural Support for Programming Languages and Operating Systems, Volume
+  2}, pages 929--947, 2024.
+\newblock \doi{10.1145/3620665.3640366}.
 
 \bibitem[Bell(2012)]{ref-cppad}
 B.~M. Bell.
 \newblock Cppad: a package for c++ algorithmic differentiation.
 \newblock \emph{Computational Infrastructure for Operations Research},
   57\penalty0 (10):\penalty0 3, 2012.
+
+\bibitem[Bezanson et~al.(2017)Bezanson, Edelman, Karpinski, and
+  Shah]{ref-bezanson2017julia}
+J.~Bezanson, A.~Edelman, S.~Karpinski, and V.~B. Shah.
+\newblock Julia: A fresh approach to numerical computing.
+\newblock \emph{SIAM Review}, 59\penalty0 (1):\penalty0 65--98, 2017.
 
 \bibitem[Blei et~al.(2017)Blei, Kucukelbir, and McAuliffe]{ref-blei2017vi}
 D.~M. Blei, A.~Kucukelbir, and J.~D. McAuliffe.
@@ -79,15 +98,6 @@ B.~Carpenter, A.~Gelman, M.~D. Hoffman, D.~Lee, B.~Goodrich, M.~Betancourt,
 \newblock Stan: A probabilistic programming language.
 \newblock \emph{Journal of statistical software}, 76:\penalty0 1--32, 2017.
 
-\bibitem[Chen et~al.(2025)Chen, He, Benesty, Khotilovich, Tang, Cho, Chen,
-  Mitchell, Cano, Zhou, Li, Xie, Lin, Geng, Li, Yuan, and Cortes]{ref-xgboost}
-T.~Chen, T.~He, M.~Benesty, V.~Khotilovich, Y.~Tang, H.~Cho, K.~Chen,
-  R.~Mitchell, I.~Cano, T.~Zhou, M.~Li, J.~Xie, M.~Lin, Y.~Geng, Y.~Li,
-  J.~Yuan, and D.~Cortes.
-\newblock \emph{xgboost: Extreme Gradient Boosting}, 2025.
-\newblock URL \url{https://CRAN.R-project.org/package=xgboost}.
-\newblock R package version 3.1.2.1.
-
 \bibitem[de~Valpine et~al.(2017)de~Valpine, Turek, Paciorek, Anderson-Bergman,
   Lang, and Bodik]{ref-nimble}
 P.~de~Valpine, D.~Turek, C.~J. Paciorek, C.~Anderson-Bergman, D.~T. Lang, and
@@ -118,11 +128,17 @@ D.~Eddelbuettel and R.~Fran\c{c}ois.
   1--18, 2011.
 \newblock \doi{10.18637/jss.v040.i08}.
 
-\bibitem[Falbel(2025)]{ref-safetensors}
-D.~Falbel.
-\newblock \emph{safetensors: Safetensors File Format}, 2025.
-\newblock URL \url{https://CRAN.R-project.org/package=safetensors}.
-\newblock R package version 0.2.0.
+\bibitem[{Elixir Nx Team}(2026)]{ref-nx}
+{Elixir Nx Team}.
+\newblock \emph{Nx: Multi-Dimensional Arrays (Tensors) and Numerical
+  Definitions for Elixir}, 2026.
+\newblock URL \url{https://github.com/elixir-nx/nx}.
+
+\bibitem[{EnzymeAD Contributors}(2026)]{ref-reactant}
+{EnzymeAD Contributors}.
+\newblock \emph{Reactant.jl: Optimize Julia Functions with {MLIR} and {XLA}},
+  2026.
+\newblock URL \url{https://github.com/EnzymeAD/Reactant.jl}.
 
 \bibitem[Falbel and Luraschi(2025{\natexlab{a}})]{ref-rtorch}
 D.~Falbel and J.~Luraschi.
@@ -214,10 +230,17 @@ T.~Kalinowski.
 \newblock URL \url{https://github.com/t-kalinowski/quickr}.
 \newblock R package version 0.3.0.9000.
 
-\bibitem[Kalinowski et~al.(2026)Kalinowski, Ushey, Allaire, and
+\bibitem[Kalinowski et~al.(2026{\natexlab{a}})Kalinowski, Allaire, and
+  Chollet]{ref-keras3}
+T.~Kalinowski, J.~Allaire, and F.~Chollet.
+\newblock \emph{keras3: R Interface to Keras}, 2026{\natexlab{a}}.
+\newblock URL \url{https://CRAN.R-project.org/package=keras3}.
+\newblock R package version 1.5.1.
+
+\bibitem[Kalinowski et~al.(2026{\natexlab{b}})Kalinowski, Ushey, Allaire, and
   Tang]{ref-reticulate}
 T.~Kalinowski, K.~Ushey, J.~Allaire, and Y.~Tang.
-\newblock \emph{reticulate: Interface to 'Python'}, 2026.
+\newblock \emph{reticulate: Interface to 'Python'}, 2026{\natexlab{b}}.
 \newblock URL \url{https://CRAN.R-project.org/package=reticulate}.
 \newblock R package version 1.47.0.
 
@@ -289,22 +312,15 @@ A.~Paszke, S.~Gross, F.~Massa, A.~Lerer, J.~Bradbury, G.~Chanan, T.~Killeen,
 \newblock Pytorch: An imperative style, high-performance deep learning library.
 \newblock \emph{Advances in neural information processing systems}, 32, 2019.
 
-\bibitem[Pav(2023)]{ref-madness}
-S.~E. Pav.
-\newblock \emph{{madness}: Automatic Differentiation of Multivariate
-  Operations}, 2023.
-\newblock URL \url{https://github.com/shabbychef/madness}.
-\newblock R package version 0.2.8.
-
-\bibitem[Perdry(2024)]{ref-salad}
-H.~Perdry.
-\newblock \emph{salad: Simple Automatic Differentiation}, 2024.
-\newblock URL \url{https://CRAN.R-project.org/package=salad}.
-\newblock R package version 1.2.
-
-\bibitem[Pfeifer(2026)]{ref-gopjrt}
+\bibitem[Pfeifer(2026{\natexlab{a}})]{ref-gomlx}
 J.~Pfeifer.
-\newblock \emph{gopjrt: Go Wrappers for {OpenXLA} {PJRT}}, 2026.
+\newblock \emph{GoMLX: An Accelerated Machine Learning Framework for Go},
+  2026{\natexlab{a}}.
+\newblock URL \url{https://github.com/gomlx/gomlx}.
+
+\bibitem[Pfeifer(2026{\natexlab{b}})]{ref-gopjrt}
+J.~Pfeifer.
+\newblock \emph{gopjrt: Go Wrappers for {OpenXLA} {PJRT}}, 2026{\natexlab{b}}.
 \newblock URL \url{https://github.com/gomlx/gopjrt}.
 
 \bibitem[Phan et~al.(2019)Phan, Pradhan, and Jankowiak]{ref-numpyro}
@@ -346,12 +362,6 @@ D.~Phan, N.~Pradhan, and M.~Jankowiak.
 \newblock R Foundation for Statistical Computing, Vienna, Austria, 2025.
 \newblock URL \url{https://www.R-project.org/}.
 
-\bibitem[Sartore(2025)]{ref-dual}
-L.~Sartore.
-\newblock \emph{dual: Automatic Differentiation with Dual Numbers}, 2025.
-\newblock URL \url{https://CRAN.R-project.org/package=dual}.
-\newblock R package version 0.0.6.
-
 \bibitem[{StableHLO Team}(2026)]{ref-stablehlo}
 {StableHLO Team}.
 \newblock \emph{StableHLO}, 2026.
@@ -366,12 +376,6 @@ L.~Sartore.
 {The JAX Authors}.
 \newblock Autodidax: {JAX} core from scratch, 2024.
 \newblock URL \url{https://docs.jax.dev/en/latest/autodidax.html}.
-
-\bibitem[Towell(2026)]{ref-nabla}
-A.~Towell.
-\newblock \emph{nabla: Exact Derivatives via Automatic Differentiation}, 2026.
-\newblock URL \url{https://github.com/queelius/nabla}.
-\newblock R package version 0.7.1.
 
 \bibitem[Urbanek(2026)]{ref-opencl-r}
 S.~Urbanek.

@@ -7,25 +7,6 @@ knitr::read_chunk("benchmarks/hmc-anvl.R")
 options(width = 80)
 
 
-## ----related, echo = FALSE----------------------------------------------------
-related <- data.frame(
-  Package = c("anvl", "torch", "tensorflow, keras3, greta", "quickr", "compiler",
-    "rstan, cmdstanr", "nimble", "TMB, RTMB", "nabla, salad, dual", "OpenCL",
-    "gpuMagic (removed)", "gpuR, gputools (archived)"),
-  Input = c("R (array API)", "R (array API)", "R via Python", "R (subset)", "R",
-    "Stan language", "BUGS-like, R (subset)", "C++ / R", "R", "OpenCL C", "R (subset)",
-    "R (matrix classes)"),
-  Compilation = c("JIT (XLA, Fortran)", "eager", "XLA (Python)", "Fortran", "byte code",
-    "C++", "C++", "C++ / tape", "none", "OpenCL", "OpenCL", "none"),
-  `Reverse AD` = c("yes", "yes", "yes", "no", "no", "yes", "yes", "yes", "no", "no", "no", "no"),
-  GPU = c("CUDA", "CUDA", "CUDA", "no", "no", "partly (OpenCL)", "no", "no", "no", "OpenCL",
-    "OpenCL", "OpenCL / CUDA"),
-  check.names = FALSE
-)
-knitr::kable(related, format = "latex", booktabs = TRUE, label = "related",
-  caption = "Overview of related R packages. Input is the language in which a program is written, Compilation the way it is executed.")
-
-
 ## ----stablehlo----------------------------------------------------------------
 library(stablehlo)
 func <- local_func("main")
@@ -35,22 +16,13 @@ func <- hlo_return(hlo_multiply(x, y))
 func
 
 
-## ----pjrt---------------------------------------------------------------------
-library(pjrt)
-program <- pjrt_program(src = repr(func), format = "mlir")
-executable <- pjrt_compile(program, device = "cpu")
-x <- pjrt_buffer(1:4, dtype = "f32", shape = c(2, 2), device = "cpu")
-y <- pjrt_buffer(5:8, dtype = "f32", shape = c(2, 2), device = "cpu")
-as_array(pjrt_execute(executable, x, y))
+## ----overview, echo = FALSE, fig.cap = "The three kinds of transformations in \\pkg{anvl}. A node's color indicates the package that implements it. Users call \\code{jit()}, \\code{gradient()}, and \\code{value\\_and\\_gradient()}, which apply these steps once the types of the inputs are known.", out.width = "100%", fig.pos = "tbp"----
+knitr::include_graphics("figures/overview.pdf")
 
 
 ## ----array--------------------------------------------------------------------
 library(anvl)
 x <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
-x
-
-
-## ----eager--------------------------------------------------------------------
 sum(x * 2)
 
 
@@ -62,31 +34,19 @@ t <- torch::torch_flatten(torch::torch_tensor(m))
 torch::as_array(torch::torch_cumsum(t, dim = 1))
 
 
-## ----rapi---------------------------------------------------------------------
-m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))
-m[, 2:3] <- 0
-as_array(crossprod(m))
-as_array(rev(cumsum(m[1, ])))
-
-
 ## ----drop---------------------------------------------------------------------
 x <- nv_array(matrix(1:6, 2))
 shape(x[1, ])
 shape(x[array(1), ])
-shape(x[array(c(1, 2)), ])
 
 
 ## ----trace--------------------------------------------------------------------
 f <- function(x, y, op) {
   if (op == "add") x + y else x * y
 }
-graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("f32", integer()),
-  op = "mul"))
+s <- nv_aval("f32", integer())
+graph <- trace_fn(f, list(x = s, y = s, op = "mul"))
 graph
-
-
-## ----transform-gradient, results = "hide"-------------------------------------
-grad_graph <- transform_gradient(graph, wrt = c("x", "y"))
 
 
 ## ----jit----------------------------------------------------------------------
@@ -95,42 +55,21 @@ f_jit <- jit(function(x, y) {
   x * y
 })
 y1 <- f_jit(x, x)
-y2 <- f_jit(x, x + 1)
-
-
-## ----static-------------------------------------------------------------------
-g <- jit(f, static = "op")
-y3 <- g(x, x, op = "add")
-
-
-## ----gradient-ui--------------------------------------------------------------
-loss <- function(beta, X, y) mean((X %*% beta - y)^2)
-update <- jit(function(beta, X, y, lr) {
-  beta - lr * gradient(loss, wrt = "beta")(beta, X, y)$beta
-})
-X <- nv_array(matrix(rnorm(20), 10, 2))
-y <- X %*% matrix(c(1, 2))
-as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
+y2 <- f_jit(x, x + 1L)
 
 
 ## ----rdata--------------------------------------------------------------------
 B <- matrix(c(0.1, 0.2, 0.3, 0.4), 2, 2)
 matmul <- jit(function(x, b) x %*% b)
-dtype(matmul(nv_array(diag(2), dtype = "f32"), B))
-dtype(matmul(nv_array(diag(2), dtype = "f64"), B))
-
-
-## ----rdata-graph--------------------------------------------------------------
-trace_fn(function(x, b) list(x %*% b, nv_convert(b, "f64")),
-  list(x = nv_aval("f32", c(2L, 2L)), b = nv_aval("double", c(2L, 2L))))
+c(dtype(matmul(nv_array(diag(2), dtype = "f32"), B)),
+  dtype(matmul(nv_array(diag(2), dtype = "f64"), B)))
 
 
 ## ----with-dtypes--------------------------------------------------------------
-dtype(nv_exp(1))
-dtype(with_default_dtypes(c(float = "f64"), nv_exp(1)))
 loss <- function(beta, X, y) mean((X %*% beta - y)^2)
 loss_f64 <- with_dtypes(loss, c(float = "f64"))
-dtype(loss_f64(nv_array(matrix(0, 2, 1), dtype = "f32"), B, B[, 1, drop = FALSE]))
+c(dtype(nv_exp(1)), dtype(with_default_dtypes(c(float = "f64"), nv_exp(1))),
+  dtype(loss_f64(nv_array(matrix(0, 2, 2), dtype = "f32"), B, B)))
 
 
 ## ----promotion-rule, error = TRUE---------------------------------------------
@@ -148,7 +87,7 @@ axpy(2, nv_array(c(1, 2), dtype = "f64"), y32)
 ## ----new-primitive------------------------------------------------------------
 prim_softplus <- new_primitive("softplus", function(x) {
   infer <- function(x) {
-    if (!(dtype(x) %in% c("f32", "f64"))) cli::cli_abort("{.arg x} must be a float.")
+    if (!(dtype(x) %in% c("f32", "f64"))) stop("`x` must be a float.")
     list(AbstractArray(dtype = dtype(x), shape = shape(x)))
   }
   graph_desc_add(self, list(x = x), infer_fn = infer)[[1L]]
@@ -167,8 +106,8 @@ prim_softplus[["reverse"]] <- rule_reverse(
 
 
 ## ----primitive-use------------------------------------------------------------
-z <- nv_array(c(-1, 0, 1))
-as_array(jit(gradient(function(z) sum(prim_softplus(z))))(z)$z)
+grad_softplus <- jit(gradient(function(z) sum(prim_softplus(z))))
+as_array(grad_softplus(nv_array(c(-1, 0, 1)))$z)
 
 
 ## ----potential----------------------------------------------------------------
@@ -236,14 +175,8 @@ y <- rbinom(n, 1, plogis(X %*% rnorm(p, sd = 0.5)))
 res <- hmc(nv_array(matrix(0, 4, p)), nv_rng_state(42L), nv_array(X),
   nv_array(as.double(y)), eps = 0.5 / sqrt(n), L = 10L, n_draws = 2000L)
 draws <- as_array(res$draws)
-dim(draws)
-
-
-## ----hmc-check----------------------------------------------------------------
-rbind(
-  hmc = colMeans(apply(draws[1001:2000, , ], 3, c)),
-  glm = coef(glm(y ~ X - 1, family = binomial))
-)
+rbind(hmc = colMeans(apply(draws[1001:2000, , ], 3, c)),
+  glm = coef(glm(y ~ X - 1, family = binomial)))
 
 
 ## ----results-load, include = FALSE--------------------------------------------
@@ -251,12 +184,12 @@ res_files <- list.files("benchmarks/results", pattern = "\\.csv$", full.names = 
 have_results <- length(res_files) > 0L
 
 
-## ----results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed lines are \\pkg{anvl}, \\CRANpkg{torch}, and Stan (OpenCL) on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 3.1, out.width = "49%", fig.show = "hold", fig.pos = "tbp"----
+## ----results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed lines are \\pkg{anvl}, \\CRANpkg{torch}, and Stan (OpenCL) on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 2.75, out.width = "48%", fig.show = "hold", fig.pos = "tbp"----
 source("benchmarks/plots.R")
 plot_single(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2), linetype = ggplot2::guide_legend(ncol = 2))
 plot_scaling(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2))
 
 
-## ----results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 2.6, fig.pos = "tbp"----
+## ----results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 2.4, out.width = "100%", fig.pos = "tbp"----
 plot_chains(res_files)
 

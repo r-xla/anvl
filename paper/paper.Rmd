@@ -1,17 +1,14 @@
 ---
 title: "anvl: Composable Code Transformations for Array Programs in R"
-date: "2026-09-24"
+date: "2026-10-21"
 abstract: >
   We introduce the R package \pkg{anvl}, a code transformation framework for numerical array programs.
   Functions written in R against the package's array interface can be just-in-time (JIT) compiled, differentiated in reverse mode, and executed on CPUs and NVIDIA GPUs from the same source code.
-  All transformations are based on first tracing an R function into a computational graph, an intermediate representation that is independent of the R interpreter.
-  Arbitrary R code can therefore be used to construct a program, as it is "staged out" during tracing.
-  Automatic differentiation is implemented as a transformation of one graph into another, and backends lower a graph to an executable.
-  The main backend targets the OpenXLA compiler ecosystem via the companion packages \pkg{stablehlo} and \pkg{pjrt}, while an experimental second backend translates graphs to Fortran via \CRANpkg{quickr}.
-  A distinguishing feature is the treatment of data types: R values carry no data type of their own and are built into a program at the precision of the arrays they meet, and every function declares how it promotes its inputs.
-  This gives users fine-grained control over numerical precision, which matters for statistical computations, without having to annotate the data they pass in from R.
-  Except for the runtime, \pkg{anvl} and \pkg{stablehlo} are written in R, which makes them comparatively easy to extend with new primitive operations, transformations, and backends.
-  We describe the design of the package, show how to extend it, and demonstrate it by implementing a Hamiltonian Monte Carlo sampler for Bayesian logistic regression, which we compare against Stan on CPU and GPU.
+  All transformations are based on tracing an R function into a computational graph, so arbitrary R code can be used to construct a program, while the program itself runs without the R interpreter.
+  The main backend targets the OpenXLA compiler ecosystem via the companion packages \pkg{stablehlo} and \pkg{pjrt}, and an experimental second backend translates graphs to Fortran via \CRANpkg{quickr}.
+  A distinguishing feature is the treatment of data types: R values carry no data type of their own and are built into a program at the precision of the arrays they meet, and every function declares how it promotes its inputs, which gives users control over numerical precision without annotating the data they pass in from R.
+  Except for the runtime, \pkg{anvl} and \pkg{stablehlo} are written in R, which makes them comparatively easy to extend with new primitives, transformations, and backends.
+  We compare \pkg{anvl} with other R packages for compiled, differentiable, and GPU-accelerated computing, describe its design, and implement a Hamiltonian Monte Carlo sampler for Bayesian logistic regression, which we benchmark against Stan, \CRANpkg{TMB}, and \CRANpkg{torch} on CPUs and a GPU.
 draft: true
 author:
   - name: Sebastian Fischer
@@ -62,129 +59,151 @@ knitr::read_chunk("benchmarks/hmc-anvl.R")
 options(width = 80)
 ```
 
-# Introduction and related work {#intro}
+# Introduction {#intro}
 
-Most statistical and machine learning methods are, at their core, sequences of operations on vectors and arrays.
-In R, such methods can often be implemented efficiently by relying on vectorized operations and optimized linear algebra routines.
-However, there are cases where this is not sufficient: when an algorithm is inherently iterative, as many optimization and sampling algorithms are, interpreted R loops quickly become the bottleneck.
-The usual remedy is to rewrite the performance-critical parts in a compiled language such as C++ via \CRANpkg{Rcpp} [@ref-rcpp].
-If one additionally wants gradients for optimization or sampling, or wants to run the computation on a GPU, the required machinery grows further.
+Most statistical and machine learning methods are, at their core, sequences of operations on arrays, which R can execute efficiently via vectorized operations and optimized linear algebra routines.
+When an algorithm is inherently iterative, as many optimization and sampling algorithms are, interpreted R loops become the bottleneck, and the usual remedy is to rewrite the performance-critical parts in C++ via \CRANpkg{Rcpp} [@ref-rcpp]; if one additionally needs gradients or a GPU, the required machinery grows further.
 
-In Python, these needs are covered by array libraries that combine hardware acceleration with automatic differentiation (AD).
-\pkg{PyTorch} [@ref-pytorch] is built around eager execution, where each operation is executed immediately, and later added the ability to compile programs.
-\pkg{JAX} [@ref-jax; @ref-frostig2018compiling] instead describes itself as a framework for composable transformations of NumPy programs [@ref-harris2020array].
-A JAX program is traced into an intermediate representation, which can then be differentiated, vectorized, and JIT compiled via the XLA compiler.
-Although these libraries are mostly known for deep learning, they are equally useful for other numerical algorithms.
-For example, much of the Bayesian inference ecosystem in Python is built on top of JAX, including \pkg{NumPyro} [@ref-numpyro], \pkg{BlackJAX} [@ref-blackjax], and the JAX substrate of \pkg{TensorFlow Probability} [@ref-tfp], and \pkg{PyMC} can hand its models to JAX-based samplers [@ref-pymc].
+In Python, these needs are covered by array libraries that combine hardware acceleration with automatic differentiation (AD), such as \pkg{PyTorch} [@ref-pytorch] and \pkg{JAX} [@ref-jax; @ref-frostig2018compiling], on which much of the Bayesian inference ecosystem, including \pkg{NumPyro} [@ref-numpyro], \pkg{BlackJAX} [@ref-blackjax], and \pkg{TensorFlow Probability} [@ref-tfp], is built.
+The lack of comparable native infrastructure in R has consequences beyond runtime: methodological research on how to use accelerators for statistical methods can hardly be carried out in R today.
+For example, a recent line of work on Markov chain Monte Carlo (MCMC) runs hundreds or thousands of short chains in parallel on a GPU [@ref-chees; @ref-meads; @ref-nested-rhat], and variational inference [@ref-blei2017vi] turns posterior inference into a stochastic optimization problem [@ref-hoffman2013svi; @ref-kucukelbir2017advi].
+Both consist of many cheap, iterative gradient evaluations, which is where AD, compilation of the whole algorithm, and GPUs pay off most, and both are developed with JAX.
 
-In R, \CRANpkg{torch} [@ref-rtorch] brings the \pkg{LibTorch} library that underpins PyTorch to R without a Python dependency.
-Like PyTorch, it is primarily designed for eager execution.
-While it can trace code into TorchScript, TorchScript is primarily designed for deployment and is no longer actively developed upstream.
-For large neural networks, where the runtime is dominated by individually expensive operations, eager execution is rarely a bottleneck.
-For the comparatively small models that are common in statistics, however, the per-operation overhead of eager execution can dominate, which makes whole-program compilation attractive.
-The packages \CRANpkg{tensorflow}, \CRANpkg{keras3}, and \CRANpkg{greta} [@ref-greta] give access to XLA-compiled programs, and JAX itself can be used via \CRANpkg{reticulate}.
-They do so by wrapping Python libraries via \CRANpkg{reticulate} [@ref-reticulate], and thereby inherit both the maturity of these libraries and the costs of the language boundary.
-First, every session requires a Python installation whose packages match the versions expected by the R wrapper; \CRANpkg{reticulate} can create such environments on demand via `py_require()`, but only one Python interpreter can be initialized per R session, and neither its version nor its set of installed packages, apart from additions, can be changed without restarting R [@ref-reticulate-pyrequire].
-Second, values are converted between two type systems whose semantics differ.
-In \CRANpkg{reticulate} 1.47.0, a numeric `NA` and `NaN` both become `nan`, a logical `NA` becomes `True` in a vector but `False` in a NumPy array, an integer `NA` becomes the plain integer $-2^{31}$, and Python integers outside the 32-bit range can silently turn into wrong values when returned to R, e.g., `2**40` into `0` [@ref-reticulate-issue197; @ref-reticulate-issue1647].
-Arrays are passed to NumPy in column-major order, but reshaping follows NumPy's row-major semantics unless `array_reshape()` is used, and arrays are copied on the way back [@ref-reticulate-arrays].
-Third, memory is managed by two runtimes: a Python object referenced from R is only released when R's garbage collector runs, which is unaware of how much memory the object holds.
-In our experiments, repeatedly assigning an 800 MB NumPy array to the same R variable increased memory usage by about 760 MB per iteration until `gc()` was called.
-Finally, indices and axes follow Python's 0-based convention whenever the Python modules are called directly, so that wrappers such as \CRANpkg{keras3} have to translate them function by function [@ref-tf-slicing], and errors are reported as Python exceptions in terms of Python objects.
+The core idea of \pkg{anvl}[^anvl-url] is to bring JAX's approach of *composable code transformations* to R.
+Users write numerical algorithms in R against a set of array operations, most of which are available through the familiar R generics, and \pkg{anvl} transforms them into an executable via JIT compilation, into their gradient via reverse-mode AD, or both.
+The transformations are higher-order functions, similar in spirit to base R's `Vectorize()`, and they compose: the gradient of a function can be called from within a jitted function, which can in turn be called from another one.
+The primary backend targets the OpenXLA compiler ecosystem [@ref-openxla], which also powers JAX, via the companion packages \pkg{stablehlo} and \pkg{pjrt}, so the same program runs on CPUs and NVIDIA GPUs; an experimental second backend translates programs to Fortran via \CRANpkg{quickr} [@ref-quickr].
+A focus of the design is control over numerical precision: R values have no data type until they meet an array, and every function declares how it promotes its inputs, so users can choose single or double precision per computation without annotating the data they pass in from R.
+Table \ref{tab:comparison} compares \pkg{anvl} with other R packages for compiled, differentiable, and GPU-accelerated computing, Table \ref{tab:overview} lists its functionality in more detail, and Section \@ref(distinguishing) discusses its distinguishing features.
 
-The lack of native GPU support in R has consequences beyond runtime.
-Methodological research on how to use accelerators for expensive statistical methods can hardly be carried out in R today.
-For example, a recent line of work on Markov chain Monte Carlo methods runs hundreds or thousands of short chains in parallel on a GPU, which requires new adaptation schemes and convergence diagnostics [@ref-chees; @ref-meads; @ref-nested-rhat].
-Such methods are developed and implemented with JAX, and R users can only use them through Python.
-Variational inference is another example [@ref-blei2017vi]: it turns posterior inference into the optimization of the evidence lower bound, whose gradient is estimated by Monte Carlo, often on minibatches of the data [@ref-hoffman2013svi; @ref-kucukelbir2017advi].
-Such algorithms consist of many cheap, iterative gradient evaluations, which is where automatic differentiation, compilation of the whole algorithm, and GPUs pay off most.
+[^anvl-url]: <https://github.com/r-xla/anvl>
 
-Various R packages provide one or two of the three capabilities of JIT compilation, AD, and GPU execution.
-The byte-code \CRANpkg{compiler} included in R [@ref-r] compiles arbitrary R code, but because it has to preserve R's full semantics, the optimizations it can perform are limited [@ref-evaluating-r].
-The \CRANpkg{quickr} package [@ref-quickr] compiles a typed subset of R to Fortran, and \pkg{ast2ast} [@ref-ast2ast] translates a subset of R to C++ and supports AD.
-\CRANpkg{odin} [@ref-odin] and \CRANpkg{rxode2} [@ref-rxode2] compile domain-specific languages for differential equations to C.
-Statistical modeling languages form another group: Stan [@ref-stan] compiles its own probabilistic programming language to C++ with a highly optimized reverse-mode AD library [@ref-stanmath], and is available from R via \CRANpkg{rstan}, \pkg{cmdstanr} [@ref-cmdstanr], and higher-level interfaces such as \CRANpkg{brms} [@ref-brms].
-Some Stan functions can run on GPUs via OpenCL.
-\CRANpkg{nimble} [@ref-nimble] generates C++ from a BUGS-like language and from a subset of R, and supports AD via CppAD [@ref-cppad], as do \CRANpkg{TMB} [@ref-tmb] and \CRANpkg{RTMB} [@ref-rtmb], where the latter records the AD tape by evaluating R code with overloaded operators.
-Forward-mode AD via dual numbers is available in \pkg{nabla}, \CRANpkg{salad}, \CRANpkg{dual}, and \CRANpkg{madness} [@ref-nabla; @ref-salad; @ref-dual; @ref-madness].
-
-Packages that give R users direct access to GPUs have had a difficult history on CRAN.
-Several early packages built on CUDA, such as \pkg{gputools} [@ref-gputools], \pkg{rpud}, \pkg{WideLM}, \pkg{magma}, \pkg{HiPLARM}, and \pkg{cudaBayesreg}, were archived between 2015 and 2018, and \pkg{permGPU} followed in 2021.
-In November 2025, \pkg{gpuR} [@ref-gpur], which provided OpenCL-backed matrix classes via the ViennaCL library, and \pkg{clrng}, which builds on it, were archived as well, and \pkg{gpuMagic} [@ref-gpumagic], which compiled a subset of R to OpenCL, was removed from Bioconductor with release 3.23.
-Of the packages that remain, \CRANpkg{OpenCL} [@ref-opencl-r] provides a low-level interface for which users write kernels in OpenCL C, and \CRANpkg{GPUmatrix} [@ref-gpumatrix] implements GPU matrices on top of \CRANpkg{torch} or \CRANpkg{tensorflow}.
-Other packages use GPUs internally for specific methods, such as \CRANpkg{xgboost} [@ref-xgboost].
-This history illustrates the cost of maintaining GPU support for a single package, which is one reason why \pkg{anvl} delegates hardware support to OpenXLA's PJRT plugins.
-Table \ref{tab:related} summarizes the most closely related packages.
-To the best of our knowledge, no native R package offers JIT compilation of R code, reverse-mode AD, and GPU execution at the same time.
-
-```{r related, echo = FALSE}
-related <- data.frame(
-  Package = c("anvl", "torch", "tensorflow, keras3, greta", "quickr", "compiler",
-    "rstan, cmdstanr", "nimble", "TMB, RTMB", "nabla, salad, dual", "OpenCL",
-    "gpuMagic (removed)", "gpuR, gputools (archived)"),
-  Input = c("R (array API)", "R (array API)", "R via Python", "R (subset)", "R",
-    "Stan language", "BUGS-like, R (subset)", "C++ / R", "R", "OpenCL C", "R (subset)",
-    "R (matrix classes)"),
-  Compilation = c("JIT (XLA, Fortran)", "eager", "XLA (Python)", "Fortran", "byte code",
-    "C++", "C++", "C++ / tape", "none", "OpenCL", "OpenCL", "none"),
-  `Reverse AD` = c("yes", "yes", "yes", "no", "no", "yes", "yes", "yes", "no", "no", "no", "no"),
-  GPU = c("CUDA", "CUDA", "CUDA", "no", "no", "partly (OpenCL)", "no", "no", "no", "OpenCL",
-    "OpenCL", "OpenCL / CUDA"),
-  check.names = FALSE
-)
-knitr::kable(related, format = "latex", booktabs = TRUE, label = "related",
-  caption = "Overview of related R packages. Input is the language in which a program is written, Compilation the way it is executed.")
-```
-
-## Contributions
-
-We introduce \pkg{anvl}, a code transformation framework for array programs in R.
-Users write numerical algorithms in R against a set of array operations, and \pkg{anvl} transforms them: into an executable via JIT compilation, into their gradient via reverse-mode AD, or both.
-The same program runs on CPUs and NVIDIA GPUs.
-Transformations are higher-order functions that take an R function and return another R function, similar in spirit to base R's `Vectorize()`, and they compose: the gradient of a function can be called from within a jitted function, which can in turn be called from another one.
-
-The primary backend, `"pjrt"`, targets the OpenXLA compiler ecosystem [@ref-openxla], which also powers JAX and TensorFlow.
-Part of our contribution are the \pkg{stablehlo} package, which allows creating programs in the StableHLO language from R, and the \pkg{pjrt} package, which compiles and executes them via the PJRT runtime interface.
-A second, experimental backend translates programs to Fortran via \CRANpkg{quickr}.
-
-A focus of \pkg{anvl}'s design is control over numerical precision.
-Accelerators run much faster in single than in double precision, while many statistical computations, such as sums over many log-likelihood terms, require double precision.
-R, however, stores all real numbers in double precision, so data passed in from R says nothing about the intended precision.
-In \pkg{anvl}, R values -- scalars as well as arrays -- have no data type until they meet an array, whose data type they then take.
-Together with scoped default data types and promotion rules that each function declares explicitly, this allows choosing the precision per computation, without silently losing precision when data enters a program.
-
-The package separates *what* an algorithm computes from *how* it is executed.
-Because the backends do the heavy lifting, \pkg{anvl} itself and \pkg{stablehlo} are written in R, which makes them comparatively easy to extend with new operations, transformations, or backends.
-We see \pkg{anvl} as low-level infrastructure on which new algorithms and modeling packages can be built, rather than as a modeling package itself.
-In contrast to \CRANpkg{quickr}, which compiles a subset of existing R code, \pkg{anvl} defines its own array interface with more data types, explicit devices, and consistent semantics, most of it available through the familiar R generics.
+We see three main user groups: statisticians who implement iterative algorithms, such as samplers or optimizers, and want them to run fast without leaving R; methodological researchers who study algorithms that exploit accelerators, such as many-chain MCMC; and developers of R packages who need gradients and compiled code as infrastructure.
+For all of them, \pkg{anvl} is a low-level foundation rather than a modeling package, comparable to the role that JAX plays for the inference libraries built on it.
 
 The remainder of this paper is structured as follows.
-Section \@ref(background) introduces the OpenXLA components and the \CRANpkg{quickr} package, as well as the basics of reverse-mode AD.
-Section \@ref(design) describes the design of \pkg{anvl}, including its R-like array interface, Section \@ref(precision) its treatment of data types and precision, and Section \@ref(extending) shows how to extend it.
-In Section \@ref(hmc), we implement a Hamiltonian Monte Carlo sampler for Bayesian logistic regression, whose runtime we evaluate against Stan in Section \@ref(runtime).
-Finally, we discuss limitations and future work in Section \@ref(discussion).
+Section \@ref(ecosystem) positions \pkg{anvl} among array libraries in other languages and related R packages.
+Section \@ref(background) introduces the OpenXLA compiler ecosystem.
+Section \@ref(design) describes the design of \pkg{anvl}, Section \@ref(precision) its treatment of data types, and Section \@ref(extending) how to extend it.
+In Section \@ref(hmc), we implement a Hamiltonian Monte Carlo sampler, whose runtime we evaluate in Section \@ref(runtime), and Section \@ref(discussion) concludes.
 
-# Background {#background}
+# anvl in the array computing ecosystem {#ecosystem}
 
-## The OpenXLA compiler ecosystem
+## Array libraries and code transformation frameworks {#libraries}
+
+The default language for numerical computing with accelerators is Python, with \pkg{TensorFlow} [@ref-abadi2016tensorflow], \pkg{PyTorch} [@ref-pytorch], and \pkg{JAX} [@ref-jax].
+TensorFlow initially built a computational graph that was optimized as a whole, while PyTorch became popular for its eager execution, in which each operation runs immediately; today, TensorFlow also executes eagerly and PyTorch can compile programs via `torch.compile()` [@ref-ansel2024pytorch].
+JAX describes itself as a framework for composable transformations of NumPy programs [@ref-harris2020array]: a function is traced into an intermediate representation, which can be differentiated in forward and reverse mode, vectorized via `vmap()`, and JIT compiled via the XLA compiler.
+Other languages have followed similar routes.
+In Julia [@ref-bezanson2017julia], \pkg{Reactant.jl} [@ref-reactant] compiles Julia functions to StableHLO and runs them via XLA, \pkg{Nx} [@ref-nx] traces numerical definitions in Elixir and compiles them with XLA, and \pkg{GoMLX} [@ref-gomlx] does the same for Go via the PJRT wrapper \pkg{gopjrt} [@ref-gopjrt].
+The variety of these projects illustrates that OpenXLA's standardized interfaces (Section \@ref(background)) allow a new language to obtain a compiler and hardware support without implementing them itself, which is the route that \pkg{anvl} takes for R.
+
+## Array computing in R {#in-r}
+
+There are three routes to accelerated and differentiable array computing in R, whose representatives Table \ref{tab:comparison} compares with \pkg{anvl}: wrapping a Python library via \CRANpkg{reticulate} [@ref-reticulate], using \CRANpkg{torch}, or compiling a domain-specific or restricted language.
+
+**Wrappers of Python libraries.**
+\CRANpkg{tensorflow} [@ref-r-tensorflow], \CRANpkg{keras3} [@ref-keras3], and \CRANpkg{greta} [@ref-greta], a probabilistic programming language built on TensorFlow Probability, give access to XLA-compiled programs, and JAX itself can be used via \CRANpkg{reticulate}.
+They inherit the maturity and large feature set of these libraries, but also the costs of the language boundary.
+First, every session requires a Python environment with matching package versions, and as only one Python interpreter can be initialized per R session, two R packages with conflicting Python requirements cannot be used together [@ref-reticulate-pyrequire].
+Second, values are converted between two type systems whose semantics differ: in \CRANpkg{reticulate} 1.47.0, a numeric `NA` and `NaN` both become `nan`, an integer `NA` becomes the plain integer $-2^{31}$, and Python integers outside the 32-bit range can silently turn into wrong values when returned to R, e.g., `2**40` into `0` [@ref-reticulate-issue197; @ref-reticulate-issue1647].
+Third, R's garbage collector does not know how much memory a Python object holds; in our experiments, repeatedly assigning an 800 MB NumPy array to the same R variable increased memory usage by about 760 MB per iteration until `gc()` was called.
+Finally, indices and reshaping follow Python's 0-based, row-major conventions unless a wrapper translates them function by function [@ref-reticulate-arrays; @ref-tf-slicing], and errors are reported as Python exceptions.
+
+**Native array libraries.**
+\CRANpkg{torch} [@ref-rtorch] brings the \pkg{LibTorch} library that underpins PyTorch to R without a Python dependency and is the foundation of the deep learning ecosystem in R.
+Like PyTorch, it is designed for eager execution: tracing to TorchScript is possible, but TorchScript targets deployment and is no longer developed upstream, and `torch.compile()` operates on Python bytecode and is not available in R.
+For large neural networks, where the runtime is dominated by individually expensive operations, eager execution is rarely a bottleneck, but for the comparatively small models common in statistics, the per-operation overhead of dispatching each operation from R can dominate (Section \@ref(runtime)).
+Packages that give R users direct access to GPUs have had a difficult history: CUDA packages such as \pkg{gputools} [@ref-gputools] were archived on CRAN between 2015 and 2018, \pkg{gpuR} [@ref-gpur], which provided OpenCL-backed matrix classes, followed in November 2025, and \pkg{gpuMagic} [@ref-gpumagic], which compiled a subset of R to OpenCL, was removed from Bioconductor with release 3.23.
+Of the remaining packages, \CRANpkg{OpenCL} [@ref-opencl-r] requires users to write kernels in OpenCL C, and \CRANpkg{GPUmatrix} [@ref-gpumatrix] builds on \CRANpkg{torch} or \CRANpkg{tensorflow}; this history is one reason why \pkg{anvl} delegates hardware support to OpenXLA's PJRT plugins.
+
+**Compilers and AD for R and domain-specific languages.**
+The byte-code \CRANpkg{compiler} included in R [@ref-r] compiles arbitrary R code, but because it has to preserve R's full semantics, the optimizations it can perform are limited [@ref-evaluating-r].
+\CRANpkg{quickr} [@ref-quickr] compiles a typed subset of R to Fortran, and \pkg{ast2ast} [@ref-ast2ast] translates a subset of R to C++ with AD, while \CRANpkg{odin} [@ref-odin] and \CRANpkg{rxode2} [@ref-rxode2] compile domain-specific languages for differential equations to C.
+Statistical modeling languages form another group.
+Stan [@ref-stan] compiles its probabilistic programming language to C++ with a highly optimized reverse-mode AD library [@ref-stanmath], is available from R via \CRANpkg{rstan}, \pkg{cmdstanr} [@ref-cmdstanr], and interfaces such as \CRANpkg{brms} [@ref-brms], and can evaluate some functions on GPUs via OpenCL.
+\CRANpkg{nimble} [@ref-nimble] generates C++ from a BUGS-like language and from a subset of R, and \CRANpkg{TMB} [@ref-tmb] differentiates C++ templates, both via CppAD [@ref-cppad]; \CRANpkg{RTMB} [@ref-rtmb] records TMB's AD tape by evaluating R code with overloaded operators.
+These packages are mature and highly optimized for the class of problems they target, but none of them combines JIT compilation of general R code, reverse-mode AD, and GPU execution.
+
+## Distinguishing features of anvl {#distinguishing}
+
+To the best of our knowledge, \pkg{anvl} is the first native R package that offers JIT compilation of R code, reverse-mode AD, and GPU execution at the same time.
+Beyond this combination, it differs from the packages above in several ways.
+First, a program is *staged* in R: tracing evaluates the R function and records only the array operations, so, in contrast to \CRANpkg{quickr} or \CRANpkg{nimble}, any R code can be used to generate a program, while the program itself runs without the R interpreter and is optimized as a whole by XLA.
+Second, compilation and differentiation are transformations of R functions that compose, rather than properties of a separate model language as in Stan or \CRANpkg{TMB}; a gradient can be used inside a compiled sampler that is itself called from another compiled function.
+Third, the array interface follows R rather than Python: indexing is 1-based, arrays are laid out in column-major order, and the common R generics work on arrays, whereas wrappers of Python libraries and, to a lesser extent, \CRANpkg{torch} follow NumPy's conventions.
+Fourth, R values have no data type of their own and take the precision of the arrays they meet, and promotion rules are declared per function (Section \@ref(precision)), so single and double precision can be mixed deliberately, which matters on GPUs.
+Finally, the packages are extensible from R: primitives, AD rules, lowering rules, graph transformations, and backends are R objects (Section \@ref(extending)), and except for the PJRT runtime, \pkg{anvl} and \pkg{stablehlo} are pure R packages that need neither Python nor a local CUDA toolkit.
+
+```{=latex}
+% Every cell of this table is backed by the packages' documentation; see the text for references.
+\begin{sidewaystable}
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.125\textheight}*{7}{>{\raggedright\arraybackslash}p{0.115\textheight}}@{}}
+\hline
+ & \pkg{anvl} & \pkg{torch} & \pkg{tensorflow}, \pkg{greta} & \pkg{quickr} & Stan \note{\pkg{cmdstanr}} & \pkg{TMB}, \pkg{RTMB} & \pkg{nimble} \\
+\hline
+Program written in & R \note{array API} & R \note{array API} & R, run by Python libraries & typed subset of R & Stan language & C++ template; R \note{\pkg{RTMB}} & BUGS-like language, subset of R \\
+Execution & eager or compiled whole program & eager, per operation & eager or compiled graph & compiled function & compiled model & compiled C++, AD tape & compiled C++ \\
+Compiler & XLA; Fortran \note{experimental} & -- \note{TorchScript tracing} & XLA \note{optional} & Fortran & C++ & C++ & C++ \\
+Reverse-mode AD & \yes{} \note{scalar functions} & \yes{} & \yes{} & -- & \yes{} & \yes{} & \yes{} \\
+Higher-order AD & \yes{} \note{nested reverse mode} & \yes{} & \yes{} & -- & -- \note{internal only} & \yes{} & \yes{} \note{up to second order} \\
+GPU & NVIDIA & NVIDIA, Apple & NVIDIA & -- & (\yes{}) \note{some functions, OpenCL} & -- & -- \\
+Floating-point types & f32, f64 \note{chosen per computation} & f16, bf16, f32, f64 & f16, bf16, f32, f64 & f64 & f64 & f64 & f64 \\
+Data-dependent control flow & \code{nv\_if()}, \code{nv\_while()}, \code{nv\_scan()} & R control flow & graph control flow & R control flow & \yes{} & \yes{} & \yes{} \\
+Shapes & static, recompiled per shape & dynamic & static under XLA & dynamic & dynamic & dynamic & dynamic \\
+Conventions & 1-based, column-major & 1-based, row-major & 0-based, row-major \note{partly translated} & 1-based, column-major & 1-based, column-major & 0-based in C++; 1-based in R & 1-based, column-major \\
+New operations & primitives with rules in R; C/C++ custom calls & composition in R; C++ & composition; Python, C++ & -- & C++ functions & atomic functions in C++ & \code{nimbleFunction}, external C/C++ \\
+Python required & -- & -- & \yes{} & -- & -- & -- & -- \\
+\hline
+\end{tabular}
+\caption{Comparison of R packages for compiled, differentiable, or GPU-accelerated numerical computing. Stan is used via \pkg{cmdstanr} or \pkg{rstan}. \yes{}: supported; (\yes{}): possible with limitations; --: not available.}
+\label{tab:comparison}
+\end{sidewaystable}
+
+\begin{table}[tbp]
+\centering
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.19\textwidth}>{\raggedright\arraybackslash}p{0.77\textwidth}@{}}
+\hline
+Aspect & Functionality in \pkg{anvl} \\
+\hline
+Transformations & \code{jit()} with caching, static arguments, and buffer donation; \code{gradient()} and \code{value\_and\_gradient()} for reverse-mode AD of scalar functions, which can be nested; \code{with\_dtypes()}; all of them compose. \\
+Backends and devices & \code{"pjrt"} (XLA) on CPUs and NVIDIA GPUs via PJRT plugins, with several devices per platform; experimental \code{"quickr"} backend for 55 of the 101 primitives (f64, i32, and booleans). Asynchronous execution. \\
+Data types & Booleans, signed and unsigned integers of 8 to 64 bits, f32, and f64. R values take the data type of the arrays they meet; scoped default data types and per-function promotion rules (Section \ref{precision}). \\
+Array interface & About 190 \code{nv\_*()} functions and methods for about 100 R generics, including arithmetic, math, and comparison operators, reductions, \code{[} and \code{[<-}, \code{\%*\%}, \code{c()}, \code{cbind()}, \code{sort()}, \code{quantile()}, and cumulative functions; 1-based and column-major (Section \ref{rapi}). \\
+Linear algebra & \code{solve()}, \code{chol()}, \code{qr()}, LU, SVD, symmetric eigendecomposition, and determinants via LAPACK (CPU) and cuSOLVER (GPU). \\
+Random numbers & Generators with explicit state for normal, uniform, and binomial variates and sampling; density, distribution, and quantile functions of four distributions. \\
+Control flow and I/O & \code{nv\_if()}, \code{nv\_while()}, and \code{nv\_scan()}, and R control flow during tracing (Section \ref{trace}); saving and loading arrays in the safetensors format. \\
+Extensibility & New primitives with StableHLO, reverse-mode, and \pkg{quickr} rules via \code{new\_primitive()}; custom calls into C/C++ via \pkg{pjrt}; new backends via \code{AnvlBackend} (Section \ref{extending}). \\
+\hline
+\end{tabular}
+\caption{Overview of the functionality of \pkg{anvl}, complementing the comparison with other packages in Table~\ref{tab:comparison}.}
+\label{tab:overview}
+\end{table}
+```
+
+## Relation to JAX {#relation-jax}
+
+JAX, from which much of \pkg{anvl}'s design is adopted, provides forward-mode AD and, combined with reverse mode, efficient Jacobians and Hessians, whereas \pkg{anvl} computes gradients of scalar functions in reverse mode, which can be nested for higher-order derivatives, and cannot yet differentiate through the loop primitives `nv_scan()` and `nv_while()`.
+JAX's `vmap()` vectorizes a function automatically, while batched code, such as the multi-chain sampler in Section \@ref(hmc), has to be written by hand in \pkg{anvl}, and JAX can distribute a single program over many devices, whereas \pkg{anvl} places each array on one device.
+JAX also has a large ecosystem of libraries for optimization, probabilistic programming, and neural networks.
+On the other hand, \pkg{anvl} follows R's conventions, never converts R data to a default precision when it enters a program (Section \@ref(precision)), and makes the graph, its transformations, and the backends accessible as R objects; and as both lower to StableHLO, \pkg{pjrt} can also execute programs exported from JAX.
+
+# Background: the OpenXLA compiler ecosystem {#background}
 
 OpenXLA [@ref-openxla] is an open-source compiler ecosystem for machine learning that originated in TensorFlow.
-One of its goals is to decouple array computing frameworks (the frontends) from hardware-specific compilers and runtimes (the backends) through two standardized interfaces:
-
-1. StableHLO [@ref-stablehlo], a portable intermediate representation for array programs, and
-2. PJRT [@ref-pjrt], a runtime interface for compiling and executing such programs on a device.
-
-A framework that emits StableHLO and executes it via PJRT can run on any hardware for which a PJRT plugin exists, including CPUs, NVIDIA GPUs, and Google TPUs.
-This turns an $n \times m$ problem ($n$ frontends targeting $m$ types of hardware) into an $n + m$ problem.
+It decouples array computing frameworks (the frontends) from hardware-specific compilers and runtimes (the backends) through two standardized interfaces: StableHLO [@ref-stablehlo], a portable intermediate representation for array programs, and PJRT [@ref-pjrt], a runtime interface for compiling and executing such programs on a device.
+A framework that emits StableHLO and executes it via PJRT can run on any hardware for which a PJRT plugin exists, including CPUs, NVIDIA GPUs, and Google TPUs, which turns an $n \times m$ problem ($n$ frontends, $m$ types of hardware) into an $n + m$ problem.
 The main compiler consuming StableHLO is XLA, which, among other things, fuses operations to reduce memory traffic, but alternatives such as IREE [@ref-iree] exist.
 
-### StableHLO
-
-StableHLO is a dialect of MLIR, the Multi-Level Intermediate Representation that is part of the LLVM compiler infrastructure.
-It is a strongly typed, functional language in static single assignment form: every value is assigned exactly once, and the type of each value, i.e., its data type and shape, is known when the program is compiled.
-The specification defines around 100 operations, ranging from elementwise arithmetic to control flow, reductions, and random number generation.
-The \pkg{stablehlo} package provides an S3 representation of the language that closely follows the specification, a `repr()` generic that converts it to the textual format understood by the compiler, type inference functions for the operations, and a builder API.
-Below, we create a program that multiplies two `f32` matrices of shape `2x2`.
+StableHLO is a dialect of MLIR, the Multi-Level Intermediate Representation of the LLVM project, and a strongly typed, functional language in static single assignment form, in which the type of every value, i.e., its data type and shape, is known when the program is compiled.
+Its around 100 operations range from elementwise arithmetic to control flow, reductions, and random number generation.
+The \pkg{stablehlo} package, which is written in R, provides an S3 representation of the language, type inference for its operations, and a builder API.
+Below, we create a program that multiplies two `f32` matrices elementwise; each `hlo_*()` call checks that the operation is valid for its inputs and records it in the function.
 
 ```{r stablehlo}
 library(stablehlo)
@@ -195,101 +214,41 @@ func <- hlo_return(hlo_multiply(x, y))
 func
 ```
 
-`local_func()` creates a new function, and `hlo_input()` adds typed inputs to it and returns the corresponding values.
-Calling `hlo_multiply()` runs the type inference for the operation, which checks that it is valid for the given inputs, and records it in the body of the function.
-Finally, `hlo_return()` sets the outputs and returns the finished `Func`.
-The package is written in R rather than wrapping the C++ implementation, which keeps it easy to install.
-It does not implement the full specification; for example, complex numbers and dynamic shapes are not supported.
+The \pkg{pjrt} package wraps the PJRT C API, which defines how to allocate buffers on a device, compile a program, and execute it; e.g., `pjrt_compile()` compiles the textual representation `repr(func)` of the program above, and `pjrt_execute()` runs it on buffers created by `pjrt_buffer()`.
 
-### PJRT
-
-The PJRT interface defines, among other things, how to allocate buffers on a device, compile a program for it, and execute the compiled program.
-Its implementations are shared libraries (plugins) that are loaded at runtime, and the \pkg{pjrt} package wraps the C API.
-Below, we compile the program from above and execute it on the CPU.
-
-```{r pjrt}
-library(pjrt)
-program <- pjrt_program(src = repr(func), format = "mlir")
-executable <- pjrt_compile(program, device = "cpu")
-x <- pjrt_buffer(1:4, dtype = "f32", shape = c(2, 2), device = "cpu")
-y <- pjrt_buffer(5:8, dtype = "f32", shape = c(2, 2), device = "cpu")
-as_array(pjrt_execute(executable, x, y))
-```
-
-Because \pkg{pjrt} accepts any StableHLO program, it can also execute programs that were not created with \pkg{stablehlo}, such as programs exported from JAX.
-Buffers are external pointers to device memory, which R's serialization cannot handle.
-They can instead be saved and loaded in the safetensors format via the \CRANpkg{safetensors} package [@ref-safetensors].
-
-Building a PJRT plugin requires compiling LLVM, MLIR, and XLA, which takes hours, so \pkg{pjrt} instead downloads prebuilt plugins when they are first needed, after asking for permission.
-The NVIDIA libraries required by the CUDA plugin are installed by a companion R package from NVIDIA's redistributable channels, so users need a compatible driver but no local CUDA toolkit.
-XLA and StableHLO are licensed under Apache 2.0, the NVIDIA libraries under NVIDIA's license terms, and \pkg{anvl}, \pkg{stablehlo}, and \pkg{pjrt} under the MIT license.
-Because of the downloads, the packages are currently distributed via R-universe rather than CRAN.
-
-## The quickr package
-
-The \CRANpkg{quickr} package [@ref-quickr] compiles R functions to Fortran.
-Unlike \pkg{stablehlo}, it does not offer a builder API, but statically analyzes the code of an R function whose argument types are declared via `declare()`.
-In contrast to XLA, a compiled \CRANpkg{quickr} function can be reused for inputs of different shapes, and compilation is fast for small programs.
-On the other hand, it only runs on the CPU, supports fewer data types, and has no AD.
-\pkg{anvl}'s \CRANpkg{quickr} backend is at an early, experimental stage: it covers only part of \pkg{anvl}'s operations and does not yet exploit the support for dynamic shapes.
-
-## Reverse-mode automatic differentiation
-
-AD exploits that a program evaluating $F : \R^n \to \R^m$ executes a sequence of elementary operations $v_i = \varphi_i(v_j)_{j \prec i}$ with known derivatives, where $j \prec i$ denotes that $v_j$ is an argument of $\varphi_i$ [@ref-griewank2008evaluating].
-Forward mode applies the chain rule along this evaluation procedure and computes a Jacobian-vector product $F'(x)\dot{x}$ per sweep.
-Reverse mode instead propagates *adjoints* $\bar{v}_j = \sum_{i \succ j} \bar{v}_i \fp{v_i}{v_j}$ backward from the outputs and computes a vector-Jacobian product $\bar{y}^\top F'(x)$ per sweep.
-For a scalar function, a single reverse sweep therefore yields the whole gradient at a small constant multiple of the cost of evaluating $F$, which makes reverse mode the method of choice for optimization and sampling, at the price of storing intermediate values for the backward sweep.
+As building a PJRT plugin requires compiling LLVM, MLIR, and XLA, \pkg{pjrt} downloads prebuilt plugins when they are first needed, after asking for permission, and a companion R package installs the NVIDIA libraries required by the CUDA plugin, so users need a compatible driver but no local CUDA toolkit.
+Because of these downloads, \pkg{anvl}, \pkg{stablehlo}, and \pkg{pjrt}, which are MIT-licensed, are currently distributed via R-universe rather than CRAN.
 
 # Package design {#design}
 
-The central idea of \pkg{anvl}, which is adopted from JAX, is to view compilation and differentiation as *code transformations*.
-There are three kinds of them:
+The central idea of \pkg{anvl}, adopted from JAX, is to view compilation and differentiation as code transformations, of which there are three kinds (Figure \@ref(fig:overview)): an R function is traced into an `AnvlGraph`, a graph is transformed into another graph, e.g., by reverse-mode AD, and a graph is lowered to an executable by one of the backends.
 
-1. R function $\rightarrow$ graph, via tracing.
-2. Graph $\rightarrow$ graph, e.g., reverse-mode AD.
-3. Graph $\rightarrow$ executable, via one of the backends.
-
-In this section, we first introduce the array type and eager execution, then describe the three kinds of transformations, and finally how they are exposed to users through `jit()` and `gradient()`.
+```{r overview, echo = FALSE, fig.cap = "The three kinds of transformations in \\pkg{anvl}. A node's color indicates the package that implements it. Users call \\code{jit()}, \\code{gradient()}, and \\code{value\\_and\\_gradient()}, which apply these steps once the types of the inputs are known.", out.width = "100%", fig.pos = "tbp"}
+knitr::include_graphics("figures/overview.pdf")
+```
 
 ## Arrays and eager execution
 
-The main data structure is the `AnvlArray`.
-Compared to an R array, it supports more data types (e.g., single and double precision floats and signed and unsigned integers of different widths), lives on a specific device, such as a CPU or a GPU, and represents scalars as arrays without axes.
-Arrays have value semantics.
+The main data structure is the `AnvlArray`, which, compared to an R array, supports more data types, lives on a specific device, such as a CPU or a GPU, and represents scalars as arrays without axes.
+Operations are available through `nv_*()` functions and the corresponding R generics, and called on arrays, they are executed immediately, which is called *eager* execution.
+Plain R values take the data type of the array they meet, so the literal `2` below becomes an `f32` (Section \@ref(precision)).
 
 ```{r array}
 library(anvl)
 x <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
-x
-```
-
-Operations are available through `nv_*()` functions and the corresponding R generics and operators.
-Called on arrays, they are executed immediately, which is called *eager* execution.
-Plain R values take the data type of the array they meet, so the literal `2` below becomes an `f32` (see Section \@ref(precision)).
-
-```{r eager}
 sum(x * 2)
 ```
 
-Under the hood, there are two layers of functions.
-*Primitives*, named `prim_*()`, are the operations that the transformations know about, each defined by a set of rules.
-They are deliberately minimal and, for example, neither broadcast nor promote data types.
-The user-facing `nv_*()` functions build on the primitives and add conveniences such as broadcasting of scalars, type promotion, and default arguments.
-Each primitive is itself a jitted function, so eager execution means compiling and caching one small program per primitive and input type.
-This is convenient for interactive work and debugging, but for performance, the whole program should be compiled, as we describe below.
-
-Execution is asynchronous: calling a compiled program returns as soon as the computation has been scheduled, and the result is only awaited when its values are needed, e.g., when it is printed or converted to R via `as_array()`.
-Metadata such as `shape()` and `dtype()` is available immediately.
-This allows R to prepare the next call while the device is still busy, which is especially important for GPUs.
+Under the hood, there are two layers of functions: *primitives*, named `prim_*()`, are the minimal operations that the transformations know about, each defined by a set of rules, and the user-facing `nv_*()` functions build on them and add broadcasting of scalars, type promotion, and default arguments.
+Each primitive is itself a jitted function, so eager execution compiles and caches one small program per primitive and input type; this is convenient for interactive work, but for performance, the whole program should be compiled.
+Execution is asynchronous: calling a compiled program returns as soon as the computation has been scheduled, and its result is only awaited when its values are needed, e.g., by `as_array()`, which allows R to prepare the next call while the device is busy.
 
 ## An R-like array interface {#rapi}
 
 Array libraries such as NumPy, and with it JAX and PyTorch, follow Python's conventions: 0-based indexing, row-major memory layout, and broadcasting that aligns shapes from the last axis.
 \pkg{anvl} instead aims to feel familiar to R users, so that numerical code written for base R carries over with few changes.
-Arrays have methods for many base R generics, including the arithmetic, comparison, and logical operators, `%*%`, `t()`, `aperm()`, `crossprod()`, `solve()`, `chol()`, the math functions (e.g., `log(x, base)`, `sinpi()`, `lgamma()`), the reductions `sum()`, `mean()`, `prod()`, `max()`, and `range()`, as well as `cumsum()`, `rev()`, `sort()`, `quantile()`, `median()`, `c()`, `cbind()`, and `rbind()`.
-Their semantics follow base R: indexing is 1-based, arrays are laid out in column-major order, so reshaping fills an array column by column as `dim<-` does, and subsetting and subset assignment use R's bracket syntax, including ranges such as `x[, 2:3]`.
-Column-major order matters whenever an operation traverses the elements of an array.
-For example, `cumsum()` without an axis runs over the elements of a matrix column by column in both base R and \pkg{anvl}, whereas the same computation in \CRANpkg{torch}, which requires flattening the tensor first, follows row-major order:
+Arrays have methods for about 100 R generics (Table \ref{tab:overview}), whose semantics follow base R: indexing is 1-based, subsetting uses R's bracket syntax, and arrays are laid out in column-major order, which matters whenever an operation traverses the elements of an array.
+For example, `cumsum()` runs over a matrix column by column in both base R and \pkg{anvl}, whereas the same computation in \CRANpkg{torch}, which requires flattening the tensor first, follows row-major order:
 
 ```{r cumsum}
 m <- matrix(1:6, nrow = 2)
@@ -299,95 +258,61 @@ t <- torch::torch_flatten(torch::torch_tensor(m))
 torch::as_array(torch::torch_cumsum(t, dim = 1))
 ```
 
-
-```{r rapi}
-m <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2))
-m[, 2:3] <- 0
-as_array(crossprod(m))
-as_array(rev(cumsum(m[1, ])))
-```
-
-Where \pkg{anvl} needs functions of its own, their names and arguments follow the corresponding base R functions, e.g., `nv_pmax()`, `nv_which_max()`, `nv_order()`, `nv_ifelse(test, yes, no)`, `nv_seq(from, to, by)`, `nv_rnorm(shape, state, mean, sd)`, `nv_sample_int()`, and `nv_quantile(x, probs, method)`.
-The distinction between R's integers and doubles is kept as well (see Section \@ref(precision)).
+Where \pkg{anvl} needs functions of its own, their names and arguments follow base R, e.g., `nv_pmax()`, `nv_which_max()`, `nv_ifelse(test, yes, no)`, `nv_seq(from, to, by)`, and `nv_rnorm(shape, state, mean, sd)`.
 One deliberate departure concerns how R values correspond to arrays.
-In \pkg{anvl}, a length-one R vector is a scalar, i.e., an array without axes, and every other value must be an R array, whose `dim` becomes the shape; plain vectors of other lengths are rejected instead of converted.
-Each R value therefore corresponds to exactly one shape.
-The same principle applies to subsetting, where the type of an index, not its length, determines whether an axis is dropped.
-In base R, `m[c(1, 2), ]` returns a matrix and `m[1, ]` a vector unless `drop = FALSE` is given, so the type of the result changes when the number of selected rows happens to be one.
-In \pkg{anvl}, a scalar index drops the axis and an array index keeps it, whatever its length:
+A length-one R vector is a scalar, every other value must be an R array, whose `dim` becomes the shape, so each R value corresponds to exactly one shape.
+The same principle applies to subsetting: in base R, `m[1, ]` drops an axis unless `drop = FALSE` is given, so the type of the result changes when the number of selected rows happens to be one.
+In \pkg{anvl}, a scalar index drops the axis and an array index keeps it, whatever its length, which removes a discontinuity that would be particularly harmful in compiled programs, whose shapes are fixed:
 
 ```{r drop}
 x <- nv_array(matrix(1:6, 2))
 shape(x[1, ])
 shape(x[array(1), ])
-shape(x[array(c(1, 2)), ])
 ```
 
-This removes a discontinuity that is a common source of errors in R code and that would be particularly harmful in compiled programs, whose shapes are fixed when they are compiled.
-The remaining deviations from base R follow from static shapes or from functional purity: only scalars are broadcast automatically, logical masks and negative indices are not supported in subsetting, and random number generators take and return an explicit state.
+The remaining deviations from base R follow from static shapes or from functional purity: only scalars are broadcast automatically, logical masks are not supported in subsetting, and random number generators take and return an explicit state.
 
-## Tracing R code into a graph
+## Tracing R code into a graph {#trace}
 
-There are two ways to translate code into another representation: statically analyzing its source code, as done by \CRANpkg{quickr}, or executing it with special values that record the operations applied to them, which is called tracing.
-\pkg{anvl} follows the latter approach.
-The function `trace_fn()` evaluates an R function with `GraphBox` objects in place of arrays, which carry only a data type and a shape.
-Below, we trace a function that either adds or multiplies two scalars, depending on an argument `op`, where `nv_aval()` creates such an abstract value, here an `f32` scalar.
+Instead of statically analyzing the source code of a function, as \CRANpkg{quickr} does, \pkg{anvl} *traces* it: `trace_fn()` evaluates an R function with `GraphBox` objects in place of arrays, which carry only a data type and a shape.
+Below, we trace a function that adds or multiplies two `f32` scalars, created by `nv_aval()`, depending on an argument `op`.
 
 ```{r trace}
 f <- function(x, y, op) {
   if (op == "add") x + y else x * y
 }
-graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("f32", integer()),
-  op = "mul"))
+s <- nv_aval("f32", integer())
+graph <- trace_fn(f, list(x = s, y = s, op = "mul"))
 graph
 ```
 
-Every call to a primitive appends a `PrimitiveCall`, consisting of the primitive, its inputs, its static parameters, and its outputs, to the graph under construction.
-All other R code is simply evaluated.
-Here, the `if` statement is executed by R, and only the branch that was taken becomes part of the `AnvlGraph`.
-The graph holds its inputs and outputs, the primitive calls, and the arrays that the traced function closes over.
-Since graphs only operate on arrays, the nesting structure of (nested) lists of inputs and outputs is stored separately, which allows transformed functions to take and return lists of arrays.
+Every call to a primitive appends a `GraphStatement`, consisting of the primitive, its inputs, its static parameters, and its outputs, to the graph, while all other R code is simply evaluated; here, only the branch of the `if` statement that was taken becomes part of the `AnvlGraph`.
+The nesting structure of inputs and outputs is stored separately, so transformed functions can take and return (nested) lists of arrays.
 
-Tracing has two main advantages over static analysis.
-First, arbitrary R code can be used to construct a program, as long as the operations on arrays are \pkg{anvl} operations.
-Arguments that are not arrays, such as `op` above, are ordinary R values during tracing, which allows reusing R's control flow, functions, and data structures to generate programs.
-Second, the approach only requires that the array operations are known, and not the semantics of the R language as a whole.
-The downside is that tracing only works for functions that can be intercepted.
-For example, `sum()` and `%*%` are generics with methods for \pkg{anvl}'s arrays, whereas `rowSums()` is not generic and therefore cannot be traced; a static compiler such as \CRANpkg{quickr} can translate such functions directly.
-Furthermore, programs must be pure: side effects, such as printing or modifying global variables, only happen once during tracing, and R control flow can only depend on values that are known during tracing, such as static arguments and shapes.
+Compared to static analysis, tracing allows arbitrary R code to construct a program and only needs to know the semantics of the array operations, not those of the R language as a whole.
+The downside is that tracing only works for functions that can be intercepted: `sum()` is a generic with a method for \pkg{anvl}'s arrays, whereas `rowSums()` is not generic and cannot be traced.
+Furthermore, programs must be pure: side effects, such as printing, only happen once during tracing, and R control flow can only depend on values that are known during tracing, such as static arguments and shapes.
 
-## Transforming a graph into another graph
+## Transforming and lowering graphs
 
 Once a program is represented as an `AnvlGraph`, it can be transformed into another graph.
-Currently, the main such transformation is reverse-mode AD, implemented in `transform_gradient()`.
+Currently, the main such transformation is reverse-mode AD, e.g., `graph_gradient(graph, wrt = c("x", "y"))`.
+Reverse-mode AD exploits that a program executes a sequence of elementary operations with known derivatives, and propagates the derivatives of the output with respect to each intermediate value, the *adjoints*, backward through this sequence, which yields the whole gradient of a scalar function at a small constant multiple of the cost of evaluating it [@ref-griewank2008evaluating].
+For this, every primitive stores a `"reverse"` rule, which receives the inputs and outputs of the forward call and the adjoints of the outputs, and returns the vector-Jacobian products for the inputs.
+`graph_gradient()` walks the graph in reverse order, applies these rules, and accumulates the adjoints of values that are used multiple times.
+Because the reverse rules themselves call primitives, the backward pass is recorded with the same tracing machinery, and the result is again an `AnvlGraph`.
 
-```{r transform-gradient, results = "hide"}
-grad_graph <- transform_gradient(graph, wrt = c("x", "y"))
-```
-
-For this, every primitive stores a `"reverse"` rule, which receives the inputs and outputs of the forward call as well as the adjoints of the outputs, and returns the vector-Jacobian products for the inputs.
-`transform_gradient()` walks the graph in reverse order, applies these rules, and accumulates the adjoints of values that are used multiple times.
-Because the reverse rules themselves call primitives, the backward pass is recorded with the same tracing machinery and the result is again an `AnvlGraph`.
-The transformation is defined for functions with a scalar output, which is the case for the objective functions of optimization and sampling algorithms.
-\pkg{anvl} does not prescribe how a transformation is implemented; the rules attached to primitives are simply a convenient place to store per-operation information.
-
-## Transforming a graph into an executable
-
-A backend lowers an `AnvlGraph` into an executable.
-For the `"pjrt"` backend, which uses XLA, `stablehlo()` translates the graph into a StableHLO function like the one in Section \@ref(background) by applying each primitive's `"stablehlo"` rule, which maps it to one or more \pkg{stablehlo} operations and converts R's 1-based indices to StableHLO's 0-based ones.
+A backend then lowers a graph into an executable.
+For the `"pjrt"` backend, `stablehlo()` translates the graph into a StableHLO function by applying each primitive's `"stablehlo"` rule, which maps it to one or more \pkg{stablehlo} operations and converts R's 1-based indices to StableHLO's 0-based ones.
 R literals are embedded into the program as constants, while arrays that the traced function closes over become additional inputs, which avoids copying their data into the program.
-The resulting program is then compiled via \pkg{pjrt}.
-The \CRANpkg{quickr} backend instead translates the graph into an R function with type declarations and compiles it with \CRANpkg{quickr}.
+The result is compiled via \pkg{pjrt}.
+The \CRANpkg{quickr} backend instead translates the graph into an R function with type declarations and compiles it with \CRANpkg{quickr}; compared to XLA, a compiled \CRANpkg{quickr} function can be reused for inputs of different shapes, but it only runs on the CPU and supports fewer data types.
 
 ## The user interface
 
-In practice, users rarely call the transformations above themselves, but use `jit()`, `gradient()`, and `value_and_gradient()`, which return functions that apply the transformations lazily, once the types of the inputs are known.
-
-### `jit()`
-
-`jit()` returns a function with the same arguments that traces, lowers, and compiles its input when it is called.
-The compiled executable is cached, and a later call with inputs of the same data types and shapes reuses it.
-Below, we include a side effect in the function to illustrate this.
+Users rarely call these transformations themselves, but use `jit()`, `gradient()`, and `value_and_gradient()`, which return functions that apply them lazily, once the types of the inputs are known.
+`jit()` returns a function that traces, lowers, and compiles its input when it is called, and caches the executable, so that a later call with inputs of the same data types and shapes reuses it.
+Below, the side effect shows that the second call does not trace the function again.
 
 ```{r jit}
 f_jit <- jit(function(x, y) {
@@ -395,120 +320,73 @@ f_jit <- jit(function(x, y) {
   x * y
 })
 y1 <- f_jit(x, x)
-y2 <- f_jit(x, x + 1)
+y2 <- f_jit(x, x + 1L)
 ```
 
-The second call does not print, because it executes the cached executable without tracing the function again.
-A call with arrays of a different type or shape results in a cache miss.
-Arguments that are not arrays must be marked as `static`.
-Their values become part of the cache key, and the function is traced again for every new value.
+Arguments that are not arrays, such as `op` above, must be marked as `static`, e.g., `jit(f, static = "op")`; their values become part of the cache key, and the function is traced again for every new value.
+A jitted function called from within another jitted function is traced as part of the outer function, so that both are compiled into a single executable.
+`gradient()` takes a function with scalar output and returns a function that computes the gradient with respect to the arguments given in `wrt`, which can itself be called within a jitted function (Section \@ref(hmc)).
 
-```{r static}
-g <- jit(f, static = "op")
-y3 <- g(x, x, op = "add")
-```
-
-A jitted function called from within another jitted function is not executed separately, but traced as part of the outer function, so that both are compiled into a single executable.
-Because every primitive is a jitted function, the same function can therefore be used both eagerly and as a building block of larger programs.
-
-Compiling whole programs also simplifies memory management, which matters in particular on GPUs.
-In eager execution, every intermediate result is an R object that holds device memory until R's garbage collector reclaims it; as this collector only runs when R itself needs memory, device memory of results that are no longer referenced is not released in time, which is why \CRANpkg{torch} triggers the collector itself when device memory runs low [@ref-torch-memory].
-In a jitted function, intermediate results never become R objects: they are buffers of the compiled program, which XLA allocates, reuses, and frees as part of the program.
-Only the inputs and outputs of a jitted function are R objects, and inputs that are no longer needed can be donated via the `donate` option of `jit()`, which allows XLA to reuse their memory for the outputs.
-
-### `gradient()`
-
-`gradient()` takes a function with scalar output and returns a function that computes the gradient with respect to the arguments given in `wrt`, returning a named list.
-Like any other function built from \pkg{anvl} operations, it can be jitted or called from within another jitted function.
-
-```{r gradient-ui}
-loss <- function(beta, X, y) mean((X %*% beta - y)^2)
-update <- jit(function(beta, X, y, lr) {
-  beta - lr * gradient(loss, wrt = "beta")(beta, X, y)$beta
-})
-X <- nv_array(matrix(rnorm(20), 10, 2))
-y <- X %*% matrix(c(1, 2))
-as_array(update(nv_array(matrix(0, 2, 1)), X, y, lr = 0.1))
-```
-
-When `update()` is traced, the call to the gradient function traces `loss()` into a separate graph, transforms it, and inlines the resulting gradient graph into the graph of `update()`.
-
-### Control flow
-
-R's control flow can be used within jitted functions, but as we have seen, an `if` statement only retains the branch that was taken and a loop is unrolled during tracing.
+R's control flow can be used within jitted functions, but an `if` statement only retains the branch that was taken and a loop is unrolled during tracing.
 For control flow that depends on array values, or for loops that should not be unrolled, \pkg{anvl} provides the higher-order primitives `nv_if()`, `nv_while()`, and `nv_scan()`, which trace the functions passed to them into sub-graphs.
-For example, `nv_scan()` runs a loop for a fixed number of steps, threads a state (the carry) through a body function, and stacks the outputs of all steps; we use it in Section \@ref(hmc).
+For example, `nv_scan()` runs a loop for a fixed number of steps, threads a state through a body function, and stacks the outputs of all steps; we use it in Section \@ref(hmc).
 
-## Restrictions
+Compiling whole programs also simplifies memory management on GPUs: in eager execution, every intermediate result is an R object that holds device memory until R's garbage collector reclaims it, which is why \CRANpkg{torch} triggers the collector itself when device memory runs low [@ref-torch-memory], whereas in a jitted function, intermediate results are buffers that XLA allocates, reuses, and frees, and inputs can be donated via the `donate` option of `jit()`.
 
-The XLA compiler requires all shapes to be known when a program is compiled, so operations whose output shape depends on data, such as `unique()`, cannot be expressed directly, and each new combination of input shapes triggers a new compilation.
-Common workarounds are masking irrelevant entries, e.g., via `nv_ifelse()`, and padding inputs to a few fixed sizes.
-Moreover, StableHLO programs cannot raise errors at runtime (a dynamic slice, for example, clamps out-of-bounds indices), so \pkg{anvl} performs all checks during tracing, and values that must be validated need to be static arguments.
+The main restriction stems from XLA's requirement that all shapes are known when a program is compiled.
+Operations whose output shape depends on data, such as `unique()`, cannot be expressed directly, and each new combination of input shapes triggers a new compilation; common workarounds are masking, e.g., via `nv_ifelse()`, and padding inputs to a few fixed sizes.
+Moreover, StableHLO programs cannot raise errors at runtime, so \pkg{anvl} performs all checks during tracing.
 
 # Data types and precision {#precision}
 
-Numerical precision is a recurring concern in statistics.
-Log-likelihoods sum many terms, linear systems can be ill-conditioned, and Markov chain Monte Carlo methods compare densities whose difference is small relative to their size, all of which can require double precision.
-Accelerators, on the other hand, are designed for single precision: consumer GPUs often execute double-precision operations at a small fraction of the single-precision throughput, and some devices do not support double precision at all.
+Numerical precision is a recurring concern in statistics: log-likelihoods sum many terms, linear systems can be ill-conditioned, and MCMC methods compare densities whose difference is small relative to their size.
+Accelerators, on the other hand, are designed for single precision, and consumer GPUs often execute double-precision operations at a small fraction of the single-precision throughput.
 A framework for statistical computing should therefore make it easy to choose the precision of a computation, and it should not lose precision without being asked to.
-In this section, we describe how \pkg{anvl} achieves this, and how its approach differs from JAX, from which much of \pkg{anvl}'s design is otherwise adopted.
 
 ## R values have no data type
 
-In JAX, Python scalars are *weakly typed*: they take the data type of the array they are combined with, so adding `2.0` to a single-precision array does not promote it [@ref-jax].
-NumPy arrays, however, have a data type.
-By default, JAX represents values in 32 bits, so double-precision NumPy data is truncated to single precision when it enters a program; with 64-bit mode enabled, it is kept in double precision and promotes every single-precision array it meets.
-Transferred to R, where every real-valued vector and array is stored in double precision, both options are unsatisfactory: either all data loses precision when it enters a program, or it pulls every computation into double precision.
+In JAX, Python scalars are *weakly typed*: they take the data type of the array they are combined with [@ref-jax].
+NumPy arrays, however, have a data type, and by default, JAX truncates double-precision data to single precision when it enters a program, while with 64-bit mode enabled, the data promotes every single-precision array it meets.
+Transferred to R, where every real-valued vector is stored in double precision, either all data loses precision when it enters a program, or it pulls every computation into double precision.
 
-\pkg{anvl} therefore extends weak typing to R values that enter a program, i.e., length-one vectors as well as matrices and arrays.
-An R value has no data type, and only *materializes* as an array when it meets one, taking its data type.
+\pkg{anvl} therefore extends weak typing to all R values that enter a program, i.e., length-one vectors as well as matrices and arrays.
+An R value has no data type and only *materializes* as an array when it meets one, taking its data type.
 Below, the same R matrix `B` is multiplied with a single- and a double-precision array.
 
 ```{r rdata}
 B <- matrix(c(0.1, 0.2, 0.3, 0.4), 2, 2)
 matmul <- jit(function(x, b) x %*% b)
-dtype(matmul(nv_array(diag(2), dtype = "f32"), B))
-dtype(matmul(nv_array(diag(2), dtype = "f64"), B))
+c(dtype(matmul(nv_array(diag(2), dtype = "f32"), B)),
+  dtype(matmul(nv_array(diag(2), dtype = "f64"), B)))
 ```
 
-In the second call, `B` enters the program in double precision and the product is exactly `B`, whereas a representation of `B` at a fixed default precision would either have lost precision or turned the first result into `f64`.
+In the second call, `B` enters the program in double precision and the product is exactly `B`, whereas a fixed default precision would either have lost precision or turned the first result into `f64`.
 Only a value that meets no array, such as the argument of `nv_exp(1)`, settles on a default data type.
+A non-static R argument of a jitted function, such as `b` above, enters the trace with a shape but no data type, and each operation that uses it decides at which data type it materializes; if it is used at several data types, it is transferred at the narrowest one that holds all of them.
 
-When an R value is passed to a jitted function as a non-static argument, as `b` above, its data type is not decided at the call boundary.
-It enters the trace as an `RData` object, which has a shape but no data type, and each operation that uses it decides at which data type it materializes.
-If a value is used at several data types, it is transferred at the narrowest data type that holds all of them, and the uses convert it within the compiled program.
-Below, `b` is used in a single-precision matrix product and converted to `f64`; the graph shows that it is transferred as an `f64` (`<- double`) and converted to `f32` only for the product, so no information is lost for the second output.
-
-```{r rdata-graph}
-trace_fn(function(x, b) list(x %*% b, nv_convert(b, "f64")),
-  list(x = nv_aval("f32", c(2L, 2L)), b = nv_aval("double", c(2L, 2L))))
-```
-
-The same principle guards against silent changes of values in other places.
-An R value is built at the data type it takes, rather than first materialized at a default and then converted, so a value that the data type cannot represent is an error: adding `-2L` to an unsigned 8-bit integer fails instead of wrapping around.
-The distinction between R's integers and doubles is preserved, so, as in R, `x - 1L` keeps an integer array `x` an integer, while `x - 1` gives a float.
-Finally, integers never become floats on their own: an unsigned and a signed 64-bit integer have no common data type in \pkg{anvl} and must be converted explicitly, whereas JAX and NumPy silently promote them to a float.
+The same principle guards against silent changes of values elsewhere.
+An R value is built directly at the data type it takes, so a value that the data type cannot represent is an error: adding `-2L` to an unsigned 8-bit integer fails instead of wrapping around.
+As in R, `x - 1L` keeps an integer array `x` an integer, while `x - 1` gives a float.
+Finally, integers never become floats on their own: an unsigned and a signed 64-bit integer have no common data type and must be converted explicitly, whereas JAX and NumPy silently promote them to a float.
 
 ## Choosing the precision
 
 The default data types for R doubles and integers are a property of the backend (`f32` and `i32` for XLA) and can be changed for a scope via `with_default_dtypes()` or the option `anvl.default_dtypes`.
-`with_dtypes()` goes one step further and turns a function into one that runs at the given data types, converting its array arguments and results and setting the defaults for its body.
+`with_dtypes()` turns a function into one that runs at the given data types, converting its array arguments and results and setting the defaults for its body.
 
 ```{r with-dtypes}
-dtype(nv_exp(1))
-dtype(with_default_dtypes(c(float = "f64"), nv_exp(1)))
 loss <- function(beta, X, y) mean((X %*% beta - y)^2)
 loss_f64 <- with_dtypes(loss, c(float = "f64"))
-dtype(loss_f64(nv_array(matrix(0, 2, 1), dtype = "f32"), B, B[, 1, drop = FALSE]))
+c(dtype(nv_exp(1)), dtype(with_default_dtypes(c(float = "f64"), nv_exp(1))),
+  dtype(loss_f64(nv_array(matrix(0, 2, 2), dtype = "f32"), B, B)))
 ```
 
-Compiled programs are cached per default data types, so both variants can be used side by side.
-In contrast to JAX's 64-bit mode, which decides whether 64-bit types are available at all, the defaults in \pkg{anvl} only decide what an R value settles on when nothing else determines its data type; double precision is always available.
+Compiled programs are cached per default data types, so both variants can be used side by side, and in contrast to JAX's 64-bit mode, the defaults only decide what an R value settles on when nothing else determines its data type.
 
 ## Promotion rules
 
 When a function receives arrays of different data types, it has to decide on the data type of the computation.
-In \pkg{anvl}, this is not a global rule, but each `nv_*()` function states it explicitly, by passing a *promotion rule* to `as_anvl_arrays()`, which converts its arguments to arrays (materializing R values) at the beginning of the function.
+In \pkg{anvl}, this is not a global rule, but each `nv_*()` function passes a *promotion rule* to `as_anvl_arrays()`, which converts its arguments to arrays at the beginning of the function.
 `promotion_common()` brings all inputs to their common data type, as used, e.g., by `nv_add()`; `promotion_like()` brings them to the data type of one designated input; `promotion_dtype()` to a fixed data type; and `promotion_rdata_common()`, which is used by primitives, only lets R values adapt and requires arrays to agree.
 The rules refuse conversions that lose precision unless `coerce = TRUE`.
 For example, the following function computes $a x + y$ at the data type of `y`, and refuses an `x` of higher precision rather than silently rounding it.
@@ -523,32 +401,27 @@ as_array(axpy(2, nv_array(c(1, 2), dtype = "f32"), y32))
 axpy(2, nv_array(c(1, 2), dtype = "f64"), y32)
 ```
 
-The same mechanism is available to developers of packages built on \pkg{anvl}, who can decide for each function which argument determines the precision of the computation, e.g., that a likelihood is always accumulated in double precision while the data stays in single precision.
+Developers of packages built on \pkg{anvl} can thus decide for each function which argument determines the precision, e.g., that a likelihood is accumulated in double precision while the data stays in single precision.
 
 # Extending the package {#extending}
-
-One of our design goals is that \pkg{anvl} can be extended with new primitives, transformations, and backends.
-
-## New primitives
 
 Most operations can be expressed in terms of existing primitives and are best added as `nv_*()` functions.
 A new primitive is needed if an operation cannot be expressed otherwise, or if it benefits from a dedicated implementation, e.g., of its derivative.
 Below, we add a primitive for the softplus function $\log(1 + e^x)$, which appears in the logistic regression example in Section \@ref(hmc).
-A primitive is created via `new_primitive()`, whose body records a call in the graph via `graph_desc_add()`.
-The latter requires an inference function that computes the types of the outputs from those of the inputs and validates them.
+A primitive is created via `new_primitive()`, whose body records a statement in the graph via `graph_desc_add()`, together with an inference function that computes the types of the outputs from those of the inputs and validates them.
 Within the body, `self` refers to the primitive being defined.
 
 ```{r new-primitive}
 prim_softplus <- new_primitive("softplus", function(x) {
   infer <- function(x) {
-    if (!(dtype(x) %in% c("f32", "f64"))) cli::cli_abort("{.arg x} must be a float.")
+    if (!(dtype(x) %in% c("f32", "f64"))) stop("`x` must be a float.")
     list(AbstractArray(dtype = dtype(x), shape = shape(x)))
   }
   graph_desc_add(self, list(x = x), infer_fn = infer)[[1L]]
 })
 ```
 
-Next, we attach the StableHLO rule, which receives \pkg{stablehlo} values and returns a list of them, and a reverse rule, which uses the derivative $\sigma(x) = 1 / (1 + e^{-x})$.
+Next, we attach the StableHLO rule, which receives and returns \pkg{stablehlo} values, and a reverse rule, which uses the derivative $\sigma(x) = 1 / (1 + e^{-x})$.
 
 ```{r primitive-rules}
 prim_softplus[["stablehlo"]] <- function(x) {
@@ -564,33 +437,20 @@ prim_softplus[["reverse"]] <- rule_reverse(
 The primitive can now be used eagerly, within jitted functions, and be differentiated.
 
 ```{r primitive-use}
-z <- nv_array(c(-1, 0, 1))
-as_array(jit(gradient(function(z) sum(prim_softplus(z))))(z)$z)
+grad_softplus <- jit(gradient(function(z) sum(prim_softplus(z))))
+as_array(grad_softplus(nv_array(c(-1, 0, 1)))$z)
 ```
 
-This mechanism covers every operation that can be expressed in StableHLO.
-For operations that cannot, such as calls into LAPACK or cuSOLVER for some linear algebra primitives, the XLA backend supports PJRT's custom call mechanism: a handler written in C or C++ against XLA's foreign function interface is registered from R via \pkg{pjrt} and referenced from the StableHLO program.
-Because handlers are registered per platform, a primitive can dispatch to separate CPU and CUDA implementations.
+Operations that cannot be expressed in StableHLO can use PJRT's custom call mechanism: a handler written in C or C++ against XLA's foreign function interface is registered from R via \pkg{pjrt}, with separate implementations per platform, as the linear algebra primitives do to call LAPACK and cuSOLVER.
 
-## New transformations and backends
-
-Since an `AnvlGraph` is a simple data structure consisting of inputs, outputs, and a list of primitive calls, new graph-to-graph transformations can be implemented in R by iterating over the calls and emitting new ones, usually guided by a rule stored in each primitive.
-For example, forward-mode AD would propagate Jacobian-vector products, and a vectorizing transformation similar to JAX's `vmap()` would rewrite each call to operate on an additional batch axis.
-A backend is represented by an `AnvlBackend` object, a collection of functions that define how arrays are stored, converted to R, and placed on devices, and how a graph is compiled, together with a lowering rule for each supported primitive.
-Two backends are available, `"pjrt"` and `"quickr"`; exactly one of them is active at a time, which can be changed via `local_backend()` or `with_backend()`.
-
-## Testing
-
-We test the primitives against \CRANpkg{torch} as a reference implementation wherever possible: the outputs of jitted primitives and their gradients are compared to those of \CRANpkg{torch} and its autograd engine on random inputs.
-Operations without a counterpart in \CRANpkg{torch} are tested against manually computed results.
+Since an `AnvlGraph` is a simple data structure, new graph-to-graph transformations, such as forward-mode AD, can be implemented in R by iterating over its statements and emitting new ones, guided by a rule stored in each primitive.
+A backend is an `AnvlBackend` object, a collection of functions that define how arrays are stored, converted to R, and placed on devices, and how a graph is compiled, together with a lowering rule for each supported primitive; exactly one backend is active at a time.
+We test every primitive against \CRANpkg{torch} as a reference implementation wherever possible, comparing the outputs and gradients of jitted primitives with those of \CRANpkg{torch} and its autograd engine on random inputs.
 
 # Use case: Hamiltonian Monte Carlo {#hmc}
 
-In this section, we implement Hamiltonian Monte Carlo (HMC) [@ref-neal2011mcmc] for Bayesian logistic regression.
-HMC is a Markov chain Monte Carlo method that uses the gradient of the log posterior density to propose distant states that are still accepted with high probability.
-It is a natural use case for \pkg{anvl}: it needs gradients, it is an iterative algorithm whose loops are slow in R, and running many chains in parallel is a good fit for GPUs.
-
-We observe a binary response $y \in \{0, 1\}^n$ and features $X \in \R^{n \times p}$, and assume $y_i \sim \text{Bernoulli}(\sigma(x_i^\top \beta))$ with a standard normal prior $\beta \sim \mathcal{N}(0, I_p)$.
+Hamiltonian Monte Carlo (HMC) [@ref-neal2011mcmc] is an MCMC method that uses the gradient of the log posterior density to propose distant states that are still accepted with high probability, and thus a natural use case for \pkg{anvl}: it needs gradients, its loops are slow in R, and running many chains in parallel is a good fit for GPUs.
+We consider Bayesian logistic regression with a binary response $y \in \{0, 1\}^n$, features $X \in \R^{n \times p}$, $y_i \sim \text{Bernoulli}(\sigma(x_i^\top \beta))$, and a standard normal prior $\beta \sim \mathcal{N}(0, I_p)$.
 HMC simulates the dynamics of a particle with position $\beta$ and momentum $\rho \sim \mathcal{N}(0, I_p)$ in the potential energy
 $$U(\beta) = -\log p(\beta \mid X, y) = -\sum_{i = 1}^n \left(y_i x_i^\top \beta - \log(1 + e^{x_i^\top \beta})\right) + \frac{1}{2}\lVert \beta \rVert^2 + \text{const}.$$
 We write the sampler for $K$ chains at once, so the positions are stored in a $K \times p$ matrix, and the potential returns a vector of length $K$.
@@ -598,8 +458,7 @@ We write the sampler for $K$ chains at once, so the positions are stored in a $K
 ```{r potential}
 ```
 
-Because the chains are independent, the gradient of the summed potential contains the gradient of each chain in the corresponding row.
-We therefore obtain the gradients of all chains with a single call to `gradient()`.
+Because the chains are independent, the gradient of the summed potential contains the gradient of each chain in the corresponding row, so a single call to `gradient()` yields the gradients of all chains.
 
 ```{r gradient}
 ```
@@ -610,19 +469,20 @@ We run $L$ such steps with `nv_scan()`, where the gradient at the current positi
 ```{r leapfrog}
 ```
 
-A single transition draws a new momentum, simulates a trajectory, and accepts the proposal of each chain with probability $\min(1, \exp(H_0 - H_1))$, where $H = U(\beta) + \lVert \rho \rVert^2 / 2$ is the total energy.
-The random number generator state is passed explicitly, as \pkg{anvl} is functional, and the acceptance decision uses `nv_ifelse()` instead of an R `if` statement, as it depends on array values.
+A transition draws a new momentum, simulates a trajectory, and accepts the proposal of each chain with probability $\min(1, \exp(H_0 - H_1))$, where $H = U(\beta) + \lVert \rho \rVert^2 / 2$ is the total energy.
+The random number generator state is passed explicitly, and the acceptance decision uses `nv_ifelse()` instead of an R `if` statement, as it depends on array values.
 
 ```{r hmc-step}
 ```
 
 Finally, we collect `n_draws` draws with another `nv_scan()`, whose outputs are stacked along a new first axis, and compile the whole sampler with `jit()`.
-The number of leapfrog steps and draws are static arguments, as they determine the shapes and structure of the program.
+The number of leapfrog steps and draws are static arguments, as they determine the structure of the program.
 
 ```{r hmc}
 ```
 
 We apply the sampler to simulated data with $n = 1000$ observations and $p = 5$ features, running four chains in double precision.
+The posterior means, computed from the second half of each chain, agree with the maximum likelihood estimates up to the shrinkage induced by the prior.
 
 ```{r hmc-run}
 options(anvl.default_dtypes = c(float = "f64", int = "i32"))
@@ -633,16 +493,8 @@ y <- rbinom(n, 1, plogis(X %*% rnorm(p, sd = 0.5)))
 res <- hmc(nv_array(matrix(0, 4, p)), nv_rng_state(42L), nv_array(X),
   nv_array(as.double(y)), eps = 0.5 / sqrt(n), L = 10L, n_draws = 2000L)
 draws <- as_array(res$draws)
-dim(draws)
-```
-
-The posterior means, computed from the second half of each chain, agree with the maximum likelihood estimates up to the shrinkage induced by the prior.
-
-```{r hmc-check}
-rbind(
-  hmc = colMeans(apply(draws[1001:2000, , ], 3, c)),
-  glm = coef(glm(y ~ X - 1, family = binomial))
-)
+rbind(hmc = colMeans(apply(draws[1001:2000, , ], 3, c)),
+  glm = coef(glm(y ~ X - 1, family = binomial)))
 ```
 
 The whole sampler, including the $2000 \times 11$ gradient evaluations per chain, runs as a single compiled program without returning to R.
@@ -655,39 +507,29 @@ res_files <- list.files("benchmarks/results", pattern = "\\.csv$", full.names = 
 have_results <- length(res_files) > 0L
 ```
 
-In this section, we compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose reverse-mode AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath], to \CRANpkg{TMB} [@ref-tmb], and to the same sampler written with \CRANpkg{torch}.
-We ask how the sampler compares on a single CPU core, how well it uses multiple cores and a GPU, both within one chain and across many chains, and how large the compilation overhead is.
+We compare the runtime of the HMC sampler from Section \@ref(hmc) to Stan, whose AD library and code generation are the state of the art for statistical models on the CPU [@ref-stanmath], to \CRANpkg{TMB}, and to the same sampler written with \CRANpkg{torch}.
 
 ## Setup
 
-We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40, with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that both samplers perform the same number of gradient evaluations.
-The Stan model uses `bernoulli_logit_glm()`, Stan's specialized and most efficient implementation of the logistic regression likelihood, which Stan can also evaluate on a GPU via OpenCL.
-We run this OpenCL variant on the same GPU as \pkg{anvl} and \CRANpkg{torch}; to do so, we had to provide NVIDIA's OpenCL libraries in the exact version of the installed driver and enable double precision in Stan's OpenCL kernels, which the driver requires (see the benchmark scripts).
-On the GPU, Stan's chains run as separate processes that share the device, at most 8 at a time.
-The \CRANpkg{torch} sampler mirrors the \pkg{anvl} code: it obtains the gradient from \CRANpkg{torch}'s reverse-mode AD and runs the leapfrog and sampling loops as R loops, as \CRANpkg{torch} executes each operation eagerly.
-The number of threads \CRANpkg{torch} uses on the CPU is set via `torch_set_num_threads()`.
-\CRANpkg{TMB} evaluates the log posterior and its gradient with CppAD from a C++ template, which we compile once.
-As \CRANpkg{TMB} does not provide an HMC sampler, we run the same static HMC loop in R around its compiled objective and gradient, as is common when custom algorithms are implemented with \CRANpkg{TMB}; for a single chain, \CRANpkg{TMB} can evaluate the likelihood with several OpenMP threads, and multiple chains run as separate processes, as for CmdStan.
-Both samplers work in double precision and start at $\beta = 0$, and the data are simulated with standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
+We run Stan's static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40 with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that all samplers perform the same number of gradient evaluations.
+The Stan model uses `bernoulli_logit_glm()`, Stan's most efficient implementation of the logistic regression likelihood, which can also be evaluated on a GPU via OpenCL; on the GPU, Stan's chains run as separate processes that share the device, at most 8 at a time.
+\CRANpkg{TMB} evaluates the log posterior and its gradient with CppAD from a C++ template, and as it does not provide an HMC sampler, we run the same static HMC loop in R around its compiled objective and gradient, as is common when custom algorithms are implemented with \CRANpkg{TMB}.
+The \CRANpkg{torch} sampler mirrors the \pkg{anvl} code, but runs the leapfrog and sampling loops in R, as \CRANpkg{torch} executes each operation eagerly.
+All samplers work in double precision and start at $\beta = 0$, and the data are simulated with standard normal features and $\beta \sim \mathcal{N}(0, 0.25 I_p)$.
 We exclude process start-up and data loading from Stan's measurements by subtracting the time of an otherwise identical run without draws, and time \pkg{anvl} after the data has been transferred to the device.
 Each configuration is repeated three times after a first call that includes compilation, and we report the median.
 
 We run three experiments.
 First, we draw 1000 samples from a single chain for $p = 20$ and $n \in \{10^3, 10^4, 10^5\}$.
 Second, we measure strong scaling: we draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 cores.
-\pkg{anvl} runs the unchanged sampler, which XLA parallelizes within operations.
-Stan needs a modified model for this, in which `reduce_sum()` splits the likelihood into slices that are evaluated by several threads.
+\pkg{anvl} and \CRANpkg{torch} run the unchanged sampler, which they parallelize within operations, \CRANpkg{TMB} evaluates the likelihood with several OpenMP threads, and Stan needs a modified model, in which `reduce_sum()` splits the likelihood into slices that are evaluated by several threads.
 Third, we draw 1000 samples from each of $K$ chains for $n = 10^4$ and $p = 20$.
-Static HMC in CmdStan runs one chain per process, so for $K$ chains we start $K$ processes, of which at most as many run at the same time as cores are available.
-On one core and on the GPU, \pkg{anvl} runs all chains as one batched program.
-On 16 cores, we split the chains into 16 groups and run each group on its own PJRT CPU device (via the environment variable `PJRT_CPU_DEVICE_COUNT`), so that, as for CmdStan, each core works on its own chains; we also report the time of a single program for all chains.
-
-All experiments ran on the LRZ AI Systems in the Docker image described in Appendix A.
-The CPU experiments used a node with two Intel Xeon Gold 6336Y processors, restricted to 16 physical cores, where configurations with fewer cores were pinned to a subset of them, and the GPU experiments used an NVIDIA A100 80GB GPU.
+CmdStan and \CRANpkg{TMB} run one chain per process, at most one per core, and \pkg{anvl} runs all chains as one batched program, except on 16 cores, where we split them into 16 groups that run on separate PJRT CPU devices.
+All experiments ran on the LRZ AI Systems, on two Intel Xeon Gold 6336Y processors restricted to 16 physical cores and on an NVIDIA A100 80GB GPU, in a Docker image that pins all software versions; the image, the benchmark scripts, and instructions are in the `paper/` directory of <https://github.com/r-xla/anvl>.
 
 ## Results
 
-```{r results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed lines are \\pkg{anvl}, \\CRANpkg{torch}, and Stan (OpenCL) on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 3.1, out.width = "49%", fig.show = "hold", fig.pos = "tbp"}
+```{r results-single-scaling, echo = FALSE, eval = have_results, fig.cap = "Left: time to draw 1000 samples from a single chain as a function of the number of observations $n$ ($p = 20$). Right: strong scaling, time to draw 200 samples from a single chain for $n = 10^5$ and $p = 100$ on 1 to 16 CPU cores; Stan uses reduce\\_sum(), the single point is the unmodified Stan model, and the dashed lines are \\pkg{anvl}, \\CRANpkg{torch}, and Stan (OpenCL) on the GPU. Medians of three repetitions, log-log scales.", fig.width = 3.4, fig.height = 2.75, out.width = "48%", fig.show = "hold", fig.pos = "tbp"}
 source("benchmarks/plots.R")
 plot_single(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2), linetype = ggplot2::guide_legend(ncol = 2))
 plot_scaling(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::guides(color = ggplot2::guide_legend(ncol = 2))
@@ -695,61 +537,40 @@ plot_scaling(res_files) + ggplot2::theme(legend.position = "bottom") + ggplot2::
 
 Figure \@ref(fig:results-single-scaling) (left) shows the results for a single chain.
 On one core, \pkg{anvl} draws the samples 3.1, 2.7, and 1.7 times faster than CmdStan for $n = 10^3$, $10^4$, and $10^5$, respectively.
-A plausible reason is that XLA compiles the whole sampler, including the leapfrog loop and the gradient, into a single optimized program, whereas Stan evaluates the gradient with its operator-overloading AD library.
-The GPU does not pay off for small data, as its per-step overhead makes it slower than a CPU core for $n = 10^3$.
-For $n = 10^5$, however, it draws the samples in 0.31 seconds, which is about 90 times faster than \pkg{anvl} on one core and 150 times faster than CmdStan.
-The \CRANpkg{torch} sampler needs about 28 seconds for $n = 10^3$ on one core, 200 times as long as \pkg{anvl}, and still 2.7 times as long for $n = 10^5$.
-Its runtime is dominated by the overhead of dispatching each of the operations of a gradient evaluation from R, which is also why additional threads and the GPU do not help: on 16 threads it is slightly slower than on one, and on the GPU it takes about 36 seconds for every $n$, 110 to 220 times as long as \pkg{anvl} on the GPU.
-This is the per-operation overhead of eager execution discussed in the introduction.
-Stan's OpenCL backend, which evaluates the likelihood and its gradient on the GPU while the sampler runs on the CPU, needs 35 to 38 seconds for every $n$, as each gradient evaluation involves transferring data and launching kernels; it is faster than Stan on the CPU only for $n = 10^5$ (38 versus 48 seconds), and about 120 times slower than \pkg{anvl} on the GPU.
-\CRANpkg{TMB}, whose CppAD tape records every scalar operation of the likelihood, needs 5.2, 51, and 521 seconds, 11 to 13 times as long as CmdStan and 18 to 39 times as long as \pkg{anvl}; the R loop around it adds little, as each gradient evaluation takes several milliseconds.
+A plausible reason is that XLA compiles the whole sampler into a single optimized program, whereas Stan and \CRANpkg{TMB}, which takes 11 to 13 times as long as CmdStan, evaluate the gradient with operator-overloading AD.
+The GPU does not pay off for small data, but for $n = 10^5$, it draws the samples in 0.31 seconds, about 90 times faster than \pkg{anvl} on one core and 150 times faster than CmdStan.
+The \CRANpkg{torch} sampler needs about 28 seconds for $n = 10^3$ on one core, 200 times as long as \pkg{anvl}, and about 36 seconds for every $n$ on the GPU: its runtime is dominated by the overhead of dispatching each operation from R, which is the per-operation overhead of eager execution discussed in Section \@ref(in-r).
+Stan's OpenCL backend, which evaluates only the likelihood and its gradient on the GPU, needs 35 to 38 seconds for every $n$, as each gradient evaluation transfers data and launches kernels.
 
 Figure \@ref(fig:results-single-scaling) (right) shows how a single chain scales with the number of cores.
-Without any change to the code, \pkg{anvl} becomes 1.7, 2.8, and 4.6 times faster on 2, 4, and 8 cores, and does not improve further on 16 cores.
-With `reduce_sum()`, Stan scales further at 16 cores (11 times faster than on one thread), but this requires rewriting the model, and the parallelized model is slower than the original on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
-Up to 8 cores, both scale similarly; beyond that, profiling suggests that \pkg{anvl} is limited by the fixed cost of distributing each operation of the gradient over the cores, as the individual operations are too small at this problem size to keep 16 cores busy.
-\CRANpkg{TMB}'s OpenMP parallelization scales well, becoming 18 times faster on 16 threads, but it starts from 522 seconds on one thread and still takes 29 seconds on 16.
-\CRANpkg{torch} is as fast as \pkg{anvl} on one core (37 seconds), as the operations are large enough at this problem size to hide its overhead, but it becomes only 1.7 times faster on 16 threads (22 seconds).
+Without any change to the code, \pkg{anvl} becomes 1.7, 2.8, and 4.6 times faster on 2, 4, and 8 cores, and does not improve further on 16 cores, where the individual operations are too small at this problem size to keep all cores busy.
+With `reduce_sum()`, Stan scales further (11 times faster on 16 threads), but this requires rewriting the model, which is then slower on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
+\CRANpkg{TMB} becomes 18 times faster on 16 threads, but starts from 522 seconds, and \CRANpkg{torch} is as fast as \pkg{anvl} on one core, where the operations are large enough to hide its overhead, but becomes only 1.7 times faster on 16 threads.
 On the GPU, the same run takes `r round(median(read.csv("benchmarks/results/scaling-gpu.csv")$time), 2)` seconds with \pkg{anvl}, `r round(median(read.csv("benchmarks/results/scaling-gpu-torch.csv")$time), 1)` seconds with \CRANpkg{torch}, and `r round(median(read.csv("benchmarks/results/scaling-gpu-stan.csv")$time), 1)` seconds with Stan's OpenCL backend.
 
-```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 2.6, fig.pos = "tbp"}
+```{r results-chains, echo = FALSE, eval = have_results, fig.cap = "Time to draw 1000 samples from each of $K$ chains for $n = 10^4$ (median of three repetitions, log-log scale).", fig.width = 6, fig.height = 2.4, out.width = "100%", fig.pos = "tbp"}
 plot_chains(res_files)
 ```
 
 Figure \@ref(fig:results-chains) shows the results for multiple chains.
-On one core, all samplers scale approximately linearly in the number of chains, with \pkg{anvl} being 2.8 (one chain) to 5.9 (64 chains) times faster than CmdStan, as batching the chains turns the matrix-vector products of the individual chains into matrix-matrix products.
-\CRANpkg{torch} benefits from batching as well, as its overhead is shared by all chains: for 64 chains, it is slightly faster than CmdStan on one core (244 versus 263 seconds), but still 5.5 times slower than \pkg{anvl}, and on 16 threads and the GPU it takes 361 and 51 seconds for 256 chains, respectively; on the GPU, 1024 chains did not finish within our one-hour time limit.
-Stan's OpenCL backend, whose chains compete for the GPU as separate processes, takes 53 and 200 seconds for 4 and 16 chains, and 64 chains did not finish within the time limit.
-\CRANpkg{TMB}, run like CmdStan, takes 803 seconds for 16 chains on one core and 1575 seconds for 256 chains on 16 cores, 59 and 55 times as long as \pkg{anvl}.
-On 16 cores, both run the chains in parallel, and \pkg{anvl} is 2.6 times faster than CmdStan for 64 chains and 4.4 times faster for 1024 chains (101 versus 443 seconds).
-Running all chains as a single program on 16 cores is considerably slower than splitting them over devices, because each operation is again too small to be distributed efficiently.
-On the GPU, the time is almost constant up to 64 chains and grows sublinearly beyond that: 4096 chains with 1000 draws each take 10.8 seconds, which corresponds to about 380,000 draws per second, compared to about 2,300 draws per second for CmdStan on 16 cores.
-This is exactly the regime in which the many-chain MCMC methods discussed in the introduction operate.
-All configurations of all samplers had an average acceptance rate between 0.97 and 0.99.
+On one core, \pkg{anvl} is 2.8 (one chain) to 5.9 (64 chains) times faster than CmdStan, as batching turns the matrix-vector products of the individual chains into matrix-matrix products.
+\CRANpkg{torch} benefits from batching as well, but is still 5.5 times slower than \pkg{anvl} for 64 chains on one core, and \CRANpkg{TMB} takes 55 to 59 times as long as \pkg{anvl}.
+On 16 cores, \pkg{anvl} is 2.6 times faster than CmdStan for 64 chains and 4.4 times faster for 1024 chains; running all chains as a single program instead of splitting them over devices is considerably slower, because each operation is again too small to be distributed efficiently.
+On the GPU, the time of \pkg{anvl} is almost constant up to 64 chains and grows sublinearly beyond: 4096 chains with 1000 draws each take 10.8 seconds, about 380,000 draws per second, compared to 2,300 for CmdStan on 16 cores.
+This is the regime in which the many-chain MCMC methods discussed in the introduction operate; on the GPU, \CRANpkg{torch} did not finish 1024 chains and Stan's OpenCL backend did not finish 64 chains within one hour.
+All average acceptance rates were between 0.97 and 0.99.
 
-Finally, we measured the one-off costs for $n = 10^4$ on 16 cores.
-Tracing the sampler, lowering it to StableHLO, and compiling it with XLA take 0.28, 0.21, and 0.24 seconds, respectively, so the first call is about half a second slower than later calls (2.1 versus 1.5 seconds).
-Compiling the Stan model takes about 11 seconds, compiling the \CRANpkg{TMB} template about 35 seconds, and \CRANpkg{quickr} compiles the gradient in 1.2 seconds, compared to 0.11 seconds for XLA.
-Although compilation must be repeated for every new combination of input shapes and static arguments, its cost is small compared to the runtime of expensive methods and quickly amortized as the size of the data grows.
+Finally, the one-off costs are small: for $n = 10^4$ on 16 cores, tracing the sampler, lowering it to StableHLO, and compiling it with XLA take 0.28, 0.21, and 0.24 seconds, respectively, compared to about 11 seconds for compiling the Stan model and 35 seconds for the \CRANpkg{TMB} template.
 
-# Discussion {#discussion}
+# Conclusion {#discussion}
 
-In this paper, we introduced \pkg{anvl}, a code transformation framework for array programs in R.
-Programs are traced into a computational graph, which can be transformed into another graph, as done for reverse-mode AD, and into an executable, either via the OpenXLA ecosystem using \pkg{stablehlo} and \pkg{pjrt}, or via \CRANpkg{quickr}.
-The XLA backend allows running the same code on CPUs and GPUs.
-Unlike JAX, \pkg{anvl} treats all R values, including arrays, as values without a data type that take the precision of the arrays they meet, and lets every function declare its promotion rule, which gives users control over precision without losing it silently when data enters a program.
-We demonstrated the package by implementing an HMC sampler as a single compiled program.
+We introduced \pkg{anvl}, which brings composable code transformations for array programs to R: programs are traced into a graph, which can be differentiated in reverse mode and compiled via OpenXLA or \CRANpkg{quickr}, so the same R code runs on CPUs and GPUs, with an R-like array interface and control over numerical precision.
+The HMC use case showed that a whole sampler can be compiled into a single program that is faster than Stan on the CPU and scales to thousands of chains on a GPU.
 
-The main limitations of the current approach stem from XLA's requirement of static shapes.
-Operations whose output shape depends on data are not supported, and each new combination of input shapes requires recompilation.
-Programs must be written in terms of \pkg{anvl}'s operations, and while most of them are accessible through R's generics, tracing cannot intercept functions that are not generic.
-Furthermore, AD is currently restricted to first-order gradients of scalar functions in reverse mode.
-
-Future work will address these limitations.
-Adding forward-mode AD would make it possible to compute Jacobians and, combined with reverse mode, Hessian-vector products and Hessians, which are needed, e.g., for Laplace approximations.
-A vectorizing transformation similar to JAX's `vmap()` would remove the need to write batched code by hand, as we did for the HMC sampler.
-To lift the static shape restriction, the intermediate representation needs to support dynamic shapes; the \CRANpkg{quickr} backend, which already compiles shape-polymorphic code, and the IREE compiler [@ref-iree], which also consumes StableHLO, are two possible routes.
-Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages that implement statistical and machine learning algorithms on top of it; besides samplers such as the one in Section \@ref(hmc), variational inference, whose stochastic-gradient optimization of the evidence lower bound maps directly onto \pkg{anvl}'s transformations, is a natural candidate.
+The main limitations stem from XLA's static shapes, which rule out data-dependent output shapes and require recompilation for new shapes, and from AD, which is restricted to reverse mode and cannot yet differentiate through loops.
+Future work will add forward-mode AD, which, combined with reverse mode, yields Jacobians and Hessians efficiently, e.g., for Laplace approximations, and a vectorizing transformation similar to JAX's `vmap()`, which would remove the need to write batched code by hand.
+The \CRANpkg{quickr} backend and the IREE compiler [@ref-iree], which also consumes StableHLO, are two routes towards dynamic shapes.
+Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages that implement statistical and machine learning algorithms, such as samplers and variational inference, on top of it.
 
 # Acknowledgments {-}
 
@@ -757,17 +578,4 @@ Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, Germ
 We thank the developers of JAX, whose design and documentation, in particular the Autodidax tutorial [@ref-autodidax], inspired many aspects of \pkg{anvl}, as well as the authors of the Go library gopjrt [@ref-gopjrt], which informed the design of \pkg{pjrt}.
 We also thank Doug Kelkhoff, the main author of an experimental implementation of the R language (<https://github.com/dgkf/R>), which sparked parts of the design of \pkg{anvl}.
 We gratefully acknowledge the computational resources provided by the Leibniz Supercomputing Centre (LRZ).
-
-# Appendix {-}
-
-## A Reproducibility {-}
-
-All files required to reproduce the results are in the `paper/` directory of the GitHub repository <https://github.com/r-xla/anvl>, which contains a README with instructions.
-The Dockerfile in `paper/docker/` builds the image in which all results were produced.
-It is based on the `anvl-cuda` image, pinned by digest, and installs the r-xla packages, \CRANpkg{quickr}, and CmdStan at fixed versions.
-The benchmark scripts are in `paper/benchmarks/`, including the Slurm scripts used to run them on the LRZ AI Systems via Enroot, which imports the Docker image.
-
-## B AI usage {-}
-
-AI coding agents were used in the development of the software and the preparation of the manuscript.
-All AI-generated content was reviewed by the authors.
+AI coding agents were used in the development of the software and the preparation of the manuscript; all AI-generated content was reviewed by the authors.
