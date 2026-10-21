@@ -4,6 +4,9 @@
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
 
+* A jitted function called without array inputs whose program is pinned to a
+  device by an array it closes over no longer recompiles when the default
+  device changes.
 * Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
   negative `sd`, like `rnorm()`.
 * Bugfix: `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
