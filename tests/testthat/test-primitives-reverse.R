@@ -1336,6 +1336,9 @@ describe("prim_scan", {
     scans <- Filter(\(call) call$primitive$name == "scan", graph$statements)
     out_shapes <- lapply(unlist(lapply(scans, \(call) call$outputs)), \(g) shape(g$aval))
     expect_false(list(c(3L, 2L, 2L)) %in% out_shapes)
+    # Nor does the forward scan carry it, which would cost a copy per step.
+    fwd <- Filter(\(call) !call$params$reverse, scans)[[1L]]
+    expect_false(list(c(2L, 2L)) %in% lapply(fwd$outputs, \(g) shape(g$aval)))
   })
 
   it("differentiates xs through the stacked outputs and the final carry", {
@@ -1528,5 +1531,19 @@ describe("prim_print", {
       prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$a
     }
     expect_equal(prints_of_seven(jit(gradient(f))(x)), 3L)
+  })
+
+  it("prints once per step where a residual is computed before the scan", {
+    # exp(w) is the same at every step, so it is computed before the scan --
+    # without the print next to it.
+    f <- function(x, w) {
+      body <- function(carry, xs) {
+        e <- nv_exp(prim_print(w))
+        list(carry = list(a = carry$a * e + xs$v), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(1, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    g <- jit(gradient(f, wrt = "x"))
+    expect_equal(prints_of_seven(g(x, nv_scalar(7, "f64"))), 3L)
   })
 })

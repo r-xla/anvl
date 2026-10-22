@@ -601,9 +601,8 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
 # What the backward reads besides the residuals is stored no more than it has
 # to be: the carry a step started with is stacked only where it is read, `xs`
 # are read from the operands, and a residual that does not change from step to
-# step -- one computed from the captures alone -- is carried, so one copy of it
-# survives the loop instead of `steps` of them (JAX hoists those out of the
-# loop).
+# step -- one computed from the captures alone -- is computed once, before the
+# loop, and read by the backward scan like a capture, as JAX hoists it.
 #
 # Operands are the carry, then `xs`, then what the body captures; the body's
 # inputs line up with them.
@@ -641,19 +640,31 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
     \(g) isTRUE(varies[[g]]),
     logical(1L)
   )
+  # A slot nothing reads only has to be filled: the cotangent of a carry slot
+  # outside `carry_needed`, a body input a graph does not read.
+  zeros_except <- function(gvals, idx) {
+    lapply(seq_along(gvals), \(i) if (!i %in% idx) zeros_like(gvals[[i]]$aval))
+  }
+
+  # Carrying an invariant residual through the loop instead would cost a copy
+  # of it per step: XLA hoists its computation, but keeps the carry slot apart.
+  invariant <- n_carry + n_out + which(!res_varies)
+  hoisted <- if (length(invariant)) {
+    graph_apply(
+      prune_graph(vjp$fwd, vjp$fwd$outputs[invariant]),
+      c(zeros_except(body$inputs[c(carry_idx, xs_idx)], integer()), caps)
+    )
+  }
 
   fwd <- prim_scan(
-    init = list(
-      carry = inputs[carry_idx],
-      res = lapply(res_avals[!res_varies], zeros_like)
-    ),
+    init = inputs[carry_idx],
     xs = inputs[xs_idx],
     body = function(carry, x) {
-      outs <- graph_apply(vjp$fwd, c(carry$carry, x, caps))
+      outs <- graph_apply(vjp$fwd, c(carry, x, caps))
       res <- outs[n_carry + n_out + seq_len(n_res)]
       list(
-        carry = list(carry = outs[carry_idx], res = res[!res_varies]),
-        out = list(out = outs[n_carry + seq_len(n_out)], res = res[res_varies], tape = carry$carry[tape_idx])
+        carry = outs[carry_idx],
+        out = list(out = outs[n_carry + seq_len(n_out)], res = res[res_varies], tape = carry[tape_idx])
       )
     },
     steps = params$steps,
@@ -661,7 +672,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
   )
 
   list(
-    outputs = c(fwd$carry$carry, fwd$out$out),
+    outputs = c(fwd$carry, fwd$out$out),
     backward = function(inputs, outputs, grads, params, required) {
       n_carry_needed <- length(carry_needed)
       n_xs_needed <- length(xs_needed)
@@ -669,12 +680,6 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
       # A scan needs a carry; where only `xs` is differentiated there is none
       # to thread, so a placeholder rides along.
       placeholder <- if (!n_carry_needed && !n_cap) list(nv_scalar(FALSE))
-      # The cotangent of a carry slot outside `carry_needed` is never read,
-      # and neither is a body input the backward graph does not read; both
-      # only have to fill their slot.
-      zeros_except <- function(gvals, idx) {
-        lapply(seq_along(gvals), \(i) if (!i %in% idx) zeros_like(gvals[[i]]$aval))
-      }
 
       pulled <- prim_scan(
         init = list(
@@ -697,7 +702,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
           body_ins[cap_read] <- inputs[cap_read]
           res <- vector("list", n_res)
           res[res_varies] <- x$res
-          res[!res_varies] <- fwd$carry$res
+          res[!res_varies] <- hoisted
           ct <- graph_apply(vjp$bwd, c(out_cts, x$out, body_ins, res))
           list(
             carry = list(

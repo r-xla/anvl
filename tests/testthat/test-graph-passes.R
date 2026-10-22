@@ -270,6 +270,27 @@ describe("inline_scalarish_constants", {
   })
 })
 
+describe("prune_graph", {
+  it("keeps only the calls the given outputs need", {
+    f <- function(x, y) list(a = nv_exp(x), b = nv_log(y) + y)
+    graph <- trace_fn(f, list(x = nv_scalar(1, "f64"), y = nv_scalar(2, "f64")))
+    pruned <- prune_graph(graph, graph$outputs[1L])
+    expect_equal(vapply(pruned$statements, \(call) call$primitive$name, character(1L)), "exp")
+    expect_identical(pruned$inputs, graph$inputs)
+    expect_length(graph$statements, 3L)
+  })
+
+  it("drops a print", {
+    f <- function(x) {
+      prim_print(x)
+      nv_exp(x)
+    }
+    graph <- trace_fn(f, list(x = nv_scalar(1, "f64")))
+    pruned <- prune_graph(graph, graph$outputs)
+    expect_equal(vapply(pruned$statements, \(call) call$primitive$name, character(1L)), "exp")
+  })
+})
+
 describe("remove_unused_constants", {
   it("removes unused constants", {
     y <- nv_scalar(5, "f32")

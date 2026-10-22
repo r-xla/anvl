@@ -29,6 +29,33 @@ copy_graph <- function(graph) {
   )
 }
 
+# The part of `graph` that computes `outputs`: the calls they need and no
+# others. Inputs and constants stay as they are. A print is never among them,
+# since what reads its operand reads the operand itself (see `prim_print()`), so
+# running the pruned graph does nothing but compute `outputs`.
+prune_graph <- function(graph, outputs) {
+  new_graph <- copy_graph(graph)
+  new_graph$outputs <- outputs
+
+  needed <- hashtab()
+  mark <- function(gvals) {
+    for (g in gvals) {
+      if (!is_graph_literal(g)) needed[[g]] <- TRUE
+    }
+  }
+  mark(outputs)
+  keep <- logical(length(graph$statements))
+  for (i in rev(seq_along(graph$statements))) {
+    call <- graph$statements[[i]]
+    if (any(vapply(call$outputs, \(g) isTRUE(needed[[g]]), logical(1L)))) {
+      keep[[i]] <- TRUE
+      mark(call$inputs)
+    }
+  }
+  new_graph$statements <- graph$statements[keep]
+  new_graph
+}
+
 remove_unused_constants <- function(graph) {
   new_graph <- copy_graph(graph)
 
