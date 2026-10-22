@@ -67,9 +67,14 @@ build_node_ids <- function(inputs, constants, statements) {
 # from outside are inputs of its own, which its statement passes operands for --
 # so its nodes are all its own.
 name_graph_nodes <- function(inputs, constants, statements, node_ids, counters) {
+  # A labelled node is named after its label, numbered per label.
   name_node <- function(node, counter, prefix) {
     if (!is.null(node_ids[[node]]) || is_graph_literal(node)) {
       return(invisible(NULL))
+    }
+    if (!is.null(node$label)) {
+      counter <- prefix <- node$label
+      counters[[counter]] <- counters[[counter]] %||% 0L
     }
     counters[[counter]] <- counters[[counter]] + 1L
     node_ids[[node]] <- paste0(prefix, counters[[counter]])
@@ -342,7 +347,11 @@ format_call <- function(
 # counts.
 #
 # `typed_captures` spells a constant's data type too, for a graph formatted on
-# its own.
+# its own. The values a graph takes and returns for its side effects come after
+# its own inputs and outputs, e.g. `%key1: ui32[2]`, and what R does after the
+# run for a trace-time side effect is shown in a `then` block after the graph's,
+# as the side effect formats it, e.g. `} then { %counter1 += 2 }`.
+
 format_graph_lines <- function(
   inputs,
   constants,
@@ -351,6 +360,7 @@ format_graph_lines <- function(
   node_ids,
   title = "",
   rdata_types = NULL,
+  side_effects = list(),
   width = getOption("width", 80L),
   digits = getOption("digits"),
   typed_captures = FALSE,
@@ -370,6 +380,9 @@ format_graph_lines <- function(
     },
     character(1L)
   )
+  for (node in unlist(lapply(unname(side_effects), `[[`, "inputs"), recursive = FALSE)) {
+    input_strs <- c(input_strs, sprintf("%s: %s", format_node_id(node, node_ids, digits), format_aval_short(node$aval)))
+  }
   capture_strs <- vapply(
     constants,
     function(node) {
@@ -392,12 +405,31 @@ format_graph_lines <- function(
   }
   header <- c(add(header, "(", ")", input_strs), " {")
 
-  output_ids <- vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
-  ret <- if (length(outputs) == 1L) {
+  output_ids <- c(
+    vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits),
+    vapply(
+      unname(unlist(lapply(unname(side_effects), `[[`, "outputs"), recursive = FALSE)),
+      format_node_id,
+      character(1L),
+      node_ids = node_ids,
+      digits = digits
+    )
+  )
+  ret <- if (length(output_ids) == 1L) {
     paste0(indent, "return ", output_ids)
   } else {
     layout_row(list("return", call_chunk(" (", ")", output_ids)), indent, width)
   }
+  # What R does after the run for each trace-time side effect the graph uses, as
+  # the side effect formats it, e.g. `%counter1 += 2`, in a block of its own
+  # after the graph's.
+  advances <- unlist(lapply(side_effects, function(x) {
+    if (is_trace_time(x$effect) && x$n > 0) {
+      ids <- vapply(x$value, function(box) format_node_id(box$gnode, node_ids, digits), character(1L))
+      paste0(indent, side_effect_format(x$effect, ids, x$n))
+    }
+  }))
+  end <- if (length(advances)) c("} then {", advances, "}") else "}"
 
   c(
     # Only the signature shares its line with whatever the graph is printed
@@ -413,7 +445,7 @@ format_graph_lines <- function(
       digits = digits
     ),
     ret,
-    "}"
+    end
   )
 }
 
@@ -426,10 +458,12 @@ format_graph_body <- function(
   outputs,
   title = "Graph",
   rdata_types = NULL,
+  side_effects = list(),
   width = getOption("width", 80L),
   digits = getOption("digits")
 ) {
-  node_ids <- build_node_ids(inputs, constants, statements)
+  side_effect_inputs <- unname(unlist(lapply(side_effects, `[[`, "inputs"), recursive = FALSE))
+  node_ids <- build_node_ids(c(inputs, side_effect_inputs), constants, statements)
   lines <- format_graph_lines(
     inputs = inputs,
     constants = constants,
@@ -438,6 +472,7 @@ format_graph_body <- function(
     node_ids = node_ids,
     title = sprintf("<%s>", title),
     rdata_types = rdata_types,
+    side_effects = side_effects,
     width = width,
     digits = digits,
     typed_captures = TRUE
@@ -482,6 +517,7 @@ format.AnvlGraph <- function(x, ..., width = getOption("width", 80L), digits = g
     outputs = x$outputs,
     title = "AnvlGraph",
     rdata_types = x$rdata_types,
+    side_effects = x$side_effects,
     width = width,
     digits = digits
   )
@@ -502,6 +538,7 @@ format.GraphDescriptor <- function(x, ..., width = getOption("width", 80L), digi
     outputs = x$outputs,
     title = "GraphDescriptor",
     rdata_types = x$rdata_types,
+    side_effects = x$side_effects,
     width = width,
     digits = digits
   )
