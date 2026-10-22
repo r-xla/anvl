@@ -53,7 +53,7 @@ primitives inherit the platform of the enclosing call.}
 }
 \value{
 (\code{list})\cr
-Of length 3:
+Of length 4:
 \itemize{
 \item the \code{\link[stablehlo:Func]{stablehlo::Func}}
 \item The graph's constants: the \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s,
@@ -62,6 +62,11 @@ whose data must be passed as the leading inputs at execution time.
 appended when \code{donate_unaliased_outputs = TRUE}. Each entry is a
 \code{list(dtype, shape)} describing the buffer the executor must
 allocate. Empty when no phantoms were added.
+\item The other \code{\link[stablehlo:Func]{stablehlo::Func}}s the function calls, which a program
+must define next to it: functions the lowering rules build once and
+call wherever they need them, e.g. the ThreeFry block cipher of
+\code{\link[=prim_sample_bits]{prim_sample_bits()}}. Empty for most graphs, and always for a nested
+lowering (\code{id = ""}), whose calls the top-level lowering collects.
 }
 }
 \description{
@@ -74,9 +79,14 @@ XLA executable with \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}}.
 The rule for translating a primitive to stablehlo is \verb{prim_<name>[["stablehlo"]]}.
 
 The arguments of the resulting function are, in this order: the graph's
-constants, the graph's inputs, and the phantom donated inputs (when
-\code{donate_unaliased_outputs = TRUE}), one per output that is not already
-aliased to a donated input, in the order of the outputs.
+constants, the graph's inputs, the inputs of the graph's side effects (such
+as the key and the counter of the global random state, see \code{\link[=nv_set_seed]{nv_set_seed()}}),
+and the phantom donated inputs (when \code{donate_unaliased_outputs = TRUE}), one
+per output that is not already aliased to a donated input, in the order of
+the outputs. Its results are the graph's outputs, followed by the values the
+graph returns for its side effects: a side effect that the program changes
+at run time returns its last value, while a random state returns none, as the
+host advances it by the number of draws (see the \href{https://r-xla.github.io/anvl/articles/side-effects.html}{Side Effects} article).
 
 This is a low-level function; most users should use \code{\link[=jit]{jit()}} instead.
 }

@@ -4,25 +4,23 @@
 \alias{nv_sample}
 \title{Sample from a Population}
 \usage{
-nv_sample(shape, state, x)
+nv_sample(shape, x, rng_state = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{state}{(\code{\link{arrayish}})\cr
-RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned \code{state} has them too.}
-
 \item{x}{(\code{\link{arrayish}})\cr
 The population vector to sample from. Must not be empty.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
+
+\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
+The random state to draw from, which the draws advance in place, as
+\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
-(named \code{list} of two \code{\link{arrayish}})\cr
-Elements \code{state}, the updated RNG state, and \code{values}, the sample of shape
-\code{shape} and \code{x}'s data type.
+(\code{\link{arrayish}})\cr
+The sample, of shape \code{shape} and \code{x}'s data type.
 }
 \description{
 Samples elements of a 1-D array with equal probability and with
@@ -34,20 +32,19 @@ integers \code{1} to \code{n} is \code{\link[=nv_sample_int]{nv_sample_int()}} a
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the sample takes the population's data type
-state <- nv_rng_state(42L)
-pop <- nv_array(c(10, 20, 30))
-result <- nv_sample(5, state, pop)
-result$values
+with_nv_seed(42L, nv_sample(5, nv_array(c(10, 20, 30))))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_sample_int]{nv_sample_int()}} to sample the integers \code{1} to \code{n}.
 
 Other rng:
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}},
 \code{\link{nv_normal}},
+\code{\link[=nv_random_state]{nv_random_state()}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
-\code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
 \code{\link{nv_uniform}}
 }
 \concept{rng}

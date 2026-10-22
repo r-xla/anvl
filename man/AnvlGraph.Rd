@@ -13,7 +13,8 @@ AnvlGraph(
   constants = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  rdata_types = NULL
+  rdata_types = NULL,
+  side_effects = list()
 )
 }
 \arguments{
@@ -51,6 +52,15 @@ arrives as an array and already has a data type. \code{NULL} when no input comes
 from R data, which is the common case. Together with the inputs' own avals
 this says everything about how a call's arguments are uploaded: the aval
 gives the data type and shape, this gives the R type it is uploaded from.}
+
+\item{side_effects}{(\code{list()})\cr
+The graph's views of the side effects it uses, in the order of their first
+use, e.g. of a random state it draws from: its value (\verb{$value}), for a
+trace-time side effect such as the random state its number of uses
+(\verb{$n}), the \code{\link{GraphValue}}s the graph takes for it beyond its inputs
+(\verb{$inputs}), and those it returns for it beyond its outputs (\verb{$outputs}).
+A sub-graph's views are folded into its inputs and outputs by the
+construct that traced it.}
 }
 \value{
 (\code{AnvlGraph})

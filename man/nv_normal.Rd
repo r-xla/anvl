@@ -14,7 +14,7 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
+nv_rnorm(shape, mean = 0, sd = 1, dtype = NULL, rng_state = NULL)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -44,24 +44,22 @@ Probabilities at which to evaluate the quantile function. Values outside
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{state}{(\code{\link{arrayish}})\cr
-RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned \code{state} has them too.}
-
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Floating point data type of the sample. The default (\code{NULL}) uses the
 common data type of \code{mean} and \code{sd}, and the
 \link[=default_dtypes]{default float type} when both are R values.}
+
+\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
+The random state to draw from, which the draws advance in place, as
+\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
-(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+(\code{\link{arrayish}})\cr
 \code{nv_dnorm()}, \code{nv_pnorm()} and \code{nv_qnorm()} return an \code{\link{arrayish}} with the
 shape of \code{x}/\code{q}/\code{p} and the float data type described under Data Types.
 
-\code{nv_rnorm()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
-RNG state with the input \code{state}'s data type and shape, and \code{values}, the
-sample of shape \code{shape} and the data type described under \code{dtype}.
+\code{nv_rnorm()} returns the sample, an \code{\link{arrayish}} of shape \code{shape} and the data
+type described under \code{dtype}.
 }
 \description{
 Density (\code{nv_dnorm}), distribution function (\code{nv_pnorm}),
@@ -129,14 +127,11 @@ nv_qnorm(p, lower_tail = FALSE)
 nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# `state` is the updated RNG state, `values` the sample
-state <- nv_rng_state(42L)
-result <- nv_rnorm(c(2, 3), state)
-result$values
+with_nv_seed(42L, nv_rnorm(c(2, 3)))
 
 # `sd` may also be an array of the same shape as the sample
 sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
-nv_rnorm(c(2, 3), state, sd = sds)$values
+nv_rnorm(c(2, 3), sd = sds)
 \dontshow{\}) # examplesIf}
 }
 \references{
@@ -154,10 +149,12 @@ ISBN 0-7458-0289-3.
 \code{\link[=nv_rnorm]{nv_rnorm()}} for sampling from a normal distribution.
 
 Other rng:
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}},
+\code{\link[=nv_random_state]{nv_random_state()}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
-\code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample]{nv_sample()}},
 \code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
 \code{\link{nv_uniform}}
 }
 \concept{rng}
