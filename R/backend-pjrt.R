@@ -307,7 +307,7 @@ AnvlBackendPjrt <- function() {
     as_array = function(x, check) xlamisc::as_array(x$data, check = check),
     as_raw = function(x, row_major) xlamisc::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),
-    device = function(x) x$device,
+    device = function(x) xlamisc::device(x$data),
     new_device = function(x) pjrt::pjrt_device(x),
     print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
     jit = function(f, static, cache_size, donate = character(), device = NULL) {
@@ -326,18 +326,19 @@ AnvlBackendPjrt <- function() {
   backend
 }
 
-# Wrap a PJRT buffer into an AnvlArray. The dtype/shape/device of a buffer are
+# Wrap a PJRT buffer into an AnvlArray. The dtype/shape of a buffer are
 # immutable, so they are resolved once here and cached on the AnvlArray (as the
-# plain/quickr backends already do for dtype/shape). This turns the per-call
-# dtype()/shape()/device() reads on the hot dispatch path into plain field
-# accesses instead of repeated S3-dispatch -> C++/pjrt calls.
+# plain/quickr backends already do). This turns the per-call dtype()/shape()
+# reads on the hot dispatch path into plain field accesses instead of repeated
+# S3-dispatch -> C++/pjrt calls. The device is not cached: a PJRTDevice is an
+# external pointer, which would not survive serializing the array, while the
+# buffer itself does.
 pjrt_anvl_array <- function(buf) {
   structure(
     list(
       data = buf,
       dtype = xlamisc::dtype(buf),
       shape = xlamisc::shape(buf),
-      device = device(buf),
       backend = "pjrt"
     ),
     class = "AnvlArray"

@@ -693,7 +693,7 @@ name_failing_primitive <- function(e) {
 #' an [`AnvlGraph`].
 #'
 #' The resulting graph can be lowered to StableHLO (via [`stablehlo()`]) or transformed
-#' (e.g. via [`transform_gradient()`]).
+#' (e.g. via [`graph_gradient()`]).
 #'
 #' @param f (`function`)\cr
 #'   The function to trace. Must not be a `JitFunction` (i.e. already jitted).

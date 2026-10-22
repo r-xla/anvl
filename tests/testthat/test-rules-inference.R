@@ -883,7 +883,9 @@ describe("a result shape a rule computes from the caller's parameters", {
       x_dilation = c(1L, 1L),
       kernel_dilation = c(1L, 1L)
     )
-    do.call(prim_convolution, utils::modifyList(args, list(...)))
+    overrides <- list(...)
+    args[names(overrides)] <- overrides
+    do.call(prim_convolution, args)
   }
 
   it("refuses a negative padding that empties a spatial axis past zero", {

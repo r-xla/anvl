@@ -16,7 +16,7 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{x}{(\code{\link{arrayish}})\cr
-The population vector to sample from.
+The population vector to sample from. Must not be empty.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
 }
 \value{

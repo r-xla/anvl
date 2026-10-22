@@ -78,7 +78,7 @@ prepare_gradient_args <- function(args, wrt) {
 #' rule_reverse(function(inputs, outputs, grads, params, required) {
 #'   list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #' })
-#' @seealso [`transform_gradient()`]
+#' @seealso [`graph_gradient()`]
 #' @export
 rule_reverse <- function(backward = NULL, forward = NULL) {
   if (is.null(backward) == is.null(forward)) {
@@ -124,8 +124,8 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #' @examples
 #' graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
 #' graph
-#' transform_gradient(graph, "lhs")
-transform_gradient <- function(graph, wrt) {
+#' graph_gradient(graph, "lhs")
+graph_gradient <- function(graph, wrt) {
   # `graph` may be a promise of a trace, which must not run inside `desc`.
   force(graph)
   desc <- local_descriptor()
@@ -140,7 +140,7 @@ transform_gradient <- function(graph, wrt) {
 
 # Here we compute the gradients of a graph and write it into the current descriptor
 # This can either be a call to the gradient (inputs are provided)
-# Or just the gradient itself, i.e. then the inputs are NULL (used for transform_gradient).
+# Or just the gradient itself, i.e. then the inputs are NULL (used for graph_gradient).
 graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
@@ -625,7 +625,7 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #'   argument of `f` (or per `wrt` entry), each structured like that argument.
 #'   For `value_and_gradient()`, it returns `list(value = , grad = )`: the
 #'   return value of `f`, and that same `list` of gradients.
-#' @seealso `r roxy_article("autodiff")`, [`transform_gradient()`] for the
+#' @seealso `r roxy_article("autodiff")`, [`graph_gradient()`] for the
 #'   low-level graph transformation.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()

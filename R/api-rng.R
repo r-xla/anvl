@@ -166,7 +166,9 @@ box_muller <- function(u1, u2) {
 #'
 #' `mean` and `sd` are [`arrayish`], so they may vary across the sample: they
 #' are applied to the draws after they have been reshaped to `shape`, and so
-#' may either be scalars or have exactly that shape.
+#' may either be scalars or have exactly that shape. As in base R's `rnorm()`,
+#' an element whose `mean` is `NaN`, or whose `sd` is not finite or negative, is
+#' `NaN`. The RNG state is advanced regardless.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' # `state` is the updated RNG state, `values` the sample
@@ -209,8 +211,9 @@ nv_rnorm <- jit(
     # now:    mean(N) = mean, var(N) = sd^2
     N <- Z * sd + mean
 
-    # return state and Normals N
-    list(state = U2$state, values = N)
+    # an invalid parameter is NaN to match base R
+    valid <- !nv_is_nan(mean) & nv_is_finite(sd) & (sd >= 0L)
+    list(state = U2$state, values = nv_ifelse(valid, N, NaN))
   },
   static = c(1L, 5L)
 )
@@ -222,13 +225,13 @@ nv_rnorm <- jit(
 #' @template param_shape
 #' @template param_state
 #' @param size (`integer(1)`)\cr
-#'   Number of trials.
+#'   Number of trials. `0` gives a sample of zeros, like `rbinom()`.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sample.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
-#'   The number of successes are converted to it.
+#'   The number of successes are converted to it, so it must hold `size`.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
@@ -247,7 +250,7 @@ nv_rbinom <- jit(
       arg = "dtype",
       hint = "A boolean cannot hold a count; use an integer data type and compare it."
     )
-    checkmate::assert_int(size, lower = 1L)
+    checkmate::assert_int(size, lower = 0L)
     checkmate::assert_number(prob, lower = 0, upper = 1)
     shape <- assert_shapevec(shape)
 
@@ -287,7 +290,7 @@ nv_rbinom <- jit(
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Numeric type of the sampled integers.
-#'   The sampled values are converted to it.
+#'   The sampled values are converted to it, so it must hold `n`.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
@@ -328,7 +331,7 @@ nv_sample_int <- jit(
 #' @template param_shape
 #' @template param_state
 #' @param x ([`arrayish`])\cr
-#'   The population vector to sample from.
+#'   The population vector to sample from. Must not be empty.
 #'   An R value materializes at its [default data type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
@@ -351,6 +354,9 @@ nv_sample <- jit(
       cli_abort("{.arg x} must be a 1-D array, but has {length(x_shape)} axes.")
     }
     n <- x_shape[1L]
+    if (n == 0L) {
+      cli_abort("{.arg x} must not be empty: there is nothing to sample from.")
+    }
 
     out <- sample_indices(state, n, prod(shape))
 
