@@ -164,7 +164,7 @@ Below, `x` takes three steps of gradient descent on $\sum_i x_i^2$, and we diffe
 loss_after_steps <- function(lr, x) {
   step <- \(x, unused) list(carry = x - lr * 2 * x, out = NULL)
   x_final <- nv_scan(x, body = step, steps = 3L)$carry
-  sum(x_final^2)
+  sum(x_final^2L)
 }
 jit(gradient(loss_after_steps, wrt = "lr"))(nv_scalar(0.1), nv_array(c(1, 2)))
 ```

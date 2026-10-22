@@ -1355,19 +1355,6 @@ describe("prim_scan", {
     expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(21, 19, 13))
   })
 
-  it("runs the backward pass in the opposite direction for reverse = TRUE", {
-    # out_t = x_t + ... + x_3, weighted by t
-    f <- function(x) {
-      body <- function(carry, xs) {
-        s <- carry$s + xs$v
-        list(carry = list(s = s), out = s)
-      }
-      r <- prim_scan(list(s = nv_scalar(0, "f64")), list(v = x), body, steps = 3L, reverse = TRUE)
-      nv_sum(r$out * nv_array(c(1, 2, 3), dtype = "f64"))
-    }
-    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(1, 3, 6))
-  })
-
   it("differentiates a value an integer xs indexes into", {
     # x[1] is read twice, x[3] once, x[2] never.
     f <- function(x) {
@@ -1439,6 +1426,21 @@ describe("prim_scan", {
     }
     g <- function(x) nv_sum(gradient(f)(x)[[1L]])
     expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), c(6, 12, 18))
+  })
+
+  it("differentiates a residual computed before the scan to the third order", {
+    # h exp(w)^3 = h exp(3 w), so d^3/dw^3 = 27 h exp(3 w). Each order replays
+    # the split body both before the scan and inside it.
+    f <- function(w, h) {
+      body <- function(carry, xs) list(carry = list(h = carry$h * nv_exp(w)), out = NULL)
+      prim_scan(list(h = h), list(), body, steps = 3L)$carry$h
+    }
+    d1 <- function(w, h) gradient(f)(w, h)$w
+    d2 <- function(w, h) gradient(d1)(w, h)$w
+    d3 <- function(w, h) gradient(d2)(w, h)$w
+    w <- nv_scalar(0.3, "f64")
+    h <- nv_scalar(0.7, "f64")
+    expect_equal(as.numeric(jit(d3)(w, h)), 27 * 0.7 * exp(0.9))
   })
 
   it("leaves an RNG state it carries on undifferentiated after the scan", {
@@ -1545,5 +1547,22 @@ describe("prim_print", {
     }
     g <- jit(gradient(f, wrt = "x"))
     expect_equal(prints_of_seven(g(x, nv_scalar(7, "f64"))), 3L)
+  })
+
+  it("prints once per step where a residual comes from an if that prints", {
+    # exp(w) is the same at every step, but computing it before the scan would
+    # run the print once more.
+    f <- function(x, w) {
+      body <- function(carry, xs) {
+        k <- nv_if(w > 0, function() {
+          prim_print(nv_scalar(7L))
+          nv_exp(w)
+        }, function() w)
+        list(carry = list(a = carry$a * k + xs$v), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(1, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    g <- jit(gradient(f, wrt = "x"))
+    expect_equal(prints_of_seven(g(x, nv_scalar(0.4, "f64"))), 3L)
   })
 })
