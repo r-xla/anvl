@@ -1336,9 +1336,41 @@ describe("prim_scan", {
     scans <- Filter(\(call) call$primitive$name == "scan", graph$statements)
     out_shapes <- lapply(unlist(lapply(scans, \(call) call$outputs)), \(g) shape(g$aval))
     expect_false(list(c(3L, 2L, 2L)) %in% out_shapes)
-    # Nor does the forward scan carry it, which would cost a copy per step.
+    # Nor does the forward scan carry it, which would cost a copy per step, or
+    # compute it again: it reads the copy computed before it.
     fwd <- Filter(\(call) !call$params$reverse, scans)[[1L]]
     expect_false(list(c(2L, 2L)) %in% lapply(fwd$outputs, \(g) shape(g$aval)))
+    expect_false("exp" %in% vapply(fwd$params$body$statements, \(call) call$primitive$name, character(1L)))
+  })
+
+  it("reads a residual that is also a stacked output from that output", {
+    # The backward pass of tanh reads h_t, which the body also returns; it is
+    # stacked once, next to the carry each step starts from.
+    f <- function(w, h) {
+      body <- function(carry, xs) {
+        h <- tanh(carry$h * w)
+        list(carry = list(h = h), out = h)
+      }
+      nv_sum(prim_scan(list(h = h), list(), body, steps = 3L)$out)
+    }
+    f_unrolled <- function(w, h) {
+      total <- 0
+      for (t in 1:3) {
+        h <- tanh(h * w)
+        total <- total + nv_sum(h)
+      }
+      total
+    }
+    args <- list(nv_array(c(0.5, -0.3), dtype = "f64"), nv_array(c(0.2, 0.9), dtype = "f64"))
+    grads <- do.call(jit(gradient(f)), args)
+    expected <- do.call(jit(gradient(f_unrolled)), args)
+    expect_equal(as.numeric(grads[[1L]]), as.numeric(expected[[1L]]))
+    expect_equal(as.numeric(grads[[2L]]), as.numeric(expected[[2L]]))
+
+    graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
+    fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
+    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    expect_length(stacked, 2L)
   })
 
   it("differentiates xs through the stacked outputs and the final carry", {

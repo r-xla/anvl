@@ -60,14 +60,69 @@ prune_graph <- function(graph, outputs) {
 # Whether running `graph` prints, from one of its calls or from the sub-graph
 # of one.
 graph_prints <- function(graph) {
-  any(vapply(
+  any(vapply(graph$statements, call_prints, logical(1L)))
+}
+
+call_prints <- function(call) {
+  identical(call$primitive$name, "print") ||
+    any(vapply(Filter(is_graph, call$params), graph_prints, logical(1L)))
+}
+
+# Splits `graph`, the body of a loop, into what can run once, before the loop,
+# and what has to run in every step. `varying` are the inputs that change from
+# step to step; a call stays in the loop if it reads one of them or what was
+# computed from them. So does a call that prints, and everything computed from
+# it, so that the print runs once per step.
+#
+# Returns:
+#   - invariant: the values computed before the loop that the loop reads or
+#     returns, in the order the loop first needs them.
+#   - before: a graph with `graph`'s inputs that computes `invariant`; it reads
+#     none of `varying`.
+#   - loop: `graph` without the calls `before` makes, taking `invariant` as
+#     inputs after `graph`'s own.
+#   - in_loop: hashtab(gval -> TRUE) of the values computed in the loop, and
+#     `varying`.
+split_loop_invariant <- function(graph, varying) {
+  in_loop <- hashtab()
+  for (g in varying) {
+    in_loop[[g]] <- TRUE
+  }
+  reads_loop <- function(x) !is_graph_literal(x) && isTRUE(in_loop[[x]])
+  stays <- vapply(
     graph$statements,
     function(call) {
-      identical(call$primitive$name, "print") ||
-        any(vapply(Filter(is_graph, call$params), graph_prints, logical(1L)))
+      stay <- call_prints(call) || any(vapply(call$inputs, reads_loop, logical(1L)))
+      if (stay) {
+        for (out in call$outputs) in_loop[[out]] <- TRUE
+      }
+      stay
     },
     logical(1L)
-  ))
+  )
+
+  computed_before <- hashtab()
+  for (call in graph$statements[!stays]) {
+    for (out in call$outputs) computed_before[[out]] <- TRUE
+  }
+  read <- c(do.call(c, lapply(graph$statements[stays], \(call) call$inputs)), graph$outputs)
+  seen <- hashtab()
+  first_read_before <- vapply(
+    read,
+    function(g) {
+      first <- !is_graph_literal(g) && isTRUE(computed_before[[g]]) && is.null(seen[[g]])
+      if (first) seen[[g]] <- TRUE
+      first
+    },
+    logical(1L)
+  )
+  invariant <- read[first_read_before]
+
+  loop <- copy_graph(graph)
+  loop$statements <- graph$statements[stays]
+  loop$inputs <- c(graph$inputs, invariant)
+  loop$rdata_types <- NULL
+  list(invariant = invariant, before = prune_graph(graph, invariant), loop = loop, in_loop = in_loop)
 }
 
 remove_unused_constants <- function(graph) {

@@ -291,6 +291,34 @@ describe("prune_graph", {
   })
 })
 
+describe("split_loop_invariant", {
+  it("computes before the loop what does not depend on the varying inputs", {
+    f <- function(h, w) nv_exp(w) * h
+    graph <- trace_fn(f, list(h = nv_scalar(1, "f64"), w = nv_scalar(2, "f64")))
+    split <- split_loop_invariant(graph, graph$inputs[1L])
+    names_of <- function(g) vapply(g$statements, \(call) call$primitive$name, character(1L))
+    expect_equal(names_of(split$before), "exp")
+    expect_equal(names_of(split$loop), "mul")
+    expect_length(split$invariant, 1L)
+    expect_identical(split$loop$inputs, c(graph$inputs, split$invariant))
+  })
+
+  it("keeps a call that prints in the loop, with what is computed from it", {
+    f <- function(h, w) {
+      k <- nv_if(w > 0, function() {
+        prim_print(w)
+        nv_exp(w)
+      }, function() w)
+      nv_log(k) * h
+    }
+    graph <- trace_fn(f, list(h = nv_scalar(1, "f64"), w = nv_scalar(2, "f64")))
+    split <- split_loop_invariant(graph, graph$inputs[1L])
+    names_of <- function(g) vapply(g$statements, \(call) call$primitive$name, character(1L))
+    expect_equal(names_of(split$before), "gt")
+    expect_equal(names_of(split$loop), c("if", "log", "mul"))
+  })
+})
+
 describe("remove_unused_constants", {
   it("removes unused constants", {
     y <- nv_scalar(5, "f32")
