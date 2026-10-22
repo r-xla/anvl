@@ -2,7 +2,7 @@ devtools::load_all("~/r-xla/anvl")
 library(pjrt)
 
 f <- function() {
-  nv_rnorm(nv_array(c(1, 2), dtype = "ui64"), dtype = "f32", shape = c(2, 3))
+  nv_rnorm(dtype = "f32", shape = c(2, 3))
 }
 
 
