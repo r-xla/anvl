@@ -79,6 +79,21 @@ jobs:
 
       - uses: actions/checkout@v7
 
+      # Test the CPU plugin built by r-xla/pjrt-builds instead of the zml one.
+      - name: Use the pjrt-cpu-aa1e72c PJRT plugin
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) os=linux ;;
+            macOS) os=darwin ;;
+            Windows) os=windows ;;
+          esac
+          case "$RUNNER_ARCH" in
+            X64) arch=amd64 ;;
+            ARM64) arch=arm64 ;;
+          esac
+          echo "PJRT_PLUGIN_URL_CPU=https://github.com/r-xla/pjrt-builds/releases/download/pjrt-cpu-aa1e72c/pjrt-cpu_${os}-${arch}.tar.gz" >> "$GITHUB_ENV"
+
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
