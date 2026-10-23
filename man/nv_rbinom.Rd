@@ -4,7 +4,7 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, size = 1L, prob = 0.5, dtype = NULL, rng_state = NULL)
+nv_rbinom(shape, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -20,10 +20,6 @@ Probability of success on each trial.}
 Numeric type of the sample.
 \code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.
 The number of successes are converted to it, so it must hold \code{size}.}
-
-\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
-The random state to draw from, which the draws advance in place, as
-\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -33,6 +29,14 @@ The sample, of shape \code{shape} and data type \code{dtype}.
 Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
 When \code{size = 1} (the default), this is a Bernoulli distribution.
 }
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Bernoulli samples

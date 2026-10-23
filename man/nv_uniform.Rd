@@ -14,7 +14,7 @@ nv_punif(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_runif(shape, min = 0, max = 1, dtype = NULL, rng_state = NULL)
+nv_runif(shape, min = 0, max = 1, dtype = NULL)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -46,10 +46,6 @@ Shape of the result.}
 Floating point data type of the sample.
 The default (\code{NULL}) takes it from \code{min} and \code{max}, and uses the
 \link[=default_dtypes]{default float type} where both are R values.}
-
-\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
-The random state to draw from, which the draws advance in place, as
-\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -90,6 +86,14 @@ An R value for \code{min} or \code{max} takes the computing data type. An array 
 promoted to it, so a wider one (e.g. \code{f64} for an \code{f32} \code{x}) is an error.
 }
 
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \section{Random generation}{
 
 \code{nv_runif} samples from the open interval \eqn{(a, b)}.
@@ -99,7 +103,7 @@ are applied to the draws after they have been reshaped to \code{shape}, and so
 may either be scalars or have exactly that shape. As in base R's \code{runif()},
 an element whose \code{min} equals its \code{max} is that value, and one whose \code{min} or
 \code{max} is not finite, or whose \code{max} is less than its \code{min}, is \code{NaN}. The
-global random state is advanced regardless.
+random state is advanced regardless.
 }
 
 \examples{

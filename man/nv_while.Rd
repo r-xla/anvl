@@ -12,7 +12,8 @@ Named list of initial state values, a tree in the sense of pjrt's
 \code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
 sub-graphs. R values are materialized at their
 \link[=default_dtypes]{default data type}. It must not contain a random state:
-\code{body} draws from one by closing over it.}
+to draw from one in \code{body}, make it the default before the loop with
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}}.}
 
 \item{cond}{(\code{function})\cr
 Condition function returning a scalar boolean.

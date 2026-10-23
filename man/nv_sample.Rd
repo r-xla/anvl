@@ -4,7 +4,7 @@
 \alias{nv_sample}
 \title{Sample from a Population}
 \usage{
-nv_sample(shape, x, rng_state = NULL)
+nv_sample(shape, x)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -13,10 +13,6 @@ Shape of the result.}
 \item{x}{(\code{\link{arrayish}})\cr
 The population vector to sample from. Must not be empty.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
-
-\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
-The random state to draw from, which the draws advance in place, as
-\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -29,6 +25,14 @@ replacement, analogous to R's \code{sample()}.
 Unlike R's \code{sample()}, \code{x} is always the population itself: sampling the
 integers \code{1} to \code{n} is \code{\link[=nv_sample_int]{nv_sample_int()}} and never an overload of \code{x}.
 }
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the sample takes the population's data type

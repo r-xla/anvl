@@ -9,8 +9,9 @@ prim_scan(init, xs, body, steps, reverse = FALSE)
 \arguments{
 \item{init}{(\code{list()})\cr
 Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-shape and data type across steps. It must not contain a random state:
-\code{body} draws from one by closing over it.}
+shape and data type across steps. It must not contain a random state: to
+draw from one in \code{body}, make it the default before the loop with
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}}.}
 
 \item{xs}{(\code{list()})\cr
 Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,

@@ -37,6 +37,7 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   register_s3_method("waldo", "compare_proxy", "AnvlArray")
 
   read_env_defaults()
+  register_random_state_node()
 
   # Arrays read with readRDS() and friends load onto anvl's default device:
   # pjrt uploads an unserialized buffer to the device this entry returns.

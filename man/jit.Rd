@@ -59,10 +59,7 @@ skip recompilation.
 \section{Stochastic Functions}{
 
 A function that draws random numbers also reads and advances the global
-random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}), so two calls with the same arguments draw
-different samples. To draw from a random state of its own instead (see
-\code{\link[=nv_random_state]{nv_random_state()}}), it takes that random state as an argument and passes
-it on to the samplers; the random state is advanced in place after the call.
+random state.
 See the the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random Number Generation} article for more details.
 }
 

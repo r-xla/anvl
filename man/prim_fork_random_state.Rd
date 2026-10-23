@@ -4,12 +4,7 @@
 \alias{prim_fork_random_state}
 \title{Primitive Fork of the Random State}
 \usage{
-prim_fork_random_state(rng_state = NULL)
-}
-\arguments{
-\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
-The random state to draw from, which the draws advance in place, as
-\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
+prim_fork_random_state()
 }
 \value{
 (\code{list()})\cr

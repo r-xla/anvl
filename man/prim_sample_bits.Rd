@@ -4,7 +4,7 @@
 \alias{prim_sample_bits}
 \title{Primitive Random Bits}
 \usage{
-prim_sample_bits(shape, dtype, rng_state = NULL)
+prim_sample_bits(shape, dtype)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -12,10 +12,6 @@ Shape of the result.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 An unsigned integer data type: \code{"ui8"}, \code{"ui16"}, \code{"ui32"} or \code{"ui64"}.}
-
-\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
-The random state to draw from, which the draws advance in place, as
-\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -30,8 +26,16 @@ the ThreeFry-2x32 counter-based generator of
 Salmon et al. (2011), and advances that random state by one
 step.
 
-keys.
+See the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random Number Generation} article for more details.
 }
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
@@ -41,15 +45,14 @@ keys.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# If no `rng_state` is provided, the active random state is used.
 nv_get_random_state()
 prim_sample_bits(2L, "ui32")
 # The counter is incremented by 1
 nv_get_random_state()
-# We can pass a random state of its own:
+# A random state of its own is drawn from within with_nv_rng_state():
 custom_rng <- nv_random_state(1L)
 custom_rng
-prim_sample_bits(2L, "ui32", rng_state = custom_rng)
+with_nv_rng_state(custom_rng, prim_sample_bits(2L, "ui32"))
 # And it is still updated
 custom_rng
 # And does not affect the global RNG

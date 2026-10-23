@@ -14,7 +14,7 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, mean = 0, sd = 1, dtype = NULL, rng_state = NULL)
+nv_rnorm(shape, mean = 0, sd = 1, dtype = NULL)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -48,10 +48,6 @@ Shape of the result.}
 Floating point data type of the sample. The default (\code{NULL}) uses the
 common data type of \code{mean} and \code{sd}, and the
 \link[=default_dtypes]{default float type} when both are R values.}
-
-\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
-The random state to draw from, which the draws advance in place, as
-\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -96,6 +92,14 @@ An R value for \code{mean} or \code{sd} takes the computing data type. An array 
 promoted to it, so a wider one (e.g. \code{f64} for an \code{f32} \code{x}) is an error.
 }
 
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \section{Random generation}{
 
 \code{nv_rnorm} samples via the Box-Muller transform. To sample with a covariance
@@ -105,7 +109,7 @@ structure, use a Cholesky decomposition.
 are applied to the draws after they have been reshaped to \code{shape}, and so
 may either be scalars or have exactly that shape. As in base R's \code{rnorm()},
 an element whose \code{mean} is \code{NaN}, or whose \code{sd} is not finite or negative, is
-\code{NaN}. The RNG state is advanced regardless.
+\code{NaN}. The random state is advanced regardless.
 }
 
 \examples{

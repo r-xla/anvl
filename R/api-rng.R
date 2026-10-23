@@ -1,7 +1,7 @@
 #' @include jit.R
 NULL
 
-nv_unif_rand <- function(shape, dtype, rng_state = NULL) {
+nv_unif_rand <- function(shape, dtype) {
   dtype <- assert_rng_float_dtype(dtype)
   shape <- assert_shapevec(shape)
 
@@ -47,7 +47,6 @@ nv_unif_rand <- function(shape, dtype, rng_state = NULL) {
 
 #' @rdname nv_uniform
 #' @template param_shape
-#' @template param_rng_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample.
 #'   The default (`NULL`) takes it from `min` and `max`, and uses the
@@ -64,7 +63,7 @@ nv_unif_rand <- function(shape, dtype, rng_state = NULL) {
 #' @family rng
 #' @export
 nv_runif <- jit(
-  function(shape, min = 0, max = 1, dtype = NULL, rng_state = NULL) {
+  function(shape, min = 0, max = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
     args <- promote_sample_params(shape, dtype, min = min, max = max)
     min <- args$min
@@ -72,7 +71,7 @@ nv_runif <- jit(
     dtype <- dtype(min)
 
     # generate samples in [0, 1)
-    U <- nv_unif_rand(shape = shape, dtype = dtype, rng_state = rng_state)
+    U <- nv_unif_rand(shape = shape, dtype = dtype)
 
     # check if some values are <= 0
     le_zero <- nv_le(U, 0L)
@@ -147,7 +146,6 @@ box_muller <- function(u1, u2) {
 
 #' @rdname nv_normal
 #' @template param_shape
-#' @template param_rng_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample. The default (`NULL`) uses the
 #'   common data type of `mean` and `sd`, and the
@@ -170,7 +168,7 @@ box_muller <- function(u1, u2) {
 #' nv_rnorm(c(2, 3), sd = sds)
 #' @export
 nv_rnorm <- jit(
-  function(shape, mean = 0, sd = 1, dtype = NULL, rng_state = NULL) {
+  function(shape, mean = 0, sd = 1, dtype = NULL) {
     shape <- assert_shapevec(shape)
     args <- promote_sample_params(shape, dtype, mean = mean, sd = sd)
     mean <- args$mean
@@ -181,8 +179,8 @@ nv_rnorm <- jit(
     n <- prod(shape)
 
     m <- as.integer(ceiling(n / 2L))
-    U1 <- nv_unif_rand(dtype = dtype, shape = m, rng_state = rng_state)
-    U2 <- nv_unif_rand(dtype = dtype, shape = m, rng_state = rng_state)
+    U1 <- nv_unif_rand(dtype = dtype, shape = m)
+    U2 <- nv_unif_rand(dtype = dtype, shape = m)
     Z <- box_muller(U1, U2)
 
     # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
@@ -212,7 +210,6 @@ nv_rnorm <- jit(
 #' Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
 #' When `size = 1` (the default), this is a Bernoulli distribution.
 #' @template param_shape
-#' @template param_rng_state
 #' @param size (`integer(1)`)\cr
 #'   Number of trials. `0` gives a sample of zeros, like `rbinom()`.
 #' @param prob (`numeric(1)`)\cr
@@ -229,7 +226,7 @@ nv_rnorm <- jit(
 #' with_nv_seed(42L, nv_rbinom(c(2, 3)))
 #' @export
 nv_rbinom <- jit(
-  function(shape, size = 1L, prob = 0.5, dtype = NULL, rng_state = NULL) {
+  function(shape, size = 1L, prob = 0.5, dtype = NULL) {
     # The sample counts successes, which `bool` cannot hold.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
@@ -246,7 +243,7 @@ nv_rbinom <- jit(
     # Generate uniform samples in [0, 1) and compare to prob
     # `nv_runif()` would sample (0, 1), but only by moving a 0 to the smallest
     # step, so it is no less biased than [0, 1) here.
-    U <- nv_unif_rand(shape = n_trials, dtype = "f64", rng_state = rng_state)
+    U <- nv_unif_rand(shape = n_trials, dtype = "f64")
 
     # Success if U < prob
     successes <- nv_convert(nv_lt(U, prob), dtype = dtype)
@@ -270,7 +267,6 @@ nv_rbinom <- jit(
 #'
 #' To sample from a population other than `1:n`, use [nv_sample()].
 #' @template param_shape
-#' @template param_rng_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
@@ -286,7 +282,7 @@ nv_rbinom <- jit(
 #' with_nv_seed(42L, nv_sample_int(6, 6L))
 #' @export
 nv_sample_int <- jit(
-  function(shape, n, dtype = NULL, rng_state = NULL) {
+  function(shape, n, dtype = NULL) {
     # An index is a count too: at `bool` every draw would collapse to `TRUE`.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
@@ -296,7 +292,7 @@ nv_sample_int <- jit(
     assert_int(n, lower = 1L)
     shape <- assert_shapevec(shape)
 
-    idx <- sample_indices(as.integer(n), prod(shape), rng_state)
+    idx <- sample_indices(as.integer(n), prod(shape))
     nv_reshape(nv_convert(idx, dtype), shape)
   },
   static = c("shape", "n", "dtype")
@@ -310,7 +306,6 @@ nv_sample_int <- jit(
 #' Unlike R's `sample()`, `x` is always the population itself: sampling the
 #' integers `1` to `n` is [nv_sample_int()] and never an overload of `x`.
 #' @template param_shape
-#' @template param_rng_state
 #' @param x ([`arrayish`])\cr
 #'   The population vector to sample from. Must not be empty.
 #'   An R value materializes at its [default data type][default_dtypes].
@@ -323,7 +318,7 @@ nv_sample_int <- jit(
 #' with_nv_seed(42L, nv_sample(5, nv_array(c(10, 20, 30))))
 #' @export
 nv_sample <- jit(
-  function(shape, x, rng_state = NULL) {
+  function(shape, x) {
     shape <- assert_shapevec(shape)
     x <- as_anvl_array(x)
     x_shape <- shape(x)
@@ -335,17 +330,17 @@ nv_sample <- jit(
       cli_abort("{.arg x} must not be empty: there is nothing to sample from.")
     }
 
-    idx <- sample_indices(n, prod(shape), rng_state)
+    idx <- sample_indices(n, prod(shape))
     nv_reshape(nv_subset(x, idx), shape)
   },
   static = "shape"
 )
 
 # Draw `n_sample` uniformly distributed indices into a population of size `n`,
-# with replacement, from the random state `rng_state`.
-sample_indices <- function(n, n_sample, rng_state) {
+# with replacement, from the active random state.
+sample_indices <- function(n, n_sample) {
   # use f64 for higher precision
-  U <- nv_unif_rand(shape = n_sample, dtype = "f64", rng_state = rng_state)
+  U <- nv_unif_rand(shape = n_sample, dtype = "f64")
   # u is in [0, 1), so floor(u * n) is in 0, ..., n - 1. The minimum guards
   # against the product rounding up to n for the largest representable u.
   idx <- nv_convert(nv_floor(nv_mul(U, n)), dtype = "i32")

@@ -17,18 +17,19 @@ base R's RNG.}
 A random state of the key that \code{seed} gives and the counter 0.
 }
 \description{
-Creates a random state of its own, which a sampler draws from in place of
-the global random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) when it is passed as its \code{rng_state}
-argument. Like the global random state, it is a key and a counter of the
-ThreeFry-2x32 generator, and every sampling call that draws from it advances
-it in place, so two draws from the same random state differ.
+Creates a random state of its own, which the samplers draw from in place of
+the global random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) within \code{\link[=with_nv_rng_state]{with_nv_rng_state()}}
+or after \code{\link[=local_nv_rng_state]{local_nv_rng_state()}}. Like the global random state, it is a key
+and a counter of the ThreeFry-2x32 generator, and every sampling call that
+draws from it advances it in place, so two draws from the same random state
+differ.
 
 A function compiled with \code{\link[=jit]{jit()}} can take a random state as an argument,
-also inside a list, and pass it on to the samplers it calls: the compiled
-program takes its key and counter as inputs, like those of any other
-argument, and after the call the random state is advanced in place by the
-number of sampling calls the program made from it, as the global random state
-is. Its \code{random_key} and \code{random_counter} read in the jitted function what
+also inside a list, and make it the samplers' default with
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} or \code{\link[=with_nv_rng_state]{with_nv_rng_state()}}: the compiled program takes
+its key and counter as inputs, like those of any other argument, and after
+the call the random state is advanced in place by the number of sampling
+calls the program made from it, as the global random state is. Its \code{random_key} and \code{random_counter} read in the jitted function what
 they read eagerly, the counter after the draws so far; the random state
 itself is not a value there, which could be returned or carried through a
 loop. A jitted function cannot draw from a random state it closes over, and
@@ -37,13 +38,13 @@ the same random state must not be passed to it twice.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 rng <- nv_random_state(42L)
-nv_runif(3L, rng_state = rng)
+with_nv_rng_state(rng, nv_runif(3L))
 # the random state was advanced, so the next draw differs
-nv_runif(3L, rng_state = rng)
+with_nv_rng_state(rng, nv_runif(3L))
 rng
 
 # a jitted function takes a random state as an argument
-f <- jit(function(x, rng) x + nv_rnorm(2L, rng_state = rng))
+f <- jit(function(x, rng) with_nv_rng_state(rng, x + nv_rnorm(2L)))
 f(nv_array(c(1, 2)), nv_random_state(1L))
 \dontshow{\}) # examplesIf}
 }

@@ -25,17 +25,16 @@ returns the result of evaluating \code{code}.
 }
 \description{
 \code{local_nv_rng_state()} and \code{with_nv_rng_state()} make the random state
-\code{rng_state} the one the samplers draw from by default -- when they are given
-no \code{rng_state} of their own -- for the calling scope or for \code{code} only, as
-\code{\link[=local_nv_seed]{local_nv_seed()}} and \code{\link[=with_nv_seed]{with_nv_seed()}} do with a seed. The draws advance
-\code{rng_state} itself, in place, and the default from before is restored
-afterwards.
+\code{rng_state} the one the samplers draw from, for the calling scope or for
+\code{code} only, as \code{\link[=local_nv_seed]{local_nv_seed()}} and \code{\link[=with_nv_seed]{with_nv_seed()}} do with a seed. The
+draws advance \code{rng_state} itself, in place, and the random state from before
+is restored afterwards.
 
 Outside of \code{\link[=jit]{jit()}}, \code{rng_state} is the global random state for the scope.
 In a function traced by \code{\link[=jit]{jit()}}, \code{rng_state} must be a random state the
-jitted function takes as an argument: the samplers in the scope draw from it
-as if each were given it as its \code{rng_state}, also in the bodies of loops,
-and the jitted function advances it after the call. A random state the
+jitted function takes as an argument: the samplers in the scope draw from it,
+also in the bodies of loops, and the jitted function advances it after the
+call. A random state the
 function closes over is an error, as the function could neither take its
 current state nor advance it. It can be called in a branch of \code{\link[=nv_if]{nv_if()}} or a
 function \code{\link[=gradient]{gradient()}} differentiates, such as a jitted function called

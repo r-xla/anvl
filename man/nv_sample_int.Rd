@@ -4,7 +4,7 @@
 \alias{nv_sample_int}
 \title{Sample Integers}
 \usage{
-nv_sample_int(shape, n, dtype = NULL, rng_state = NULL)
+nv_sample_int(shape, n, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -17,10 +17,6 @@ Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 Numeric type of the sampled integers.
 The sampled values are converted to it, so it must hold \code{n}.
 \code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.}
-
-\item{rng_state}{(\code{NULL} | \code{AnvlRandomState})\cr
-The random state to draw from, which the draws advance in place, as
-\code{\link[=nv_random_state]{nv_random_state()}} returns. \code{NULL} (default) draws from the active random state.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -32,6 +28,14 @@ replacement, analogous to R's \code{sample.int()}.
 
 To sample from a population other than \code{1:n}, use \code{\link[=nv_sample]{nv_sample()}}.
 }
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # roll six dice
