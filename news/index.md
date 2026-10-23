@@ -7,6 +7,12 @@
   load onto the default device, not the one they were saved from. Arrays
   of the pjrt backend no longer cache their device in a `$device` field.
 
+- Bugfix: A classed R value, such as a
+  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
+  array, is an error under
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) instead of
+  being read through its storage type.
+
 - Bugfix:
   [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
   returns `NaN` for a `NaN` `mean` or a non-finite or negative `sd`,
