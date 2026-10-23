@@ -64,6 +64,10 @@ for an array one. \code{NULL} for a call whose inputs are all arrays.
 \item \code{device}: The \code{PJRTDevice} the executable was compiled for.
 \item \code{phantom_specs}: One \code{list(dtype, shape)} per phantom donated input the
 executor must allocate for an output (see \code{\link[=stablehlo]{stablehlo()}}).
+\item \code{uses_default_device}: Whether the program was compiled for
+\code{fallback_device} (or the default device) because nothing else named
+one. \code{FALSE} means its device is fixed by \code{device}, the inputs or the
+traced arrays, which the default device does not affect.
 }
 }
 \description{
