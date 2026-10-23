@@ -42,6 +42,7 @@ along axis 1 with that axis dropped.
 
 \itemize{
 \item \code{stablehlo}
+\item \code{reverse}
 }
 }
 

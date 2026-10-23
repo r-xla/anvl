@@ -3448,7 +3448,8 @@ nv_if <- prim_if
 #' @section Gradients:
 #' [gradient()] cannot differentiate a while loop: its trip count is only known
 #' at run time, so there is no static size for the per-iteration states the
-#' backward pass needs.
+#' backward pass needs. [nv_scan()], whose number of steps is static, is
+#' differentiable.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the loop state is a named list, and each member keeps its data type
@@ -3511,6 +3512,11 @@ nv_while <- prim_while
 #' @return `list(carry = , out = )`: the final carry (same structure as
 #'   `init`) and the stacked outputs (structure of `body`'s `out`, each
 #'   leaf gaining a leading axis of size `steps`).
+#' @section Gradients:
+#' Unlike [nv_while()], a scan is differentiable with [gradient()], with
+#' respect to `init`, `xs` and the arrays `body` closes over. The forward pass
+#' keeps what the backward pass needs of each step, so the memory a gradient
+#' takes grows linearly with `steps`.
 #' @seealso [prim_scan()], [nv_while()], [nv_cumsum()] for fixed associative scans.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # cumulative sum along axis 1
@@ -3520,6 +3526,12 @@ nv_while <- prim_while
 #'   xs = x,
 #'   body = function(carry, x) list(carry = carry + x, out = carry + x)
 #' )$out
+#'
+#' # a scan is differentiable: the gradient of a cumulative product
+#' f <- function(x) {
+#'   nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+#' }
+#' jit(gradient(f))(nv_array(c(1, 2, 3)))
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
   init <- map_tree(init, as_anvl_array)

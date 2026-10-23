@@ -590,6 +590,172 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
   )
 })
 
+# As JAX's partial evaluation and transpose of a `scan`: the body is split
+# with `split_vjp()`, the forward scan runs the split-off forward and stacks
+# each step's residuals as extra outputs, and the backward pass is a scan in
+# the opposite direction that runs the split-off backward over them. It
+# carries the cotangent of the carry and sums those of the captures over the
+# steps; the cotangents of `xs` are stacked like any output. Nothing of the
+# forward pass is rerun.
+#
+# What the backward reads besides the residuals is stored no more than it has
+# to be: the carry a step started with is stacked only where it is read, `xs`
+# are read from the operands, a residual that is also a stacked output is read
+# from it, and what does not change from step to step -- computed from the
+# captures alone -- is computed once, before the loop, as JAX hoists it. Slots
+# of the backward graph that nothing reads are left empty.
+#
+# Operands are the carry, then `xs`, then what the body captures; the body's
+# inputs line up with them.
+prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+  body <- params$body
+  n_carry <- params$n_carry
+  carry_idx <- seq_len(n_carry)
+  n_xs <- params$n_xs
+  xs_idx <- n_carry + seq_len(n_xs)
+  cap_idx <- n_carry + n_xs + seq_len(params$n_captures)
+  n_out <- length(body$outputs) - n_carry
+  caps <- inputs[cap_idx]
+
+  carry_needed <- which(scan_carry_requires(body, required, carry_idx))
+  xs_needed <- xs_idx[required[xs_idx]]
+  cap_needed <- cap_idx[required[cap_idx]]
+  vjp <- split_vjp(body, c(carry_needed, xs_needed, cap_needed))
+  res_avals <- vjp$residual_avals
+  n_res <- length(res_avals)
+
+  # The backward graph takes a cotangent per body output, the body's inputs,
+  # then the residuals. A slot it does not read is passed as `NULL`: the
+  # cotangent of an output that depends on no target, an input it does not
+  # need.
+  bwd_reads <- graph_reads(vjp$bwd)
+  bwd_read <- vapply(vjp$bwd$inputs, \(g) isTRUE(bwd_reads[[g]]), logical(1L))
+  out_read <- which(bwd_read[n_carry + seq_len(n_out)])
+  body_input_read <- bwd_read[length(body$outputs) + seq_along(body$inputs)]
+  tape_idx <- carry_idx[body_input_read[carry_idx]]
+  xs_read <- xs_idx[body_input_read[xs_idx]]
+  cap_read <- cap_idx[body_input_read[cap_idx]]
+
+  # What does not change from step to step -- computed from the captures
+  # alone -- is computed once, before the loop, as JAX hoists it: the forward
+  # scan reads it like a capture, and so does the backward scan where it is a
+  # residual. Carrying such a residual through the loop instead would cost a
+  # copy of it per step. What prints stays in the loop (see
+  # `split_loop_invariant()`).
+  split <- split_loop_invariant(vjp$fwd, vjp$fwd$inputs[c(carry_idx, xs_idx)])
+  before <- if (length(split$invariant)) {
+    # It reads none of the carry and `xs`.
+    graph_apply(split$before, c(vector("list", n_carry + n_xs), caps))
+  }
+  position_in <- function(g, gvals) Position(\(h) identical(h, g), gvals)
+  res_outputs <- vjp$fwd$outputs[n_carry + n_out + seq_len(n_res)]
+  res_hoisted <- vapply(res_outputs, \(g) !isTRUE(split$in_loop[[g]]), logical(1L))
+  # A residual that is also a stacked output is read from that output, as JAX
+  # dedupes them.
+  stacked_outputs <- vjp$fwd$outputs[n_carry + seq_len(n_out)]
+  res_out_pos <- vapply(res_outputs, \(g) position_in(g, stacked_outputs) %||% NA_integer_, integer(1L))
+  res_in_out <- !res_hoisted & !is.na(res_out_pos)
+  res_stacked <- !res_hoisted & !res_in_out
+
+  fwd <- prim_scan(
+    init = inputs[carry_idx],
+    xs = inputs[xs_idx],
+    body = function(carry, x) {
+      outs <- graph_apply(split$loop, c(carry, x, caps, before))
+      res <- outs[n_carry + n_out + seq_len(n_res)]
+      list(
+        carry = outs[carry_idx],
+        out = list(out = outs[n_carry + seq_len(n_out)], res = res[res_stacked], tape = carry[tape_idx])
+      )
+    },
+    steps = params$steps,
+    reverse = params$reverse
+  )
+
+  list(
+    outputs = c(fwd$carry, fwd$out$out),
+    backward = function(inputs, outputs, grads, params, required) {
+      n_carry_needed <- length(carry_needed)
+      n_xs_needed <- length(xs_needed)
+      n_cap <- length(cap_needed)
+      # A scan needs a carry; where only `xs` is differentiated there is none
+      # to thread, so a placeholder rides along.
+      placeholder <- if (!n_carry_needed && !n_cap) list(FALSE)
+
+      pulled <- prim_scan(
+        init = list(
+          carry = grads[carry_needed],
+          caps = lapply(inputs[cap_needed], zeros_like),
+          placeholder = placeholder
+        ),
+        xs = list(
+          out = grads[n_carry + out_read],
+          res = fwd$out$res,
+          res_out = fwd$out$out[res_out_pos[res_in_out]],
+          tape = fwd$out$tape,
+          xs = inputs[xs_read]
+        ),
+        body = function(carry, x) {
+          cts <- vector("list", length(body$outputs))
+          cts[carry_needed] <- carry$carry
+          cts[n_carry + out_read] <- x$out
+          body_ins <- vector("list", length(body$inputs))
+          body_ins[tape_idx] <- x$tape
+          body_ins[xs_read] <- x$xs
+          body_ins[cap_read] <- inputs[cap_read]
+          res <- vector("list", n_res)
+          res[res_stacked] <- x$res
+          res[res_in_out] <- x$res_out
+          res[res_hoisted] <- before[vapply(res_outputs[res_hoisted], position_in, integer(1L), split$invariant)]
+          ct <- graph_apply(vjp$bwd, c(cts, body_ins, res))
+          list(
+            carry = list(
+              carry = ct[seq_len(n_carry_needed)],
+              caps = Map(prim_add, carry$caps, ct[n_carry_needed + n_xs_needed + seq_len(n_cap)]),
+              placeholder = carry$placeholder
+            ),
+            out = ct[n_carry_needed + seq_len(n_xs_needed)]
+          )
+        },
+        steps = params$steps,
+        reverse = !params$reverse
+      )
+
+      grads_in <- vector("list", length(inputs))
+      grads_in[carry_needed] <- pulled$carry$carry
+      grads_in[xs_needed] <- pulled$out
+      grads_in[cap_needed] <- pulled$carry$caps
+      grads_in
+    }
+  )
+})
+
+# Which carry slots of a scan carry a gradient: a slot does if its `init`
+# requires one, or if the body makes it depend on something that does -- a
+# required `xs` or capture, or another such slot. The set only grows, so this
+# reaches its fixed point within `n_carry` rounds. A slot outside it, such as
+# an RNG state or a counter, is neither differentiated nor has to be.
+scan_carry_requires <- function(body, required, carry_idx) {
+  seeds <- required
+  repeat {
+    seed <- hashtab()
+    for (k in seq_along(body$inputs)) {
+      seed[[body$inputs[[k]]]] <- seeds[[k]]
+    }
+    env <- propagate_requirements(body, seed)
+    out_req <- vapply(
+      body$outputs[carry_idx],
+      function(out) !is_graph_literal(out) && isTRUE(env[[out]]),
+      logical(1L)
+    )
+    grown <- seeds[carry_idx] | out_req
+    if (identical(grown, seeds[carry_idx])) {
+      return(grown)
+    }
+    seeds[carry_idx] <- grown
+  }
+}
+
 # Printing hands its argument back unchanged, so the cotangent passes through.
 prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   list(if (required[[1L]]) grads[[1L]])

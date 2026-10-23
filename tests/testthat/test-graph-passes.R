@@ -270,6 +270,55 @@ describe("inline_scalarish_constants", {
   })
 })
 
+describe("prune_graph", {
+  it("keeps only the calls the given outputs need", {
+    f <- function(x, y) list(a = nv_exp(x), b = nv_log(y) + y)
+    graph <- trace_fn(f, list(x = nv_scalar(1, "f64"), y = nv_scalar(2, "f64")))
+    pruned <- prune_graph(graph, graph$outputs[1L])
+    expect_equal(vapply(pruned$statements, \(call) call$primitive$name, character(1L)), "exp")
+    expect_identical(pruned$inputs, graph$inputs)
+    expect_length(graph$statements, 3L)
+  })
+
+  it("drops a print", {
+    f <- function(x) {
+      prim_print(x)
+      nv_exp(x)
+    }
+    graph <- trace_fn(f, list(x = nv_scalar(1, "f64")))
+    pruned <- prune_graph(graph, graph$outputs)
+    expect_equal(vapply(pruned$statements, \(call) call$primitive$name, character(1L)), "exp")
+  })
+})
+
+describe("split_loop_invariant", {
+  it("computes before the loop what does not depend on the varying inputs", {
+    f <- function(h, w) nv_exp(w) * h
+    graph <- trace_fn(f, list(h = nv_scalar(1, "f64"), w = nv_scalar(2, "f64")))
+    split <- split_loop_invariant(graph, graph$inputs[1L])
+    names_of <- function(g) vapply(g$statements, \(call) call$primitive$name, character(1L))
+    expect_equal(names_of(split$before), "exp")
+    expect_equal(names_of(split$loop), "mul")
+    expect_length(split$invariant, 1L)
+    expect_identical(split$loop$inputs, c(graph$inputs, split$invariant))
+  })
+
+  it("keeps a call that prints in the loop, with what is computed from it", {
+    f <- function(h, w) {
+      k <- nv_if(w > 0, function() {
+        prim_print(w)
+        nv_exp(w)
+      }, function() w)
+      nv_log(k) * h
+    }
+    graph <- trace_fn(f, list(h = nv_scalar(1, "f64"), w = nv_scalar(2, "f64")))
+    split <- split_loop_invariant(graph, graph$inputs[1L])
+    names_of <- function(g) vapply(g$statements, \(call) call$primitive$name, character(1L))
+    expect_equal(names_of(split$before), "gt")
+    expect_equal(names_of(split$loop), c("if", "log", "mul"))
+  })
+})
+
 describe("remove_unused_constants", {
   it("removes unused constants", {
     y <- nv_scalar(5, "f32")
