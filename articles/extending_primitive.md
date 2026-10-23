@@ -242,8 +242,9 @@ factories that generate the body for you:
   `prim_mul`).
 - `make_reduce_op(infer_fn)` – reductions with `axes` / `drop`
   parameters (e.g. `prim_sum`).
-- `make_compare_op(direction)` – comparison ops with a fixed `direction`
-  string (e.g. `prim_eq`, `prim_lt`).
+- `compare_op` – the body of the comparison ops (e.g. `prim_eq`,
+  `prim_lt`); passed as is, since each op’s direction is set by its
+  stablehlo rule.
 
 Used together with the matching inference rule, the primitive definition
 collapses to a one-liner:
@@ -508,7 +509,8 @@ manual tests in:
 - `tests/testthat/test-primitives-stablehlo.R`
 - `tests/testthat/test-primitives-reverse.R`
 
-Also, ensure that no linter errors are present, `devtools::check()`
+Also, ensure that no linter errors are present,
+[`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
 passes, and format the code using `make format`.
 
 ## Higher-Order Primitives

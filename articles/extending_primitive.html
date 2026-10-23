@@ -350,9 +350,9 @@ you:</p>
 <code>axes</code> / <code>drop</code> parameters
 (e.g. <code>prim_sum</code>).</li>
 <li>
-<code>make_compare_op(direction)</code> – comparison ops with a
-fixed <code>direction</code> string (e.g. <code>prim_eq</code>,
-<code>prim_lt</code>).</li>
+<code>compare_op</code> – the body of the comparison ops
+(e.g. <code>prim_eq</code>, <code>prim_lt</code>); passed as is, since
+each op’s direction is set by its stablehlo rule.</li>
 </ul>
 <p>Used together with the matching inference rule, the primitive
 definition collapses to a one-liner:</p>
@@ -621,7 +621,7 @@ we would add manual tests in:</p>
 <li><code>tests/testthat/test-primitives-reverse.R</code></li>
 </ul>
 <p>Also, ensure that no linter errors are present,
-<code>devtools::check()</code> passes, and format the code using
+<code><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">devtools::check()</a></code> passes, and format the code using
 <code>make format</code>.</p>
 </div>
 </div>
