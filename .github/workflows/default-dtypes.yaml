@@ -29,6 +29,7 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
+      PJRT_PLUGIN_URL_CPU: https://github.com/r-xla/pjrt-builds/releases/download/pjrt-cpu-aa1e72c/pjrt-cpu_linux-amd64.tar.gz
       ANVL_DEFAULT_DTYPES: ${{ matrix.dtypes }}
 
     steps:
