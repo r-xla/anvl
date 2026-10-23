@@ -277,9 +277,10 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
   })
 }
 
-# Splits the reverse of a sub-graph into two closed graphs, so that its
-# backward pass does not have to rerun the forward one, as JAX's partial
-# evaluation of a `cond` does:
+# Splits the reverse of a sub-graph -- a branch of `prim_if()`, the body of
+# `prim_scan()` -- into two closed graphs, so that its backward pass does not
+# have to rerun the forward one, as JAX's partial evaluation of a `cond` or a
+# `scan` does:
 #   - fwd: `graph`'s forward pass, taking the same inputs, returning its
 #     outputs and then the residuals -- the values computed by the forward
 #     pass that `bwd` reads.
@@ -372,21 +373,10 @@ propagate_requirements <- function(graph, required_env) {
   required_env
 }
 
-# The values `graph` reads -- as an operand of one of its calls or as an
-# output -- as a hashtab(gval -> TRUE).
-graph_reads <- function(graph) {
-  env <- hashtab()
-  traverse_gnodes(graph, function(g) {
-    if (!is_graph_literal(g)) {
-      env[[g]] <- TRUE
-    }
-  })
-  env
-}
-
 # Replays `graph`'s forward pass into `desc`, call by call. `split_vjp()` uses
-# it to rebuild a branch of `prim_if()`, `graph_apply()` to rerun a closed
-# graph, `graph_value_and_grad()` to replay what `gradient()` traced into the
+# it to rebuild a sub-graph -- a branch of `prim_if()`, the body of
+# `prim_scan()` -- `graph_apply()` to rerun a closed graph,
+# `graph_value_and_grad()` to replay what `gradient()` traced into the
 # descriptor it is called in.
 #
 # Returns:
@@ -396,6 +386,7 @@ graph_reads <- function(graph) {
 #     added (they fall through).
 #   - backwards: ordered list that needs to be traversed in reverse for the
 #     backward pass.
+#   - translate: function(original gval) -> the gval `desc` holds for it.
 #
 # `inputs` are the boxes the graph's inputs are bound to -- the arguments
 # passed to the gradient function -- with `NULL` for one the graph does not
@@ -425,12 +416,19 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     if (is_graph_literal(g)) {
       return(g)
     }
+    if (isTRUE(unbound[[g]])) {
+      cli_abort("Internal error: a replayed graph read an input that was passed as `NULL`.")
+    }
     trans[[g]] %||% g
   }
   # The graph is pure, so its inputs are GraphValues of its own: bind each to
-  # the value passed for it.
+  # the value passed for it. One passed as `NULL` must not be read: it would
+  # fall through to a GraphValue `desc` never defined.
+  unbound <- hashtab()
   for (i in seq_along(inputs)) {
-    if (!is.null(inputs[[i]])) {
+    if (is.null(inputs[[i]])) {
+      unbound[[graph$inputs[[i]]]] <- TRUE
+    } else {
       trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
     }
   }
@@ -510,7 +508,7 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     }
   }
 
-  list(trans = trans, backwards = backwards)
+  list(trans = trans, backwards = backwards, translate = translate_gnode)
 }
 
 # Replays `graph` into the current descriptor as a function of `inputs`
@@ -518,14 +516,13 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
 # and returns the boxes of its outputs, e.g. a branch of `prim_if()`'s forward
 # pass that `split_vjp()` prepared. No backward pass follows, so every call
 # keeps its plain forward: an empty `required_env` says that nothing requires a
-# gradient. Every call gets new output gvals, so that a graph applied in more
-# than one place -- a scan's forward step and its residuals computed before the
-# loop -- never defines the same value twice in one trace.
+# gradient. Every call gets new output gvals, so that a graph applied more than
+# once in one trace never defines the same value twice.
 graph_apply <- function(graph, inputs) {
   desc <- current_descriptor()
   rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env = hashtab(), fresh = TRUE)
   lapply(graph$outputs, function(out) {
-    g <- if (is_graph_literal(out)) out else rebuilt$trans[[out]] %||% out
+    g <- rebuilt$translate(out)
     desc$gval_to_box[[g]] %||% GraphBox(g, desc)
   })
 }

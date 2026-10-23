@@ -146,7 +146,7 @@ At these points, {anvl} follows the conventions of other frameworks such as PyTo
 
 ## Control Flow
 
-`gradient()` differentiates through the control-flow primitives `nv_if()` and `nv_scan()`.
+`gradient()` differentiates through the control-flow functions `nv_if()` and `nv_scan()`.
 Values their functions close over are differentiated as well.
 For `nv_if()`, the gradient flows through the branch the predicate selects:
 

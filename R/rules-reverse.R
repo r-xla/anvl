@@ -600,10 +600,11 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
 #
 # What the backward reads besides the residuals is stored no more than it has
 # to be: the carry a step started with is stacked only where it is read, `xs`
-# are read from the operands, a residual that is also a stacked output is read
-# from it, and what does not change from step to step -- computed from the
-# captures alone -- is computed once, before the loop, as JAX hoists it. Slots
-# of the backward graph that nothing reads are left empty.
+# are read from the operands, a residual or carry that is also a stacked output
+# is read from that output, and what does not change from step to step --
+# computed from the captures alone -- is computed once, before the loop, as JAX
+# hoists it. Slots that nothing reads are left empty, in the step of either
+# scan.
 #
 # Operands are the carry, then `xs`, then what the body captures; the body's
 # inputs line up with them.
@@ -621,8 +622,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
   xs_needed <- xs_idx[required[xs_idx]]
   cap_needed <- cap_idx[required[cap_idx]]
   vjp <- split_vjp(body, c(carry_needed, xs_needed, cap_needed))
-  res_avals <- vjp$residual_avals
-  n_res <- length(res_avals)
+  n_res <- length(vjp$residual_avals)
 
   # The backward graph takes a cotangent per body output, the body's inputs,
   # then the residuals. A slot it does not read is passed as `NULL`: the
@@ -650,22 +650,38 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
   position_in <- function(g, gvals) Position(\(h) identical(h, g), gvals)
   res_outputs <- vjp$fwd$outputs[n_carry + n_out + seq_len(n_res)]
   res_hoisted <- vapply(res_outputs, \(g) !isTRUE(split$in_loop[[g]]), logical(1L))
-  # A residual that is also a stacked output is read from that output, as JAX
-  # dedupes them.
+  # A value the backward pass reads at every step that is also a stacked
+  # output -- a residual, or the carry the step started from -- is read from
+  # that output, as JAX dedupes residuals.
   stacked_outputs <- vjp$fwd$outputs[n_carry + seq_len(n_out)]
-  res_out_pos <- vapply(res_outputs, \(g) position_in(g, stacked_outputs) %||% NA_integer_, integer(1L))
+  res_out_pos <- vapply(res_outputs, position_in, integer(1L), stacked_outputs)
   res_in_out <- !res_hoisted & !is.na(res_out_pos)
   res_stacked <- !res_hoisted & !res_in_out
+  tape_out_pos <- vapply(vjp$fwd$inputs[tape_idx], position_in, integer(1L), stacked_outputs)
+  tape_in_out <- !is.na(tape_out_pos)
 
+  # The step returns the carry, the stacked outputs and the residuals stacked
+  # for the backward pass, and reads nothing else: a capture or a value
+  # computed before the loop that it does not read is not passed in, so that
+  # the scan does not carry it as an operand.
+  step_outputs <- c(seq_len(n_carry + n_out), n_carry + n_out + which(res_stacked))
+  step <- prune_graph(split$loop, split$loop$outputs[step_outputs])
+  step_reads <- graph_reads(step)
+  step_unread <- !vapply(step$inputs, \(g) isTRUE(step_reads[[g]]), logical(1L))
   fwd <- prim_scan(
     init = inputs[carry_idx],
     xs = inputs[xs_idx],
     body = function(carry, x) {
-      outs <- graph_apply(split$loop, c(carry, x, caps, before))
-      res <- outs[n_carry + n_out + seq_len(n_res)]
+      args <- c(carry, x, caps, before)
+      args[step_unread] <- list(NULL)
+      outs <- graph_apply(step, args)
       list(
         carry = outs[carry_idx],
-        out = list(out = outs[n_carry + seq_len(n_out)], res = res[res_stacked], tape = carry[tape_idx])
+        out = list(
+          out = outs[n_carry + seq_len(n_out)],
+          res = outs[n_carry + n_out + seq_len(sum(res_stacked))],
+          tape = carry[tape_idx[!tape_in_out]]
+        )
       )
     },
     steps = params$steps,
@@ -693,6 +709,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
           res = fwd$out$res,
           res_out = fwd$out$out[res_out_pos[res_in_out]],
           tape = fwd$out$tape,
+          tape_out = fwd$out$out[tape_out_pos[tape_in_out]],
           xs = inputs[xs_read]
         ),
         body = function(carry, x) {
@@ -700,7 +717,8 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
           cts[carry_needed] <- carry$carry
           cts[n_carry + out_read] <- x$out
           body_ins <- vector("list", length(body$inputs))
-          body_ins[tape_idx] <- x$tape
+          body_ins[tape_idx[!tape_in_out]] <- x$tape
+          body_ins[tape_idx[tape_in_out]] <- x$tape_out
           body_ins[xs_read] <- x$xs
           body_ins[cap_read] <- inputs[cap_read]
           res <- vector("list", n_res)

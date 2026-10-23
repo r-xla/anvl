@@ -11,6 +11,18 @@ traverse_gnodes <- function(graph, fn) {
   }
 }
 
+# The values `graph` reads -- as an operand of one of its calls or as an
+# output -- as a hashtab(gval -> TRUE).
+graph_reads <- function(graph) {
+  env <- hashtab()
+  traverse_gnodes(graph, function(g) {
+    if (!is_graph_literal(g)) {
+      env[[g]] <- TRUE
+    }
+  })
+  env
+}
+
 # A shallow copy of `graph` for a pass to modify: `AnvlGraph` has reference
 # semantics, so a pass must not change the graph it was given.
 copy_graph <- function(graph) {
@@ -29,10 +41,10 @@ copy_graph <- function(graph) {
   )
 }
 
-# The part of `graph` that computes `outputs`: the calls they need and no
-# others. Inputs and constants stay as they are. A print at the top level is
-# never among them, since what reads its operand reads the operand itself (see
-# `prim_print()`); one in the sub-graph of a kept call is kept with it.
+# The part of `graph` that computes `outputs`: the calls they need, and the
+# calls that print -- from a sub-graph too -- with what they read, since no
+# output reads a print (what reads its operand reads the operand itself, see
+# `prim_print()`). Inputs and constants stay as they are.
 prune_graph <- function(graph, outputs) {
   new_graph <- copy_graph(graph)
   new_graph$outputs <- outputs
@@ -48,7 +60,7 @@ prune_graph <- function(graph, outputs) {
   keep <- logical(length(graph$statements))
   for (i in rev(seq_along(graph$statements))) {
     call <- graph$statements[[i]]
-    if (any(vapply(call$outputs, \(g) isTRUE(needed[[g]]), logical(1L)))) {
+    if (call_prints(call) || any(vapply(call$outputs, \(g) isTRUE(needed[[g]]), logical(1L)))) {
       keep[[i]] <- TRUE
       mark(call$inputs)
     }
@@ -89,51 +101,50 @@ split_loop_invariant <- function(graph, varying) {
     in_loop[[g]] <- TRUE
   }
   reads_loop <- function(x) !is_graph_literal(x) && isTRUE(in_loop[[x]])
-  stays <- vapply(
-    graph$statements,
-    function(call) {
-      stay <- call_prints(call) || any(vapply(call$inputs, reads_loop, logical(1L)))
-      if (stay) {
-        for (out in call$outputs) in_loop[[out]] <- TRUE
+  # Whether a call stays depends on whether the calls before it did.
+  stays <- logical(length(graph$statements))
+  for (i in seq_along(graph$statements)) {
+    call <- graph$statements[[i]]
+    stays[[i]] <- call_prints(call) || any(vapply(call$inputs, reads_loop, logical(1L)))
+    if (stays[[i]]) {
+      for (out in call$outputs) {
+        in_loop[[out]] <- TRUE
       }
-      stay
-    },
-    logical(1L)
-  )
+    }
+  }
 
   computed_before <- hashtab()
   for (call in graph$statements[!stays]) {
-    for (out in call$outputs) computed_before[[out]] <- TRUE
+    for (out in call$outputs) {
+      computed_before[[out]] <- TRUE
+    }
   }
+  # Each value computed before the loop is listed once, where it is first read.
   read <- c(do.call(c, lapply(graph$statements[stays], \(call) call$inputs)), graph$outputs)
+  first_read_before <- logical(length(read))
   seen <- hashtab()
-  first_read_before <- vapply(
-    read,
-    function(g) {
-      first <- !is_graph_literal(g) && isTRUE(computed_before[[g]]) && is.null(seen[[g]])
-      if (first) seen[[g]] <- TRUE
-      first
-    },
-    logical(1L)
-  )
+  for (i in seq_along(read)) {
+    g <- read[[i]]
+    if (!is_graph_literal(g) && isTRUE(computed_before[[g]]) && is.null(seen[[g]])) {
+      seen[[g]] <- TRUE
+      first_read_before[[i]] <- TRUE
+    }
+  }
   invariant <- read[first_read_before]
 
+  hoisted <- copy_graph(graph)
+  hoisted$statements <- graph$statements[!stays]
   loop <- copy_graph(graph)
   loop$statements <- graph$statements[stays]
   loop$inputs <- c(graph$inputs, invariant)
   loop$rdata_types <- NULL
-  list(invariant = invariant, before = prune_graph(graph, invariant), loop = loop, in_loop = in_loop)
+  list(invariant = invariant, before = prune_graph(hoisted, invariant), loop = loop, in_loop = in_loop)
 }
 
 remove_unused_constants <- function(graph) {
   new_graph <- copy_graph(graph)
 
-  is_used <- hashtab()
-  traverse_gnodes(new_graph, function(gval) {
-    if (is_graph_value(gval) && is_concrete_array(gval$aval)) {
-      is_used[[gval]] <- TRUE
-    }
-  })
+  is_used <- graph_reads(new_graph)
   new_graph$constants <- new_graph$constants[vapply(
     new_graph$constants,
     function(const) isTRUE(is_used[[const]]),
