@@ -1055,6 +1055,31 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
 }
 
 prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a, output_types) {
+  # XLA lowers `stablehlo.triangular_solve` to cuBLAS trsm on CUDA, but on the
+  # CPU expands it into blocked HLO that is several times slower than BLAS
+  # trsm. So, as JAX does, the CPU takes pjrt's `trsm` custom call for the data
+  # types BLAS has. It stands in for the op: same attributes and semantics, on
+  # XLA's default row-major layout.
+  if (identical(current_platform(), "cpu") && as.character(dtype(a)) %in% c("f32", "f64")) {
+    row_major <- rev(seq_len(length(shape(b$value_type))) - 1L)
+    x <- hlo_custom_call(
+      a,
+      b,
+      call_target_name = "trsm",
+      api_version = 4L,
+      has_side_effect = FALSE,
+      backend_config = stablehlo::CustomOpBackendConfig(list(
+        stablehlo::BoolAttr(name = "left_side", value = left_side),
+        stablehlo::BoolAttr(name = "lower", value = lower),
+        stablehlo::BoolAttr(name = "transpose_a", value = transpose_a),
+        stablehlo::BoolAttr(name = "unit_diagonal", value = unit_diagonal)
+      )),
+      output_types = output_types,
+      operand_layouts = list(row_major, row_major),
+      result_layouts = list(row_major)
+    )
+    return(list(x))
+  }
   list(hlo_triangular_solve(
     a,
     b,

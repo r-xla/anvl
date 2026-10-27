@@ -3419,7 +3419,10 @@ prim_chol <- new_primitive(
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("triangular_solve")`
+#' On CPU, an `f32` or `f64` solve lowers to a `"trsm"` [hlo_custom_call()]
+#' (backed by BLAS). Otherwise it lowers to [hlo_triangular_solve()], specified
+#' under [triangular_solve](https://openxla.org/stablehlo/spec#triangular_solve),
+#' which XLA runs through cuBLAS on CUDA.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # solve L %*% x = b where L is lower triangular

@@ -36,6 +36,9 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
+* `nv_triangular_solve()` / `prim_triangular_solve()`, and with them
+  `nv_solve()`, now lower to a BLAS `trsm` custom call on CPU, which runs
+  several times faster from about 100 rows on and compiles faster.
 * Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
   `lhs` has batching axes but no free axes.
 * Bugfix: `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
