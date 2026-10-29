@@ -128,7 +128,7 @@ reference:
       - dim.AnvlArray
       - length.AnvlArray
 
-  - title: API Functions
+  - title: Array API
     desc: User-facing `nv_*` functions for array operations
 
   - subtitle: Type Conversion and Broadcasting

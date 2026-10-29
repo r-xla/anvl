@@ -5,6 +5,8 @@
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
 
+* Bugfix: A classed R value, such as a `bit64::integer64` array, is an error
+  under `jit()` instead of being read through its storage type.
 * Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
   negative `sd`, like `rnorm()`.
 * Bugfix: `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`

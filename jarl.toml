@@ -1,12 +1,12 @@
 [lint]
 exclude = ["inst/extra-tests"]
 
-# `<<-` is how a closure updates state it shares with its caller -- counters in
-# tests, caches in jit() -- so only the other default operators are flagged.
-[lint.undesirable_operator]
-operators = ["->>", ":::"]
-
 # Empty subscripts (`check(shape, , 2:4)`) deliberately select the full axis,
 # mirroring `[` semantics, throughout this file.
 [lint.per-file-ignores]
 "tests/testthat/test-api-subset.R" = ["missing_argument"]
+
+# `<<-` is used deliberately for closure state (memoized jit functions,
+# counters in tests); the other default operators stay banned.
+[lint.undesirable_operator]
+operators = ["->>", ":::"]
