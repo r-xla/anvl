@@ -1586,10 +1586,14 @@ describe("prim_print", {
     # run the print once more.
     f <- function(x, w) {
       body <- function(carry, xs) {
-        k <- nv_if(w > 0, function() {
-          prim_print(nv_scalar(7L))
-          nv_exp(w)
-        }, function() w)
+        k <- nv_if(
+          w > 0,
+          function() {
+            prim_print(nv_scalar(7L))
+            nv_exp(w)
+          },
+          function() w
+        )
         list(carry = list(a = carry$a * k + xs$v), out = NULL)
       }
       prim_scan(list(a = nv_scalar(1, "f64")), list(v = x), body, steps = 3L)$carry$a

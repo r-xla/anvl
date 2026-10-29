@@ -305,10 +305,14 @@ describe("split_loop_invariant", {
 
   it("keeps a call that prints in the loop, with what is computed from it", {
     f <- function(h, w) {
-      k <- nv_if(w > 0, function() {
-        prim_print(w)
-        nv_exp(w)
-      }, function() w)
+      k <- nv_if(
+        w > 0,
+        function() {
+          prim_print(w)
+          nv_exp(w)
+        },
+        function() w
+      )
       nv_log(k) * h
     }
     graph <- trace_fn(f, list(h = nv_scalar(1, "f64"), w = nv_scalar(2, "f64")))

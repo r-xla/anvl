@@ -94,7 +94,9 @@ split_loop_invariant <- function(graph, varying) {
     function(call) {
       stay <- call_prints(call) || any(vapply(call$inputs, reads_loop, logical(1L)))
       if (stay) {
-        for (out in call$outputs) in_loop[[out]] <- TRUE
+        for (out in call$outputs) {
+          in_loop[[out]] <- TRUE
+        }
       }
       stay
     },
@@ -103,7 +105,9 @@ split_loop_invariant <- function(graph, varying) {
 
   computed_before <- hashtab()
   for (call in graph$statements[!stays]) {
-    for (out in call$outputs) computed_before[[out]] <- TRUE
+    for (out in call$outputs) {
+      computed_before[[out]] <- TRUE
+    }
   }
   read <- c(do.call(c, lapply(graph$statements[stays], \(call) call$inputs)), graph$outputs)
   seen <- hashtab()
@@ -111,7 +115,9 @@ split_loop_invariant <- function(graph, varying) {
     read,
     function(g) {
       first <- !is_graph_literal(g) && isTRUE(computed_before[[g]]) && is.null(seen[[g]])
-      if (first) seen[[g]] <- TRUE
+      if (first) {
+        seen[[g]] <- TRUE
+      }
       first
     },
     logical(1L)
