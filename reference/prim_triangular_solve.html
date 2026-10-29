@@ -163,8 +163,10 @@ errors on batched operands (operands with more than 2 axes).</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html" class="external-link">hlo_triangular_solve()</a></code>, specified under
-<a href="https://openxla.org/stablehlo/spec#triangular_solve" class="external-link">triangular_solve</a>.</p>
+<p>On CPU, an <code>f32</code> or <code>f64</code> solve lowers to a <code>"trsm"</code> <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html" class="external-link">hlo_custom_call()</a></code>
+(backed by BLAS). Otherwise it lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html" class="external-link">hlo_triangular_solve()</a></code>, specified
+under <a href="https://openxla.org/stablehlo/spec#triangular_solve" class="external-link">triangular_solve</a>,
+which XLA runs through cuBLAS on CUDA.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

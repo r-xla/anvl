@@ -99,6 +99,14 @@
   now lower to a LAPACK (CPU) / cuSOLVER (CUDA) `potrf` custom call,
   which is about ten times faster on CPU.
 
+- [`nv_triangular_solve()`](https://r-xla.github.io/anvl/reference/nv_triangular_solve.md)
+  /
+  [`prim_triangular_solve()`](https://r-xla.github.io/anvl/reference/prim_triangular_solve.md),
+  and with them
+  [`nv_solve()`](https://r-xla.github.io/anvl/reference/nv_solve.md),
+  now lower to a BLAS `trsm` custom call on CPU, which runs several
+  times faster from about 100 rows on and compiles faster.
+
 - Bugfix: the gradient of
   [`prim_dot_general()`](https://r-xla.github.io/anvl/reference/prim_dot_general.md)
   with respect to `lhs` is right when `lhs` has batching axes but no

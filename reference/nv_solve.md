@@ -83,7 +83,7 @@ nv_solve(a, b)
 # an integer system is solved at the default float data type
 nv_solve(nv_matrix(c(3L, 1L, 1L, 2L), nrow = 2), nv_array(c(9L, 8L)))
 #> AnvlArray
-#>  2.0000
-#>  3.0000
+#>  2
+#>  3
 #> [ CPUf32{2} ] 
 ```

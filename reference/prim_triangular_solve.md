@@ -75,10 +75,13 @@ rule errors on batched operands (operands with more than 2 axes).
 
 ## StableHLO
 
-Lowers to
+On CPU, an `f32` or `f64` solve lowers to a `"trsm"`
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+(backed by BLAS). Otherwise it lowers to
 [`hlo_triangular_solve()`](https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html),
 specified under
-[triangular_solve](https://openxla.org/stablehlo/spec#triangular_solve).
+[triangular_solve](https://openxla.org/stablehlo/spec#triangular_solve),
+which XLA runs through cuBLAS on CUDA.
 
 ## References
 
