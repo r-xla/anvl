@@ -1,5 +1,8 @@
 # anvl (development version)
 
+* `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
+  now differentiable.
+
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
