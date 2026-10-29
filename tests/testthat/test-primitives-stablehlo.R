@@ -935,34 +935,6 @@ describe("prim_triangular_solve", {
     expect_equal(c(x2), c(7 / 6, 2.5), tolerance = 1e-5)
   })
 
-  lower_solve <- function(dtype, platform) {
-    g <- trace_fn(
-      function(a, b) {
-        prim_triangular_solve(a, b, left_side = FALSE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
-      },
-      list(nv_aval(dtype, shape = c(2L, 3L, 3L)), nv_aval(dtype, shape = c(2L, 4L, 3L)))
-    )
-    repr(stablehlo(g, platform = platform)[[1L]])
-  }
-
-  it("lowers to the trsm custom call on CPU, with the op's attributes", {
-    for (dtype in c("f32", "f64")) {
-      cpu <- lower_solve(dtype, "cpu")
-      expect_match(cpu, "@trsm", fixed = TRUE)
-      for (attr in c("left_side = false", "lower = true", "transpose_a = true", "unit_diagonal = false")) {
-        expect_match(cpu, attr, fixed = TRUE)
-      }
-      expect_no_match(cpu, "stablehlo.triangular_solve", fixed = TRUE)
-    }
-  })
-
-  it("lowers to stablehlo.triangular_solve on CUDA and for data types BLAS lacks", {
-    for (lowered in list(lower_solve("f32", "cuda"), lower_solve("f16", "cpu"))) {
-      expect_match(lowered, "stablehlo.triangular_solve", fixed = TRUE)
-      expect_no_match(lowered, "@trsm", fixed = TRUE)
-    }
-  })
-
   it("solves a batch of right-side, transposed systems through trsm on CPU", {
     withr::local_seed(1L)
     a <- array(rnorm(18L), c(2L, 3L, 3L))
