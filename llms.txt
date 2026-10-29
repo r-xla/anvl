@@ -254,7 +254,7 @@ generic is documented together with the `nv_*` function it delegates to.
 - [`length(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/reference/length.AnvlArray.md)
   : Number of Elements
 
-## API Functions
+## Array API
 
 User-facing `nv_*` functions for array operations
 
