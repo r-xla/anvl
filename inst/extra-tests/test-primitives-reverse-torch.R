@@ -1063,3 +1063,52 @@ describe("prim_triangular_solve", {
   it("masking: lower, unit_diagonal", verify_triangular_solve_masking(lower = TRUE, unit_diagonal = TRUE))
   it("masking: upper, unit_diagonal", verify_triangular_solve_masking(lower = FALSE, unit_diagonal = TRUE))
 })
+
+describe("prim_scan", {
+  # An RNN, h_t = tanh(W h_{t-1} + x_t), differentiated with respect to the
+  # initial state, the inputs and the weight it closes over.
+  verify_rnn_grad <- function(reverse) {
+    n <- sample(2:4, 1L)
+    steps <- sample(2:5, 1L)
+    W_r <- matrix(rnorm(n * n, sd = 0.5), n, n)
+    h0_r <- rnorm(n)
+    xs_r <- matrix(rnorm(steps * n), steps, n)
+
+    f_anvl <- function(W, h0, xs) {
+      body <- function(carry, x) {
+        h <- tanh(nv_matmul(W, carry$h) + x$v)
+        list(carry = list(h = h), out = h)
+      }
+      r <- prim_scan(list(h = h0), list(v = xs), body, steps = steps, reverse = reverse)
+      nv_sum(r$out) + nv_sum(r$carry$h)
+    }
+    grads <- jit(gradient(f_anvl))(
+      nv_array(W_r, dtype = "f64"),
+      nv_array(h0_r, dtype = "f64", shape = c(n, 1L)),
+      nv_array(xs_r, dtype = "f64", shape = c(steps, n, 1L))
+    )
+
+    W <- torch::torch_tensor(W_r, dtype = torch::torch_float64(), requires_grad = TRUE)
+    h0 <- torch::torch_tensor(h0_r, dtype = torch::torch_float64(), requires_grad = TRUE)
+    xs <- torch::torch_tensor(xs_r, dtype = torch::torch_float64(), requires_grad = TRUE)
+    h <- h0
+    loss <- torch::torch_zeros(1L, dtype = torch::torch_float64())
+    for (t in if (reverse) rev(seq_len(steps)) else seq_len(steps)) {
+      h <- torch::torch_tanh(torch::torch_matmul(W, h) + xs[t, ])
+      loss <- loss + torch::torch_sum(h)
+    }
+    loss <- loss + torch::torch_sum(h)
+    loss$backward()
+
+    expect_equal(as_array(grads$W), as_array_torch(W$grad), tolerance = 1e-10)
+    expect_equal(as.numeric(as_array(grads$h0)), as.numeric(as_array_torch(h0$grad)), tolerance = 1e-10)
+    expect_equal(
+      array(as_array(grads$xs), c(steps, n)),
+      as_array_torch(xs$grad),
+      tolerance = 1e-10
+    )
+  }
+
+  it("matches torch on a recurrence", verify_rnn_grad(reverse = FALSE))
+  it("matches torch on a recurrence run in reverse", verify_rnn_grad(reverse = TRUE))
+})

@@ -1,5 +1,6 @@
 # anvl (development version)
 
+* `gradient()` differentiates through `nv_scan()` / `prim_scan()`.
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
