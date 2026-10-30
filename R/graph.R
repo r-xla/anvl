@@ -87,9 +87,7 @@ NULL
 #' @return (`GraphStatement`)
 #' @export
 GraphStatement <- function(primitive, inputs, params, outputs) {
-  if (inherits(primitive, "AnvlPrimitive")) {
-    primitive <- attr(primitive, "definition")
-  }
+  primitive <- primitive_def(primitive)
   # hot-path constructor: no input validation
   structure(
     list(
@@ -334,8 +332,6 @@ descriptor_to_graph <- function(descriptor) {
   graph
 }
 
-# Now the graph-building
-
 #' @title Graph Box
 #' @description
 #' Wraps a [`GraphNode`] during graph construction (tracing).
@@ -397,13 +393,13 @@ format.GraphBox <- function(x, ...) {
 
 maybe_box_arrayish <- function(x, desc = current_descriptor()) {
   if (is_graph_box(x)) {
-    # An R value belongs to the graph it was written in, so one reaching
-    # another graph has to materialize before it can be captured there.
-    if (is_rdata_box(x) && !identical(x$desc, desc)) {
-      x <- materialize_rdata(x, peek_dtype(x))
-    }
     if (identical(x$desc, desc)) {
       return(x)
+    }
+    # An R value belongs to the graph it was written in, so one reaching
+    # another graph has to materialize before it can be captured there.
+    if (is_rdata_box(x)) {
+      x <- materialize_rdata(x, peek_dtype(x))
     }
     return(get_box_or_register_const(desc, x$gnode))
   }
@@ -413,7 +409,7 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
   if (is_anvl_array(x)) {
     return(get_box_or_register_const(desc, x))
   }
-  cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
+  cli_abort("Expected arrayish value, but got {.cls {class(x)[1L]}}")
 }
 
 # Called only by trace_fn() to wire up each flat arg as an input of `desc`,
@@ -695,7 +691,7 @@ name_failing_primitive <- function(e) {
 #' an [`AnvlGraph`].
 #'
 #' The resulting graph can be lowered to StableHLO (via [`stablehlo()`]) or transformed
-#' (e.g. via [`transform_gradient()`]).
+#' (e.g. via [`graph_gradient()`]).
 #'
 #' @param f (`function`)\cr
 #'   The function to trace. Must not be a `JitFunction` (i.e. already jitted).
@@ -755,20 +751,21 @@ trace_fn <- function(
   # A higher-order primitive traces its sub-graphs here and then goes on to
   # check them, so the primitive it named on the way in has to survive the
   # sub-trace: every primitive *inside* the sub-graph names itself and clears
-  # the marker again on its way out. An error out of the sub-graph restores it
-  # too, but is named first, so it keeps the primitive that raised it. The
-  # outermost trace starts from no marker, whatever an earlier error left.
-  prim <- if (!is.null(parent_desc)) globals[["infer_primitive"]]
-  globals[["infer_primitive"]] <- prim
+  # the marker again on its way out. An error is named before the marker is
+  # restored, so it keeps the primitive that raised it. The outermost trace
+  # starts from no marker, whatever an earlier error left.
+  prev_prim <- if (!is.null(parent_desc)) globals[["infer_primitive"]]
+  globals[["infer_primitive"]] <- prev_prim
+  on.exit(
+    {
+      globals[["infer_primitive"]] <- prev_prim
+    },
+    add = TRUE
+  )
   output <- tryCatch(
     do.call(f_flat, inputs_flat),
-    error = function(e) {
-      e <- name_failing_primitive(e)
-      globals[["infer_primitive"]] <- prim
-      rlang::cnd_signal(e)
-    }
+    error = function(e) rlang::cnd_signal(name_failing_primitive(e))
   )
-  globals[["infer_primitive"]] <- prim
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -782,11 +779,7 @@ trace_fn <- function(
   # at -- in `gradient()`, the finalize of the trace the value belongs to then
   # takes it into account like any other use there.
   finalize_rdata_inputs(desc)
-  if (!is.null(desc$is_static_flat) && isTRUE(any(desc$is_static_flat))) {
-    desc$static_args_flat <- args_flat[desc$is_static_flat]
-  } else {
-    desc$static_args_flat <- NULL
-  }
+  desc$static_args_flat <- if (any(desc$is_static_flat)) args_flat[desc$is_static_flat]
 
   graph <- descriptor_to_graph(desc)
   optimize_graph(graph, optimize)
@@ -797,7 +790,7 @@ is_graph_value <- function(x) {
 }
 
 maybe_restore_previous_desc <- function(desc = NULL) {
-  if (!is.null(desc) && (!identical(desc, globals[["current_descriptor"]]))) {
+  if (!is.null(desc) && !identical(desc, globals[["current_descriptor"]])) {
     # graph has already been returned
     return()
   }
@@ -930,23 +923,13 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   if (!is.null(device)) {
     desc$devices <- c(desc$devices, nv_device(device))
   }
-  if (inherits(primitive, "AnvlPrimitive")) {
-    primitive <- attr(primitive, "definition")
-  }
+  primitive <- primitive_def(primitive)
 
-  # Box each input and pull out its gnode + aval in one pass (`gnodes_in`
-  # unnamed for the GraphStatement; `avals_in` keeps arg names for infer_fn).
-  n_in <- length(args)
-  gnodes_in <- vector("list", n_in)
-  avals_in <- vector("list", n_in)
-  for (i in seq_len(n_in)) {
-    # Materialize R values at their default dtype, which happens when no
-    # promotion rule materialized them (default behavior)
-    gnode <- materialize_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
-    gnodes_in[[i]] <- gnode
-    avals_in[[i]] <- gnode$aval
-  }
-  names(avals_in) <- names(args)
+  # Box each input; an R value that no promotion rule materialized settles on
+  # its default dtype here. `gnodes_in` is unnamed for the GraphStatement,
+  # `avals_in` keeps the arg names for infer_fn.
+  gnodes_in <- lapply(unname(args), \(arg) materialize_rdata_box(maybe_box_arrayish(arg, desc))$gnode)
+  avals_in <- stats::setNames(lapply(gnodes_in, \(gnode) gnode$aval), names(args))
   # The primitive under way is named by its wrapper, on the way in; this clears
   # it again once inference has passed, so that a later error somewhere else in
   # the traced function is not attributed to the last primitive that ran.
@@ -959,11 +942,11 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))
   call <- GraphStatement(primitive, gnodes_in, params, gvals_out)
   desc$statements$add(call)
-  lapply(gvals_out, register_gval, desc = desc)
+  register_gvals(desc, gvals_out)
 }
 
 # A primitive is named for the `prim_*()` that exports it, so the call an error
 # reports is that name with the prefix put back on.
 print_call_repr <- function(prim) {
-  rlang::exec(call, paste0("prim_", prim$name))
+  call(paste0("prim_", prim$name))
 }

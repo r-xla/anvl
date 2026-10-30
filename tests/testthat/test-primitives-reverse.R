@@ -218,6 +218,17 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     contracting_axes = list(c(1L, 2L), c(3L, 4L)),
     batching_axes = list(c(4L, 5L), c(1L, 2L))
   )
+
+  # lhs has no free axes, so the free axes of rhs come right after the batching axes
+  # A[b,k] • B[b,k,n] with batching b and contracting k
+  A6 <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
+  B6 <- nv_array(1:24, shape = c(2, 3, 4), dtype = "f32")
+  check_case(
+    A6,
+    B6,
+    contracting_axes = list(2L, 2L),
+    batching_axes = list(1L, 1L)
+  )
 })
 
 test_that("broadcasting", {
@@ -396,7 +407,7 @@ describe("prim_if", {
       function(p, x) nv_if(p, function() nv_sum(sin(x) * x), function() nv_sum(x)),
       list(p = true_, x = x)
     )
-    grad <- transform_gradient(g, "x")
+    grad <- graph_gradient(g, "x")
     ifs <- Filter(function(s) s$primitive$name == "if", grad$statements)
     expect_length(ifs, 2L)
     prims_of <- function(graph) vapply(graph$statements, function(s) s$primitive$name, character(1L))
@@ -1299,5 +1310,16 @@ describe("prim_print", {
     }
     g <- jit(gradient(f, wrt = "x"))
     expect_equal(prints_of_seven(g(nv_scalar(TRUE), x)), 1L)
+  })
+})
+
+describe("prim_convolution", {
+  it("has zero gradients when the result is empty", {
+    # a width-3 window does not fit into a width-2 input
+    x <- nv_array(1:4, shape = c(1L, 2L, 2L), dtype = "f32")
+    kernel <- nv_array(1:12, shape = c(2L, 2L, 3L), dtype = "f32")
+    grads <- jit(gradient(function(x, kernel) nv_sum(nv_conv1d(x, kernel))))(x, kernel)
+    expect_equal(as_array(grads[[1L]]), array(0, c(1L, 2L, 2L)))
+    expect_equal(as_array(grads[[2L]]), array(0, c(2L, 2L, 3L)))
   })
 })

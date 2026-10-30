@@ -63,6 +63,12 @@ describe("nv_broadcast_arrays()", {
       "not broadcastable"
     )
   })
+
+  it("broadcasts a size-1 axis to a size-0 one", {
+    xs <- nv_broadcast_arrays(nv_array(numeric(), shape = c(0L, 3L)), nv_array(1:3, shape = c(1L, 3L)))
+    expect_shape(xs[[1L]], c(0L, 3L))
+    expect_shape(xs[[2L]], c(0L, 3L))
+  })
 })
 
 test_that("broadcasting scalars", {
@@ -1124,6 +1130,13 @@ describe("nv_cumsum / nv_cumprod nan_rm", {
     expect_equal(as_array(nv_cumsum(x)), as_array(nv_cumsum(x, nan_rm = TRUE)))
     expect_equal(as_array(nv_cumprod(x)), as_array(nv_cumprod(x, nan_rm = TRUE)))
   })
+  it("reports a bad axis as the primitive's error when nan_rm = TRUE", {
+    x <- nv_array(c(1, NaN, 3))
+    call_of <- function(expr) deparse(conditionCall(tryCatch(expr, error = identity)))
+    expect_identical(call_of(nv_cumsum(x, axis = 2L, nan_rm = TRUE)), "prim_cumsum()")
+    expect_identical(call_of(nv_cumprod(x, axis = 2L, nan_rm = TRUE)), "prim_cumprod()")
+    expect_identical(call_of(nv_cummax(x, axis = 2L, nan_rm = TRUE)), "prim_cummax()")
+  })
 })
 
 describe("nv_cummax / nv_cummin nan_rm", {
@@ -1480,6 +1493,12 @@ describe("nv_seq", {
     expect_error(nv_seq(0, 10, by = 2.5), "by")
     expect_error(nv_seq(0, 10, by = -2), "Wrong sign")
     expect_error(nv_seq(10, 0, by = 2), "Wrong sign")
+  })
+  it("counts down at an unsigned dtype", {
+    x <- nv_seq(5, 1, dtype = "ui8")
+    expect_dtype(x, "ui8")
+    expect_equal(as.integer(as_array(x)), 5:1)
+    expect_equal(as.integer(as_array(nv_seq(10, 0, by = -3, dtype = "ui32"))), c(10L, 7L, 4L, 1L))
   })
 })
 

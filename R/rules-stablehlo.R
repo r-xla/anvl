@@ -21,6 +21,28 @@ region_input <- function(dtype, shape = integer()) {
   stablehlo::FuncValue(id, vt, func)
 }
 
+# Indices shifted from 1-based to 0-based, and back.
+hlo_zero_based_indices <- function(indices) {
+  hlo_subtract(indices, hlo_ones_like(indices))
+}
+
+hlo_one_based_indices <- function(indices) {
+  hlo_add(indices, hlo_ones_like(indices))
+}
+
+hlo_ones_like <- function(x) {
+  hlo_tensor(1L, dtype = dtype(x), shape = shape(x$value_type), func = x$func)
+}
+
+# A reduction's result, reshaped to keep the reduced `axes` of `x` at size 1
+# unless `drop`.
+hlo_reduced_output <- function(out, x, axes, drop) {
+  if (drop) {
+    return(list(out))
+  }
+  list(hlo_reshape(out, replace(shape(x$value_type), axes, 1L)))
+}
+
 prim_fill[["stablehlo"]] <- function(value, shape, dtype) {
   list(hlo_tensor(value, shape = shape, dtype = dtype))
 }
@@ -74,18 +96,18 @@ prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {
 # and the two agree once every axis is reversed: the row-major linear index of
 # the reversed operand is its column-major one. So the operand is reversed,
 # reshaped to the reversed shape and reversed back; XLA folds the transposes
-# into the layout, and a rank <= 1 side has nothing to reverse.
+# into the layout, and a side with at most one axis has nothing to reverse.
 prim_reshape[["stablehlo"]] <- function(x, shape, output_types) {
-  rank_in <- length(shape(x))
-  rank_out <- length(shape)
-  if (rank_in > 1L) {
-    x <- hlo_transpose(x, rev(seq_len(rank_in)) - 1L)
+  n_axes_in <- length(shape(x))
+  n_axes_out <- length(shape)
+  if (n_axes_in > 1L) {
+    x <- hlo_transpose(x, rev(seq_len(n_axes_in)) - 1L)
   }
-  if (rank_out <= 1L) {
+  if (n_axes_out <= 1L) {
     return(list(hlo_reshape(x, shape, output_types = output_types)))
   }
   out <- hlo_reshape(x, rev(shape))
-  list(hlo_transpose(out, rev(seq_len(rank_out)) - 1L, output_types = output_types))
+  list(hlo_transpose(out, rev(seq_len(n_axes_out)) - 1L, output_types = output_types))
 }
 
 prim_concatenate[["stablehlo"]] <- function(..., axis, output_types) {
@@ -98,12 +120,7 @@ prim_static_slice[["stablehlo"]] <- function(x, start_indices, end_indices, stri
 }
 
 prim_dynamic_slice[["stablehlo"]] <- function(x, ..., slice_sizes, output_types) {
-  start_indices <- list(...)
-  # Convert start indices from 1-based to 0-based by subtracting 1
-  start_indices_0based <- lapply(start_indices, function(idx) {
-    one <- hlo_scalar(1L, dtype = dtype(idx), func = idx$func)
-    hlo_subtract(idx, one)
-  })
+  start_indices_0based <- lapply(list(...), hlo_zero_based_indices)
   list(rlang::exec(
     hlo_dynamic_slice,
     x,
@@ -118,11 +135,7 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(x, update, ..., output_type
   if (!length(start_indices)) {
     return(list(update))
   }
-  # Convert start indices from 1-based to 0-based by subtracting 1
-  start_indices_0based <- lapply(start_indices, function(idx) {
-    one <- hlo_scalar(1L, dtype = dtype(idx), func = idx$func)
-    hlo_subtract(idx, one)
-  })
+  start_indices_0based <- lapply(start_indices, hlo_zero_based_indices)
   list(rlang::exec(
     hlo_dynamic_update_slice,
     x,
@@ -141,14 +154,7 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(x, update, ..., output_type
     hlo_input("y", dt)
   ))
   out <- hlo_reduce(list(x), list(init(x)), axes - 1L, f)
-
-  if (drop) {
-    return(list(out))
-  }
-
-  shape_out <- shape(x$value_type)
-  shape_out[axes] <- 1L
-  list(hlo_reshape(out, shape_out))
+  hlo_reduced_output(out, x, axes, drop)
 }
 
 prim_sum[["stablehlo"]] <- function(x, axes, drop) {
@@ -196,39 +202,40 @@ prim_all[["stablehlo"]] <- function(x, axes, drop) {
   .stablehlo_apply_reduce(hlo_and, x, init, axes, drop)
 }
 
-# XLA compiler optimizes this according to JAX comment
-# (there apparently were differences between {C,G,T}PU backend, not no longer it seems)
-.stablehlo_apply_cum <- function(reducer, x, init, axis) {
+# A cumulative reduction along `axis` of the array `x`, written as a
+# reduce_window whose window spans the whole axis and is padded on the low side,
+# as JAX does; XLA optimizes this pattern.
+.hlo_cum_reduce_window <- function(x, inputs, init_values, body, axis) {
   shp <- shape(x)
-  rank <- length(shp)
-  s_d <- shp[[axis]]
   # reduce_window rejects a window of size 0, and there is nothing to accumulate.
-  if (s_d == 0L) {
-    return(list(x))
+  if (shp[[axis]] == 0L) {
+    return(inputs)
   }
-  window_dimensions <- rep(1L, rank)
-  window_dimensions[[axis]] <- s_d
-  ones <- rep(1L, rank)
-  padding <- matrix(0L, nrow = rank, ncol = 2L)
-  padding[axis, 1L] <- s_d - 1L
-
-  local_func("")
-  dt <- as.character(x$value_type$type$dtype)
-  body <- hlo_return(reducer(
-    hlo_input("x", dt),
-    hlo_input("y", dt)
-  ))
-
-  list(hlo_reduce_window(
-    inputs = x,
-    init_values = init(x),
+  n_axes <- length(shp)
+  window_dimensions <- replace(rep(1L, n_axes), axis, shp[[axis]])
+  ones <- rep(1L, n_axes)
+  padding <- matrix(0L, nrow = n_axes, ncol = 2L)
+  padding[axis, 1L] <- shp[[axis]] - 1L
+  hlo_reduce_window(
+    inputs = inputs,
+    init_values = init_values,
     window_dimensions = window_dimensions,
     window_strides = ones,
     base_dilations = ones,
     window_dilations = ones,
     padding = padding,
     body = body
+  )
+}
+
+.stablehlo_apply_cum <- function(reducer, x, init, axis) {
+  local_func("")
+  dt <- as.character(x$value_type$type$dtype)
+  body <- hlo_return(reducer(
+    hlo_input("x", dt),
+    hlo_input("y", dt)
   ))
+  list(.hlo_cum_reduce_window(x, x, init(x), body, axis))
 }
 
 prim_cumsum[["stablehlo"]] <- function(x, axis) {
@@ -247,21 +254,9 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
 
 # Here we also return the indices to simplify reverse rule
 .stablehlo_apply_cum_extreme <- function(x, axis, is_max, index_dtype) {
-  shp <- shape(x)
-  rank <- length(shp)
-  s_d <- shp[[axis]]
-  window_dimensions <- rep(1L, rank)
-  window_dimensions[[axis]] <- s_d
-  ones <- rep(1L, rank)
-  padding <- matrix(0L, nrow = rank, ncol = 2L)
-  padding[axis, 1L] <- s_d - 1L
-
   v_dtype <- as.character(x$value_type$type$dtype)
   i_dtype <- as.character(index_dtype)
-  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = i_dtype, shape = shp)
-  if (s_d == 0L) {
-    return(list(x, iota))
-  }
+  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = i_dtype, shape = shape(x))
 
   init_v_fn <- if (is_max) nv_minval else nv_maxval
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
@@ -297,31 +292,10 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
       list(nv_ifelse(lhs_wins, lv, rv), nv_ifelse(lhs_wins, li, ri))
     }
   }
-  body <- .r_reducer_to_hlo_func(
-    reducer,
-    list(
-      lv = nv_aval(v_dtype, integer()),
-      li = nv_aval(i_dtype, integer()),
-      rv = nv_aval(v_dtype, integer()),
-      ri = nv_aval(i_dtype, integer())
-    )
-  )
+  body <- .r_reducer_to_hlo_func(reducer, .value_index_avals(v_dtype, i_dtype))
 
-  out <- hlo_reduce_window(
-    inputs = list(x, iota),
-    init_values = list(init_v, init_i),
-    window_dimensions = window_dimensions,
-    window_strides = ones,
-    base_dilations = ones,
-    window_dilations = ones,
-    padding = padding,
-    body = body
-  )
-  values <- out[[1L]]
-  indices_0 <- out[[2L]]
-  one <- hlo_scalar(1L, dtype = i_dtype, func = indices_0$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(indices_0$value_type))
-  list(values, hlo_add(indices_0, one_bc))
+  out <- .hlo_cum_reduce_window(x, list(x, iota), list(init_v, init_i), body, axis)
+  list(out[[1L]], hlo_one_based_indices(out[[2L]]))
 }
 
 # The index outputs follow the default integer data type, which the trace has
@@ -343,17 +317,23 @@ prim_reduce[["stablehlo"]] <- function(x, init, ..., axes, drop, reducer, n_capt
     dimensions = axes - 1L,
     body = red_func
   )
-  if (drop) {
-    return(list(out))
-  }
-  shape_out <- shape(x$value_type)
-  shape_out[axes] <- 1L
-  list(hlo_reshape(out, shape_out))
+  hlo_reduced_output(out, x, axes, drop)
 }
 
 .r_reducer_to_hlo_func <- function(fn, dummy_args) {
   graph <- trace_fn(fn, dummy_args, desc = local_descriptor())
   stablehlo(graph, id = "")[[1L]]
+}
+
+# The scalar arguments of a reducer over (value, index) pairs: the left pair,
+# then the right one.
+.value_index_avals <- function(v_dtype, i_dtype) {
+  list(
+    lv = nv_aval(v_dtype, integer()),
+    li = nv_aval(i_dtype, integer()),
+    rv = nv_aval(v_dtype, integer()),
+    ri = nv_aval(i_dtype, integer())
+  )
 }
 
 .stablehlo_arg_extreme <- function(x, axis, drop, direction, init_v_fn, index_dtype) {
@@ -374,15 +354,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, ..., axes, drop, reducer, n_capt
     rhs_better <- nv_or(cmp(rv, lv), nv_and(prim_eq(rv, lv), prim_lt(ri, li)))
     list(nv_ifelse(rhs_better, rv, lv), nv_ifelse(rhs_better, ri, li))
   }
-  body <- .r_reducer_to_hlo_func(
-    reducer,
-    list(
-      lv = nv_aval(v_dtype, integer()),
-      li = nv_aval(i_dtype, integer()),
-      rv = nv_aval(v_dtype, integer()),
-      ri = nv_aval(i_dtype, integer())
-    )
-  )
+  body <- .r_reducer_to_hlo_func(reducer, .value_index_avals(v_dtype, i_dtype))
 
   out <- hlo_reduce(
     inputs = list(x, iota),
@@ -390,15 +362,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, ..., axes, drop, reducer, n_capt
     dimensions = axis - 1L,
     body = body
   )
-  # convert to 1-based
-  result <- out[[2L]]
-  one <- hlo_scalar(1L, dtype = i_dtype, func = result$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(result$value_type))
-  result <- hlo_add(result, one_bc)
-  if (drop) {
-    return(list(result))
-  }
-  list(hlo_reshape(result, replace(shp, axis, 1L)))
+  hlo_reduced_output(hlo_one_based_indices(out[[2L]]), x, axis, drop)
 }
 
 prim_which_max[["stablehlo"]] <- function(x, axis, drop, output_types) {
@@ -425,8 +389,8 @@ prim_which_min[["stablehlo"]] <- function(x, axis, drop, output_types) {
 
 # comparison jit rules ----------------------------------------------------------
 
-.compare_type_for <- function(vt) {
-  dt <- vt$value_type$type$dtype
+.compare_type_for <- function(x) {
+  dt <- x$value_type$type$dtype
   if (is_dtype_float(dt)) {
     "FLOAT"
   } else if (is_dtype_int(dt)) {
@@ -509,15 +473,15 @@ prim_bitcast_convert[["stablehlo"]] <- function(x, dtype, output_types) {
   lane <- bitcast_lane(dtype(x), dtype)
   if (lane$joins) {
     # anvl's leading lane axis is the trailing one stablehlo consumes
-    rank <- length(shape(x))
-    x <- hlo_transpose(x, c(seq_len(rank - 1L), 0L))
+    n_axes <- length(shape(x))
+    x <- hlo_transpose(x, c(seq_len(n_axes - 1L), 0L))
   }
   if (!lane$splits) {
     return(list(hlo_bitcast_convert(x, dtype, output_types = output_types)))
   }
-  rank_out <- length(shape(x)) + 1L
+  n_axes_out <- length(shape(x)) + 1L
   out <- hlo_bitcast_convert(x, dtype)
-  list(hlo_transpose(out, c(rank_out - 1L, seq_len(rank_out - 1L) - 1L), output_types = output_types))
+  list(hlo_transpose(out, c(n_axes_out - 1L, seq_len(n_axes_out - 1L) - 1L), output_types = output_types))
 }
 
 # unary simple math jit rules ---------------------------------------------------
@@ -869,7 +833,7 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
 # undefined). We canonicalize -0/+0 → +0 and -NaN/+NaN → +NaN before
 # comparing so stable sort treats IEEE-equal values as equal — this keeps
 # all NaNs at one end and stops -0/+0 from being silently reordered.
-# Mirrors JAX _sort_lt_comparator, _canonicalize_float_for_sort).
+# Mirrors JAX's `_sort_lt_comparator` and `_canonicalize_float_for_sort`.
 # `canonicalize = FALSE` drops the -0/-NaN folding, giving the raw TOTALORDER
 # that `chlo.top_k` compares with. Only `.hlo_top_k_values()` passes it, so that
 # its result does not depend on which lowering the platform took.
@@ -879,32 +843,27 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
   direction <- if (decreasing) "GT" else "LT"
 
   cmp_func <- stablehlo::local_func("")
-  # Declare 2 scalar inputs per sorted array: a_<i>, b_<i>. We keep references to
-  # the first pair only; subsequent inputs are declared (to match the arity
-  # hlo_sort expects) but ignored.
-  a <- NULL
-  b <- NULL
-  for (i in seq_along(ops)) {
+  # Declare 2 scalar inputs per sorted array: a_<i>, b_<i>. Only the first pair
+  # is compared; the others are declared to match the arity hlo_sort expects.
+  pairs <- lapply(seq_along(ops), function(i) {
     dt <- as.character(ops[[i]]$value_type$type$dtype)
-    ai <- hlo_input(paste0("a_", i), dt)
-    bi <- hlo_input(paste0("b_", i), dt)
-    if (i == 1L) {
-      a <- ai
-      b <- bi
-    }
-  }
+    list(a = hlo_input(paste0("a_", i), dt), b = hlo_input(paste0("b_", i), dt))
+  })
+  a <- pairs[[1L]]$a
+  b <- pairs[[1L]]$b
 
-  if (key_is_float) {
-    if (canonicalize) {
-      a <- .canonicalize_float_for_sort(a, key_dtype)
-      b <- .canonicalize_float_for_sort(b, key_dtype)
-    }
-    result <- hlo_compare(a, b, comparison_direction = direction, compare_type = "TOTALORDER")
-  } else {
-    ct <- if (is_dtype_int(key_dtype)) "SIGNED" else "UNSIGNED"
-    result <- hlo_compare(a, b, comparison_direction = direction, compare_type = ct)
+  if (key_is_float && canonicalize) {
+    a <- .canonicalize_float_for_sort(a, key_dtype)
+    b <- .canonicalize_float_for_sort(b, key_dtype)
   }
-  hlo_return(result)
+  compare_type <- if (key_is_float) {
+    "TOTALORDER"
+  } else if (is_dtype_int(key_dtype)) {
+    "SIGNED"
+  } else {
+    "UNSIGNED"
+  }
+  hlo_return(hlo_compare(a, b, comparison_direction = direction, compare_type = compare_type))
 }
 
 # Collapse -0 → +0 and -NaN → +NaN on a scalar float. See the comment on
@@ -932,14 +891,14 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
     return(hlo_top_k(x, k = k)[[1L]])
   }
   shp <- shape(x$value_type)
-  rank <- length(shp)
+  n_axes <- length(shp)
   sorted <- hlo_sort(
     x,
-    dimension = rank - 1L,
+    dimension = n_axes - 1L,
     is_stable = FALSE,
     comparator = .build_sort_comparator(list(x), decreasing = TRUE, canonicalize = FALSE)
   )
-  hlo_slice(sorted[[1L]], rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
+  hlo_slice(sorted[[1L]], rep(0L, n_axes), replace(shp, n_axes, k), rep(1L, n_axes))
 }
 
 prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
@@ -952,9 +911,7 @@ prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
 
   # `hlo_top_k`'s indices are `i32` by spec, so the shift to 1-based happens
   # there and only the result follows the default integer.
-  one <- hlo_scalar(1L, dtype = "i32", func = indices$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(indices$value_type))
-  indices <- hlo_add(indices, one_bc)
+  indices <- hlo_one_based_indices(indices)
 
   index_dtype <- index_dtype_of(output_types, 2L)
   if (index_dtype != "i32") {
@@ -993,8 +950,7 @@ prim_scatter[["stablehlo"]] <- function(
     index_vector_dim = index_vector_axis - 1L
   )
 
-  one <- hlo_tensor(1L, shape = shape(scatter_indices), dtype = dtype(scatter_indices))
-  scatter_indices_0based <- hlo_subtract(scatter_indices, one)
+  scatter_indices_0based <- hlo_zero_based_indices(scatter_indices)
 
   result <- hlo_scatter(
     inputs = list(x),
@@ -1034,8 +990,7 @@ prim_gather[["stablehlo"]] <- function(
     index_vector_dim = index_vector_axis - 1L
   )
 
-  one <- hlo_tensor(1L, dtype = dtype(start_indices), shape = shape(start_indices))
-  start_indices_0based <- hlo_subtract(start_indices, one)
+  start_indices_0based <- hlo_zero_based_indices(start_indices)
 
   result <- hlo_gather(
     x,
@@ -1095,11 +1050,7 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
   mat_shape <- c(n, n)
   rows <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = mat_shape, func = x$func)
   cols <- hlo_iota(iota_dimension = 1L, dtype = "i32", shape = mat_shape, func = x$func)
-  mask <- if (lower) {
-    hlo_compare(rows, cols, comparison_direction = "GE", compare_type = "SIGNED")
-  } else {
-    hlo_compare(rows, cols, comparison_direction = "LE", compare_type = "SIGNED")
-  }
+  mask <- hlo_compare(rows, cols, comparison_direction = if (lower) "GE" else "LE", compare_type = "SIGNED")
   if (r > 2L) {
     mask <- hlo_broadcast_in_dim(mask, c(r - 2L, r - 1L), op_shape)
   }
@@ -1108,6 +1059,31 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
 }
 
 prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a, output_types) {
+  # XLA lowers `stablehlo.triangular_solve` to cuBLAS trsm on CUDA, but on the
+  # CPU expands it into blocked HLO that is several times slower than BLAS
+  # trsm. So, as JAX does, the CPU takes pjrt's `trsm` custom call for the data
+  # types BLAS has. It stands in for the op: same attributes and semantics, on
+  # XLA's default row-major layout.
+  if (identical(current_platform(), "cpu") && as.character(dtype(a)) %in% c("f32", "f64")) {
+    row_major <- rev(seq_len(length(shape(b$value_type))) - 1L)
+    x <- hlo_custom_call(
+      a,
+      b,
+      call_target_name = "trsm",
+      api_version = 4L,
+      has_side_effect = FALSE,
+      backend_config = stablehlo::CustomOpBackendConfig(list(
+        stablehlo::BoolAttr(name = "left_side", value = left_side),
+        stablehlo::BoolAttr(name = "lower", value = lower),
+        stablehlo::BoolAttr(name = "transpose_a", value = transpose_a),
+        stablehlo::BoolAttr(name = "unit_diagonal", value = unit_diagonal)
+      )),
+      output_types = output_types,
+      operand_layouts = list(row_major, row_major),
+      result_layouts = list(row_major)
+    )
+    return(list(x))
+  }
   list(hlo_triangular_solve(
     a,
     b,
@@ -1120,8 +1096,7 @@ prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_di
 }
 
 prim_qr[["stablehlo"]] <- function(x) {
-  vt <- x$value_type
-  tt <- vt$type
+  tt <- x$value_type$type
   dt <- tt$dtype
   shp <- shape(tt)
   m <- shp[1L]
@@ -1191,9 +1166,7 @@ pivots_to_permutation <- function(pivots, n) {
   func <- pivots$func
   k <- shape(pivots$value_type)[[1L]]
 
-  iota0 <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = n, func = func)
-  one_n <- hlo_tensor(1L, dtype = "i32", shape = n, func = func)
-  init_perm <- hlo_add(iota0, one_n)
+  init_perm <- hlo_one_based_indices(hlo_iota(iota_dimension = 0L, dtype = "i32", shape = n, func = func))
   init_i <- hlo_scalar(0L, dtype = "i32", func = func)
 
   cond_func <- stablehlo::local_func("")
@@ -1240,8 +1213,7 @@ pivots_to_permutation <- function(pivots, n) {
 }
 
 prim_lu[["stablehlo"]] <- function(x, output_types) {
-  vt <- x$value_type
-  tt <- vt$type
+  tt <- x$value_type$type
   dt <- tt$dtype
   shp <- shape(tt)
   m <- shp[1L]
@@ -1301,40 +1273,30 @@ prim_svd[["stablehlo"]] <- function(x) {
   on_cuda <- identical(current_platform(), "cuda")
   transposed <- on_cuda && m < n
 
-  if (on_cuda) {
-    backend_config <- stablehlo::CustomOpBackendConfig(list(
+  backend_config <- if (on_cuda) {
+    stablehlo::CustomOpBackendConfig(list(
       stablehlo::BoolAttr(name = "transposed", value = transposed)
     ))
-    if (transposed) {
-      row_major_2 <- c(1L, 0L)
-      row_major_1 <- 0L
-      operand_layouts <- list(row_major_2)
-      result_layouts <- list(row_major_2, row_major_1, row_major_2)
-    } else {
-      operand_layouts <- col_major_layouts(2L)
-      result_layouts <- col_major_layouts(2L, 1L, 2L)
-    }
-    out <- hlo_custom_call(
-      x,
-      call_target_name = "svd",
-      api_version = 4L,
-      has_side_effect = FALSE,
-      backend_config = backend_config,
-      output_types = list(u_type, s_type, vt_type),
-      operand_layouts = operand_layouts,
-      result_layouts = result_layouts
-    )
-  } else {
-    out <- hlo_custom_call(
-      x,
-      call_target_name = "svd",
-      api_version = 4L,
-      has_side_effect = FALSE,
-      output_types = list(u_type, s_type, vt_type),
-      operand_layouts = col_major_layouts(2L),
-      result_layouts = col_major_layouts(2L, 1L, 2L)
-    )
   }
+  if (transposed) {
+    row_major_2 <- c(1L, 0L)
+    row_major_1 <- 0L
+    operand_layouts <- list(row_major_2)
+    result_layouts <- list(row_major_2, row_major_1, row_major_2)
+  } else {
+    operand_layouts <- col_major_layouts(2L)
+    result_layouts <- col_major_layouts(2L, 1L, 2L)
+  }
+  out <- hlo_custom_call(
+    x,
+    call_target_name = "svd",
+    api_version = 4L,
+    has_side_effect = FALSE,
+    backend_config = backend_config,
+    output_types = list(u_type, s_type, vt_type),
+    operand_layouts = operand_layouts,
+    result_layouts = result_layouts
+  )
   list(out[[2L]], out[[1L]], out[[3L]])
 }
 

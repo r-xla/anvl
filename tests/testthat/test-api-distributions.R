@@ -1700,6 +1700,8 @@ describe("nv_dbinom", {
   })
 
   it("matches base R dbinom() off the support and for degenerate, invalid, infinite and NaN parameters", {
+    # R < 4.5 returns NaN instead of 0 for dbinom(x, size = Inf, ...).
+    skip_if(getRversion() < "4.5", "dbinom(size = Inf) differs before R 4.5")
     x <- c(-Inf, -1, 0, 2.5, 3, 10, 11, Inf, NaN)
     got <- unlist(lapply(binomial_parameter_cases(), function(a) {
       lapply(c(FALSE, TRUE), function(lg) {

@@ -128,7 +128,7 @@ reference:
       - dim.AnvlArray
       - length.AnvlArray
 
-  - title: API Functions
+  - title: Array API
     desc: User-facing `nv_*` functions for array operations
 
   - subtitle: Type Conversion and Broadcasting
@@ -430,7 +430,7 @@ reference:
   - subtitle: Transformations
     contents:
       - trace_fn
-      - transform_gradient
+      - graph_gradient
       - graph_to_quickr_r_function
       - compile_pjrt
       - stablehlo

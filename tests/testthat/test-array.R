@@ -28,6 +28,53 @@ test_that("await on an AnvlArray returns the array invisibly", {
   expect_identical(out$value, x)
 })
 
+describe("AnvlArray serialization", {
+  roundtrip <- function(x) {
+    path <- withr::local_tempfile(fileext = ".rds")
+    saveRDS(x, path)
+    readRDS(path)
+  }
+
+  it("round-trips an array through saveRDS()", {
+    x <- nv_array(array(as.double(1:6), c(2L, 3L)), dtype = "f32")
+    y <- roundtrip(x)
+    expect_identical(dtype(y), dtype(x))
+    expect_identical(shape(y), shape(x))
+    expect_identical(as_array(y), as_array(x))
+  })
+
+  it("loads a pjrt array onto the default device", {
+    skip_if(!is_cpu())
+    x <- nv_array(c(1, 2, 3))
+    local_default_device("cpu:1")
+    y <- roundtrip(x)
+    expect_identical(device(y), default_device())
+    expect_identical(device(y), nv_device("cpu:1"))
+  })
+
+  it("can compute with a reloaded array", {
+    y <- roundtrip(nv_array(c(1, 2, 3), dtype = "f32"))
+    expect_identical(as_array(y + y), array(c(2, 4, 6)))
+  })
+
+  it("round-trips the outputs of a jitted function", {
+    f <- jit(function(x) list(a = x * 2, b = x + 1))
+    out <- f(nv_array(c(1, 2), dtype = "f32"))
+    y <- roundtrip(out)
+    expect_identical(as_array(y$a), as_array(out$a))
+    expect_identical(as_array(y$b), as_array(out$b))
+  })
+
+  it("round-trips a quickr array", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    x <- nv_array(c(1, 2, 3))
+    y <- roundtrip(x)
+    expect_identical(as_array(y), as_array(x))
+    expect_equal(device(y), device(x))
+  })
+})
+
 test_that("nv_scalar", {
   x <- nv_scalar(1L, dtype = "f32", device = "cpu")
   x
@@ -515,6 +562,16 @@ describe("as_anvl_array", {
   it("rejects non-arrayish inputs", {
     expect_error(as_anvl_array("foo"), "Expected arrayish")
     expect_error(as_anvl_array(list()), "Expected arrayish")
+  })
+
+  it("rejects a classed R value rather than reading its storage type", {
+    expect_error(as_anvl_array(structure(1, class = "myclass")), "Expected arrayish")
+    # Inside a trace too: an integer64 is a double underneath, so reading it as
+    # one would silently compute on its bit pattern.
+    i64 <- bit64::as.integer64(2:3)
+    dim(i64) <- 2L
+    f <- jit(function(x) nv_mul(x, i64))
+    expect_error(f(nv_array(1:2, dtype = "i64")), "Expected arrayish")
   })
 
   it("passes traced boxes through unchanged under jit()", {

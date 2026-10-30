@@ -3,6 +3,21 @@
 * Bugfix: `nv_cumsum()`, `nv_cumprod()`, `nv_cummax()`, `nv_cummin()`, `nv_extract_diag()`,
   `nv_trace()` and `nv_quantile()` now accept an array with a size-0 axis; `nv_quantile()`
   reducing over one is an informative error.
+* `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
+  now differentiable.
+
+* `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
+  the default device, not the one they were saved from. Arrays of the
+  pjrt backend no longer cache their device in a `$device` field.
+
+* Bugfix: A classed R value, such as a `bit64::integer64` array, is an error
+  under `jit()` instead of being read through its storage type.
+* Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* Bugfix: `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
+  gives a clear error for an empty population.
+* Breaking: `transform_gradient()` is renamed to `graph_gradient()`.
+* Bugfix: `nv_seq()` counts down at an unsigned data type instead of erroring.
 * Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
   of its input.
 * Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in
@@ -27,6 +42,13 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
+* `nv_triangular_solve()` / `prim_triangular_solve()`, and with them
+  `nv_solve()`, now lower to a BLAS `trsm` custom call on CPU, which runs
+  several times faster from about 100 rows on and compiles faster.
+* Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
+  `lhs` has batching axes but no free axes.
+* Bugfix: `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
+  axis to size 0.
 
 # anvl 0.5.1
 
