@@ -142,22 +142,30 @@ sweep_spec(
     } else {
       if (isTRUE(f$log_p)) js$norm$logsf else js$norm$sf
     }
-    as.double(np$asarray(fn(jnp$asarray(x, dtype = jax_dtype(dtype)), p$mean, p$sd)))
+    as.double(np$asarray(fn(jax_array(x, dtype), p$mean, p$sd)))
   },
   jax_grad = function(x, dtype, p, f) {
     jax_init()
-    reticulate::py_run_string(
-      "
+    ## Defined once per process, and each twin jitted once per variant
+    ## (lru_cache): rebuilt on every call, JAX re-traced every chunk, at
+    ## ~0.5 s a call against ~0.02 s. The program, and so every output, is
+    ## the same either way.
+    if (!reticulate::py_has_attr(reticulate::py, "_pnorm_grad")) {
+      reticulate::py_run_string(
+        "
 import jax
+import functools
 from jax.scipy.stats import norm as _n
+@functools.lru_cache(maxsize=None)
 def _pnorm_grad(lower, logp, i):
     f = (_n.logcdf if logp else _n.cdf) if lower else (_n.logsf if logp else _n.sf)
     return jax.jit(jax.vmap(jax.grad(f, argnums=i), in_axes=(0, None, None)))
 "
-    )
+      )
+    }
     jnp <- reticulate::import("jax.numpy", convert = FALSE)
     np <- reticulate::import("numpy")
-    xx <- jnp$asarray(x, dtype = jax_dtype(dtype))
+    xx <- jax_array(x, dtype)
     g <- function(i) {
       as.double(np$asarray(
         reticulate::py$`_pnorm_grad`(f$lower_tail, f$log_p, i)(xx, p$mean, p$sd)

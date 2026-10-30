@@ -2,7 +2,7 @@
 #
 # These live here rather than in pjrt because they are an *integration* check:
 # that anvl's real compile callback returns what pjrt's engine expects, that a
-# real AnvlArray carries $data/$backend/$device where the engine looks for them,
+# real AnvlArray carries $data/$backend where the engine looks for them,
 # and that the wrapped outputs come back as anvl arrays. pjrt tests its
 # dispatcher against hand-written fixtures; only anvl can test that the two
 # actually agree.

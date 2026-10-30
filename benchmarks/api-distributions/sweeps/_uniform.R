@@ -57,3 +57,14 @@ jax_dtype <- function(dtype) {
   jnp <- reticulate::import("jax.numpy", convert = FALSE)
   if (dtype == "f32") jnp$float32 else jnp$float64
 }
+
+## An R vector as a JAX array, through NumPy: reticulate hands a bare R vector
+## to Python as a list, which JAX then reads value by value -- 0.4 s for a
+## chunk of 2^20 samples, against 1 ms. A single value stays a scalar.
+jax_array <- function(x, dtype) {
+  jnp <- reticulate::import("jax.numpy", convert = FALSE)
+  if (length(x) > 1L) {
+    x <- reticulate::np_array(x)
+  }
+  jnp$asarray(x, dtype = jax_dtype(dtype))
+}

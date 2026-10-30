@@ -161,8 +161,8 @@ assert_choice_param <- function(x, choices, arg = rlang::as_label(substitute(x))
 }
 
 # Sizes that become a shape, so they must also be non-negative.
-assert_size_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL) {
-  x <- assert_int_param(x, arg, len = len)
+assert_size_param <- function(x, arg = rlang::as_label(substitute(x))) {
+  x <- assert_int_param(x, arg)
   if (any(x < 0L)) {
     cli_abort(c(
       "{.arg {arg}} must not be negative.",
@@ -395,7 +395,7 @@ assert_axis_layout <- function(parts, n_axes, what) {
 # A sub-graph traced against two scalars of `x`'s data type (`prim_reduce()`'s
 # `reducer`, `prim_scatter()`'s `update_fn`) must return one such scalar.
 assert_scalar_fn_output <- function(graph, x, arg = rlang::as_label(substitute(graph))) {
-  outputs <- lapply(graph$outputs, function(out) out$aval)
+  outputs <- graph_output_avals(graph)
   if (length(outputs) != 1L) {
     cli_abort(c(
       "{.arg {arg}} must return exactly one value.",
@@ -676,8 +676,8 @@ infer_concatenate <- function(..., axis) {
   axis <- assert_int_param(axis, len = 1L)
   assert_axes_in_range(axis, n_axes)
 
-  # (C2) Ranks first: `s[-axis]` below would silently drop nothing from a
-  # shape with fewer than `axis` axes.
+  # (C2) The numbers of axes first: `s[-axis]` below would silently drop
+  # nothing from a shape with fewer than `axis` axes.
   input_n_axes <- lengths(shapes)
   bad <- first_mismatch(input_n_axes)
   if (!is.null(bad)) {
@@ -1583,6 +1583,14 @@ infer_scatter <- function(
 # Convolution and linear algebra
 # ---------------------------------------------------------------------------
 
+# The extent of each axis of `shape` with `dilation - 1` holes between
+# neighbouring elements. It runs in double, as a large dilation would
+# overflow an integer.
+dilate_shape <- function(shape, dilation) {
+  shape <- as.double(shape)
+  ifelse(shape == 0, 0, (shape - 1) * dilation + 1)
+}
+
 infer_convolution <- function(
   x,
   kernel,
@@ -1762,9 +1770,8 @@ infer_convolution <- function(
   result_shape[output_batch_axis] <- x_batch_size %/% bg_count
   result_shape[output_feature_axis] <- kernel_out_size
   for (sd in seq_len(n_spatial)) {
-    x_size <- as.double(x_shape[[x_spatial_axes[[sd]]]])
-    k_size <- as.double(kernel_shape[[kernel_spatial_axes[[sd]]]])
-    dilated_input <- if (x_size == 0) 0 else (x_size - 1) * x_dil[[sd]] + 1
+    k_size <- kernel_shape[[kernel_spatial_axes[[sd]]]]
+    dilated_input <- dilate_shape(x_shape[[x_spatial_axes[[sd]]]], x_dil[[sd]])
     padded_input <- pad[sd, 1L] + dilated_input + pad[sd, 2L]
 
     # XLA `CHECK`-fails (aborting the process) on a negative padded extent.
@@ -1777,14 +1784,14 @@ infer_convolution <- function(
     }
 
     # A zero-wide window would otherwise pass the arithmetic below.
-    if (k_size == 0) {
+    if (k_size == 0L) {
       cli_abort(c(
         "{.arg kernel} must not have a zero-sized spatial axis.",
         x = "Axis {kernel_spatial_axes[[sd]]} of {.arg kernel} is {.val {0L}}."
       ))
     }
 
-    dilated_window <- (k_size - 1) * kernel_dil[[sd]] + 1
+    dilated_window <- dilate_shape(k_size, kernel_dil[[sd]])
     num_windows <- if (padded_input == 0 || dilated_window > padded_input) {
       0
     } else {

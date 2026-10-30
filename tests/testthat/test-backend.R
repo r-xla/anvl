@@ -95,3 +95,10 @@ describe("eager code", {
     expect_error(nv_fill_like(x, 0), "belongs to the .*quickr.* backend")
   })
 })
+
+describe("the plain backend", {
+  it("converts a bit64::integer64 payload by value", {
+    out <- jit(function() nv_array(bit64::as.integer64(c(3, 5)), dtype = "i64"))()
+    expect_equal(as.integer(as_array(out)), c(3L, 5L))
+  })
+})

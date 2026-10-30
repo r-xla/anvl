@@ -474,9 +474,7 @@ prim_static_slice <- new_primitive(
   function(x, start_indices, end_indices, strides) {
     graph_desc_add(
       self,
-      args = list(
-        x = x
-      ),
+      args = list(x = x),
       params = list(
         start_indices = start_indices,
         end_indices = end_indices,
@@ -995,16 +993,14 @@ prim_reduce <- new_primitive(
   static = c("axes", "reducer", "drop")
 )
 
-make_arg_extreme <- function() {
-  function(x, axis, drop = TRUE) {
-    axis <- resolve_axis(axis, naxes(x))
-    graph_desc_add(
-      self,
-      args = list(x = x),
-      params = list(axis = axis, drop = drop),
-      infer_fn = infer_arg_extreme
-    )[[1L]]
-  }
+arg_extreme_op <- function(x, axis, drop = TRUE) {
+  axis <- resolve_axis(axis, naxes(x))
+  graph_desc_add(
+    self,
+    args = list(x = x),
+    params = list(axis = axis, drop = drop),
+    infer_fn = infer_arg_extreme
+  )[[1L]]
 }
 
 #' @title Primitive Index of the Maximum
@@ -1034,7 +1030,7 @@ make_arg_extreme <- function() {
 #' # the index comes out at the default integer data type
 #' prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_max <- new_primitive("which_max", make_arg_extreme(), static = 2:3)
+prim_which_max <- new_primitive("which_max", arg_extreme_op, static = 2:3)
 
 #' @title Primitive Index of the Minimum
 #' @description
@@ -1061,16 +1057,15 @@ prim_which_max <- new_primitive("which_max", make_arg_extreme(), static = 2:3)
 #' # the index comes out at the default integer data type
 #' prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_min <- new_primitive("which_min", make_arg_extreme(), static = 2:3)
+prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3)
 
 # comparison primitives --------------------------------------------------------
 
-make_compare_op <- function(direction) {
-  force(direction)
-  function(lhs, rhs) {
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
-    graph_desc_add(self, operands, infer_fn = infer_compare)[[1L]]
-  }
+# The body shared by the comparison primitives; the direction is set by their
+# stablehlo rules.
+compare_op <- function(lhs, rhs) {
+  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+  graph_desc_add(self, operands, infer_fn = infer_compare)[[1L]]
 }
 
 #' @title Primitive Equal
@@ -1092,7 +1087,7 @@ make_compare_op <- function(direction) {
 #' # the R value is built at the array's data type instead
 #' prim_eq(1, nv_scalar(1, "f64"))
 #' @export
-prim_eq <- new_primitive("eq", make_compare_op("EQ"))
+prim_eq <- new_primitive("eq", compare_op)
 
 #' @title Primitive Not Equal
 #' @description
@@ -1113,7 +1108,7 @@ prim_eq <- new_primitive("eq", make_compare_op("EQ"))
 #' # the R value is built at the array's data type instead
 #' prim_ne(1, nv_scalar(2, "f64"))
 #' @export
-prim_ne <- new_primitive("ne", make_compare_op("NE"))
+prim_ne <- new_primitive("ne", compare_op)
 
 #' @title Primitive Greater Than
 #' @description
@@ -1134,7 +1129,7 @@ prim_ne <- new_primitive("ne", make_compare_op("NE"))
 #' # the R value is built at the array's data type instead
 #' prim_gt(2, nv_scalar(1, "f64"))
 #' @export
-prim_gt <- new_primitive("gt", make_compare_op("GT"))
+prim_gt <- new_primitive("gt", compare_op)
 
 #' @title Primitive Greater Than or Equal
 #' @description
@@ -1155,7 +1150,7 @@ prim_gt <- new_primitive("gt", make_compare_op("GT"))
 #' # the R value is built at the array's data type instead
 #' prim_ge(2, nv_scalar(1, "f64"))
 #' @export
-prim_ge <- new_primitive("ge", make_compare_op("GE"))
+prim_ge <- new_primitive("ge", compare_op)
 
 #' @title Primitive Less Than
 #' @description
@@ -1176,7 +1171,7 @@ prim_ge <- new_primitive("ge", make_compare_op("GE"))
 #' # the R value is built at the array's data type instead
 #' prim_lt(1, nv_scalar(2, "f64"))
 #' @export
-prim_lt <- new_primitive("lt", make_compare_op("LT"))
+prim_lt <- new_primitive("lt", compare_op)
 
 #' @title Primitive Less Than or Equal
 #' @description
@@ -1197,7 +1192,7 @@ prim_lt <- new_primitive("lt", make_compare_op("LT"))
 #' # the R value is built at the array's data type instead
 #' prim_le(1, nv_scalar(2, "f64"))
 #' @export
-prim_le <- new_primitive("le", make_compare_op("LE"))
+prim_le <- new_primitive("le", compare_op)
 
 # additional simple binary primitives -----------------------------------------
 
@@ -2213,9 +2208,7 @@ prim_clamp <- new_primitive(
       operands,
       list(),
       infer_fn = infer_clamp
-    )[[
-      1L
-    ]]
+    )[[1L]]
   }
 )
 
@@ -2278,15 +2271,13 @@ prim_iota <- new_primitive(
   function(axis, shape, dtype, start = 1L, device = NULL) {
     shape <- assert_shapevec(shape)
     axis <- resolve_axis(axis, length(shape))
-    result <- graph_desc_add(
+    graph_desc_add(
       self,
       list(),
       list(axis = axis, shape = shape, dtype = dtype, start = start),
       infer_fn = infer_iota,
       device = device
     )[[1L]]
-
-    result
   },
   static = 1:5
 )
@@ -2413,10 +2404,9 @@ prim_round <- new_primitive(
 prim_convert <- new_primitive(
   "convert",
   function(x, dtype) {
-    # We need to be careful w.r.t. to handling R inputs so we prim_convert(pi, "f64")
-    # is faithful and does not round-trip through f32
     dtype <- assert_dtype_param(dtype, "dtype")
-    # Directly materialize
+    # An R value materializes directly at `dtype`, so that
+    # `prim_convert(pi, "f64")` is exact and does not round-trip through `f32`.
     if (currently_tracing() && is_valid_r(x)) {
       return(build_r_at(x, dtype))
     }
@@ -2469,9 +2459,7 @@ prim_ifelse <- new_primitive(
       self,
       c(list(test = test), operands),
       infer_fn = infer_select
-    )[[
-      1L
-    ]]
+    )[[1L]]
   }
 )
 
@@ -2955,6 +2943,7 @@ prim_top_k <- new_primitive(
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
+#' @template section_print_order
 #' @templateVar primitive_id print
 #' @template section_rules
 #' @section StableHLO:
@@ -2973,7 +2962,7 @@ prim_print <- new_primitive(
     # HACK: the header and footer are pre-computed here and passed as "params",
     # although they are not really ones: stablehlo does not carry the dtype the
     # way anvl prints it.
-    # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
+    # TODO: We should also include the platform/device, but it is currently not available in GraphDescriptor
     #
     # Both are read off the operand *before* it is materialized, because a
     # print is not a use site that should get to name a data type. An R value
@@ -2993,13 +2982,13 @@ prim_print <- new_primitive(
     # header says `RData` for the same reason: what is on screen is an R value
     # that has not taken a data type, not an `AnvlArray`.
     aval <- to_abstract(x)
-    dims <- paste0(shape(aval), collapse = ",")
+    shape_str <- paste0(shape(aval), collapse = ",")
     if (is_rdata(aval)) {
       header <- "RData"
-      footer <- sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
+      footer <- sprintf("[ %s{%s} printed at %s ]", aval$r_type, shape_str, as.character(peek_dtype(aval)))
     } else {
       header <- "AnvlArray"
-      footer <- sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
+      footer <- sprintf("[ %s{%s} ]", as.character(dtype(aval)), shape_str)
     }
     # `x` is printed, not consumed: the call takes a rendering of it and the
     # original is handed straight back. Inserting a print therefore cannot
@@ -3174,7 +3163,7 @@ prim_scatter <- new_primitive(
     unique_indices = FALSE,
     update_fn = NULL
   ) {
-    # otherwise, delayed promise evaluation means they might be added to the update_descriptor
+    # Otherwise, delayed promise evaluation may add them to the update computation's descriptor.
     force(x)
     force(scatter_indices)
     force(update)
@@ -3192,11 +3181,10 @@ prim_scatter <- new_primitive(
 
     current_desc <- current_descriptor(silent = TRUE)
 
-    # Trace the update computation function
-    # For scatter, the update computation takes 2 scalar arguments (current, update)
+    # The update computation is traced with two scalars (the current value and
+    # the update) at `x`'s data type.
     desc_update <- local_descriptor()
 
-    # Create dummy arguments for tracing - use the input's dtype
     # `x` and `update` agree: the rule above brought them together or refused.
     x_dtype <- peek_dtype(x)
 
@@ -3209,7 +3197,7 @@ prim_scatter <- new_primitive(
     inline_region_captures(update_fn_graph, "update_fn")
     captures <- purify_subgraphs(current_desc, list(update_fn_graph))
 
-    out <- graph_desc_add(
+    graph_desc_add(
       self,
       args = c(list(x = x, scatter_indices = scatter_indices, update = update), captures),
       params = list(
@@ -3226,9 +3214,7 @@ prim_scatter <- new_primitive(
       ),
       infer_fn = infer_scatter,
       desc = current_desc
-    )
-
-    out[[1L]]
+    )[[1L]]
   },
   subgraphs = "update_fn",
   static = 4:12
@@ -3433,7 +3419,10 @@ prim_chol <- new_primitive(
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("triangular_solve")`
+#' On CPU, an `f32` or `f64` solve lowers to a `"trsm"` [hlo_custom_call()]
+#' (backed by BLAS). Otherwise it lowers to [hlo_triangular_solve()], specified
+#' under [triangular_solve](https://openxla.org/stablehlo/spec#triangular_solve),
+#' which XLA runs through cuBLAS on CUDA.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # solve L %*% x = b where L is lower triangular
