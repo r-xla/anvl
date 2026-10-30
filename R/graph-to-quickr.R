@@ -351,7 +351,28 @@ graph_to_r_array_function <- function(graph, backend, compile, unwrap = FALSE, f
 # `declare(type(...))` call is there for quickr to compile it, and quickr's own
 # `declare()` can modify arguments at runtime (e.g. stripping axes), so it is
 # made a no-op.
+#
+# R's comparisons give NA where an operand is NaN, and an NA test makes
+# `ifelse()` return NA. The compiled function and XLA compare as IEEE 754 does
+# -- false, except that `!=` is true -- so the comparisons are replaced by ones
+# that do the same.
 plain_r_function <- function(fun) {
-  environment(fun)$declare <- function(...) invisible(NULL)
+  env <- environment(fun)
+  env$declare <- function(...) invisible(NULL)
+  for (op in c("==", "<", "<=", ">", ">=")) {
+    env[[op]] <- ieee_comparison(match.fun(op), FALSE)
+  }
+  env[["!="]] <- ieee_comparison(`!=`, TRUE)
   fun
+}
+
+ieee_comparison <- function(compare, nan_result) {
+  force(compare)
+  function(e1, e2) {
+    out <- compare(e1, e2)
+    if (anyNA(out)) {
+      out[is.na(out)] <- nan_result
+    }
+    out
+  }
 }
