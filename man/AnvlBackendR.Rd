@@ -12,10 +12,11 @@ With subclass \code{"AnvlBackendR"}.
 }
 \description{
 Constructs the r backend, which stores array data as plain R arrays and runs
-jitted functions as R code. It needs nothing beyond anvl itself -- no PJRT
-plugin and no compiler -- so it runs wherever R does. A package that uses
-anvl can run its tests on it where no PJRT plugin can be downloaded, such as
-on CRAN.
+jitted functions as R code. It is primarily meant for testing: it needs
+nothing beyond anvl itself -- no PJRT plugin and no compiler -- so it runs
+wherever R does, and a package that uses anvl can run its tests on it where
+no PJRT plugin can be downloaded, such as on CRAN. See
+the \href{https://r-xla.github.io/anvl/articles/backends.html}{Backends} article for how the three backends compare.
 }
 \details{
 Registered automatically under the name \code{"r"} when the package is loaded;

@@ -176,7 +176,7 @@ with_backend("pjrt", {
 })
 ```
 
-If the first argument to `with_backend()` is changed to `"quickr"` -- the experimental, optional backend described in the [internals article](internals.html) -- then you should observe the results of subnormal computations are preserved correctly.
+If the first argument to `with_backend()` is changed to `"quickr"` -- the experimental, optional backend described in the [backends article](backends.html) -- then you should observe the results of subnormal computations are preserved correctly.
 
 This is also present, for example, in the [JAX gotchas guide](https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html#miscellaneous-divergences-from-numpy) which also illustrates values preserved in storage but flushed during operations on some backends.
 

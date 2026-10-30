@@ -43,6 +43,8 @@ navbar:
         href: articles/subsetting.html
       - text: Random Number Generation
         href: articles/random-numbers.html
+      - text: Backends
+        href: articles/backends.html
       - text: Gotchas
         href: articles/gotchas.html
       - text: Efficiency

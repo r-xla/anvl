@@ -32,6 +32,7 @@ roxy_wrap <- function(x, width = 74L) {
 article_titles <- c(
   anvl = "Get Started",
   autodiff = "Automatic Differentiation",
+  backends = "Backends",
   efficiency = "Efficiency",
   extending_api = "Extending the API",
   extending_primitive = "Adding a Primitive",

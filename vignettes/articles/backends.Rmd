@@ -1,0 +1,107 @@
+---
+title: "Backends"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+A backend stores {anvl}'s arrays and runs its jitted functions.
+There are three:
+
+- `"pjrt"`, the default, compiles with XLA.
+- `"quickr"` compiles to Fortran with {quickr}.
+- `"r"` runs plain R code and is primarily for testing.
+
+Your code is the same on all three: the same `nv_*` functions and the same `jit()`.
+The backends differ in what they need to run, which data types and primitives they support, and how fast they are.
+
+One backend is active at a time.
+`local_backend()` sets it until the calling function returns, and `with_backend()` sets it for a single expression:
+
+```{r}
+library(anvl)
+f <- jit(function(x, y) sum(exp(x) * y))
+
+with_backend("r", {
+  x <- nv_array(c(1, 2, 3))
+  f(x, x)
+})
+```
+
+Every array you create and every jitted function you call uses the active backend.
+An array belongs to the backend that created it, and using it on another backend is an error.
+To move data between backends, convert it with `as_array()` and create a new array with `nv_array()`.
+
+|                       | `"pjrt"`                    | `"quickr"`                      | `"r"`                   |
+|-----------------------|-----------------------------|---------------------------------|-------------------------|
+| Runs a function as    | an XLA executable           | compiled Fortran                | R code                  |
+| Needs                 | a PJRT plugin (downloaded)  | {quickr} and a Fortran compiler | nothing                 |
+| Devices               | CPU, CUDA                   | CPU                             | CPU                     |
+| Data types            | all                         | `f64`, `i32`, `bool`            | `f64`, `i32`, `bool`    |
+| An R double becomes   | `f32`                       | `f64`                           | `f64`                   |
+| Primitives            | all                         | a subset                        | the same as `"quickr"`  |
+| Meant for             | real work                   | CPU-only, repeated calls        | testing                 |
+
+## pjrt
+
+The default backend traces a function and lowers it to StableHLO.
+XLA then compiles it through a PJRT plugin.
+It supports every primitive and every data type, and runs on CPU as well as CUDA devices (see `nv_device()`).
+Use it for real work.
+
+The plugins are not part of the package.
+They are downloaded the first time they are needed, or ahead of time with `install_anvl()` (see the [installation article](installation.html)).
+
+## quickr
+
+The quickr backend lowers the traced graph to an R function instead, built from vectorized R calls and, where needed, loops.
+[{quickr}](https://github.com/t-kalinowski/quickr) then translates that function to Fortran and compiles it.
+For `f` above, the R function is:
+
+```{r}
+graph <- trace_fn(
+  function(x, y) sum(exp(x) * y),
+  list(x = nv_aval("f64", 3L), y = nv_aval("f64", 3L))
+)
+cat(deparse(graph_to_quickr_r_function(graph)), sep = "\n")
+```
+
+It needs {quickr}, which {anvl} only suggests, and a Fortran compiler.
+`install_anvl("quickr")` installs {quickr}.
+
+Arrays live in R's memory as ordinary R arrays, so the CPU is the only device.
+Only R's own three storage types are supported: `f64`, `i32` and `bool`.
+R has no single precision, so an R double becomes an `f64` array here, while on pjrt it becomes `f32`.
+Not every primitive has a quickr rule yet; the [primitives reference](primitives.html) lists which do.
+
+Compiling takes about a second for each function and set of input shapes.
+That includes eager code: each operation called outside of `jit()` is compiled the first time it sees new input shapes.
+The backend therefore pays off for functions that run many times.
+
+## r
+
+The r backend is primarily for testing, not for real work.
+It runs the same R function as quickr, but without compiling it.
+It supports the same primitives and data types as quickr and computes the same results.
+It needs nothing beyond {anvl} itself: no plugin, no compiler, and no download.
+The cost is speed: the program runs as R code, which is fast for vectorized arithmetic but slow wherever the R function loops.
+
+That makes it the backend for tests that cannot rely on a download.
+CRAN cannot download a PJRT plugin, so a package that uses {anvl} cannot run its tests there on the default backend.
+It can run them on the r backend instead, for example by switching to it in `tests/testthat/setup.R`:
+
+```{r, eval = FALSE}
+if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
+  anvl::local_backend("r", envir = testthat::teardown_env())
+}
+```
+
+The tests then run on the r backend on CRAN, and on pjrt everywhere else, locally and on CI.
+Two differences between the backends matter for such tests:
+
+- A test that uses a data type other than `f64`, `i32` and `bool`, or a primitive without a quickr rule, must skip on the r backend, e.g. with `skip_if(active_backend() == "r")`.
+- An R double becomes `f64` instead of `f32`. A test that checks a data type should compare against `default_float()` rather than `"f32"`.
