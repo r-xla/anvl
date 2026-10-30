@@ -1099,6 +1099,18 @@ describe("the cumulative ops' axis default", {
   })
 })
 
+describe("nv_cumsum / nv_cumprod / nv_cummax / nv_cummin", {
+  it("returns an empty result for a size-0 axis", {
+    x <- nv_array(double(0), shape = 0L)
+    for (f in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
+      expect_equal(as.numeric(f(x)), numeric(0))
+    }
+    m <- nv_array(double(0), shape = c(2L, 0L))
+    expect_equal(shape(nv_cumsum(m, axis = 2L)), c(2L, 0L))
+    expect_equal(shape(nv_cummax(m, axis = 2L, indices = TRUE)$indices), c(2L, 0L))
+  })
+})
+
 describe("nv_cumsum / nv_cumprod nan_rm", {
   it("propagates NaN forward by default", {
     x <- nv_array(c(1, NaN, 3))
@@ -1534,6 +1546,9 @@ describe("nv_extract_diag", {
       nv_array(c(1, 4), dtype = "f32")
     )
   })
+  it("returns an empty vector for a matrix with a size-0 axis", {
+    expect_equal(as.integer(nv_extract_diag(nv_array(integer(0), shape = c(0L, 3L)))), integer(0))
+  })
 })
 
 describe("nv_trace", {
@@ -1550,6 +1565,9 @@ describe("nv_trace", {
       nv_scalar(4),
       tolerance = 1e-6
     )
+  })
+  it("is 0 for a 0x0 matrix", {
+    expect_equal(as_array(nv_trace(nv_array(double(0), shape = c(0L, 0L)))), 0)
   })
 })
 
@@ -2206,6 +2224,21 @@ describe("nv_median", {
 })
 
 describe("nv_quantile", {
+  it("errors when a reduced axis has size 0", {
+    x <- nv_array(double(0), shape = 0L)
+    expect_error(nv_quantile(x, 0.5), "at least one element")
+    expect_error(nv_quantile(x, array(c(0.25, 0.5))), "at least one element")
+    m <- nv_array(double(0), shape = c(2L, 0L))
+    expect_error(nv_quantile(m, 0.5, axes = 2L), "size 0 along axis 2\\.")
+    expect_error(nv_median(m, axes = 2L, nan_rm = TRUE), "size 0 along axis 2\\.")
+    expect_error(nv_quantile(nv_array(double(0), shape = c(0L, 0L)), 0.5), "size 0 along axes 1 and 2\\.")
+  })
+  it("returns an empty result when a kept axis has size 0", {
+    x <- nv_array(double(0), shape = c(0L, 3L))
+    expect_equal(shape(nv_quantile(x, 0.5, axes = 2L)), 0L)
+    expect_equal(shape(nv_quantile(x, array(c(0.25, 0.5)), axes = 2L)), c(2L, 0L))
+    expect_equal(shape(nv_median(x, axes = 2L, drop = FALSE)), c(0L, 1L))
+  })
   it("matches base R quantile (default linear / type 7) for scalar probs", {
     xr <- c(3, 1, 4, 1, 5, 9, 2, 6)
     x <- nv_array(xr)

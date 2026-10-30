@@ -214,6 +214,10 @@ prim_all[["stablehlo"]] <- function(x, axes, drop) {
 # as JAX does; XLA optimizes this pattern.
 .hlo_cum_reduce_window <- function(x, inputs, init_values, body, axis) {
   shp <- shape(x)
+  # reduce_window rejects a window of size 0, and there is nothing to accumulate.
+  if (shp[[axis]] == 0L) {
+    return(inputs)
+  }
   n_axes <- length(shp)
   window_dimensions <- replace(rep(1L, n_axes), axis, shp[[axis]])
   ones <- rep(1L, n_axes)

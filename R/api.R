@@ -3864,9 +3864,13 @@ nv_extract_diag <- jit(function(x) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
+  n <- min(shape(x))
+  if (n == 0L) {
+    return(prim_reshape(x, shape = 0L))
+  }
   prim_gather(
     x,
-    start_indices = diag_indices(x, min(shape(x))),
+    start_indices = diag_indices(x, n),
     offset_axes = integer(0L),
     collapsed_slice_axes = c(1L, 2L),
     x_batching_axes = integer(0L),
@@ -4403,6 +4407,9 @@ nv_top_k <- jit(
 #'
 #' A quantile generally falls between two elements, so a non-float `x` is
 #' computed (and returned) at the default float data type.
+#'
+#' Reducing over an axis of size 0 is an error: there is no element to take a
+#' quantile of.
 #' @section Interpolation modes:
 #' For `n` reduced elements and a probability `q`, let
 #' `h = 1 + (n - 1) * q` be the position `q` falls at in the sorted values,
@@ -4482,6 +4489,13 @@ nv_quantile <- jit(
     # The sort below only ever orders one axis, so reducing several means
     # ranking their elements together in one flattened axis.
     axes <- sort(.resolve_reduce_axes(x, axes))
+    empty <- axes[shape(x)[axes] == 0L]
+    if (length(empty) > 0L) {
+      cli_abort(c(
+        "{.arg x} must have at least one element along the reduced axes.",
+        x = "{.arg x} has size 0 along {cli::qty(length(empty))}ax{?is/es} {empty}."
+      ))
+    }
     flat <- .flatten_reduce_axes(x, axes, drop)
     x <- flat$x
 
@@ -4493,6 +4507,12 @@ nv_quantile <- jit(
     shp_kd <- replace(shp, axis, 1L)
     shp_K <- replace(shp, axis, K)
     out_dtype <- dtype(x)
+
+    # A kept axis of size 0 leaves no slice to take a quantile of, and the
+    # gathers below have nothing to index into.
+    if (prod(shp) == 0L) {
+      return(nv_empty_like(x, shape = if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape))
+    }
 
     # Selection instead of a full sort when every requested order statistic lies
     # in one end of the axis. Ascending position j of a slice's n_valid sorted
@@ -4530,9 +4550,9 @@ nv_quantile <- jit(
     budget <- ceiling(n_axis / 2L) + 1L
     k_lo <- as.integer(ceiling((n_axis - 1L) * max(probs)) + 1L)
     k_hi <- as.integer(n_axis - floor((n_axis - 1L) * min(probs)))
-    path <- if (n_axis > 0L && k_lo <= budget) {
+    path <- if (k_lo <= budget) {
       "low"
-    } else if (n_axis > 0L && k_hi <= budget) {
+    } else if (k_hi <= budget) {
       "high"
     } else {
       "sort"
