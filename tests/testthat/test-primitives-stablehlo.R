@@ -1743,6 +1743,13 @@ describe("prim_dynamic_slice", {
       c(3L, 5L)
     )
   })
+  it("clamps an unsigned start index of 0 to the first position", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("ui8", "ui32", "ui64")) {
+      out <- prim_dynamic_slice(v, nv_scalar(0L, dtype = dt), slice_sizes = 2L)
+      expect_equal(as.integer(as_array(out)), c(10L, 20L))
+    }
+  })
 })
 
 describe("prim_dynamic_update_slice", {
@@ -1750,6 +1757,35 @@ describe("prim_dynamic_update_slice", {
     m <- nv_array(1:6, shape = c(2, 3))
     out <- prim_dynamic_update_slice(m, nv_array(9L, shape = c(1, 1)), nv_scalar(2L, "i64"), 1L)
     expect_equal(as.integer(out), c(1L, 9L, 3L, 4L, 5L, 6L))
+  })
+  it("clamps an unsigned start index of 0 to the first position", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("ui8", "ui32", "ui64")) {
+      out <- prim_dynamic_update_slice(v, nv_array(c(1L, 2L)), nv_scalar(0L, dtype = dt))
+      expect_equal(as.integer(as_array(out)), c(1L, 2L, 30L, 40L))
+    }
+  })
+})
+
+describe("prim_gather", {
+  it("clamps an unsigned index of 0 to the first position, like a signed one", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("i32", "ui8", "ui32", "ui64")) {
+      expect_equal(as.integer(as_array(v[nv_scalar(0L, dtype = dt)])), 10L)
+      expect_equal(as.integer(as_array(v[nv_scalar(2L, dtype = dt)])), 20L)
+    }
+  })
+})
+
+describe("prim_scatter", {
+  it("treats an unsigned index like a signed one", {
+    for (dt in c("i32", "ui8", "ui32", "ui64")) {
+      v <- nv_array(c(10L, 20L, 30L, 40L))
+      v[nv_scalar(0L, dtype = dt)] <- 99L
+      expect_equal(as.integer(as_array(v)), c(10L, 20L, 30L, 40L))
+      v[nv_scalar(2L, dtype = dt)] <- 99L
+      expect_equal(as.integer(as_array(v)), c(10L, 99L, 30L, 40L))
+    }
   })
 })
 

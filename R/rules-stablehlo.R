@@ -21,8 +21,15 @@ region_input <- function(dtype, shape = integer()) {
   stablehlo::FuncValue(id, vt, func)
 }
 
-# Indices shifted from 1-based to 0-based, and back.
+# Indices shifted from 1-based to 0-based, and back. An unsigned index is first
+# converted to a signed data type wide enough to hold it, so that index 0
+# becomes -1 (out of bounds below) instead of wrapping around to the largest
+# value.
 hlo_zero_based_indices <- function(indices) {
+  dt <- dtype(indices)
+  if (is_dtype_uint(dt)) {
+    indices <- hlo_convert(indices, as_dtype(paste0("i", min(2L * dtype_width(dt), 64L))))
+  }
   hlo_subtract(indices, hlo_ones_like(indices))
 }
 

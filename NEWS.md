@@ -1,5 +1,7 @@
 # anvl (development version)
 
+* Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
+  `prim_dynamic_update_slice()`) no longer wraps around to the last position.
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
   now differentiable.
 
