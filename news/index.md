@@ -2,6 +2,11 @@
 
 ## anvl (development version)
 
+- Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`,
+  [`prim_dynamic_slice()`](https://r-xla.github.io/anvl/reference/prim_dynamic_slice.md),
+  [`prim_dynamic_update_slice()`](https://r-xla.github.io/anvl/reference/prim_dynamic_update_slice.md))
+  no longer wraps around to the last position.
+
 - [`prim_convolution()`](https://r-xla.github.io/anvl/reference/prim_convolution.md)
   and
   [`nv_conv1d()`](https://r-xla.github.io/anvl/reference/nv_conv1d.md) /
