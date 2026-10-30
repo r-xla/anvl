@@ -42,6 +42,35 @@ describe("the r backend", {
     expect_error(jit(function(x) nv_convert(x, "f32"))(nv_array(1)), "f32")
   })
 
+  it("writes and reads the bytes of an array as pjrt does", {
+    local_backend("r")
+    x <- nv_array(array(as.numeric(1:24), dim = c(2L, 3L, 4L)))
+    expect_identical(as_raw(x), writeBin(as.numeric(1:24), raw(), endian = "little"))
+    bytes <- as_raw(x, row_major = TRUE)
+    expect_identical(bytes, writeBin(as.vector(aperm(as_array(x))), raw(), endian = "little"))
+    expect_equal(nv_array(bytes, dtype = "f64", shape = c(2L, 3L, 4L), byrow = TRUE), x)
+    expect_equal(nv_array(as_raw(x), dtype = "f64", shape = c(2L, 3L, 4L)), x)
+
+    flags <- nv_array(c(TRUE, FALSE, TRUE))
+    expect_identical(as_raw(flags), as.raw(c(1L, 0L, 1L)))
+    expect_equal(nv_array(as_raw(flags), dtype = "bool", shape = 3L), flags)
+    ints <- nv_matrix(-3:2, nrow = 2L)
+    expect_equal(nv_array(as_raw(ints, row_major = TRUE), dtype = "i32", shape = c(2L, 3L), byrow = TRUE), ints)
+    expect_equal(nv_array(raw(), dtype = "i32", shape = c(2L, 0L)), nv_empty(c(2L, 0L), dtype = "i32"))
+
+    expect_identical(
+      as_raw(x, row_major = TRUE),
+      with_backend("pjrt", as_raw(nv_array(as_array(x), dtype = "f64"), row_major = TRUE))
+    )
+    expect_identical(as_raw(flags), with_backend("pjrt", as_raw(nv_array(as_array(flags)))))
+  })
+
+  it("rejects a raw payload of the wrong size", {
+    local_backend("r")
+    expect_error(nv_array(raw(7L), dtype = "f64", shape = 1L), "7 bytes does not hold 1 element")
+    expect_error(nv_array(raw(4L), dtype = "f32", shape = 1L), "\"r\" and \"quickr\" backends")
+  })
+
   it("runs operations eagerly", {
     local_backend("r")
     x <- nv_array(c(1, 2, 3))

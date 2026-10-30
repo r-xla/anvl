@@ -6,6 +6,11 @@
   jitted function as the R code the quickr backend compiles, so it needs
   neither quickr nor a PJRT plugin, e.g. for a package's tests on CRAN.
 
+* `nv_save()` / `nv_read()` and `nv_serialize()` / `nv_unserialize()` no
+  longer need a PJRT plugin on the quickr and r backends.
+* Bugfix: `as_raw()` returns the bytes of an array of the quickr backend
+  instead of truncating its values to bytes.
+
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
   now differentiable.
 

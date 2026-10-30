@@ -14,9 +14,9 @@
 #'   Named list of arrays. Names must be unique.
 #' @param path (`character(1)`)\cr
 #'   File path to write to or read from.
-#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
-#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
-#'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
+#' @param device (`NULL` | `character(1)` | [device][nv_device])\cr
+#'   The device of the active backend to place the loaded arrays on, given as
+#'   for [`nv_array()`]. The default (`NULL`) uses [`default_device()`].
 #'
 #' @returns `nv_save()`: (`NULL`)\cr
 #'   Invisibly.
@@ -67,9 +67,9 @@ nv_read <- function(path, device = NULL) {
 #'   For `nv_serialize()`, an optional connection to write to; if `NULL`
 #'   (default), a raw vector is returned. For `nv_unserialize()`, a connection
 #'   or raw vector to read from.
-#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
-#'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...)
-#'   when the active backend is `"pjrt"`, defaulting to [`default_device()`].
+#' @param device (`NULL` | `character(1)` | [device][nv_device])\cr
+#'   The device of the active backend to place the loaded arrays on, given as
+#'   for [`nv_array()`]. The default (`NULL`) uses [`default_device()`].
 #'
 #' @returns `nv_serialize()`: ([`raw`] | `NULL`)\cr
 #'   A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
@@ -93,19 +93,10 @@ nv_serialize <- function(arrays, con = NULL) {
   }
   checkmate::assert_list(arrays, names = "unique", types = "AnvlArray")
 
-  # TODO(hack): do this properly
-  arrays_unwrapped <- lapply(arrays, function(x) {
-    buf <- unwrap_if_array(x)
-    if (inherits(buf, "PJRTBuffer")) {
-      return(buf)
-    }
-    pjrt_buffer(buf, dtype = as.character(dtype(x)), shape = shape(x))
-  })
-
   if (is.null(con)) {
-    return(safetensors::safe_serialize(arrays_unwrapped))
+    return(safetensors::safe_serialize(arrays))
   }
-  safetensors::safe_save_file(arrays_unwrapped, con)
+  safetensors::safe_save_file(arrays, con)
   # The connection is written for its side effect; `nv_save()` returns nothing
   # either.
   invisible(NULL)
@@ -114,21 +105,63 @@ nv_serialize <- function(arrays, con = NULL) {
 #' @rdname nv_serialize
 #' @export
 nv_unserialize <- function(con, device = NULL) {
-  # TODO: don't convert to pjrt first
-  device <- device %||% default_device("pjrt")
-  result <- safetensors::safe_load_file(con, framework = "pjrt", device = device)
+  arrays <- safetensors::safe_load_file(con, framework = "anvl", device = device)
+  # Drop the header metadata safetensors attaches.
+  attributes(arrays) <- list(names = names(arrays))
+  arrays
+}
 
-  # The arrays are built on the active backend.
-  backend <- active_backend()
-  lapply(result, function(buf) {
-    if (backend == "pjrt") {
-      nv_array(buf)
-    } else {
-      nv_array(
-        xlamisc::as_array(buf, check = FALSE),
-        dtype = as.character(pjrt::elt_type(buf)),
-        shape = xlamisc::shape(buf)
-      )
-    }
-  })
+# anvl's data types by their name in the safetensors format.
+safetensors_dtypes <- c(
+  BOOL = "bool",
+  I8 = "i8",
+  I16 = "i16",
+  I32 = "i32",
+  I64 = "i64",
+  U8 = "ui8",
+  U16 = "ui16",
+  U32 = "ui32",
+  U64 = "ui64",
+  F32 = "f32",
+  F64 = "f64"
+)
+
+anvl_dtype_to_safetensors <- function(dtype) {
+  dtype <- as.character(dtype)
+  name <- names(safetensors_dtypes)[match(dtype, safetensors_dtypes)]
+  if (is.na(name)) {
+    cli_abort("Data type {.val {dtype}} cannot be saved in the safetensors format.")
+  }
+  name
+}
+
+safetensors_dtype_to_anvl <- function(name) {
+  if (!name %in% names(safetensors_dtypes)) {
+    cli_abort("Unsupported safetensors data type {.val {name}}.")
+  }
+  safetensors_dtypes[[name]]
+}
+
+#' @exportS3Method safetensors::safe_tensor_meta
+safe_tensor_meta.AnvlArray <- function(x) {
+  # A list, so that a shape of one axis is still written as a JSON array.
+  list(shape = as.list(shape(x)), dtype = anvl_dtype_to_safetensors(dtype(x)))
+}
+
+#' @exportS3Method safetensors::safe_tensor_buffer
+safe_tensor_buffer.AnvlArray <- function(x) {
+  as_raw(x, row_major = TRUE)
+}
+
+# The constructor of the safetensors framework "anvl" (registered in
+# `.onLoad()`): builds an array of the active backend from the row-major bytes
+# of a tensor.
+anvl_array_from_safetensors <- function(raw, meta, device = NULL) {
+  nv_array(
+    raw,
+    dtype = safetensors_dtype_to_anvl(meta$dtype),
+    shape = as.integer(meta$shape),
+    device = device,
+    byrow = TRUE
+  )
 }

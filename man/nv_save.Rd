@@ -16,9 +16,9 @@ Named list of arrays. Names must be unique.}
 \item{path}{(\code{character(1)})\cr
 File path to write to or read from.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
-The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...)
-when the active backend is \code{"pjrt"}, defaulting to \code{\link[=default_device]{default_device()}}.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device of the active backend to place the loaded arrays on, given as
+for \code{\link[=nv_array]{nv_array()}}. The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 }
 \value{
 \code{nv_save()}: (\code{NULL})\cr

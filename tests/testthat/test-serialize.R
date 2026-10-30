@@ -30,31 +30,55 @@ test_that("nv_save and nv_read works for a single array", {
   expect_equal(lst, reloaded)
 })
 
-test_that("nv_serialize and nv_unserialize work for quickr backend", {
-  skip_if_no_quickr()
-  local_backend("quickr")
-  x <- nv_matrix(1:6, nrow = 2, dtype = "i32")
-  lst <- list(x = x)
-  raw_data <- nv_serialize(lst)
+# Arrays of every data type the r backend holds, a scalar, and a rank-3 array,
+# whose bytes are written in row-major order.
+serialize_fixture <- function() {
+  list(
+    f64 = nv_array(array(as.numeric(1:24) / 4, dim = c(2L, 3L, 4L)), dtype = "f64"),
+    i32 = nv_matrix(-3:2, nrow = 2L, dtype = "i32"),
+    bool = nv_array(c(TRUE, FALSE, TRUE)),
+    scalar = nv_scalar(-2.5, dtype = "f64")
+  )
+}
+
+expect_arrays_like <- function(actual, expected, backend) {
+  expect_named(actual, names(expected))
+  for (name in names(expected)) {
+    expect_equal(backend(actual[[name]]), backend)
+    expect_dtype(actual[[name]], dtype(expected[[name]]))
+    expect_shape(actual[[name]], shape(expected[[name]]))
+    expect_equal(as.vector(as_array(actual[[name]])), as.vector(as_array(expected[[name]])))
+  }
+}
+
+test_that("nv_serialize and nv_unserialize work on the r backend", {
+  local_backend("r")
+  arrays <- serialize_fixture()
+  raw_data <- nv_serialize(arrays)
   expect_type(raw_data, "raw")
-  reloaded <- nv_unserialize(raw_data)
-  expect_equal(backend(reloaded$x), "quickr")
-  expect_equal(as_array(reloaded$x), as_array(x))
-  expect_dtype(reloaded$x, dtype(x))
-  expect_shape(reloaded$x, shape(x))
+  expect_equal(nv_unserialize(raw_data), arrays)
 })
 
-test_that("nv_save and nv_read work for quickr backend", {
-  skip_if_no_quickr()
-  local_backend("quickr")
-  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
-  lst <- list(x = x)
+test_that("nv_save and nv_read work on the r backend", {
+  local_backend("r")
+  arrays <- serialize_fixture()
   tmp <- tempfile(fileext = ".safetensors")
-  nv_save(lst, tmp)
-  reloaded <- nv_read(tmp)
-  expect_equal(backend(reloaded$x), "quickr")
-  expect_equal(as_array(reloaded$x), as_array(x))
-  expect_dtype(reloaded$x, dtype(x))
+  nv_save(arrays, tmp)
+  expect_equal(nv_read(tmp), arrays)
+})
+
+test_that("arrays saved on one backend are read on another", {
+  on_pjrt <- with_backend("pjrt", serialize_fixture())
+  on_r <- with_backend("r", serialize_fixture())
+  expect_arrays_like(with_backend("r", nv_unserialize(nv_serialize(on_pjrt))), on_pjrt, "r")
+  expect_arrays_like(with_backend("pjrt", nv_unserialize(nv_serialize(on_r))), on_r, "pjrt")
+  # The two backends write the same bytes.
+  expect_identical(nv_serialize(on_r), nv_serialize(on_pjrt))
+})
+
+test_that("a data type the r backend cannot hold is an error when read on it", {
+  raw_data <- with_backend("pjrt", nv_serialize(list(x = nv_array(1, dtype = "f32"))))
+  expect_error(with_backend("r", nv_unserialize(raw_data)), "f32")
 })
 
 test_that("serialization round-trips scalars and typed arrays", {

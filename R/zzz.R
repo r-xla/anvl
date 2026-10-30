@@ -42,6 +42,13 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   # pjrt uploads an unserialized buffer to the device this entry returns.
   pjrt_the <- getFromNamespace("the", "pjrt")
   pjrt_the[["unserialize_device"]] <- function() default_device("pjrt")
+
+  # nv_unserialize() reads a tensor as an array of the active backend.
+  safetensors_frameworks <- getFromNamespace("safetensors_frameworks", "safetensors")
+  safetensors_frameworks[["anvl"]] <- list(
+    constructor = anvl_array_from_safetensors,
+    packages = character()
+  )
 }
 
 # Read `ANVL_DEFAULT_DTYPES` / `ANVL_DEFAULT_DEVICE`, the fallbacks of the

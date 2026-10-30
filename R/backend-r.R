@@ -76,12 +76,12 @@ r_array_backend <- function(name, new_device, compile) {
   }
   AnvlBackend(
     new_data = function(data, dtype, shape, device, row_major = FALSE) {
-      if (is.raw(data)) {
-        cli_abort("Raw {.arg data} payloads are not supported by the {.val {name}} backend.")
-      }
       check_device(device)
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
+      }
+      if (is.raw(data)) {
+        return(new_array(r_array_from_raw(data, dtype, shape, row_major), dtype, shape))
       }
       # Errors for a data type an R array cannot hold, so an array is never
       # labelled with one it does not actually hold.
@@ -97,7 +97,13 @@ r_array_backend <- function(name, new_device, compile) {
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
     as_array = function(x, check) x$data,
-    as_raw = function(x, row_major) as.raw(x$data),
+    as_raw = function(x, row_major) {
+      data <- x$data
+      if (row_major && length(x$shape) >= 2L) {
+        data <- aperm(data)
+      }
+      writeBin(as.vector(data), raw(), size = r_array_byte_width(x$dtype), endian = "little")
+    },
     platform = function(x) "cpu",
     device = function(x) x$device,
     new_device = new_device,
@@ -113,6 +119,34 @@ r_array_backend <- function(name, new_device, compile) {
     # R has no single precision: an R double is a double.
     default_dtypes = list(float = "f64", int = "i32")
   )
+}
+
+# The bytes an element of an R array of data type `dtype` takes in a raw
+# payload: those of the PJRT buffer of the same data type.
+r_array_byte_width <- function(dtype) {
+  switch(quickr_dtype_to_r_ctor(dtype), double = 8L, integer = 4L, logical = 1L)
+}
+
+# Decodes the little-endian bytes `data` -- in row-major order if `row_major` --
+# into the R array of data type `dtype` and shape `shape`.
+r_array_from_raw <- function(data, dtype, shape, row_major) {
+  ctor <- quickr_dtype_to_r_ctor(dtype)
+  width <- r_array_byte_width(dtype)
+  n <- prod(shape)
+  if (length(data) != n * width) {
+    cli_abort(
+      "A raw payload of {length(data)} bytes does not hold {n} element{?s} of data type {.val {as.character(dtype)}}."
+    )
+  }
+  if (ctor == "logical") {
+    values <- readBin(data, "integer", n = n, size = 1L, signed = FALSE) != 0L
+  } else {
+    values <- readBin(data, ctor, n = n, size = width, endian = "little")
+  }
+  if (row_major && length(shape) >= 2L) {
+    values <- aperm(array(values, dim = rev(shape)))
+  }
+  values
 }
 
 # The native-dispatch compile callback: traces and lowers on a cache miss and
