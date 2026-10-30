@@ -2,12 +2,14 @@
 
 * Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
   `prim_dynamic_update_slice()`) no longer wraps around to the last position.
+
 * New experimental `"r"` backend (`AnvlBackendR()`, `r_device()`): runs a
   jitted function as the R code the quickr backend compiles, so it needs
   neither quickr nor a PJRT plugin, e.g. for a package's tests on CRAN.
 
 * `nv_save()` / `nv_read()` and `nv_serialize()` / `nv_unserialize()` no
   longer need a PJRT plugin on the quickr and r backends.
+
 * Bugfix: `as_raw()` returns the bytes of an array of the quickr backend
   instead of truncating its values to bytes.
 

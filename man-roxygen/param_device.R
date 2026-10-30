@@ -3,9 +3,9 @@
 #'   * a *device string* naming the platform (e.g. `"cpu"`, `"cuda"`,
 #'     `"cuda:<n>"`), which is resolved against the backend in use, or
 #'   * a *device object* as returned by [`nv_device()`]: a
-#'     [`PJRTDevice`][pjrt::pjrt_device] for the `"pjrt"` backend or a
-#'     [`quickr_device`] for the `"quickr"` backend. It must belong to the
-#'     active backend ([`active_backend()`]); a device of another backend is an
-#'     error.
+#'     [`PJRTDevice`][pjrt::pjrt_device] for the `"pjrt"` backend, a
+#'     [`quickr_device`] for the `"quickr"` backend or an [`r_device`] for the
+#'     `"r"` backend. It must belong to the active backend
+#'     ([`active_backend()`]); a device of another backend is an error.
 #'
 #'   The default (`NULL`) uses [`default_device()`].

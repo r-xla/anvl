@@ -29,10 +29,10 @@ The device the data lives on, given either as:
 \item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
 \code{"cuda:<n>"}), which is resolved against the backend in use, or
 \item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
-\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
-\code{\link{quickr_device}} for the \code{"quickr"} backend. It must belong to the
-active backend (\code{\link[=active_backend]{active_backend()}}); a device of another backend is an
-error.
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend, a
+\code{\link{quickr_device}} for the \code{"quickr"} backend or an \code{\link{r_device}} for the
+\code{"r"} backend. It must belong to the active backend
+(\code{\link[=active_backend]{active_backend()}}); a device of another backend is an error.
 }
 
 The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
