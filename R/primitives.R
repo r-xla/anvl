@@ -2608,6 +2608,7 @@ prim_while <- new_primitive(
     if (is.null(state_names) || any(state_names == "")) {
       cli_abort("{.arg init} must have only named arguments.")
     }
+    abort_if_side_effects(init, "init")
 
     current_desc <- current_descriptor(silent = TRUE)
     init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
@@ -2664,10 +2665,13 @@ prim_while <- new_primitive(
 #' along axis 1 with that axis dropped.
 #' @param init (`list()`)\cr
 #'   Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-#'   shape and data type across steps.
+#'   shape and data type across steps. It must not contain a random state: to
+#'   draw from one in `body`, make it the default before the loop with
+#'   [local_nv_rng_state()].
 #' @param xs (`list()`)\cr
 #'   Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-#'   all of size `steps` along it. An empty list runs a counted loop.
+#'   all of size `steps` along it. An empty list runs a counted loop. It must
+#'   not contain a random state.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning `list(carry = , out = )`,
 #'   where `carry` has the structure of `init` and `out` is a (possibly
@@ -2704,6 +2708,8 @@ prim_scan <- new_primitive(
     # delayed promise evaluation can cause the value to be added to the wrong graph descriptor
     force(init)
     force(xs)
+    abort_if_side_effects(init, "init")
+    abort_if_side_effects(xs, "xs")
     if (!is.function(body)) {
       cli_abort("{.arg body} must be a function.")
     }
@@ -3032,55 +3038,88 @@ prim_print <- new_primitive(
 )
 
 # RNG primitives
-#' @title Primitive RNG Bit Generator
+#' @title Primitive Random Bits
 #' @description
-#' Generates pseudo-random numbers using the specified algorithm and returns
-#' the updated RNG state together with the generated values.
-#' @param state ([`arrayish`])\cr
-#'   RNG state: a 1-D array of the `ui64` data type. Its length depends on
-#'   `rng_algorithm` -- exactly 2 for `"THREE_FRY"`, 2 or 3 for `"PHILOX"`,
-#'   and whatever the implementation wants for `"DEFAULT"`.
-#' @param rng_algorithm (`character(1)`)\cr
-#'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
-#'   leaving the choice to the implementation.
-#' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values. Can be any numeric data type.
+#' Draws random bits from the active random state (see [nv_set_seed()]) with
+#' the ThreeFry-2x32 counter-based generator of
+#' `r cite_bib("salmon2011parallel")`, and advances that random state by one
+#' step.
+#'
+#' See `r roxy_article("random-numbers")` for more details.
 #' @template param_shape
-#' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state with the input `state`'s data type
-#'   and shape, and `values`, the random values with the given `dtype` and
-#'   `shape`.
-#' @templateVar primitive_id rng_bit_generator
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
+#' @template section_random_state
+#' @return ([`arrayish`])\cr
+#'   The random bits, of data type `dtype` and shape `shape`. A `"ui64"` value
+#'   is one encrypted 64-bit block, and a narrower value one of a block's two
+#'   32-bit words, truncated to its low bits: of `n` values, the first
+#'   `ceiling(n / 2)` are the blocks' first words and the rest their second
+#'   words. The draws fill `shape` in row-major order, as JAX's do, so a draw of
+#'   `c(2, 3)` is not a draw of `6` filled into `c(2, 3)` in R's column-major
+#'   order.
+#' @references
+#' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
+#' @templateVar primitive_id sample_bits
 #' @template section_rules
-#' @section StableHLO:
-#' `r roxy_spec("rng_bit_generator")`
-#' @seealso [nv_runif()], [nv_rnorm()]
+#' @seealso [nv_runif()], [nv_rnorm()], [prim_fork_random_state()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # THREE_FRY, the default, takes a two-element state
-#' state <- nv_array(c(0L, 0L), dtype = "ui64")
-#' prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
-#'
-#' # the updated state feeds the next draw, so the two differ
-#' out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
-#' prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
-#'
-#' # PHILOX also accepts a three-element state
-#' prim_rng_bit_generator(
-#'   nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
-#'   dtype = "i32", shape = 4L
-#' )
+#' nv_get_random_state()
+#' prim_sample_bits(2L, "ui32")
+#' # The counter is incremented by 1
+#' nv_get_random_state()
+#' # A random state of its own is drawn from within with_nv_rng_state():
+#' custom_rng <- nv_random_state(1L)
+#' custom_rng
+#' with_nv_rng_state(custom_rng, prim_sample_bits(2L, "ui32"))
+#' # And it is still updated
+#' custom_rng
+#' # And does not affect the global RNG
+#' nv_get_random_state()
 #' @export
-prim_rng_bit_generator <- new_primitive(
-  "rng_bit_generator",
-  function(state, rng_algorithm = "THREE_FRY", dtype, shape) {
+prim_sample_bits <- new_primitive(
+  "sample_bits",
+  function(shape, dtype) {
+    # the key and the counter this draw splits at, which the call takes as its
+    # operands
     graph_desc_add(
       self,
-      list(state = state),
-      params = list(rng_algorithm = rng_algorithm, dtype = dtype, shape = shape),
-      infer_fn = infer_rng_bit_generator
-    )
+      desc_use_side_effect(current_descriptor(), random_state_id()),
+      params = list(shape = shape, dtype = dtype),
+      infer_fn = infer_sample_bits
+    )[[1L]]
   },
-  static = 2:4
+  static = c("shape", "dtype")
+)
+
+#' @title Primitive Fork of the Random State
+#' @description
+#' Splits the active random state \eqn{(k, c)} (see [nv_set_seed()]) like a
+#' sampling call of [prim_sample_bits()] does, advancing it by one step to
+#' \eqn{(k, c + 1)}, and returns the child random state
+#' \eqn{(\mathrm{ThreeFry}_k(c), 0)} instead of drawing from it.
+#' [nv_while()] forks the random state for a loop body that samples: the loop runs a number
+#' of times that is not known while it is traced, so the body advances the
+#' child as often as it runs, and the loop advances the random state outside of
+#' it by one step.
+#' @references
+#' `r format_bib("claessen2013splittable", "jax2018github")`
+#' @return (`list()`)\cr
+#'   The child random state: `random_key`, its key, a `"ui32"` array of shape
+#'   `2`, and `random_counter`, its counter, a `"ui64"` scalar `0`.
+#' @templateVar primitive_id fork_random_state
+#' @template section_rules
+#' @seealso [prim_sample_bits()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' with_nv_seed(1L, prim_fork_random_state())
+#' @export
+prim_fork_random_state <- new_primitive(
+  "fork_random_state",
+  function() {
+    # the fork is a use of the random state, as a draw is
+    effect <- random_state_id()
+    side_effect_fork(effect, desc_use_side_effect(current_descriptor(), effect))
+  }
 )
 
 #' @title Primitive Scatter

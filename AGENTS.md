@@ -128,6 +128,29 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
+## Side Effects
+
+A side effect is state outside the traced function that primitives read and update; currently
+only the random state. It is one of two kinds: a *trace-time* side effect (the random state) is
+changed by its uses in a way the trace knows, so a trace counts its uses and hands back the count,
+which the host adds after the run without waiting for the program; a *runtime* side effect is
+changed by what the program computes, so a trace hands back its value, which the program returns.
+A side effect has a *handle* (its identity: `global_random_state`, or the `AnvlTracedRandomState`
+the traced function receives for a random state argument), whose class inherits from
+`TraceTimeSideEffect` or `RuntimeSideEffect`, an optional *host object* (the state between calls,
+e.g. `globals$random_state`), and one *view* per trace that uses it (`SideEffectView()`, in
+`desc$side_effects`): its value in that trace, the uses so far (`n`, trace-time only), and the
+`inputs` / `outputs` the trace takes and returns for it. `desc_side_effect(desc, effect)` finds or
+creates a trace's view as its `side_effects_mode` (`?GraphDescriptor`: `"program"`, `"loop"`,
+`"capture"`, `NULL`) says, and a draw calls `desc_use_side_effect(desc, random_state_id())`.
+Everything else -- loops, branches, gradients, lowering, the host -- is generic code in
+`R/side-effects.R`; a side effect only implements the S3 methods `side_effect_start()`,
+`side_effect_host_object()`, and `side_effect_at()` / `side_effect_fork()` / `side_effect_advance()`
+/ `side_effect_format()` (trace-time; the last gives the line a printed graph shows after the run)
+or `side_effect_receive()` (runtime) on its handle, which `R/rng.R` does for the random state. A random state cannot be part of a loop's state (`abort_if_side_effects()`), and
+`local_nv_rng_state()` does not work inside a loop body (`desc$in_loop_body`); the default it sets
+lives in `globals$default_traced_random_state`. The side effects article describes the mechanism.
+
 ## Jit-wrapping
 
 API functions are wrapped in `jit()` at the definition itself, with `static`
@@ -152,6 +175,8 @@ When two non-scalar arrays need to be combined and only differ by size-1 axes (e
 When a function is JIT-compiled, anvl traces it by executing with `GraphBox` objects instead of real data. Operations record themselves into an `AnvlGraph` (see `R/graph.R`). The graph is then lowered to StableHLO IR or quickr code for compilation.
 
 Key types: `GraphValue` (traced variable), `GraphLiteral` (embedded constant), `AbstractArray` (shape + dtype metadata), `AnvlGraph`.
+
+The trace under way is a `GraphDescriptor` (`current_descriptor()`). A function that modifies one in place starts with `desc_` and takes the descriptor as its first argument (`desc_begin_loop(desc, ...)`, `desc_end_capture(desc, ...)`), so every call shows which trace it changes.
 
 ## NSE and Tracing
 

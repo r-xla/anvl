@@ -380,7 +380,7 @@ format_graph_lines <- function(
     },
     character(1L)
   )
-  for (node in unlist(lapply(unname(side_effects), `[[`, "inputs"), recursive = FALSE)) {
+  for (node in views_values(side_effects, "inputs")) {
     input_strs <- c(input_strs, sprintf("%s: %s", format_node_id(node, node_ids, digits), format_aval_short(node$aval)))
   }
   capture_strs <- vapply(
@@ -408,7 +408,7 @@ format_graph_lines <- function(
   output_ids <- c(
     vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits),
     vapply(
-      unname(unlist(lapply(unname(side_effects), `[[`, "outputs"), recursive = FALSE)),
+      views_values(side_effects, "outputs"),
       format_node_id,
       character(1L),
       node_ids = node_ids,
@@ -462,7 +462,7 @@ format_graph_body <- function(
   width = getOption("width", 80L),
   digits = getOption("digits")
 ) {
-  side_effect_inputs <- unname(unlist(lapply(side_effects, `[[`, "inputs"), recursive = FALSE))
+  side_effect_inputs <- views_values(side_effects, "inputs")
   node_ids <- build_node_ids(c(inputs, side_effect_inputs), constants, statements)
   lines <- format_graph_lines(
     inputs = inputs,

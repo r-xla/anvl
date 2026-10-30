@@ -612,3 +612,13 @@ test_that("gradient() inside a sub-graph takes an R argument at the data type it
   })
   expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
 })
+
+describe("graph_gradient", {
+  it("keeps the side effects of the graph it differentiates", {
+    graph <- trace_fn(function(x) x * nv_runif(integer()), list(x = nv_aval("f32", integer())))
+    grad <- graph_gradient(graph, "x")
+    expect_true(identical(grad$side_effects[[1L]]$effect, graph$side_effects[[1L]]$effect))
+    expect_length(grad$side_effects, 1L)
+    expect_identical(grad$side_effects[[1L]]$n, 1)
+  })
+})

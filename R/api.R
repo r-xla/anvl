@@ -3482,7 +3482,7 @@ nv_while <- prim_while
 #'
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
-#'   Every slot must keep a fixed shape and dtype across steps.
+#'   Every slot must keep a fixed shape and dtype across steps
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
 #'   Per-step inputs, sliced along axis 1. All leaves must agree on
 #'   the size of axis 1. `NULL` or a list with no leaves runs a counted

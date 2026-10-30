@@ -53,9 +53,14 @@ env_get <- function(env, gval) {
 #' The rule for translating a primitive to stablehlo is `prim_<name>[["stablehlo"]]`.
 #'
 #' The arguments of the resulting function are, in this order: the graph's
-#' constants, the graph's inputs, and the phantom donated inputs (when
-#' `donate_unaliased_outputs = TRUE`), one per output that is not already
-#' aliased to a donated input, in the order of the outputs.
+#' constants, the graph's inputs, the inputs of the graph's side effects (such
+#' as the key and the counter of the global random state, see [nv_set_seed()]),
+#' and the phantom donated inputs (when `donate_unaliased_outputs = TRUE`), one
+#' per output that is not already aliased to a donated input, in the order of
+#' the outputs. Its results are the graph's outputs, followed by the values the
+#' graph returns for its side effects: a side effect that the program changes
+#' at run time returns its last value, while a random state returns none, as the
+#' host advances it by the number of draws (see `r roxy_article("side-effects")`).
 #'
 #' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
@@ -90,7 +95,7 @@ env_get <- function(env, gval) {
 #'   leaves the current value untouched — recursive calls from higher-order
 #'   primitives inherit the platform of the enclosing call.
 #' @return (`list`)\cr
-#'   Of length 3:
+#'   Of length 4:
 #'   - the [`stablehlo::Func`]
 #'   - The graph's constants: the [`GraphValue`]s holding [`ConcreteArray`]s,
 #'     whose data must be passed as the leading inputs at execution time.
@@ -98,6 +103,11 @@ env_get <- function(env, gval) {
 #'     appended when `donate_unaliased_outputs = TRUE`. Each entry is a
 #'     `list(dtype, shape)` describing the buffer the executor must
 #'     allocate. Empty when no phantoms were added.
+#'   - The other [`stablehlo::Func`]s the function calls, which a program
+#'     must define next to it: functions the lowering rules build once and
+#'     call wherever they need them, e.g. the ThreeFry block cipher of
+#'     [prim_sample_bits()]. Empty for most graphs, and always for a nested
+#'     lowering (`id = ""`), whose calls the top-level lowering collects.
 #' @seealso [`trace_fn()`], [`jit()`], [`current_platform()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -139,20 +149,27 @@ stablehlo <- function(
   # finalizes the module). A closure/region lowering (id = "", e.g. a scatter
   # update computation or a while body) builds an anonymous nested func
   # inside the enclosing build.
+  # A top-level lowering collects the functions its rules build (see
+  # `lowering_func()`).
+  if (nzchar(id)) {
+    local_lowering_funcs()
+  }
   func <- stablehlo::local_func(id = id)
+  side_effect_inputs <- side_effects_inputs(graph)
   n_declared <- length(graph$inputs) - length(captured)
-  inps <- c(graph$constants, graph$inputs[seq_len(n_declared)])
+  inps <- c(graph$constants, graph$inputs[seq_len(n_declared)], side_effect_inputs)
   for (i in seq_along(captured)) {
     env_add(env, graph$inputs[[n_declared + i]], captured[[i]])
   }
 
   # Compute which inputs are donated (only graph$inputs, not constants)
   donate_flat <- if (length(donate) > 0L && !is.null(graph$in_tree)) {
-    # Constants are never donated, inputs may be
-    c(
+    # Constants and side effects are never donated, inputs may be
+    mask <- c(
       rep(FALSE, length(graph$constants)),
       pjrt::tree_leaf_mask(graph$in_tree, donate)
     )
+    c(mask, rep(FALSE, max(0L, length(inps) - length(mask))))
   } else {
     rep(FALSE, length(inps))
   }
@@ -204,14 +221,51 @@ stablehlo <- function(
   outputs <- lower_graph_calls(graph, env, func)
   func <- do.call(hlo_return, outputs)
 
-  list(func, graph$constants, phantom_specs)
+  list(func, graph$constants, phantom_specs, if (nzchar(id)) lowering_funcs() else list())
+}
+
+# Opens the registry of the functions the rules of a top-level lowering build
+# once and call wherever they need them, for the calling scope.
+local_lowering_funcs <- function(envir = parent.frame()) {
+  old <- globals[["lowering_funcs"]]
+  globals[["lowering_funcs"]] <- hashtab()
+  withr::defer(
+    {
+      globals[["lowering_funcs"]] <- old
+    },
+    envir = envir
+  )
+}
+
+# The functions of the current lowering's registry, sorted by id.
+lowering_funcs <- function() {
+  funcs <- list()
+  maphash(globals[["lowering_funcs"]], function(id, func) {
+    funcs[[id]] <<- func
+  })
+  unname(funcs[sort(names(funcs))])
+}
+
+# The function `id` of the current lowering, which `build(id)` builds (and
+# finalizes) on first use.
+lowering_func <- function(id, build) {
+  funcs <- globals[["lowering_funcs"]]
+  if (is.null(funcs)) {
+    cli_abort("Internal error: a lowering function is only available in a top-level lowering.")
+  }
+  if (is.null(funcs[[id]])) {
+    funcs[[id]] <- build(id)
+  }
+  funcs[[id]]
 }
 
 # Lower `graph`'s calls into `func`, reading its inputs and constants from `env`
-# and returning one FuncValue per graph output. stablehlo() uses it for a whole
-# function; a rule that inlines a sub-graph into a region it builds by hand
-# (prim_scan's loop body) first seeds `env` with the region's values for the
-# sub-graph's inputs.
+# and returning one FuncValue per graph output, followed by one per value the
+# graph returns for its side effects (`side_effects_outputs()`; a sub-graph
+# returns none, as its call folds its side effects into its outputs).
+# stablehlo() uses it for a whole function; a rule that inlines a sub-graph into
+# a region it builds by hand (prim_scan's loop body) first seeds `env` with the
+# region's values for the sub-graph's inputs.
 lower_graph_calls <- function(graph, env, func) {
   gnode_to_fval <- function(gnode) {
     fval <- env_get(env, gnode)
@@ -266,7 +320,8 @@ lower_graph_calls <- function(graph, env, func) {
     do_call(call)
   }
 
-  lapply(graph$outputs, \(x) {
+  # a program returns the values of its side effects after its own outputs
+  lapply(c(graph$outputs, side_effects_outputs(graph)), \(x) {
     # an output is a literal only when the function returns one directly
     if (is_graph_literal(x)) literal_to_fval(x) else gnode_to_fval(x)
   })

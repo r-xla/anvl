@@ -129,7 +129,17 @@ graph_gradient <- function(graph, wrt) {
   # `graph` may be a promise of a trace, which must not run inside `desc`.
   force(graph)
   desc <- local_descriptor()
+  # The gradient takes the side effects of `graph` as `graph` does, through the
+  # same inputs, and makes the same uses of them.
+  desc$side_effects <- lapply(graph$side_effects, function(x) {
+    copy_view(x, value = lapply(x$value, function(box) register_gval(desc, box$gnode)), outputs = NULL)
+  })
   res <- graph_value_and_grad(graph, wrt)
+  # it returns for a runtime side effect what `graph` returns, as replayed
+  for (result in res$side_effects) {
+    view <- find_view(desc$side_effects, result$effect)
+    view$outputs <- lapply(result$value, `[[`, "gnode")
+  }
   desc$outputs <- lapply(res$grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
   desc$is_static_flat <- graph$is_static_flat
@@ -153,9 +163,15 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
 
   box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
+  replayed <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
+  # what the graph returns for its side effects, as replayed into `desc`
+  side_effects <- lapply(Filter(function(x) !is.null(x$outputs), graph$side_effects), function(x) {
+    list(effect = x$effect, value = lapply(x$outputs, replayed))
+  })
   list(
-    value = lapply(graph$outputs, function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)),
-    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
+    value = lapply(graph$outputs, replayed),
+    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of),
+    side_effects = side_effects
   )
 }
 
@@ -300,7 +316,7 @@ split_vjp <- function(graph, needed) {
   # array it closed over stays a constant.
   map <- hashtab()
   inputs <- lapply(graph$inputs, function(g) {
-    map[[g]] <- GraphValue(aval = g$aval)
+    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
   })
   captured <- Filter(\(g) !is_concrete_array(g$aval), bwd$constants)
   residuals <- Filter(\(g) is.null(map[[g]]), captured)
@@ -310,7 +326,7 @@ split_vjp <- function(graph, needed) {
     if (is.null(desc_fwd$gval_to_box[[g]])) {
       cli_abort("Internal error: the backward pass of a sub-graph read a value from outside it.")
     }
-    map[[g]] <- GraphValue(aval = g$aval)
+    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
   }
   substitute_gnodes(bwd, map)
   bwd$inputs <- c(bwd$inputs, inputs, lapply(residuals, \(g) map[[g]]))
@@ -355,7 +371,7 @@ requirements_from <- function(graph, targets) {
 # Forward propagation over `graph`'s calls, starting from the seeded
 # `required_env`: a call's float outputs require a gradient exactly when one of
 # its operands does. An integer or boolean output never does -- it has no
-# derivative, and the reverse rules give such values a zero -- so an RNG state
+# derivative, and the reverse rules give such values a zero -- so a random state
 # or a loop counter computed alongside a float does not drag the calls it feeds
 # into the backward pass. Literals are inlined constants and never do either.
 propagate_requirements <- function(graph, required_env) {
@@ -677,8 +693,13 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
       call = call
     )
   }
-  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
+  # A side effect `f` uses closes over the enclosing trace's value, and its
+  # uses continue the enclosing trace's.
+  enclosing <- current_descriptor()
+  desc <- local_descriptor(side_effects_mode = "capture")
+  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
   res <- graph_value_and_grad(graph, wrt, gradient_operands(graph, prep$args_flat))
+  desc_end_capture(enclosing, list(graph$side_effects), res$side_effects)
   list(
     value = unflatten(graph$out_tree, res$value),
     grad = unflatten(gradient_out_tree(graph, wrt), res$grad)

@@ -60,3 +60,8 @@ covr-*.rds
 .claude/worktrees/
 .worktrees/
 tests/testthat/_snaps/*.new.md
+
+# LaTeX byproducts of the article figures
+vignettes/articles/figures/*.aux
+vignettes/articles/figures/*.log
+vignettes/articles/figures/*.pdf

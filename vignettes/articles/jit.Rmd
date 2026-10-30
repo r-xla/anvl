@@ -147,6 +147,17 @@ Concretely, the function's execution path -- the specific sequence of primitive 
 1. The *abstract* representation (shape and dtype) of each dynamic input, and
 2. The *value* of each static input.
 
+However, there is currently one exception top this rule, which concerns the handling of the RNG state.
+Stochastic functions, which are those functions that call `prim_sample_bits()` (or the mostly internal `prim_fork_random_state()`) either directly or indirectly, automatically advance the RNG state that was either passed explicitly or implicitly and as such have side effects:
+
+```{r}
+nv_get_random_state()
+prim_sample_bits(1L, "ui32")
+nv_get_random_state()
+```
+
+See the [random numbers](random-numbers.html) article for more information.
+
 The next subsections each show what tracing does to particular R code and where its behavior might be surprising.
 
 ### R loops are unrolled

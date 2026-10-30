@@ -1,0 +1,71 @@
+% What the 23 bits of an f32 uniform cost: ties, and the tail of nv_rnorm().
+% Curves: rng-f32-data.tex (from rng-f32-data.R). Points: the measurements of
+% rng-analysis/REPORT.md (E3) of the anvl-bench repository.
+% Build: see figures/README.md
+\documentclass[border = 6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{pgfplots}
+\pgfplotsset{compat = 1.18}
+\usetikzlibrary{arrows.meta}
+
+\definecolor{f32}{HTML}{E08A2C}
+\definecolor{f64}{HTML}{2A7AB0}
+\definecolor{baseR}{HTML}{777777}
+
+\input{rng-f32-data.tex}
+
+\begin{document}
+\begin{tikzpicture}[font = \small]
+
+  % ---- ties ---------------------------------------------------------------
+  \begin{loglogaxis}[
+    name = ties,
+    width = 7.6cm, height = 6cm,
+    title = {Repeated values among $n$ uniforms},
+    xlabel = {number of draws $n$},
+    ylabel = {fraction of draws that repeat an earlier one},
+    xmin = 1e3, xmax = 1e8, ymin = 1e-14, ymax = 1,
+    ytick = {1e-14, 1e-11, 1e-8, 1e-5, 1e-2},
+    every axis plot/.append style = {line width = 1pt},
+  ]
+    \addplot[f32, no marks] coordinates {\dupsingle};
+    \addplot[baseR, no marks, dashed] coordinates {\dupbaseR};
+    \addplot[f64, no marks] coordinates {\dupdouble};
+    \addplot[f32, only marks, mark = *, mark size = 1.6pt, forget plot]
+      coordinates {(1e4, 5e-4) (1e5, 6.01e-3) (1e6, 5.7257e-2) (1e7, 0.4157527)};
+    \addplot[baseR, only marks, mark = square*, mark size = 1.4pt, forget plot]
+      coordinates {(1e5, 1e-5) (1e6, 1.15e-4) (1e7, 1.1719e-3)};
+    \node[font = \footnotesize, anchor = north west, f32!80!black, rotate = 16.5]
+      at (axis cs: 1.3e3, 2.5e-5) {\texttt{f32}: $2^{23}$ values};
+    \node[font = \footnotesize, anchor = north west, baseR!80!black, rotate = 16.5]
+      at (axis cs: 1.3e3, 2.5e-8) {base R \texttt{runif()}: $2^{32}$};
+    \node[font = \footnotesize, anchor = north west, f64!80!black, rotate = 16.5]
+      at (axis cs: 3e5, 4e-12) {\texttt{f64}: $2^{52}$};
+  \end{loglogaxis}
+
+  % ---- normal tail -------------------------------------------------------
+  \begin{axis}[
+    at = {(ties.east)}, anchor = west, xshift = 1.6cm,
+    width = 7.6cm, height = 6cm,
+    title = {Tail of \texttt{nv\_rnorm()}},
+    xlabel = {$x$},
+    ylabel = {$P(|Z| > x)$ relative to $N(0, 1)$},
+    xmin = 4, xmax = 6.8, ymin = 0, ymax = 1.12,
+    ytick = {0, 0.25, 0.5, 0.75, 1},
+    legend style = {at = {(0.03, 0.03)}, anchor = south west,
+      font = \footnotesize, draw = none, fill = white},
+    legend cell align = left,
+    every axis plot/.append style = {line width = 1pt},
+  ]
+    \addplot[f64, no marks] coordinates {(4, 1) (6.8, 1)};
+    \addlegendentry{\texttt{f64}: exact up to $x = 8.49$}
+    \addplot[f32, no marks] coordinates {\tailratio};
+    \addlegendentry{\texttt{f32}: nothing beyond $5.65$}
+    \draw[densely dotted, black!60] (axis cs: 5.6467, 0) -- (axis cs: 5.6467, 1.12);
+    \node[font = \footnotesize, anchor = west, align = left, black!70]
+      at (axis cs: 5.68, 0.62) {cut-off\\$\sqrt{-2 \log 2^{-23}}$\\$= 5.65$};
+  \end{axis}
+
+\end{tikzpicture}
+\end{document}

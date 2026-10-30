@@ -1,6 +1,8 @@
 #' @include jit.R
 NULL
 
+# Uniform draws in [0, 1) of shape `shape` and float data type `dtype`, from
+# the active random state (see `prim_sample_bits()`).
 nv_unif_rand <- function(shape, dtype) {
   dtype <- assert_rng_float_dtype(dtype)
   shape <- assert_shapevec(shape)
@@ -11,23 +13,16 @@ nv_unif_rand <- function(shape, dtype) {
 
   ui_dtype <- as_dtype(paste0("ui", dtype_width(dtype)))
 
-  # generate random bits
-  # use THREE_FRY as rng algorithm: JAX default
-  rbits <- prim_rng_bit_generator(
-    state = state,
-    "THREE_FRY",
-    ui_dtype,
-    shape = shape
-  )
+  rbits <- prim_sample_bits(shape, ui_dtype)
 
   # shift value: 9 for f32, 11 for f64
   shift <- if (dtype == "f32") 9L else 11L
 
   # shift to the right, s.t. exponent bits are all 0
-  mantissa <- nv_shift_right_logical(rbits$values, shift)
+  mantissa <- nv_shift_right_logical(rbits, shift)
 
   one_bits <- nv_bitcast_convert(
-    nv_fill_like(state, 1.0, shape = integer(), dtype = dtype),
+    nv_fill_like(rbits, 1.0, shape = integer(), dtype = dtype),
     dtype = ui_dtype
   )
 
@@ -47,6 +42,7 @@ nv_unif_rand <- function(shape, dtype) {
 
 #' @rdname nv_uniform
 #' @template param_shape
+#' @template section_random_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample.
 #'   The default (`NULL`) takes it from `min` and `max`, and uses the
@@ -58,8 +54,8 @@ nv_unif_rand <- function(shape, dtype) {
 #' are applied to the draws after they have been reshaped to `shape`, and so
 #' may either be scalars or have exactly that shape. As in base R's `runif()`,
 #' an element whose `min` equals its `max` is that value, and one whose `min` or
-#' `max` is not finite, or whose `max` is less than its `min`, is `NaN`. The RNG
-#' state is advanced regardless.
+#' `max` is not finite, or whose `max` is less than its `min`, is `NaN`. The
+#' random state is advanced regardless.
 #' @family rng
 #' @export
 nv_runif <- jit(
@@ -146,6 +142,7 @@ box_muller <- function(u1, u2) {
 
 #' @rdname nv_normal
 #' @template param_shape
+#' @template section_random_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample. The default (`NULL`) uses the
 #'   common data type of `mean` and `sd`, and the
@@ -158,7 +155,7 @@ box_muller <- function(u1, u2) {
 #' are applied to the draws after they have been reshaped to `shape`, and so
 #' may either be scalars or have exactly that shape. As in base R's `rnorm()`,
 #' an element whose `mean` is `NaN`, or whose `sd` is not finite or negative, is
-#' `NaN`. The RNG state is advanced regardless.
+#' `NaN`. The random state is advanced regardless.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' with_nv_seed(42L, nv_rnorm(c(2, 3)))
@@ -210,6 +207,7 @@ nv_rnorm <- jit(
 #' Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
 #' When `size = 1` (the default), this is a Bernoulli distribution.
 #' @template param_shape
+#' @template section_random_state
 #' @param size (`integer(1)`)\cr
 #'   Number of trials. `0` gives a sample of zeros, like `rbinom()`.
 #' @param prob (`numeric(1)`)\cr
@@ -267,6 +265,7 @@ nv_rbinom <- jit(
 #'
 #' To sample from a population other than `1:n`, use [nv_sample()].
 #' @template param_shape
+#' @template section_random_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
@@ -306,6 +305,7 @@ nv_sample_int <- jit(
 #' Unlike R's `sample()`, `x` is always the population itself: sampling the
 #' integers `1` to `n` is [nv_sample_int()] and never an overload of `x`.
 #' @template param_shape
+#' @template section_random_state
 #' @param x ([`arrayish`])\cr
 #'   The population vector to sample from. Must not be empty.
 #'   An R value materializes at its [default data type][default_dtypes].
