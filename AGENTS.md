@@ -13,10 +13,8 @@ differentiation
 
 ## Commands
 
-The generic R workflow
-([`devtools::test()`](https://devtools.r-lib.org/reference/test.html),
-`make format`, `jarl check .`, …) is in the shared config above.
-anvl-specific:
+The generic R workflow (`devtools::test()`, `make format`,
+`jarl check .`, …) is in the shared config above. anvl-specific:
 
 - **Tests are gated behind `ANVL_TEST=1`** – `tests/testthat.R` only
   calls `test_check()` when it is set, so `R CMD check` in a shell

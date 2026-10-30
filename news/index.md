@@ -2,6 +2,13 @@
 
 ## anvl (development version)
 
+- [`prim_convolution()`](https://r-xla.github.io/anvl/reference/prim_convolution.md)
+  and
+  [`nv_conv1d()`](https://r-xla.github.io/anvl/reference/nv_conv1d.md) /
+  [`nv_conv2d()`](https://r-xla.github.io/anvl/reference/nv_conv2d.md) /
+  [`nv_conv3d()`](https://r-xla.github.io/anvl/reference/nv_conv3d.md)
+  are now differentiable.
+
 - `AnvlArray`s can now be saved with
   [`saveRDS()`](https://rdrr.io/r/base/readRDS.html) and friends; they
   load onto the default device, not the one they were saved from. Arrays

@@ -119,6 +119,8 @@ and each spatial axis the number of window positions along it.
 
 - `stablehlo`
 
+- `reverse`
+
 ## StableHLO
 
 Lowers to

@@ -26,7 +26,7 @@ because it does not apply for a specific primitive.
 | clamp                  |     ✓     |    ✓    |   ✗    |
 | concatenate            |     ✓     |    ✓    |   ✓    |
 | convert                |     ✓     |    ✓    |   ✓    |
-| convolution            |     ✓     |    ✗    |   ✗    |
+| convolution            |     ✓     |    ✓    |   ✗    |
 | cos                    |     ✓     |    ✓    |   ✓    |
 | cosh                   |     ✓     |    ✓    |   ✗    |
 | cummax                 |     ✓     |    ✓    |   ✗    |
