@@ -1,7 +1,8 @@
 # anvl (development version)
 
 * Bugfix: `nv_cumsum()`, `nv_cumprod()`, `nv_cummax()`, `nv_cummin()`, `nv_extract_diag()`,
-  `nv_trace()` and `nv_quantile()` now accept an array with a size-0 axis.
+  `nv_trace()` and `nv_quantile()` now accept an array with a size-0 axis; `nv_quantile()`
+  reducing over one is an informative error.
 * Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
   of its input.
 * Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in

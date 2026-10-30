@@ -2205,17 +2205,20 @@ describe("nv_median", {
 })
 
 describe("nv_quantile", {
-  it("is NaN for a size-0 axis, like base R's NA", {
+  it("errors when a reduced axis has size 0", {
     x <- nv_array(double(0), shape = 0L)
-    expect_equal(as_array(nv_quantile(x, 0.5)), NaN)
-    expect_equal(as.numeric(nv_quantile(x, array(c(0.25, 0.5)))), c(NaN, NaN))
+    expect_error(nv_quantile(x, 0.5), "at least one element")
+    expect_error(nv_quantile(x, array(c(0.25, 0.5))), "at least one element")
     m <- nv_array(double(0), shape = c(2L, 0L))
-    expect_equal(as.numeric(nv_quantile(m, 0.5, axes = 2L)), c(NaN, NaN))
-    expect_equal(as.numeric(nv_median(m, axes = 2L, nan_rm = TRUE)), c(NaN, NaN))
+    expect_error(nv_quantile(m, 0.5, axes = 2L), "size 0 along axis 2\\.")
+    expect_error(nv_median(m, axes = 2L, nan_rm = TRUE), "size 0 along axis 2\\.")
+    expect_error(nv_quantile(nv_array(double(0), shape = c(0L, 0L)), 0.5), "size 0 along axes 1 and 2\\.")
   })
   it("returns an empty result when a kept axis has size 0", {
     x <- nv_array(double(0), shape = c(0L, 3L))
-    expect_equal(as.numeric(nv_quantile(x, 0.5, axes = 2L)), numeric(0))
+    expect_equal(shape(nv_quantile(x, 0.5, axes = 2L)), 0L)
+    expect_equal(shape(nv_quantile(x, array(c(0.25, 0.5)), axes = 2L)), c(2L, 0L))
+    expect_equal(shape(nv_median(x, axes = 2L, drop = FALSE)), c(0L, 1L))
   })
   it("matches base R quantile (default linear / type 7) for scalar probs", {
     xr <- c(3, 1, 4, 1, 5, 9, 2, 6)
