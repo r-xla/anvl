@@ -1,8 +1,7 @@
 test_that("nv_device builds a device of the active backend", {
-  skip_if_no_quickr()
-  dev <- with_backend("quickr", nv_device("cpu"))
-  expect_s3_class(dev, "QuickrDevice")
-  expect_equal(backend(dev), "quickr")
+  dev <- with_backend("r", nv_device("cpu"))
+  expect_s3_class(dev, "RDevice")
+  expect_equal(backend(dev), "r")
   skip_if(!pjrt::plugins_downloaded())
   dev <- nv_device("cpu")
   expect_s3_class(dev, "PJRTDevice")
@@ -15,23 +14,20 @@ test_that("nv_device errors on the plain backend", {
 })
 
 test_that("nv_device rejects a device of another backend", {
-  skip_if_no_quickr()
   skip_if(!pjrt::plugins_downloaded())
-  dev <- with_backend("quickr", nv_device("cpu"))
+  dev <- with_backend("r", nv_device("cpu"))
   expect_error(nv_device(dev), "active backend")
 })
 
 test_that("nv_device returns an existing device unchanged", {
-  skip_if_no_quickr()
-  with_backend("quickr", {
+  with_backend("r", {
     dev <- nv_device("cpu")
     expect_identical(nv_device(dev), dev)
   })
 })
 
 test_that("default_device(backend = ...) uses the specified backend", {
-  skip_if_no_quickr()
-  expect_s3_class(default_device(backend = "quickr"), "QuickrDevice")
+  expect_s3_class(default_device(backend = "r"), "RDevice")
   skip_if(!pjrt::plugins_downloaded())
   expect_s3_class(default_device(backend = "pjrt"), "PJRTDevice")
 })
@@ -40,8 +36,7 @@ test_that("is_device recognizes backend device objects", {
   expect_false(is_device("cpu"))
   expect_false(is_device(NULL))
   expect_false(is_device(1L))
-  skip_if_no_quickr()
-  expect_true(is_device(with_backend("quickr", nv_device("cpu"))))
+  expect_true(is_device(with_backend("r", nv_device("cpu"))))
   skip_if(!pjrt::plugins_downloaded())
   expect_true(is_device(nv_device("cpu")))
 })
@@ -69,8 +64,7 @@ describe("default_device()", {
   })
 
   it("resolves the option for the backend that asks", {
-    skip_if_no_quickr()
-    with_default_device("cpu", expect_equal(default_device(backend = "quickr"), quickr_device("cpu")))
+    with_default_device("cpu", expect_equal(default_device(backend = "r"), r_device("cpu")))
   })
 })
 

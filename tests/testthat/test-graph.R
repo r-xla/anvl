@@ -12,10 +12,9 @@ describe("graph_desc_add's device", {
   })
 
   it("rejects a device of another backend", {
-    skip_if_no_quickr()
-    dev_q <- with_backend("quickr", nv_device("cpu"))
+    dev_r <- with_backend("r", nv_device("cpu"))
     local_descriptor()
-    expect_error(prim_fill(1, shape = 2L, dtype = "f32", device = dev_q), "active backend")
+    expect_error(prim_fill(1, shape = 2L, dtype = "f32", device = dev_r), "active backend")
   })
 })
 

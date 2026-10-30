@@ -1,4 +1,4 @@
-test_that("quickr pipeline matches PJRT: core math + comparisons + reductions", {
+test_that("r backend matches PJRT: core math + comparisons + reductions", {
   core_ops <- function(x_f64, y_f64, x_i32, y_i32, p, q) {
     a <- x_f64 + y_f64
     b <- x_f64 - y_f64
@@ -125,12 +125,10 @@ test_that("quickr pipeline matches PJRT: core math + comparisons + reductions", 
     info = "run2"
   )
 
-  expect_quickr_matches_pjrt_fn(core_ops, templates, list(run1, run2), tolerance = 1e-6)
+  expect_r_matches_pjrt_fn(core_ops, templates, list(run1, run2), tolerance = 1e-6)
 })
 
-test_that("quickr pipeline matches PJRT: i32 divide truncates toward zero", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: i32 divide truncates toward zero", {
   divide_i32 <- function(x, y) {
     prim_div(x, y)
   }
@@ -150,15 +148,11 @@ test_that("quickr pipeline matches PJRT: i32 divide truncates toward zero", {
   expect_identical(out_pjrt, matrix(c(3L, -3L, -3L, 3L), nrow = 2L, byrow = TRUE))
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph)
 
   expect_identical(f_r(lhs, rhs), out_pjrt)
-  expect_identical(as_array(f_quick(lhs, rhs)), out_pjrt)
 })
 
-test_that("quickr pipeline matches PJRT: reshape unboxes singleton arrays to scalars", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: reshape unboxes singleton arrays to scalars", {
   reshape_to_scalar <- function(x) {
     nv_reshape(x, shape = integer())
   }
@@ -173,15 +167,11 @@ test_that("quickr pipeline matches PJRT: reshape unboxes singleton arrays to sca
   expect_identical(out_pjrt, 2.5)
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph)
 
   expect_identical(f_r(x), out_pjrt)
-  expect_identical(as_array(f_quick(x)), out_pjrt)
 })
 
-test_that("quickr pipeline matches PJRT: tanh stays finite for large inputs", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: tanh stays finite for large inputs", {
   tanh_large <- function(x) {
     nv_tanh(x)
   }
@@ -197,15 +187,11 @@ test_that("quickr pipeline matches PJRT: tanh stays finite for large inputs", {
   expect_true(is.finite(out_pjrt))
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph)
 
   expect_identical(f_r(x), out_pjrt)
-  expect_identical(as_array(f_quick(x)), out_pjrt)
 })
 
-test_that("quickr pipeline matches PJRT: select preserves array semantics in plain R", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: select preserves array semantics in plain R", {
   select_cases <- function(pred_scalar, x, y, pred_empty, x_empty, y_empty) {
     list(
       scalar_pred = nv_ifelse(pred_scalar, x, y),
@@ -239,7 +225,6 @@ test_that("quickr pipeline matches PJRT: select preserves array semantics in pla
   expect_identical(out_pjrt$empty, array(integer(), dim = 0L))
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph, unwrap = TRUE)
 
   expect_identical(
     f_r(
@@ -252,22 +237,9 @@ test_that("quickr pipeline matches PJRT: select preserves array semantics in pla
     ),
     out_pjrt
   )
-  expect_identical(
-    f_quick(
-      TRUE,
-      array(c(1L, 2L, 3L), dim = 3L),
-      array(c(4L, 5L, 6L), dim = 3L),
-      array(logical(), dim = 0L),
-      array(integer(), dim = 0L),
-      array(integer(), dim = 0L)
-    ),
-    out_pjrt
-  )
 })
 
-test_that("quickr pipeline matches PJRT: expm1 stays accurate near zero", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: expm1 stays accurate near zero", {
   expm1_small <- function(x) {
     nv_expm1(x)
   }
@@ -282,15 +254,11 @@ test_that("quickr pipeline matches PJRT: expm1 stays accurate near zero", {
   expect_identical(out_pjrt, x)
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph)
 
   expect_identical(f_r(x), out_pjrt)
-  expect_identical(as_array(f_quick(x)), out_pjrt)
 })
 
-test_that("quickr pipeline matches PJRT: expm1/log1p preserve empty f64 dtype", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: expm1/log1p preserve empty f64 dtype", {
   x <- array(double(), dim = 0L)
 
   cases <- list(
@@ -318,16 +286,12 @@ test_that("quickr pipeline matches PJRT: expm1/log1p preserve empty f64 dtype", 
     expect_identical(out_pjrt, x, info = case$info)
 
     f_r <- graph_to_quickr_r_function(graph)
-    f_quick <- graph_to_quickr_function(graph)
 
     expect_identical(f_r(x), out_pjrt, info = case$info)
-    expect_identical(as_array(f_quick(x)), out_pjrt, info = case$info)
   }
 })
 
-test_that("quickr pipeline matches PJRT: log1p stays accurate near zero", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: log1p stays accurate near zero", {
   log1p_small <- function(x) {
     nv_log1p(x)
   }
@@ -342,15 +306,11 @@ test_that("quickr pipeline matches PJRT: log1p stays accurate near zero", {
   expect_identical(out_pjrt, x)
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph)
 
   expect_identical(f_r(x), out_pjrt)
-  expect_identical(as_array(f_quick(x)), out_pjrt)
 })
 
-test_that("quickr pipeline matches PJRT: maximum/minimum preserve empty f64 dtype", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: maximum/minimum preserve empty f64 dtype", {
   x <- array(double(), dim = 0L)
 
   cases <- list(
@@ -381,16 +341,12 @@ test_that("quickr pipeline matches PJRT: maximum/minimum preserve empty f64 dtyp
     expect_identical(out_pjrt, x, info = case$info)
 
     f_r <- graph_to_quickr_r_function(graph)
-    f_quick <- graph_to_quickr_function(graph)
 
     expect_identical(f_r(x, x), out_pjrt, info = case$info)
-    expect_identical(as_array(f_quick(x, x)), out_pjrt, info = case$info)
   }
 })
 
-test_that("quickr pipeline matches PJRT: pad supports negative edge padding crop", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: pad supports negative edge padding crop", {
   pad_crop <- function(x) {
     nv_pad(
       x,
@@ -412,25 +368,19 @@ test_that("quickr pipeline matches PJRT: pad supports negative edge padding crop
   expect_identical(out_pjrt, matrix(c(0L, 3L, 4L), nrow = 1L, byrow = TRUE))
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph)
 
   expect_identical(f_r(x), out_pjrt)
-  expect_identical(as_array(f_quick(x)), out_pjrt)
 })
 
-test_that("quickr pipeline matches PJRT: i32 reduce_prod preserves dtype in fast paths", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: i32 reduce_prod preserves dtype in fast paths", {
   check_case <- function(fn, templates, args, expected) {
     graph <- trace_fn(fn, templates)
     out_pjrt <- do.call(quickr_eval_graph_pjrt, c(list(graph), args))
     expect_identical(out_pjrt, expected)
 
     f_r <- graph_to_quickr_r_function(graph)
-    f_quick <- graph_to_quickr_function(graph)
 
     expect_identical(do.call(f_r, unname(args)), out_pjrt)
-    expect_identical(as_array(do.call(f_quick, unname(args))), out_pjrt)
   }
 
   check_case(
@@ -461,9 +411,7 @@ test_that("quickr pipeline matches PJRT: i32 reduce_prod preserves dtype in fast
   )
 })
 
-test_that("quickr pipeline matches PJRT: i32 power keeps integer semantics", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: i32 power keeps integer semantics", {
   pow_i32 <- function(x, y) {
     x^y
   }
@@ -483,13 +431,11 @@ test_that("quickr pipeline matches PJRT: i32 power keeps integer semantics", {
   expect_identical(out_pjrt, matrix(c(0L, 9L, 64L, 1L), nrow = 2L, byrow = TRUE))
 
   f_r <- graph_to_quickr_r_function(graph)
-  f_quick <- graph_to_quickr_function(graph)
 
   expect_identical(f_r(x, y), out_pjrt)
-  expect_identical(as_array(f_quick(x, y)), out_pjrt)
 })
 
-test_that("quickr pipeline matches PJRT: fill/iota/reverse/concatenate/convert/broadcast/transpose/reshape", {
+test_that("r backend matches PJRT: fill/iota/reverse/concatenate/convert/broadcast/transpose/reshape", {
   shape_ops <- function(s, v1, v2, x_i32, x21_i32, x13_i32, x3, x_pred) {
     f0 <- nv_fill(3.25, shape = integer(), dtype = "f64")
     f1 <- nv_fill(2L, shape = 4L, dtype = "i32")
@@ -587,10 +533,10 @@ test_that("quickr pipeline matches PJRT: fill/iota/reverse/concatenate/convert/b
     info = "run"
   )
 
-  expect_quickr_matches_pjrt_fn(shape_ops, templates, list(run))
+  expect_r_matches_pjrt_fn(shape_ops, templates, list(run))
 })
 
-test_that("quickr pipeline matches PJRT: broadcast + iota slice assignments compile at rank 3", {
+test_that("r backend matches PJRT: broadcast + iota slice assignments compile at rank 3", {
   # Regression test: slice assignments at rank 3 with singleton axes (from
   # broadcast) should compile and match PJRT.
   b <- 4L
@@ -610,10 +556,10 @@ test_that("quickr pipeline matches PJRT: broadcast + iota slice assignments comp
     info = "run"
   )
 
-  expect_quickr_matches_pjrt_fn(fn, templates, list(run))
+  expect_r_matches_pjrt_fn(fn, templates, list(run))
 })
 
-test_that("quickr pipeline matches PJRT: zero-length axes (reverse/concatenate/boolean reductions)", {
+test_that("r backend matches PJRT: zero-length axes (reverse/concatenate/boolean reductions)", {
   # This exercises:
   # - 0-extent *inputs* (compile-time interface)
   # - dynamic_slice with 0 slice sizes (0-extent intermediates)
@@ -649,7 +595,7 @@ test_that("quickr pipeline matches PJRT: zero-length axes (reverse/concatenate/b
     )
   )
 
-  out <- expect_quickr_matches_pjrt(graph, X, empty_cols, empty_rows)
+  out <- expect_r_matches_pjrt(graph, X, empty_cols, empty_rows)
   pjrt <- out$out_pjrt
 
   expect_equal(pjrt$cat_rows, X)
@@ -660,7 +606,7 @@ test_that("quickr pipeline matches PJRT: zero-length axes (reverse/concatenate/b
   expect_equal(as.logical(pjrt$all_rows), rep.int(TRUE, 3L))
 })
 
-test_that("quickr pipeline matches PJRT: zero-length axes for numeric sum/prod reductions", {
+test_that("r backend matches PJRT: zero-length axes for numeric sum/prod reductions", {
   reduce_empty_numeric <- function(v_empty, empty_cols, empty_rows) {
     list(
       sum_v = nv_sum(v_empty, axes = 1L, drop = TRUE),
@@ -696,10 +642,10 @@ test_that("quickr pipeline matches PJRT: zero-length axes for numeric sum/prod r
   expect_identical(out_pjrt$sum_full, 0L)
   expect_identical(out_pjrt$prod_full, 1L)
 
-  expect_quickr_matches_pjrt(graph, v_empty, empty_cols, empty_rows)
+  expect_r_matches_pjrt(graph, v_empty, empty_cols, empty_rows)
 })
 
-test_that("quickr pipeline matches PJRT: reduction branch coverage", {
+test_that("r backend matches PJRT: reduction branch coverage", {
   reduce_ops <- function(v_i32, v_pred, x_i32, x_pred, x3_i32, x3_pred, v_f64, x_f64, x3_f64) {
     sum_noop <- nv_sum(v_i32, axes = integer(), drop = FALSE)
     sum_rank1_keepaxis <- nv_sum(v_i32, axes = 1L, drop = FALSE)
@@ -766,10 +712,10 @@ test_that("quickr pipeline matches PJRT: reduction branch coverage", {
     info = "run"
   )
 
-  expect_quickr_matches_pjrt_fn(reduce_ops, templates, list(run))
+  expect_r_matches_pjrt_fn(reduce_ops, templates, list(run))
 })
 
-test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gather/scatter", {
+test_that("r backend matches PJRT: indexing ops (slice/update/pad) + gather/scatter", {
   idx_ops <- function(x, X, X3, s, r, c, a, b, d, upd_s, upd, upd2, padv, idx_vec, sc_idx_vec) {
     ss0 <- nv_static_slice(s, start_indices = integer(), end_indices = integer(), strides = integer())
     ss1 <- nv_static_slice(x, start_indices = 2L, end_indices = 5L, strides = 2L)
@@ -890,10 +836,10 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
     info = "clamp_high"
   )
 
-  expect_quickr_matches_pjrt_fn(idx_ops, templates, list(run_clamp_low, run_clamp_high))
+  expect_r_matches_pjrt_fn(idx_ops, templates, list(run_clamp_low, run_clamp_high))
 })
 
-test_that("quickr pipeline matches PJRT: gather can return a scalar", {
+test_that("r backend matches PJRT: gather can return a scalar", {
   gather_scalar <- function(x, idx) {
     prim_gather(
       x,
@@ -916,10 +862,10 @@ test_that("quickr pipeline matches PJRT: gather can return a scalar", {
   run_low <- list(args = list(x = 1:5, idx = 0L), info = "clamp_low")
   run_high <- list(args = list(x = 1:5, idx = 100L), info = "clamp_high")
 
-  expect_quickr_matches_pjrt_fn(gather_scalar, templates, list(run_low, run_high))
+  expect_r_matches_pjrt_fn(gather_scalar, templates, list(run_low, run_high))
 })
 
-test_that("quickr pipeline matches PJRT: dot_general variants", {
+test_that("r backend matches PJRT: dot_general variants", {
   dot_ops <- function(a, b, a1, b1, a_dot, b_dot, a_mv, b_mv, lhs, rhs, lhs_b, rhs_b) {
     s <- prim_dot_general(
       a,
@@ -974,10 +920,10 @@ test_that("quickr pipeline matches PJRT: dot_general variants", {
     info = "run"
   )
 
-  expect_quickr_matches_pjrt_fn(dot_ops, templates, list(run))
+  expect_r_matches_pjrt_fn(dot_ops, templates, list(run))
 })
 
-test_that("quickr pipeline matches PJRT: control flow (if/while)", {
+test_that("r backend matches PJRT: control flow (if/while)", {
   cf_ops <- function(p) {
     if_s <- nv_if(p, \() 1L, \() 2L)
     if_a <- nv_if(
@@ -1006,12 +952,10 @@ test_that("quickr pipeline matches PJRT: control flow (if/while)", {
   run_true <- list(args = list(p = TRUE), info = "p=TRUE")
   run_false <- list(args = list(p = FALSE), info = "p=FALSE")
 
-  expect_quickr_matches_pjrt_fn(cf_ops, templates, list(run_true, run_false))
+  expect_r_matches_pjrt_fn(cf_ops, templates, list(run_true, run_false))
 })
 
-test_that("quickr pipeline matches PJRT: reshape is column-major from rank 1 through 4", {
-  skip_if_no_quickr_or_pjrt()
-
+test_that("r backend matches PJRT: reshape is column-major from rank 1 through 4", {
   reshape_ops <- function(v, m, a3, a4) {
     list(
       v_to_2d = nv_reshape(v, shape = c(3L, 4L)),
@@ -1041,10 +985,10 @@ test_that("quickr pipeline matches PJRT: reshape is column-major from rank 1 thr
     info = "run"
   )
 
-  expect_quickr_matches_pjrt_fn(reshape_ops, templates, list(run))
-  # and both agree with base R
-  f_quick <- graph_to_quickr_function(trace_fn(reshape_ops, templates), unwrap = TRUE)
-  got <- do.call(f_quick, unname(run$args[names(templates)]))
+  expect_r_matches_pjrt_fn(reshape_ops, templates, list(run))
+  # and agrees with base R
+  f_r <- graph_to_quickr_r_function(trace_fn(reshape_ops, templates))
+  got <- do.call(f_r, unname(run$args[names(templates)]))
   expect_equal(got$m_flat, array(1:12))
   expect_equal(got$a3_to_2d, array(as.numeric(1:24), c(6L, 4L)))
   expect_equal(got$a4_flat, array(as.numeric(1:24)))

@@ -1657,10 +1657,9 @@ describe("nv_triu", {
   })
 })
 
-describe("nv_tril with quickr backend", {
-  it("works when the input is quickr", {
-    skip_if_no_quickr()
-    local_backend("quickr")
+describe("nv_tril with the r backend", {
+  it("works when the input is an r array", {
+    local_backend("r")
     x <- nv_matrix(1, nrow = 3, ncol = 3)
     result <- nv_tril(x)
     expected <- matrix(c(1, 1, 1, 0, 1, 1, 0, 0, 1), nrow = 3, ncol = 3)
@@ -1668,10 +1667,9 @@ describe("nv_tril with quickr backend", {
   })
 })
 
-describe("nv_triu with quickr backend", {
-  it("works when the input is quickr", {
-    skip_if_no_quickr()
-    local_backend("quickr")
+describe("nv_triu with the r backend", {
+  it("works when the input is an r array", {
+    local_backend("r")
     x <- nv_matrix(1, nrow = 3, ncol = 3)
     result <- nv_triu(x)
     expected <- matrix(c(1, 0, 0, 1, 1, 0, 1, 1, 1), nrow = 3, ncol = 3)

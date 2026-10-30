@@ -9,7 +9,7 @@ describe("default_dtypes()", {
   it("reports the registered defaults of the active backend", {
     local_registered_default_dtypes()
     expect_equal(default_dtypes(), list(float = as_dtype("f32"), int = as_dtype("i32")))
-    expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i32")))
+    expect_equal(with_backend("r", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i32")))
     # `active_backend()` takes the option as given, so a backend that is not
     # registered is reported where its defaults are read.
     expect_error(
@@ -21,7 +21,7 @@ describe("default_dtypes()", {
   it("is overridden by an option value that names no backend, on every backend", {
     withr::local_options(anvl.default_dtypes = c(float = "f64", int = "i64"))
     expect_equal(default_dtypes(), list(float = as_dtype("f64"), int = as_dtype("i64")))
-    expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i64")))
+    expect_equal(with_backend("r", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i64")))
   })
 
   it("takes an option value as it is, reading the names it knows", {
@@ -129,12 +129,12 @@ describe("an override of one backend", {
     local_registered_default_dtypes()
     local_default_dtypes(c(int = "i64"))
     expect_equal(default_int(), as_dtype("i64"))
-    expect_equal(with_backend("quickr", default_int()), as_dtype("i32"))
+    expect_equal(with_backend("r", default_int()), as_dtype("i32"))
   })
 
   it("can be set for a backend that is not active", {
     local_registered_default_dtypes()
-    local_backend("quickr")
+    local_backend("r")
     local_default_dtypes(c(int = "i64"), backend = "pjrt")
     expect_equal(default_int(), as_dtype("i32"))
     expect_equal(with_backend("pjrt", default_int()), as_dtype("i64"))
@@ -143,7 +143,7 @@ describe("an override of one backend", {
   it("is read off an entry of the option that names it", {
     withr::local_options(anvl.default_dtypes = list(pjrt = c(int = "i64")))
     expect_equal(default_int(), as_dtype("i64"))
-    expect_equal(with_backend("quickr", default_int()), as_dtype("i32"))
+    expect_equal(with_backend("r", default_int()), as_dtype("i32"))
   })
 
   it("wins over a value that names no backend", {
@@ -151,7 +151,7 @@ describe("an override of one backend", {
     # entry named after one is that backend's own.
     withr::local_options(anvl.default_dtypes = list(int = "i64", pjrt = c(int = "i32")))
     expect_equal(default_int(), as_dtype("i32"))
-    expect_equal(with_backend("quickr", default_int()), as_dtype("i64"))
+    expect_equal(with_backend("r", default_int()), as_dtype("i64"))
   })
 
   it("leaves the other backends alone when a setter merges into it", {
@@ -159,7 +159,7 @@ describe("an override of one backend", {
     local_default_dtypes(c(int = "i64"))
     expect_equal(default_dtypes(), list(float = as_dtype("f64"), int = as_dtype("i64")))
     expect_equal(
-      with_backend("quickr", default_dtypes()),
+      with_backend("r", default_dtypes()),
       list(float = as_dtype("f64"), int = as_dtype("i32"))
     )
   })
@@ -167,12 +167,11 @@ describe("an override of one backend", {
   it("is not narrowed by what that backend can represent", {
     # The data types a backend supports are its own business: an override it
     # cannot honour is reported as set, and only fails where the data is
-    # allocated or the program compiled (see `test-quickr-optional.R`).
-    # quickr has no `i64`, named or not.
-    local_default_dtypes(c(int = "i64"), backend = "quickr")
-    expect_equal(with_backend("quickr", default_int()), as_dtype("i64"))
+    # allocated or the program compiled. r has no `i64`, named or not.
+    local_default_dtypes(c(int = "i64"), backend = "r")
+    expect_equal(with_backend("r", default_int()), as_dtype("i64"))
     withr::local_options(anvl.default_dtypes = c(int = "i64"))
-    expect_equal(with_backend("quickr", default_int()), as_dtype("i64"))
+    expect_equal(with_backend("r", default_int()), as_dtype("i64"))
   })
 
   it("cannot be set for another backend from inside a trace", {
@@ -181,7 +180,7 @@ describe("an override of one backend", {
     local({
       desc <- local_descriptor()
       expect_error(
-        local_default_dtypes(c(int = "i64"), backend = "quickr"),
+        local_default_dtypes(c(int = "i64"), backend = "r"),
         "compiled for the .*pjrt.* backend"
       )
       # The trace's own backend is fine, named or not.
@@ -201,12 +200,12 @@ describe("an override of one backend", {
     # trace is then pinned to.
     local_registered_default_dtypes()
     pjrt_key <- default_dtypes_context("pjrt")
-    quickr_key <- default_dtypes_context("quickr")
+    r_key <- default_dtypes_context("r")
     expect_identical(pjrt_key(), c(float = "f32", int = "i32"))
-    expect_identical(quickr_key(), c(float = "f64", int = "i32"))
+    expect_identical(r_key(), c(float = "f64", int = "i32"))
     withr::local_options(anvl.default_dtypes = list(pjrt = c(int = "i64")))
     expect_identical(pjrt_key(), c(float = "f32", int = "i64"))
-    expect_identical(quickr_key(), c(float = "f64", int = "i32"))
+    expect_identical(r_key(), c(float = "f64", int = "i32"))
   })
 })
 

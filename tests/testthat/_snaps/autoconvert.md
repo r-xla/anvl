@@ -14,7 +14,7 @@
       Error:
       ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
 
-# quickr: bare vector errors
+# r: bare vector errors
 
     Code
       f(c(1, 2, 3))

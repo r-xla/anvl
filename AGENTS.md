@@ -165,14 +165,16 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
 - `tests/testthat/test-primitives-reverse.R` -- sources `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-r.R` -- the `quickr` rules, run by the `"r"` backend
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 
-Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
-This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
-A test of a quickr rule needs neither: `expect_quickr_matches_pjrt()` / `expect_quickr_matches_pjrt_fn()`
-(`helper-quickr.R`) compare the R function the lowering emits -- what the `"r"` backend runs -- with
-pjrt, and compile it with quickr only when the quickr tests are enabled.
+The `quickr` rules are tested without quickr: the `"r"` backend runs the R function they lower to as
+it is, and `expect_r_matches_pjrt()` / `expect_r_matches_pjrt_fn()` (`helper-backend-r.R`) compare
+it with pjrt. Only `test-backend-quickr.R` compiles with quickr, end to end through `jit()`; a test
+there calls `skip_if_no_quickr()` at the top of its body, which skips when quickr is not installed
+or the `ANVL_TEST_SKIP_QUICKR` environment variable is set. A test that needs a backend other than
+pjrt uses `"r"`.
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
 
 ## Documentation

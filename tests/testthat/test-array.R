@@ -65,9 +65,8 @@ describe("AnvlArray serialization", {
     expect_identical(as_array(y$b), as_array(out$b))
   })
 
-  it("round-trips a quickr array", {
-    skip_if_no_quickr()
-    local_backend("quickr")
+  it("round-trips an r array", {
+    local_backend("r")
     x <- nv_array(c(1, 2, 3))
     y <- roundtrip(x)
     expect_identical(as_array(y), as_array(x))
@@ -410,14 +409,6 @@ test_that("stablehlo dtype is printed", {
   expect_snapshot(nv_array(TRUE))
 })
 
-test_that("quickr_device is a classed object", {
-  skip_if_no_quickr()
-  dev <- quickr_device("cpu")
-  expect_s3_class(dev, "QuickrDevice")
-  expect_equal(format(dev), "QuickrDevice(cpu)")
-  expect_equal(as.character(dev), "cpu")
-})
-
 test_that("PlainDeviceCpu is a classed object", {
   dev <- PlainDeviceCpu()
   expect_s3_class(dev, "PlainDeviceCpu")
@@ -425,12 +416,11 @@ test_that("PlainDeviceCpu is a classed object", {
   expect_equal(as.character(dev), "cpu")
 })
 
-test_that("device returns QuickrDevice for quickr arrays", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("device returns RDevice for r arrays", {
+  local_backend("r")
   x <- nv_array(1)
   dev <- device(x)
-  expect_s3_class(dev, "QuickrDevice")
+  expect_s3_class(dev, "RDevice")
 })
 
 test_that("device returns PlainDeviceCpu for plain arrays", {
@@ -439,9 +429,8 @@ test_that("device returns PlainDeviceCpu for plain arrays", {
   expect_s3_class(dev, "PlainDeviceCpu")
 })
 
-test_that("platform returns 'cpu' for quickr backend", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("platform returns 'cpu' for r backend", {
+  local_backend("r")
   expect_equal(platform(nv_array(1)), "cpu")
 })
 
@@ -451,14 +440,12 @@ test_that("platform returns 'cpu' for plain backend", {
 })
 
 test_that("nv_array builds on the active backend", {
-  skip_if_no_quickr()
   expect_equal(backend(nv_array(1)), "pjrt")
-  expect_equal(with_backend("quickr", backend(nv_array(1))), "quickr")
+  expect_equal(with_backend("r", backend(nv_array(1))), "r")
 })
 
 test_that("nv_array rejects a device of another backend", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+  local_backend("r")
   expect_error(nv_array(1, device = pjrt::pjrt_device("cpu")), "active backend")
   expect_error(nv_empty(2L, "f64", device = pjrt::pjrt_device("cpu")), "active backend")
 })
@@ -468,9 +455,8 @@ test_that("default floating dtype is f32 for pjrt", {
   expect_dtype(nv_scalar(1.0), default_float())
 })
 
-test_that("default floating dtype is f64 for quickr", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("default floating dtype is f64 for r", {
+  local_backend("r")
   expect_dtype(nv_array(1.0), "f64")
   expect_dtype(nv_scalar(1.0), "f64")
 })
@@ -648,9 +634,8 @@ describe("as_anvl_arrays", {
   })
 
   it("errors when concrete inputs come from different backends", {
-    skip_if_no_quickr()
     x <- nv_array(1:3)
-    y <- with_backend("quickr", nv_array(1:3))
+    y <- with_backend("r", nv_array(1:3))
     expect_error(
       as_anvl_arrays(x, y),
       "multiple backends"
@@ -1261,9 +1246,8 @@ test_that("raw payloads require dtype and shape and are pjrt-only", {
   expect_error(nv_array(as.raw(1:4), dtype = "ui8", device = "cpu"), "shape")
   f <- jit(function() nv_array(as.raw(1:4), dtype = "ui8", shape = 4L))
   expect_error(f(), "not supported inside")
-  skip_if_no_quickr()
-  local_backend("quickr")
-  expect_error(nv_array(as.raw(1:4), dtype = "ui8", shape = 4L), "quickr")
+  local_backend("r")
+  expect_error(nv_array(as.raw(1:4), dtype = "ui8", shape = 4L), "\"r\"")
 })
 
 describe("axes", {

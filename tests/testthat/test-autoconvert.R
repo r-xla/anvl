@@ -109,17 +109,15 @@ test_that("jit: an unused leaf is still an input the call supplies", {
   expect_identical(as_array(f(nv_scalar(1, dtype = "f64"), 99)), 2)
 })
 
-test_that("quickr: autoconverts scalar input", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("r: autoconverts scalar input", {
+  local_backend("r")
   f <- jit(identity)
   out <- f(1)
   expect_equal(out, nv_scalar(1))
 })
 
-test_that("quickr: autoconverts matrix input", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("r: autoconverts matrix input", {
+  local_backend("r")
   f <- jit(identity)
   out <- f(matrix(1:4, 2, 2))
   expect_dtype(out, "i32")
@@ -127,33 +125,29 @@ test_that("quickr: autoconverts matrix input", {
   expect_equal(out, nv_matrix(1:4, nrow = 2, ncol = 2))
 })
 
-test_that("quickr: nested input tree with mixed AnvlArray/scalar still works", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("r: nested input tree with mixed AnvlArray/scalar still works", {
+  local_backend("r")
   f <- jit(function(pair) pair[[1]] + pair[[2]])
   out <- f(list(nv_scalar(1L), 2L))
   expect_equal(out, nv_scalar(3L))
 })
 
-test_that("quickr: an autoconverted leaf reaches an f64 use site exactly", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("r: an autoconverted leaf reaches an f64 use site exactly", {
+  local_backend("r")
   x <- nv_scalar(1, dtype = "f64")
   expect_identical(as_array(jit(function(x) x / sqrt(2))(x)), 1 / sqrt(2))
   expect_identical(as_array(jit(function(x, y) x / y)(x, sqrt(2))), 1 / sqrt(2))
 })
 
-test_that("quickr: an autoconverted leaf is coerced to the program's dtype", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("r: an autoconverted leaf is coerced to the program's dtype", {
+  local_backend("r")
   # The leaf arrives as an R integer but the program consumes it as f64.
   f <- jit(function(x, y) x + y)
   expect_identical(as_array(f(nv_scalar(1, dtype = "f64"), 2L)), 3)
 })
 
-test_that("quickr: bare vector errors", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("r: bare vector errors", {
+  local_backend("r")
   f <- jit(function(x) x)
   expect_snapshot(f(c(1, 2, 3)), error = TRUE)
 })

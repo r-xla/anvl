@@ -342,12 +342,11 @@ describe("jit_cache_size", {
   })
 
   it("reports one backend's cache at a time", {
-    skip_if_no_quickr()
     f <- jit(function(x, y) x + y)
     f(nv_scalar(1), nv_scalar(2))
 
-    with_backend("quickr", {
-      # A fresh cache: the pjrt entry above is not shared with quickr.
+    with_backend("r", {
+      # A fresh cache: the pjrt entry above is not shared with r.
       expect_identical(jit_cache_size(f), 0L)
       f(nv_scalar(1), nv_scalar(2))
       expect_identical(jit_cache_size(f), 1L)
@@ -355,7 +354,7 @@ describe("jit_cache_size", {
       expect_identical(jit_cache_size(f, "pjrt"), 1L)
     })
     expect_identical(jit_cache_size(f), 1L)
-    expect_identical(jit_cache_size(f, "quickr"), 1L)
+    expect_identical(jit_cache_size(f, "r"), 1L)
   })
 
   it("rejects a function that is not jitted, and an unknown backend", {
@@ -378,11 +377,10 @@ describe("jit: option validation", {
     # The backend is not known until the call, so this cannot be caught earlier.
     f <- jit(identity, unwrap = TRUE)
     expect_error(f(nv_array(1)), "pjrt.*does not support.*unwrap")
-    skip_if_no_quickr()
-    # quickr does take it: `unwrap` hands back a plain R array.
-    expect_equal(with_backend("quickr", f(nv_array(1))), array(1))
+    # r does take it: `unwrap` hands back a plain R array.
+    expect_equal(with_backend("r", f(nv_array(1))), array(1))
     g <- jit(identity, donate = "x")
-    expect_error(with_backend("quickr", g(nv_array(1))), "quickr.*does not support.*donate")
+    expect_error(with_backend("r", g(nv_array(1))), "\"r\".*does not support.*donate")
   })
 })
 
@@ -390,30 +388,27 @@ describe("jit: backend and device handling", {
   it("runs on the active backend when it is called", {
     f <- jit(identity)
     expect_equal(backend(f(1)), "pjrt")
-    skip_if_no_quickr()
-    expect_equal(with_backend("quickr", backend(f(1))), "quickr")
+    expect_equal(with_backend("r", backend(f(1))), "r")
     expect_equal(backend(f(1)), "pjrt")
   })
 
   it("rejects an array of another backend", {
-    skip_if_no_quickr()
     f <- jit(identity)
-    x <- with_backend("quickr", nv_scalar(1))
-    expect_error(f(x), "quickr")
+    x <- with_backend("r", nv_scalar(1))
+    expect_error(f(x), "\"r\"")
     y <- nv_scalar(1)
-    expect_error(with_backend("quickr", f(y)), "pjrt")
+    expect_error(with_backend("r", f(y)), "pjrt")
   })
 
   it("cannot mix backends via closed-over constant", {
     # A closed-over constant from a different backend than the call-time input
     # must not silently compile on either backend.
-    skip_if_no_quickr()
-    const_q <- with_backend("quickr", nv_scalar(1))
-    f <- jit(function(x) x + const_q)
+    const_r <- with_backend("r", nv_scalar(1))
+    f <- jit(function(x) x + const_r)
     expect_error(f(nv_scalar(1)), "Cannot compile a \"pjrt\" program")
     const_x <- nv_scalar(1)
     g <- jit(function(x) x + const_x)
-    expect_error(with_backend("quickr", g(nv_scalar(1))), "Cannot compile a \"quickr\" program")
+    expect_error(with_backend("r", g(nv_scalar(1))), "Cannot compile a \"r\" program")
   })
 
   it("concrete device string", {
@@ -427,9 +422,8 @@ describe("jit: backend and device handling", {
   })
 
   it("rejects a device of another backend, and a non-device", {
-    skip_if_no_quickr()
     f <- jit(identity, device = pjrt::pjrt_device("cpu"))
-    expect_error(with_backend("quickr", f(1)), "active backend")
+    expect_error(with_backend("r", f(1)), "active backend")
     expect_error(jit(identity, device = 1L), "must be a device")
   })
 
@@ -437,10 +431,9 @@ describe("jit: backend and device handling", {
     # "cpu:1" is not the default device, so the input is really moved to it
     f <- jit(identity, device = "cpu:1")
     expect_equal(device(f(nv_scalar(1))), nv_device("cpu:1"))
-    skip_if_no_quickr()
     # the string is resolved per call, against the backend then active
     g <- jit(identity, device = "cpu")
-    with_backend("quickr", expect_equal(device(g(nv_scalar(1))), nv_device("cpu")))
+    with_backend("r", expect_equal(device(g(nv_scalar(1))), nv_device("cpu")))
   })
 
   it("constant's device can be defined via static argument", {
@@ -511,12 +504,11 @@ describe("jit: backend and device handling", {
   # a constructor declares the device it was asked for (graph_desc_add(device = ))
   it("reads a constructor's device from a static argument", {
     # No `dtype`: the fill takes the default float of the active backend, so
-    # this also runs on quickr (which has no `f32`).
+    # this also runs on r (which has no `f32`).
     f <- jit(function(val, dev) nv_fill(val, 2L, device = dev), static = c("val", "dev"))
     expect_equal(device(f(1, "cpu:0")), nv_device("cpu:0"))
     expect_equal(device(f(1, nv_device("cpu:1"))), nv_device("cpu:1"))
-    skip_if_no_quickr()
-    with_backend("quickr", expect_equal(device(f(1, nv_device("cpu"))), nv_device("cpu")))
+    with_backend("r", expect_equal(device(f(1, nv_device("cpu"))), nv_device("cpu")))
   })
 
   it("honors a constructor's device below the traced function", {
@@ -530,10 +522,9 @@ describe("jit: backend and device handling", {
   })
 
   it("rejects a constructor's device of another backend", {
-    skip_if_no_quickr()
-    dev_q <- with_backend("quickr", nv_device("cpu"))
+    dev_r <- with_backend("r", nv_device("cpu"))
     f <- jit(function(dev) nv_fill(1, 2L, dtype = "f32", device = dev), static = "dev")
-    expect_error(f(dev_q), "active backend")
+    expect_error(f(dev_r), "active backend")
   })
 })
 
@@ -575,9 +566,8 @@ test_that("static arguments with reference semantics are rejected", {
   expect_error(l(list(1, e), nv_array(1)), "reference semantics")
 })
 
-test_that("static arguments with reference semantics are rejected (quickr)", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("static arguments with reference semantics are rejected (r)", {
+  local_backend("r")
 
   e <- new.env()
   e$flag <- TRUE
@@ -648,10 +638,9 @@ describe("a scoped override inside a jitted body", {
   })
 
   it("takes the trace's baseline, not the active backend", {
-    skip_if_no_quickr()
     # A program is compiled for one backend, so switching inside the body
     # cannot change what its R values materialize at.
-    expect_dtype(jit(function() with_backend("quickr", nv_array(1.5)))(), default_float())
+    expect_dtype(jit(function() with_backend("r", nv_array(1.5)))(), default_float())
   })
 
   it("does not change what the program is keyed on", {

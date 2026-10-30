@@ -4,28 +4,25 @@ test_that("active_backend returns 'pjrt' by default", {
 })
 
 test_that("local_backend sets and restores the active backend", {
-  skip_if_no_quickr()
   old <- active_backend()
-  local_backend("quickr")
-  expect_equal(active_backend(), "quickr")
-  expect_equal(backend(nv_array(1)), "quickr")
+  local_backend("r")
+  expect_equal(active_backend(), "r")
+  expect_equal(backend(nv_array(1)), "r")
 })
 
 test_that("with_backend temporarily changes the backend", {
-  skip_if_no_quickr()
   expect_equal(active_backend(), "pjrt")
-  result <- with_backend("quickr", {
-    expect_equal(active_backend(), "quickr")
+  result <- with_backend("r", {
+    expect_equal(active_backend(), "r")
     backend(nv_array(1))
   })
-  expect_equal(result, "quickr")
+  expect_equal(result, "r")
   expect_equal(active_backend(), "pjrt")
 })
 
 test_that("with_backend restores backend on error", {
-  skip_if_no_quickr()
   expect_equal(active_backend(), "pjrt")
-  try(with_backend("quickr", stop("test error")), silent = TRUE)
+  try(with_backend("r", stop("test error")), silent = TRUE)
   expect_equal(active_backend(), "pjrt")
 })
 
@@ -41,17 +38,15 @@ test_that("backend() returns the backend name", {
   expect_equal(backend(nv_array(1)), "pjrt")
 })
 
-test_that("backend() returns 'quickr' for quickr arrays", {
-  skip_if_no_quickr()
-  local_backend("quickr")
-  expect_equal(backend(nv_array(1)), "quickr")
+test_that("backend() returns 'r' for r arrays", {
+  local_backend("r")
+  expect_equal(backend(nv_array(1)), "r")
 })
 
-test_that("nv_empty works with quickr backend", {
-  skip_if_no_quickr()
-  local_backend("quickr")
+test_that("nv_empty works with r backend", {
+  local_backend("r")
   x <- nv_empty(c(0L, 3L), "f64")
-  expect_equal(backend(x), "quickr")
+  expect_equal(backend(x), "r")
   expect_dtype(x, "f64")
   expect_shape(x, c(0L, 3L))
 })
@@ -93,10 +88,9 @@ test_that("install_anvl rejects what is not a backend a user can select", {
 
 describe("eager code", {
   it("rejects an array of another backend instead of guessing a default", {
-    skip_if_no_quickr()
-    x <- with_backend("quickr", nv_array(1L))
-    expect_error(x + 1.5, "quickr")
-    expect_error(nv_fill_like(x, 0), "belongs to the .*quickr.* backend")
+    x <- with_backend("r", nv_array(1L))
+    expect_error(x + 1.5, "\"r\"")
+    expect_error(nv_fill_like(x, 0), "belongs to the .*\"r\".* backend")
   })
 })
 

@@ -97,13 +97,12 @@ describe("the default integer", {
 
 describe("eager code", {
   it("reads the same default the operation runs with", {
-    skip_if_no_quickr()
     # A plain R helper decides a promotion eagerly, between dispatches. The
     # default it reads is the one of the active backend, which is also the
     # backend the operation then runs on.
     promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promotion_common())[[2L]]
     expect_dtype(promote(nv_array(1L, dtype = "i32")), default_float())
-    with_backend("quickr", {
+    with_backend("r", {
       expect_dtype(promote(nv_array(1L, dtype = "i32")), "f64")
       expect_equal(peek_dtype(1.5), as_dtype("f64"))
       expect_dtype(nv_fill(0, 3), "f64")
