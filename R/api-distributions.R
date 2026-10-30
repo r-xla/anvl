@@ -860,6 +860,8 @@ nv_qexp <- jit(
   static = c("lower_tail", "log_p")
 )
 
+## Discrete distribution helpers -----------------------------------------------
+
 # Whether `x` is not a whole number, with base R's tolerance (`R_nonint()`).
 # Infinities count as whole, as in base R.
 is_nonint <- function(x) {
@@ -894,30 +896,141 @@ sub_exact_prod <- function(c, a, b) {
   (((c - a_hi * b_hi) - a_hi * b_lo) - a_lo * b_hi) - a_lo * b_lo
 }
 
-# Stirling's formula error, log(n!) - log(sqrt(2 pi n) (n / e)^n), for whole
-# n >= 1, as in R's `stirlerr()`. Up to n = 15 the exact values are tabulated;
-# above that the series in 1 / n^2 has converged to double precision by its
-# seventh term, which is the term count R uses.
-binom_stirlerr <- function(n) {
-  series <- horner(1 / (n * n), stirlerr_series) / n
-  Reduce(
-    function(acc, i) nv_ifelse(n == i, stirlerr_table[[i]], acc),
-    seq_along(stirlerr_table),
-    init = series
-  )
+# Returns x unchanged, with no gradient flowing back through it (anvl currently
+# has no stop gradient primitive).
+#
+# Used where the derivative along this path should be zero, or where f(x) should
+# be computed by one formula but differentiated by another, because autodiff
+# through f is inaccurate or overflows. Compute the value on a detached input,
+# f(stop_gradient(x)), and if there is some g(x) that has the same derivative
+# as f, attach it with
+#
+#   f(stop_gradient(x)) + (g(x) - stop_gradient(g(x)))
+#
+# The added term is zero, but its derivatives is g's (hence f's), to every
+# order. So only g's derivative is used, never its value. For example,
+# `log_ratio()` uses:
+#
+#   f = log(x / y)         accurate value, but derivative can overflow
+#   g = log(x) - log(y)    inaccurate value when x is near y, clean derivative
+#
+# Only if there is no such g, attach f's derivative at the detached input:
+#
+#   f(stop_gradient(x)) + (x - stop_gradient(x)) * f'(stop_gradient(x))
+#
+# This gives the right first derivative, _but_ second and higher derivatives
+# come out as zero. Note that f' must be passed the detached input.
+stop_gradient <- function(x) {
+  float_dtype <- dtype(x)
+  int_dtype <- if (float_dtype == "f32") "i32" else "i64"
+  nv_bitcast_convert(nv_bitcast_convert(x, int_dtype), float_dtype)
+}
+
+# Returns a power of two, s, such that 1 <= x * s < 2.
+#
+# Used to rescale values in loops before they overflow or underflow.
+# Scaling by a power of two preserves the significand, introduces no rounding
+# if the scaled values remain in the normal range.
+#
+# Requires positive, normal, finite x, with a scaling factor s that is
+# also normal and finite.
+inv_pow2 <- function(x) {
+  is_f32 <- dtype(x) == "f32"
+  bits_dtype <- if (is_f32) "ui32" else "ui64"
+  n_mantissa <- if (is_f32) 23L else 52L
+  exponent_max <- if (is_f32) 254L else 2046L
+  e <- nv_shift_right_logical(nv_bitcast_convert(x, bits_dtype), n_mantissa)
+  nv_bitcast_convert(nv_shift_left(exponent_max - e, n_mantissa), dtype(x))
+}
+
+# Evaluates and returns compute() when the scalar boolean pending is TRUE;
+# otherwise returns init without evaluating compute().
+#
+# Skips expensive work when no element in a batch needs it. For example:
+#
+#   out <- skip_unless(nv_any(mask), nv_fill_like(x, 0), function() {
+#     expensive(nv_ifelse(mask, x, safe_value))
+#   })
+#   nv_ifelse(mask, out, cheap)
+#
+# Here, expensive() runs only if at least one element needs it. Elements
+# outside mask receive safe_value to keep the batched computation valid.
+#
+# Uses a loop that runs at most once because nv_if() executes both branches
+# on XLA's CPU backend. This helper does not support differentiation through
+# the loop.
+skip_unless <- function(pending, init, compute) {
+  nv_while(
+    init = list(pending = pending, value = init),
+    cond = function(pending, value) pending,
+    body = function(pending, value) list(pending = nv_scalar(FALSE), value = compute())
+  )$value
+}
+
+# Computes log(x / y) for positive normal x and y, rescaling y by a power
+# of two to avoid overflow or loss of precision in the ratio.
+# Attaches the derivatives 1 / x and -1 / y explicitly: in reverse mode,
+# XLA otherwise rewrites the derivative with respect to x as y / (x * y),
+# whose intermediate product can overflow or underflow.
+# Each gradient correction is zero unless its input is positive, normal,
+# and finite; the corrections leave the computed value unchanged.
+log_ratio <- function(x, y) {
+  x_value <- stop_gradient(x)
+  y_value <- stop_gradient(y)
+  is_f32 <- dtype(x) == "f32"
+  k <- if (is_f32) 126 else 1022
+  r <- x_value / y_value
+  over <- r == Inf
+  under <- r < 2^-k
+  y_scaled <- nv_ifelse(over, y_value * 2^k, nv_ifelse(under, y_value * 2^-k, y_value))
+  # Builds the shift with x's data type; choosing between plain R values
+  # would instead materialize it with the default floating-point type.
+  shift <- nv_scalar_like(x, k * base::log(2))
+  value <- nv_log(x_value / y_scaled) + nv_ifelse(over, shift, nv_ifelse(under, -shift, 0))
+
+  # Returns zero with the derivative of log(v) for positive, normal, finite v,
+  # taken from log's own rule so that it is right to every order: dividing by
+  # the detached v would give the right first derivative but zero second.
+  # Otherwise returns zero without a gradient correction. Using 1 as the input
+  # in that case also prevents NaN gradients in the untaken branch.
+  smallest_normal <- if (is_f32) 2^-126 else 2^-1022
+  log_derivative <- function(v, v_value) {
+    normal <- (v_value >= smallest_normal) & (v_value != Inf)
+    log_v <- nv_log(nv_ifelse(normal, v, 1))
+    nv_ifelse(normal, log_v - stop_gradient(log_v), 0)
+  }
+  value + log_derivative(x, x_value) - log_derivative(y, y_value)
+}
+
+# Error of Stirling's approximation to log(n!),
+#   stirlerr(n) = log(n!) - log(sqrt(2 * pi * n) * (n / e)^n),
+# for whole n >= 1, same approach as R's `stirlerr()`: exact values up to
+# n = 15, and beyond an asymptotic series 1/(12 n) - 1/(360 n^3) + .... From
+# n = 16 the series has converged to double precision by its seventh term (the
+# term count R uses), and to single precision by its fourth. The exact values
+# are gathered from a table, which benched faster than picking them out with a
+# chain of 15 selects (by 18% for `nv_dbinom()` in f64, and ~5% for `nv_dpois()`
+# in f32, at 1.5e6 elements).
+#
+# Only whole n are handled!!
+# NOTE: Revisit before reusing this for other distributions: Student's t needs
+# half-integer (and, for non-whole degrees of freedom, general real) arguments.
+stirlerr <- function(n) {
+  # Gather only takes a vector of indices, so flatten and restore the shape
+  table <- nv_array(stirlerr_table, dtype = dtype(n))
+  idx <- nv_reshape(nv_convert(nv_clamp(n, 1, 15), "i32"), -1L)
+  tabled <- nv_reshape(table[idx], shape(n))
+  n_series <- nv_pmax(n, 16)
+  coefs <- if (dtype(n) == "f32") stirlerr_series[4:7] else stirlerr_series
+  series <- horner(1 / (n_series * n_series), coefs) / n_series
+  nv_ifelse(n <= 15, tabled, series)
 }
 
 # 1/12 - 1/(360 n^2) + 1/(1260 n^4) - ..., as a polynomial in 1 / n^2, highest
-# power first
-# See `src/nmath/stirlerr.c` in R source code for values in `stirlerr_series`
-# and `stirlerr_table`
+# power first. See `src/nmath/stirlerr.c` in R's sources for the values in
+# `stirlerr_series` and `stirlerr_table`.
 stirlerr_series <- c(1 / 156, -691 / 360360, 1 / 1188, -1 / 1680, 1 / 1260, -1 / 360, 1 / 12)
 
-# Only whole-number entries from R's sferr_halves table are needed here:
-# the binomial calls stirlerr at n, x, and n - x, all positive whole numbers.
-# Revisit before reusing this helper for other distributions: Student's t
-# needs half-integer (and, for non-whole degrees of freedom, general real)
-# arguments, which this helper is not designed to handle.
 stirlerr_table <- c(
   0.0810614667953272582196702,
   0.0413406959554092940938221,
@@ -936,37 +1049,190 @@ stirlerr_table <- c(
   0.005554733551962801371038690
 )
 
-# Compute x * log(x / np) + np - x for positive x and np, as in base R's
-# internal bd0() function. This is a term in Loader's saddle-point formula
-# for the binomial probability.
-# The caller supplies d = x - n*p, calculated more accurately than subtracting
-# the rounded product np from x.
+# Deviance term bd0(x, np) = x log(x / np) + np - x of Loader's saddle point
+# expansion, for x >= 1 and np > 0 (Loader, 2000; R's `bd0()`). Near x = np the
+# direct form cancels catastrophically, so it is replaced there by the series
+#   d v + 2 x v (v^2 / 3 + v^4 / 5 + ...),  d = x - np,  v = d / (x + np),
+# truncated where it is accurate to working precision for |v| < 0.1. The
+# coefficients 1 / (2j + 3) are highest power of v^2 first.
 #
-# Near x = np, the direct formula subtracts nearly equal terms and loses
-# precision. Instead, use a series in v = d / (x + np). We use it only when
-# |v| < 0.1, where 4 correction terms suffice for f32 and 8 for f64.
-binom_bd0 <- function(x, np, d, n_terms) {
-  use_series <- nv_abs(d) < 0.1 * (x + np)
+# A caller that knows x - np more accurately than x minus the rounded np should
+# pass `d` (eg the binomial forms it from n and p with `sub_exact_prod()`). Near
+# the mean the derivative of bd0 is proportional to d, so with the rounded
+# difference it would be lost wherever np rounds to x.
+bd0_f64_coefs <- 1 / c(17, 15, 13, 11, 9, 7, 5, 3)
+bd0_f32_coefs <- 1 / c(9, 7, 5, 3)
 
-  v <- d / (x + np)
+bd0 <- function(x, np, d = x - np) {
+  is_f32 <- dtype(x) == "f32"
+  # v and the test for |v| < 0.1 are scale-free, so near the top of the range
+  # x, np and d are scaled down first: x + np could overflow, and the
+  # reciprocal XLA divides by could be subnormal. The scaling is selected rather
+  # than factored out, which XLA would undo by rewriting c x + c np as
+  # c (x + np).
+  huge <- nv_pmax(x, np) > (if (is_f32) 2^120 else 2^1016)
+  xs <- nv_ifelse(huge, x * 2^-4, x)
+  nps <- nv_ifelse(huge, np * 2^-4, np)
+  ds <- nv_ifelse(huge, d * 2^-4, d)
+  ss <- xs + nps
+  near <- nv_abs(ds) < 0.1 * ss
+  v <- nv_ifelse(near, ds / ss, 0)
   w <- v * v
-  # sum_{j = 1}^{n_terms} w^(j - 1) / (2 j + 1), highest power first
-  tail <- horner(w, 1 / (2 * rev(seq_len(n_terms)) + 1))
-  series <- d * v + 2 * x * v * w * tail
-
-  # Use whichever of np / x and x / np is <= 1 as the log argument.
-  # Both forms give the same result, but this choice helps preserve gradients:
-  # log(r) has derivative 1/r, so a large r introduces a tiny factor that can
-  # underflow when multiplied by an already tiny probability gradient.
-  #
-  # The binomial caller has 1 <= x <= n and np = n*p. For a normal positive p,
-  # these bounds keep both ratios from overflowing or becoming subnormal.
-  # The same holds for the failure counts, using 1-p instead of p.
-  # XLA treats a subnormal p as zero, which the caller handles separately.
-  direct <- nv_ifelse(x > np, np - x * (nv_log(np / x) + 1), x * nv_log(x / np) + np - x)
-
-  nv_ifelse(use_series, series, direct)
+  series <- d * v + x * v * w * (2 * horner(w, if (is_f32) bd0_f32_coefs else bd0_f64_coefs))
+  # np - x first: near the top of the range x log(x / np) + np can overflow
+  # where the whole cannot
+  direct <- (np - x) - x * log_ratio(np, x)
+  nv_ifelse(near, series, direct)
 }
+
+# log(1 + t) - t, for small |t|, by the series in r = t / (2 + t) of R's
+# `log1pmx()` and `rlog1()`. As log(1 + t) = 2 atanh(r) = 2 (r + r^3/3 + r^5/5 + ...)
+# and 2 r - t = -r t,
+#   log(1 + t) - t = r (2 r^2 S(r^2) - t),  S(y) = 1/3 + y/5 + y^2/7 + ...
+# Subtracting t from log1p(t) directly loses precision near zero. The caller
+# chooses how many terms of S its range of t needs.
+log1pmx <- function(t, n_terms) {
+  r <- t / (2 + t)
+  y <- r * r
+  # S(y) to n_terms terms: coefficients 1 / (2k + 1), k = n_terms, ..., 1,
+  # highest power first
+  r * (2 * y * horner(y, 1 / (2 * rev(seq_len(n_terms)) + 1)) - t)
+}
+
+# Rounds q down, treating values within 1e-7 below an integer as that integer.
+# For f64, uses floor(q + 1e-7), as base R does. For f32, adding the tolerance
+# can itself round q up to the next integer, even outside that tolerance.
+# Instead, compares the distance to the next integer directly.
+whole_count <- function(q) {
+  if (dtype(q) == "f32") {
+    k <- nv_floor(q)
+    nv_ifelse((k + 1) - q <= 1e-7, k + 1, k)
+  } else {
+    nv_floor(q + 1e-7)
+  }
+}
+
+# The values a probability of 0 (dt_zero) or 1 (dt_one) takes once converted
+# to the requested tail and scale: with lower_tail = FALSE, p becomes 1 - p,
+# and with log_p = TRUE, it becomes log(p). These correspond to base R's R_DT_0
+# and R_DT_1.
+dt_zero <- function(lower_tail, log_p) {
+  if (lower_tail) (if (log_p) -Inf else 0) else (if (log_p) 0 else 1)
+}
+dt_one <- function(lower_tail, log_p) dt_zero(!lower_tail, log_p)
+
+# Adjusts p by a few ulps before a discrete quantile search, as base R does.
+# Rounding can leave the CDF at the correct count just below the target,
+# causing the search to return the next count. To compensate, move the
+# target slightly down for the lower tail or up for the upper tail.
+# On the log scale, p is negative, so these adjustments use factors
+# greater than or less than one, respectively.
+# Leave p unchanged if the adjustment would underflow to zero, become
+# non-finite, or affect an upper-tail probability too close to one.
+quantile_target <- function(p, lower_tail, log_p) {
+  eps <- if (dtype(p) == "f32") 2^-23 else 2^-52
+  if (log_p) {
+    fuzzed <- p * (if (lower_tail) 1 + 2 * eps else 1 - 2 * eps)
+    nv_ifelse(nv_is_finite(fuzzed), fuzzed, p)
+  } else if (lower_tail) {
+    fuzzed <- p * (1 - 8 * eps)
+    nv_ifelse(fuzzed > 0, fuzzed, p)
+  } else {
+    nv_ifelse(1 - p > 32 * eps, p * (1 + 8 * eps), p)
+  }
+}
+
+# Returns a Cornish-Fisher quantile approximation using the mean, standard
+# deviation and skewness. Used as a starting point for discrete quantile
+# searches, as in base R.
+# Extreme log probabilities can make nv_qnorm() return NaN or make z * z
+# overflow. Clamp z to [-40, 40], replacing NaN with -40 for the lower tail
+# or 40 for the upper tail.
+# The subsequent search uses the original target probability, so clamping
+# can increase the number of search steps but does not change the answer.
+cornish_fisher <- function(p, mean, sd, skew, lower_tail, log_p) {
+  z <- nv_qnorm(p, lower_tail = lower_tail, log_p = log_p)
+  z <- nv_ifelse(nv_is_nan(z), if (lower_tail) -40 else 40, nv_pmin(nv_pmax(z, -40), 40))
+  mean + sd * (z + skew * (z * z - 1) / 6)
+}
+
+# Finds the smallest whole y in [0, upper] satisfying a condition that
+# remains true for all larger counts. Takes growing steps from start to
+# bracket the answer, then bisects.
+#
+# satisfied(y) returns a list with sat = TRUE where the condition holds,
+# and optionally failed = TRUE where evaluation failed. Failed elements
+# return NaN, except at upper, which always counts as satisfied.
+#
+# Beyond the dtype's exact integer range, returns the smallest representable
+# count satisfying the condition. A while loop has no gradient, so inputs
+# must not carry one.
+#
+# Performance: batches run until the slowest element finishes. Probing start
+# before the loop saves runtime overhead at the cost of extra compilation.
+# Keep loop state small: XLA's CPU backend recomputes shared body work for
+# each value carried out.
+discrete_search <- function(start, satisfied, upper) {
+  is_f32 <- dtype(start) == "f32"
+  eps <- if (is_f32) 2^-23 else 2^-52
+  check <- function(y) {
+    s <- satisfied(y)
+    list(sat = s$sat | (y == upper), failed = if (!is.null(s$failed)) s$failed & (y != upper))
+  }
+  # Bounds after probing `probe` where `active`; a failed evaluation sets both to
+  # NaN, which stops that element's search
+  narrow <- function(lo, hi, probe, active, s) {
+    lo <- nv_ifelse(active & !s$sat, probe, lo)
+    hi <- nv_ifelse(active & s$sat, probe, hi)
+    if (!is.null(s$failed)) {
+      failed <- active & s$failed
+      lo <- nv_ifelse(failed, NaN, lo)
+      hi <- nv_ifelse(failed, NaN, hi)
+    }
+    list(lo = lo, hi = hi)
+  }
+
+  start <- nv_ifelse(nv_is_nan(start), 0, nv_pmin(nv_pmax(start, 0), upper))
+  # lo is unsatisfied (-1 until found); hi is satisfied (Inf until found).
+  # Step lengths are ceiling(s), ceiling(2s), ceiling(4s), ..., s the initial step.
+  # Below 2^51 in f64 (2^22 in f32) s is 1/2, so the lengths are 1, 1, 2, 4, ...
+  # Repeating the first step avoids overshooting an answer two counts away.
+  # Upward probes stop at upper; downward probes stop at zero.
+  # s is at least one ulp of start, so the first step changes the probe.
+  bounds <- narrow(-1, Inf, start, TRUE, check(start))
+  step <- 0.5 * nv_pmax(nv_floor(start * (4 * eps)), 1)
+  next_probe <- function(lo, hi, step) {
+    up <- hi == Inf
+    down <- !up & (lo == -1)
+    move <- nv_ceiling(step)
+    probe <- nv_ifelse(
+      up,
+      nv_pmin(lo + move, upper),
+      nv_ifelse(down, nv_pmax(hi - move, 0), nv_floor(lo + 0.5 * (hi - lo)))
+    )
+    # NaN bounds fail both comparisons, so a failed element is never active
+    list(probe = probe, active = (probe > lo) & (probe < hi), gallop = up | down)
+  }
+  # Enough trips to gallop from 0 to the largest float and bisect back
+  max_trips <- if (is_f32) 320 else 2200
+  out <- nv_while(
+    init = list(n = nv_scalar_like(start, 0), lo = bounds$lo, hi = bounds$hi, step = step),
+    cond = function(n, lo, hi, step) (n < max_trips) & nv_any(next_probe(lo, hi, step)$active),
+    body = function(n, lo, hi, step) {
+      nxt <- next_probe(lo, hi, step)
+      bounds <- narrow(lo, hi, nxt$probe, nxt$active, check(nv_ifelse(nxt$active, nxt$probe, 0)))
+      list(
+        n = n + 1,
+        lo = bounds$lo,
+        hi = bounds$hi,
+        step = nv_ifelse(nxt$active & nxt$gallop, 2 * step, step)
+      )
+    }
+  )
+  out$hi
+}
+
+## Binomial distribution helpers -----------------------------------------------
 
 # Log of the Binomial probability mass at whole `x`, for whole `n >= 0` and
 # `0 <= p <= 1`, as in R's `dbinom_raw()` (Loader's saddle point algorithm).
@@ -975,7 +1241,7 @@ binom_bd0 <- function(x, np, d, n_terms) {
 # Each branch is fed safe stand-ins on the elements where it is not selected, so
 # that it cannot poison the gradient. The stand-ins for `n` and `p` are chosen
 # by conditions on `n` and `p` alone, so a scalar `n` or `p` stays scalar.
-binom_log_density <- function(x, n, p, n_terms) {
+binom_log_density <- function(x, n, p) {
   # flags to identify cases later
   outside <- x < 0 | x > n | x == Inf
   zero_trials <- n == 0
@@ -1011,11 +1277,11 @@ binom_log_density <- function(x, n, p, n_terms) {
   d <- sub_exact_prod(x_int, n_int, p_int)
   # First three terms: Stirling factorial corrections for n!, x!, and (n-x)!
   # Last two terms: success and failure count deviance
-  lc <- binom_stirlerr(n_int) -
-    binom_stirlerr(x_int) -
-    binom_stirlerr(n_int - x_int) -
-    binom_bd0(x_int, np, d, n_terms) -
-    binom_bd0(n_int - x_int, nq, -d, n_terms)
+  lc <- stirlerr(n_int) -
+    stirlerr(x_int) -
+    stirlerr(n_int - x_int) -
+    bd0(x_int, np, d) -
+    bd0(n_int - x_int, nq, -d)
   # log1p(-x / n) loses the digits of n - x when x is close to n, where that
   # difference is exact instead. For x / n in [0.36, sqrt(2) - 1] the
   # log1p argument falls in XLA's CPU f64 log1p defect band (up to ~120 ulp),
@@ -1044,17 +1310,6 @@ binom_log_density <- function(x, n, p, n_terms) {
       )
     )
   )
-}
-
-# Compute x - log(1 + x) for |x| <= 0.03, as in R's `rlog1()`.
-# Direct subtraction loses precision near zero. With r = x / (2 + x), the
-# same expression is r * x - 2 * (r^3 / 3 + r^5 / 5 + ...). Here r^2 < 2.5e-4,
-# so the caller uses just 3 series terms for f32 or 6 for f64.
-rlog1 <- function(x, n_terms) {
-  r <- x / (2 + x)
-  r2 <- r * r
-  # Evaluate 1/3 + r^2/5 + r^4/7 + ... using Horner's method.
-  r * x - 2 * r * r2 * horner(r2, 1 / (2 * rev(seq_len(n_terms)) + 1))
 }
 
 # Compute the scaled complementary error function exp(z^2) * erfc(z), z >= 0.
@@ -1130,10 +1385,12 @@ basym <- function(a, b, lambda, op_dtype) {
   e0 <- 2 / base::sqrt(pi)
   e1 <- 2^-1.5
 
-  # f measures departure from the beta mean. rlog1() avoids cancellation
-  # near that mean; clamp small negative rounding errors before taking sqrt.
-  rlog1_terms <- if (is_f32) 3L else 6L
-  f <- nv_pmax(a * rlog1(-lambda / a, rlog1_terms) + b * rlog1(lambda / b, rlog1_terms), 0)
+  # f measures departure from the beta mean, as a sum of terms
+  # t - log(1 + t) = -log1pmx(t) with |t| <= 0.03, where r^2 < 2.5e-4 and 3
+  # terms suffice for f32 and 6 for f64. The series avoids cancellation near
+  # that mean; clamp small negative rounding errors before taking sqrt.
+  n_log1pmx <- if (is_f32) 3L else 6L
+  f <- nv_pmax(-(a * log1pmx(-lambda / a, n_log1pmx) + b * log1pmx(lambda / b, n_log1pmx)), 0)
   z0 <- nv_sqrt(f)
   z <- z0 / e1 * 0.5
   z2 <- f + f
@@ -1213,7 +1470,6 @@ basym <- function(a, b, lambda, op_dtype) {
 binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
   is_f32 <- op_dtype == "f32"
   eps <- if (is_f32) 2^-23 else 2^-52
-  n_terms <- if (is_f32) 4L else 8L
 
   q <- 1 - p
   # lambda = (k + 1) - (n + 1) p with reduced error
@@ -1233,26 +1489,17 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
   # Identify when to use asymptotic expansion method `basym()`
   use_asym <- (ab_min > 1000) & (lambda <= 0.03 * ab_min)
   # The expansion is long, and only needed for large a and b, so it is skipped
-  # at run time where no element needs it.
-  # A while loop that runs at most once lets us skip that work: XLA may lower
-  # `nv_if()` into a select, which computes both branches.
-  log_asym <- nv_while(
-    init = list(pending = nv_any(use_asym), value = nv_fill_like(lambda, 0)),
-    cond = function(pending, value) pending,
-    body = function(pending, value) {
-      list(
-        pending = nv_scalar(FALSE),
-        value = basym(
-          # This runs for the whole array if any element needs the expansion.
-          # Give the other elements safe inputs within the expansion's domain.
-          nv_ifelse(use_asym, a, 2000),
-          nv_ifelse(use_asym, b, 2000),
-          nv_ifelse(use_asym, lambda, 0),
-          op_dtype
-        )
-      )
-    }
-  )$value
+  # at run time where no element needs it (see `skip_unless()`).
+  log_asym <- skip_unless(nv_any(use_asym), nv_fill_like(lambda, 0), function() {
+    basym(
+      # This runs for the whole array if any element needs the expansion.
+      # Give the other elements safe inputs within the expansion's domain.
+      nv_ifelse(use_asym, a, 2000),
+      nv_ifelse(use_asym, b, 2000),
+      nv_ifelse(use_asym, lambda, 0),
+      op_dtype
+    )
+  })
 
   # Set up constants for the continued fraction.
   c <- lambda + 1
@@ -1275,18 +1522,10 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
   # 1 / tau, see `step()`
   u <- 1 / (a + 1)
 
-  # For positive normal x, read its exponent bits to find the power of two
-  # that scales it into [1, 2). This avoids division. Scaling is exact while
-  # the results remain normal; smaller values can still underflow. We use
-  # this after each step; see the comments above `step()` for the limits.
-  is_f32 <- op_dtype == "f32"
-  bits_dtype <- if (is_f32) "ui32" else "ui64"
-  n_mantissa <- if (is_f32) 23L else 52L
-  exponent_max <- if (is_f32) 254L else 2046L
-  inv_pow2 <- function(x) {
-    e <- nv_shift_right_logical(nv_bitcast_convert(x, bits_dtype), n_mantissa)
-    nv_bitcast_convert(nv_shift_left(exponent_max - e, n_mantissa), float_dtype)
-  }
+  # After each step, `inv_pow2()` gives the power of two that scales the
+  # current denominator into [1, 2), without division. Scaling is exact while
+  # the results remain normal; smaller values can still underflow. See the
+  # comments above `step()` for the limits.
   # Advance the continued fraction by one step, using the TOMS 708 recurrence
   # (DiDonato and Morris, 1992).
   #
@@ -1382,7 +1621,7 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
   # (n - k) * p * P(X = k) in either orientation. Combine it with the fraction
   # on the log scale to avoid multiplying tiny probabilities. A converged
   # fraction is stored negated, so -frac$r recovers its positive value.
-  log_frac <- nv_log(n - k) + nv_log(p) + binom_log_density(k, n, p, n_terms) + nv_log(-frac$r)
+  log_frac <- nv_log(n - k) + nv_log(p) + binom_log_density(k, n, p) + nv_log(-frac$r)
   log_direct <- nv_ifelse(use_asym, log_asym, nv_ifelse(frac$r < 0, log_frac, NaN))
   # The direct tail is P(X > k) where `upper`, and P(X <= k) otherwise
   direct_wanted <- if (lower_tail) !upper else upper
@@ -1404,7 +1643,8 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
 #' and `prob`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
-#'   function (`q`). These are counts, given as integers or floats.
+#'   function (`q`). These are counts, given as integers or floats; see
+#'   Non-Integer Values for values that are not whole numbers.
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
 #'   \eqn{[0, 1]} give `NaN`. With `log_p = TRUE`, supply log-probabilities
@@ -1428,7 +1668,9 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
 #' and zero elsewhere.
 #'
 #' Invalid arguments give `NaN`, as in base R, but without a warning (that is
-#' `prob` outside \eqn{[0, 1]}, or a negative `size`).
+#' `prob` outside \eqn{[0, 1]}, or a `size` that is negative or not a whole
+#' number). `size` is taken as a whole number with the same tolerance as `x`
+#' (see Non-Integer Values).
 #'
 #' `nv_dbinom` uses the saddle point expansion of
 #' `r cite_bib("loader2000fast")`, as base R does. `nv_pbinom` uses the
@@ -1437,19 +1679,23 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
 #' expansion for large `size` near the mean. If the continued fraction has not
 #' converged after 1000 iterations, the result is `NaN`. `nv_qbinom` finds the
 #' smallest \eqn{x} with \eqn{P(X \le x) \ge p}, starting from a Cornish-Fisher
-#' approximation as base R does.
+#' approximation as base R does. Above `2^24` in `f32` and `2^53` in `f64` not
+#' every whole number is a float, and `nv_qbinom` then returns the smallest float
+#' \eqn{x} with \eqn{P(X \le x) \ge p}.
 #'
+#' @templateVar dist binom
+#' @templateVar params `size` or `prob`
+#' @template section_distribution_nonint
 #' @section Gradients:
 #' `nv_dbinom` can be differentiated with respect to `prob`, including at
 #' `prob` of 0 and 1. Where the density is zero there, as at `prob = 0` for
 #' `x > 0`, the log-density is `-Inf` and has no derivative: it diverges. With
 #' `log = TRUE` the gradient returned there is zero, which is a convention of
 #' this implementation, not the mathematical derivative.
-#' `nv_pbinom` and `nv_qbinom` iterate until convergence in a
-#' [nv_while()] loop, so [gradient()] cannot differentiate them.
+#' `nv_pbinom` iterates until convergence in a [nv_while()] loop, so
+#' [gradient()] cannot differentiate it. `nv_qbinom` is a step function, and
+#' autodiff returns a zero gradient for all of its arguments.
 #'
-#' @templateVar dist binom
-#' @templateVar params `size` or `prob`
 #' @template section_distribution_dtype
 #' @references
 #' `r format_bib("loader2000fast", "didonato1992algorithm", "dekker1971floating")`
@@ -1495,16 +1741,15 @@ nv_dbinom <- jit(
       is_nonint(size)
     invalid <- invalid_param | nv_is_nan(x)
     # Match base R by rounding after checks. Values of x outside the whole-number
-    # tolerance in `is_nonint()` are mapped to -1, giving probability zero.
+    # tolerance in `is_nonint()` are mapped to -1, giving probability zero, as
+    # are negative values: the sign is tested before rounding, as base R does, so
+    # a tiny negative `x` that rounds to zero is still outside the support.
     # Invalid elements get safe values to avoid gradient poisoning.
-    x_whole <- nv_ifelse(nv_is_nan(x), 0, nv_ifelse(is_nonint(x), -1, nv_round(x)))
+    x_whole <- nv_ifelse(nv_is_nan(x), 0, nv_ifelse(is_nonint(x) | (x < 0), -1, nv_round(x)))
     size <- nv_ifelse(invalid_param, 1, nv_round(size))
     prob <- nv_ifelse(invalid_param, 0.5, prob)
 
-    # Choose series length for Loader's saddle point expansion (`binom_bd0()`)
-    # and compute log-density
-    n_terms <- if (op_dtype == "f32") 4L else 8L
-    log_density <- binom_log_density(x_whole, size, prob, n_terms)
+    log_density <- binom_log_density(x_whole, size, prob)
     # Resolve based on log
     density <- if (log) {
       log_density
@@ -1566,17 +1811,8 @@ nv_pbinom <- jit(
     invalid <- invalid_param | nv_is_nan(q)
     # Round size after checking it is within the whole-number tolerance.
     size <- nv_round(size)
-    # Match base R's floor(q + 1e-7), treating values just below a whole
-    # number as that number. At f32, the addition can round up too far:
-    # the float immediately below 2 is about 1.192e-7 away, but adding
-    # 1e-7 rounds to exactly 2. Instead, compare the gap to 1e-7 directly.
-    # Subtracting nearby floats gives an exact gap here.
-    k <- if (op_dtype == "f32") {
-      k_floor <- nv_floor(q)
-      nv_ifelse((k_floor + 1) - q <= 1e-7, k_floor + 1, k_floor)
-    } else {
-      nv_floor(q + 1e-7)
-    }
+    # Values just below a whole number count as that number, as in base R
+    k <- whole_count(q)
 
     # Identify where the lower-tail probability P(X <= q) is exactly 0 or 1.
     # Check the support limits before prob = 0 or 1, matching base R's order.
@@ -1597,19 +1833,11 @@ nv_pbinom <- jit(
     cdf <- binom_cdf(k_safe, size_safe, prob_safe, lower_tail, log_p, op_dtype)
 
     # Convert the known lower-tail probabilities 0 and 1 to the requested
-    # tail and scale. For the upper tail, their roles are reversed.
-    if (lower_tail) {
-      at_zero <- if (log_p) -Inf else 0
-      at_one <- if (log_p) 0 else 1
-    } else {
-      at_zero <- if (log_p) 0 else 1
-      at_one <- if (log_p) -Inf else 0
-    }
-    # Invalid inputs take precedence over the known endpoint results.
+    # tail and scale. Invalid inputs take precedence over them.
     nv_ifelse(
       invalid,
       NaN,
-      nv_ifelse(is_zero, at_zero, nv_ifelse(is_one, at_one, cdf))
+      nv_ifelse(is_zero, dt_zero(lower_tail, log_p), nv_ifelse(is_one, dt_one(lower_tail, log_p), cdf))
     )
   },
   static = c("lower_tail", "log_p")
@@ -1622,11 +1850,12 @@ nv_qbinom <- jit(
     assert_flag(lower_tail)
     assert_flag(log_p)
     args <- promote_distribution_args(p = p, size = size, prob = prob)
-    p <- args$p
-    size <- args$size
-    prob <- args$prob
-    op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
-    eps <- if (op_dtype == "f32") 2^-23 else 2^-52
+    op_dtype <- assert_rng_float_dtype(dtype(args$p), arg = "p")
+    # A step function has a zero gradient, and the search below is a while
+    # loop, which has none at all
+    p <- stop_gradient(args$p)
+    size <- stop_gradient(args$size)
+    prob <- stop_gradient(args$prob)
 
     # Match base R by rounding size here, without requiring a whole-number input.
     # This deliberately differs from nv_dbinom/nv_pbinom, which return NaN for a
@@ -1634,32 +1863,17 @@ nv_qbinom <- jit(
     # check, while dbinom and pbinom check it. Rounding happens before the
     # negative-size check, as in base R, so e.g. size = -0.4 is treated as 0.
     size <- nv_round(size)
-    # Check p on the supplied scale and identify its two endpoints.
-    if (log_p) {
-      in_range <- p <= 0
-      at_bottom <- p == -Inf
-      at_top <- p == 0
-    } else {
-      in_range <- (p >= 0) & (p <= 1)
-      at_bottom <- p == 0
-      at_top <- p == 1
-    }
+    in_range <- if (log_p) p <= 0 else (p >= 0) & (p <= 1)
+    at_bottom <- p == dt_zero(lower_tail, log_p)
+    at_top <- p == dt_one(lower_tail, log_p)
     # Match base R rules for returning NaN. Both parameters must be finite;
     # p may be -Inf on the log scale, where it represents probability zero.
     invalid <- !in_range |
-      nv_is_nan(p) |
       !nv_is_finite(size) |
       !nv_is_finite(prob) |
       (size < 0) |
       (prob < 0) |
       (prob > 1)
-    # Make at_bottom and at_top refer to the lower and upper support limits.
-    # Upper-tail probabilities run in the opposite direction, so swap them.
-    if (!lower_tail) {
-      swap <- at_bottom
-      at_bottom <- at_top
-      at_top <- swap
-    }
     # Resolve probability endpoints before distributions concentrated at 0
     # or size, matching base R's order.
     is_zero <- at_bottom | (!at_top & ((prob == 0) | (size == 0)))
@@ -1671,116 +1885,616 @@ nv_qbinom <- jit(
     prob_safe <- nv_ifelse(resolved, 0.5, prob)
     p_safe <- nv_ifelse(resolved, if (log_p) -1 else 0.5, p)
 
-    # Nudge the target toward the lower quantile to allow for CDF rounding,
-    # following base R's approach. This helps a CDF value map back to its
-    # original count, but cannot guarantee it when nearby values round alike.
-    # Lower-tail targets decrease; upper-tail targets increase. On the log
-    # scale, multiplying a negative value reverses the direction of the change.
-    target <- if (log_p) {
-      fuzzed <- p_safe * (if (lower_tail) 1 + 2 * eps else 1 - 2 * eps)
-      # Keep the original target if the adjustment overflows to -Inf.
-      nv_ifelse(nv_is_finite(fuzzed), fuzzed, p_safe)
-    } else if (lower_tail) {
-      # Near the smallest normal value, the adjustment can produce a subnormal
-      # that XLA flushes to zero. Keep the original target in that case.
-      fuzzed <- p_safe * (1 - 8 * eps)
-      nv_ifelse(fuzzed > 0, fuzzed, p_safe)
-    } else {
-      # Near one, leave the upper-tail target unchanged so the adjustment
-      # cannot push it across the probability boundary.
-      nv_ifelse(1 - p_safe > 32 * eps, p_safe * (1 + 8 * eps), p_safe)
-    }
-    # Test whether k is at or above the quantile for the adjusted target.
-    # The lower-tail CDF increases with k; the upper tail decreases. Keep the
-    # upper-tail comparison strict, as below. Report a failed CDF evaluation
-    # separately so a NaN cannot be mistaken for a search direction.
-    at_or_above <- function(k) {
-      cdf <- binom_cdf(k, size_safe, prob_safe, lower_tail, log_p, op_dtype)
-      list(above = if (lower_tail) cdf >= target else cdf < target, failed = nv_is_nan(cdf))
+    target <- quantile_target(p_safe, lower_tail, log_p)
+    # Whether k is at or above the quantile. The lower-tail CDF increases with
+    # k; the upper tail decreases, and its comparison is strict. The search
+    # takes k = size as satisfied without asking, so `binom_cdf()`, which needs
+    # k < size, is given a safe count there. A failed CDF evaluation is
+    # reported separately so a NaN cannot be mistaken for a search direction.
+    satisfied <- function(k) {
+      below_size <- k < size_safe
+      cdf <- binom_cdf(nv_ifelse(below_size, k, 0), size_safe, prob_safe, lower_tail, log_p, op_dtype)
+      list(sat = if (lower_tail) cdf >= target else cdf < target, failed = nv_is_nan(cdf))
     }
 
-    # Start from a normal quantile with a skewness correction (Cornish-Fisher),
-    # as base R does. sigma and gamma are the binomial SD and skewness.
+    # Start from a normal quantile with a skewness correction, as base R does.
     q_safe <- 1 - prob_safe
     sigma <- nv_sqrt(size_safe * prob_safe * q_safe)
-    gamma <- (q_safe - prob_safe) / sigma
-    # Extreme log probabilities can make z * z overflow or nv_qnorm() return
-    # NaN. Limit z to [-40, 40], using the requested tail to choose the sign
-    # for NaN. This keeps the starting guess usable; the search below still
-    # compares the CDF against the full target probability.
-    z <- nv_qnorm(p_safe, lower_tail = lower_tail, log_p = log_p)
-    z <- nv_ifelse(nv_is_nan(z), if (lower_tail) -40 else 40, nv_pmin(nv_pmax(z, -40), 40))
-    start <- nv_round(size_safe * prob_safe + sigma * (z + gamma * (z * z - 1) / 6))
+    start <- nv_round(cornish_fisher(
+      p_safe,
+      size_safe * prob_safe,
+      sigma,
+      (q_safe - prob_safe) / sigma,
+      lower_tail,
+      log_p
+    ))
+    found <- discrete_search(start, satisfied, size_safe)
 
-    # Keep the quantile in (lo, hi]: lo is below it and hi is at or above it.
-    # Try the starting guess, then move toward the quantile with doubling
-    # steps (galloping). Once a probe crosses to the other side, bisect the
-    # remaining interval. Clamp probes to counts between the two bounds.
-    probe_at <- function(lo, hi, step, started, galloping, down) {
-      probe <- nv_ifelse(
-        !started,
-        start,
-        nv_ifelse(
-          galloping,
-          nv_ifelse(down, hi - step, lo + step),
-          nv_floor((lo + hi) / 2)
-        )
-      )
-      nv_pmin(nv_pmax(probe, lo + 1), hi - 1)
-    }
-    # Stop when the bounds are adjacent, or floating-point precision leaves
-    # no probe strictly between them. The latter can happen for very large size.
-    is_active <- function(lo, hi, probe) (hi - lo > 1) & (probe > lo) & (probe < hi)
-    # Build initial arrays with the common shape of the search inputs.
-    like <- target + size_safe + prob_safe
-    no <- nv_fill_like(like, 0) > 1
-    search <- nv_while(
-      init = list(
-        i = nv_scalar(0L),
-        lo = nv_fill_like(like, -1),
-        hi = nv_fill_like(like, 0) + size_safe,
-        step = nv_fill_like(like, 1),
-        started = no,
-        galloping = !no,
-        down = no
-      ),
-      cond = function(i, lo, hi, step, started, galloping, down) {
-        probe <- probe_at(lo, hi, step, started, galloping, down)
-        # Continue while any element needs work, subject to the iteration cap.
-        nv_any(is_active(lo, hi, probe)) & (i < 2200L)
-      },
-      body = function(i, lo, hi, step, started, galloping, down) {
-        probe <- probe_at(lo, hi, step, started, galloping, down)
-        active <- is_active(lo, hi, probe)
-        # Finished elements still enter the array calculation; give them k = 0.
-        answer <- at_or_above(nv_ifelse(active, probe, 0))
-        above <- answer$above
-        # A failed CDF evaluation sets both bounds to NaN, stopping that
-        # element's search and making its result NaN.
-        failed <- active & answer$failed
-        # Keep doubling steps while probes stay on the initial side of the
-        # quantile. The first probe chooses whether to search down or up.
-        onward <- nv_ifelse(down, above, !above)
-        list(
-          i = i + 1L,
-          lo = nv_ifelse(failed, NaN, nv_ifelse(active & !above, probe, lo)),
-          hi = nv_ifelse(failed, NaN, nv_ifelse(active & above, probe, hi)),
-          step = nv_ifelse(started & galloping & onward, 2 * step, step),
-          started = started | active,
-          galloping = galloping & (!started | onward),
-          down = nv_ifelse(started, down, above)
-        )
-      }
-    )
-
-    # Restore invalid and endpoint results; otherwise return the upper bound.
-    # If precision or the iteration cap stopped the search early, this is the
-    # current bound rather than a guarantee that the exact count was found.
+    # Restore invalid and endpoint results. If the iteration cap stopped the
+    # search early, the result is the current bound rather than a guarantee
+    # that the exact count was found.
     nv_ifelse(
       invalid,
       NaN,
-      nv_ifelse(is_zero, 0, nv_ifelse(is_size, size, search$hi))
+      nv_ifelse(is_zero, 0, nv_ifelse(is_size, size, found))
     )
+  },
+  static = c("lower_tail", "log_p")
+)
+
+## Poisson distribution helpers -------------------------------------------------
+
+# Log Poisson probability for a whole number x >= 0 and finite lambda >= 0.
+# For x >= 1, use Loader's saddle point expansion:
+#   log p(x) = -stirlerr(x) - bd0(x, lambda) - log(2 pi x) / 2
+# At x = 0, return the exact value -lambda instead.
+# The expansion is NaN at x = 0, which the select discards. This helper is used
+# without automatic differentiation, so the unused branch needs no safe input.
+#
+# At lambda = 0, the expansion gives -Inf, which is the correct log probability
+# for x >= 1. In practice, the callers of `ppois_raw()` (the only caller of this
+# helper) replace zero lambda beforehand.
+dpois_log_raw <- function(x, lambda) {
+  saddle <- stirlerr(x) + bd0(x, lambda)
+  nv_ifelse(x == 0, -lambda, -saddle - 0.5 * nv_log(x) - 0.5 * base::log(2 * pi))
+}
+
+# Poisson tail series: multiplying the result by p(k) gives P(X > k) for
+# upper = TRUE, or P(X < k) otherwise, as R's `pd_upper_series()` and
+# `pd_lower_series()`:
+#   upper: lambda / (k + 1) + lambda^2 / ((k + 1)(k + 2)) + ...
+#   lower: k / lambda + k (k - 1) / lambda^2 + ...  (k terms)
+#
+# To avoid a division at each step, the sum is carried as num / den and the
+# current term as term / den, and divided out once at the end. Power-of-two
+# scaling keeps them in range without rounding from the scaling itself.
+#
+# Inputs must not carry gradients: `nv_while()` has no gradient rule.
+poisson_series <- function(k, lambda, upper, is_f32) {
+  tol <- if (is_f32) 2^-24 else 2^-53
+  # Tuned on the CPU backend for lambda from 1 to 150 (a trip costs about as
+  # much as several unrolled steps; frozen steps cost more than plain ones)
+  n_unroll <- if (is_f32) 8L else 24L
+  # num, den and term are renormalised at least once every `steps_per_trip`
+  # steps. Within `max_steps` each scaled a_n is below 2^10, so 8 steps grow
+  # them by less than 2^80, which still fits in f32: raising either constant
+  # means checking this bound again. Convergence takes at most ~170 terms in
+  # f64 and ~90 in f32 in the regions `ppois_raw()` uses the series in.
+  steps_per_trip <- 8L
+  max_steps <- 1000L
+  # u_n = u0 - n du and a_n = a0 + n da, scaled by c so that a0 is in [1, 2)
+  # (or a little more where it is beyond the largest power of two). The lower
+  # series is finite: its u_n reach zero at n = k, after which the steps only
+  # multiply a zero term. With k >= 1 it has lambda > k >= 1, so c <= 1 and
+  # n du stays small; but at k = 0 (the only count below a mean under 1) c is
+  # about 1 / lambda, and n c overflows for a small enough lambda, making the
+  # zero term NaN. The series has no terms there at all, so du is zero.
+  a0 <- nv_ifelse(upper, k + 1, lambda)
+  c <- inv_pow2(nv_pmin(a0, if (is_f32) 2^126 else 2^1022))
+  u0 <- nv_ifelse(upper, lambda, k) * c
+  du <- nv_ifelse(upper | (k == 0), 0, c)
+  a0 <- a0 * c
+  da <- nv_ifelse(upper, c, 0)
+  # Put den in [1, 2), scaling num and term by the same exact power of two.
+  normalise <- function(f) {
+    s <- inv_pow2(f$den)
+    list(term = f$term * s, num = f$num * s, den = f$den * s)
+  }
+  step <- function(f, n, live = NULL) {
+    u <- u0 - n * du
+    a <- a0 + n * da
+    if (!is.null(live)) {
+      u <- nv_ifelse(live, u, 0)
+      a <- nv_ifelse(live, a, 1)
+    }
+    term <- f$term * u
+    list(term = term, num = f$num * a + term, den = f$den * a)
+  }
+  # Term ratios are below one and decreasing in the regions `ppois_raw()` uses
+  # the series in, so the rest of the series is at most
+  # next_term / (1 - next_ratio). Requiring that to be <= sum * tol, with tol
+  # half the machine epsilon, gives without dividing
+  #   term * u <= (a - u) * num * tol
+  # where u and a are those of the next term. Once it holds, term is set to
+  # zero, which marks the element converged for the loop below.
+  settle <- function(f, n) {
+    u <- u0 - (n + 1) * du
+    a <- a0 + (n + 1) * da
+    f$term <- nv_ifelse(f$term * u <= (a - u) * f$num * tol, 0, f$term)
+    f
+  }
+
+  # The unrolled steps deliberately do not freeze converged elements: such an
+  # element only takes on terms below half an ulp, and freezing doubled the
+  # measured cost for no measurable gain in accuracy. The loop does freeze
+  # them (u = 0 and a = 1 leave num and den as they are), so that an element's
+  # result does not depend on how many trips the others need.
+  f <- normalise(list(term = u0, num = u0, den = a0))
+  for (n in seq_len(n_unroll)) {
+    f <- step(f, n)
+    if (n %% steps_per_trip == 0L || n == n_unroll) {
+      f <- normalise(f)
+    }
+  }
+  f <- settle(f, n_unroll)
+  out <- nv_while(
+    init = list(n = nv_scalar_like(k, n_unroll), term = f$term, num = f$num, den = f$den),
+    cond = function(n, term, num, den) (n < max_steps) & nv_any(term != 0),
+    body = function(n, term, num, den) {
+      f <- list(term = term, num = num, den = den)
+      for (j in seq_len(steps_per_trip)) {
+        f <- settle(step(f, n + j, live = f$term != 0), n + j)
+      }
+      f <- normalise(f)
+      list(n = n + steps_per_trip, term = f$term, num = f$num, den = f$den)
+    }
+  )
+  out$num / out$den
+}
+
+# Coefficients of the asymptotic expansion of the Poisson distribution function
+# for large k with lambda close to k, as R's `ppois_asymp()`.
+ppois_asymp_a <- c(
+  2 / 3,
+  -4 / 135,
+  8 / 2835,
+  16 / 8505,
+  -8992 / 12629925,
+  -334144 / 492567075,
+  698752 / 1477701225
+)
+ppois_asymp_b <- c(
+  1 / 12,
+  1 / 288,
+  -139 / 51840,
+  -571 / 2488320,
+  163879 / 209018880,
+  5246819 / 75246796800,
+  -534703531 / 902961561600
+)
+
+# P(X <= k) (or P(X > k)) for whole k with lambda close to k, both large, as R's
+# `ppois_asymp()`: a normal approximation in the signed root of the deviance,
+# corrected by an expansion in 1/k. Returns the probability as `value`. With
+# `grad = TRUE` and `log_p = TRUE` it also returns `grad`, the gradient of that
+# log probability wrt lambda (ignoring sign): dpois(k) / probability.
+ppois_asymp <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
+  dfm <- lambda - k
+  # Near the top of the range the reciprocal of k that XLA divides by would be
+  # subnormal, so both are scaled down first (see `bd0()`)
+  huge <- k > (if (is_f32) 2^120 else 2^1016)
+  t <- nv_ifelse(huge, dfm * 2^-4, dfm) / nv_ifelse(huge, k * 2^-4, k)
+  # |t| <= 1/4 in the region this is used in, where 4 terms of the series are
+  # accurate to f32 and 9 to f64
+  pt <- -log1pmx(t, if (is_f32) 4L else 9L)
+  # As two square roots, as 2 * k can overflow
+  s2pt <- nv_sqrt(2 * pt) * nv_sqrt(k)
+  s2pt <- nv_ifelse(dfm < 0, -s2pt, s2pt)
+
+  res12 <- 0
+  res1_term <- res1_ig <- nv_sqrt(k)
+  res2_term <- res2_ig <- s2pt
+  for (i in seq_along(ppois_asymp_a)) {
+    res12 <- res12 + res1_ig * ppois_asymp_a[[i]] + res2_ig * ppois_asymp_b[[i]]
+    res1_term <- res1_term * pt / i
+    res2_term <- res2_term * 2 * pt / (2 * i + 1)
+    res1_ig <- res1_ig / k + res1_term
+    res2_ig <- res2_ig / k + res2_term
+  }
+  elfb <- k + horner(1 / k, rev(ppois_asymp_b))
+  if (!lower_tail) {
+    elfb <- -elfb
+  }
+  f <- res12 / elfb
+
+  np <- nv_pnorm(s2pt, lower_tail = !lower_tail, log_p = log_p)
+  log_dnorm <- -0.5 * s2pt * s2pt - 0.5 * base::log(2 * pi)
+  if (!log_p) {
+    return(list(value = np + f * nv_exp(log_dnorm)))
+  }
+  # `nv_pnorm(log_p = TRUE)` takes log1p(-erfc) above one half, which XLA's
+  # CPU f64 `log1p()` gets wrong by up to ~120 ulp for probabilities in about
+  # (0.586, 0.64). Fixed upstream in openxla/xla#46765, so deliberately not
+  # worked around.
+  value <- np + nv_log1p(f * nv_exp(log_dnorm - np))
+  if (!grad) {
+    return(list(value = value))
+  }
+
+  # The gradient, dpois(k) / tail, for the small tail only (z > 0); the caller
+  # does the other. Both are tiny here, ~exp(-z^2 / 2), and subtracting their
+  # logs would lose ~z^2 ulps, so write both via the normal curve and cancel
+  # the tiny parts on paper. With m = phi(z) / Phi(-z):
+  #   tail = Phi(-z) (1 + f m)
+  #   dpois(k) = phi(z) exp(-stirlerr(k)) / sqrt(k)  (s^2 / 2 is bd0(k, lambda))
+  #   dpois(k) / tail = m exp(-stirlerr(k)) / (sqrt(k) (1 + f m))
+  # where m = sqrt(2 / pi) / erfcx(z / sqrt(2)) is a moderate number.
+  z <- if (lower_tail) s2pt else -s2pt
+  z_small <- nv_ifelse(z > 0, z, 1) * base::sqrt(0.5)
+  m <- base::sqrt(2 / pi) / erfcx(z_small, if (is_f32) 8 else 20, if (is_f32) 6L else 8L)
+  # stirlerr(k) minus its lookup table: k is always large here, and the lookup
+  # would stop XLA vectorising this code on CPU
+  coefs <- if (is_f32) stirlerr_series[4:7] else stirlerr_series
+  k_series <- nv_pmax(k, 16)
+  stirlerr_k <- horner(1 / (k_series * k_series), coefs) / k_series
+  grad <- m * nv_exp(-stirlerr_k) / (nv_sqrt(k) * (1 + f * m))
+  list(value = value, grad = grad)
+}
+
+# The Poisson distribution function at a whole k >= 0 and finite lambda > 0,
+# with the regions of R's `pgamma_raw()` (for its shape k + 1 and x = lambda):
+#   - lambda well below k: P(X > k) = p(k) * (upper series);
+#   - lambda well above k: P(X <= k) = p(k) * (1 + lower series);
+#   - otherwise k and lambda are close and large: the asymptotic expansion.
+# Each series gives one tail directly and the other as its complement, which is
+# taken on the log scale to keep full accuracy either side. Returns the
+# probability, log dpois(k), and which elements took a series (whose error
+# `nv_qpois()` allows for). With `grad = TRUE` it also returns the gradient's
+# size wrt lambda: dpois(k), or on the log scale dpois(k) / probability. It
+# comes as two factors, `grad` and `grad_factor`, so each stays finite when
+# their product overflows.
+# Due to while loop in series, no gradient support.
+ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
+  upper <- (lambda <= k) & (lambda < 0.8 * (k + 51))
+  lower <- (k < lambda) & (k + 1 < 0.8 * (lambda + 50))
+  use_series <- upper | lower
+
+  log_density <- dpois_log_raw(k, lambda)
+
+  # The asymptotic expansion is computed only if some element needs it (see
+  # `skip_unless()`). The series is not gated the same way, though it costs
+  # about a third of the time of a batch that is all asymptotic (large lambda
+  # with counts near it): its result then has to cross a loop boundary, which
+  # on the CPU backend cost up to ~18% (f64) on batches that need only the
+  # series (lambda below ~200, the common case for count data) at 1e7
+  # elements, ~3-5% at 1e6.
+  series_branch <- function() {
+    # Elements outside both series are given k = 0, whose lower series has no
+    # terms for any finite lambda > 0 (see `poisson_series()`), so lambda is
+    # passed as it is and a scalar lambda stays scalar
+    sum <- poisson_series(nv_ifelse(use_series, k, 0), lambda, upper, is_f32)
+    # The upper series starts at lambda / (k + 1), which underflows for a tiny
+    # enough lambda (below the smallest normal times k + 1), leaving the sum zero
+    # and its log -Inf. The later terms are then below eps of it, so the series
+    # is lambda / (k + 1) to working precision, and its log is taken directly.
+    # Only computed if some element needs it.
+    smallest_normal <- if (is_f32) 2^-126 else 2^-1022
+    underflowed <- upper & (sum < smallest_normal)
+    log_upper_sum <- nv_log(nv_ifelse(upper, sum, 1))
+    log_upper_sum <- skip_unless(nv_any(underflowed), log_upper_sum, function() {
+      nv_ifelse(
+        underflowed,
+        -log_ratio(nv_ifelse(underflowed, k + 1, 1), nv_ifelse(underflowed, lambda, 1)),
+        log_upper_sum
+      )
+    })
+    log_tail <- log_density + nv_ifelse(upper, log_upper_sum, nv_log1p(sum))
+    # `log_tail` is the log of P(X > k) for the upper series, P(X <= k) for the lower
+    direct <- if (lower_tail) lower else upper
+    from_series <- if (log_p) {
+      nv_ifelse(direct, log_tail, log1mexp(log_tail))
+    } else {
+      nv_ifelse(direct, nv_exp(log_tail), -nv_expm1(log_tail))
+    }
+    out <- list(value = from_series)
+    if (grad && log_p) {
+      # The gradient, dpois(k) / tail, without logs. The tail the series sums
+      # is dpois(k) times the sum (plus one for the lower), so the gradient is
+      # just 1 / sum; subtracting logs would lose |log tail| ulps. If the upper
+      # sum underflowed it equals lambda / (k + 1), whose reciprocal can
+      # overflow, so it's kept as 1 / lambda times k + 1. The other tail is at
+      # least about a half, where subtracting logs is fine.
+      out$grad <- nv_ifelse(
+        direct,
+        1 / nv_ifelse(underflowed, lambda, nv_ifelse(upper, sum, 1 + sum)),
+        nv_exp(log_density - from_series)
+      )
+      out$grad_factor <- nv_ifelse(direct & underflowed, k + 1, 1)
+    }
+    out
+  }
+  series <- series_branch()
+  # The series' elements are given k = lambda. Where lambda is tiny that can
+  # overflow inside the expansion, but only on elements that are then not
+  # selected, and the expansion is taken without gradient.
+  asymp_grad <- grad && log_p
+  asymp_init <- list(value = nv_fill_like(k, 0))
+  if (asymp_grad) {
+    asymp_init$grad <- nv_fill_like(k, 0)
+  }
+  asymp <- skip_unless(nv_any(!use_series), asymp_init, function() {
+    ppois_asymp(
+      nv_ifelse(use_series, lambda, k),
+      lambda,
+      lower_tail,
+      log_p,
+      is_f32,
+      grad = asymp_grad
+    )
+  })
+  out <- list(
+    value = nv_ifelse(use_series, series$value, asymp$value),
+    log_density = log_density,
+    use_series = use_series
+  )
+  if (grad) {
+    if (log_p) {
+      # The expansion's gradient is for the small tail only. The other tail is
+      # at least about a half, where subtracting logs is fine, and a little more
+      # accurate (log dpois(k) comes from bd0(), which beats the expansion's)
+      small_tail <- if (lower_tail) lambda > k else lambda < k
+      out$grad <- nv_ifelse(
+        use_series,
+        series$grad,
+        nv_ifelse(small_tail, asymp$grad, nv_exp(log_density - out$value))
+      )
+      out$grad_factor <- nv_ifelse(use_series, series$grad_factor, 1)
+    } else {
+      out$grad <- nv_exp(log_density)
+      out$grad_factor <- nv_scalar_like(lambda, 1)
+    }
+  }
+  out
+}
+
+#' @title The Poisson Distribution
+#' @name nv_poisson
+#' @description
+#' Density (`nv_dpois`), distribution function (`nv_ppois`), and quantile
+#' function (`nv_qpois`) for the Poisson distribution with mean `lambda`.
+#' @param x,q ([`arrayish`])\cr
+#'   Quantiles at which to evaluate the density (`x`) or the distribution
+#'   function (`q`). These are counts, given as integers or floats; see
+#'   Non-Integer Values for values that are not whole numbers.
+#' @param p ([`arrayish`])\cr
+#'   Probabilities at which to evaluate the quantile function. Values outside
+#'   \eqn{[0, 1]} give `NaN`. With `log_p = TRUE`, supply log-probabilities
+#'   in \eqn{[-\infty, 0]} instead.
+#' @param lambda ([`arrayish`])\cr
+#'   Mean of the distribution. Scalars broadcast; otherwise `lambda` and
+#'   `x`/`q`/`p` must have the same shape.
+#' @param log,log_p (`logical(1)`)\cr
+#'   If `TRUE`, the densities/probabilities are given as logarithms. For
+#'   `nv_qpois` this describes the input `p`.
+#' @param lower_tail (`logical(1)`)\cr
+#'   If `TRUE` (default), probabilities are \eqn{P(X \le x)}; otherwise,
+#'   \eqn{P(X > x)}.
+#' @details
+#' The Poisson distribution has probability mass function:
+#' \deqn{p(x) = \frac{\lambda^x e^{-\lambda}}{x!}, \quad x = 0, 1, 2, \ldots}
+#' where \eqn{\lambda} is `lambda`.
+#'
+#' Invalid arguments give `NaN`, as in base R, but without a warning (that is
+#' a negative `lambda`). Zero and infinite `lambda` follow base R's endpoint
+#' conventions:
+#' * `lambda = 0`: the point mass at zero.
+#' * `lambda = Inf`: densities are zero. The lower-tail probability is zero at
+#'   finite `q` and one at `q = Inf`. Quantiles are `NaN`.
+#'
+#' `nv_dpois` uses the saddle point expansion of
+#' `r cite_bib("loader2000fast")`, as base R does. `nv_ppois` uses the
+#' incomplete gamma function methods of base R's [stats::pgamma()]: a series in
+#' the tails, and an asymptotic expansion where `q` and `lambda` are large and
+#' close. `nv_qpois` finds the smallest \eqn{x}
+#' with \eqn{P(X \le x) \ge p}, starting from a Cornish-Fisher approximation as
+#' base R does. Above `2^24` in `f32` and `2^53` in `f64` not every whole number
+#' is a float, and `nv_qpois` then returns the smallest float \eqn{x} with
+#' \eqn{P(X \le x) \ge p}.
+#'
+#' @templateVar dist pois
+#' @templateVar params `lambda`
+#' @template section_distribution_nonint
+#' @section Gradients:
+#' `nv_dpois` and `nv_ppois` can be differentiated with respect to `lambda`.
+#' For `nv_ppois` only the first derivative is correct: second and higher
+#' derivatives are returned as zero. At `lambda = 0`, where
+#' only a right derivative exists, the implementation returns it for
+#' `nv_dpois(0, lambda)` and, by convention, zero for the other probabilities
+#' at `lambda = 0`. `nv_qpois` is a step function, and autodiff returns a zero
+#' gradient for all of its arguments.
+#'
+#' @template section_distribution_dtype
+#' @references
+#' `r format_bib("loader2000fast")`
+#' @return ([`arrayish`])\cr
+#' `nv_dpois()`, `nv_ppois()`, and `nv_qpois()` return an [`arrayish`] with the
+#' float data type described under Data Types and the shape after scalar
+#' broadcasting with `lambda`.
+#'
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(0, 1, 2, 5, 10))
+#' nv_dpois(x, lambda = 4)
+#' nv_dpois(x, lambda = 4, log = TRUE)
+#'
+#' nv_ppois(x, lambda = 4)
+#' nv_ppois(x, lambda = 4, lower_tail = FALSE)
+#' nv_ppois(x, lambda = 4, log_p = TRUE)
+#'
+#' p <- nv_array(c(0.025, 0.5, 0.975))
+#' nv_qpois(p, lambda = 4)
+#' nv_qpois(p, lambda = 4, lower_tail = FALSE)
+#' nv_qpois(
+#'   nv_array(c(-700, -2, -0.1), dtype = "f64"),
+#'   lambda = 1000,
+#'   log_p = TRUE
+#' )
+NULL
+
+#' @rdname nv_poisson
+#' @export
+nv_dpois <- jit(
+  function(x, lambda, log = FALSE) {
+    assert_flag(log)
+    args <- promote_distribution_args(x = x, lambda = lambda)
+    x <- args$x
+    lambda <- args$lambda
+    assert_rng_float_dtype(dtype(x), arg = "x")
+
+    # As base R, `x` is rounded to the nearest whole number, once anything not
+    # within a relative 1e-9 of one, and infinite `x` (which `is_nonint()`
+    # counts as whole, as base R does), has been given probability zero. Only
+    # the rounded value is used, so the gradient wrt `x` is zero; it is detached
+    # so that the NaN of an infinite `x` cannot reach it through the test.
+    x <- stop_gradient(x)
+    x_whole <- nv_round(x)
+    # The sign is tested before rounding, as base R does: a tiny negative `x`
+    # rounds to zero but is outside the support
+    zero <- is_nonint(x) | !nv_is_finite(x) | (x < 0) | (lambda == Inf) | ((lambda == 0) & (x_whole != 0))
+    valid <- !nv_is_nan(x) & (lambda >= 0)
+
+    # Each branch is fed a safe stand-in where it is not selected, so it cannot
+    # poison the gradient. lambda is guarded on its own conditions alone, so a
+    # scalar lambda stays scalar: where lambda is valid the branches are finite
+    # at the stand-in x anyway.
+    at_zero <- x_whole == 0
+    pos <- valid & !zero & !at_zero
+    x_pos <- nv_ifelse(pos, x_whole, 1)
+    lambda_pos <- nv_ifelse((lambda > 0) & (lambda != Inf), lambda, 1)
+    lambda_zero <- nv_ifelse((lambda >= 0) & (lambda != Inf), lambda, 0)
+
+    saddle <- stirlerr(x_pos) + bd0(x_pos, lambda_pos)
+    density <- if (log) {
+      nv_ifelse(at_zero, -lambda_zero, -saddle - 0.5 * nv_log(x_pos) - 0.5 * base::log(2 * pi))
+    } else {
+      # sqrt(2 pi x) as two factors, which cannot overflow
+      nv_ifelse(at_zero, nv_exp(-lambda_zero), nv_exp(-saddle) / (base::sqrt(2 * pi) * nv_sqrt(x_pos)))
+    }
+    nv_ifelse(valid, nv_ifelse(zero, if (log) -Inf else 0, density), NaN)
+  },
+  static = "log"
+)
+
+#' @rdname nv_poisson
+#' @export
+nv_ppois <- jit(
+  function(q, lambda, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(q = q, lambda = lambda)
+    q <- args$q
+    lambda <- args$lambda
+    op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
+    is_f32 <- op_dtype == "f32"
+
+    # Resolved directly, in base R's order: P(X <= q) is 0 below the support,
+    # 1 for `lambda = 0` or `q = Inf`, and 0 for `lambda = Inf`.
+    below <- q < 0
+    at_one <- (lambda == 0) | (q == Inf)
+    valid <- !nv_is_nan(q) & (lambda >= 0)
+    regular <- valid & !below & !at_one & (lambda != Inf)
+    dt0 <- dt_zero(lower_tail, log_p)
+    dt1 <- dt_one(lower_tail, log_p)
+
+    # Values just below a whole number count as that number, as in base R
+    k <- whole_count(stop_gradient(nv_ifelse(regular, q, 0)))
+    # Guarded on lambda's own conditions, so a scalar lambda stays scalar; the
+    # elements it replaces are among those resolved directly below
+    lambda_reg <- nv_ifelse((lambda > 0) & (lambda != Inf), lambda, 1)
+    raw <- ppois_raw(k, stop_gradient(lambda_reg), lower_tail, log_p, is_f32, grad = TRUE)
+
+    # The summation is not differentiable, so the exact derivative wrt `lambda`,
+    # -/+ dpois(k) (divided by the probability on the log scale), is attached
+    # by adding zero times it. Only the first derivative is right this way (see
+    # `stop_gradient()`): no differentiable function has this derivative but
+    # the distribution function itself.
+    # The derivative can overflow on the log scale (it's about (k + 1) / lambda
+    # for a tiny lambda), and 0 * Inf would make the value NaN. So the zero is
+    # multiplied by its two finite factors one at a time: the value stays exact,
+    # and only the gradient, their product, overflows. A non-finite factor
+    # gives a zero gradient.
+    finite <- nv_is_finite(raw$grad) & nv_is_finite(raw$grad_factor)
+    grad <- nv_ifelse(finite, raw$grad, 0)
+    delta <- lambda_reg - stop_gradient(lambda_reg)
+    delta <- if (lower_tail) -delta else delta
+    value <- raw$value + (delta * nv_ifelse(finite, raw$grad_factor, 0)) * grad
+
+    res <- nv_ifelse(below, dt0, nv_ifelse(at_one, dt1, nv_ifelse(lambda == Inf, dt0, value)))
+    nv_ifelse(valid, res, NaN)
+  },
+  static = c("lower_tail", "log_p")
+)
+
+#' @rdname nv_poisson
+#' @export
+nv_qpois <- jit(
+  function(p, lambda, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(p = p, lambda = lambda)
+    op_dtype <- assert_rng_float_dtype(dtype(args$p), arg = "p")
+    # A step function has a zero gradient, and the search below is a while
+    # loop, which has none at all
+    p <- stop_gradient(args$p)
+    lambda <- stop_gradient(args$lambda)
+    is_f32 <- op_dtype == "f32"
+    eps <- if (is_f32) 2^-23 else 2^-52
+    max_float <- if (is_f32) (2 - 2^-23) * 2^127 else .Machine$double.xmax
+
+    # Resolved directly, in base R's order: NaN outside the admissible range,
+    # 0 for `lambda = 0` and at the bottom of the probability scale, and Inf
+    # at the top
+    in_range <- if (log_p) p <= 0 else (p >= 0) & (p <= 1)
+    at_bottom <- p == dt_zero(lower_tail, log_p)
+    at_top <- p == dt_one(lower_tail, log_p)
+    valid <- in_range & nv_is_finite(lambda) & (lambda >= 0)
+    zero_result <- (lambda == 0) | at_bottom
+    regular <- valid & !zero_result & !at_top
+    p <- nv_ifelse(regular, p, if (log_p) -1 else 0.5)
+    # Guarded on lambda's own conditions, so a scalar lambda stays scalar; the
+    # elements it replaces are among those resolved directly above
+    lambda <- nv_ifelse((lambda > 0) & nv_is_finite(lambda), lambda, 1)
+
+    # Cornish-Fisher starting value. base R rounds it, but it lands about a half
+    # above the quantile of a `p` at a jump, so rounding often starts the
+    # search one too high; rounded down, the quantile is nearly always the start
+    # or the next count, which the search settles in two evaluations. The start
+    # does not change the answer.
+    sigma <- nv_sqrt(lambda)
+    start <- nv_floor(cornish_fisher(p, lambda, sigma, 1 / sigma, lower_tail, log_p))
+
+    target <- quantile_target(p, lower_tail, log_p)
+    # In f64 the error of the distribution function itself also needs allowing
+    # for, so that a `p` from base R at a jump is not missed: relative to the
+    # smaller of the two tails it grows like (1 + |log tail|) ulp, plus
+    # |y - lambda| ulp where a series was summed (from bd0()'s x log(x / np)).
+    # The factor 16 is an empirical allowance, not a proven bound: measured
+    # against base R for lambda from 0.5 to 1e14, and against MPFR at the jumps
+    # for lambda up to 1e8, the error stayed under 9 such ulp in the series and
+    # under 4 in the asymptotic expansion. Any wider and a `p` just above a jump
+    # could be read as on it, giving a quantile one too low. In f32, rounding
+    # `p` to f32 displaces it further than this, and a wider fuzz only costs
+    # agreement elsewhere.
+    if (!is_f32) {
+      log_upper <- if (log_p) log1mexp(p) else nv_log1p(-p)
+      log_lower <- if (log_p) p else nv_log(p)
+      log_small_tail <- nv_pmin(log_lower, log_upper)
+      # How far `p` may move per unit of relative error in the smaller tail
+      scale <- if (log_p) nv_pmin(-p, 1) else nv_pmin(p, 1 - p)
+    }
+    # Whether the quantile is at or below y. The largest float is taken as
+    # satisfying (by `discrete_search()`). Below lambda = the largest float that
+    # changes nothing: the condition holds a few sd above lambda, far less than
+    # an ulp there, so the largest float already satisfies it wherever the
+    # search reaches it. At lambda = the largest float there may be no finite
+    # float that satisfies it, and this returns the largest float instead of
+    # Inf: a saturating convention, as base R's.
+    satisfied <- function(y) {
+      raw <- ppois_raw(y, lambda, lower_tail, log_p, is_f32)
+      threshold <- target
+      if (!is_f32) {
+        ulps <- 1 - log_small_tail + nv_ifelse(raw$use_series, nv_abs(y - lambda), 0)
+        extra <- nv_pmin(16 * eps * ulps, 0.25) * scale
+        adjusted <- if (lower_tail) threshold - extra else threshold + extra
+        # As in `quantile_target()`, the allowance is not applied where it
+        # would overflow, or flush a tiny `p` to zero
+        threshold <- nv_ifelse(if (log_p) nv_is_finite(adjusted) else adjusted > 0, adjusted, threshold)
+      }
+      list(sat = if (lower_tail) raw$value >= threshold else raw$value < threshold)
+    }
+    found <- discrete_search(start, satisfied, max_float)
+
+    res <- nv_ifelse(zero_result, 0, nv_ifelse(at_top, Inf, found))
+    nv_ifelse(valid, res, NaN)
   },
   static = c("lower_tail", "log_p")
 )
