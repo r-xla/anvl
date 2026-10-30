@@ -4,7 +4,7 @@ NULL
 #' @section Options:
 #' * `anvl.backend` (`character(1)`): the backend every
 #'   operation runs on.
-#'   Must be one of `"pjrt"` and `"quickr"`. If not set, `"pjrt"` is used.
+#'   Must be one of `"pjrt"`, `"quickr"` and `"r"`. If not set, `"pjrt"` is used.
 #'   Also see [`active_backend()`], [`local_backend()`] and [`with_backend()`].
 #' * `anvl.default_dtypes` (named `character()` | named `list()`): the data
 #'   types an R double and an R integer settle on when they meet no typed

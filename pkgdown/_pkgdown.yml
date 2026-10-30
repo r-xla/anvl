@@ -382,6 +382,7 @@ reference:
       - local_backend
       - AnvlBackendPjrt
       - AnvlBackendQuickr
+      - AnvlBackendR
 
   - title: Device
     desc: Devices of the active backend and the default device
@@ -391,6 +392,7 @@ reference:
       - local_default_device
       - is_device
       - quickr_device
+      - r_device
 
   - title: Miscellaneous
     desc: General-purpose helpers

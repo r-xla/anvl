@@ -14,7 +14,7 @@ or an existing device object of the active backend (returned as-is).}
 \value{
 (device object)\cr
 Backend-specific (e.g. \code{PJRTDevice} for \code{"pjrt"},
-\code{\link{quickr_device}} for \code{"quickr"}).
+\code{\link{quickr_device}} for \code{"quickr"}, \code{\link{r_device}} for \code{"r"}).
 }
 \description{
 Constructs a backend-specific device object for the active backend

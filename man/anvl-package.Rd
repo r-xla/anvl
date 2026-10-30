@@ -15,7 +15,7 @@ Accelerated array computing and code transformations for R. Numerical programs o
 \itemize{
 \item \code{anvl.backend} (\code{character(1)}): the backend every
 operation runs on.
-Must be one of \code{"pjrt"} and \code{"quickr"}. If not set, \code{"pjrt"} is used.
+Must be one of \code{"pjrt"}, \code{"quickr"} and \code{"r"}. If not set, \code{"pjrt"} is used.
 Also see \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
 \item \code{anvl.default_dtypes} (named \code{character()} | named \code{list()}): the data
 types an R double and an R integer settle on when they meet no typed

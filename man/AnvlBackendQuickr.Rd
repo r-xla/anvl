@@ -37,7 +37,8 @@ This backend is \strong{experimental} and has a number of limitations:
 \itemize{
 \item Compilation (tracing + quickr lowering) is somewhat slow, so it is best
 suited to long-running or repeatedly-called functions where the one-time
-compilation cost is amortized.
+compilation cost is amortized. The \link[=AnvlBackendR]{r backend} runs the
+same R function without compiling it.
 \item Only a subset of the primitives that the PJRT backend supports are currently
 lowered to quickr code. See
 the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article for an overview.
@@ -52,5 +53,6 @@ the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Refe
 }
 
 \seealso{
-\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendPjrt]{AnvlBackendPjrt()}}, \code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
+\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendPjrt]{AnvlBackendPjrt()}}, \code{\link[=AnvlBackendR]{AnvlBackendR()}},
+\code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
 }

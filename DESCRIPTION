@@ -73,6 +73,7 @@ Collate:
     'api-utilities.R'
     'asserts.R'
     'backend-pjrt.R'
+    'backend-r.R'
     'backend-quickr.R'
     'bibentries.R'
     'box.R'

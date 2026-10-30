@@ -1,6 +1,4 @@
 test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
-  skip_if_no_quickr_or_pjrt()
-
   withr::local_seed(4)
 
   m <- 3L

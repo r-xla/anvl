@@ -25,7 +25,7 @@ AnvlBackend(
 Constructs an AnvlArray from R data. Must return
 \verb{structure(list(data = , backend = <name>, ...), class = "AnvlArray")}, where
 \code{data} holds the underlying data (a \code{PJRTBuffer} for the \code{"pjrt"} backend, an
-R \code{array()} for the \code{"quickr"} backend) and \code{backend} is the name the
+R \code{array()} for the \code{"quickr"} and \code{"r"} backends) and \code{backend} is the name the
 backend is registered under. \code{row_major} gives the element order of raw
 byte payloads; a backend that does not support raw \code{data} should abort on
 it.}

@@ -70,7 +70,7 @@ quickr_restore_output <- function(value, out_tree, out_infos) {
   unflatten(out_tree, quickr_restore_output_flat(value, out_tree, out_infos))
 }
 
-graph_to_quickr_prepare <- function(graph) {
+graph_to_quickr_prepare <- function(graph, backend) {
   in_tree <- graph$in_tree
   needs_flatten <- pjrt::tree_root_kind(in_tree) == "list" &&
     any(pjrt::tree_child_kinds(in_tree) == "list")
@@ -90,7 +90,7 @@ graph_to_quickr_prepare <- function(graph) {
     isTRUE(needs_flatten) ||
     isTRUE(has_static)
 
-  r_fun <- graph_to_quickr_r_fun_impl(graph, include_declare = TRUE)
+  r_fun <- graph_to_quickr_r_fun_impl(graph, backend, include_declare = TRUE)
 
   list(
     r_fun = r_fun,
@@ -256,14 +256,8 @@ graph_to_quickr_r_function <- function(graph) {
     cli_abort("{.arg graph} must be a {.cls AnvlGraph}")
   }
 
-  prep <- graph_to_quickr_prepare(graph)
-  r_fun <- prep$r_fun
-  # The lowered function is intended to be runnable as plain R code as well as
-  # compilable by {quickr}. When {quickr} is installed, its `declare()` can
-  # modify arguments at runtime (e.g. stripping axes), which breaks plain R
-  # execution. Keep the `declare(type(...))` call for compilation, but make it
-  # a no-op when evaluating the lowered function in R.
-  environment(r_fun)$declare <- function(...) invisible(NULL)
+  prep <- graph_to_quickr_prepare(graph, "quickr")
+  r_fun <- plain_r_function(prep$r_fun)
 
   if (!isTRUE(prep$needs_wrapper)) {
     return(r_fun)
@@ -324,14 +318,21 @@ graph_to_quickr_function <- function(graph, unwrap = FALSE, flat = FALSE) {
   assert_flag(unwrap)
   assert_flag(flat)
 
-  prep <- graph_to_quickr_prepare(graph)
-  inner_quick <- quickr_eager_compile(prep$r_fun)
+  graph_to_r_array_function(graph, "quickr", quickr_eager_compile, unwrap = unwrap, flat = flat)
+}
+
+# Lowers `graph` to an R function, hands it to `compile`, and wraps the result
+# to be what a jitted function of `backend` runs: it returns `backend`'s
+# AnvlArrays, or plain R values when `unwrap = TRUE`. See
+# graph_to_quickr_function() for `flat`.
+graph_to_r_array_function <- function(graph, backend, compile, unwrap = FALSE, flat = FALSE) {
+  prep <- graph_to_quickr_prepare(graph, backend)
 
   out_infos <- prep$out_infos
   if (!isTRUE(unwrap)) {
     # Tag out_infos so that quickr_restore_leaf wraps each leaf as an AnvlArray.
     out_infos <- lapply(out_infos, function(info) {
-      info$backend <- "quickr"
+      info$backend <- backend
       info
     })
   }
@@ -339,9 +340,18 @@ graph_to_quickr_function <- function(graph, unwrap = FALSE, flat = FALSE) {
   graph_to_quickr_make_wrapper(
     graph = graph,
     r_fun = prep$r_fun,
-    inner_fun = inner_quick,
+    inner_fun = compile(prep$r_fun),
     out_infos = out_infos,
     needs_flatten = prep$needs_flatten,
     flat = flat
   )
+}
+
+# The lowered function `fun`, made runnable as plain R code. Its
+# `declare(type(...))` call is there for quickr to compile it, and quickr's own
+# `declare()` can modify arguments at runtime (e.g. stripping axes), so it is
+# made a no-op.
+plain_r_function <- function(fun) {
+  environment(fun)$declare <- function(...) invisible(NULL)
+  fun
 }

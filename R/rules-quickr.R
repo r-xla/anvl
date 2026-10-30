@@ -11,8 +11,8 @@ quickr_user_arg_names <- function(n) {
   paste0("x", seq_len(n))
 }
 
-# What quickr can represent, per data type: the R storage it uses, its zero, and
-# the cast to it. quickr has no single precision, so `f32` is *not* accepted --
+# What an R array can represent, per data type: the R storage it uses, its zero,
+# and the cast to it. R has no single precision, so `f32` is *not* accepted --
 # carrying it as a double would label an array `f32` while holding `f64` values,
 # which is the mislabelling the data type system exists to prevent.
 quickr_dtype_info <- function(dt_chr) {
@@ -29,8 +29,8 @@ quickr_dtype_info <- function(dt_chr) {
   }
 
   cli_abort(paste0(
-    "Unsupported dtype for the {.val quickr} backend: {.val {dt_chr}}. ",
-    "It supports {.val f64}, {.val i32} and {.val bool}."
+    "Unsupported dtype for the {.val r} and {.val quickr} backends: {.val {dt_chr}}. ",
+    "They support {.val f64}, {.val i32} and {.val bool}."
   ))
 }
 
@@ -1529,7 +1529,7 @@ quickr_lower_graph_calls <- function(graph, ctx) {
 
     lower <- call$primitive[["quickr"]]
     if (is.null(lower)) {
-      quickr_abort_unsupported_prims(call$primitive$name, quickr_supported_prims())
+      quickr_abort_unsupported_prims(call$primitive$name, quickr_supported_prims(), ctx$backend)
     }
     # A result with a zero-size axis holds no elements, so the empty array of
     # that shape is the only value it can have and the operands need not be
@@ -2275,14 +2275,14 @@ local({
 
 # Graph -> quickr-compatible R function ----------------------------------------
 
-quickr_abort_unsupported_prims <- function(unsupported_prims, supported_prims) {
+quickr_abort_unsupported_prims <- function(unsupported_prims, supported_prims, backend) {
   unsupported_prims <- unique(as.character(unsupported_prims))
   if (!length(unsupported_prims)) {
     return(invisible(NULL))
   }
 
   cli_abort(c(
-    "{.fn graph_to_quickr_function} does not support these primitives: {toString(unsupported_prims)}",
+    "The {.val {backend}} backend does not support these primitives: {toString(unsupported_prims)}",
     i = "Supported primitives: {toString(sort(supported_prims))}"
   ))
 }
@@ -2308,7 +2308,7 @@ quickr_find_unsupported_prims <- function(graph, supported_prims) {
   unique(unsupported_prims)
 }
 
-graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
+graph_to_quickr_r_fun_impl <- function(graph, backend, include_declare = TRUE) {
   include_declare <- as.logical(include_declare)
 
   if (!is_graph(graph)) {
@@ -2336,7 +2336,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
 
   supported_prims <- quickr_supported_prims()
   unsupported_prims <- quickr_find_unsupported_prims(graph, supported_prims)
-  quickr_abort_unsupported_prims(unsupported_prims, supported_prims)
+  quickr_abort_unsupported_prims(unsupported_prims, supported_prims, backend)
 
   make_formals <- function(nms) {
     as.pairlist(stats::setNames(rep(list(quote(expr = )), length(nms)), nms))
@@ -2373,7 +2373,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
     tmp_i <<- tmp_i + 1L
     as.name(paste0(prefix, "v", tmp_i))
   }
-  ctx <- list(node_expr = node_expr, new_tmp_sym = new_tmp_sym)
+  ctx <- list(node_expr = node_expr, new_tmp_sym = new_tmp_sym, backend = backend)
 
   lowered <- quickr_lower_graph_calls(graph, ctx)
   stmts <- c(stmts, lowered$stmts)

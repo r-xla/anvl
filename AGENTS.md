@@ -126,7 +126,9 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
-- **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
+- **`quickr`** -- R-native lowering rules in `R/rules-quickr.R`. They lower a graph to an R
+  function, which the `"quickr"` backend compiles with quickr and the `"r"` backend runs as it is;
+  the two share everything else as well (`r_array_backend()` in `R/backend-r.R`).
 
 ## Jit-wrapping
 
@@ -149,7 +151,7 @@ When two non-scalar arrays need to be combined and only differ by size-1 axes (e
 
 ## Graph Tracing
 
-When a function is JIT-compiled, anvl traces it by executing with `GraphBox` objects instead of real data. Operations record themselves into an `AnvlGraph` (see `R/graph.R`). The graph is then lowered to StableHLO IR or quickr code for compilation.
+When a function is JIT-compiled, anvl traces it by executing with `GraphBox` objects instead of real data. Operations record themselves into an `AnvlGraph` (see `R/graph.R`). The graph is then lowered to StableHLO IR or to R code (run by the `"r"` backend, compiled by the `"quickr"` one).
 
 Key types: `GraphValue` (traced variable), `GraphLiteral` (embedded constant), `AbstractArray` (shape + dtype metadata), `AnvlGraph`.
 
@@ -168,6 +170,9 @@ Prefer testing by comparing with the corresponding torch function. If the test i
 
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
 This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
+A test of a quickr rule needs neither: `expect_quickr_matches_pjrt()` / `expect_quickr_matches_pjrt_fn()`
+(`helper-quickr.R`) compare the R function the lowering emits -- what the `"r"` backend runs -- with
+pjrt, and compile it with quickr only when the quickr tests are enabled.
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
 
 ## Documentation

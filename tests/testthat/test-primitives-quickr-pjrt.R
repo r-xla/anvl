@@ -1,6 +1,4 @@
 test_that("quickr pipeline matches PJRT: core math + comparisons + reductions", {
-  skip_if_no_quickr_or_pjrt()
-
   core_ops <- function(x_f64, y_f64, x_i32, y_i32, p, q) {
     a <- x_f64 + y_f64
     b <- x_f64 - y_f64
@@ -492,8 +490,6 @@ test_that("quickr pipeline matches PJRT: i32 power keeps integer semantics", {
 })
 
 test_that("quickr pipeline matches PJRT: fill/iota/reverse/concatenate/convert/broadcast/transpose/reshape", {
-  skip_if_no_quickr_or_pjrt()
-
   shape_ops <- function(s, v1, v2, x_i32, x21_i32, x13_i32, x3, x_pred) {
     f0 <- nv_fill(3.25, shape = integer(), dtype = "f64")
     f1 <- nv_fill(2L, shape = 4L, dtype = "i32")
@@ -595,8 +591,6 @@ test_that("quickr pipeline matches PJRT: fill/iota/reverse/concatenate/convert/b
 })
 
 test_that("quickr pipeline matches PJRT: broadcast + iota slice assignments compile at rank 3", {
-  skip_if_no_quickr_or_pjrt()
-
   # Regression test: slice assignments at rank 3 with singleton axes (from
   # broadcast) should compile and match PJRT.
   b <- 4L
@@ -620,8 +614,6 @@ test_that("quickr pipeline matches PJRT: broadcast + iota slice assignments comp
 })
 
 test_that("quickr pipeline matches PJRT: zero-length axes (reverse/concatenate/boolean reductions)", {
-  skip_if_no_quickr_or_pjrt()
-
   # This exercises:
   # - 0-extent *inputs* (compile-time interface)
   # - dynamic_slice with 0 slice sizes (0-extent intermediates)
@@ -669,8 +661,6 @@ test_that("quickr pipeline matches PJRT: zero-length axes (reverse/concatenate/b
 })
 
 test_that("quickr pipeline matches PJRT: zero-length axes for numeric sum/prod reductions", {
-  skip_if_no_quickr_or_pjrt()
-
   reduce_empty_numeric <- function(v_empty, empty_cols, empty_rows) {
     list(
       sum_v = nv_sum(v_empty, axes = 1L, drop = TRUE),
@@ -710,8 +700,6 @@ test_that("quickr pipeline matches PJRT: zero-length axes for numeric sum/prod r
 })
 
 test_that("quickr pipeline matches PJRT: reduction branch coverage", {
-  skip_if_no_quickr_or_pjrt()
-
   reduce_ops <- function(v_i32, v_pred, x_i32, x_pred, x3_i32, x3_pred, v_f64, x_f64, x3_f64) {
     sum_noop <- nv_sum(v_i32, axes = integer(), drop = FALSE)
     sum_rank1_keepaxis <- nv_sum(v_i32, axes = 1L, drop = FALSE)
@@ -782,8 +770,6 @@ test_that("quickr pipeline matches PJRT: reduction branch coverage", {
 })
 
 test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gather/scatter", {
-  skip_if_no_quickr_or_pjrt()
-
   idx_ops <- function(x, X, X3, s, r, c, a, b, d, upd_s, upd, upd2, padv, idx_vec, sc_idx_vec) {
     ss0 <- nv_static_slice(s, start_indices = integer(), end_indices = integer(), strides = integer())
     ss1 <- nv_static_slice(x, start_indices = 2L, end_indices = 5L, strides = 2L)
@@ -908,8 +894,6 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
 })
 
 test_that("quickr pipeline matches PJRT: gather can return a scalar", {
-  skip_if_no_quickr_or_pjrt()
-
   gather_scalar <- function(x, idx) {
     prim_gather(
       x,
@@ -936,8 +920,6 @@ test_that("quickr pipeline matches PJRT: gather can return a scalar", {
 })
 
 test_that("quickr pipeline matches PJRT: dot_general variants", {
-  skip_if_no_quickr_or_pjrt()
-
   dot_ops <- function(a, b, a1, b1, a_dot, b_dot, a_mv, b_mv, lhs, rhs, lhs_b, rhs_b) {
     s <- prim_dot_general(
       a,
@@ -996,8 +978,6 @@ test_that("quickr pipeline matches PJRT: dot_general variants", {
 })
 
 test_that("quickr pipeline matches PJRT: control flow (if/while)", {
-  skip_if_no_quickr_or_pjrt()
-
   cf_ops <- function(p) {
     if_s <- nv_if(p, \() 1L, \() 2L)
     if_a <- nv_if(

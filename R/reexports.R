@@ -45,6 +45,7 @@ xlamisc::shape
 #' Backend-dependent device object. One of:
 #'   - [`PJRTDevice`][pjrt::pjrt_device]
 #'   - [`quickr_device`]
+#'   - [`r_device`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' device(x)

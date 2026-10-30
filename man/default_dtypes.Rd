@@ -28,7 +28,7 @@ e.g. \code{nv_array(1)} or \code{prim_exp(1)}.
 \code{default_int()} report one each.
 
 Each backend registers its own -- \code{f32} / \code{i32} for \code{"pjrt"}, \code{f64} / \code{i32}
-for \code{"quickr"} -- and the \code{anvl.default_dtypes} option overrides them.
+for \code{"quickr"} and \code{"r"} -- and the \code{anvl.default_dtypes} option overrides them.
 \code{\link[=local_default_dtypes]{local_default_dtypes()}} and \code{\link[=with_default_dtypes]{with_default_dtypes()}} set the option for
 a scope.
 

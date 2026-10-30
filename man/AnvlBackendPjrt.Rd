@@ -53,5 +53,6 @@ See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} artic
 }
 
 \seealso{
-\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendQuickr]{AnvlBackendQuickr()}}, \code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
+\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendQuickr]{AnvlBackendQuickr()}}, \code{\link[=AnvlBackendR]{AnvlBackendR()}},
+\code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
 }

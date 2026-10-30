@@ -1,6 +1,4 @@
 test_that("integration: indexing-heavy graph matches PJRT", {
-  skip_if_no_quickr_or_pjrt()
-
   x <- array(sample.int(50, 24, replace = TRUE), dim = c(3L, 4L, 2L))
   idx <- matrix(c(0L, 4L), ncol = 1L) # gather clamps out-of-bounds
   padv <- 0L

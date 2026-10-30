@@ -13,7 +13,7 @@ with_default_device(device, code)
 \item{device}{(\code{NULL} | \code{character(1)} | device object)\cr
 The device to make the default, e.g. \code{"cuda:0"}. A string is looked up
 on whichever backend asks for the default, so an identifier only one
-backend knows (quickr has no \code{"cuda"}) makes the default an error on the
+backend knows (r and quickr have no \code{"cuda"}) makes the default an error on the
 others. \code{NULL} clears the option.}
 
 \item{envir}{(\code{environment})\cr

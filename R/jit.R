@@ -35,7 +35,7 @@
 #'     arguments whose buffers the compiled program may reuse for its outputs.
 #'     A donated array must not be used again after the call; this can save
 #'     memory and copies for large inputs. Must not overlap with `static`.
-#'   * `unwrap` (`logical(1)`, default `FALSE`), `"quickr"` only: if `TRUE`,
+#'   * `unwrap` (`logical(1)`, default `FALSE`), `"quickr"` and `"r"` only: if `TRUE`,
 #'     the compiled function returns plain R arrays instead of
 #'     [`AnvlArray`]s, which is useful when the output is consumed by non-anvl
 #'     R code.
@@ -117,10 +117,10 @@
 #' step(x)
 #' try(as_array(x))
 #'
-#' @examplesIf requireNamespace("quickr", quietly = TRUE)
+#' @examples
 #' # the same function runs on whichever backend is active when it is called
 #' f <- jit(function(x, y) x + y)
-#' with_backend("quickr", f(nv_array(1), nv_array(2)))
+#' with_backend("r", f(nv_array(1), nv_array(2)))
 jit <- function(
   f,
   static = character(),

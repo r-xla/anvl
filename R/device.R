@@ -30,7 +30,7 @@ default_device <- function(backend = NULL) {
 #' @param device (`NULL` | `character(1)` | device object)\cr
 #'   The device to make the default, e.g. `"cuda:0"`. A string is looked up
 #'   on whichever backend asks for the default, so an identifier only one
-#'   backend knows (quickr has no `"cuda"`) makes the default an error on the
+#'   backend knows (r and quickr have no `"cuda"`) makes the default an error on the
 #'   others. `NULL` clears the option.
 #' @param code (`any`)\cr
 #'   Expression to evaluate with the default device set.
@@ -86,7 +86,7 @@ check_default_device <- function(device) {
 #'   or an existing device object of the active backend (returned as-is).
 #' @return (device object)\cr
 #'   Backend-specific (e.g. `PJRTDevice` for `"pjrt"`,
-#'   [`quickr_device`] for `"quickr"`).
+#'   [`quickr_device`] for `"quickr"`, [`r_device`] for `"r"`).
 #' @seealso [`backend()`], [`AnvlBackend()`], [`active_backend()`].
 #' @examplesIf pjrt::plugins_downloaded()
 #' # create CPU device for the active backend
@@ -133,7 +133,7 @@ check_device_backend <- function(device, backend) {
 is_device <- function(x) {
   # TODO: device objects should share a common base class (like AnvlArray)
   # instead of checking each backend's class individually.
-  inherits(x, c("PJRTDevice", "QuickrDevice"))
+  inherits(x, c("PJRTDevice", "RArrayDevice"))
 }
 
 # The device a value pins an operation to, or `NULL` when it pins none. Only a

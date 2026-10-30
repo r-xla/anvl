@@ -18,6 +18,7 @@ Backend-dependent device object. One of:
 \itemize{
 \item \code{\link[pjrt:pjrt_device]{PJRTDevice}}
 \item \code{\link{quickr_device}}
+\item \code{\link{r_device}}
 }
 }
 \description{

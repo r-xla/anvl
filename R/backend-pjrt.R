@@ -282,7 +282,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #'
 #' @return ([`AnvlBackend`])\cr
 #'   With subclass `"AnvlBackendPjrt"`.
-#' @seealso [`AnvlBackend()`], [`AnvlBackendQuickr()`], [`local_backend()`], [`jit()`].
+#' @seealso [`AnvlBackend()`], [`AnvlBackendQuickr()`], [`AnvlBackendR()`],
+#'   [`local_backend()`], [`jit()`].
 #' @export
 AnvlBackendPjrt <- function() {
   backend <- AnvlBackend(

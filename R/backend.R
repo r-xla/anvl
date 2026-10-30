@@ -7,7 +7,7 @@ NULL
 #'   Constructs an AnvlArray from R data. Must return
 #'   `structure(list(data = , backend = <name>, ...), class = "AnvlArray")`, where
 #'   `data` holds the underlying data (a `PJRTBuffer` for the `"pjrt"` backend, an
-#'   R `array()` for the `"quickr"` backend) and `backend` is the name the
+#'   R `array()` for the `"quickr"` and `"r"` backends) and `backend` is the name the
 #'   backend is registered under. `row_major` gives the element order of raw
 #'   byte payloads; a backend that does not support raw `data` should abort on
 #'   it.
@@ -226,7 +226,7 @@ register_backend(
 #' backend.
 #'
 #' @return (`character(1)`)\cr
-#'   The backend name (e.g. `"pjrt"`, `"quickr"`).
+#'   The backend name (e.g. `"pjrt"`, `"quickr"`, `"r"`).
 #' @seealso [local_backend()], [with_backend()], [default_dtypes()]
 #' @examples
 #' active_backend()
@@ -248,7 +248,7 @@ assert_backend <- function(backend) {
 #' values materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use (`"pjrt"` or `"quickr"`).
+#'   Backend to use (`"pjrt"`, `"quickr"` or `"r"`).
 #' @param envir (`environment`)\cr
 #'   The environment to scope the change to.
 #' @param code (any)\cr
@@ -257,14 +257,14 @@ assert_backend <- function(backend) {
 #'   `list(anvl.backend = )`, invisibly. `with_backend()` returns the result
 #'   of evaluating `code`.
 #' @seealso [active_backend()]
-#' @examplesIf requireNamespace("quickr", quietly = TRUE)
+#' @examples
 #' f <- function() {
-#'   local_backend("quickr")
+#'   local_backend("r")
 #'   active_backend()
 #' }
 #' f()
 #' active_backend()
-#' with_backend("quickr", active_backend())
+#' with_backend("r", active_backend())
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
@@ -280,10 +280,11 @@ with_backend <- function(backend, code) {
 
 #' Install What a Backend Needs to Run
 #'
-#' A backend needs more than the packages anvl declares as dependencies: the
+#' A backend may need more than the packages anvl declares as dependencies: the
 #' `"pjrt"` backend runs on PJRT plugins that are downloaded rather than shipped
 #' with the package, and the `"quickr"` backend needs \CRANpkg{quickr}, which is only
 #' suggested. This installs whichever of the two the given backend is missing.
+#' The `"r"` backend needs nothing, so there is nothing to install for it.
 #'
 #' The PJRT plugins are downloaded on demand, but not silently: the first time a
 #' plugin is needed, an interactive session asks for confirmation, while a
@@ -302,16 +303,17 @@ with_backend <- function(backend, code) {
 #' @param backend (`character(1)`)\cr
 #'   Backend to install for. Defaults to [active_backend()].
 #' @param ... Passed to the underlying installer: [pjrt::install_pjrt()] for
-#'   `"pjrt"`, [utils::install.packages()] for `"quickr"`.
+#'   `"pjrt"`, [utils::install.packages()] for `"quickr"`. Unused for `"r"`.
 #' @return (`NULL`)\cr
 #'   Invisibly. Called for its side effect.
 #' @export
 install_anvl <- function(backend = active_backend(), ...) {
-  backend <- assert_choice(backend, c("pjrt", "quickr"))
+  backend <- assert_choice(backend, c("pjrt", "quickr", "r"))
   switch(
     backend,
     pjrt = pjrt::install_pjrt(...),
-    quickr = install.packages("quickr", ...)
+    quickr = install.packages("quickr", ...),
+    r = NULL
   )
   invisible(NULL)
 }

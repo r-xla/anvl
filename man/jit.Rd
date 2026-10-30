@@ -37,7 +37,7 @@ falling back to \code{\link[=default_device]{default_device()}}.}
 arguments whose buffers the compiled program may reuse for its outputs.
 A donated array must not be used again after the call; this can save
 memory and copies for large inputs. Must not overlap with \code{static}.
-\item \code{unwrap} (\code{logical(1)}, default \code{FALSE}), \code{"quickr"} only: if \code{TRUE},
+\item \code{unwrap} (\code{logical(1)}, default \code{FALSE}), \code{"quickr"} and \code{"r"} only: if \code{TRUE},
 the compiled function returns plain R arrays instead of
 \code{\link{AnvlArray}}s, which is useful when the output is consumed by non-anvl
 R code.
@@ -129,11 +129,9 @@ x <- nv_array(1:3)
 step(x)
 try(as_array(x))
 \dontshow{\}) # examplesIf}
-\dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 # the same function runs on whichever backend is active when it is called
 f <- jit(function(x, y) x + y)
-with_backend("quickr", f(nv_array(1), nv_array(2)))
-\dontshow{\}) # examplesIf}
+with_backend("r", f(nv_array(1), nv_array(2)))
 }
 \seealso{
 \code{\link[=jit_cache_size]{jit_cache_size()}} for how many programs a jitted function has cached.

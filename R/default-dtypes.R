@@ -59,7 +59,7 @@ effective_default_dtypes <- function(backend) {
 #' `default_int()` report one each.
 #'
 #' Each backend registers its own -- `f32` / `i32` for `"pjrt"`, `f64` / `i32`
-#' for `"quickr"` -- and the `anvl.default_dtypes` option overrides them.
+#' for `"quickr"` and `"r"` -- and the `anvl.default_dtypes` option overrides them.
 #' [`local_default_dtypes()`] and [`with_default_dtypes()`] set the option for
 #' a scope.
 #'

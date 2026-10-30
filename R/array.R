@@ -40,7 +40,8 @@
 #'
 #' @section Backend:
 #' An `AnvlArray` is backend-dependent: it belongs to exactly one backend
-#' (`"pjrt"` or the experimental `"quickr"`) and lives on a device of that backend.
+#' (`"pjrt"` or the experimental `"quickr"` and `"r"`) and lives on a device of
+#' that backend.
 #' The supported data types and devices differ between backends.
 #'
 #' @seealso [nv_fill], [nv_iota], [nv_seq], [as_array], [nv_serialize]
@@ -863,6 +864,11 @@ backend.PJRTDevice <- function(x, ...) {
 #' @export
 backend.QuickrDevice <- function(x, ...) {
   "quickr"
+}
+
+#' @export
+backend.RDevice <- function(x, ...) {
+  "r"
 }
 
 #' @title Abstract Array Class

@@ -11,7 +11,7 @@ with_backend(backend, code)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to use (\code{"pjrt"} or \code{"quickr"}).}
+Backend to use (\code{"pjrt"}, \code{"quickr"} or \code{"r"}).}
 
 \item{envir}{(\code{environment})\cr
 The environment to scope the change to.}
@@ -31,15 +31,13 @@ array built and every operation run in that scope uses the backend, and R
 values materialize at its default data types (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 \examples{
-\dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 f <- function() {
-  local_backend("quickr")
+  local_backend("r")
   active_backend()
 }
 f()
 active_backend()
-with_backend("quickr", active_backend())
-\dontshow{\}) # examplesIf}
+with_backend("r", active_backend())
 }
 \seealso{
 \code{\link[=active_backend]{active_backend()}}

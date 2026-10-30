@@ -146,7 +146,8 @@ is loaded, so load anvl before reading arrays.
 \section{Backend}{
 
 An \code{AnvlArray} is backend-dependent: it belongs to exactly one backend
-(\code{"pjrt"} or the experimental \code{"quickr"}) and lives on a device of that backend.
+(\code{"pjrt"} or the experimental \code{"quickr"} and \code{"r"}) and lives on a device of
+that backend.
 The supported data types and devices differ between backends.
 }
 

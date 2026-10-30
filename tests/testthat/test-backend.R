@@ -82,7 +82,11 @@ test_that("install_anvl routes to the backend's installer and forwards ...", {
   expect_equal(pkg, "quickr")
 })
 
-test_that("install_anvl rejects backends that have nothing to install", {
+test_that("install_anvl installs nothing for the r backend", {
+  expect_null(install_anvl("r"))
+})
+
+test_that("install_anvl rejects what is not a backend a user can select", {
   expect_error(install_anvl("plain"))
   expect_error(install_anvl("not-a-backend"))
 })

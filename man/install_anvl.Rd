@@ -11,17 +11,18 @@ install_anvl(backend = active_backend(), ...)
 Backend to install for. Defaults to \code{\link[=active_backend]{active_backend()}}.}
 
 \item{...}{Passed to the underlying installer: \code{\link[pjrt:install_pjrt]{pjrt::install_pjrt()}} for
-\code{"pjrt"}, \code{\link[utils:install.packages]{utils::install.packages()}} for \code{"quickr"}.}
+\code{"pjrt"}, \code{\link[utils:install.packages]{utils::install.packages()}} for \code{"quickr"}. Unused for \code{"r"}.}
 }
 \value{
 (\code{NULL})\cr
 Invisibly. Called for its side effect.
 }
 \description{
-A backend needs more than the packages anvl declares as dependencies: the
+A backend may need more than the packages anvl declares as dependencies: the
 \code{"pjrt"} backend runs on PJRT plugins that are downloaded rather than shipped
 with the package, and the \code{"quickr"} backend needs \CRANpkg{quickr}, which is only
 suggested. This installs whichever of the two the given backend is missing.
+The \code{"r"} backend needs nothing, so there is nothing to install for it.
 }
 \details{
 The PJRT plugins are downloaded on demand, but not silently: the first time a
