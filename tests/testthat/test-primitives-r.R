@@ -1011,3 +1011,234 @@ test_that("r backend matches PJRT: a comparison with NaN is false, except !=", {
   )
   expect_r_matches_pjrt(graph, array(c(NaN, 1, NaN, -2), 4L), array(c(1, NaN, NaN, -2), 4L))
 })
+
+test_that("r backend matches PJRT: inverse and hyperbolic trigonometry, cbrt and rsqrt", {
+  trig_ops <- function(x, u, w, big) {
+    list(
+      acos = nv_acos(u),
+      asin = nv_asin(u),
+      atan = nv_atan(x),
+      sinh = nv_sinh(x),
+      sinh_near_zero = nv_sinh(u * 1e-3),
+      sinh_big = nv_sinh(big),
+      cosh = nv_cosh(x),
+      cosh_big = nv_cosh(big),
+      asinh = nv_asinh(x),
+      asinh_big = nv_asinh(big),
+      acosh = nv_acosh(w),
+      acosh_big = nv_acosh(nv_abs(big)),
+      atanh = nv_atanh(u * 0.9),
+      cbrt = nv_cbrt(x),
+      rsqrt = prim_rsqrt(w)
+    )
+  }
+
+  templates <- list(
+    x = nv_matrix(0, nrow = 2L, ncol = 3L, dtype = "f64"),
+    u = nv_array(rep(0, 4L), dtype = "f64"),
+    w = nv_array(rep(0, 3L), dtype = "f64"),
+    big = nv_array(rep(0, 3L), dtype = "f64")
+  )
+
+  run <- list(
+    args = list(
+      x = matrix(c(-2.5, -0.5, 0.3, 0.5, 1.5, 2.5), nrow = 2L),
+      u = c(-0.9, -0.2, 0.4, 1),
+      w = c(1, 1.5, 30),
+      # past where exp(x) overflows (sinh, cosh) and where x^2 does (asinh, acosh)
+      big = c(709.9, 1e200, -1e200)
+    ),
+    info = "run"
+  )
+
+  expect_r_matches_pjrt_fn(trig_ops, templates, list(run))
+})
+
+test_that("r backend matches PJRT: sign, round and is_finite", {
+  ops <- function(x, i, s) {
+    list(
+      sign = nv_sign(x),
+      sign_i32 = nv_sign(i),
+      sign_scalar = nv_sign(s),
+      round_even = nv_round(x),
+      round_afz = nv_round(x, method = "afz"),
+      is_finite = nv_is_finite(x)
+    )
+  }
+
+  templates <- list(
+    x = nv_array(rep(0, 12L), dtype = "f64"),
+    i = nv_array(rep(0L, 3L), dtype = "i32"),
+    s = nv_scalar(0, dtype = "f64")
+  )
+
+  run <- list(
+    args = list(
+      # ties both ways, the largest doubles below a tie, and values that are
+      # whole numbers already
+      x = c(-2.5, -1.5, -0.5, 0, 0.5, 1.5, 2.5, 0.49999999999999994, -0.49999999999999994, 2^53 + 2, Inf, -Inf),
+      i = c(-4L, 0L, 7L),
+      s = -2
+    ),
+    info = "run"
+  )
+
+  expect_r_matches_pjrt_fn(ops, templates, list(run))
+})
+
+test_that("r backend matches PJRT: atan2, remainder and clamp", {
+  ops <- function(y, x, a, b, i, j, lo, hi) {
+    list(
+      atan2 = nv_atan2(y, x),
+      remainder = nv_remainder(a, b),
+      remainder_i32 = nv_remainder(i, j),
+      clamp_scalar_bounds = prim_clamp(a, -1, 1),
+      clamp_array_bounds = prim_clamp(a, lo, hi),
+      clamp_min_above_max = prim_clamp(a, 1, -1),
+      clamp_i32 = prim_clamp(i, -1L, 2L)
+    )
+  }
+
+  templates <- list(
+    y = nv_array(rep(0, 12L), dtype = "f64"),
+    x = nv_array(rep(0, 12L), dtype = "f64"),
+    a = nv_array(rep(0, 4L), dtype = "f64"),
+    b = nv_array(rep(0, 4L), dtype = "f64"),
+    i = nv_array(rep(0L, 4L), dtype = "i32"),
+    j = nv_array(rep(0L, 4L), dtype = "i32"),
+    lo = nv_array(rep(0, 4L), dtype = "f64"),
+    hi = nv_array(rep(0, 4L), dtype = "f64")
+  )
+
+  run <- list(
+    args = list(
+      # all four quadrants, both axes, and infinities
+      y = c(1, 1, -1, -1, 0, 1, -1, Inf, Inf, -Inf, 0, 3),
+      x = c(2, -2, 2, -2, -1, 0, 0, Inf, -Inf, -Inf, 0, -Inf),
+      a = c(7.5, -7.5, 7.5, -7.5),
+      b = c(2.25, 2.25, -2.25, -2.25),
+      i = c(7L, -7L, 7L, -7L),
+      j = c(3L, 3L, -3L, -3L),
+      lo = c(0, -8, 0, -7),
+      hi = c(1, -7.6, 3, -6)
+    ),
+    info = "run"
+  )
+
+  expect_r_matches_pjrt_fn(ops, templates, list(run))
+})
+
+test_that("r backend matches PJRT: cumulative ops along each axis", {
+  cum_ops <- function(x, v, i, p, row) {
+    list(
+      cumsum_1 = prim_cumsum(x, axis = 1L),
+      cumsum_2 = prim_cumsum(x, axis = 2L),
+      cumsum_3 = prim_cumsum(x, axis = 3L),
+      cumprod = prim_cumprod(x * 0.5, axis = 2L),
+      cumsum_vector = prim_cumsum(v, axis = 1L),
+      cumsum_i32 = prim_cumsum(i, axis = 2L),
+      cumsum_bool = prim_cumsum(p, axis = 2L),
+      cumprod_bool = prim_cumprod(p, axis = 2L),
+      cumsum_row = prim_cumsum(row, axis = 2L),
+      cumsum_size_one_axis = prim_cumsum(row, axis = 1L),
+      cummax = prim_cummax(x, axis = 2L),
+      cummin = prim_cummin(x, axis = 3L),
+      cummax_vector = prim_cummax(v, axis = 1L),
+      cummax_i32 = prim_cummax(i, axis = 2L),
+      cummax_bool = prim_cummax(p, axis = 2L),
+      cummin_bool = prim_cummin(p, axis = 2L),
+      cummax_row = prim_cummax(row, axis = 2L)
+    )
+  }
+
+  templates <- list(
+    x = nv_array(rep(0, 24L), shape = c(2L, 4L, 3L), dtype = "f64"),
+    v = nv_array(rep(0, 5L), dtype = "f64"),
+    i = nv_matrix(0L, nrow = 2L, ncol = 3L, dtype = "i32"),
+    p = nv_matrix(FALSE, nrow = 2L, ncol = 3L, dtype = "bool"),
+    row = nv_matrix(0, nrow = 1L, ncol = 4L, dtype = "f64")
+  )
+
+  run <- list(
+    args = list(
+      x = array(c(3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4, 6, 2, 6, 4), c(2L, 4L, 3L)),
+      # ties, to check that the index moves on to the later position
+      v = c(1, 3, 3, 2, 5),
+      i = matrix(c(4L, 1L, 4L, 2L, 3L, 2L), nrow = 2L),
+      p = matrix(c(FALSE, TRUE, TRUE, FALSE, FALSE, TRUE), nrow = 2L),
+      row = matrix(c(2, 2, 1, 3), nrow = 1L)
+    ),
+    info = "run"
+  )
+
+  expect_r_matches_pjrt_fn(cum_ops, templates, list(run))
+})
+
+test_that("r backend matches PJRT: which_max and which_min", {
+  which_ops <- function(x, v, i, p, row) {
+    list(
+      max_1 = prim_which_max(x, axis = 1L),
+      max_2 = prim_which_max(x, axis = 2L),
+      min_3 = prim_which_min(x, axis = 3L),
+      max_2_keep = prim_which_max(x, axis = 2L, drop = FALSE),
+      max_vector = prim_which_max(v, axis = 1L),
+      min_vector_keep = prim_which_min(v, axis = 1L, drop = FALSE),
+      min_i32 = prim_which_min(i, axis = 2L),
+      max_bool = prim_which_max(p, axis = 2L),
+      min_bool = prim_which_min(p, axis = 1L),
+      max_row = prim_which_max(row, axis = 2L),
+      max_size_one_axis = prim_which_max(row, axis = 1L),
+      nv_which_min = nv_which_min(i, axes = c(1L, 2L))
+    )
+  }
+
+  templates <- list(
+    x = nv_array(rep(0, 24L), shape = c(2L, 4L, 3L), dtype = "f64"),
+    v = nv_array(rep(0, 5L), dtype = "f64"),
+    i = nv_matrix(0L, nrow = 2L, ncol = 3L, dtype = "i32"),
+    p = nv_matrix(FALSE, nrow = 2L, ncol = 3L, dtype = "bool"),
+    row = nv_matrix(0, nrow = 1L, ncol = 4L, dtype = "f64")
+  )
+
+  run <- list(
+    args = list(
+      x = array(c(3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4, 6, 2, 6, 4), c(2L, 4L, 3L)),
+      # ties, to check that the first position wins
+      v = c(1, 5, 3, 5, 1),
+      i = matrix(c(4L, 1L, 4L, 2L, 3L, 1L), nrow = 2L),
+      p = matrix(c(FALSE, TRUE, TRUE, FALSE, FALSE, TRUE), nrow = 2L),
+      row = matrix(c(2, 3, 1, 3), nrow = 1L)
+    ),
+    info = "run"
+  )
+
+  expect_r_matches_pjrt_fn(which_ops, templates, list(run))
+})
+
+test_that("r backend matches PJRT: NaN in sign, round, clamp, cumulative and which ops", {
+  nan_ops <- function(x, m) {
+    list(
+      is_finite = nv_is_finite(x),
+      sign = nv_sign(x),
+      round = nv_round(x),
+      clamp = prim_clamp(x, -1, 1),
+      atan2 = nv_atan2(x, x),
+      acosh_below_one = nv_acosh(x),
+      cummax = prim_cummax(m, axis = 2L),
+      cummin = prim_cummin(m, axis = 2L),
+      which_max = prim_which_max(m, axis = 2L),
+      which_min = prim_which_min(m, axis = 2L)
+    )
+  }
+
+  templates <- list(
+    x = nv_array(rep(0, 5L), dtype = "f64"),
+    m = nv_matrix(0, nrow = 3L, ncol = 4L, dtype = "f64")
+  )
+  args <- list(
+    x = c(NaN, 1.5, -Inf, Inf, -0.5),
+    m = matrix(c(NaN, 1, 2, 1, NaN, 5, 3, 2, NaN, 0, 7, 1), nrow = 3L)
+  )
+
+  expect_r_matches_pjrt_fn(nan_ops, templates, list(list(args = args, info = "run")))
+})

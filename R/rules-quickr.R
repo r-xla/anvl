@@ -1445,6 +1445,120 @@ quickr_emit_reshape <- function(out_sym, operand_expr, shape_in, shape_out, out_
   quickr_emit_assign(out_sym, rlang::call2("array", operand_expr, dim = shape_out))
 }
 
+# The subscripts selecting the slab at position `at` of `axis` in an array of
+# shape `shape`. A size-1 axis is selected with `1:1`, as in
+# `quickr_emit_concatenate()`, so that quickr keeps it.
+quickr_axis_slab_idxs <- function(shape, axis, at) {
+  lapply(seq_along(shape), function(d) {
+    if (d == axis) {
+      at
+    } else if (shape[[d]] == 1L) {
+      as.call(list(as.name(":"), 1L, 1L))
+    } else {
+      rlang::call2("seq_len", shape[[d]])
+    }
+  })
+}
+
+# Loops `j` over the positions 2, ..., n of `axis`, running `body` (a list of
+# statements) for each. With fewer than two positions there is nothing to loop
+# over and no statement is emitted.
+quickr_emit_axis_loop <- function(j, n, body) {
+  if (n < 2L) {
+    return(list())
+  }
+  list(as.call(list(as.name("for"), j, rlang::call2(":", 2L, n), as.call(c(list(as.name("{")), body)))))
+}
+
+# A cumulative op along `axis`: each slab of the result combines the slab of the
+# result before it with the input's slab at its own position, through
+# `combine(prev, cur)`.
+quickr_emit_cumulative <- function(out_sym, operand_expr, shape_in, axis, combine) {
+  shape_in <- as.integer(shape_in)
+  j <- as.name(paste0("j_", as.character(out_sym)))
+  slab <- function(expr, at) quickr_subscript(expr, quickr_axis_slab_idxs(shape_in, axis, at))
+
+  update <- rlang::call2(
+    "<-",
+    slab(out_sym, j),
+    combine(slab(out_sym, rlang::call2("-", j, 1L)), slab(operand_expr, j))
+  )
+  c(
+    quickr_emit_assign(out_sym, operand_expr),
+    quickr_emit_axis_loop(j, shape_in[[axis]], list(update))
+  )
+}
+
+# Whether `a` lies strictly beyond `b` towards the extreme: greater for a
+# maximum, smaller for a minimum. A boolean has no ordering operators in quickr,
+# so it is compared through its logic.
+quickr_strictly_beyond <- function(a, b, is_max, dt) {
+  if (dt == "bool") {
+    if (is_max) bquote(.(a) & !.(b)) else bquote(!.(a) & .(b))
+  } else {
+    rlang::call2(if (is_max) ">" else "<", a, b)
+  }
+}
+
+# `prim_cummax()` / `prim_cummin()`: the running extreme along `axis` and the
+# position it was last found at. A float extreme is NaN from the first NaN on,
+# as in the stablehlo rule.
+quickr_emit_cum_extreme <- function(out_syms, operand_expr, shape_in, axis, is_max, dt_in, dt_idx) {
+  shape_in <- as.integer(shape_in)
+  values <- out_syms[[1L]]
+  indices <- out_syms[[2L]]
+  j <- as.name(paste0("j_", as.character(values)))
+  slab <- function(expr, at) quickr_subscript(expr, quickr_axis_slab_idxs(shape_in, axis, at))
+  prev_at <- rlang::call2("-", j, 1L)
+
+  prev <- slab(values, prev_at)
+  cur <- slab(operand_expr, j)
+  # On a tie the position moves on to the later one.
+  prev_wins <- quickr_strictly_beyond(prev, cur, is_max, dt_in)
+  keep <- if (dt_in == "f64") bquote(.(prev_wins) | .(prev) != .(prev)) else prev_wins
+
+  body <- list(
+    rlang::call2("<-", slab(indices, j), rlang::call2("ifelse", prev_wins, slab(indices, prev_at), j)),
+    rlang::call2("<-", slab(values, j), rlang::call2("ifelse", keep, prev, cur))
+  )
+  c(
+    quickr_emit_assign(values, operand_expr),
+    quickr_emit_assign(indices, quickr_alloc_full(shape_in, quickr_scalar_cast(1L, dt_idx))),
+    quickr_emit_axis_loop(j, shape_in[[axis]], body)
+  )
+}
+
+# `prim_which_max()` / `prim_which_min()`: the first position of the extreme
+# along `axis`. NaN never wins over a number, as in the stablehlo rule.
+quickr_emit_arg_extreme <- function(out_sym, operand_expr, shape_in, axis, is_max, dt_in, out_aval, ctx) {
+  shape_in <- as.integer(shape_in)
+  best <- ctx$new_tmp_sym()
+  index <- ctx$new_tmp_sym()
+  j <- as.name(paste0("j_", as.character(out_sym)))
+  slab <- function(at) quickr_subscript(operand_expr, quickr_axis_slab_idxs(shape_in, axis, at))
+  slab_shape <- shape_in[-axis]
+  one <- quickr_scalar_cast(1L, dtype(out_aval))
+
+  cur <- slab(j)
+  # On a tie the earlier position stays.
+  wins <- quickr_strictly_beyond(cur, best, is_max, dt_in)
+  if (dt_in == "f64") {
+    wins <- bquote(.(wins) | (.(best) != .(best) & .(cur) == .(cur)))
+  }
+  body <- list(
+    rlang::call2("<-", index, rlang::call2("ifelse", wins, j, index)),
+    rlang::call2("<-", best, rlang::call2("ifelse", wins, cur, best))
+  )
+
+  shape_out <- as.integer(shape(out_aval))
+  c(
+    quickr_emit_assign(best, slab(1L)),
+    quickr_emit_assign(index, if (length(slab_shape)) quickr_alloc_full(slab_shape, one) else one),
+    quickr_emit_axis_loop(j, shape_in[[axis]], body),
+    quickr_emit_assign(out_sym, if (length(shape_out)) rlang::call2("array", index, dim = shape_out) else index)
+  )
+}
+
 
 # Primitive lowering registry ---------------------------------------------------
 
@@ -2069,7 +2183,20 @@ local({
   )
 
   quickr_register_elementwise_lowerer(
-    list(prim_abs, prim_sqrt, prim_log, prim_floor, prim_ceiling, prim_exp, prim_sin, prim_cos, prim_tan),
+    list(
+      prim_abs,
+      prim_sqrt,
+      prim_log,
+      prim_floor,
+      prim_ceiling,
+      prim_exp,
+      prim_sin,
+      prim_cos,
+      prim_tan,
+      prim_acos,
+      prim_asin,
+      prim_atan
+    ),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       quickr_emit_assign(out_syms[[1L]], rlang::call2(prim_name, inputs[[1L]]))
     }
@@ -2105,6 +2232,160 @@ local({
     }
   )
 
+  # sinh, cosh, asinh, acosh and atanh follow the decompositions XLA expands
+  # them to: `exp(x + log(1/2))` halves before it can overflow, and where `x^2`
+  # would overflow, `log(2 * x)` is taken as `log(x) + log(2)`.
+  quickr_register_elementwise_lowerer(
+    prim_sinh,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      em1 <- ctx$new_tmp_sym()
+      c(
+        quickr_emit_assign(em1, quickr_stable_expm1_expr(x)),
+        quickr_emit_assign(
+          out_syms[[1L]],
+          bquote(ifelse(
+            abs(.(x)) < 1,
+            (.(em1) + .(em1) / (.(em1) + 1)) / 2,
+            exp(.(x) + .(log(0.5))) - exp(.(log(0.5)) - .(x))
+          ))
+        )
+      )
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_cosh,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      quickr_emit_assign(out_syms[[1L]], bquote(exp(.(x) + .(log(0.5))) + exp(.(log(0.5)) - .(x))))
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_asinh,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      a <- ctx$new_tmp_sym()
+      y <- ctx$new_tmp_sym()
+      r <- ctx$new_tmp_sym()
+      c(
+        quickr_emit_assign(a, rlang::call2("abs", x)),
+        quickr_emit_assign(y, bquote(.(a) + .(a) * .(a) / (1 + sqrt(1 + .(a) * .(a))))),
+        quickr_emit_assign(
+          r,
+          bquote(ifelse(.(a) > .(sqrt(.Machine$double.xmax)), log(.(a)) + .(log(2)), .(quickr_stable_log1p_expr(y))))
+        ),
+        quickr_emit_assign(out_syms[[1L]], bquote(ifelse(.(x) < 0, -.(r), .(r))))
+      )
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_acosh,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      # Two square roots rather than `sqrt((x + 1) * (x - 1))`: every `x < 1`
+      # is then NaN, where for a large negative `x` the sum would cancel to 0.
+      quickr_emit_assign(
+        out_syms[[1L]],
+        bquote(ifelse(
+          .(x) > .(sqrt(.Machine$double.xmax)),
+          log(.(x)) + .(log(2)),
+          log(.(x) + sqrt(.(x) + 1) * sqrt(.(x) - 1))
+        ))
+      )
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_atanh,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      neg_x <- rlang::call2("-", x)
+      quickr_emit_assign(
+        out_syms[[1L]],
+        bquote(0.5 * (.(quickr_stable_log1p_expr(x)) - .(quickr_stable_log1p_expr(neg_x))))
+      )
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_cbrt,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      quickr_emit_assign(out_syms[[1L]], bquote(ifelse(.(x) < 0, -((-.(x))^.(1 / 3)), .(x)^.(1 / 3))))
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_rsqrt,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      quickr_emit_assign(out_syms[[1L]], bquote(1 / sqrt(.(inputs[[1L]]))))
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_sign,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      dt <- dtype(out_avals[[1L]])
+      zero <- quickr_scalar_cast(0L, dt)
+      one <- quickr_scalar_cast(1L, dt)
+      # A zero (of either sign) and NaN are their own sign.
+      quickr_emit_assign(
+        out_syms[[1L]],
+        bquote(ifelse(.(x) > .(zero), .(one), ifelse(.(x) < .(zero), .(-one), .(x))))
+      )
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_round,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      # From 2^52 on, every double is a whole number already (and +-Inf is its
+      # own rounding), so only smaller ones go through the formula, whose
+      # `x - floor(x)` / `x - trunc(x)` is then exact.
+      big <- 2^52
+      if (params$method == "afz") {
+        t <- ctx$new_tmp_sym()
+        return(c(
+          quickr_emit_assign(t, rlang::call2("trunc", x)),
+          quickr_emit_assign(
+            out_syms[[1L]],
+            bquote(ifelse(abs(.(x)) >= .(big), .(x), .(t) + trunc(2 * (.(x) - .(t)))))
+          )
+        ))
+      }
+      f <- ctx$new_tmp_sym()
+      d <- ctx$new_tmp_sym()
+      c(
+        quickr_emit_assign(f, rlang::call2("floor", x)),
+        quickr_emit_assign(d, bquote(.(x) - .(f))),
+        quickr_emit_assign(
+          out_syms[[1L]],
+          bquote(ifelse(
+            abs(.(x)) >= .(big),
+            .(x),
+            .(f) + ifelse(.(d) > 0.5, 1, ifelse(.(d) < 0.5, 0, .(f) - 2 * floor(.(f) / 2)))
+          ))
+        )
+      )
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_is_finite,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      inf <- ctx$new_tmp_sym()
+      c(
+        .quickr_emit_special_float(inf, Inf, "f64", ctx),
+        quickr_emit_assign(out_syms[[1L]], bquote(abs(.(inputs[[1L]])) < .(inf)))
+      )
+    }
+  )
+
   quickr_register_elementwise_lowerer(
     list(prim_pmax, prim_pmin),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
@@ -2127,6 +2408,75 @@ local({
       }
 
       quickr_emit_assign(out_syms[[1L]], expr)
+    }
+  )
+
+  # atan2 from atan: the angle of `y / x`, moved to the half-plane of `x`. Two
+  # infinities of the same size have the ratio +-1, not NaN. A zero's sign is
+  # not read, so `atan2(0, -0)` is 0 rather than pi.
+  quickr_register_elementwise_lowerer(
+    prim_atan2,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      y <- inputs[[1L]]
+      x <- inputs[[2L]]
+      angle <- ctx$new_tmp_sym()
+      c(
+        quickr_emit_assign(
+          angle,
+          bquote(atan(ifelse(
+            abs(.(y)) == abs(.(x)),
+            ifelse(.(y) < 0, -1, 1) * ifelse(.(x) < 0, -1, 1),
+            .(y) / .(x)
+          )))
+        ),
+        quickr_emit_assign(
+          out_syms[[1L]],
+          bquote(ifelse(
+            .(x) > 0,
+            .(angle),
+            ifelse(
+              .(x) < 0,
+              ifelse(.(y) < 0, .(angle) - .(pi), .(angle) + .(pi)),
+              ifelse(.(x) == 0, ifelse(.(y) > 0, .(pi / 2), ifelse(.(y) < 0, .(-pi / 2), .(y))), .(x) + .(y))
+            )
+          ))
+        )
+      )
+    }
+  )
+
+  # The remainder takes the sign of `x` (as C's `fmod()`), where R's `%%` takes
+  # the sign of `y`; on magnitudes the two agree.
+  quickr_register_elementwise_lowerer(
+    prim_remainder,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      x <- inputs[[1L]]
+      r <- ctx$new_tmp_sym()
+      zero <- quickr_zero_literal_for(out_avals[[1L]])
+      c(
+        quickr_emit_assign(r, bquote(abs(.(x)) %% abs(.(inputs[[2L]])))),
+        quickr_emit_assign(out_syms[[1L]], bquote(ifelse(.(x) < .(zero), -.(r), .(r))))
+      )
+    }
+  )
+
+  quickr_register_elementwise_lowerer(
+    prim_clamp,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      if (as.character(dtype(out_avals[[1L]])) == "bool") {
+        cli_abort("clamp: the {.val bool} data type is not supported by quickr lowering")
+      }
+      x <- inputs[[1L]]
+      at_least_min <- ctx$new_tmp_sym()
+      # max(x, min) first, then min(., max), as stablehlo's clamp: with
+      # `min > max`, the result is `max`.
+      c(
+        quickr_emit_assign(at_least_min, bquote(ifelse(.(x) < .(inputs[[2L]]), .(inputs[[2L]]), .(x)))),
+        quickr_emit_assign(
+          out_syms[[1L]],
+          bquote(ifelse(.(at_least_min) > .(inputs[[3L]]), .(inputs[[3L]]), .(at_least_min)))
+        )
+      )
     }
   )
 
@@ -2267,6 +2617,59 @@ local({
         params$axes,
         params$drop,
         out_aval
+      )
+    }
+  )
+
+  # A boolean accumulates with OR (cumsum) and AND (cumprod), as in the
+  # stablehlo rules.
+  quickr_register_prim_lowerer(
+    list(prim_cumsum, prim_cumprod),
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      is_bool <- as.character(dtype(out_avals[[1L]])) == "bool"
+      op <- switch(
+        prim_name,
+        cumsum = if (is_bool) "|" else "+",
+        cumprod = if (is_bool) "&" else "*",
+        cli_abort("Internal error: unknown cumulative primitive: {.val {prim_name}}")
+      )
+      quickr_emit_cumulative(
+        out_syms[[1L]],
+        inputs[[1L]],
+        shape(input_nodes[[1L]]$aval),
+        params$axis,
+        function(prev, cur) rlang::call2(op, prev, cur)
+      )
+    }
+  )
+
+  quickr_register_prim_lowerer(
+    list(prim_cummax, prim_cummin),
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      quickr_emit_cum_extreme(
+        out_syms,
+        inputs[[1L]],
+        shape(input_nodes[[1L]]$aval),
+        params$axis,
+        is_max = prim_name == "cummax",
+        dt_in = as.character(dtype(input_nodes[[1L]]$aval)),
+        dt_idx = dtype(out_avals[[2L]])
+      )
+    }
+  )
+
+  quickr_register_prim_lowerer(
+    list(prim_which_max, prim_which_min),
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      quickr_emit_arg_extreme(
+        out_syms[[1L]],
+        inputs[[1L]],
+        shape(input_nodes[[1L]]$aval),
+        params$axis,
+        is_max = prim_name == "which_max",
+        dt_in = as.character(dtype(input_nodes[[1L]]$aval)),
+        out_aval = out_avals[[1L]],
+        ctx = ctx
       )
     }
   )
