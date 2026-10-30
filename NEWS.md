@@ -6,7 +6,8 @@
 * New experimental `"r"` backend (`AnvlBackendR()`, `r_device()`): runs a
   jitted function as the R code the quickr backend compiles, so it needs
   neither quickr nor a PJRT plugin, e.g. for a package's tests on CRAN.
-* The quickr backend now supports `acos`, `asin`, `atan`, `sinh`, `cosh`,
+
+* The quickr and r backends now support `acos`, `asin`, `atan`, `sinh`, `cosh`,
   `asinh`, `acosh`, `atanh`, `atan2`, `cbrt`, `rsqrt`, `sign`, `round`,
   `is_finite`, `remainder`, `clamp`, `cumsum`, `cumprod`, `cummax`, `cummin`,
   `which_max` and `which_min`.
@@ -16,6 +17,9 @@
 
 * Bugfix: `as_raw()` returns the bytes of an array of the quickr backend
   instead of truncating its values to bytes.
+
+* Bugfix: `nv_pmax()` / `nv_pmin()` treat a `NaN` on the quickr backend as
+  pjrt does on the CPU.
 
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
   now differentiable.

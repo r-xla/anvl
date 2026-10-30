@@ -994,7 +994,7 @@ test_that("r backend matches PJRT: reshape is column-major from rank 1 through 4
   expect_equal(got$a4_flat, array(as.numeric(1:24)))
 })
 
-test_that("r backend matches PJRT: a comparison with NaN is false, except !=", {
+test_that("r backend matches PJRT: a comparison with NaN is false, except !=, and pmax/pmin treat NaN as XLA on the CPU", {
   graph <- trace_fn(
     function(x, y) {
       list(
@@ -1004,7 +1004,9 @@ test_that("r backend matches PJRT: a comparison with NaN is false, except !=", {
         ge = x >= y,
         lt = x < y,
         le = x <= y,
-        relu = nv_ifelse(x > 0, x, 0)
+        relu = nv_ifelse(x > 0, x, 0),
+        pmax = nv_pmax(x, y),
+        pmin = nv_pmin(x, y)
       )
     },
     list(x = nv_array(numeric(4L), dtype = "f64"), y = nv_array(numeric(4L), dtype = "f64"))
