@@ -35,6 +35,8 @@
   summed at the default float.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
+* New functions for the Poisson distribution: `nv_dpois()`, `nv_ppois()`,
+  and `nv_qpois()`.
 * New functions for the binomial distribution: `nv_dbinom()`, `nv_pbinom()` and
   `nv_qbinom()`.
 * New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,

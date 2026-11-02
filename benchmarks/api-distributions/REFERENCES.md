@@ -71,10 +71,16 @@ Agreement between them in f64 becomes independent evidence only through the
 MPFR check. `nv_pbinom`'s is base R's own value except in the far lower tail,
 where base R fails and it sums the series below the mode; its MPFR truth is
 independent of both, a continued fraction for the incomplete beta function.
+`nv_dpois`'s uses the same saddle point expansion as anvl, with x − λ formed
+exactly, as `nv_dbinom`'s does. `nv_ppois`'s is base R's own value except
+where base R's upper-tail log is −∞ for a finite answer, and its MPFR truth is
+the series or continued fraction for the incomplete gamma function, each taken
+on its convergent side.
 
 Currently, `nv_punif`'s log-scale value cells, the lower-tail log-scale value
-cells of `nv_pexp`, `nv_qexp` and `nv_pbinom`, and every value cell of
-`nv_dbinom` declare a stable reference. Evaluating it adds work to those
+cells of `nv_pexp`, `nv_qexp` and `nv_pbinom`, the upper-tail log-scale value
+cells of `nv_ppois`, and every value cell of `nv_dbinom` and `nv_dpois`
+declare a stable reference. Evaluating it adds work to those
 cells; measure that cost on the target system.
 
 ## `validate-refs` — checking the references against high precision
@@ -253,9 +259,36 @@ against MPFR found in a first draft:
   needs base R off by more than that: ~1e−9 in the density at size 1e13, and
   −Inf or hundreds in the log in the far lower tail.
 
+The Poisson family's, each found by a smoke sweep or a check against MPFR in a
+first draft:
+
+- base R's `dpois()` is not uniformly accurate: at a λ with a full mantissa,
+  as the f64 sweep draws them, it loses up to ~1.6e4 ulps of the log density
+  and ~2.5e5 of the density at x = 1e6 (~60 and ~260 at x = 1000), where at a
+  round λ it is within one. A reference built on it inherits that, so the
+  density's stable and gradient references both take the saddle point
+  expansion with x − λ formed exactly, and declare **4096** f64 ulps for the
+  reason given for the binomial density;
+- the density-scale d/dλ is `f(x) (x − λ)/λ` above x and `f(x − 1) (x − λ)/x`
+  below it, so that the factor is at most 1 in size: f(3) has underflowed at
+  λ = 1e−110, where the derivative is still 5e−221;
+- base R's probability-scale tails carry ~|log P| ulps, up to ~1300, so the
+  log-scale d/dλ of `nv_ppois`, a density over a tail, is not their quotient
+  but the tail series wherever its term ratio is below 0.99, and the quotient
+  only near the mean. The series' error is bounded by 2r/(1 − r) ulps at term
+  ratio r, ~130 measured at r = 0.99, hence a bound of **256**;
+- where p(k) and the tail have both underflowed, the difference of their logs
+  is no substitute: both are ~1e302 at λ = 1e−30, and their roundings swamp
+  an answer of ~700. The MPFR truth avoids the same trap by forming each tail
+  as a ratio to p(k), never through exp of log p(k);
+- base R's `qpois(log.p = TRUE)` returns +∞ below log p ≈ −9e307, where its
+  Cornish-Fisher start overflows. No stable reference covers it, for the
+  reason given in `sweeps/qpois.R`, so those samples count against anvl.
+
 The normal-family specs currently declare a **16 f64 ulp** bound for gradient
-reference validation, the exponential-family specs **8**, and the binomial
-density's **4096**, for the reason above. Run `validate-refs` and inspect the records for the
+reference validation, the exponential-family specs **8**, the binomial and
+Poisson densities' **4096**, and the Poisson distribution function's **256**,
+for the reasons above. Run `validate-refs` and inspect the records for the
 reference identity in use. `selftest` also checks selected
 regression cases against recorded MPFR values.
 

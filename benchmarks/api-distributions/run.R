@@ -1507,6 +1507,36 @@ cmd_selftest <- function(opt) {
         sp_all$nv_pbinom$ref_stable(37.5, list(size = 1e6, prob = 1e-3), list(lower_tail = TRUE, log_p = TRUE)),
         -0x1.a615c35146fcp+9
       )
+    ),
+    check(
+      "dpois's stable log density at x = 1e6 and a full-mantissa lambda is within a few ulps, where base R's is 47 off",
+      near(
+        sp_all$nv_dpois$ref_stable(0x1.f47cfffffffffp+19, list(x = 1e6), list(log = TRUE)),
+        -0x1.3b36cf7d119bcp+8
+      )
+    ),
+    check(
+      "dpois d/dlambda at x = 3, lambda = 1e-110 is 5e-221, not 0: the density underflows before its derivative",
+      near(
+        sp_all$nv_dpois$ref_grad(0x1.80c903f7379f2p-366, list(x = 3), list(log = FALSE))$lambda,
+        0x1.212dd4de70914p-732,
+        n = 32
+      )
+    ),
+    check(
+      "ppois's upper log_p stable reference at q = 2.56e305 (lambda 4) is -1.7975e308, where base R's is -Inf",
+      near(
+        sp_all$nv_ppois$ref_stable(0x1.75ffe34f3ab15p+1014, list(lambda = 4), list(lower_tail = FALSE, log_p = TRUE)),
+        -0x1.fff1add70856dp+1023
+      )
+    ),
+    check(
+      "ppois lower log_p d/dlambda at q = 965000 (lambda 1e6) is from the tail series, not base R's quotient (~960 ulps off)",
+      near(
+        sp_all$nv_ppois$ref_grad(965000, list(lambda = 1e6), list(lower_tail = TRUE, log_p = TRUE))$lambda,
+        -0x1.1ef20c25cdb13p-5,
+        n = 8
+      )
     )
   )
 
