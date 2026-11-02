@@ -2090,7 +2090,11 @@ ppois_asymp <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
   np <- nv_pnorm(s2pt, lower_tail = !lower_tail, log_p = log_p)
   log_dnorm <- -0.5 * s2pt * s2pt - 0.5 * base::log(2 * pi)
   if (!log_p) {
-    return(list(value = np + f * nv_exp(log_dnorm)))
+    # The correction f * dnorm is ~40 times smaller than the result, so it goes
+    # subnormal (and XLA's CPU backend may flush it to zero) while the result
+    # is still normal: ~2.5% too large at lambda = 1e6. Scaling by 2^64 and
+    # back is exact and moves it clear of the subnormal range
+    return(list(value = (np * 2^64 + (f * 2^64) * nv_exp(log_dnorm)) * 2^-64))
   }
   # `nv_pnorm(log_p = TRUE)` takes log1p(-erfc) above one half, which XLA's
   # CPU f64 `log1p()` gets wrong by up to ~120 ulp for probabilities in about

@@ -2648,6 +2648,23 @@ describe("nv_ppois", {
     expect_equal(ppois(q, 2^25), ppois(2^25, 2^25))
   })
 
+  it("keeps the expansion's correction where it alone would be subnormal", {
+    # Just above the smallest normal the expansion's correction term is
+    # subnormal, and flushing it to zero left the tail ~2.5% (f64) or ~0.9%
+    # (f32) too large. Taken one element at a time: on ARM only the scalar
+    # code flushes, not the vectorised loop that a longer array goes through
+    cases <- list(
+      f64 = list(k = c(1037680, 1037700, 1037720, 1037740), tolerance = 1e-10),
+      f32 = list(k = c(1012950, 1012960, 1012972), tolerance = 1e-4)
+    )
+    for (dt in names(cases)) {
+      for (k in cases[[dt]]$k) {
+        got <- as.vector(nv_ppois(nv_array(k, dtype = dt), 1e6, lower_tail = FALSE))
+        expect_equal_elementwise(got, ppois(k, 1e6, lower.tail = FALSE), tolerance = cases[[dt]]$tolerance)
+      }
+    }
+  })
+
   it("matches base R ppois() for zero, infinite, negative and NaN lambda", {
     q <- c(-Inf, -1, 0, 0.5, 1, 3, Inf, NaN)
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
