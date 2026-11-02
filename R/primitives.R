@@ -3125,6 +3125,20 @@ prim_rng_bit_generator <- new_primitive(
 #' When multiple indices in `scatter_indices` map to the same element
 #' of `x`, the order in which `update_fn` is applied is
 #' implementation-defined and may vary between plugins ("cpu", "cuda").
+#' @section Gradients:
+#' [gradient()] differentiates a scatter whose `update_fn` is one of
+#' * `function(old, new) new` (the default), where an update gets the gradient
+#'   only where it is the one that was written,
+#' * `function(old, new) old + new` and `function(old, new) old - new`,
+#' * `function(old, new) old * new`; the gradient with respect to `update`
+#'   needs `unique_indices = TRUE`,
+#' * `function(old, new) nv_pmax(old, new)` and `nv_pmin()`, where `x` and
+#'   the updates that tie for the result share its gradient equally,
+#' * `function(old, new) old`,
+#'
+#' or a primitive such as `prim_add` in their place. Operands other than
+#' `old - new` may also be written the other way round. An update that falls
+#' outside of `x`, and is therefore ignored, gets a gradient of zero.
 #' @templateVar primitive_id scatter
 #' @template section_rules
 #' @section StableHLO:

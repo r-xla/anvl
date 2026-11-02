@@ -107,6 +107,25 @@ of \code{x}, the order in which \code{update_fn} is applied is
 implementation-defined and may vary between plugins ("cpu", "cuda").
 }
 
+\section{Gradients}{
+
+\code{\link[=gradient]{gradient()}} differentiates a scatter whose \code{update_fn} is one of
+\itemize{
+\item \code{function(old, new) new} (the default), where an update gets the gradient
+only where it is the one that was written,
+\item \code{function(old, new) old + new} and \code{function(old, new) old - new},
+\item \code{function(old, new) old * new}; the gradient with respect to \code{update}
+needs \code{unique_indices = TRUE},
+\item \code{function(old, new) nv_pmax(old, new)} and \code{nv_pmin()}, where \code{x} and
+the updates that tie for the result share its gradient equally,
+\item \code{function(old, new) old},
+}
+
+or a primitive such as \code{prim_add} in their place. Operands other than
+\code{old - new} may also be written the other way round. An update that falls
+outside of \code{x}, and is therefore ignored, gets a gradient of zero.
+}
+
 \section{Implemented Rules}{
 
 \itemize{

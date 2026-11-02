@@ -1,5 +1,10 @@
 # anvl (development version)
 
+* `prim_scatter()` is differentiable for an `update_fn` that adds, subtracts,
+  multiplies or takes the maximum or minimum (`old + new`, `old - new`,
+  `old * new`, `nv_pmax()`, `nv_pmin()`), not only for replacement.
+* Bugfix: An update that `prim_scatter()` drops as out of bounds no longer gets
+  a gradient when `unique_indices = TRUE`.
 * Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
   `prim_dynamic_update_slice()`) no longer wraps around to the last position.
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
