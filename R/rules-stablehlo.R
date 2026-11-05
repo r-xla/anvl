@@ -694,9 +694,10 @@ prim_fork_random_state[["stablehlo"]] <- function(random_key, random_counter) {
 
 # A call of the function `id` of the lowering, built on first use, that splits
 # the random state with the key `key` at the counter `counter` and returns what
-# `body()` computes from the key ThreeFry_key(counter) (two `ui32` scalars). As
-# JAX's `fold_in()`, it encrypts the counter with its high word as the first
-# input word and its low word as the second.
+# `body()` computes from the key ThreeFry_key(counter) (two `ui32` scalars). It
+# encrypts the counter with its high word as the first input word and its low
+# word as the second: for a counter c below 2^32 the key is JAX's
+# `fold_in(key, c)`, and for every c the c-th key of JAX's `split(key, c + 1)`.
 random_state_call <- function(id, key, counter, body) {
   callee <- lowering_func(id, function(id) {
     func <- local_func(id)
@@ -719,12 +720,13 @@ shape_id <- function(shape) {
 }
 
 # The values of shape `shape` and unsigned data type `dtype` a draw from the
-# key `key` (two `ui32` scalars) gives, in row-major order. For `ui64`, the
-# element at the index t encrypts the input words (0, t), and is the encrypted
+# key `key` (two `ui32` scalars) gives, as JAX's `jax.random.bits()` gives them
+# by default (`jax_threefry_partitionable`): the value at the row-major index t
+# is made from the block that encrypts the input words (0, t) alone, so that it
+# does not depend on how many values the draw has. A `ui64` value is the
 # block's first word shifted into the high half and its second word in the low
-# half. For a narrower data type, one 32-bit word makes one value: of the n
-# values, the first ceiling(n / 2) are the first words of the blocks that
-# encrypt (0, t), and the rest their second words, truncated to their low bits.
+# half, and a narrower value the xor of the two words, truncated to its low
+# bits.
 threefry_draw <- function(key, shape, dtype) {
   func <- key[[1L]]$func
   n <- prod(shape)
@@ -733,21 +735,15 @@ threefry_draw <- function(key, shape, dtype) {
     cli_abort(c("Cannot draw more than {limit} values at once.", i = "Draw fewer values at once."))
   }
   n <- as.integer(n)
-  blocks <- function(n_blocks) {
-    zeros <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = "ui32", func = func), integer(), n_blocks)
-    index <- hlo_iota(iota_dimension = 0L, dtype = "ui32", shape = n_blocks, func = func)
-    threefry2x32(lapply(key, hlo_broadcast_in_dim, integer(), n_blocks), list(zeros, index))
-  }
+  zeros <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = "ui32", func = func), integer(), n)
+  index <- hlo_iota(iota_dimension = 0L, dtype = "ui32", shape = n, func = func)
+  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, integer(), n), list(zeros, index))
   if (dtype == "ui64") {
-    words <- blocks(n)
     by32 <- hlo_broadcast_in_dim(hlo_scalar(32L, dtype = "ui64", func = func), integer(), n)
     high <- hlo_shift_left(hlo_convert(words[[1L]], "ui64"), by32)
     return(hlo_reshape(hlo_or(high, hlo_convert(words[[2L]], "ui64")), shape))
   }
-  n_blocks <- (n + 1L) %/% 2L
-  words <- blocks(n_blocks)
-  second <- hlo_slice(words[[2L]], 0L, n - n_blocks, 1L)
-  values <- hlo_concatenate(words[[1L]], second, dimension = 0L)
+  values <- hlo_xor(words[[1L]], words[[2L]])
   if (dtype != "ui32") {
     # keep the low bits, so that the conversion is exact
     mask <- hlo_broadcast_in_dim(

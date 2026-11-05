@@ -15,13 +15,14 @@ An unsigned integer data type: \code{"ui8"}, \code{"ui16"}, \code{"ui32"} or \co
 }
 \value{
 (\code{\link{arrayish}})\cr
-The random bits, of data type \code{dtype} and shape \code{shape}. A \code{"ui64"} value
-is one encrypted 64-bit block, and a narrower value one of a block's two
-32-bit words, truncated to its low bits: of \code{n} values, the first
-\code{ceiling(n / 2)} are the blocks' first words and the rest their second
-words. The draws fill \code{shape} in row-major order, as JAX's do, so a draw of
-\code{c(2, 3)} is not a draw of \code{6} filled into \code{c(2, 3)} in R's column-major
-order.
+The random bits, of data type \code{dtype} and shape \code{shape}. Every value is
+made from an encrypted 64-bit block of its own: a \code{"ui64"} value is the
+block, and a narrower value the xor of the block's two 32-bit words,
+truncated to its low bits, as JAX's \code{jax.random.bits()} does by default.
+The value at a position thus does not depend on the number of values
+drawn, so a draw of \code{3} is the start of a draw of \code{6}. The draws fill
+\code{shape} in row-major order, as JAX's do, so a draw of \code{c(2, 3)} is not a
+draw of \code{6} filled into \code{c(2, 3)} in R's column-major order.
 }
 \description{
 Draws random bits from the active random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) with

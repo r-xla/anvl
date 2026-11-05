@@ -86,6 +86,7 @@ Collate:
     'reexports.R'
     'reverse.R'
     'rng.R'
+    'rng-trace.R'
     'roxygen.R'
     'rules-reverse.R'
     'rules-stablehlo.R'

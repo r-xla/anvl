@@ -15,8 +15,9 @@ nv_unif_rand <- function(shape, dtype) {
 
   rbits <- prim_sample_bits(shape, ui_dtype)
 
-  # shift value: 9 for f32, 11 for f64
-  shift <- if (dtype == "f32") 9L else 11L
+  # keep the top bits, as many as the mantissa has, as JAX does: 23 of 32 for
+  # f32 and 52 of 64 for f64
+  shift <- if (dtype == "f32") 9L else 12L
 
   # shift to the right, s.t. exponent bits are all 0
   mantissa <- nv_shift_right_logical(rbits, shift)
@@ -48,7 +49,10 @@ nv_unif_rand <- function(shape, dtype) {
 #'   The default (`NULL`) takes it from `min` and `max`, and uses the
 #'   [default float type][default_dtypes] where both are R values.
 #' @section Random generation:
-#' `nv_runif` samples from the open interval \eqn{(a, b)}.
+#' `nv_runif` draws uniforms on the open interval \eqn{(0, 1)} and scales them
+#' to \eqn{(a, b)}. Rounding to the data type can still give \eqn{a} or
+#' \eqn{b} where the interval is narrow next to its magnitude, e.g. for
+#' `nv_runif(n, 1e6, 1e6 + 1)` at `f32`.
 #'
 #' `min` and `max` are [`arrayish`], so they may vary across the sample: they
 #' are applied to the draws after they have been reshaped to `shape`, and so

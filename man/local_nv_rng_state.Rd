@@ -31,15 +31,15 @@ draws advance \code{rng_state} itself, in place, and the random state from befor
 is restored afterwards.
 
 Outside of \code{\link[=jit]{jit()}}, \code{rng_state} is the global random state for the scope.
-In a function traced by \code{\link[=jit]{jit()}}, \code{rng_state} must be a random state the
-jitted function takes as an argument: the samplers in the scope draw from it,
-also in the bodies of loops, and the jitted function advances it after the
-call. A random state the
-function closes over is an error, as the function could neither take its
-current state nor advance it. It can be called in a branch of \code{\link[=nv_if]{nv_if()}} or a
-function \code{\link[=gradient]{gradient()}} differentiates, such as a jitted function called
-there, but not in the body of \code{\link[=nv_while]{nv_while()}} or \code{\link[=nv_scan]{nv_scan()}}, nor in a function
-traced inside one: called before the loop, it reaches the loop body.
+In a function traced by \code{\link[=jit]{jit()}}, the samplers in the scope draw from
+\code{rng_state}, also in the bodies of loops, and the call advances it
+afterwards: a random state the jitted function takes as an argument, or one
+it closes over (see \code{\link[=nv_random_state]{nv_random_state()}}). It can be called in a branch of
+\code{\link[=nv_if]{nv_if()}} or a function \code{\link[=gradient]{gradient()}} differentiates, such as a jitted
+function called there, but not in the body of \code{\link[=nv_while]{nv_while()}} or \code{\link[=nv_scan]{nv_scan()}},
+nor in a function traced inside one: called before the loop, it reaches the
+loop body. These functions trace the functions they are given also when they
+are called outside of \code{\link[=jit]{jit()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

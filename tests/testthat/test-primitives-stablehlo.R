@@ -24,7 +24,7 @@ describe("prim_sample_bits", {
     if (length(shape(x))) array(as.character(a), shape(x)) else as.character(a)
   }
 
-  it("splits as JAX's fold_in(), with ThreeFry-2x32 as the known-answer vectors of the reference give it", {
+  it("splits with ThreeFry-2x32 as the known-answer vectors of the reference give it", {
     local_nv_seed(NULL)
     # a 32-bit word given in hex, as a number
     h <- function(s) strtoi(substr(s, 1L, 4L), 16L) * 65536 + strtoi(substr(s, 5L, 8L), 16L)
@@ -35,14 +35,14 @@ describe("prim_sample_bits", {
     )
     for (k in kat) {
       # the counter's high word is the hash's first input word, its low word
-      # the second
+      # the second, as in JAX's fold_in()
       set_state(h(c(k$key, rev(k$ctr))))
       # the fork returns the split (ThreeFry_k(c)) as the child's key
       expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), h(k$out))
     }
   })
 
-  it("fills a shape in row-major order, as JAX does", {
+  it("fills a shape in row-major order", {
     local_nv_seed(NULL)
     # an R array's elements in row-major order
     row_major <- function(a) if (length(dim(a)) > 1L) as.vector(aperm(a)) else as.vector(a)
@@ -94,14 +94,12 @@ describe("prim_sample_bits", {
 })
 
 describe("prim_fork_random_state() and the generator of prim_sample_bits()", {
-  # Known answers of JAX 0.11.2, whose `jax.experimental.random.stateful_rng()`
-  # derives the key of its n-th draw as `fold_in(key(seed), n)` and draws with
-  # `jax.random.bits()` (with `jax_threefry_partitionable`, its default). They
-  # are computed by a reference implementation of JAX's code outside of anvl,
-  # which reproduces the known-answer vectors of Salmon et al. (2011) and the
-  # keys JAX's documentation shows.
+  # Known answers computed with JAX 0.11.2, whose
+  # `jax.experimental.random.stateful_rng()` derives the key of its n-th draw as
+  # `fold_in(key(seed), n)` and draws with `jax.random.bits()` and
+  # `jax.random.uniform()` (with `jax_threefry_partitionable`, its default).
 
-  it("derives the keys of JAX's stateful_rng(0)", {
+  it("derives the keys of the first sampling calls from seed 0", {
     local_nv_seed(0L)
     expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), c(1797259609, 2579123966))
     expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), c(928981903, 3453687069))
@@ -111,7 +109,7 @@ describe("prim_fork_random_state() and the generator of prim_sample_bits()", {
     local_nv_seed(1L)
     child <- prim_fork_random_state()
     expect_identical(
-      state_words(new_random_state(child$random_key, child$random_counter)),
+      state_words(random_state_of_arrays(child$random_key, child$random_counter)),
       c(507451445, 1853169794, 0, 0)
     )
     expect_identical(state_words()[[3L]], 1)
@@ -123,7 +121,7 @@ describe("prim_fork_random_state() and the generator of prim_sample_bits()", {
     expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), c(4133157646, 253918841))
   })
 
-  it("draws ui64 values as JAX does", {
+  it("draws ui64 values, each an encrypted block", {
     local_nv_seed(1L)
     # the values 15912746244612290068, 11621925242097073948 and
     # 3386276387959728876, each as its low and its high 32-bit word
@@ -134,17 +132,29 @@ describe("prim_fork_random_state() and the generator of prim_sample_bits()", {
     )
   })
 
-  it("draws ui32 and narrower values one 32-bit word each: the blocks' first words, then their second ones", {
-    # the blocks of a ui64 draw from the same random state, as their high and
-    # their low words
-    blocks <- with_nv_seed(1L, {
-      words <- as.numeric(as_array(nv_bitcast_convert(prim_sample_bits(2L, "ui64"), dtype = "ui32")))
-      list(high = words[c(FALSE, TRUE)], low = words[c(TRUE, FALSE)])
-    })
-    local_nv_seed(1L)
-    expect_identical(as.numeric(as_array(prim_sample_bits(3L, "ui32"))), c(blocks$high, blocks$low[[1L]]))
-    local_nv_seed(1L)
-    expect_identical(as.numeric(as_array(prim_sample_bits(4L, "ui8"))), c(blocks$high, blocks$low) %% 256)
+  it("draws ui32 and narrower values, each the xor of the two words of a block of its own", {
+    draw <- function(dtype) with_nv_seed(1L, as.numeric(as_array(prim_sample_bits(3L, dtype))))
+    expect_identical(draw("ui32"), c(3017709682, 1008607346, 3512701570))
+    expect_identical(draw("ui16"), c(39026, 8306, 37506))
+    expect_identical(draw("ui8"), c(114, 114, 130))
+  })
+
+  it("draws f32 and f64 uniforms from the top bits of their values", {
+    # each uniform as the integer m of its grid: m 2^-23 for f32, m 2^-52 for f64
+    draw <- function(dtype, scale) with_nv_seed(1L, as.numeric(as_array(nv_runif(3L, dtype = dtype))) * scale)
+    expect_identical(draw("f32", 2^23), c(5893964, 1969936, 6860745))
+    expect_identical(draw("f64", 2^52), c(3884947813626047, 2837384092308855, 826727633779230))
+  })
+
+  it("draws values that do not depend on the size of the draw", {
+    for (dtype in c("ui8", "ui32", "ui64")) {
+      start <- with_nv_seed(1L, as_array(prim_sample_bits(3L, dtype), check = FALSE))
+      expect_identical(with_nv_seed(1L, as_array(prim_sample_bits(6L, dtype), check = FALSE))[1:3], start)
+    }
+    for (dtype in c("f32", "f64")) {
+      start <- with_nv_seed(1L, as_array(nv_runif(3L, dtype = dtype)))
+      expect_identical(with_nv_seed(1L, as_array(nv_runif(6L, dtype = dtype)))[1:3], start)
+    }
   })
 })
 

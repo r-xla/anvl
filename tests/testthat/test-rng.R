@@ -17,7 +17,7 @@ draws_from <- function(random_state, n, shape = 1L) {
 # The random state that prim_fork_random_state() returns from the global random
 # state seeded with `seed`.
 forked_state <- function(seed) {
-  do.call(new_random_state, unname(with_nv_seed(seed, prim_fork_random_state())))
+  do.call(random_state_of_arrays, unname(with_nv_seed(seed, prim_fork_random_state())))
 }
 
 # Leaves the global random state unset until the calling scope exits, so that
@@ -40,7 +40,8 @@ describe("nv_set_seed", {
     expect_identical(as_array(nv_runif(3L)), b)
   })
 
-  it("starts from the key JAX's key(seed) gives and a zero counter", {
+  it("starts from the key words 0 and the seed, read as unsigned, and a zero counter", {
+    # the key of JAX's key(-1)
     local_nv_seed(-1L)
     expect_identical(state_words(), c(0, 2^32 - 1, 0, 0))
   })
@@ -84,7 +85,7 @@ describe("nv_set_seed", {
     nv_set_seed(NULL)
     from_seed <- state_words()
     withr::local_seed(3L)
-    expect_identical(random_state_words(nv_random_state()), from_seed)
+    expect_identical(state_words(nv_random_state()), from_seed)
   })
 
   it("rejects a seed that is not an integer", {
@@ -161,6 +162,23 @@ describe("nv_get_random_state", {
     expect_identical(as_array(nv_runif(3L)), a)
   })
 
+  it("builds its key and counter afresh at every read, which a donation takes from no random state", {
+    expected <- draws(7L, 1L, 2L)[[1L]]
+    local_nv_seed(7L)
+    random_state <- nv_get_random_state()
+    jit(function(k) k + 1L, donate = "k")(random_state$random_key)
+    expect_identical(as.numeric(as_array(random_state$random_key)), c(0, 7))
+    expect_identical(as_array(nv_runif(2L)), expected)
+  })
+
+  it("builds its key and counter on the default device of the read", {
+    local_nv_seed(7L)
+    random_state <- nv_get_random_state()
+    local_default_device("cpu:1")
+    expect_true(eq_device(device(random_state$random_key), nv_device("cpu:1")))
+    expect_true(eq_device(device(random_state$random_counter), nv_device("cpu:1")))
+  })
+
   it("survives a round trip through a file", {
     local_nv_seed(7L)
     nv_runif(2L)
@@ -202,9 +220,17 @@ describe("nv_set_random_state", {
     counter <- nv_scalar(0L, dtype = "ui64")
     # a list of a key and a counter is not one
     expect_error(nv_set_random_state(list(random_key = key, random_counter = counter)), "must be a random state")
-    expect_error(nv_set_random_state(new_random_state(c(1, 2), counter)), "must be a random state")
-    expect_error(nv_set_random_state(new_random_state(nv_array(1:2, dtype = "i32"), counter)), "must be a random state")
-    expect_error(nv_set_random_state(new_random_state(key, nv_array(0L, dtype = "ui64"))), "must be a random state")
+    # nor is the handle the trace of a draw from the global random state has
+    expect_error(nv_set_random_state(global_random_state_handle), "must be a random state")
+  })
+
+  it("makes the global random state a copy, which its draws leave intact", {
+    local_nv_seed(1L)
+    random_state <- nv_random_state(7L)
+    nv_set_random_state(random_state)
+    nv_runif(2L)
+    expect_identical(state_words(random_state), c(0, 7, 0, 0))
+    expect_identical(state_words(), c(0, 7, 1, 0))
   })
 
   it("carries the counter into its high word", {
@@ -259,9 +285,10 @@ describe("a sampling call", {
   })
 })
 
-describe("global_random_state", {
-  it("can be listed outside of a trace, as installing the package does", {
-    expect_no_error(mget(ls(global_random_state, all.names = TRUE), envir = global_random_state))
+describe("global_random_state_handle", {
+  it("is a list of no fields, which the package stores as it is", {
+    expect_identical(unclass(global_random_state_handle), list())
+    expect_true(is_side_effect(global_random_state_handle))
   })
 })
 
@@ -283,6 +310,16 @@ describe("the global random state in jit", {
     eager <- with_nv_seed(4L, list(lapply(f(x), as_array), state_words()))
     jitted <- with_nv_seed(4L, list(lapply(jit(f)(x), as_array), state_words()))
     expect_identical(jitted, eager)
+  })
+
+  it("draws the arguments of a nested jitted function before its body, as eagerly", {
+    # the body draws before it reads `s`, and never reads `unused`
+    g <- jit(function(s, unused) list(nv_runif(1L), s))
+    f <- function() c(g(nv_runif(1L), nv_runif(1L)), list(nv_runif(1L)))
+    eager <- with_nv_seed(1L, list(lapply(f(), as_array), state_words()))
+    jitted <- with_nv_seed(1L, list(lapply(jit(f)(), as_array), state_words()))
+    expect_identical(jitted, eager)
+    expect_identical(eager[[2L]], c(0, 1, 4, 0))
   })
 
   it("is continued by the next call", {
@@ -330,7 +367,7 @@ describe("the global random state in jit", {
     expect_length(graph$inputs, 0L)
     expect_length(graph$outputs, 2L)
     expect_length(graph$side_effects, 1L)
-    expect_true(identical(graph$side_effects[[1L]]$effect, global_random_state))
+    expect_true(identical(graph$side_effects[[1L]]$effect, global_random_state_handle))
     input <- lapply(graph$side_effects[[1L]]$inputs, `[[`, "aval")
     expect_identical(
       lapply(input, function(aval) as.character(dtype(aval))),
@@ -607,7 +644,7 @@ describe("counter_plus", {
     plus <- jit(counter_plus, static = "n")
     for (i in seq_along(ns)) {
       counter <- plus(state$random_counter, ns[[i]])
-      expect_identical(state_words(new_random_state(state$random_key, counter)), c(1, 2, expected[[i]]))
+      expect_identical(state_words(random_state_of_arrays(state$random_key, counter)), c(1, 2, expected[[i]]))
     }
   })
 })
@@ -619,9 +656,15 @@ describe("side_effect_advance", {
     ns <- c(5, 2^32 + 2^31 + 5, 2^53 - 1)
     for (i in seq_along(ns)) {
       state <- random_state_of_words(c(1, 2, 2^32 - 1, 7))
-      side_effect_advance(global_random_state, state, ns[[i]])
+      side_effect_advance(global_random_state_handle, state, ns[[i]])
       expect_identical(state_words(state), c(1, 2, expected[[i]]))
     }
+  })
+
+  it("wraps the counter around at 2^64", {
+    state <- random_state_of_words(c(1, 2, 2^32 - 1, 2^32 - 1))
+    side_effect_advance(global_random_state_handle, state, 3)
+    expect_identical(state_words(state), c(1, 2, 2, 0))
   })
 })
 
@@ -751,6 +794,21 @@ describe("nv_random_state", {
     expect_identical(state_words(rng)[[3L]], 3)
   })
 
+  it("can be donated to a jitted function, which takes only the arrays the call reads from it", {
+    rng <- nv_random_state(1L)
+    expected <- with_nv_rng_state(nv_random_state(1L), lapply(1:2, function(i) as_array(nv_runif(2L))))
+    f <- jit(function(x, rng) with_nv_rng_state(rng, x + nv_runif(2L)), donate = c("x", "rng"))
+    out <- lapply(1:2, function(i) as_array(f(nv_array(c(0, 0)), rng)))
+    expect_equal(out, expected)
+    expect_identical(state_words(rng), c(0, 1, 2, 0))
+  })
+
+  it("has a key and a counter that cannot be assigned", {
+    rng <- nv_random_state(1L)
+    expect_error(rng$random_counter <- nv_scalar(5L, dtype = "ui64"), "cannot be assigned")
+    expect_identical(state_words(rng), c(0, 1, 0, 0))
+  })
+
   it("compiles one program for every random state passed", {
     f <- jit(function(x, rng) with_nv_rng_state(rng, x + nv_runif(2L)))
     a <- as_array(f(nv_array(c(0, 0)), nv_random_state(1L)))
@@ -774,31 +832,33 @@ describe("nv_random_state", {
   })
 
   it("is traced as a side effect of its own per random state argument", {
-    graph <- trace_fn(
+    graph <- trace_with_random_states(
       \(rng1, rng2) list(with_nv_rng_state(rng1, nv_runif(1L)), with_nv_rng_state(rng2, nv_runif(1L))),
       list(nv_random_state(1L), nv_random_state(2L))
     )
-    # each random state is two inputs of the graph, its key and its counter,
-    # and has a view of its own, which knows the leaf of its key
-    expect_length(graph$inputs, 4L)
+    # each random state is one input of the graph, its words, and has a view of
+    # its own, whose handle knows its place among the random states of the
+    # arguments
+    expect_length(graph$inputs, 2L)
     expect_length(graph$side_effects, 2L)
-    for (i in 1:2) {
-      view <- graph$side_effects[[i]]
-      expect_identical(view$effect$leaf, 2L * i - 1L)
-      expect_true(is_traced_random_state(view$effect))
-      expect_null(view$inputs)
-      expect_identical(view$n, 1)
-    }
-    expect_false(identical(graph$side_effects[[1L]]$effect, graph$side_effects[[2L]]$effect))
-    # each draw takes the key and the counter of its own random state
     draws <- Filter(function(call) call$primitive$name == "sample_bits", graph$statements)
     expect_length(draws, 2L)
-    expect_identical(draws[[1L]]$inputs, graph$inputs[1:2])
-    expect_identical(draws[[2L]]$inputs, graph$inputs[3:4])
+    for (i in 1:2) {
+      view <- graph$side_effects[[i]]
+      expect_identical(view$effect$ordinal, i)
+      expect_s3_class(view$effect, "AnvlRandomStateHandle")
+      expect_null(view$inputs)
+      expect_identical(view$n, 1)
+      # its draw takes the key and the counter the graph computes from its words
+      expect_identical(draws[[i]]$inputs, list(view$effect$key, view$effect$counter))
+      convert <- Find(function(call) identical(call$inputs, graph$inputs[i]), graph$statements)
+      expect_identical(convert$primitive$name, "convert")
+    }
+    expect_false(identical(graph$side_effects[[1L]]$effect, graph$side_effects[[2L]]$effect))
     # the global random state is not used
     expect_false(any(vapply(
       graph$side_effects,
-      function(view) identical(view$effect, global_random_state),
+      function(view) identical(view$effect, global_random_state_handle),
       logical(1L)
     )))
   })
@@ -809,6 +869,23 @@ describe("nv_random_state", {
     out <- as_array(f(list(x = nv_array(c(0, 0)), rng = rng)))
     expect_identical(out, with_nv_rng_state(nv_random_state(1L), as_array(nv_runif(2L))))
     expect_identical(state_words(rng)[[3L]], 1)
+  })
+
+  it("is taken on the device of the other arguments", {
+    f <- jit(function(x, rng) with_nv_rng_state(rng, x + nv_runif(2L)))
+    # a device other than the default, which a random state made on it is not
+    # on either: it holds no array
+    dev <- if (eq_device(default_device(), nv_device("cpu:1"))) nv_device("cpu:0") else nv_device("cpu:1")
+    rng <- with_default_device(dev, nv_random_state(1L))
+    out <- f(nv_array(c(0, 0), device = dev), rng)
+    expect_true(eq_device(device(out), dev))
+    expect_identical(as_array(out), with_nv_rng_state(nv_random_state(1L), as_array(nv_runif(2L))))
+    expect_identical(state_words(rng)[[3L]], 1)
+  })
+
+  it("is refused as a static argument", {
+    f <- jit(function(rng) with_nv_rng_state(rng, nv_runif(2L)), static = "rng")
+    expect_error(f(nv_random_state(1L)), "reference semantics")
   })
 
   it("is taken by a function gradient() differentiates", {
@@ -901,12 +978,78 @@ describe("nv_random_state", {
     expect_identical(state_words(), before)
   })
 
-  it("holds GraphValues and no descriptor once its trace is done", {
-    graph <- trace_fn(\(rng) with_nv_rng_state(rng, nv_runif(1L)), list(nv_random_state(1L)))
+  it("has a handle of GraphValues and no descriptor once its trace is done", {
+    graph <- trace_with_random_states(\(rng) with_nv_rng_state(rng, nv_runif(1L)), list(nv_random_state(1L)))
     handle <- graph$side_effects[[1L]]$effect
     expect_true(is_graph_value(handle$key))
     expect_true(is_graph_value(handle$counter))
-    expect_false(exists("desc", envir = handle, inherits = FALSE))
+    expect_false(any(vapply(handle, inherits, logical(1L), "GraphDescriptor")))
+  })
+
+  it("is an AnvlRandomState in a jitted function too", {
+    draw <- function(rng = NULL) {
+      if (inherits(rng, "AnvlRandomState")) with_nv_rng_state(rng, nv_runif(1L)) else nv_runif(1L)
+    }
+    local_nv_seed(5L)
+    eager <- nv_random_state(1L)
+    a <- as_array(draw(eager))
+    jitted <- nv_random_state(1L)
+    expect_identical(as_array(jit(draw)(jitted)), a)
+    expect_identical(state_words(jitted), state_words(eager))
+    expect_identical(state_counter(), 0)
+    show <- jit(function(rng) {
+      print(rng)
+      nv_scalar(1)
+    })
+    expect_output(show(nv_random_state(1L)), "of a traced function")
+  })
+
+  it("cannot be created in a traced function", {
+    f <- jit(function() with_nv_rng_state(nv_random_state(1L), nv_runif(1L)))
+    expect_error(f(), "cannot be created in a function traced")
+  })
+
+  it("cannot be used after the trace that received it", {
+    kept <- new.env()
+    jit(function(rng) {
+      kept$rng <- rng
+      nv_runif(1L)
+    })(nv_random_state(1L))
+    expect_error(kept$rng$random_counter, "cannot be read after its trace")
+    expect_error(with_nv_rng_state(kept$rng, nv_runif(1L)), "cannot be used after its trace")
+  })
+
+  it("is found after the call among the arguments as pjrt flattens them", {
+    pjrt::register_tree_node(
+      "TestModel",
+      flatten = function(x) list(unclass(x), NULL),
+      unflatten = function(children, aux) structure(children, class = "TestModel"),
+      repr = function(children, aux) "TestModel"
+    )
+    withr::defer(pjrt::unregister_tree_node("TestModel"))
+    model <- structure(
+      list(w = nv_array(c(0, 0)), b = nv_array(c(0, 0)), c = nv_array(c(0, 0))),
+      class = "TestModel"
+    )
+    # a registered tree node of three leaves before the random states, which
+    # are counted in the order they come
+    f <- jit(function(model, rng1, rng2) with_nv_rng_state(rng1, model$w + nv_runif(2L)))
+    a <- nv_random_state(1L)
+    b <- nv_random_state(2L)
+    f(model, a, b)
+    expect_identical(state_words(a)[[3L]], 1)
+    expect_identical(state_words(b)[[3L]], 0)
+    # a random state inside a registered tree node
+    g <- jit(function(model) with_nv_rng_state(model$rng, model$w + nv_runif(2L)))
+    rng <- nv_random_state(1L)
+    g(structure(list(w = nv_array(c(0, 0)), rng = rng), class = "TestModel"))
+    expect_identical(state_words(rng)[[3L]], 1)
+    # a static pairlist, which pjrt does not recurse into
+    h <- jit(function(opts, rng) with_nv_rng_state(rng, nv_runif(2L)), static = "opts")
+    rng <- nv_random_state(1L)
+    h(pairlist(a = 1, b = 2), rng)
+    h(pairlist(a = 1, b = 2), rng)
+    expect_identical(state_words(rng)[[3L]], 2)
   })
 
   it("cannot be part of the state of nv_while() or nv_scan()", {
@@ -964,13 +1107,47 @@ describe("local_nv_rng_state", {
     expect_identical(state_words()[[3L]], 0)
   })
 
-  it("refuses a random state a traced function closes over", {
+  it("makes a random state a traced function closes over the default, which the call advances", {
     rng <- nv_random_state(1L)
     f <- jit(function(x) {
       local_nv_rng_state(rng)
       x + nv_runif(1L)
     })
-    expect_error(f(nv_scalar(0)), "must be a random state the jitted function takes as an argument")
+    expected <- draws(1L, 2L)
+    local_nv_seed(5L)
+    out <- lapply(1:2, function(i) as_array(f(nv_scalar(0))))
+    expect_equal(out, expected, ignore_attr = TRUE)
+    expect_identical(state_words(rng)[[3L]], 2)
+    expect_identical(state_counter(), 0)
+  })
+
+  it("reads in a traced function the key and counter of a random state it closes over at the call", {
+    rng <- nv_random_state(1L)
+    f <- jit(function() {
+      local_nv_rng_state(rng)
+      nv_runif(1L)
+      rng$random_counter
+    })
+    expect_identical(as.numeric(as_array(f())), 1)
+    expect_identical(as.numeric(as_array(f())), 2)
+  })
+
+  it("makes a random state the default in a branch of nv_if() called outside of jit()", {
+    rng <- nv_random_state(1L)
+    out <- nv_if(TRUE, function() with_nv_rng_state(rng, nv_runif(1L)), function() nv_runif(1L))
+    expect_identical(as_array(out), draws(1L, 1L)[[1L]])
+    expect_identical(state_words(rng)[[3L]], 1)
+  })
+
+  it("makes a default in a trace that does not outlive it, whatever scope it is given", {
+    keep <- new.env()
+    f <- jit(function(rng) {
+      local_nv_rng_state(rng, envir = keep)
+      nv_runif(1L)
+    })
+    f(nv_random_state(1L))
+    local_nv_seed(1L)
+    expect_identical(as_array(nv_runif(1L)), draws(1L, 1L)[[1L]])
   })
 
   it("makes a random state argument the default in a branch of nv_if() only", {

@@ -163,9 +163,19 @@ jit <- function(
     .jit_env <- environment()
     .jit_given <- intersect(.jit_names, as.character(names(match.call())))
 
+    # The supplied arguments are evaluated before `f` runs, in the order of its
+    # formals and then `...` -- inside a trace too, so that what they draw from
+    # a random state is drawn in the same order as in an eager call.
+    .jit_args <- mget(.jit_given, envir = .jit_env)
+    if (.jit_dots) {
+      # `list(...)` goes through a quoted call because the wrapper's formals are
+      # `f`'s: written literally, the body of a wrapper for an `f` without `...`
+      # would use a `...` that its function does not have.
+      .jit_args <- c(.jit_args, eval(quote(list(...)), .jit_env))
+    }
+
     # Inside tracing: pass through to unwrapped function. The arguments are
-    # forwarded as the names they are bound to here, so `f` gets a promise per
-    # argument and one it never uses is never evaluated.
+    # forwarded as the names they are bound to here.
     if (currently_tracing()) {
       .jit_fwd <- lapply(.jit_given, as.name)
       names(.jit_fwd) <- .jit_given
@@ -173,13 +183,6 @@ jit <- function(
         .jit_fwd <- c(.jit_fwd, list(quote(...)))
       }
       return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
-    }
-    .jit_args <- mget(.jit_given, envir = .jit_env)
-    if (.jit_dots) {
-      # `list(...)` goes through a quoted call because the wrapper's formals are
-      # `f`'s: written literally, the body of a wrapper for an `f` without `...`
-      # would use a `...` that its function does not have.
-      .jit_args <- c(.jit_args, eval(quote(list(...)), .jit_env))
     }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]

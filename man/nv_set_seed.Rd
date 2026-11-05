@@ -24,8 +24,9 @@ The seed, a 32-bit integer, or \code{NULL} to derive the global random state
 from base R's RNG at once.}
 
 \item{random_state}{(\code{AnvlRandomState} | \code{NULL})\cr
-A random state returned by \code{nv_get_random_state()}. \code{NULL} unsets the
-global random state, so that the next draw derives it from base R's RNG.}
+A random state returned by \code{nv_get_random_state()}, of which the global
+random state becomes a copy. \code{NULL} unsets the global random state, so
+that the next draw derives it from base R's RNG.}
 
 \item{envir}{(\code{environment})\cr
 The scope whose exit restores the global random state.}
@@ -36,8 +37,8 @@ An expression to evaluate with the seeded global random state.}
 \value{
 \code{nv_set_seed()}, \code{local_nv_seed()} and \code{nv_set_random_state()}
 return \code{NULL}, invisibly; \code{with_nv_seed()} returns the result of
-evaluating \code{code}. \code{nv_get_random_state()} returns the global random state,
-an \code{AnvlRandomState}, or \code{NULL} while it is not set.
+evaluating \code{code}. \code{nv_get_random_state()} returns a copy of the global
+random state, an \code{AnvlRandomState}, or \code{NULL} while it is not set.
 }
 \description{
 Seeds the global random state, analogous to base R's \code{\link[=set.seed]{set.seed()}}.

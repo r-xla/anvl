@@ -2529,8 +2529,8 @@ prim_if <- new_primitive(
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
     # A branch that uses a side effect closes over the enclosing trace's view
-    # of it, and the call continues after the branches.
-    branches <- desc_begin_branches(current_desc, list(true_graph, false_graph))
+    # of it, which continues after the larger of the branches' counts.
+    desc_end_capture(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
@@ -2543,7 +2543,6 @@ prim_if <- new_primitive(
       infer_fn = infer_cond,
       desc = current_desc
     )
-    out <- desc_end_branches(current_desc, branches, out)
     unflatten(true_graph$out_tree, out)
   },
   subgraphs = c("true", "false"),
@@ -2628,9 +2627,9 @@ prim_while <- new_primitive(
 
     # A body that uses side effects carries them as the last members of the
     # loop state, which `cond` takes too but does not read. The loop runs a
-    # number of times not known while tracing, so a trace-time side effect
-    # forks: the body advances a value derived from the current one, which the
-    # loop itself advances by one use, and drops it at the end.
+    # number of times not known while tracing, so a side effect forks: the body
+    # advances a value derived from the current one, which the loop itself
+    # advances by one use, and drops it at the end.
     loop <- desc_begin_loop(current_desc, body_graph, steps = NULL)
     cond_graph$inputs <- c(cond_graph$inputs, side_effects_loop_twins(loop))
     operands <- c(flatten(init), loop$operands)
@@ -3051,13 +3050,14 @@ prim_print <- new_primitive(
 #'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
 #' @template section_random_state
 #' @return ([`arrayish`])\cr
-#'   The random bits, of data type `dtype` and shape `shape`. A `"ui64"` value
-#'   is one encrypted 64-bit block, and a narrower value one of a block's two
-#'   32-bit words, truncated to its low bits: of `n` values, the first
-#'   `ceiling(n / 2)` are the blocks' first words and the rest their second
-#'   words. The draws fill `shape` in row-major order, as JAX's do, so a draw of
-#'   `c(2, 3)` is not a draw of `6` filled into `c(2, 3)` in R's column-major
-#'   order.
+#'   The random bits, of data type `dtype` and shape `shape`. Every value is
+#'   made from an encrypted 64-bit block of its own: a `"ui64"` value is the
+#'   block, and a narrower value the xor of the block's two 32-bit words,
+#'   truncated to its low bits, as JAX's `jax.random.bits()` does by default.
+#'   The value at a position thus does not depend on the number of values
+#'   drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
+#'   `shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` is not a
+#'   draw of `6` filled into `c(2, 3)` in R's column-major order.
 #' @references
 #' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
 #' @templateVar primitive_id sample_bits
@@ -3084,7 +3084,7 @@ prim_sample_bits <- new_primitive(
     # operands
     graph_desc_add(
       self,
-      desc_use_side_effect(current_descriptor(), random_state_id()),
+      desc_use_side_effect(current_descriptor(), active_random_state()),
       params = list(shape = shape, dtype = dtype),
       infer_fn = infer_sample_bits
     )[[1L]]
@@ -3117,7 +3117,7 @@ prim_fork_random_state <- new_primitive(
   "fork_random_state",
   function() {
     # the fork is a use of the random state, as a draw is
-    effect <- random_state_id()
+    effect <- active_random_state()
     side_effect_fork(effect, desc_use_side_effect(current_descriptor(), effect))
   }
 )

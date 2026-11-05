@@ -91,7 +91,7 @@
     {the graph \cd{jit()} traces from it; the random state's part in \se{blue}};
 
   \matrix[fields, below = 1.0 of graph.south west, anchor = north west] (pview) {
-    effect &[8pt] global\_random\_state &[10pt] |[badge]| 3 \\
+    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 3 \\
     value & \se{\%key1}, \se{\%counter1} & |[badge]| 3 \\
     n & 0 $\to$ 1 $\to$ 2 & |[badge]| 5 & |[badge]| 6 \\
     inputs & \se{\%key1}, \se{\%counter1} & |[badge]| 3 \\
@@ -102,8 +102,8 @@
   \end{scope}
   \node[head] at (pviewbox.north west) {the program's view};
 
-  \matrix[fields, anchor = north west] (bview) at ($(pview.north east) + (1.2, 0)$) {
-    effect &[8pt] global\_random\_state &[10pt] |[badge]| 3 \\
+  \matrix[fields, anchor = north west] (bview) at ($(pview.north east) + (0.8, 0)$) {
+    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 3 \\
     value & \se{\%key5}, \se{\%counter6} & |[badge]| 3 \\
     n & 0 $\to$ 1 & |[badge]| 3 \\
     inputs & \se{\%key5}, \se{\%counter6} & |[badge]| 3 \\

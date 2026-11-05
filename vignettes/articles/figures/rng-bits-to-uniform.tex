@@ -1,5 +1,5 @@
 % From a random state to a uniform: the block cipher, the two 32-bit words of a block,
-% and the bits nv_unif_rand() keeps of the word of an f32 uniform.
+% their xor, and the bits nv_unif_rand() keeps of it for an f32 uniform.
 % Build: see figures/README.md
 \documentclass[tikz, border = 6pt]{standalone}
 \usepackage[T1]{fontenc}
@@ -42,7 +42,7 @@
   \draw[->] (fold) -- (next);
 
   % ---- 2. blocks of two words -------------------------------------------
-  \node[stephead] at (0, -2.5) {2.\ Encrypt the blocks $t = 0, 1, 2, \ldots$ under $k'$, two 32-bit words each};
+  \node[stephead] at (0, -2.5) {2.\ Encrypt the blocks $t = 0, 1, 2, \ldots$ under $k'$, one per value, two 32-bit words each};
   \node[box, fill = hash!15] (tf) at (1.4, -3.75) {$\mathrm{TF}_{k'}(t)$};
   \coordinate (y0) at (3.2, -3.4);
   \coordinate (y1) at (3.2, -4.1);
@@ -54,11 +54,11 @@
   \draw[->] (tf.east) -- ++(0.3, 0) |- (ly1.west);
   \node[note, anchor = west] at (10.4, -3.75)
     {64 random bits; $\mathrm{TF}_{k'}$ is a bijection,\\so no two blocks are the same.\\
-     Of $n$ \texttt{f32} values, the first $\lceil n / 2 \rceil$\\take the words $y_0$, the rest the $y_1$.};
+     The value at position $t$ takes the block $t$.};
 
   % ---- 3. one word, of which the top 23 bits ------------------------------
-  \node[stephead] at (0, -5.3) {3.\ An \texttt{f32} uniform takes one word and keeps its top 23 bits};
-  \node[anchor = east, font = \footnotesize] at (3.2, -6.3) {$y_0$ or $y_1$\,};
+  \node[stephead] at (0, -5.3) {3.\ An \texttt{f32} uniform takes the xor of the two words and keeps its top 23 bits};
+  \node[anchor = east, font = \footnotesize] at (3.2, -6.3) {$y_0 \oplus y_1$\,};
   \bits{3.2}{-6.3}{0}{22}{keep}
   \bits{3.2}{-6.3}{23}{31}{drop}
   \foreach \i in {23, ..., 31} {
@@ -73,7 +73,7 @@
     ($(3.2, -6.55) + (23 * 2.2mm, 0)$) -- ($(3.2, -6.55) + (32 * 2.2mm, 0)$)
     node[midway, below = 4pt, font = \footnotesize, align = center] {9 bits\\thrown away};
   \node[note, anchor = west] at (10.4, -6.3)
-    {\texttt{f64}: one block per value,\\keep 52 of its 64 bits.};
+    {\texttt{f64}: keep the top 52\\of the block's 64 bits.};
 
   % ---- 4. bits -> float in [1, 2) -> [0, 1) ------------------------------
   \node[stephead] at (0, -7.9) {4.\ Write $m$ into the mantissa of $1.0$, subtract $1$};

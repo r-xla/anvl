@@ -260,9 +260,7 @@ lowering_func <- function(id, build) {
 }
 
 # Lower `graph`'s calls into `func`, reading its inputs and constants from `env`
-# and returning one FuncValue per graph output, followed by one per value the
-# graph returns for its side effects (`side_effects_outputs()`; a sub-graph
-# returns none, as its call folds its side effects into its outputs).
+# and returning one FuncValue per graph output.
 # stablehlo() uses it for a whole function; a rule that inlines a sub-graph into
 # a region it builds by hand (prim_scan's loop body) first seeds `env` with the
 # region's values for the sub-graph's inputs.
@@ -320,8 +318,7 @@ lower_graph_calls <- function(graph, env, func) {
     do_call(call)
   }
 
-  # a program returns the values of its side effects after its own outputs
-  lapply(c(graph$outputs, side_effects_outputs(graph)), \(x) {
+  lapply(graph$outputs, \(x) {
     # an output is a literal only when the function returns one directly
     if (is_graph_literal(x)) literal_to_fval(x) else gnode_to_fval(x)
   })

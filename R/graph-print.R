@@ -405,26 +405,17 @@ format_graph_lines <- function(
   }
   header <- c(add(header, "(", ")", input_strs), " {")
 
-  output_ids <- c(
-    vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits),
-    vapply(
-      views_values(side_effects, "outputs"),
-      format_node_id,
-      character(1L),
-      node_ids = node_ids,
-      digits = digits
-    )
-  )
+  output_ids <- vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
   ret <- if (length(output_ids) == 1L) {
     paste0(indent, "return ", output_ids)
   } else {
     layout_row(list("return", call_chunk(" (", ")", output_ids)), indent, width)
   }
-  # What R does after the run for each trace-time side effect the graph uses, as
-  # the side effect formats it, e.g. `%counter1 += 2`, in a block of its own
-  # after the graph's.
+  # What R does after the run for each side effect the graph uses, as the side
+  # effect formats it, e.g. `%counter1 += 2`, in a block of its own after the
+  # graph's.
   advances <- unlist(lapply(side_effects, function(x) {
-    if (is_trace_time(x$effect) && x$n > 0) {
+    if (x$n > 0) {
       ids <- vapply(x$value, function(box) format_node_id(box$gnode, node_ids, digits), character(1L))
       paste0(indent, side_effect_format(x$effect, ids, x$n))
     }

@@ -3514,6 +3514,9 @@ nv_while <- prim_while
 #' )$out
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
+  # before `as_anvl_array()` meets a random state among them
+  abort_if_side_effects(init, "init")
+  abort_if_side_effects(xs, "xs")
   init <- map_tree(init, as_anvl_array)
   xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
 

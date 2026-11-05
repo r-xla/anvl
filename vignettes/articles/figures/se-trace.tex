@@ -75,7 +75,7 @@
     {the graph \cd{jit()} traces from it; the random state's part in \se{blue}};
 
   \matrix[fields, below = 1.0 of graph.south west, anchor = north west] (view) {
-    effect &[8pt] global\_random\_state &[10pt] |[badge]| 2 \\
+    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 2 \\
     value & \se{\%key1}, \se{\%counter1} & |[badge]| 2 \\
     n & 0 $\to$ 1 $\to$ 2 $\to$ 3 & |[badge]| 2 & |[badge]| 3 & |[badge]| 4 \\
     inputs & \se{\%key1}, \se{\%counter1} & |[badge]| 2 \\
@@ -102,25 +102,24 @@
     {\cd{jit()} traces the function with \cd{trace\_fn()}. The trace is the program: its
      \cd{GraphDescriptor} has the \cd{side\_effects\_mode} \cd{"program"}, and no views yet.}
   \note{2}{($(1.south west) + (0, -0.35)$)}
-    {\cd{prim\_sample\_bits()} gets no \cd{rng\_state}, so it draws from the global random
-     state, whose handle is \cd{global\_random\_state} (\cd{random\_state\_id()}). It passes
-     the handle to \cd{desc\_use\_side\_effect()}, which looks for the trace's view of it
-     (\cd{desc\_side\_effect()}). There is none yet, so \cd{side\_effect\_start()} starts one
+    {No random state is the default, so \cd{prim\_sample\_bits()} draws from the global random
+     state, whose handle is \cd{global\_random\_state\_handle} (\cd{active\_random\_state()}). It
+     passes the handle to \cd{desc\_use\_side\_effect()}, which looks for the trace's view of it
+     (\cd{desc\_view()}). There is none yet, so \cd{side\_effect\_start()} starts one
      from two fresh \cd{GraphValue}s, \se{\cd{\%key1}} and \se{\cd{\%counter1}}, which the
      program takes as implicit inputs after its own. The draw takes the view's current
      value, the key and the counter plus $n = 0$, as its operands, and the view counts it:
      $n = 1$.}
   \note{3}{($(2.south west) + (0, -0.35)$)}
     {The second draw finds the view. Its current value is the key and the counter plus
-     $n = 1$, which \cd{side\_effect\_at()} computes with an \cd{add}: \se{\cd{\%counter2}}.
+     $n = 1$, which \cd{side\_effect\_after()} computes with an \cd{add}: \se{\cd{\%counter2}}.
      The draw splits there, and the view counts it: $n = 2$.}
   \note{4}{($(3.south west) + (0, -0.35)$)}
     {The third draw splits at the counter plus $n = 2$, \se{\cd{\%counter3}}, which is
      computed from \se{\cd{\%counter1}} as well, not from \se{\cd{\%counter2}}, and the view
-     counts it: $n = 3$. So no draw waits for another. This is what makes the random state a
-     trace-time side effect: after $n$ draws, it is the key and \se{\cd{\%counter1}} plus
-     $n$, whatever the draws computed. The value of a runtime side effect is computed by the
-     program, so each of its uses waits for the one before.}
+     counts it: $n = 3$. So no draw waits for another. This is what lets the trace count the
+     draws: after $n$ draws, the random state is the key and \se{\cd{\%counter1}} plus $n$,
+     whatever the draws computed.}
   \note{5}{($(4.south west) + (0, -0.35)$)}
     {The function returns \cd{\%6}. \cd{desc\_close\_side\_effects()} gives the view no
      \cd{outputs}: its count says all the draws did, so the program returns none of the

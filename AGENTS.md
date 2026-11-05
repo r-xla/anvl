@@ -131,25 +131,37 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 ## Side Effects
 
 A side effect is state outside the traced function that primitives read and update; currently
-only the random state. It is one of two kinds: a *trace-time* side effect (the random state) is
-changed by its uses in a way the trace knows, so a trace counts its uses and hands back the count,
-which the host adds after the run without waiting for the program; a *runtime* side effect is
-changed by what the program computes, so a trace hands back its value, which the program returns.
-A side effect has a *handle* (its identity: `global_random_state`, or the `AnvlTracedRandomState`
-the traced function receives for a random state argument), whose class inherits from
-`TraceTimeSideEffect` or `RuntimeSideEffect`, an optional *host object* (the state between calls,
-e.g. `globals$random_state`), and one *view* per trace that uses it (`SideEffectView()`, in
-`desc$side_effects`): its value in that trace, the uses so far (`n`, trace-time only), and the
-`inputs` / `outputs` the trace takes and returns for it. `desc_side_effect(desc, effect)` finds or
-creates a trace's view as its `side_effects_mode` (`?GraphDescriptor`: `"program"`, `"loop"`,
-`"capture"`, `NULL`) says, and a draw calls `desc_use_side_effect(desc, random_state_id())`.
-Everything else -- loops, branches, gradients, lowering, the host -- is generic code in
-`R/side-effects.R`; a side effect only implements the S3 methods `side_effect_start()`,
-`side_effect_host_object()`, and `side_effect_at()` / `side_effect_fork()` / `side_effect_advance()`
-/ `side_effect_format()` (trace-time; the last gives the line a printed graph shows after the run)
-or `side_effect_receive()` (runtime) on its handle, which `R/rng.R` does for the random state. A random state cannot be part of a loop's state (`abort_if_side_effects()`), and
-`local_nv_rng_state()` does not work inside a loop body (`desc$in_loop_body`); the default it sets
-lives in `globals$default_traced_random_state`. The side effects article describes the mechanism.
+only the random state. The side effects article describes the mechanism.
+
+- **One kind, counted uses.** A side effect is changed by its uses in a way the trace knows, so a
+  trace counts its uses and hands back the count, which the host adds after the run without
+  waiting for the program. A second kind, a *runtime* side effect whose value the program computes
+  and returns, is planned; the mechanism once supported one (`git log -S side_effect_receive`).
+- **Three parts.**
+  - The *handle* is the side effect's identity and never changes. Its class inherits from
+    `SideEffect`; for the random state it is an `AnvlRandomStateHandle`, see the top of
+    `R/rng-trace.R`.
+  - The optional *host object* is the state between calls, e.g. `globals$random_state`.
+  - There is one *view* per trace that uses it (`SideEffectView()`, in `desc$side_effects`): its
+    value in that trace, the uses since (`n`), the `inputs` the trace takes for it, and a loop
+    body's `outputs`.
+- **Where it is generic.** `desc_view(desc, effect)` finds or creates a trace's view as its
+  `side_effects_mode` (`?GraphDescriptor`) says, and a draw calls
+  `desc_use_side_effect(desc, active_random_state())`. Loops, branches, gradients, lowering and the
+  host are generic code in `R/side-effects.R`.
+- **What a side effect implements.** S3 methods on its handle: `side_effect_start()`,
+  `side_effect_host_object()`, `side_effect_input()`, `side_effect_after()`, `side_effect_fork()`,
+  `side_effect_advance()` and `side_effect_format()` (the line a printed graph shows after the
+  run). `R/rng-trace.R` implements them for the random state; `R/rng.R` holds the user API and the
+  random state as R holds it.
+- **The random state.** A jitted function can draw from the global random state, a random state
+  it takes as an argument, or one it closes over. In a trace it is an `AnvlRandomState` too, whose
+  `random_key` / `random_counter` read the trace's view. After a run, an argument's random state is
+  found by its place among the random states `pjrt::flatten()` meets (`random_state_argument()`).
+- **Restrictions.** A random state cannot be part of a loop's state (`abort_if_side_effects()`),
+  and `local_nv_rng_state()` does not work inside a loop body (`in_loop_body()`). The default it
+  sets lives on the descriptor (`desc$default_random_state`), which traces opened in it find
+  through `parent`.
 
 ## Jit-wrapping
 

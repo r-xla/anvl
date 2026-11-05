@@ -22,18 +22,25 @@ the global random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) within \
 or after \code{\link[=local_nv_rng_state]{local_nv_rng_state()}}. Like the global random state, it is a key
 and a counter of the ThreeFry-2x32 generator, and every sampling call that
 draws from it advances it in place, so two draws from the same random state
-differ.
+differ. R holds the key and the counter, so advancing a random state runs no
+program; its \code{random_key} and \code{random_counter} return them as arrays on the
+default device.
 
-A function compiled with \code{\link[=jit]{jit()}} can take a random state as an argument,
-also inside a list, and make it the samplers' default with
-\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} or \code{\link[=with_nv_rng_state]{with_nv_rng_state()}}: the compiled program takes
-its key and counter as inputs, like those of any other argument, and after
-the call the random state is advanced in place by the number of sampling
-calls the program made from it, as the global random state is. Its \code{random_key} and \code{random_counter} read in the jitted function what
-they read eagerly, the counter after the draws so far; the random state
-itself is not a value there, which could be returned or carried through a
-loop. A jitted function cannot draw from a random state it closes over, and
-the same random state must not be passed to it twice.
+A function compiled with \code{\link[=jit]{jit()}} can draw from a random state it takes as an
+argument, also inside a list, or one it closes over, which it makes the
+samplers' default with \code{\link[=local_nv_rng_state]{local_nv_rng_state()}} or \code{\link[=with_nv_rng_state]{with_nv_rng_state()}}. The
+compiled program takes the key and the counter of an argument like other R
+data among the arguments, on the device of the call, and those of a random
+state it closes over as it takes the global random state's, from the random
+state it closed
+over when it was traced. After the call, the random state is advanced in
+place by the number of sampling calls the program made from it, as the global
+random state is. In the jitted function, a random state is an
+\code{AnvlRandomState} too, whose \code{random_key} and \code{random_counter} read what they
+read eagerly, the counter after the draws so far; but it is not a value
+there, which could be returned or carried through a loop. A jitted function
+must not draw from the same random state as two different ones, such as one
+passed to it twice, and cannot create one.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

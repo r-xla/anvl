@@ -55,10 +55,9 @@ gives the data type and shape, this gives the R type it is uploaded from.}
 
 \item{side_effects}{(\code{list()})\cr
 The graph's views of the side effects it uses, in the order of their first
-use, e.g. of a random state it draws from: its value (\verb{$value}), for a
-trace-time side effect such as the random state its number of uses
-(\verb{$n}), the \code{\link{GraphValue}}s the graph takes for it beyond its inputs
-(\verb{$inputs}), and those it returns for it beyond its outputs (\verb{$outputs}).
+use, e.g. of a random state it draws from: the value its uses start from
+(\verb{$value}), their number (\verb{$n}), and the \code{\link{GraphValue}}s the graph takes
+for it beyond its inputs (\verb{$inputs}).
 A sub-graph's views are folded into its inputs and outputs by the
 construct that traced it.}
 }

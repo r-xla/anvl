@@ -96,7 +96,10 @@ place.
 
 \section{Random generation}{
 
-\code{nv_runif} samples from the open interval \eqn{(a, b)}.
+\code{nv_runif} draws uniforms on the open interval \eqn{(0, 1)} and scales them
+to \eqn{(a, b)}. Rounding to the data type can still give \eqn{a} or
+\eqn{b} where the interval is narrow next to its magnitude, e.g. for
+\code{nv_runif(n, 1e6, 1e6 + 1)} at \code{f32}.
 
 \code{min} and \code{max} are \code{\link{arrayish}}, so they may vary across the sample: they
 are applied to the draws after they have been reshaped to \code{shape}, and so

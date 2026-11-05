@@ -1,4 +1,4 @@
-% What one draw does: random_state_id() names the random state's handle,
+% What one draw does: active_random_state() names the random state's handle,
 % desc_use_side_effect() looks up (or, on the first use, creates) the trace's
 % view of it, and passes the view's current value -- the key and the counter
 % plus the draws before -- as the call's operands, counting the draw. How a view
@@ -31,22 +31,23 @@
 \begin{tikzpicture}
 
   \node[stage] (call) at (0, 0)
-    {\texttt{prim\_sample\_bits(shape, dtype, rng\_state)}\\[2pt]
-     \texttt{desc\_use\_side\_effect(desc, random\_state\_id(rng\_state))}};
+    {\texttt{prim\_sample\_bits(shape, dtype)}\\[2pt]
+     \texttt{desc\_use\_side\_effect(desc, active\_random\_state())}};
 
   \node[stage, below = 0.6 of call] (id)
-    {\texttt{random\_state\_id()}: the handle of which random state\\[2pt]
-     \texttt{NULL} $\to$ the scope's default, or \texttt{global\_random\_state}\\
-     an argument's $\to$ its \texttt{AnvlTracedRandomState}\\
-     closed over $\to$ error};
+    {\texttt{active\_random\_state()}: the handle of which random state\\[2pt]
+     the default of the trace or a trace it is opened in,\\
+     else \texttt{global\_random\_state\_handle}\\
+     an argument's $\to$ the handle it was rebuilt with\\
+     closed over $\to$ a handle of the random state R holds};
 
   \node[stage, below = 0.6 of id] (view)
-    {\texttt{desc\_side\_effect(desc, effect)}:\\
+    {\texttt{desc\_view(desc, effect)}:\\
      the trace's view of it};
 
   \node[stage, below = 0.6 of view] (draw)
-    {\texttt{side\_effect\_current(view)}, then \texttt{n} $+= 1$:\\
-     key, counter $+$ \texttt{n} (\texttt{side\_effect\_at()})};
+    {\texttt{view\_current(view)}, then \texttt{n} $+= 1$:\\
+     key, counter $+$ \texttt{n} (\texttt{side\_effect\_after()})};
 
   \node[stage, below = 0.6 of draw] (ops)
     {the call's operands \texttt{random\_key},\\
@@ -61,15 +62,15 @@
      \texttt{effect}: the handle of which random state\\
      \texttt{value}: the key and the counter it starts from\\
      \texttt{n}: the draws so far\\
-     \texttt{inputs}, \texttt{outputs}};
+     \texttt{inputs}, and a loop body's \texttt{outputs}};
   \draw[edge] (view.east) to[out = 0, in = 180] node[lab, above, pos = 0.4] {looks up} (entry.west);
 
   % ---- first use: by mode -------------------------------------------------------
   \node[font = \small\bfseries, text = black!70, anchor = west] at (7.4, 0.6)
     {on the first use, it is created by \texttt{side\_effects\_mode}:};
   \node[mode, anchor = north west] (m1) at (7.4, 0.2)
-    {\texttt{"program"}, the outermost trace: implicit inputs (the global one) or
-     the argument's leaves};
+    {\texttt{"program"}, the outermost trace: implicit inputs (the global one,
+     or one closed over) or the argument's leaves};
   \node[mode, anchor = north west] (m2) at (13.3, 0.2)
     {\texttt{"loop"}, an \texttt{nv\_while()} / \texttt{nv\_scan()} body:\\
      fresh inputs, handed on as \texttt{outputs}};

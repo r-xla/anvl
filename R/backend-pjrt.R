@@ -35,7 +35,6 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       out_tree = compiled$out_tree,
       out_avals = compiled$out_avals,
       implicit_inputs = compiled$implicit_inputs,
-      implicit_outputs = compiled$implicit_outputs,
       on_success = compiled$on_success
     )
   }
@@ -139,16 +138,12 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `implicit_inputs`: One `list(get, dtype, shape)` per value of a side
 #'     effect the program takes from outside of it, which pjrt's dispatcher
 #'     supplies as an input after the call's own: `get()` takes no arguments
-#'     and returns the current value, an array of `dtype` and `shape`, e.g. the
-#'     key of the global random state.
-#'   - `implicit_outputs`: `NULL`, or one `list(dtype, shape)` per value of a
-#'     runtime side effect the program returns after its own outputs, which
-#'     pjrt's dispatcher hands to `on_success`.
+#'     and returns the current value, a `PJRTBuffer` of `dtype` and `shape`,
+#'     e.g. the key of the global random state.
 #'   - `on_success`: `NULL`, or a function pjrt's dispatcher calls after every
-#'     successful run with the implicit outputs and the call's arguments: it
-#'     advances the host object of each trace-time side effect by its count,
-#'     e.g. a random state passed as an argument, and hands each runtime side
-#'     effect its value.
+#'     successful run with the call's arguments: it advances the host object
+#'     of each side effect by its count, e.g. a random state passed as an
+#'     argument.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -260,7 +255,6 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     device = device(exec),
     phantom_specs = phantom_specs,
     implicit_inputs = side_effects_implicit_inputs(graph),
-    implicit_outputs = side_effects_implicit_outputs(graph),
     on_success = side_effects_on_success(graph)
   )
 }
@@ -354,13 +348,14 @@ AnvlBackendPjrt <- function() {
 # reads on the hot dispatch path into plain field accesses instead of repeated
 # S3-dispatch -> C++/pjrt calls. The device is not cached: a PJRTDevice is an
 # external pointer, which would not survive serializing the array, while the
-# buffer itself does.
-pjrt_anvl_array <- function(buf) {
+# buffer itself does. A caller that knows the buffer's `dtype` (a `DataType`)
+# and `shape` passes them, which saves reading them.
+pjrt_anvl_array <- function(buf, dtype = xlamisc::dtype(buf), shape = xlamisc::shape(buf)) {
   structure(
     list(
       data = buf,
-      dtype = xlamisc::dtype(buf),
-      shape = xlamisc::shape(buf),
+      dtype = dtype,
+      shape = shape,
       backend = "pjrt"
     ),
     class = "AnvlArray"

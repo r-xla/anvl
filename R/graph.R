@@ -145,10 +145,9 @@ GraphStatement <- function(primitive, inputs, params, outputs) {
 #'   gives the data type and shape, this gives the R type it is uploaded from.
 #' @param side_effects (`list()`)\cr
 #'   The graph's views of the side effects it uses, in the order of their first
-#'   use, e.g. of a random state it draws from: its value (`$value`), for a
-#'   trace-time side effect such as the random state its number of uses
-#'   (`$n`), the [`GraphValue`]s the graph takes for it beyond its inputs
-#'   (`$inputs`), and those it returns for it beyond its outputs (`$outputs`).
+#'   use, e.g. of a random state it draws from: the value its uses start from
+#'   (`$value`), their number (`$n`), and the [`GraphValue`]s the graph takes
+#'   for it beyond its inputs (`$inputs`).
 #'   A sub-graph's views are folded into its inputs and outputs by the
 #'   construct that traced it.
 #' @return (`AnvlGraph`)
@@ -328,8 +327,13 @@ GraphDescriptor <- function(
   env$side_effects_mode <- side_effects_mode
   # The trace this one is opened in.
   env$parent <- parent
-  # Whether the trace is the body of a loop, or is opened inside one.
-  env$in_loop_body <- identical(side_effects_mode, "loop") || isTRUE(parent$in_loop_body)
+  # The handle of the random state `local_nv_rng_state()` made the default of
+  # the trace and the traces opened in it, or `NULL` (see
+  # `active_random_state()`).
+  env$default_random_state <- NULL
+  # The handles of the random states among the trace's arguments, in the order
+  # it rebuilt them (see `argument_random_state()`).
+  env$random_state_args <- list()
 
   structure(env, class = "GraphDescriptor")
 }

@@ -132,14 +132,10 @@ graph_gradient <- function(graph, wrt) {
   # The gradient takes the side effects of `graph` as `graph` does, through the
   # same inputs, and makes the same uses of them.
   desc$side_effects <- lapply(graph$side_effects, function(x) {
-    copy_view(x, value = lapply(x$value, function(box) register_gval(desc, box$gnode)), outputs = NULL)
+    value <- lapply(x$value, function(box) register_gval(desc, box$gnode))
+    SideEffectView(x$effect, value, n = x$n, inputs = x$inputs)
   })
   res <- graph_value_and_grad(graph, wrt)
-  # it returns for a runtime side effect what `graph` returns, as replayed
-  for (result in res$side_effects) {
-    view <- find_view(desc$side_effects, result$effect)
-    view$outputs <- lapply(result$value, `[[`, "gnode")
-  }
   desc$outputs <- lapply(res$grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
   desc$is_static_flat <- graph$is_static_flat
@@ -164,14 +160,9 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
 
   box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
   replayed <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
-  # what the graph returns for its side effects, as replayed into `desc`
-  side_effects <- lapply(Filter(function(x) !is.null(x$outputs), graph$side_effects), function(x) {
-    list(effect = x$effect, value = lapply(x$outputs, replayed))
-  })
   list(
     value = lapply(graph$outputs, replayed),
-    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of),
-    side_effects = side_effects
+    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
   )
 }
 
@@ -699,7 +690,7 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
   desc <- local_descriptor(side_effects_mode = "capture")
   graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
   res <- graph_value_and_grad(graph, wrt, gradient_operands(graph, prep$args_flat))
-  desc_end_capture(enclosing, list(graph$side_effects), res$side_effects)
+  desc_end_capture(enclosing, list(graph))
   list(
     value = unflatten(graph$out_tree, res$value),
     grad = unflatten(gradient_out_tree(graph, wrt), res$grad)
