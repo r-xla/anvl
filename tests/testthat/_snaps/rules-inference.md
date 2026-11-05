@@ -785,3 +785,165 @@
       ! `false` must be a function.
       x Got "x".
 
+# prim_custom_gradient / refuses an fn or rule that is not a function
+
+    Code
+      prim_custom_gradient(list(x = x), fn = 1, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `fn` must be a function.
+      x Got 1.
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r")
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must be a function.
+      x Got "r".
+
+# prim_custom_gradient / refuses args that are not a list with names
+
+    Code
+      prim_custom_gradient(x, fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must be a non-empty list whose entries all have names.
+      x Got f32[].
+
+---
+
+    Code
+      prim_custom_gradient(list(x), fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must be a non-empty list whose entries all have names.
+      x Got <list> of length 1.
+
+---
+
+    Code
+      prim_custom_gradient(list(out = x), fn = function(out) out, rule = function(...)
+        list(out = NULL))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have an entry named "out" or "grad".
+      x Got an entry named "out".
+      i `rule` receives the result of `fn` and its gradient under these names.
+
+---
+
+    Code
+      prim_custom_gradient(stats::setNames(list(x, x), c("x", "x")), fn = function(x)
+        x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have two entries with the same name.
+      x Got more than one entry named "x".
+
+# prim_custom_gradient / refuses args without an array, or with something else than one
+
+    Code
+      prim_custom_gradient(list(d = list()), fn = function(d) x, rule = function(d,
+        out, grad) list(d = NULL))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must contain at least one array.
+      x Got <list> of length 1 without any.
+
+---
+
+    Code
+      jit(function(x) {
+        prim_custom_gradient(list(x = x, p = list(w = x, b = "a")), fn = function(x,
+          p) x, rule = function(x, p, out, grad) list(x = grad, p = NULL))
+      })(x)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must hold arrays, or trees of them.
+      x Got "a" at `p$b`.
+
+# prim_custom_gradient / refuses an fn or rule without an argument for a value it receives
+
+    Code
+      prim_custom_gradient(list(y = x), fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `fn` must have an argument for each value it receives.
+      x Got a function with arguments "x".
+      i It has none for "y".
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, grad)
+        list(x = grad))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must have an argument for each value it receives.
+      x Got a function with arguments c("x", "grad").
+      i It has none for "out".
+
+# prim_custom_gradient / refuses a rule that does not return one gradient per argument
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out,
+        grad) grad)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must return a list with one entry for each entry of `args`, by name.
+      x Got f32[].
+      i `args` has names "x".
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out,
+        grad) list(y = grad))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must return a list with one entry for each entry of `args`, by name.
+      x Got a list with names "y".
+      i `args` has names "x".
+
+# prim_custom_gradient / refuses a gradient of another structure or type than its argument
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out,
+        grad) list(x = list(grad, grad)))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must return each gradient with the structure of the entry of `args` it belongs to.
+      x The gradient of "x" has another structure.
+
+---
+
+    Code
+      prim_custom_gradient(list(a = x, b = x), fn = function(a, b) a, rule = function(
+        a, b, out, grad) list(a = list(grad), b = list(grad)))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must return each gradient with the structure of the entry of `args` it belongs to.
+      x The gradients of c("a", "b") have another structure.
+
+---
+
+    Code
+      prim_custom_gradient(list(p = list(w = x, b = x)), fn = function(p) p$w, rule = function(
+        p, out, grad) list(p = list(w = grad, b = nv_convert(grad, "f64"))))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must return a gradient of the same type as the argument it belongs to.
+      x `p$b` is f32[], its gradient f64[].
+
+---
+
+    Code
+      prim_custom_gradient(list(x = nv_array(c(1, 2))), fn = function(x) nv_sum(x),
+      rule = function(x, out, grad) list(x = grad))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must return a gradient of the same type as the argument it belongs to.
+      x `x` is f32[2], its gradient f32[].
+

@@ -1,5 +1,8 @@
 # anvl (development version)
 
+* New `prim_custom_gradient()` computes a value with one function and
+  differentiates it with another, e.g. to give a `prim_while()` loop a gradient.
+  The gradient can itself be differentiated.
 * Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
   `prim_dynamic_update_slice()`) no longer wraps around to the last position.
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are

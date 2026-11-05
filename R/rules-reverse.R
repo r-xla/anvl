@@ -590,6 +590,31 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
   )
 })
 
+# `rule` is a graph taking the arguments of `fn`, its outputs, their
+# cotangents, then the captures, and returning the cotangents of the arguments.
+# Applying it records anvl operations on this call's own inputs and outputs, so
+# differentiating the gradient differentiates those in turn. It gives nothing
+# for a captured value, so differentiating with respect to one is refused.
+prim_custom_gradient[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  n_args <- length(inputs) - params$n_captures
+  arg_idx <- seq_len(n_args)
+  capture_idx <- n_args + seq_len(params$n_captures)
+  if (any(required[capture_idx])) {
+    cli_abort(
+      c(
+        "{.fn gradient} cannot differentiate with respect to a value that {.arg fn} or {.arg rule} of {.fn prim_custom_gradient} close over.", # nolint
+        i = "Pass the value to {.arg fn} through {.arg args} instead."
+      ),
+      call = NULL
+    )
+  }
+  cts <- graph_apply(params$rule, c(inputs[arg_idx], outputs, grads, inputs[capture_idx]))
+  c(
+    Map(function(ct, req) if (req) ct, cts, required[arg_idx]),
+    vector("list", params$n_captures)
+  )
+})
+
 # Printing hands its argument back unchanged, so the cotangent passes through.
 prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   list(if (required[[1L]]) grads[[1L]])

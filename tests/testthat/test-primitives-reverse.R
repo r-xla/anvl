@@ -423,6 +423,144 @@ describe("prim_if", {
   })
 })
 
+describe("prim_custom_gradient", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+
+  # x^n by repeated multiplication, which gradient() cannot differentiate
+  pow <- function(x, n) {
+    prim_custom_gradient(
+      list(x = x, n = n),
+      fn = function(x, n) {
+        prim_while(
+          init = list(i = 1L, y = x),
+          cond = function(i, y) i < n,
+          body = function(i, y) list(i = i + 1L, y = y * x)
+        )$y
+      },
+      rule = function(x, n, out, grad) list(x = grad * n * x^(n - 1L), n = NULL)
+    )
+  }
+  d <- function(f) function(x, n) nv_sum(gradient(f, wrt = "x")(x, n)$x)
+
+  it("differentiates with rule instead of through fn", {
+    f <- function(x) {
+      nv_sum(prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x * x,
+        rule = function(x, out, grad) list(x = grad * 10)
+      ))
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(10, 10, 10))
+  })
+
+  it("gives a gradient where fn has none", {
+    f <- function(x, n) nv_sum(pow(x, n))
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(x, 3L)$x), 3 * c(1, 2, 3)^2)
+  })
+
+  it("differentiates the gradient again through rule", {
+    f <- function(x, n) nv_sum(pow(x, n))
+    expect_equal(as.numeric(jit(gradient(d(f), wrt = "x"))(x, 3L)$x), 6 * c(1, 2, 3))
+    expect_equal(as.numeric(jit(gradient(d(d(f)), wrt = "x"))(x, 3L)$x), c(6, 6, 6))
+  })
+
+  it("applies rule afresh each time a gradient is differentiated", {
+    # Each order applies `rule` once more into the same trace, so its values
+    # must not collide with those the previous order recorded.
+    cube <- function(x) {
+      prim_custom_gradient(list(x = x), fn = function(x) x * x * x, rule = function(x, out, grad) {
+        list(x = grad * 3 * x * x)
+      })
+    }
+    my_exp <- function(x) {
+      prim_custom_gradient(list(x = x), fn = function(x) exp(x), rule = function(x, out, grad) list(x = grad * out))
+    }
+    d1 <- function(f) function(x) gradient(f)(x)[[1L]]
+    x <- nv_scalar(0.5, dtype = "f64")
+    expect_equal(as.numeric(jit(d1(d1(d1(cube))))(x)), 6)
+    expect_equal(as.numeric(jit(d1(d1(d1(my_exp))))(x)), exp(0.5))
+    vg <- jit(value_and_gradient(d1(cube)))(x)
+    expect_equal(as.numeric(vg$value), 0.75)
+    expect_equal(as.numeric(vg$grad[[1L]]), 3)
+  })
+
+  it("passes rule the result and the gradient with respect to it", {
+    my_exp <- function(x) {
+      prim_custom_gradient(list(x = x), fn = function(x) exp(x), rule = function(x, out, grad) list(x = grad * out))
+    }
+    f <- function(x) nv_sum(my_exp(x) * nv_array(c(1, 2, 3), dtype = "f64"))
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(1, 2, 3) * exp(c(1, 2, 3)))
+    # the second derivative goes through the rule again, via `out`
+    g <- function(x) nv_sum(gradient(function(x) nv_sum(my_exp(x)))(x)[[1L]])
+    expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), exp(c(1, 2, 3)))
+  })
+
+  it("gives a zero where rule returns NULL", {
+    f <- function(a, b) {
+      nv_sum(prim_custom_gradient(
+        list(a = a, b = b),
+        fn = function(a, b) a * b,
+        rule = function(a, b, out, grad) list(a = grad * b, b = NULL)
+      ))
+    }
+    y <- nv_array(c(4, 5, 6), dtype = "f64")
+    grads <- jit(gradient(f))(x, y)
+    expect_equal(as.numeric(grads$a), c(4, 5, 6))
+    expect_equal(as.numeric(grads$b), c(0, 0, 0))
+  })
+
+  it("differentiates trees of arguments and results", {
+    f <- function(p) {
+      r <- prim_custom_gradient(
+        list(p = p),
+        fn = function(p) list(s = p$w + p$b, d = p$w - p$b),
+        rule = function(p, out, grad) list(p = list(w = grad$s + grad$d, b = grad$s - grad$d))
+      )
+      nv_sum(r$s * 3 + r$d)
+    }
+    grads <- jit(gradient(f))(list(w = nv_scalar(1, "f64"), b = nv_scalar(2, "f64")))
+    expect_equal(as.numeric(grads$p$w), 4)
+    expect_equal(as.numeric(grads$p$b), 2)
+  })
+
+  it("lets fn and rule close over values not differentiated", {
+    k <- nv_scalar(5, dtype = "f64")
+    f <- function(x, y) {
+      nv_sum(prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x * k * y,
+        rule = function(x, out, grad) list(x = grad * k * y)
+      ))
+    }
+    y <- nv_scalar(2, dtype = "f64")
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(x, y)$x), c(10, 10, 10))
+  })
+
+  it("refuses to differentiate a value fn or rule close over", {
+    f <- function(x) {
+      y <- x * 2
+      nv_sum(prim_custom_gradient(list(z = x), fn = function(z) z + y, rule = function(z, out, grad) list(z = grad)))
+    }
+    expect_snapshot(error = TRUE, jit(gradient(f))(x))
+  })
+
+  it("works in a branch of prim_if()", {
+    f <- function(p, x) {
+      nv_if(
+        p,
+        function() {
+          nv_sum(prim_custom_gradient(list(x = x), fn = function(x) x * x, rule = function(x, out, grad) {
+            list(x = grad * 7)
+          }))
+        },
+        function() nv_sum(x)
+      )
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x)$x), c(7, 7, 7))
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(FALSE), x)$x), c(1, 1, 1))
+  })
+})
+
 describe("prim_pow reverse", {
   it("gives a zero derivative in the exponent at base 0", {
     f <- jit(gradient(function(y) nv_sum(prim_pow(nv_array(c(0, 2), dtype = "f64"), y))))

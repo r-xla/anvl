@@ -389,11 +389,15 @@ propagate_requirements <- function(graph, required_env) {
 # passed to the gradient function. Without them, the graph's inputs become
 # inputs of `desc`.
 #
+# With `fresh`, every call writes new GraphValues instead of the ones `graph`
+# holds, so that the same graph can be replayed into one descriptor more than
+# once without a value being defined twice.
+#
 # With `required_env`, a call none of whose operands requires a gradient keeps
 # its plain forward even where its rule has a replacement: the backward pass
 # skips it, so what the replacement keeps for it -- an if's residuals -- would
 # be computed for nothing.
-rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL) {
+rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL, fresh = FALSE) {
   if (is.null(inputs)) {
     register_inputs(desc, graph$inputs)
   } else {
@@ -441,14 +445,21 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     if (is.null(rule) || is.null(rule$forward) || !needs_grad) {
       # No rule, a backward-only rule, or a call the backward pass skips: the
       # forward computation is unchanged, so the original output gvals are
-      # reused directly. The statement is rebuilt only to read its inputs
-      # through `trans`, in case an upstream alternative forward replaced one
-      # of them.
+      # reused directly, unless `fresh` asks for new ones. The statement is
+      # rebuilt only to read its inputs through `trans`, in case an upstream
+      # alternative forward replaced one of them.
       new_inputs <- lapply(call$inputs, translate_gnode)
-      new_call <- GraphStatement(call$primitive, new_inputs, call$params, call$outputs)
+      outputs <- call$outputs
+      if (fresh) {
+        outputs <- lapply(outputs, \(g) GraphValue(aval = g$aval))
+        for (j in seq_along(outputs)) {
+          trans[[call$outputs[[j]]]] <- outputs[[j]]
+        }
+      }
+      new_call <- GraphStatement(call$primitive, new_inputs, call$params, outputs)
 
       desc$statements$add(new_call)
-      register_gvals(desc, call$outputs)
+      register_gvals(desc, outputs)
 
       # Without a backward rule `backwards[[i]]` stays NULL. `run_backward_pass`
       # treats that as "skip if no input requires grad, otherwise abort":
@@ -459,7 +470,7 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
         backwards[[i]] <- list(
           fn = rule$backward,
           inputs = lapply(new_call$inputs, GraphBox, desc = desc),
-          outputs = lapply(call$outputs, GraphBox, desc = desc),
+          outputs = lapply(outputs, GraphBox, desc = desc),
           params = call$params
         )
       }
@@ -493,10 +504,13 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
 # (boxes, one per graph input) and returns the boxes of its outputs, e.g. a
 # branch of `prim_if()`'s forward pass that `split_vjp()` prepared. No backward
 # pass follows, so every call keeps its plain forward: an empty `required_env`
-# says that nothing requires a gradient.
+# says that nothing requires a gradient. The calls write new GraphValues: a
+# graph a reverse rule applies, such as `prim_custom_gradient()`'s `rule`, is
+# applied once more into the same descriptor when the gradient is itself
+# differentiated.
 graph_apply <- function(graph, inputs) {
   desc <- current_descriptor()
-  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env = hashtab())
+  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env = hashtab(), fresh = TRUE)
   lapply(graph$outputs, function(out) {
     g <- if (is_graph_literal(out)) out else rebuilt$trans[[out]] %||% out
     desc$gval_to_box[[g]] %||% GraphBox(g, desc)

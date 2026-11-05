@@ -2803,6 +2803,216 @@ prim_scan <- new_primitive(
   static = 3:5
 )
 
+#' @title Primitive Custom Gradient
+#' @description
+#' Calls `fn` on `args`, but differentiates the result with `rule` instead of
+#' through the operations `fn` performs. Use it where those operations give no
+#' gradient -- e.g. a [prim_while()] loop, which [gradient()] cannot
+#' differentiate -- or an inaccurate one, while the derivative has a formula of
+#' its own.
+#'
+#' `fn` alone determines the result; `rule` only runs when the result is
+#' differentiated. `rule` is written in anvl operations on the arguments
+#' themselves, so differentiating the gradient it returns differentiates
+#' `rule`: higher-order derivatives are correct as long as `rule` is.
+#' @param args (named `list()`)\cr
+#'   The arguments of `fn`: [`arrayish`] values, or trees of them in the sense
+#'   of pjrt's [`RTree`][pjrt::build_tree], by name. `rule` gives the gradient
+#'   with respect to these. No entry may be named `out` or `grad`, the names
+#'   under which `rule` receives the result and its gradient. An R value
+#'   materializes at its default data type, as in [prim_while()]; one that
+#'   only parameterizes `fn` can instead be closed over, where it takes the
+#'   data type of the arrays it meets.
+#' @param fn (`function`)\cr
+#'   Computes the result from the entries of `args`, which it receives as
+#'   arguments. Returns an array, or a tree of them.
+#' @param rule (`function`)\cr
+#'   Computes the gradient. Receives the entries of `args` as arguments, plus
+#'   `out`, the result of `fn`, and `grad`, the gradient with respect to `out`,
+#'   of the same structure, data types and shapes. Returns a named list with
+#'   one entry per entry of `args`: the gradient with respect to it -- for an
+#'   array `x`, the sum over the elements of `out` of their `grad` times their
+#'   derivative with respect to `x` -- of `x`'s structure, data types and
+#'   shapes, or `NULL` for a gradient of zero, e.g. for an integer.
+#' @return ([`arrayish`] | `list`)\cr
+#'   The result of `fn`.
+#' @section Gradients:
+#' `fn` and `rule` may use values they close over, but [gradient()] cannot
+#' differentiate with respect to those, as `rule` only gives the gradient with
+#' respect to `args`. Pass such a value through `args` instead.
+#' @templateVar primitive_id custom_gradient
+#' @template section_rules
+#' @section StableHLO:
+#' Lowers the operations of `fn` in place. `rule` is not lowered: a gradient
+#' is traced, as anvl operations, before the program is lowered.
+#' @seealso [gradient()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' # x^n by repeated multiplication: a while loop, which gradient() cannot
+#' # differentiate on its own
+#' pow <- function(x, n) {
+#'   prim_custom_gradient(
+#'     list(x = x, n = n),
+#'     fn = function(x, n) {
+#'       prim_while(
+#'         init = list(i = 1L, y = x),
+#'         cond = function(i, y) i < n,
+#'         body = function(i, y) list(i = i + 1L, y = y * x)
+#'       )$y
+#'     },
+#'     rule = function(x, n, out, grad) list(x = grad * n * x^(n - 1L), n = NULL)
+#'   )
+#' }
+#' x <- nv_scalar(2)
+#' pow(x, 3L)
+#' # the derivative 3 * x^2
+#' jit(gradient(pow, wrt = "x"))(x, 3L)
+#' # and, as it is computed from x, the second derivative 6 * x
+#' dpow <- function(x, n) gradient(pow, wrt = "x")(x, n)$x
+#' jit(gradient(dpow, wrt = "x"))(x, 3L)
+#' @export
+prim_custom_gradient <- new_primitive(
+  "custom_gradient",
+  function(args, fn, rule) {
+    force(args)
+    if (!is.function(fn)) {
+      cli_abort(c(
+        "{.arg fn} must be a function.",
+        x = "Got {value_repr(fn)}."
+      ))
+    }
+    if (!is.function(rule)) {
+      cli_abort(c(
+        "{.arg rule} must be a function.",
+        x = "Got {value_repr(rule)}."
+      ))
+    }
+    named_list <- !is_arrayish(args) &&
+      is.list(args) &&
+      length(args) &&
+      !is.null(names(args)) &&
+      all(nzchar(names(args)))
+    if (!named_list) {
+      cli_abort(c(
+        "{.arg args} must be a non-empty list whose entries all have names.",
+        x = "Got {value_repr(args)}."
+      ))
+    }
+    duplicated_names <- unique(names(args)[duplicated(names(args))])
+    if (length(duplicated_names)) {
+      cli_abort(c(
+        "{.arg args} must not have two entries with the same name.",
+        x = "Got more than one entry named {value_repr(duplicated_names)}."
+      ))
+    }
+    leaves <- flatten(args)
+    if (!length(leaves)) {
+      cli_abort(c(
+        "{.arg args} must contain at least one array.",
+        x = "Got {value_repr(args)} without any."
+      ))
+    }
+    not_array <- which(!vapply(leaves, is_arrayish, logical(1L)))
+    if (length(not_array)) {
+      first <- not_array[[1L]]
+      cli_abort(c(
+        "{.arg args} must hold arrays, or trees of them.",
+        x = "Got {value_repr(leaves[[first]])} at `{pjrt::tree_path(build_tree(args), first)}`."
+      ))
+    }
+    reserved <- intersect(names(args), c("out", "grad"))
+    if (length(reserved)) {
+      cli_abort(c(
+        "{.arg args} must not have an entry named {.val out} or {.val grad}.",
+        x = "Got {cli::qty(length(reserved))}{?an entry/entries} named {.val {reserved}}.",
+        i = "{.arg rule} receives the result of {.arg fn} and its gradient under these names."
+      ))
+    }
+    # Otherwise R refuses the call with `unused argument`, printing the boxes.
+    assert_takes <- function(f, arg, nms) {
+      fmls <- names(formals(f))
+      missing <- setdiff(nms, fmls)
+      if (!"..." %in% fmls && length(missing)) {
+        cli_abort(c(
+          "{.arg {arg}} must have an argument for each value it receives.",
+          x = "Got a function with arguments {value_repr(fmls)}.",
+          i = "It has none for {value_repr(missing)}."
+        ))
+      }
+    }
+    assert_takes(fn, "fn", names(args))
+    assert_takes(rule, "rule", c(names(args), "out", "grad"))
+
+    current_desc <- current_descriptor(silent = TRUE)
+    # In the order of `fn`'s formals, which is the order its graph takes them in.
+    args <- match_args_to_formals(fn, args)
+    args <- unflatten(build_tree(args), lapply(flatten(args), materialize_operand, desc = current_desc))
+
+    desc_fn <- local_descriptor()
+    fn_graph <- trace_fn(fn, args, desc = desc_fn)
+    out_avals <- unflatten(fn_graph$out_tree, lapply(graph_output_avals(fn_graph), abstract_aval))
+
+    # `rule` is traced against the arguments, the result and its gradient, so
+    # its graph takes them in that order.
+    rule_traced <- function(args, out, grad) {
+      grads <- do.call(rule, c(args, list(out = out, grad = grad)))
+      grad_names <- if (is.list(grads) && !is_arrayish(grads)) names(grads)
+      if (is.null(grad_names) || anyDuplicated(grad_names) || !setequal(grad_names, names(args))) {
+        got <- if (is.list(grads) && !is_arrayish(grads)) {
+          "Got a list with names {value_repr(grad_names)}."
+        } else {
+          "Got {value_repr(grads)}."
+        }
+        cli_abort(
+          c(
+            "{.arg rule} must return a list with one entry for each entry of {.arg args}, by name.",
+            x = got,
+            i = "{.arg args} has names {value_repr(names(args))}."
+          ),
+          call = print_call_repr(self)
+        )
+      }
+      grads <- Map(
+        function(grad, arg) grad %||% unflatten(build_tree(arg), lapply(flatten(arg), zeros_like)),
+        grads[names(args)],
+        args
+      )
+      same_structure <- vapply(
+        names(args),
+        function(nm) pjrt::tree_equal(build_tree(grads[[nm]]), build_tree(args[[nm]])),
+        logical(1L)
+      )
+      if (!all(same_structure)) {
+        bad <- names(args)[!same_structure]
+        cli_abort(
+          c(
+            "{.arg rule} must return each gradient with the structure of the entry of {.arg args} it belongs to.",
+            x = "The {cli::qty(length(bad))}gradient{?s} of {value_repr(bad)} {cli::qty(length(bad))}{?has/have} another structure." # nolint
+          ),
+          call = print_call_repr(self)
+        )
+      }
+      grads
+    }
+    desc_rule <- local_descriptor()
+    rule_graph <- trace_fn(rule_traced, list(args = args, out = out_avals, grad = out_avals), desc = desc_rule)
+
+    # Both graphs take what either of them closes over after their own inputs;
+    # the call's operands are the arguments, then the same captures.
+    captures <- purify_subgraphs(current_desc, list(fn_graph, rule_graph))
+
+    out <- graph_desc_add(
+      self,
+      args = c(flatten(args), captures),
+      params = list(fn = fn_graph, rule = rule_graph, n_captures = length(captures)),
+      infer_fn = infer_custom_gradient,
+      desc = current_desc
+    )
+    unflatten(fn_graph$out_tree, out)
+  },
+  subgraphs = c("fn", "rule"),
+  static = 2:3
+)
+
 #' @title Primitive Sort
 #' @description
 #' Sorts arrays along the given axis.

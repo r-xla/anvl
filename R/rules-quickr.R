@@ -1825,6 +1825,18 @@ local({
     }
   )
 
+  # `fn` runs in place; `rule` took part when a gradient was traced, if any.
+  quickr_register_prim_lowerer(
+    prim_custom_gradient,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      if (is.null(ctx)) {
+        cli_abort("Internal error: missing quickr lowering context for primitive {.val custom_gradient}")
+      }
+      lowered <- quickr_lower_inline_graph(params$fn, inputs, ctx)
+      c(lowered$stmts, Map(rlang::call2, rep("<-", length(out_syms)), out_syms, lowered$out_exprs))
+    }
+  )
+
   quickr_register_prim_lowerer(
     prim_scatter,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
@@ -2296,7 +2308,13 @@ quickr_find_unsupported_prims <- function(graph, supported_prims) {
       unsupported_prims <- c(unsupported_prims, prim_name)
     }
     if (is_higher_order_primitive(call$primitive)) {
-      for (subgraph in subgraphs(call)) {
+      lowered <- subgraphs(call)
+      # `prim_custom_gradient()`'s `rule` is never lowered: a gradient is
+      # traced into the graph before it gets here.
+      if (call$primitive$name == "custom_gradient") {
+        lowered <- lowered["fn"]
+      }
+      for (subgraph in lowered) {
         unsupported_prims <- c(
           unsupported_prims,
           quickr_find_unsupported_prims(subgraph, supported_prims)
