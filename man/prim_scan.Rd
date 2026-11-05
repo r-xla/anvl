@@ -8,12 +8,17 @@ prim_scan(init, xs, body, steps, reverse = FALSE)
 }
 \arguments{
 \item{init}{(\code{list()})\cr
-Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-shape and data type across steps.}
+Initial carry: a (possibly nested) list of \code{\link{arrayish}} values. Every leaf
+keeps its shape and data type across steps. An R value is carried at the
+data type \code{body} gives it back at, or else at the narrowest that holds
+every one its uses ask for, as described in
+the \href{https://r-xla.github.io/anvl/articles/type-promotion.html}{Data Types and Promotion Rules} article.}
 
 \item{xs}{(\code{list()})\cr
-Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-all of size \code{steps} along it. An empty list runs a counted loop.}
+Per-step inputs: a (possibly nested) list of \code{\link{arrayish}} values sliced
+along axis 1, all of size \code{steps} along it. An empty list runs a counted
+loop. An R array is sliced at the narrowest data type that holds every one
+its uses ask for.}
 
 \item{body}{(\code{function})\cr
 Step function \verb{function(carry, x)} returning \code{list(carry = , out = )},

@@ -10,8 +10,9 @@ prim_while(init, cond, body)
 \item{init}{(\verb{named list()})\cr
 Named list of initial state values, a tree in the sense of pjrt's
 \code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
-sub-graphs. R values are materialized at their
-\link[=default_dtypes]{default data type}.}
+sub-graphs. An R value is carried at the data type \code{body} gives it back
+at, or else at the narrowest that holds every one its uses ask for, as
+described in the \href{https://r-xla.github.io/anvl/articles/type-promotion.html}{Data Types and Promotion Rules} article.}
 
 \item{cond}{(\code{function})\cr
 Condition function that receives the current state as arguments

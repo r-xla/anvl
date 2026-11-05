@@ -217,3 +217,24 @@ do.call(as_anvl_arrays, c(args, list(.promote = promotion_fn)))
 ```
 
 For more information about the available rules, see `?promotion_rule`.
+
+### R Values in Loops
+
+The state of a loop -- `init` of `nv_while()` and `nv_scan()`, and the `xs` of `nv_scan()` -- has one data type that every step carries.
+An R value in it takes that data type from how the loop uses it: the loop is traced with the value still open, so that every use builds it at the data type it needs, and the value is then carried at the narrowest data type that holds them all.
+Below, `c` meets an `f64`, so it keeps its full precision:
+
+```{r}
+f <- jit(function(x) {
+  nv_while(
+    init = list(i = 0L, c = 0.1, y = x),
+    cond = function(i, c, y) i < 1L,
+    body = function(i, c, y) list(i = i + 1L, c = c, y = y * c)
+  )$y
+})
+print(as_array(f(nv_scalar(3, dtype = "f64"))), digits = 17)
+```
+
+A value the loop gives back at another data type, such as `s = 0` accumulating an `f64`, is carried at that one, which is what it is from the second step on.
+One that nothing typed uses settles on its default, as anywhere else.
+Inside the loop, such a value is an R value: it has no `dtype()`, and `peek_dtype()` reports the data type it is carried at.

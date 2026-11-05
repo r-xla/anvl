@@ -2604,12 +2604,48 @@ prim_while <- new_primitive(
     }
 
     current_desc <- current_descriptor(silent = TRUE)
-    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
-
-    desc_cond <- local_descriptor()
-    cond_graph <- trace_fn(cond, init, desc = desc_cond)
-    desc_body <- local_descriptor()
-    body_graph <- trace_fn(body, init, desc = desc_body)
+    # In the order of `body`'s formals, which is the order its graph takes the
+    # state in, and so the order of the call's operands.
+    init <- match_args_to_formals(body, init)
+    init_tree <- build_tree(init)
+    init_flat <- flatten(init)
+    n_state <- length(init_flat)
+    # What each member of the state enters the sub-graphs as: a value with a
+    # data type as the box it is, an R value open. The loop carries an R value
+    # at the data type tracing it settles on (`settle_loop_rdata()`).
+    entering <- lapply(init_flat, function(x) {
+      if (has_no_dtype(x)) open_operand_aval(x) else materialize_operand(x, current_desc)
+    })
+    trace_loop <- function(entering) {
+      state <- unflatten(init_tree, entering)
+      desc_cond <- local_descriptor()
+      cond_graph <- trace_fn(cond, state, desc = desc_cond)
+      desc_body <- local_descriptor()
+      body_graph <- trace_fn(body, state, desc = desc_body)
+      # `cond` agrees on the state's order unless the call is refused below.
+      cond_agrees <- pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)
+      settled <- lapply(seq_len(n_state), function(k) {
+        if (is_rdata(entering[[k]])) {
+          inputs <- c(list(body_graph$inputs[[k]]), if (cond_agrees) list(cond_graph$inputs[[k]]))
+          settled_dtype(entering[[k]], inputs)
+        }
+      })
+      returned <- if (pjrt::tree_equal(body_graph$out_tree, body_graph$in_tree)) {
+        vapply(body_graph$outputs, function(out) as.character(out$aval$dtype), character(1L))
+      } else {
+        rep(NA_character_, n_state)
+      }
+      list(cond = cond_graph, body = body_graph, settled = settled, returned = returned)
+    }
+    loop <- settle_loop_rdata(entering, trace_loop)
+    cond_graph <- loop$traced$cond
+    body_graph <- loop$traced$body
+    operands <- Map(
+      function(x, entered, dtype) if (is.null(dtype)) entered else materialize_loop_operand(x, dtype, current_desc),
+      init_flat,
+      entering,
+      loop$dtypes
+    )
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
       cli_abort("cond and body must have the same input structure")
@@ -2625,7 +2661,7 @@ prim_while <- new_primitive(
 
     out <- graph_desc_add(
       self,
-      args = c(flatten(init), captures),
+      args = c(operands, captures),
       params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
@@ -2647,11 +2683,16 @@ prim_while <- new_primitive(
 #' receives the carry and, for every array in `xs`, its slice at position `t`
 #' along axis 1 with that axis dropped.
 #' @param init (`list()`)\cr
-#'   Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-#'   shape and data type across steps.
+#'   Initial carry: a (possibly nested) list of [`arrayish`] values. Every leaf
+#'   keeps its shape and data type across steps. An R value is carried at the
+#'   data type `body` gives it back at, or else at the narrowest that holds
+#'   every one its uses ask for, as described in
+#'   `r roxy_article("type-promotion")`.
 #' @param xs (`list()`)\cr
-#'   Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-#'   all of size `steps` along it. An empty list runs a counted loop.
+#'   Per-step inputs: a (possibly nested) list of [`arrayish`] values sliced
+#'   along axis 1, all of size `steps` along it. An empty list runs a counted
+#'   loop. An R array is sliced at the narrowest data type that holds every one
+#'   its uses ask for.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning `list(carry = , out = )`,
 #'   where `carry` has the structure of `init` and `out` is a (possibly
@@ -2695,8 +2736,7 @@ prim_scan <- new_primitive(
     assert_flag(reverse)
 
     current_desc <- current_descriptor(silent = TRUE)
-    init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
-
+    init_tree <- build_tree(init)
     init_flat <- flatten(init)
     xs_flat <- flatten(xs)
     n_carry <- length(init_flat)
@@ -2711,15 +2751,18 @@ prim_scan <- new_primitive(
     # traces against the very values it was handed: we have to build the
     # per-step abstract arrays first, and that needs each leaf's shape and
     # data type before it has been traced -- from a `GraphBox` under `jit()`,
-    # from a plain array eagerly.
+    # from a plain array eagerly. An R value has no data type yet, so its slice
+    # is open, like the value itself.
     aval_of <- function(x) {
-      if (is_graph_box(x)) {
-        materialize_rdata_box(x)$gnode$aval
+      if (has_no_dtype(x)) {
+        open_operand_aval(x)
+      } else if (is_graph_box(x)) {
+        x$gnode$aval
       } else {
         to_abstract(as_anvl_array(x), pure = TRUE)
       }
     }
-    x_slices <- lapply(xs_flat, function(x) {
+    slice_avals <- lapply(xs_flat, function(x) {
       aval <- aval_of(x)
       shp <- shape(aval)
       if (!length(shp)) {
@@ -2728,11 +2771,10 @@ prim_scan <- new_primitive(
       if (shp[[1L]] != steps) {
         cli_abort("every array in {.arg xs} must have size {steps} along axis 1, not {shp[[1L]]}.")
       }
-      AbstractArray(dtype = aval$dtype, shape = shp[-1L])
+      if (is_rdata(aval)) RData(shp[-1L], aval$r_type) else AbstractArray(dtype = aval$dtype, shape = shp[-1L])
     })
-    x_slices <- if (n_xs) unflatten(build_tree(xs), x_slices) else list()
+    as_x <- function(slices) if (n_xs) unflatten(build_tree(xs), slices) else list()
 
-    init_tree <- build_tree(init)
     step <- function(carry, x) {
       st <- body(carry, if (n_xs) x else NULL)
       if (
@@ -2749,8 +2791,43 @@ prim_scan <- new_primitive(
       list(carry = st$carry, out = st$out)
     }
 
-    desc_body <- local_descriptor()
-    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # What each carry and `xs` slice enters the body as: a value with a data
+    # type as the box or slice it is, an R value open. The loop carries an R
+    # value at the data type tracing it settles on (`settle_loop_rdata()`); a
+    # slice of `xs` is not given back, so only its uses decide.
+    entering_carry <- lapply(init_flat, function(x) {
+      if (has_no_dtype(x)) open_operand_aval(x) else materialize_operand(x, current_desc)
+    })
+    trace_step <- function(entering) {
+      carry <- unflatten(init_tree, entering[seq_len(n_carry)])
+      x <- as_x(entering[n_carry + seq_len(n_xs)])
+      desc_body <- local_descriptor()
+      body_graph <- trace_fn(step, list(carry = carry, x = x), desc = desc_body)
+      settled <- Map(
+        function(entered, input) if (is_rdata(entered)) settled_dtype(entered, list(input)),
+        entering,
+        body_graph$inputs[seq_along(entering)]
+      )
+      carry_back <- vapply(
+        body_graph$outputs[seq_len(n_carry)],
+        function(out) as.character(out$aval$dtype),
+        character(1L)
+      )
+      list(body = body_graph, settled = settled, returned = c(carry_back, rep(NA_character_, n_xs)))
+    }
+    loop <- settle_loop_rdata(c(entering_carry, slice_avals), trace_step)
+    body_graph <- loop$traced$body
+    carry_operands <- Map(
+      function(x, entered, dtype) if (is.null(dtype)) entered else materialize_loop_operand(x, dtype, current_desc),
+      init_flat,
+      entering_carry,
+      loop$dtypes[seq_len(n_carry)]
+    )
+    xs_operands <- Map(
+      function(x, dtype) if (is.null(dtype)) x else materialize_loop_operand(x, dtype, current_desc),
+      xs_flat,
+      loop$dtypes[n_carry + seq_len(n_xs)]
+    )
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
     captures <- purify_subgraphs(current_desc, list(body_graph))
@@ -2763,15 +2840,15 @@ prim_scan <- new_primitive(
       for (i in seq_len(n_carry)) {
         if (!eq_type(carry_in[[i]], carry_out[[i]])) {
           # Name the carry slot that disagrees rather than its flat position,
-          # since the usual cause is one R value in `init` that materialized
-          # at its default. A single unnamed carry has no path to report.
+          # since the usual cause is one array in `init` at another data type
+          # than `body` returns. A single unnamed carry has no path to report.
           path <- pjrt::tree_path(init_tree, i)
           slot <- if (nzchar(path)) sprintf("`%s`", path) else sprintf("Carry %d", i)
           cli_abort(
             c(
               "{.arg init} and the carry {.arg body} returns must have the same type.",
               x = "{slot} enters as {repr(carry_in[[i]])} and comes back as {repr(carry_out[[i]])}.",
-              i = "An R value in {.arg init} materializes at its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
+              i = "An array in {.arg init} fixes the data type the loop carries; give it the one {.arg body} returns, e.g. {.code nv_scalar(0, dtype = \"f64\")}, or convert what {.arg body} returns with {.fn nv_convert}." # nolint
             ),
             call = NULL
           )
@@ -2785,7 +2862,7 @@ prim_scan <- new_primitive(
 
     out <- graph_desc_add(
       self,
-      args = c(init_flat, xs_flat, captures),
+      args = c(carry_operands, xs_operands, captures),
       params = list(
         body = body_graph,
         steps = steps,

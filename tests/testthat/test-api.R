@@ -2962,6 +2962,18 @@ describe("nv_scan", {
       "size 9 along axis 1, not 4"
     )
   })
+
+  it("refuses a plain R vector of length > 1 in init or xs", {
+    # An R value is left for prim_scan() to carry at the data type the body
+    # uses it at; that must not let a vector without `dim()` through as one.
+    expect_error(nv_scan(nv_scalar(0), list(x = c(1, 2)), cumsum_body), "undefined for a length-2 R vector")
+    expect_error(nv_scan(nv_scalar(0), list(x = c(1, 2)), cumsum_body, steps = 2L), "expected an AnvlArray")
+    expect_error(nv_scan(list(s = c(0, 0)), body = cumsum_body, steps = 1L), "expected an AnvlArray")
+    expect_error(
+      jit(function(s) nv_scan(s, list(x = c(1, 2)), cumsum_body, steps = 2L))(nv_scalar(0)),
+      "Expected arrayish"
+    )
+  })
 })
 describe("the default integer", {
   it("decides the data type of the indices an operation returns", {

@@ -1,5 +1,10 @@
 # anvl (development version)
 
+* An R value in the state of `nv_while()` / `nv_scan()` or in the `xs` of
+  `nv_scan()` is carried at the data type the loop uses it at instead of its
+  default, so it keeps its precision.
+* Bugfix: `nv_while()` binds `init` to the arguments of `body` by name; with
+  the arguments in another order, the state was swapped.
 * Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
   `prim_dynamic_update_slice()`) no longer wraps around to the last position.
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are

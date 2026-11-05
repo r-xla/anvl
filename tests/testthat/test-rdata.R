@@ -337,20 +337,29 @@ describe("an R value at its use site", {
     expect_error(jit(function(x) nv_add(x, array(c(1L, -1L))))(x), "Cannot build the R value -1")
   })
 
-  it("materializes at its default as a sub-graph parameter", {
-    # This only happens when the default float is narrower than an R double.
+  it("is carried at the data type the loop settles it on as a sub-graph parameter", {
+    # This only shows when the default float is narrower than an R double.
     local_registered_default_dtypes()
-    # A loop's state is a parameter of its sub-graphs, and those are traced before
-    # the state meets anything, so there is nothing for a bare R value there to
-    # take a data type from. Documented in `?RData`.
+    # A loop's state is a parameter of its sub-graphs. A bare R value there is
+    # traced open, like an R argument of a jitted function, and the loop carries
+    # it at the data type that settles it on. With nothing typed using it, that
+    # is its default.
     out <- nv_while(list(i = 1), \(i) i < 10, \(i) list(i = i * 2))
     expect_dtype(out$i, default_float())
-    # ... so a body that carries another data type is an error, not an f64 loop.
-    expect_error(
-      nv_while(list(i = 1), \(i) i < 10, \(i) list(i = i * nv_scalar(2, dtype = "f64"))),
-      "same type"
+    # A body that gives it back at f64 makes it an f64 loop, from the first
+    # step on.
+    out <- nv_while(list(i = sqrt(2)), \(i) i < 10, \(i) list(i = i * nv_scalar(2, dtype = "f64")))
+    expect_dtype(out$i, "f64")
+    expect_identical(as_array(out$i), sqrt(2) * 8)
+    # So does a use at f64, also of a value the body hands back as it is.
+    out <- nv_while(
+      list(i = 0L, c = sqrt(2), s = nv_scalar(0, dtype = "f64")),
+      \(i, c, s) i < 1L,
+      \(i, c, s) list(i = i + 1L, c = c, s = s + c)
     )
-    # Naming the data type is what makes the loop carry it, exactly.
+    expect_dtype(out$c, "f64")
+    expect_identical(as_array(out$s), sqrt(2))
+    # Naming the data type still makes the loop carry exactly that one.
     out <- nv_while(
       list(i = nv_convert(sqrt(2), "f64")),
       \(i) i < nv_scalar(10, dtype = "f64"),

@@ -2042,7 +2042,7 @@ infer_while <- function(..., cond, body, n_captures) {
   bad <- type_mismatches(outs, outs_body)
   if (length(bad)) {
     described <- describe(bad, outs, outs_body, c("enters as", "comes back as"))
-    # The usual cause is an R value in `init` that materialized at its default.
+    # The usual cause is an array in `init` at another data type than `body` returns.
     dtype_differs <- any(vapply(
       bad,
       function(i) dtype(outs[[i]]) != dtype(outs_body[[i]]),
@@ -2054,7 +2054,7 @@ infer_while <- function(..., cond, body, n_captures) {
         x = "{described}.",
         if (dtype_differs) {
           c(
-            i = "An R value in {.arg init} materializes at its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}."
+            i = "An array in {.arg init} fixes the data type the loop carries; give it the one {.arg body} returns, e.g. {.code nv_scalar(0, dtype = \"f64\")}, or convert what {.arg body} returns with {.fn nv_convert}."
           ) # nolint
         }
       ),

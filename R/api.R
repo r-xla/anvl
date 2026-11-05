@@ -3522,8 +3522,9 @@ nv_while <- prim_while
 #' )$out
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
-  init <- map_tree(init, as_anvl_array)
-  xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
+  # An R value is left as it is: `prim_scan()` carries it at the data type the
+  # body uses it at.
+  xs <- xs %||% list()
 
   # The trip count is the one thing this layer settles: `prim_scan()` needs it
   # stated, here it may be read off `xs` instead. The rest of the contract --

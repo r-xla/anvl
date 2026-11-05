@@ -503,6 +503,25 @@ describe("prim_scan", {
     list(carry = list(s = s), out = s)
   }
 
+  it("carries an R value in init at the data type body gives it back at", {
+    f <- jit(function(x) prim_scan(list(s = 0), list(x = x), cumsum_body, steps = 2L))
+    res <- f(nv_array(c(0.1, 0.2), dtype = "f64"))
+    expect_dtype(res$carry$s, "f64")
+    expect_identical(as.numeric(as_array(res$carry$s)), 0.1 + 0.2)
+  })
+
+  it("slices an R array in xs at the data type its uses ask for", {
+    body <- function(carry, x) list(carry = list(y = carry$y * x$c), out = x$c)
+    res <- jit(function(y) prim_scan(list(y = y), list(c = array(0.1, 1L)), body, steps = 1L))(
+      nv_scalar(3, dtype = "f64")
+    )
+    expect_identical(as.numeric(as_array(res$carry$y)), 3 * 0.1)
+    expect_dtype(res$out, "f64")
+    # also through nv_scan(), eagerly
+    res <- nv_scan(init = list(y = nv_scalar(3, dtype = "f64")), xs = list(c = array(0.1, 1L)), body = body)
+    expect_identical(as.numeric(as_array(res$carry$y)), 3 * 0.1)
+  })
+
   it("threads the carry and stacks the outputs", {
     f <- jit(function(x) {
       prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, steps = 4L)
@@ -838,6 +857,81 @@ describe("prim_while", {
     out <- f(nv_scalar(5L))
     expect_equal(out$i, nv_scalar(5L))
     expect_equal(out$v, nv_array(c(6L, 7L, 8L)))
+  })
+
+  it("carries an R value in init at the data type its uses ask for", {
+    # `c` meets an f64, so it is carried at f64 and `y * c` is exact; at the
+    # default f32 it would be 0.30000000447034836.
+    f <- jit(function(x, c) {
+      prim_while(
+        init = list(i = 0L, c = c, y = x, z = 0.1),
+        cond = function(i, c, y, z) i < 1L,
+        body = function(i, c, y, z) list(i = i + 1L, c = c, y = y * c * z * 10, z = z)
+      )
+    })
+    out <- f(nv_scalar(3, dtype = "f64"), 0.1)
+    expect_dtype(out$c, "f64")
+    expect_dtype(out$z, "f64")
+    expect_identical(as.numeric(as_array(out$y)), 3 * 0.1 * 0.1 * 10)
+    # nothing typed uses `i`, so it settles on its default
+    expect_dtype(out$i, default_int())
+  })
+
+  it("lets every use of an R value in init take its own data type", {
+    out <- jit(function(x, y) {
+      prim_while(
+        init = list(i = 0L, c = 0.1, a = x, b = y),
+        cond = function(i, c, a, b) i < 1L,
+        body = function(i, c, a, b) list(i = i + 1L, c = c, a = a * c, b = b * c)
+      )
+    })(nv_scalar(3, dtype = "f64"), nv_scalar(3, dtype = "f32"))
+    expect_dtype(out$c, "f64")
+    expect_dtype(out$a, "f64")
+    expect_dtype(out$b, "f32")
+    expect_identical(as.numeric(as_array(out$a)), 3 * 0.1)
+  })
+
+  it("carries an R value in init at the data type body gives it back at", {
+    accumulate <- jit(function(x) {
+      prim_while(
+        init = list(i = 0L, s = 0),
+        cond = function(i, s) i < 2L,
+        body = function(i, s) list(i = i + 1L, s = s + x)
+      )$s
+    })
+    out <- accumulate(nv_scalar(0.1, dtype = "f64"))
+    expect_dtype(out, "f64")
+    expect_identical(as.numeric(as_array(out)), 0.1 + 0.1)
+    # given back narrower than its uses ask for, it is carried narrower
+    out <- jit(function(x, y) {
+      prim_while(
+        init = list(i = 0L, c = 0.1, a = x),
+        cond = function(i, c, a) i < 2L,
+        body = function(i, c, a) list(i = i + 1L, c = c + y, a = a * c)
+      )
+    })(nv_scalar(3, dtype = "f64"), nv_scalar(1, dtype = "f32"))
+    expect_dtype(out$c, "f32")
+    expect_dtype(out$a, "f64")
+  })
+
+  it("traces the loop once when init has no R value", {
+    n <- 0L
+    body <- function(i, y) {
+      n <<- n + 1L
+      list(i = i + 1L, y = y * 2)
+    }
+    jit(function(y) prim_while(list(i = nv_scalar(0L), y = y), function(i, y) i < 3L, body))(nv_scalar(1))
+    expect_identical(n, 1L)
+  })
+
+  it("binds init to the arguments of body by name, in any order", {
+    out <- prim_while(
+      init = list(a = nv_scalar(1), b = nv_scalar(10)),
+      cond = function(b, a) a < 3,
+      body = function(b, a) list(b = b, a = a + 1)
+    )
+    expect_equal(out$a, nv_scalar(3))
+    expect_equal(out$b, nv_scalar(10))
   })
 
   it("errors", {
