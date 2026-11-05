@@ -2616,18 +2616,25 @@ prim_while <- new_primitive(
     entering <- lapply(init_flat, function(x) {
       if (has_no_dtype(x)) open_operand_aval(x) else materialize_operand(x, current_desc)
     })
-    trace_loop <- function(entering) {
+    trace_loop <- function(entering, dtypes) {
       state <- unflatten(init_tree, entering)
+      # Called with the state by name, so `cond` binds it like `body` whatever
+      # the order of its arguments.
+      cond_built <- function(...) {
+        rdata_built_at(list(...), dtypes)
+        cond(...)
+      }
+      body_built <- function(...) {
+        rdata_built_at(list(...), dtypes)
+        rdata_built_at(body(...), dtypes)
+      }
       desc_cond <- local_descriptor()
-      cond_graph <- trace_fn(cond, state, desc = desc_cond)
+      cond_graph <- trace_fn(cond_built, state, desc = desc_cond)
       desc_body <- local_descriptor()
-      body_graph <- trace_fn(body, state, desc = desc_body)
-      # `cond` agrees on the state's order unless the call is refused below.
-      cond_agrees <- pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)
+      body_graph <- trace_fn(body_built, state, desc = desc_body)
       settled <- lapply(seq_len(n_state), function(k) {
         if (is_rdata(entering[[k]])) {
-          inputs <- c(list(body_graph$inputs[[k]]), if (cond_agrees) list(cond_graph$inputs[[k]]))
-          settled_dtype(entering[[k]], inputs)
+          settled_dtype(entering[[k]], list(body_graph$inputs[[k]], cond_graph$inputs[[k]]))
         }
       })
       returned <- if (pjrt::tree_equal(body_graph$out_tree, body_graph$in_tree)) {
@@ -2646,10 +2653,6 @@ prim_while <- new_primitive(
       entering,
       loop$dtypes
     )
-
-    if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
-      cli_abort("cond and body must have the same input structure")
-    }
 
     if (!pjrt::tree_equal(body_graph$in_tree, body_graph$out_tree)) {
       cli_abort("body must have the same input and output structure")
@@ -2798,11 +2801,17 @@ prim_scan <- new_primitive(
     entering_carry <- lapply(init_flat, function(x) {
       if (has_no_dtype(x)) open_operand_aval(x) else materialize_operand(x, current_desc)
     })
-    trace_step <- function(entering) {
+    trace_step <- function(entering, dtypes) {
       carry <- unflatten(init_tree, entering[seq_len(n_carry)])
       x <- as_x(entering[n_carry + seq_len(n_xs)])
+      step_built <- function(carry, x) {
+        rdata_built_at(list(carry, x), dtypes)
+        st <- step(carry, x)
+        st$carry <- rdata_built_at(st$carry, dtypes[seq_len(n_carry)])
+        st
+      }
       desc_body <- local_descriptor()
-      body_graph <- trace_fn(step, list(carry = carry, x = x), desc = desc_body)
+      body_graph <- trace_fn(step_built, list(carry = carry, x = x), desc = desc_body)
       settled <- Map(
         function(entered, input) if (is_rdata(entered)) settled_dtype(entered, list(input)),
         entering,

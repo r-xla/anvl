@@ -110,21 +110,7 @@ abort_no_dtype <- function() {
 
 #' @export
 format.RData <- function(x, ...) {
-  if (is.null(x$settles_on)) {
-    return(sprintf("RData(%s, %s)", x$r_type, shape2string(x$shape)))
-  }
-  sprintf("RData(%s, %s, settles on %s)", x$r_type, shape2string(x$shape), as.character(x$settles_on))
-}
-
-# An R value whose data type is decided before the trace it enters is finished:
-# the operand of a loop, which carries it at one data type (see
-# `settle_loop_rdata()`). It still takes the data type of what it meets at each
-# use, but settles on `dtype` instead of the default when it meets nothing, and
-# its input takes `dtype`. `dtype` is of the value's own category, so the
-# promotion rules, which only look at that, treat it like any R value.
-rdata_settling_on <- function(aval, dtype) {
-  aval$settles_on <- as_dtype(dtype)
-  aval
+  sprintf("RData(%s, %s)", x$r_type, shape2string(x$shape))
 }
 
 #' @export
@@ -309,7 +295,7 @@ r_const_at <- function(x, dtype, desc) {
 #' @export
 peek_dtype <- function(x) {
   aval <- to_abstract(x)
-  if (is_rdata(aval)) aval$settles_on %||% default_dtype_r(aval$r_type) else aval$dtype
+  if (is_rdata(aval)) default_dtype_r(aval$r_type) else aval$dtype
 }
 
 # A traced box, with any R value in it materialized at its default dtype.
@@ -338,9 +324,8 @@ is_open_rdata_input <- function(gval) {
 }
 
 # Finalize a top-level trace's open R inputs, modifying `desc` in place: each
-# input takes the single data type it is uploaded at -- the one it settles on,
-# if it was given one -- and every other data type the trace built it at is
-# defined by a convert appended to the pre-statements.
+# input takes the single data type it is uploaded at, and every other data type
+# the trace built it at is defined by a convert appended to the pre-statements.
 finalize_rdata_inputs <- function(desc) {
   inputs <- desc$inputs
   is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
@@ -354,11 +339,7 @@ finalize_rdata_inputs <- function(desc) {
     aval <- gval$aval
     mat <- rdata_mat(desc, gval)
     requested <- rdata_requested_dtypes(aval, mat)
-    resolved <- if (is.null(aval$settles_on)) {
-      resolve_upload_dtype(aval, requested, desc$default_dtypes)
-    } else {
-      as.character(aval$settles_on)
-    }
+    resolved <- resolve_upload_dtype(aval, requested, desc$default_dtypes)
     main <- mat[[resolved]] %||%
       GraphBox(GraphValue(AbstractArray(resolved, aval$shape)), desc)
     inputs[[i]] <- main$gnode
@@ -493,20 +474,25 @@ graph_input_dtypes <- function(graph) {
 # An R value among the operands of a loop -- `prim_while()`'s `init`,
 # `prim_scan()`'s `init` and `xs` -- enters the loop's sub-graphs the way an R
 # argument enters a jitted function: open, built at the data type each use asks
-# for, so that `x_f64 * c` stays exact. The loop carries it at one data type,
-# though, which is found by tracing the loop until it agrees with itself
+# for, so that `x_f64 * c` stays exact. Like that argument, it is supplied at
+# the narrowest data type that holds every one its uses ask for
+# (`finalize_rdata_inputs()`), and that is the data type the loop carries it
+# at. Finding it takes tracing the loop until it agrees with itself
 # (`settle_loop_rdata()`):
 #
-#   1. Traced with the value open, the sub-graphs settle it on the narrowest
-#      data type that holds every one its uses ask for, or the default if
-#      nothing asks -- as an R argument of a jitted function is.
-#   2. Traced again with the value settling on that data type
-#      (`rdata_settling_on()`): every use still takes the data type it asks
-#      for, converted from the one carried, and a value handed back as it is
-#      comes back at it.
-#   3. If the loop gives a carried value back at another data type of its
-#      category, that is what the value is from the second step on: it settles
-#      there, and the loop is traced once more.
+#   1. Traced with the value open, the sub-graphs settle it on that data type,
+#      or on its default if nothing asks.
+#   2. Traced again, each sub-graph also builds the value at that data type
+#      before it runs, and the body builds it at that data type when it hands
+#      it back as it is (`rdata_built_at()`). Both are uses like any other, and
+#      the data type holds every other one, so the trace settles on it again.
+#   3. A carry the body gives back at another data type of its category is
+#      what the value is from the second step on, so it is carried at that one:
+#      it enters the loop as an array of that data type, as one in `init` would.
+#      Its uses can ask for no more than the body computes.
+#
+# The loop is traced again until nothing changes; a loop without R values among
+# its operands is traced once.
 
 # The aval an operand enters a sub-graph trace with: an R value stays open.
 open_operand_aval <- function(x) {
@@ -522,43 +508,63 @@ open_operand_aval <- function(x) {
 # Traces a loop until the data types it carries its R values at agree with
 # what it does with them, as described above. `avals` are the loop's flat
 # operands as its sub-graphs see them (`open_operand_aval()`), and
-# `trace(avals)` traces every sub-graph on them, returning a list with
-# `settled`, per operand the data type the sub-graphs' inputs for it took, and
-# `returned`, per operand the data type the loop gives it back at (`NA` where it
-# does not). Returns the data type each R value is carried at (`NULL` for an
-# operand that has one) and the result of the last `trace()`, which was traced
-# at exactly these.
+# `trace(entering, dtypes)` traces every sub-graph on the operands entering as
+# `entering`, building each open R value at the data type `dtypes` names for it
+# (`rdata_built_at()`), and returns a list with `settled`, per operand the data
+# type the sub-graphs' inputs for an open R value took, and `returned`, per
+# operand the data type the loop gives it back at (`NA` where it does not).
+# Returns what the operands entered the last `trace()` as, the data type each R
+# value is carried at (`NULL` for an operand that has one), and the result of
+# that `trace()`.
 settle_loop_rdata <- function(avals, trace, max_passes = 4L) {
   is_r <- vapply(avals, is_rdata, logical(1L))
-  traced <- trace(avals)
-  if (!any(is_r)) {
-    return(list(dtypes = vector("list", length(avals)), traced = traced))
-  }
-  dtypes <- Map(function(r, dt) if (r) as_dtype(dt), is_r, traced$settled)
-  settling <- function(dtypes) {
-    Map(function(aval, dt) if (is.null(dt)) aval else rdata_settling_on(aval, dt), avals, dtypes)
-  }
+  entering <- avals
+  dtypes <- vector("list", length(avals))
   for (pass in seq_len(max_passes)) {
-    traced <- trace(settling(dtypes))
-    returned <- Map(
-      function(aval, dt, ret) {
-        comes_back_otherwise <- !is.null(dt) && !is.na(ret) && rdata_in_category(aval$r_type, as_dtype(ret))
-        if (comes_back_otherwise) as_dtype(ret) else dt
-      },
-      avals,
-      dtypes,
-      traced$returned
-    )
-    if (identical(lapply(returned, as.character), lapply(dtypes, as.character))) {
+    traced <- trace(entering, dtypes)
+    next_entering <- entering
+    next_dtypes <- dtypes
+    for (k in which(is_r)) {
+      dt <- dtypes[[k]]
+      ret <- traced$returned[[k]]
+      given_back_otherwise <- !is.null(dt) &&
+        !is.na(ret) &&
+        ret != as.character(dt) &&
+        rdata_in_category(avals[[k]]$r_type, as_dtype(ret))
+      if (given_back_otherwise) {
+        next_dtypes[[k]] <- as_dtype(ret)
+        next_entering[[k]] <- AbstractArray(dtype = ret, shape = shape(avals[[k]]))
+      } else if (is_rdata(entering[[k]]) && !identical(as.character(dt), traced$settled[[k]])) {
+        next_dtypes[[k]] <- as_dtype(traced$settled[[k]])
+      }
+    }
+    unchanged <- identical(lapply(next_dtypes, as.character), lapply(dtypes, as.character))
+    # A loop that does not agree with itself within `max_passes` keeps the last
+    # trace, whose mismatch its inference rule then reports.
+    if (unchanged || pass == max_passes) {
       break
     }
-    # A loop that does not agree with itself within `max_passes` keeps the last
-    # data types, which its inference rule then reports as the mismatch.
-    if (pass < max_passes) {
-      dtypes <- returned
-    }
+    entering <- next_entering
+    dtypes <- next_dtypes
   }
-  list(dtypes = dtypes, traced = traced)
+  list(entering = entering, dtypes = dtypes, traced = traced)
+}
+
+# `x` -- a tree -- with each open R value in it built at the data type `dtypes`
+# names for its leaf, the other leaves as they are. A sub-graph of a loop builds
+# its arguments this way before it runs, and the body what it hands back, so
+# that the trace settles each value on the data type the loop carries it at.
+rdata_built_at <- function(x, dtypes) {
+  leaves <- flatten(x)
+  if (length(leaves) != length(dtypes)) {
+    return(x)
+  }
+  built <- Map(
+    function(leaf, dtype) if (!is.null(dtype) && is_rdata_box(leaf)) materialize_rdata(leaf, dtype) else leaf,
+    leaves,
+    dtypes
+  )
+  unflatten(build_tree(x), built)
 }
 
 # The data type the sub-graph inputs `inputs` took for an operand, combined:

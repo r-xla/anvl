@@ -516,7 +516,9 @@ describe("prim_scan", {
       nv_scalar(3, dtype = "f64")
     )
     expect_identical(as.numeric(as_array(res$carry$y)), 3 * 0.1)
-    expect_dtype(res$out, "f64")
+    # handed out as it is, it meets nothing: like an R argument a jitted
+    # function returns, it comes out at its default
+    expect_dtype(res$out, default_float())
     # also through nv_scan(), eagerly
     res <- nv_scan(init = list(y = nv_scalar(3, dtype = "f64")), xs = list(c = array(0.1, 1L)), body = body)
     expect_identical(as.numeric(as_array(res$carry$y)), 3 * 0.1)
