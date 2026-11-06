@@ -1005,7 +1005,7 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
     scatter_axes_to_x_axes = axis,
     index_vector_axis = rank + 1L,
     unique_indices = FALSE,
-    update_fn = prim_add
+    update_fn = "add"
   ))
 }
 
@@ -1128,13 +1128,42 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
         unique_indices = unique_indices,
         # Use addition to accumulate gradients when multiple gather positions
         # read from the same source location
-        update_fn = prim_add
+        update_fn = "add"
       )
     },
     if (required[[2L]]) zeros_like(start_indices)
   )
 })
 
+
+# Which elements of a scatter's `update` land in `x`, as a boolean array of
+# `update`'s shape. XLA skips an update window that does not fit into `x`
+# entirely, whereas a gather clamps its start index into bounds -- so an update
+# is in bounds exactly when clamping leaves its start index unchanged.
+scatter_update_in_bounds <- function(
+  scatter_indices,
+  update_shape,
+  x_shape,
+  slice_sizes,
+  update_window_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis
+) {
+  clamped <- gather_clamp_indices(
+    start_indices = scatter_indices,
+    x_shape = x_shape,
+    slice_sizes = slice_sizes,
+    start_index_map = scatter_axes_to_x_axes,
+    index_vector_axis = index_vector_axis
+  )
+  in_bounds <- prim_eq(clamped, scatter_indices)
+  if (index_vector_axis <= naxes(scatter_indices)) {
+    in_bounds <- prim_all(in_bounds, axes = index_vector_axis, drop = TRUE)
+  }
+  # The remaining axes of the indices are `update`'s scatter axes, in order.
+  scatter_axes <- setdiff(seq_along(update_shape), update_window_axes)
+  prim_broadcast_in_axes(in_bounds, update_shape, scatter_axes)
+}
 
 prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   update_window_axes <- params$update_window_axes
@@ -1145,24 +1174,27 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   index_vector_axis <- params$index_vector_axis
   indices_are_sorted <- params$indices_are_sorted
   unique_indices <- params$unique_indices
-  update_fn_graph <- params$update_fn
 
   x <- inputs[[1L]]
   scatter_indices <- inputs[[2L]]
   update <- inputs[[3L]]
   grad <- grads[[1L]]
 
-  if (!identical(update_fn_graph$outputs[[1L]], update_fn_graph$inputs[[2L]])) {
-    cli_abort("Scatter reverse only supports simple replacement (update_fn = function(old, new) new)")
+  # Only an update function given by name is differentiated: what a function
+  # computes is not looked into.
+  kind <- params$update_op
+  if (is.null(kind)) {
+    cli_abort(c(
+      "The gradient of {.fn prim_scatter} is not implemented for an {.arg update_fn} that is a function.",
+      i = "Pass {.arg update_fn} by name instead: {.or {.val {names(scatter_update_fns)}}}."
+    ))
   }
-
-  # Generally, the reverse of scatter is:
-  # - for the update: gather from the gradient
-  # - for `x`: zero out the positions that were overwritten
-
-  # The only problem is when scatter writes multiple times to the same position (unique_indices = FALSE),
-  # XLA doesn't guarantee which update "wins" at each position. We use the ID trick from JAX's scatter JVP:
-  # https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
+  if (kind == "mul" && required[[3L]] && !unique_indices) {
+    cli_abort(c(
+      "The gradient of a multiplying {.fn prim_scatter} with respect to {.arg update} needs {.code unique_indices = TRUE}.",
+      i = "With repeated indices, the gradient of one update depends on every other update to its position."
+    ))
+  }
 
   update_shape <- shape(update)
   x_shape <- shape(x)
@@ -1175,8 +1207,8 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
     x_batching_axes = x_batching_axes
   )
 
-  # Scatter into (replacing) and gather from `x` at the forward scatter's positions.
-  scatter_at <- function(x, update, unique_indices) {
+  # Scatter into and gather from `x` at the forward scatter's positions.
+  scatter_at <- function(x, update, update_fn, unique_indices = params$unique_indices) {
     prim_scatter(
       x = x,
       scatter_indices = scatter_indices,
@@ -1189,10 +1221,10 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
       index_vector_axis = index_vector_axis,
       indices_are_sorted = indices_are_sorted,
       unique_indices = unique_indices,
-      update_fn = function(old, new) new
+      update_fn = update_fn
     )
   }
-  gather_at <- function(x, unique_indices) {
+  gather_at <- function(x, unique_indices = params$unique_indices) {
     prim_gather(
       x = x,
       start_indices = scatter_indices,
@@ -1207,54 +1239,122 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
       unique_indices = unique_indices
     )
   }
+  # A gather clamps an out-of-bounds index into `x`, but the forward scatter
+  # dropped that update, so its gradient is zero.
+  update_in_bounds <- function() {
+    scatter_update_in_bounds(
+      scatter_indices = scatter_indices,
+      update_shape = update_shape,
+      x_shape = x_shape,
+      slice_sizes = slice_sizes,
+      update_window_axes = update_window_axes,
+      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis
+    )
+  }
+  in_bounds_only <- function(update_grad) {
+    prim_ifelse(update_in_bounds(), update_grad, zeros_like(update_grad))
+  }
 
-  list(
-    # Gradient for `x`: zero out overwritten positions.
-    # Works for both unique and non-unique: scattering zero is idempotent.
-    if (required[[1L]]) scatter_at(grad, zeros_like(update), unique_indices),
-    # Gradient for scatter_indices: not differentiable
-    if (required[[2L]]) zeros_like(scatter_indices),
-    # Gradient for update: gather from gradient at update positions
-    if (required[[3L]]) {
-      if (unique_indices) {
-        gather_at(grad, unique_indices = TRUE)
-      } else {
-        # Non-unique indices: use the ID trick to determine which updates won.
-        # https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
-        # Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2 or 3 was assigned to position 1.
-        # -->
-        # 1. x <- c(0, 0)
-        # 2. Assign unique indices x[c(1, 1)] <- c(1, 2)
-        # 3. gather the winners: x[c(1, 1)], which e.g. gives c(2, 2)
-        # 4. Compare c(1, 2) == c(2, 2) = c(FALSE, TRUE) -> second one wins
-        # 5. Mask out the losers; grad[1] <- 0
-
-        # a) Create unique positive IDs for each update "batch" position
-        ids_shape <- update_shape
-        ids_shape[update_window_axes] <- 1L
-        num_ids <- prod(ids_shape)
-        id_dtype <- "i64"
-        update_ids <- prim_reshape(prim_iota(1L, num_ids, id_dtype, start = 1L), ids_shape)
-        update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
-
-        # b) Scatter IDs to see which update "wins" at each position
-        scattered_ids <- scatter_at(
-          prim_fill(0L, dtype = id_dtype, shape = x_shape),
-          update_ids,
-          unique_indices = FALSE
-        )
-
-        # c) Gather scattered IDs back to update positions
-        gathered_ids <- gather_at(scattered_ids, unique_indices = FALSE)
-
-        # d) Gather gradient and mask: only winning updates get gradient
-        grad_at_positions <- gather_at(grad, unique_indices = FALSE)
-        mask <- prim_eq(update_ids, gathered_ids)
-        prim_ifelse(mask, grad_at_positions, zeros_like(grad_at_positions))
+  grad_x <- NULL
+  grad_update <- NULL
+  switch(
+    kind,
+    replace = {
+      # `x` keeps the gradient where no update overwrote it. Scattering zeros
+      # is idempotent, so this holds for repeated indices too.
+      if (required[[1L]]) {
+        grad_x <- scatter_at(grad, zeros_like(update), "replace")
       }
+      if (required[[3L]]) {
+        grad_update <- if (unique_indices) {
+          in_bounds_only(gather_at(grad))
+        } else {
+          scatter_replace_winners_grad(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at)
+        }
+      }
+    },
+    add = ,
+    sub = {
+      # Every update enters its position linearly, repeated or not.
+      if (required[[1L]]) {
+        grad_x <- grad
+      }
+      if (required[[3L]]) {
+        grad_update <- in_bounds_only(gather_at(grad))
+        if (kind == "sub") grad_update <- prim_negate(grad_update)
+      }
+    },
+    mul = {
+      # result = x * (product of the updates to the position)
+      if (required[[1L]]) {
+        grad_x <- prim_mul(grad, scatter_at(ones_like(x), update, "mul"))
+      }
+      if (required[[3L]]) {
+        # unique indices: result = x * update at the update's position
+        grad_update <- in_bounds_only(gather_at(prim_mul(grad, x)))
+      }
+    },
+    max = ,
+    min = {
+      # The gradient goes to the values the result equals -- `x` and every
+      # update that ties with it share it equally, as for prim_pmax() and
+      # prim_max().
+      out <- outputs[[1L]]
+      grad_dtype <- dtype(grad)
+      retained <- prim_convert(prim_eq(x, out), dtype = grad_dtype)
+      won <- prim_and(prim_eq(update, gather_at(out)), update_in_bounds())
+      won <- prim_convert(won, dtype = grad_dtype)
+      n_winners <- prim_add(retained, scatter_at(zeros(grad_dtype, x_shape), won, "add"))
+      grad_share <- prim_div(grad, n_winners)
+      if (required[[1L]]) {
+        grad_x <- prim_mul(grad_share, retained)
+      }
+      if (required[[3L]]) grad_update <- prim_mul(won, gather_at(grad_share))
     }
   )
+
+  list(
+    grad_x,
+    # The indices are not differentiable.
+    if (required[[2L]]) zeros_like(scatter_indices),
+    grad_update
+  )
 })
+
+# The gradient of the updates of a replacing scatter whose indices may repeat.
+# XLA does not say which update wins a position, so we use the ID trick from
+# JAX's scatter JVP:
+# https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
+# Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2
+# or 3 was assigned to position 1.
+# 1. x <- c(0, 0)
+# 2. Assign unique indices x[c(1, 1)] <- c(1, 2)
+# 3. gather the winners: x[c(1, 1)], which e.g. gives c(2, 2)
+# 4. Compare c(1, 2) == c(2, 2) = c(FALSE, TRUE) -> second one wins
+# 5. Mask out the losers; grad[1] <- 0
+# An update the forward scatter dropped as out of bounds never wins, so it gets
+# no gradient either.
+scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at) {
+  # a) Create unique positive IDs for each update "batch" position
+  ids_shape <- update_shape
+  ids_shape[update_window_axes] <- 1L
+  num_ids <- prod(ids_shape)
+  id_dtype <- "i64"
+  update_ids <- prim_reshape(prim_iota(1L, num_ids, id_dtype, start = 1L), ids_shape)
+  update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
+
+  # b) Scatter IDs to see which update "wins" at each position
+  scattered_ids <- scatter_at(prim_fill(0L, dtype = id_dtype, shape = x_shape), update_ids, "replace", FALSE)
+
+  # c) Gather scattered IDs back to update positions
+  gathered_ids <- gather_at(scattered_ids, FALSE)
+
+  # d) Gather gradient and mask: only winning updates get gradient
+  grad_at_positions <- gather_at(grad, FALSE)
+  mask <- prim_eq(update_ids, gathered_ids)
+  prim_ifelse(mask, grad_at_positions, zeros_like(grad_at_positions))
+}
 
 diag_mask <- function(n) {
   prim_iota(axis = 1L, shape = c(n, n), dtype = "i32", start = 0L) ==
