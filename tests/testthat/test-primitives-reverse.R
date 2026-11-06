@@ -936,6 +936,14 @@ describe("prim_gather", {
     grads <- f(x)
     expect_equal(grads[[1L]], nv_array(c(0, 0, 0, 1), dtype = "f64"))
   })
+
+  it("differentiates its own gradient, an adding scatter", {
+    # d/dy sum(y[array(c(1L, 1L, 2L))]^2) = c(4 * y1, 2 * y2, 0), whose sum has the gradient c(4, 2, 0)
+    f <- jit(gradient(function(x) {
+      sum(gradient(function(y) sum(y[array(c(1L, 1L, 2L))]^2))(x)[[1L]])
+    }))
+    expect_equal(as.vector(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(4, 2, 0))
+  })
 })
 
 describe("prim_scatter", {
@@ -956,7 +964,7 @@ describe("prim_scatter", {
   })
 
   # Scatter `update` (one value per index) into axis 1 of the vector `x`.
-  scatter_vec <- function(x, indices, update, update_fn = NULL, unique_indices = FALSE) {
+  scatter_vec <- function(x, indices, update, update_fn = "replace", unique_indices = FALSE) {
     prim_scatter(
       x = x,
       scatter_indices = nv_array(matrix(indices), dtype = "i32"),
@@ -971,7 +979,7 @@ describe("prim_scatter", {
       update_fn = update_fn
     )
   }
-  grad_scatter_vec <- function(x, indices, update, update_fn = NULL, unique_indices = FALSE, w = NULL) {
+  grad_scatter_vec <- function(x, indices, update, update_fn = "replace", unique_indices = FALSE, w = NULL) {
     w <- w %||% seq_along(x)
     f <- function(x, update) {
       sum(scatter_vec(x, indices, update, update_fn, unique_indices) * nv_array(w, dtype = "f64"))
@@ -980,30 +988,33 @@ describe("prim_scatter", {
     lapply(out, function(g) as.vector(as_array(g)))
   }
 
-  it("errors for an update_fn it cannot differentiate", {
+  it("differentiates an update_fn given by name, not a function", {
     expect_error(
-      grad_scatter_vec(c(1, 2, 3), 2L, 10, function(old, new) old * 2 + new),
-      "not implemented for this"
+      grad_scatter_vec(c(1, 2, 3), 2L, 10, function(old, new) old + new),
+      "not implemented for an `update_fn` that is a function"
     )
+    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 2L, 3L), c(10, 20, 30), "add")
+    expect_equal(g$x, c(1, 2, 3))
+    expect_equal(g$update, c(2, 2, 3))
   })
 
   it("errors for the gradient of a multiplying scatter's update with repeated indices", {
     expect_error(
-      grad_scatter_vec(c(1, 2, 3), c(2L, 2L), c(10, 20), prim_mul),
+      grad_scatter_vec(c(1, 2, 3), c(2L, 2L), c(10, 20), "mul"),
       "needs `unique_indices = TRUE`"
     )
     # the gradient of `x` alone needs no unique indices
     f <- jit(gradient(
       function(x) {
         update <- nv_array(c(10, 20), dtype = "f64")
-        sum(scatter_vec(x, c(2L, 2L), update, prim_mul))
+        sum(scatter_vec(x, c(2L, 2L), update, "mul"))
       }
     ))
     expect_equal(as.vector(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))$x)), c(1, 200, 1))
   })
 
   it("gives no gradient to an update the scatter drops as out of bounds", {
-    for (update_fn in list(NULL, prim_add, prim_pmax)) {
+    for (update_fn in c("replace", "add", "max")) {
       for (unique_indices in c(TRUE, FALSE)) {
         g <- grad_scatter_vec(c(1, 2, 3), c(1L, 7L), c(10, 20), update_fn, unique_indices)
         expect_equal(g$update, c(1, 0))
@@ -1025,7 +1036,7 @@ describe("prim_scatter", {
         scatter_indices_batching_axes = integer(),
         scatter_axes_to_x_axes = 1L,
         index_vector_axis = 2L,
-        update_fn = prim_add
+        update_fn = "add"
       )
       sum(y * nv_array(1:5, dtype = "f64"))
     }
@@ -1036,20 +1047,14 @@ describe("prim_scatter", {
   })
 
   it("subtracts", {
-    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 2L, 3L), c(10, 20, 30), function(old, new) old - new)
+    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 2L, 3L), c(10, 20, 30), "sub")
     expect_equal(g$x, c(1, 2, 3))
     expect_equal(g$update, -c(2, 2, 3))
   })
 
-  it("keeps `x` for function(old, new) old", {
-    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 3L), c(10, 20), function(old, new) old)
-    expect_equal(g$x, c(1, 2, 3))
-    expect_equal(g$update, c(0, 0))
-  })
-
   it("splits the gradient of a maximum among ties", {
     # position 1: x and both updates tie at 2
-    g <- grad_scatter_vec(c(2, 0), c(1L, 1L), c(2, 2), prim_pmax, w = c(1, 1))
+    g <- grad_scatter_vec(c(2, 0), c(1L, 1L), c(2, 2), "max", w = c(1, 1))
     expect_equal(g$x, c(1 / 3, 1))
     expect_equal(g$update, c(1 / 3, 1 / 3))
   })

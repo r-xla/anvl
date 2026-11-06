@@ -1387,25 +1387,25 @@ describe("prim_scatter", {
   repeated_mat <- matrix(c(1L, 3L, 1L, 4L, 1L, 2L, 2L, 4L, 1L, 2L, 3L, 3L, 3L, 1L, 4L), nrow = 5L)
 
   it("adds", {
-    verify_scatter_grad(x, repeated, update, function(old, new) old + new, "sum")
-    verify_scatter_grad(x_mat, repeated_mat, update_mat, prim_add, "sum")
+    verify_scatter_grad(x, repeated, update, "add", "sum")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "add", "sum")
   })
 
   it("multiplies with unique indices", {
     unique <- array(c(2L, 5L, 1L, 6L, 3L))
-    verify_scatter_grad(x, unique, update, function(old, new) old * new, "prod", unique_indices = TRUE)
+    verify_scatter_grad(x, unique, update, "mul", "prod", unique_indices = TRUE)
     unique_mat <- matrix(c(1L, 3L, 4L, 2L, 3L, 1L, 4L, 2L, 2L, 4L, 1L, 3L), nrow = 4L)
-    verify_scatter_grad(x_mat, unique_mat, update_mat[1:4, ], prim_mul, "prod", unique_indices = TRUE)
+    verify_scatter_grad(x_mat, unique_mat, update_mat[1:4, ], "mul", "prod", unique_indices = TRUE)
   })
 
   it("takes the maximum and minimum", {
-    verify_scatter_grad(x, repeated, update, function(old, new) nv_pmax(old, new), "amax")
-    verify_scatter_grad(x, repeated, update, prim_pmin, "amin")
-    verify_scatter_grad(x_mat, repeated_mat, update_mat, prim_pmax, "amax")
-    verify_scatter_grad(x_mat, repeated_mat, update_mat, prim_pmin, "amin")
+    verify_scatter_grad(x, repeated, update, "max", "amax")
+    verify_scatter_grad(x, repeated, update, "min", "amin")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "max", "amax")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "min", "amin")
   })
 
   it("splits the gradient of a maximum among ties like torch", {
-    verify_scatter_grad(c(1, 5, 2), array(c(2L, 2L, 3L, 1L)), c(5, 5, 3, 0), prim_pmax, "amax")
+    verify_scatter_grad(c(1, 5, 2), array(c(2L, 2L, 3L, 1L)), c(5, 5, 3, 0), "max", "amax")
   })
 })

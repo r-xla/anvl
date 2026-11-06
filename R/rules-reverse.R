@@ -1005,7 +1005,7 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
     scatter_axes_to_x_axes = axis,
     index_vector_axis = rank + 1L,
     unique_indices = FALSE,
-    update_fn = prim_add
+    update_fn = "add"
   ))
 }
 
@@ -1128,62 +1128,13 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
         unique_indices = unique_indices,
         # Use addition to accumulate gradients when multiple gather positions
         # read from the same source location
-        update_fn = prim_add
+        update_fn = "add"
       )
     },
     if (required[[2L]]) zeros_like(start_indices)
   )
 })
 
-
-# The update functions whose scatter the reverse rule differentiates, by what
-# `update_fn` traced to: `NA` for any other.
-#   "replace"  function(old, new) new  (the default)
-#   "keep"     function(old, new) old
-#   "add"      old + new, "sub" old - new, "mul" old * new
-#   "pmax"     pmax(old, new), "pmin" pmin(old, new)
-# `add`, `mul`, `pmax` and `pmin` are accepted with their operands either way
-# round; `sub` only as `old - new`, since `new - old` applied twice to one
-# position depends on the order of the updates.
-scatter_update_kind <- function(graph) {
-  ins <- graph$inputs
-  outs <- graph$outputs
-  if (length(ins) != 2L || length(outs) != 1L || length(graph$constants)) {
-    return(NA_character_)
-  }
-  old <- ins[[1L]]
-  new <- ins[[2L]]
-  out <- outs[[1L]]
-  statements <- graph$statements
-  if (!length(statements)) {
-    if (identical(out, new)) {
-      return("replace")
-    }
-    if (identical(out, old)) {
-      return("keep")
-    }
-    return(NA_character_)
-  }
-  if (length(statements) != 1L) {
-    return(NA_character_)
-  }
-  statement <- statements[[1L]]
-  if (length(statement$inputs) != 2L || !identical(statement$outputs[[1L]], out)) {
-    return(NA_character_)
-  }
-  lhs <- statement$inputs[[1L]]
-  rhs <- statement$inputs[[2L]]
-  in_order <- identical(lhs, old) && identical(rhs, new)
-  swapped <- identical(lhs, new) && identical(rhs, old)
-  name <- statement$primitive$name
-  if (name %in% c("add", "mul", "pmax", "pmin") && (in_order || swapped)) {
-    return(name)
-  }
-  if (name == "sub" && in_order) {
-    return("sub")
-  }
-  NA_character_
-}
 
 # Which elements of a scatter's `update` land in `x`, as a boolean array of
 # `update`'s shape. XLA skips an update window that does not fit into `x`
@@ -1229,15 +1180,13 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   update <- inputs[[3L]]
   grad <- grads[[1L]]
 
-  kind <- scatter_update_kind(params$update_fn)
-  if (is.na(kind)) {
+  # Only an update function given by name is differentiated: what a function
+  # computes is not looked into.
+  kind <- params$update_op
+  if (is.null(kind)) {
     cli_abort(c(
-      "The gradient of {.fn prim_scatter} is not implemented for this {.arg update_fn}.",
-      i = paste(
-        "Supported are {.code function(old, new) new} (the default),",
-        "{.code old + new}, {.code old - new}, {.code old * new}, {.code pmax(old, new)},",
-        "{.code pmin(old, new)} and {.code function(old, new) old}."
-      )
+      "The gradient of {.fn prim_scatter} is not implemented for an {.arg update_fn} that is a function.",
+      i = "Pass {.arg update_fn} by name instead: {.or {.val {names(scatter_update_fns)}}}."
     ))
   }
   if (kind == "mul" && required[[3L]] && !unique_indices) {
@@ -1315,7 +1264,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
       # `x` keeps the gradient where no update overwrote it. Scattering zeros
       # is idempotent, so this holds for repeated indices too.
       if (required[[1L]]) {
-        grad_x <- scatter_at(grad, zeros_like(update), function(old, new) new)
+        grad_x <- scatter_at(grad, zeros_like(update), "replace")
       }
       if (required[[3L]]) {
         grad_update <- if (unique_indices) {
@@ -1324,12 +1273,6 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           scatter_replace_winners_grad(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at)
         }
       }
-    },
-    keep = {
-      if (required[[1L]]) {
-        grad_x <- grad
-      }
-      if (required[[3L]]) grad_update <- zeros_like(update)
     },
     add = ,
     sub = {
@@ -1345,15 +1288,15 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
     mul = {
       # result = x * (product of the updates to the position)
       if (required[[1L]]) {
-        grad_x <- prim_mul(grad, scatter_at(ones_like(x), update, prim_mul))
+        grad_x <- prim_mul(grad, scatter_at(ones_like(x), update, "mul"))
       }
       if (required[[3L]]) {
         # unique indices: result = x * update at the update's position
         grad_update <- in_bounds_only(gather_at(prim_mul(grad, x)))
       }
     },
-    pmax = ,
-    pmin = {
+    max = ,
+    min = {
       # The gradient goes to the values the result equals -- `x` and every
       # update that ties with it share it equally, as for prim_pmax() and
       # prim_max().
@@ -1362,7 +1305,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
       retained <- prim_convert(prim_eq(x, out), dtype = grad_dtype)
       won <- prim_and(prim_eq(update, gather_at(out)), update_in_bounds())
       won <- prim_convert(won, dtype = grad_dtype)
-      n_winners <- prim_add(retained, scatter_at(zeros(grad_dtype, x_shape), won, prim_add))
+      n_winners <- prim_add(retained, scatter_at(zeros(grad_dtype, x_shape), won, "add"))
       grad_share <- prim_div(grad, n_winners)
       if (required[[1L]]) {
         grad_x <- prim_mul(grad_share, retained)
@@ -1393,7 +1336,6 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 # An update the forward scatter dropped as out of bounds never wins, so it gets
 # no gradient either.
 scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at) {
-  replace <- function(old, new) new
   # a) Create unique positive IDs for each update "batch" position
   ids_shape <- update_shape
   ids_shape[update_window_axes] <- 1L
@@ -1403,7 +1345,7 @@ scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes,
   update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
 
   # b) Scatter IDs to see which update "wins" at each position
-  scattered_ids <- scatter_at(prim_fill(0L, dtype = id_dtype, shape = x_shape), update_ids, replace, FALSE)
+  scattered_ids <- scatter_at(prim_fill(0L, dtype = id_dtype, shape = x_shape), update_ids, "replace", FALSE)
 
   # c) Gather scattered IDs back to update positions
   gathered_ids <- gather_at(scattered_ids, FALSE)

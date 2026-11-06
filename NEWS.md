@@ -1,8 +1,12 @@
 # anvl (development version)
 
-* `prim_scatter()` is differentiable for an `update_fn` that adds, subtracts,
-  multiplies or takes the maximum or minimum (`old + new`, `old - new`,
-  `old * new`, `nv_pmax()`, `nv_pmin()`), not only for replacement.
+* `prim_scatter()`'s `update_fn` can be given by name: `"replace"` (the new
+  default, replacing `NULL`), `"add"`, `"sub"`, `"mul"`, `"max"` or `"min"`.
+  The gradient of a scatter is implemented for each of them, not only for
+  replacement; an `update_fn` that is a function is not differentiated.
+* `nv_subset_assign()` and `[<-` take `update_fn` too, so
+  `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
+  subset, every value of an index that is repeated in `i`.
 * Bugfix: An update that `prim_scatter()` drops as out of bounds no longer gets
   a gradient when `unique_indices = TRUE`.
 * Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
