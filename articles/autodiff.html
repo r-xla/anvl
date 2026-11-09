@@ -353,7 +353,9 @@ the branch the predicate selects:</p>
 <span><span class="co">#&gt;  1</span></span>
 <span><span class="co">#&gt;  1</span></span>
 <span><span class="co">#&gt; [ CPUf32{2} ]</span></span></code></pre></div>
-<p><code><a href="../reference/nv_while.html">nv_while()</a></code>, in contrast, cannot be differentiated.</p>
+<p><code><a href="../reference/nv_while.html">nv_while()</a></code>, in contrast, cannot be differentiated. Where
+the derivative of what a loop computes has a formula of its own,
+<code><a href="../reference/prim_custom_gradient.html">prim_custom_gradient()</a></code> attaches it.</p>
 </div>
 <div class="section level2">
 <h2 id="limitations">Limitations<a class="anchor" aria-label="anchor" href="#limitations"></a>

@@ -271,6 +271,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/prim_cummin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_cumprod.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_cumsum.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/prim_custom_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_digamma.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_div.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_dot_general.html</loc></url>

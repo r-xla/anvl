@@ -973,6 +973,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Cumulative Product
 - [`prim_cumsum()`](https://r-xla.github.io/anvl/reference/prim_cumsum.md)
   : Primitive Cumulative Sum
+- [`prim_custom_gradient()`](https://r-xla.github.io/anvl/reference/prim_custom_gradient.md)
+  : Primitive Custom Gradient
 - [`prim_digamma()`](https://r-xla.github.io/anvl/reference/prim_digamma.md)
   : Primitive Digamma
 - [`prim_div()`](https://r-xla.github.io/anvl/reference/prim_div.md) :

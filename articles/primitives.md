@@ -1,6 +1,6 @@
 # Primitives Reference
 
-The table below shows all 101 primitives and which rules they implement.
+The table below shows all 102 primitives and which rules they implement.
 Note that a rule might be missing because it was just not added yet, or
 because it does not apply for a specific primitive.
 
@@ -33,6 +33,7 @@ because it does not apply for a specific primitive.
 | cummin                 |     ✓     |    ✓    |   ✗    |
 | cumprod                |     ✓     |    ✗    |   ✗    |
 | cumsum                 |     ✓     |    ✓    |   ✗    |
+| custom_gradient        |     ✓     |    ✓    |   ✓    |
 | digamma                |     ✓     |    ✓    |   ✗    |
 | div                    |     ✓     |    ✓    |   ✓    |
 | dot_general            |     ✓     |    ✓    |   ✓    |

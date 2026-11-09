@@ -2,6 +2,14 @@
 
 ## anvl (development version)
 
+- New
+  [`prim_custom_gradient()`](https://r-xla.github.io/anvl/reference/prim_custom_gradient.md)
+  computes a value with one function and differentiates it with another.
+  A
+  [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
+  with a forward pass can take the place of the latter, so that the
+  backward pass reads what the forward pass computed.
+
 - [`prim_scatter()`](https://r-xla.github.io/anvl/reference/prim_scatter.md)’s
   `update_fn` can be given by name: `"replace"` (the new default,
   replacing `NULL`), `"add"`, `"sub"`, `"mul"`, `"max"` or `"min"`. The

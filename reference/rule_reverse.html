@@ -17,7 +17,9 @@ efficient backward pass. It has the signature
 function(inputs, params, required), where required says which inputs
 need a gradient, and returns list(outputs = , backward = ): the forward
 results and a closure with the signature of backward above, which can use
-intermediate values of the forward pass via lexical scoping."><meta property="og:description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
+intermediate values of the forward pass via lexical scoping.
+A rule with a forward pass can also be the rule of
+prim_custom_gradient()."><meta property="og:description" content="Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
 of backward and forward.
 Pass backward when the primitive's forward statement can run unmodified, which
 covers most use cases. It has the signature
@@ -29,7 +31,9 @@ efficient backward pass. It has the signature
 function(inputs, params, required), where required says which inputs
 need a gradient, and returns list(outputs = , backward = ): the forward
 results and a closure with the signature of backward above, which can use
-intermediate values of the forward pass via lexical scoping."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+intermediate values of the forward pass via lexical scoping.
+A rule with a forward pass can also be the rule of
+prim_custom_gradient()."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -114,6 +118,8 @@ efficient backward pass. It has the signature
 need a gradient, and returns <code>list(outputs = , backward = )</code>: the forward
 results and a closure with the signature of <code>backward</code> above, which can use
 intermediate values of the forward pass via lexical scoping.</p>
+<p>A rule with a <code>forward</code> pass can also be the <code>rule</code> of
+<code><a href="prim_custom_gradient.html">prim_custom_gradient()</a></code>.</p>
     </div>
 
     <div class="section level2">
@@ -159,7 +165,7 @@ closure.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     list(if (required[[1L]]) prim_negate(grads[[1L]]))</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5760ba39ebf0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5c7ce0c814f8&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "anvl_rule_reverse"</span>

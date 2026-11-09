@@ -276,7 +276,10 @@ f_grad(nv_array(c(1, 2)), nv_scalar(FALSE))
 ```
 
 [`nv_while()`](https://r-xla.github.io/anvl/reference/nv_while.md), in
-contrast, cannot be differentiated.
+contrast, cannot be differentiated. Where the derivative of what a loop
+computes has a formula of its own,
+[`prim_custom_gradient()`](https://r-xla.github.io/anvl/reference/prim_custom_gradient.md)
+attaches it.
 
 ## Limitations
 
