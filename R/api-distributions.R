@@ -959,6 +959,10 @@ inv_pow2 <- function(x) {
 # Uses a loop that runs at most once because nv_if() executes both branches
 # on XLA's CPU backend. This helper does not support differentiation through
 # the loop.
+#
+# FIXME: Replace the loop with nv_if() once XLA stops converting a conditional
+# with elementwise branches into a select, which runs the untaken branch:
+# https://github.com/openxla/xla/issues/52376
 skip_unless <- function(pending, init, compute) {
   nv_while(
     init = list(pending = pending, value = init),
@@ -1490,6 +1494,7 @@ binom_cdf <- function(k, n, p, lower_tail, log_p, op_dtype) {
   use_asym <- (ab_min > 1000) & (lambda <= 0.03 * ab_min)
   # The expansion is long, and only needed for large a and b, so it is skipped
   # at run time where no element needs it (see `skip_unless()`).
+  # FIXME: Use nv_if() once https://github.com/openxla/xla/issues/52376 is fixed.
   log_asym <- skip_unless(nv_any(use_asym), nv_fill_like(lambda, 0), function() {
     basym(
       # This runs for the whole array if any element needs the expansion.
@@ -2152,6 +2157,8 @@ ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
   # on the CPU backend cost up to ~18% (f64) on batches that need only the
   # series (lambda below ~200, the common case for count data) at 1e7
   # elements, ~3-5% at 1e6.
+  # FIXME: Gate both with nv_if() once https://github.com/openxla/xla/issues/52376
+  # is fixed, then re-measure whether gating the series still costs time.
   series_branch <- function() {
     # Elements outside both series are given k = 0, whose lower series has no
     # terms for any finite lambda > 0 (see `poisson_series()`), so lambda is
@@ -2165,6 +2172,7 @@ ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
     smallest_normal <- if (is_f32) 2^-126 else 2^-1022
     underflowed <- upper & (sum < smallest_normal)
     log_upper_sum <- nv_log(nv_ifelse(upper, sum, 1))
+    # FIXME: Use nv_if() once https://github.com/openxla/xla/issues/52376 is fixed.
     log_upper_sum <- skip_unless(nv_any(underflowed), log_upper_sum, function() {
       nv_ifelse(
         underflowed,
@@ -2206,6 +2214,7 @@ ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
   if (asymp_grad) {
     asymp_init$grad <- nv_fill_like(k, 0)
   }
+  # FIXME: Use nv_if() once https://github.com/openxla/xla/issues/52376 is fixed.
   asymp <- skip_unless(nv_any(!use_series), asymp_init, function() {
     ppois_asymp(
       nv_ifelse(use_series, lambda, k),
