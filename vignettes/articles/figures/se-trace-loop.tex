@@ -85,7 +85,7 @@
     {the graph \cd{jit()} traces from it; the random state's part in \se{blue}};
 
   \matrix[fields, below = 1.0 of graph.south west, anchor = north west] (pview) {
-    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 3 \\
+    effect &[8pt] global\_rng\_state\_handle &[10pt] |[badge]| 3 \\
     value & \se{\%key1}, \se{\%counter1} & |[badge]| 3 \\
     n & 0 $\to$ 3 $\to$ 4 & |[badge]| 5 & |[badge]| 6 \\
     inputs & \se{\%key1}, \se{\%counter1} & |[badge]| 3 \\
@@ -97,7 +97,7 @@
   \node[head] at (pviewbox.north west) {the program's view};
 
   \matrix[fields, anchor = north west] (bview) at ($(pview.north east) + (0.8, 0)$) {
-    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 3 \\
+    effect &[8pt] global\_rng\_state\_handle &[10pt] |[badge]| 3 \\
     value & \se{\%key3}, \se{\%counter4} & |[badge]| 3 \\
     n & 0 $\to$ 1 & |[badge]| 3 \\
     inputs & \se{\%key3}, \se{\%counter4} & |[badge]| 3 \\
@@ -110,8 +110,8 @@
 
   \matrix[fields, below = 1.0 of pview.south west, anchor = north west] (host) {
     &[8pt] before the run &[8pt] after the run \\
-    random\_key & k $\to$ \se{\%key1} & k \\
-    random\_counter & c $\to$ \se{\%counter1} & c + 4 &[10pt] |[badge]| 7 \\
+    key & k $\to$ \se{\%key1} & k \\
+    counter & c $\to$ \se{\%counter1} & c + 4 &[10pt] |[badge]| 7 \\
   };
   \begin{scope}[on background layer]
     \node[box, draw = black!25, fill = black!4, fit = (host)] (hostbox) {};
@@ -127,7 +127,7 @@
      \cd{GraphDescriptor} of its own: a loop trace, whose \cd{side\_effects\_mode} is
      \cd{"loop"} and whose \cd{parent} is the program.}
   \note{3}{($(2.south west) + (0, -0.35)$)}
-    {The draw passes \cd{global\_random\_state\_handle} to \cd{desc\_use\_side\_effect()} in the
+    {The draw passes \cd{global\_rng\_state\_handle} to \cd{desc\_use\_side\_effect()} in the
      body's trace, which has no view of it yet. Every step runs the same code, so a draw in
      the body cannot split at a counter known when it is traced, such as \se{\cd{\%counter1}}
      plus a number: a loop trace starts a view from fresh inputs, which the loop carries from

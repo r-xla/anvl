@@ -75,7 +75,7 @@
     {the graph \cd{jit()} traces from it; the random state's part in \se{blue}};
 
   \matrix[fields, below = 1.0 of graph.south west, anchor = north west] (view) {
-    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 2 \\
+    effect &[8pt] global\_rng\_state\_handle &[10pt] |[badge]| 2 \\
     value & \se{\%key1}, \se{\%counter1} & |[badge]| 2 \\
     n & 0 $\to$ 1 $\to$ 2 $\to$ 3 & |[badge]| 2 & |[badge]| 3 & |[badge]| 4 \\
     inputs & \se{\%key1}, \se{\%counter1} & |[badge]| 2 \\
@@ -89,8 +89,8 @@
 
   \matrix[fields, below = 1.0 of view.south west, anchor = north west] (host) {
     &[8pt] before the run &[8pt] after the run \\
-    random\_key & k $\to$ \se{\%key1} & k \\
-    random\_counter & c $\to$ \se{\%counter1} & c + 3 &[10pt] |[badge]| 6 \\
+    key & k $\to$ \se{\%key1} & k \\
+    counter & c $\to$ \se{\%counter1} & c + 3 &[10pt] |[badge]| 6 \\
   };
   \begin{scope}[on background layer]
     \node[box, draw = black!25, fill = black!4, fit = (host)] (hostbox) {};
@@ -103,7 +103,7 @@
      \cd{GraphDescriptor} has the \cd{side\_effects\_mode} \cd{"program"}, and no views yet.}
   \note{2}{($(1.south west) + (0, -0.35)$)}
     {No random state is the default, so \cd{prim\_sample\_bits()} draws from the global random
-     state, whose handle is \cd{global\_random\_state\_handle} (\cd{active\_random\_state()}). It
+     state, whose handle is \cd{global\_rng\_state\_handle} (\cd{active\_rng\_state()}). It
      passes the handle to \cd{desc\_use\_side\_effect()}, which looks for the trace's view of it
      (\cd{desc\_view()}). There is none yet, so \cd{side\_effect\_start()} starts one
      from two fresh \cd{GraphValue}s, \se{\cd{\%key1}} and \se{\cd{\%counter1}}, which the

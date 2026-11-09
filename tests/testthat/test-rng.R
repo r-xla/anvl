@@ -8,29 +8,36 @@ draws <- function(seed, n, shape = 1L) {
 state_counter <- function() state_words()[[3L]]
 
 # The values of `n` consecutive eager draws of `shape` from the random state
-# `random_state`, which is left the global random state.
-draws_from <- function(random_state, n, shape = 1L) {
-  nv_set_rng_state(random_state)
+# `rng_state`, which is left the global random state.
+draws_from <- function(rng_state, n, shape = 1L) {
+  nv_set_rng_state(rng_state)
   lapply(seq_len(n), function(i) as_array(nv_runif(shape)))
 }
 
-# The key and the counter of the random state `random_state`, which R holds the
+# The key and the counter of the random state `rng_state`, which R holds the
 # words of, as arrays on the default device.
-state_arrays <- function(random_state) {
-  Map(function(name) {
-    pjrt_anvl_array(random_state_buffer(random_state, name), random_state_dtype(name), random_state_fields[[name]]$shape)
-  }, names(random_state_fields))
+state_arrays <- function(rng_state) {
+  Map(
+    function(name) {
+      pjrt_anvl_array(
+        rng_state_buffer(rng_state, name),
+        rng_state_dtype(name),
+        rng_state_fields[[name]]$shape
+      )
+    },
+    names(rng_state_fields)
+  )
 }
 
-# The random state that prim_fork_random_state() returns from the global random
+# The random state that prim_fork_rng_state() returns from the global random
 # state seeded with `seed`.
 forked_state <- function(seed) {
-  do.call(random_state_of_arrays, unname(with_nv_seed(seed, prim_fork_random_state())))
+  do.call(rng_state_of_arrays, unname(with_nv_seed(seed, prim_fork_rng_state())))
 }
 
 # Leaves the global random state unset until the calling scope exits, so that
 # the next draw derives it from base R's RNG.
-local_unset_random_state <- function(envir = parent.frame()) {
+local_unset_rng_state <- function(envir = parent.frame()) {
   old <- nv_get_rng_state()
   nv_set_rng_state(NULL)
   withr::defer(nv_set_rng_state(old), envir = envir)
@@ -56,7 +63,7 @@ describe("nv_set_seed", {
 
   it("is not needed: an unset random state is derived from base R's RNG", {
     draw <- function() {
-      local_unset_random_state()
+      local_unset_rng_state()
       withr::local_seed(3L)
       list(as_array(nv_runif(3L)), as_array(nv_runif(3L)))
     }
@@ -67,7 +74,7 @@ describe("nv_set_seed", {
 
   it("derives an unset random state from base R's seed", {
     draw <- function(seed) {
-      local_unset_random_state()
+      local_unset_rng_state()
       withr::local_seed(seed)
       as_array(nv_runif(3L))
     }
@@ -75,7 +82,7 @@ describe("nv_set_seed", {
   })
 
   it("derives an unset random state from base R's RNG only once", {
-    local_unset_random_state()
+    local_unset_rng_state()
     withr::local_seed(3L)
     a <- as_array(nv_runif(3L))
     # base R's seed no longer reseeds the random state
@@ -140,7 +147,7 @@ describe("local_nv_seed", {
 
 describe("nv_get_rng_state", {
   it("is NULL while the global random state is not set", {
-    local_unset_random_state()
+    local_unset_rng_state()
     expect_null(nv_get_rng_state())
     expect_visible(nv_get_rng_state())
   })
@@ -148,30 +155,30 @@ describe("nv_get_rng_state", {
   it("returns a copy of the global random state", {
     local_nv_seed(7L)
     nv_runif(3L)
-    random_state <- nv_get_rng_state()
-    expect_s3_class(random_state, "AnvlRngState")
-    expect_identical(state_words(random_state), c(0, 7, 1, 0))
+    rng_state <- nv_get_rng_state()
+    expect_s3_class(rng_state, "AnvlRngState")
+    expect_identical(state_words(rng_state), c(0, 7, 1, 0))
     nv_runif(3L)
     # later draws leave it intact
-    expect_identical(state_words(random_state), c(0, 7, 1, 0))
+    expect_identical(state_words(rng_state), c(0, 7, 1, 0))
   })
 
   it("lets nv_set_rng_state() continue the sequence where it stopped", {
     local_nv_seed(7L)
     nv_runif(2L)
-    random_state <- nv_get_rng_state()
+    rng_state <- nv_get_rng_state()
     a <- as_array(nv_runif(3L))
-    nv_set_rng_state(random_state)
+    nv_set_rng_state(rng_state)
     expect_identical(as_array(nv_runif(3L)), a)
-    nv_set_rng_state(random_state)
+    nv_set_rng_state(rng_state)
     expect_identical(as_array(nv_runif(3L)), a)
   })
 
   it("builds the buffers of its key and counter on the default device", {
     local_nv_seed(7L)
-    random_state <- nv_get_rng_state()
+    rng_state <- nv_get_rng_state()
     local_default_device("cpu:1")
-    arrays <- state_arrays(random_state)
+    arrays <- state_arrays(rng_state)
     expect_true(eq_device(device(arrays$key), nv_device("cpu:1")))
     expect_true(eq_device(device(arrays$counter), nv_device("cpu:1")))
     expect_dtype(arrays$key, "ui32")
@@ -220,27 +227,27 @@ describe("nv_set_rng_state", {
     # a list of a key and a counter is not one
     expect_error(nv_set_rng_state(list(key = key, counter = counter)), "must be a random state")
     # nor is the handle the trace of a draw from the global random state has
-    expect_error(nv_set_rng_state(global_random_state_handle), "must be a random state")
+    expect_error(nv_set_rng_state(global_rng_state_handle), "must be a random state")
   })
 
   it("makes the global random state a copy, which its draws leave intact", {
     local_nv_seed(1L)
-    random_state <- nv_rng_state(7L)
-    nv_set_rng_state(random_state)
+    rng_state <- nv_rng_state(7L)
+    nv_set_rng_state(rng_state)
     nv_runif(2L)
-    expect_identical(state_words(random_state), c(0, 7, 0, 0))
+    expect_identical(state_words(rng_state), c(0, 7, 0, 0))
     expect_identical(state_words(), c(0, 7, 1, 0))
   })
 
   it("carries the counter into its high word", {
     local_nv_seed(1L)
-    nv_set_rng_state(random_state_of_words(c(1, 0, 2^32 - 1, 0)))
+    nv_set_rng_state(rng_state_of_words(c(1, 0, 2^32 - 1, 0)))
     a <- as_array(nv_runif(1L))
     expect_identical(state_words(), c(1, 0, 0, 1))
     b <- as_array(nv_runif(1L))
     expect_identical(state_words(), c(1, 0, 1, 1))
     # the program sees the carried counter too
-    nv_set_rng_state(random_state_of_words(c(1, 0, 2^32 - 1, 0)))
+    nv_set_rng_state(rng_state_of_words(c(1, 0, 2^32 - 1, 0)))
     expect_identical(as_array(jit(function() list(nv_runif(1L), nv_runif(1L)))()[[2L]]), b)
     expect_false(identical(a, b))
     # the high word of the counter reaches the hash
@@ -284,10 +291,10 @@ describe("a sampling call", {
   })
 })
 
-describe("global_random_state_handle", {
+describe("global_rng_state_handle", {
   it("is a list of no fields, which the package stores as it is", {
-    expect_identical(unclass(global_random_state_handle), list())
-    expect_true(is_side_effect(global_random_state_handle))
+    expect_identical(unclass(global_rng_state_handle), list())
+    expect_true(is_side_effect(global_rng_state_handle))
   })
 })
 
@@ -366,7 +373,7 @@ describe("the global random state in jit", {
     expect_length(graph$inputs, 0L)
     expect_length(graph$outputs, 2L)
     expect_length(graph$side_effects, 1L)
-    expect_true(identical(graph$side_effects[[1L]]$effect, global_random_state_handle))
+    expect_true(identical(graph$side_effects[[1L]]$effect, global_rng_state_handle))
     input <- lapply(graph$side_effects[[1L]]$inputs, `[[`, "aval")
     expect_identical(
       lapply(input, function(aval) as.character(dtype(aval))),
@@ -639,11 +646,11 @@ describe("counter_plus", {
     # the advanced counters, low word first
     expected <- list(c(4, 8), c(2^31 + 4, 9), c(2^32 - 2, 2^21 + 7))
     ns <- c(5, 2^32 + 2^31 + 5, 2^53 - 1)
-    state <- state_arrays(random_state_of_words(words))
+    state <- state_arrays(rng_state_of_words(words))
     plus <- jit(counter_plus, static = "n")
     for (i in seq_along(ns)) {
       counter <- plus(state$counter, ns[[i]])
-      expect_identical(state_words(random_state_of_arrays(state$key, counter)), c(1, 2, expected[[i]]))
+      expect_identical(state_words(rng_state_of_arrays(state$key, counter)), c(1, 2, expected[[i]]))
     }
   })
 })
@@ -654,15 +661,15 @@ describe("side_effect_advance", {
     expected <- list(c(4, 8), c(2^31 + 4, 9), c(2^32 - 2, 2^21 + 7))
     ns <- c(5, 2^32 + 2^31 + 5, 2^53 - 1)
     for (i in seq_along(ns)) {
-      state <- random_state_of_words(c(1, 2, 2^32 - 1, 7))
-      side_effect_advance(global_random_state_handle, state, ns[[i]])
+      state <- rng_state_of_words(c(1, 2, 2^32 - 1, 7))
+      side_effect_advance(global_rng_state_handle, state, ns[[i]])
       expect_identical(state_words(state), c(1, 2, expected[[i]]))
     }
   })
 
   it("wraps the counter around at 2^64", {
-    state <- random_state_of_words(c(1, 2, 2^32 - 1, 2^32 - 1))
-    side_effect_advance(global_random_state_handle, state, 3)
+    state <- rng_state_of_words(c(1, 2, 2^32 - 1, 2^32 - 1))
+    side_effect_advance(global_rng_state_handle, state, 3)
     expect_identical(state_words(state), c(1, 2, 2, 0))
   })
 })
@@ -726,6 +733,20 @@ describe("the global random state in a traced graph", {
           prim_sample_bits(1L, "ui32")
           prim_sample_bits(1L, "ui32")
         })
+      },
+      list(p = nv_scalar(TRUE))
+    )
+    expect_snapshot(graph)
+  })
+
+  it("draws after an nv_if at the counter after its larger branch", {
+    graph <- trace_fn(
+      function(p) {
+        branch <- nv_if(p, \() prim_sample_bits(1L, "ui32"), \() {
+          prim_sample_bits(1L, "ui32")
+          prim_sample_bits(1L, "ui32")
+        })
+        list(branch, prim_sample_bits(3L, "ui32"))
       },
       list(p = nv_scalar(TRUE))
     )
@@ -812,7 +833,7 @@ describe("nv_rng_state", {
   })
 
   it("compiles a program of its own apart from a list of the same arrays", {
-    f <- jit(function(s) if (is_random_state(s)) with_nv_rng_state(s, nv_runif(1L)) else s$key)
+    f <- jit(function(s) if (is_rng_state(s)) with_nv_rng_state(s, nv_runif(1L)) else s$key)
     rng <- nv_rng_state(1L)
     f(rng)
     expect_identical(
@@ -825,7 +846,7 @@ describe("nv_rng_state", {
   })
 
   it("is traced as a side effect of its own per random state argument", {
-    graph <- trace_with_random_states(
+    graph <- trace_with_rng_states(
       \(rng1, rng2) list(with_nv_rng_state(rng1, nv_runif(1L)), with_nv_rng_state(rng2, nv_runif(1L))),
       list(nv_rng_state(1L), nv_rng_state(2L))
     )
@@ -851,7 +872,7 @@ describe("nv_rng_state", {
     # the global random state is not used
     expect_false(any(vapply(
       graph$side_effects,
-      function(view) identical(view$effect, global_random_state_handle),
+      function(view) identical(view$effect, global_rng_state_handle),
       logical(1L)
     )))
   })
@@ -893,7 +914,6 @@ describe("nv_rng_state", {
     expect_identical(state_words(rng)[[3L]], 1)
   })
 
-
   it("can be passed to several arguments only as different random states", {
     f <- jit(function(a, b) list(with_nv_rng_state(a, nv_runif(2L)), with_nv_rng_state(b, nv_runif(2L))))
     rng <- nv_rng_state(1L)
@@ -934,7 +954,7 @@ describe("nv_rng_state", {
   })
 
   it("has a handle of GraphValues and no descriptor once its trace is done", {
-    graph <- trace_with_random_states(\(rng) with_nv_rng_state(rng, nv_runif(1L)), list(nv_rng_state(1L)))
+    graph <- trace_with_rng_states(\(rng) with_nv_rng_state(rng, nv_runif(1L)), list(nv_rng_state(1L)))
     handle <- graph$side_effects[[1L]]$effect
     expect_true(is_graph_value(handle$key))
     expect_true(is_graph_value(handle$counter))

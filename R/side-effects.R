@@ -1,56 +1,21 @@
 #' @include aaa.R
 NULL
 
-# Side effects
-#
-# A side effect is state outside of a traced function that some primitives read
-# and update, such as the random state the samplers draw from. Its uses change
-# it in a way the trace knows: n uses take it from `value` to
-# `side_effect_after(effect, value, n)`, whatever the program computes. So a
-# trace counts its uses, and what it hands back is that count: after a run, the
-# host advances the host object by it (`side_effect_advance()`), so that no call
-# waits for the program of the call before it.
-#
-# A side effect has up to three parts:
-# - its host object: the state between calls, which lives on the host. A side
-#   effect that starts afresh in every program has none.
-# - its handle: its identity. A use passes the handle to find its trace's view,
-#   and a loop or a branch to match a sub-trace's view to the enclosing trace's.
-#   Its class says which side effect it is, and inherits from `SideEffect`. It
-#   never changes: what changes from trace to trace is the view's.
-# - one view per trace that uses it (`SideEffectView()`), in `desc$side_effects`
-#   in the order of first use: its value in that trace, and its uses since.
-#
-# Where a view starts is decided by the trace's `side_effects_mode` (see
-# `GraphDescriptor()`). Inside a loop, a side effect carries its value from one
-# iteration to the next. Out of a loop, a branch, a differentiated function or
-# the program, it hands back its count: `steps` times the body's count for
-# `nv_scan()`, the larger of the branches' counts for `nv_if()`. The number of
-# iterations of `nv_while()` is not known when it is traced, so the body of one
-# starts from a fork (`side_effect_fork()`), which is one use of the enclosing
-# trace. The side effects section of the internals article describes the mechanism.
-#
-# This is the only kind of side effect for now. It is to be extended by a
-# second kind, a runtime side effect, such as the error flag of a check or the
-# token that orders prints, which is changed by what the program computes: a
-# trace hands back its value instead of a count, which the program returns as an
-# implicit output (pjrt's `implicit_outputs`) and the host receives after the
-# run. The mechanism once supported one (`git log -S side_effect_receive`).
-#
-# A function that modifies a trace in place starts with `desc_` and takes its
-# `GraphDescriptor` as the first argument, so that a call says which trace it
-# changes. `side_effect_after()` and `side_effect_fork()` add calls to the
-# current trace, so they are only called while the trace of their value is the
-# current one.
+# Side effects: the generic mechanism, which a side effect plugs into with the
+# S3 methods on its handle below. The side effects section of the internals
+# article describes it. A second kind, a runtime side effect whose value the
+# program computes and returns as an implicit output (pjrt's
+# `implicit_outputs`), is planned; the mechanism once supported one
+# (`git log -S side_effect_receive`).
 
 # ---- What a side effect provides ----------------------------------------------
 
 #' @title Side Effect Protocol
 #' @description
-#' The generics the handle of a side effect implements (see the comment at the
-#' top of R/side-effects.R).
+#' The generics the handle of a side effect implements (see the side effects
+#' section of the internals article).
 #' @param effect (handle)\cr
-#'   The handle of a side effect, e.g. `global_random_state_handle`.
+#'   The handle of a side effect, e.g. `global_rng_state_handle`.
 #' @param desc (`GraphDescriptor`)\cr
 #'   The outermost trace.
 #' @param args (`list()` | `NULL`)\cr

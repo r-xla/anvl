@@ -17,26 +17,12 @@ A random state of the key that \code{seed} gives and the counter 0.
 }
 \description{
 Creates a random state of its own, which the samplers draw from in place of
-the global random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) within \code{\link[=with_nv_rng_state]{with_nv_rng_state()}}
-or after \code{\link[=local_nv_rng_state]{local_nv_rng_state()}}. Like the global random state, it is a key
-and a counter of the ThreeFry-2x32 generator, and every sampling call that
-draws from it advances it in place, so two draws from the same random state
-differ. R holds the key and the counter, so advancing a random state runs no
-program.
+the global random state within \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or after
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}}. Draws advance it in place. A function compiled with
+\code{\link[=jit]{jit()}} can draw from a random state it takes as an argument or closes over,
+but cannot create or return one.
 
-A function compiled with \code{\link[=jit]{jit()}} can draw from a random state it takes as an
-argument, also inside a list, or one it closes over, which it makes the
-samplers' default with \code{\link[=local_nv_rng_state]{local_nv_rng_state()}} or \code{\link[=with_nv_rng_state]{with_nv_rng_state()}}. The
-compiled program takes the key and the counter of an argument like other R
-data among the arguments, on the device of the call, and those of a random
-state it closes over as it takes the global random state's, from the random
-state it closed over when it was traced. After the call, the random state is
-advanced in place by the number of sampling calls the program made from it,
-as the global random state is. In the jitted function, a random state is an
-\code{AnvlRngState} too, but it is not a value there, which could be returned
-or carried through a loop. A jitted function cannot draw from the same
-random state as two different ones, such as one passed to it twice, which
-is an error, and cannot create one.
+See the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random Number Generation} article for more details.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

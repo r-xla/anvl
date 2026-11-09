@@ -57,20 +57,20 @@ describe("the functions a lowering builds once", {
       prim_sample_bits(2L, "ui32"),
       prim_sample_bits(c(2L, 3L), "ui32"),
       prim_sample_bits(2L, "ui64"),
-      prim_fork_random_state()$key
+      prim_fork_rng_state()$key
     )
   }
 
   it("builds one function per draw shape and data type, which every such draw calls", {
     out <- stablehlo(trace_fn(draws, list()))
     ids <- vapply(out[[4L]], function(func) sub("^@", "", repr(func$id)), character(1L))
-    expect_setequal(ids, c("sample_bits_ui32_2", "sample_bits_ui32_2x3", "sample_bits_ui64_2", "fork_random_state"))
+    expect_setequal(ids, c("sample_bits_ui32_2", "sample_bits_ui32_2x3", "sample_bits_ui64_2", "fork_rng_state"))
     main <- repr(out[[1L]])
     calls <- function(id) lengths(regmatches(main, gregexpr(paste0("func.call @", id, "\\("), main)))
     expect_identical(calls("sample_bits_ui32_2"), 2L)
     expect_identical(calls("sample_bits_ui32_2x3"), 1L)
     expect_identical(calls("sample_bits_ui64_2"), 1L)
-    expect_identical(calls("fork_random_state"), 1L)
+    expect_identical(calls("fork_rng_state"), 1L)
   })
 
   it("gives each draw its own values, those the same calls made eagerly give", {

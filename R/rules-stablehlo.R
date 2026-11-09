@@ -684,13 +684,13 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 prim_sample_bits[["stablehlo"]] <- function(key, counter, shape, dtype) {
   shape <- as.integer(shape)
   dtype <- as.character(as_dtype(dtype))
-  random_state_call(paste0("sample_bits_", dtype, "_", shape_id(shape)), key, counter, function(fresh_key) {
+  rng_state_call(paste0("sample_bits_", dtype, "_", shape_id(shape)), key, counter, function(fresh_key) {
     list(threefry_draw(fresh_key, shape, dtype))
   })
 }
 
-prim_fork_random_state[["stablehlo"]] <- function(key, counter) {
-  random_state_call("fork_random_state", key, counter, function(fresh_key) {
+prim_fork_rng_state[["stablehlo"]] <- function(key, counter) {
+  rng_state_call("fork_rng_state", key, counter, function(fresh_key) {
     words <- lapply(fresh_key, hlo_reshape, 1L)
     list(
       hlo_concatenate(words[[1L]], words[[2L]], dimension = 0L),
@@ -705,7 +705,7 @@ prim_fork_random_state[["stablehlo"]] <- function(key, counter) {
 # encrypts the counter with its high word as the first input word and its low
 # word as the second: for a counter c below 2^32 the key is JAX's
 # `fold_in(key, c)`, and for every c the c-th key of JAX's `split(key, c + 1)`.
-random_state_call <- function(id, key, counter, body) {
+rng_state_call <- function(id, key, counter, body) {
   callee <- lowering_func(id, function(id) {
     func <- local_func(id)
     key <- stablehlo::hlo_input("key", "ui32", shape = 2L, func = func)

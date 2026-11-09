@@ -24,22 +24,13 @@ An expression to evaluate drawing from \code{rng_state}.}
 returns the result of evaluating \code{code}.
 }
 \description{
-\code{local_nv_rng_state()} and \code{with_nv_rng_state()} make the random state
-\code{rng_state} the one the samplers draw from, for the calling scope or for
-\code{code} only, as \code{\link[=local_nv_seed]{local_nv_seed()}} and \code{\link[=with_nv_seed]{with_nv_seed()}} do with a seed. The
-draws advance \code{rng_state} itself, in place, and the random state from before
-is restored afterwards.
+\code{local_nv_rng_state()} and \code{with_nv_rng_state()} make \code{rng_state} the random
+state the samplers draw from, for the calling scope or for \code{code} only, and
+restore the one from before afterwards. The draws advance \code{rng_state} in
+place. In a function traced by \code{\link[=jit]{jit()}}, they cannot be called in the body of
+\code{\link[=nv_while]{nv_while()}} or \code{\link[=nv_scan]{nv_scan()}}: called before the loop, they reach its body.
 
-Outside of \code{\link[=jit]{jit()}}, \code{rng_state} is the global random state for the scope.
-In a function traced by \code{\link[=jit]{jit()}}, the samplers in the scope draw from
-\code{rng_state}, also in the bodies of loops, and the call advances it
-afterwards: a random state the jitted function takes as an argument, or one
-it closes over (see \code{\link[=nv_rng_state]{nv_rng_state()}}). It can be called in a branch of
-\code{\link[=nv_if]{nv_if()}} or a function \code{\link[=gradient]{gradient()}} differentiates, such as a jitted
-function called there, but not in the body of \code{\link[=nv_while]{nv_while()}} or \code{\link[=nv_scan]{nv_scan()}},
-nor in a function traced inside one: called before the loop, it reaches the
-loop body. These functions trace the functions they are given also when they
-are called outside of \code{\link[=jit]{jit()}}.
+See the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random Number Generation} article for more details.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

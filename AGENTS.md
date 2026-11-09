@@ -122,7 +122,7 @@ another backend is an error. Only helpers *about* the backend name one (`install
 
 ## Primitive System
 
-Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
@@ -131,38 +131,11 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 ## Side Effects
 
 A side effect is state outside the traced function that primitives read and update; currently
-only the random state. The side effects section of the internals article describes the mechanism.
-
-- **One kind, counted uses.** A side effect is changed by its uses in a way the trace knows, so a
-  trace counts its uses and hands back the count, which the host adds after the run without
-  waiting for the program. A second kind, a *runtime* side effect whose value the program computes
-  and returns, is planned; the mechanism once supported one (`git log -S side_effect_receive`).
-- **Three parts.**
-  - The *handle* is the side effect's identity and never changes. Its class inherits from
-    `SideEffect`; for the random state it is an `AnvlRngStateHandle`, see the top of
-    `R/rng-trace.R`.
-  - The optional *host object* is the state between calls, e.g. `globals$random_state`.
-  - There is one *view* per trace that uses it (`SideEffectView()`, in `desc$side_effects`): its
-    value in that trace, the uses since (`n`), the `inputs` the trace takes for it, and a loop
-    body's `outputs`.
-- **Where it is generic.** `desc_view(desc, effect)` finds or creates a trace's view as its
-  `side_effects_mode` (`?GraphDescriptor`) says, and a draw calls
-  `desc_use_side_effect(desc, active_random_state())`. Loops, branches, gradients, lowering and the
-  host are generic code in `R/side-effects.R`.
-- **What a side effect implements.** S3 methods on its handle: `side_effect_start()`,
-  `side_effect_host_object()`, `side_effect_input()`, `side_effect_after()`, `side_effect_fork()`,
-  `side_effect_advance()` and `side_effect_format()` (the line a printed graph shows after the
-  run). `R/rng-trace.R` implements them for the random state; `R/rng.R` holds the user API and the
-  random state as R holds it.
-- **The random state.** A jitted function can draw from the global random state, a random state
-  it takes as an argument, or one it closes over. In a trace, one it takes as an argument is an
-  `AnvlRngState` of its handle alone (`traced_random_state()`). After a run, an argument's
-  random state is found by its place among the random states `pjrt::flatten()` meets
-  (`random_state_argument()`).
-- **Restrictions.** A random state cannot be part of a loop's state (`abort_if_side_effects()`),
-  and `local_nv_rng_state()` does not work inside a loop body (`in_loop_body()`). The default it
-  sets lives on the descriptor (`desc$default_random_state`), which traces opened in it find
-  through `parent`.
+only the random state. A trace counts the uses of each side effect it meets, and after the run the
+host advances the state by that count. The generic mechanism (loops, branches, gradients, lowering,
+the host) is in `R/side-effects.R`, the random state's implementation of it in `R/rng-trace.R`,
+and the random number API in `R/rng.R`. The side effects section of the internals article
+(`vignettes/articles/internals.Rmd`) describes the mechanism; read it before changing any of this.
 
 ## Jit-wrapping
 

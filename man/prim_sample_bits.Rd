@@ -79,5 +79,5 @@ Bradbury J, Frostig R, Hawkins P, Johnson M, Katariya Y, Leary C, Maclaurin D, N
 Version 0.11.2, \url{http://github.com/jax-ml/jax}.
 }
 \seealso{
-\code{\link[=nv_runif]{nv_runif()}}, \code{\link[=nv_rnorm]{nv_rnorm()}}, \code{\link[=prim_fork_random_state]{prim_fork_random_state()}}
+\code{\link[=nv_runif]{nv_runif()}}, \code{\link[=nv_rnorm]{nv_rnorm()}}
 }

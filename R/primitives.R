@@ -3047,7 +3047,7 @@ prim_print <- new_primitive(
 #' @template param_shape
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
-#' @template section_random_state
+#' @template section_rng_state
 #' @return ([`arrayish`])\cr
 #'   The random bits, of data type `dtype` and shape `shape`. Every value is
 #'   made from an encrypted 64-bit block of its own: a `"ui64"` value is the
@@ -3061,7 +3061,7 @@ prim_print <- new_primitive(
 #' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
 #' @templateVar primitive_id sample_bits
 #' @template section_rules
-#' @seealso [nv_runif()], [nv_rnorm()], [prim_fork_random_state()]
+#' @seealso [nv_runif()], [nv_rnorm()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_get_rng_state()
 #' prim_sample_bits(2L, "ui32")
@@ -3083,7 +3083,7 @@ prim_sample_bits <- new_primitive(
     # operands
     graph_desc_add(
       self,
-      desc_use_side_effect(current_descriptor(), active_random_state()),
+      desc_use_side_effect(current_descriptor(), active_rng_state()),
       params = list(shape = shape, dtype = dtype),
       infer_fn = infer_sample_bits
     )[[1L]]
@@ -3091,32 +3091,17 @@ prim_sample_bits <- new_primitive(
   static = c("shape", "dtype")
 )
 
-#' @title Primitive Fork of the Random State
-#' @description
-#' Splits the active random state \eqn{(k, c)} (see [nv_set_seed()]) like a
-#' sampling call of [prim_sample_bits()] does, advancing it by one step to
-#' \eqn{(k, c + 1)}, and returns the child random state
-#' \eqn{(\mathrm{ThreeFry}_k(c), 0)} instead of drawing from it.
-#' [nv_while()] forks the random state for a loop body that samples: the loop runs a number
-#' of times that is not known while it is traced, so the body advances the
-#' child as often as it runs, and the loop advances the random state outside of
-#' it by one step.
-#' @references
-#' `r format_bib("claessen2013splittable", "jax2018github")`
-#' @return (`list()`)\cr
-#'   The child random state: `key`, a `"ui32"` array of shape `2`, and
-#'   `counter`, a `"ui64"` scalar `0`.
-#' @templateVar primitive_id fork_random_state
-#' @template section_rules
-#' @seealso [prim_sample_bits()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' with_nv_seed(1L, prim_fork_random_state())
-#' @export
-prim_fork_random_state <- new_primitive(
-  "fork_random_state",
+# Primitive fork of the random state, which is not exported: what it gives is a
+# random state, which is no value in a trace, so only `side_effect_fork()` calls
+# it, for the body of an `nv_while()` that draws. It splits the active random
+# state (k, c) like a draw of `prim_sample_bits()` does, advancing it to
+# (k, c + 1), and instead of drawing from the fresh key returns the child random
+# state (ThreeFry_k(c), 0) as `list(key = <ui32[2]>, counter = <ui64[]>)`.
+prim_fork_rng_state <- new_primitive(
+  "fork_rng_state",
   function() {
     # the fork is a use of the random state, as a draw is
-    effect <- active_random_state()
+    effect <- active_rng_state()
     side_effect_fork(effect, desc_use_side_effect(current_descriptor(), effect))
   }
 )

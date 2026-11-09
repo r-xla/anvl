@@ -327,11 +327,11 @@ GraphDescriptor <- function(
   env$parent <- parent
   # The handle of the random state `local_nv_rng_state()` made the default of
   # the trace and the traces opened in it, or `NULL` (see
-  # `active_random_state()`).
-  env$default_random_state <- NULL
+  # `active_rng_state()`).
+  env$default_rng_state <- NULL
   # The handles of the random states among the trace's arguments, in the order
-  # it rebuilt them (see `argument_random_state()`).
-  env$random_state_args <- list()
+  # it rebuilt them (see `argument_rng_state()`).
+  env$rng_state_args <- list()
 
   structure(env, class = "GraphDescriptor")
 }

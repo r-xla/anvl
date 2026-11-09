@@ -1879,7 +1879,7 @@ infer_sample_bits <- function(key, counter, shape, dtype) {
   list(AbstractArray(dtype = dtype, shape = Shape(shape)))
 }
 
-infer_fork_random_state <- function(key, counter) {
+infer_fork_rng_state <- function(key, counter) {
   list(key, counter)
 }
 

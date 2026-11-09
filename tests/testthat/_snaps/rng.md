@@ -18,7 +18,7 @@
       graph
     Output
       <AnvlGraph> (%x1: i32[], %key1: ui32[2], %counter1: ui64[]) {
-        (%key2, %counter2): (ui32[2], ui64[]) = fork_random_state(%key1, %counter1)
+        (%key2, %counter2): (ui32[2], ui64[]) = fork_rng_state(%key1, %counter1)
         (%1, %key3, %counter3): (i32[], ui32[2], ui64[]) = while [
           cond = (%x2: i32[], %key4: ui32[2], %counter4: ui64[]) {
             %2: bool[] = lt(%x2, 3:i32)
@@ -46,7 +46,7 @@
       graph
     Output
       <AnvlGraph> [%c1: i32[]] (%x1: i32[], %key1: ui32[2], %counter1: ui64[]) {
-        (%key2, %counter2): (ui32[2], ui64[]) = fork_random_state(%key1, %counter1)
+        (%key2, %counter2): (ui32[2], ui64[]) = fork_rng_state(%key1, %counter1)
         (%1, %key3, %counter3): (i32[], ui32[2], ui64[]) = while [
           cond = (%x2: i32[], %key4: ui32[2], %counter5: ui64[], %x3: i32[]) {
             %3: bool[] = lt(%x2, %x3)
@@ -115,6 +115,32 @@
           n_captures = 2
         ] (%x1, %counter1, %key1)
         return %2
+      } then {
+        %counter1 += 3
+      }
+
+# the global random state in a traced graph / draws after an nv_if at the counter after its larger branch
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: bool[], %key1: ui32[2], %counter1: ui64[]) {
+        %1: ui32[1] = if [
+          true = (%key2: ui32[2], %counter3: ui64[]) {
+            %3: ui32[1] = sample_bits [shape = 1, dtype = "ui32"] (%key2, %counter3)
+            return %3
+          },
+          false = (%key3: ui32[2], %counter4: ui64[]) {
+            %4: ui32[1] = sample_bits [shape = 1, dtype = "ui32"] (%key3, %counter4)
+            %counter5: ui64[] = add(%counter4, 1:ui64)
+            %5: ui32[1] = sample_bits [shape = 1, dtype = "ui32"] (%key3, %counter5)
+            return %5
+          },
+          n_captures = 2
+        ] (%x1, %key1, %counter1)
+        %counter2: ui64[] = add(%counter1, 2:ui64)
+        %2: ui32[3] = sample_bits [shape = 3, dtype = "ui32"] (%key1, %counter2)
+        return (%1, %2)
       } then {
         %counter1 += 3
       }

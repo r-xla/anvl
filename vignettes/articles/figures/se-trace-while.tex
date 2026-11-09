@@ -61,7 +61,7 @@
 
   \matrix[lines, below = 1.0 of code.south west, anchor = north west] (graph) {
     <AnvlGraph> (\%x1: ui32[], \%x2: i32[], \se{\%key1: ui32[2], \%counter1: ui64[]}) \{ & 3 \\
-    \ \ \se{(\%key2, \%counter2): (ui32[2], ui64[]) = fork\_random\_state(\%key1, \%counter1)} & 5 \\
+    \ \ \se{(\%key2, \%counter2): (ui32[2], ui64[]) = fork\_rng\_state(\%key1, \%counter1)} & 5 \\
     \ \ (\%1, \%2, \unused{\%key3, \%counter3}): (i32[], ui32[], \unused{ui32[2], ui64[]}) = while [\aside{unused} & 5 \\
     \ \ \ \ cond = (\%x3: i32[], \%x4: ui32[], \unused{\%key4: ui32[2], \%counter5: ui64[]}, \%x5: i32[]) \{ & 2 & 5 \\
     \ \ \ \ \ \ \%5: bool[] = lt(\%x3, \%x5) & \\
@@ -91,7 +91,7 @@
     {the graph \cd{jit()} traces from it; the random state's part in \se{blue}};
 
   \matrix[fields, below = 1.0 of graph.south west, anchor = north west] (pview) {
-    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 3 \\
+    effect &[8pt] global\_rng\_state\_handle &[10pt] |[badge]| 3 \\
     value & \se{\%key1}, \se{\%counter1} & |[badge]| 3 \\
     n & 0 $\to$ 1 $\to$ 2 & |[badge]| 5 & |[badge]| 6 \\
     inputs & \se{\%key1}, \se{\%counter1} & |[badge]| 3 \\
@@ -103,7 +103,7 @@
   \node[head] at (pviewbox.north west) {the program's view};
 
   \matrix[fields, anchor = north west] (bview) at ($(pview.north east) + (0.8, 0)$) {
-    effect &[8pt] global\_random\_state\_handle &[10pt] |[badge]| 3 \\
+    effect &[8pt] global\_rng\_state\_handle &[10pt] |[badge]| 3 \\
     value & \se{\%key5}, \se{\%counter6} & |[badge]| 3 \\
     n & 0 $\to$ 1 & |[badge]| 3 \\
     inputs & \se{\%key5}, \se{\%counter6} & |[badge]| 3 \\
@@ -116,8 +116,8 @@
 
   \matrix[fields, below = 1.0 of pview.south west, anchor = north west] (host) {
     &[8pt] before the run &[8pt] after the run \\
-    random\_key & k $\to$ \se{\%key1} & k \\
-    random\_counter & c $\to$ \se{\%counter1} & c + 2 &[10pt] |[badge]| 7 \\
+    key & k $\to$ \se{\%key1} & k \\
+    counter & c $\to$ \se{\%counter1} & c + 2 &[10pt] |[badge]| 7 \\
   };
   \begin{scope}[on background layer]
     \node[box, draw = black!25, fill = black!4, fit = (host)] (hostbox) {};
@@ -147,7 +147,7 @@
      count the body's draws: its counter after the loop would be the loop's result
      \unused{\cd{\%counter3}}, and everything after the loop would wait for the loop.
      Instead, \cd{desc\_begin\_loop()} forks the random state (\cd{side\_effect\_fork()}):
-     \se{\cd{fork\_random\_state}} splits it once at the current counter, like a draw, into
+     \se{\cd{fork\_rng\_state}} splits it once at the current counter, like a draw, into
      a child random state with a fresh key and the counter 0, \se{\cd{\%key2}} and
      \se{\cd{\%counter2}}, which the loop carries in place of the program's. The fork is one
      use of the program's view: $n = 1$. \cd{cond} takes the child as well,

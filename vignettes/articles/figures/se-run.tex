@@ -44,7 +44,7 @@
 
   % ---- before the run ----------------------------------------------------
   \node[state] (before) at (2.1, -0.45)
-    {\texttt{globals\$random\_state}\\[2pt]key $k$, counter $c$};
+    {\texttt{globals\$rng\_state}\\[2pt]key $k$, counter $c$};
 
   % ---- the program's inputs ----------------------------------------------
   \node[input, anchor = west] (key) at (6.0, -0.1) {\%key1};
@@ -83,7 +83,7 @@
   % ---- after the run -----------------------------------------------------
   \node[note, below = 0.15 of before] (read) {\texttt{get()} reads it before\\every run};
   \node[state] (after) at (2.1, -6.6)
-    {\texttt{globals\$random\_state}\\[2pt]key $k$, counter $c + 3$};
+    {\texttt{globals\$rng\_state}\\[2pt]key $k$, counter $c + 3$};
   \draw[flow] (read.south) -- node[elabel, right, align = left, pos = 0.5]
     {after the run:\\\texttt{on\_success()}\\advances it by 3} (after.north);
 

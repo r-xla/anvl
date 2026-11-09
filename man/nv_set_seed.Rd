@@ -23,9 +23,8 @@ with_nv_seed(seed, code)
 The seed, a 32-bit integer.}
 
 \item{rng_state}{(\code{AnvlRngState} | \code{NULL})\cr
-A random state returned by \code{nv_get_rng_state()}, of which the global
-random state becomes a copy. \code{NULL} unsets the global random state, so
-that the next draw derives it from base R's RNG.}
+A random state, as \code{nv_get_rng_state()} returns, or \code{NULL} to unset the
+global random state.}
 
 \item{envir}{(\code{environment})\cr
 The scope whose exit restores the global random state.}
@@ -40,16 +39,10 @@ evaluating \code{code}. \code{nv_get_rng_state()} returns a copy of the global
 random state, an \code{AnvlRngState}, or \code{NULL} while it is not set.
 }
 \description{
-Seeds the global random state, analogous to base R's \code{\link[=set.seed]{set.seed()}}.
-Calling
-it is optional: until the global random state is first drawn from, it is not
-set, and the first draw derives it from base R's RNG, so a \code{\link[=set.seed]{set.seed()}}
-before that makes the draws reproducible too.
-Once anvl's random state is initialized, calling \code{set.seed()} no longer affects it.
-
-\code{nv_set_seed(seed)} is \code{nv_set_rng_state(nv_rng_state(seed))}, and
-\code{local_nv_seed()} and \code{with_nv_seed()} are \code{\link[=local_nv_rng_state]{local_nv_rng_state()}} and
-\code{\link[=with_nv_rng_state]{with_nv_rng_state()}} of \code{nv_rng_state(seed)}.
+\code{nv_set_seed()} seeds the global random state, like base R's \code{\link[=set.seed]{set.seed()}}.
+Until it is set, the first draw derives it from base R's RNG.
+\code{nv_get_rng_state()} and \code{nv_set_rng_state()} save and restore it, and
+\code{local_nv_seed()} and \code{with_nv_seed()} seed it for a scope.
 
 See the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random Number Generation} article for more details.
 }
@@ -57,30 +50,16 @@ See the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random 
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_set_seed(42L)
 nv_runif(3L)
-nv_runif(3L)
-
-# setting the seed again repeats the sequence
 nv_set_seed(42L)
 nv_runif(3L)
 
-# the counter counts sampling calls, not values
-nv_get_rng_state()
-
-# an unset random state is derived from base R's RNG on the next draw
-nv_set_rng_state(NULL)
-set.seed(1)
-nv_runif(3L)
-
-# a jitted function draws what the same code run eagerly draws
-f <- function() nv_rnorm(2L) + nv_runif(2L)
-with_nv_seed(1L, f())
-with_nv_seed(1L, jit(f)())
-
 # save the random state and continue from it later
-random_state <- nv_get_rng_state()
+rng_state <- nv_get_rng_state()
 nv_runif(2L)
-nv_set_rng_state(random_state)
+nv_set_rng_state(rng_state)
 nv_runif(2L)
+
+with_nv_seed(1L, nv_runif(2L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

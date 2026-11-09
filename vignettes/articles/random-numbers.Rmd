@@ -106,9 +106,9 @@ Where `nv_set_seed()` restarts a sequence from its beginning, the two continue i
 
 ```{r}
 nv_set_seed(42L)
-random_state <- nv_get_rng_state()
+rng_state <- nv_get_rng_state()
 nv_runif(3L)
-nv_set_rng_state(random_state)
+nv_set_rng_state(rng_state)
 nv_runif(3L)
 ```
 
@@ -219,7 +219,7 @@ A random state therefore gives $2^{64}$ sampling calls before its draws repeat.
 Keys of *different* random states, though, are not guaranteed to be distinct, and two sampling calls with the same key draw identical bits.
 Like any 64-bit keys, they are likely to coincide somewhere once there are about $2^{32}$ of them in total, by the birthday bound: with $n$ sampling calls spread over many random states, some two of them share a key with probability about $n^2 / 2^{65}$, which is $3 \cdot 10^{-4}$ for $10^8$ calls and 3 % for $10^9$.
 
-A *fork* of a random state (`prim_fork_random_state()`, which `nv_while()` uses for its loop body) is a new random state whose key is split off the random state's own.
+A *fork* of a random state, which `nv_while()` makes for its loop body, is a new random state whose key is split off the random state's own.
 Forking a fork again and again chains keys, each derived from the one before, and such a chain runs into a cycle after about $2^{32}$ forks, so avoid it.
 
 ### Without replacement, almost with replacement

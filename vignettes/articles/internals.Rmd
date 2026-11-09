@@ -473,8 +473,8 @@ A side effect has up to three parts, each of which lives somewhere else:
 
 | part | what it is | where it lives | for how long |
 |---|---|---|---|
-| host object | the state between calls, e.g. the `AnvlRngState`, whose key and counter R holds as 32-bit words; before every run the program's implicit inputs are read from it, and after the run it is updated. A side effect that starts afresh in every program has none. | on the host: `globals$random_state` for the global random state, the user's own object for a random state passed as an argument or closed over | from call to call |
-| handle | the side effect's identity, which never changes; its class says which side effect it is, and inherits from `SideEffect` | `global_random_state_handle` in the package namespace; for a random state the traced function closes over or receives as an argument, an `AnvlRngStateHandle` the trace creates for it | for good, or one compilation |
+| host object | the state between calls, e.g. the `AnvlRngState`, whose key and counter R holds as 32-bit words; before every run the program's implicit inputs are read from it, and after the run it is updated. A side effect that starts afresh in every program has none. | on the host: `globals$rng_state` for the global random state, the user's own object for a random state passed as an argument or closed over | from call to call |
+| handle | the side effect's identity, which never changes; its class says which side effect it is, and inherits from `SideEffect` | `global_rng_state_handle` in the package namespace; for a random state the traced function closes over or receives as an argument, an `AnvlRngStateHandle` the trace creates for it | for good, or one compilation |
 | view | the side effect's value in one trace (`SideEffectView()`) | `desc$side_effects` of that trace, then the `side_effects` of its graph | one trace |
 
 Every side effect has a handle, and a view in every trace that uses it.
@@ -562,7 +562,7 @@ A side effect only provides a few S3 methods on its handle:
 | `side_effect_host_object(effect, args)` | the global random state, the one closed over, or the one among the call's arguments |
 | `side_effect_input(effect, object, name)` | the buffer of the key or the counter, built from the words R holds |
 | `side_effect_after(effect, value, n)` | the key and the counter plus `n` |
-| `side_effect_fork(effect, value)` | a call of `prim_fork_random_state()` |
+| `side_effect_fork(effect, value)` | a call of `prim_fork_rng_state()` |
 | `side_effect_advance(effect, object, n)` | advances the object's counter by `n` |
 | `side_effect_format(effect, ids, n)` | the `then` line of a printed graph, `%counter1 += n`; the default says `n` uses |
 
@@ -605,7 +605,7 @@ nv_get_rng_state()
 identical(lapply(eager, as_array), lapply(compiled, as_array))
 ```
 
-A draw is one call of `desc_use_side_effect()`: it finds the trace's view of the random state that `active_random_state()` names (the one `local_nv_rng_state()` made the default of the trace or of a trace it is opened in, or else the global one), passes the view's key and its counter plus `n` (`view_current()`) to the call as ordinary operands, and counts the draw.
+A draw is one call of `desc_use_side_effect()`: it finds the trace's view of the random state that `active_rng_state()` names (the one `local_nv_rng_state()` made the default of the trace or of a trace it is opened in, or else the global one), passes the view's key and its counter plus `n` (`view_current()`) to the call as ordinary operands, and counts the draw.
 The call returns no random state: the next draw computes its own counter from the view again.
 
 ```r
@@ -614,7 +614,7 @@ prim_sample_bits <- new_primitive(
   function(shape, dtype) {
     graph_desc_add(
       self,
-      desc_use_side_effect(current_descriptor(), active_random_state()),
+      desc_use_side_effect(current_descriptor(), active_rng_state()),
       params = list(shape = shape, dtype = dtype),
       infer_fn = infer_sample_bits
     )[[1L]]
@@ -631,11 +631,11 @@ knitr::include_graphics("figures/se-use.png")
 
 A function can draw from the global random state and from random states of its own, and the trace keeps them apart: each has its own handle, and so its own view.
 
-- `global_random_state_handle` stands for the global random state. R holds it outside of any program; the program takes its key and counter as **implicit inputs**, which pjrt's dispatcher reads from it before every run, and does not count them among the call's arguments.
+- `global_rng_state_handle` stands for the global random state. R holds it outside of any program; the program takes its key and counter as **implicit inputs**, which pjrt's dispatcher reads from it before every run, and does not count them among the call's arguments.
 - A random state the function closes over is taken the same way: its handle holds the random state R holds, which the implicit inputs are read from.
-- A random state passed to the jitted function as an argument gets a handle of its own when the trace rebuilds the arguments from their leaves, which holds the `GraphValue`s of the key and the counter the trace computes from the words it was given, and the random state's place among the random states of the arguments (`argument_random_state()`). The function receives an `AnvlRngState` of that handle.
+- A random state passed to the jitted function as an argument gets a handle of its own when the trace rebuilds the arguments from their leaves, which holds the `GraphValue`s of the key and the counter the trace computes from the words it was given, and the random state's place among the random states of the arguments (`argument_rng_state()`). The function receives an `AnvlRngState` of that handle.
 
-`local_nv_rng_state()` makes a random state's handle the default of the draws in its scope, on the descriptor of the trace under way (`desc$default_random_state`), which the traces opened in it find through their parents.
+`local_nv_rng_state()` makes a random state's handle the default of the draws in its scope, on the descriptor of the trace under way (`desc$default_rng_state`), which the traces opened in it find through their parents.
 
 In a trace, a random state is not a value: it cannot be returned, carried through a loop, or passed to an operation as an array.
 
@@ -643,7 +643,7 @@ A random state among the arguments is not special to the dispatcher: `AnvlRngSta
 So the arguments are flattened into leaves, a random state contributing one, and the program takes it as an ordinary input, which the dispatcher uploads to the device of the call's other inputs, and computes the key and the counter from it.
 Every random state gives a leaf of the same type, so one compiled program serves every random state passed there.
 In a trace, a random state flattens to one leaf, its handle, so that a function the trace opens, such as the one `gradient()` differentiates, receives it as it is.
-After the run, pjrt hands the call's arguments to the entry's `on_success()`, which flattens them again with `pjrt::flatten()`, recording the random states it meets, and advances the one at the handle's place among them (`random_state_argument()`).
+After the run, pjrt hands the call's arguments to the entry's `on_success()`, which flattens them again with `pjrt::flatten()`, recording the random states it meets, and advances the one at the handle's place among them (`rng_state_argument()`).
 
 ```{r, echo = FALSE, out.width = "100%"}
 knitr::include_graphics("figures/se-instances.png")
@@ -706,13 +706,7 @@ trace_fn(
 The loop body takes the child random state as `%key5` and `%counter5`, and hands the advanced counter to the next iteration; the enclosing graph forks once and uses the random state once.
 
 The fork splits the random state $(k, c)$ like a draw, but instead of drawing from the fresh key $k_w = \mathrm{TF}_k(c)$, it returns the child random state $(k_w, 0)$, and advances the random state to $(k, c + 1)$.
-It is available as `prim_fork_random_state()`:
-
-```{r}
-nv_set_seed(1L)
-prim_fork_random_state()
-nv_get_rng_state()
-```
+It is the primitive `prim_fork_rng_state()`, which is not exported: what it gives is a random state, which is not a value in a trace, so only `side_effect_fork()` calls it.
 
 The fork is the price of fixing every advance when the function is traced: `nv_while()` is the one construct whose eager counterpart, an R `while` loop, draws differently.
 

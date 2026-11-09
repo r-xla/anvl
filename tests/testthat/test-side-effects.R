@@ -3,7 +3,7 @@ describe("desc_view", {
     graph <- trace_fn(function() list(prim_sample_bits(2L, "ui32"), prim_sample_bits(3L, "ui32")), list())
     expect_length(graph$side_effects, 1L)
     view <- graph$side_effects[[1L]]
-    expect_true(identical(view$effect, global_random_state_handle))
+    expect_true(identical(view$effect, global_rng_state_handle))
     expect_named(view$inputs, c("key", "counter"))
     expect_identical(lapply(view$value, `[[`, "gnode"), view$inputs)
     expect_identical(view$n, 2)
@@ -77,7 +77,7 @@ describe("desc_use_side_effect", {
 
 describe("is_side_effect", {
   it("is TRUE for the handles of random states, and not for the random states", {
-    expect_true(is_side_effect(global_random_state_handle))
+    expect_true(is_side_effect(global_rng_state_handle))
     expect_false(is_side_effect(nv_rng_state(1L)))
   })
 })
@@ -88,7 +88,7 @@ describe("side_effects_on_success", {
   })
 
   it("refuses an object two views stand for before it advances any", {
-    graph <- trace_with_random_states(
+    graph <- trace_with_rng_states(
       \(a, b) {
         list(with_nv_rng_state(a, prim_sample_bits(1L, "ui32")), with_nv_rng_state(b, prim_sample_bits(1L, "ui32")))
       },

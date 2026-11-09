@@ -1,4 +1,4 @@
-% What one draw does: active_random_state() names the random state's handle,
+% What one draw does: active_rng_state() names the random state's handle,
 % desc_use_side_effect() looks up (or, on the first use, creates) the trace's
 % view of it, and passes the view's current value -- the key and the counter
 % plus the draws before -- as the call's operands, counting the draw. How a view
@@ -32,12 +32,12 @@
 
   \node[stage] (call) at (0, 0)
     {\texttt{prim\_sample\_bits(shape, dtype)}\\[2pt]
-     \texttt{desc\_use\_side\_effect(desc, active\_random\_state())}};
+     \texttt{desc\_use\_side\_effect(desc, active\_rng\_state())}};
 
   \node[stage, below = 0.6 of call] (id)
-    {\texttt{active\_random\_state()}: the handle of which random state\\[2pt]
+    {\texttt{active\_rng\_state()}: the handle of which random state\\[2pt]
      the default of the trace or a trace it is opened in,\\
-     else \texttt{global\_random\_state\_handle}\\
+     else \texttt{global\_rng\_state\_handle}\\
      an argument's $\to$ the handle it was rebuilt with\\
      closed over $\to$ a handle of the random state R holds};
 
@@ -50,8 +50,8 @@
      key, counter $+$ \texttt{n} (\texttt{side\_effect\_after()})};
 
   \node[stage, below = 0.6 of draw] (ops)
-    {the call's operands \texttt{random\_key},\\
-     \texttt{random\_counter}; the call returns\\
+    {the call's operands \texttt{key},\\
+     \texttt{counter}; the call returns\\
      no random state};
 
   \foreach \a/\b in {call/id, id/view, view/draw, draw/ops} \draw[edge] (\a) -- (\b);

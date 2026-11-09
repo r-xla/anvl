@@ -43,7 +43,7 @@ nv_unif_rand <- function(shape, dtype) {
 
 #' @rdname nv_uniform
 #' @template param_shape
-#' @template section_random_state
+#' @template section_rng_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample.
 #'   The default (`NULL`) takes it from `min` and `max`, and uses the
@@ -146,7 +146,7 @@ box_muller <- function(u1, u2) {
 
 #' @rdname nv_normal
 #' @template param_shape
-#' @template section_random_state
+#' @template section_rng_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Floating point data type of the sample. The default (`NULL`) uses the
 #'   common data type of `mean` and `sd`, and the
@@ -211,7 +211,7 @@ nv_rnorm <- jit(
 #' Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
 #' When `size = 1` (the default), this is a Bernoulli distribution.
 #' @template param_shape
-#' @template section_random_state
+#' @template section_rng_state
 #' @param size (`integer(1)`)\cr
 #'   Number of trials. `0` gives a sample of zeros, like `rbinom()`.
 #' @param prob (`numeric(1)`)\cr
@@ -269,7 +269,7 @@ nv_rbinom <- jit(
 #'
 #' To sample from a population other than `1:n`, use [nv_sample()].
 #' @template param_shape
-#' @template section_random_state
+#' @template section_rng_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
@@ -309,7 +309,7 @@ nv_sample_int <- jit(
 #' Unlike R's `sample()`, `x` is always the population itself: sampling the
 #' integers `1` to `n` is [nv_sample_int()] and never an overload of `x`.
 #' @template param_shape
-#' @template section_random_state
+#' @template section_rng_state
 #' @param x ([`arrayish`])\cr
 #'   The population vector to sample from. Must not be empty.
 #'   An R value materializes at its [default data type][default_dtypes].

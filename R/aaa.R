@@ -74,8 +74,5 @@ globals[["descriptor_stash"]] <- list()
 globals[["current_descriptor"]] <- NULL
 globals[["lowering_platform"]] <- NULL
 globals[["lowering_funcs"]] <- NULL
-globals$random_state <- NULL
-# The random state the samplers of the trace under way draw from by default, which
-# `local_nv_rng_state()` sets, `NULL` for the global random state.
-globals$default_traced_random_state <- NULL
+globals$rng_state <- NULL
 utils::globalVariables(c("globals", "self"))
