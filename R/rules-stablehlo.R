@@ -21,8 +21,15 @@ region_input <- function(dtype, shape = integer()) {
   stablehlo::FuncValue(id, vt, func)
 }
 
-# Indices shifted from 1-based to 0-based, and back.
+# Indices shifted from 1-based to 0-based, and back. An unsigned index is first
+# converted to a signed data type wide enough to hold it, so that index 0
+# becomes -1 (out of bounds below) instead of wrapping around to the largest
+# value.
 hlo_zero_based_indices <- function(indices) {
+  dt <- dtype(indices)
+  if (is_dtype_uint(dt)) {
+    indices <- hlo_convert(indices, as_dtype(paste0("i", min(2L * dtype_width(dt), 64L))))
+  }
   hlo_subtract(indices, hlo_ones_like(indices))
 }
 
@@ -813,6 +820,18 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   c(res[1L + seq_len(n_carry)], res[1L + n_carry + seq_len(n_out)])
 }
 
+# The operands are `fn`'s inputs: its arguments, then the captures. Its
+# operations are lowered in place. `rule` is not lowered: a gradient is traced,
+# as anvl operations, before the program is lowered.
+prim_custom_gradient[["stablehlo"]] <- function(..., fn, rule, n_captures) {
+  env <- HloEnv()
+  ins <- list(...)
+  for (k in seq_along(fn$inputs)) {
+    env_add(env, fn$inputs[[k]], ins[[k]])
+  }
+  lower_graph_calls(fn, env, stablehlo::.current_func())
+}
+
 prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
   ops <- list(...)
   hlo_sort(
@@ -929,6 +948,7 @@ prim_scatter[["stablehlo"]] <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
+  update_op,
   update_fn,
   n_captures,
   ...

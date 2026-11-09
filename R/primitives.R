@@ -2803,6 +2803,210 @@ prim_scan <- new_primitive(
   static = 3:5
 )
 
+#' @title Primitive Custom Gradient
+#' @description
+#' Calls `fn` on `args`, but differentiates the result with `rule` instead of
+#' through the operations `fn` performs. Use it where those operations give no
+#' gradient -- e.g. a [prim_while()] loop, which [gradient()] cannot
+#' differentiate -- or an inaccurate one, while the derivative has a formula of
+#' its own.
+#' @param args (named `list()`)\cr
+#'   The arguments of `fn`: [`arrayish`] values, or trees of them in the sense
+#'   of pjrt's [`RTree`][pjrt::build_tree], by name. `rule` gives the gradient
+#'   with respect to these. No entry may be named `out`, `grad` or `required`,
+#'   the names under which `rule` receives the result, its gradient and which
+#'   gradients are required. An R value materializes at its default data type,
+#'   as in [prim_while()].
+#' @param fn (`function`)\cr
+#'   Computes the result from the entries of `args`, which it receives as
+#'   arguments. Returns an array, or a tree of them.
+#' @param rule (`function` | `anvl_rule_reverse`)\cr
+#'   Computes the gradient. A function receives the entries of `args` as arguments, plus
+#'   `out`, the result of `fn`, `grad`, the gradient with respect to `out`, of
+#'   the same structure, data types and shapes, and `required`, a named
+#'   `logical()` with one element per entry of `args`: `TRUE` where the
+#'   gradient with respect to that entry is required, i.e. where any of its
+#'   arrays requires one. Returns a named list with the gradient with respect
+#'   to each required entry -- for an array `x`, the sum over the elements of
+#'   `out` of their `grad` times their derivative with respect to `x` -- of
+#'   `x`'s structure, data types and shapes. An entry that is not required,
+#'   e.g. an integer, which never is, can be left out or be `NULL`.
+#'
+#'   Alternatively, a [rule_reverse()] with a `forward` pass, which replaces
+#'   `fn` where the result is differentiated, so that the backward pass can
+#'   read what the forward pass computed. Its passes are those of a
+#'   primitive's rule, except that `inputs` are the entries of `args` by name
+#'   rather than one array per operand, `params` is an empty list, and
+#'   `outputs`, `grads`, `required` and the returned gradients are those of a
+#'   function above.
+#' @return ([`arrayish`] | `list`)\cr
+#'   The result of `fn`.
+#' @section Gradients:
+#' `rule` is traced when the gradient is, once the function being
+#' differentiated has been traced. It can close over constants -- R values and
+#' arrays -- but not over a traced value: pass that through `args` instead.
+#'
+#' `fn` may close over traced values, but [gradient()] cannot differentiate
+#' with respect to those, as `rule` only gives the gradient with respect to
+#' `args`. Pass such a value through `args` instead.
+#' @templateVar primitive_id custom_gradient
+#' @template section_rules
+#' @section StableHLO:
+#' Lowers the operations of `fn` in place. `rule` is not lowered: a gradient
+#' is traced, as anvl operations, before the program is lowered.
+#' @seealso [gradient()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' # x^n by repeated multiplication: a while loop, which gradient() cannot
+#' # differentiate on its own
+#' pow_loop <- function(x, n) {
+#'   prim_while(
+#'     init = list(i = 1L, y = x),
+#'     cond = function(i, y) i < n,
+#'     body = function(i, y) list(i = i + 1L, y = y * x)
+#'   )$y
+#' }
+#' pow <- function(x, n) {
+#'   prim_custom_gradient(
+#'     list(x = x, n = n),
+#'     fn = pow_loop,
+#'     rule = function(x, n, out, grad, required) list(x = grad * n * x^(n - 1L))
+#'   )
+#' }
+#' x <- nv_scalar(2)
+#' pow(x, 3L)
+#' # the derivative 3 * x^2
+#' jit(gradient(pow, wrt = "x"))(x, 3L)
+#' # and, as it is computed from x, the second derivative 6 * x
+#' dpow <- function(x, n) gradient(pow, wrt = "x")(x, n)$x
+#' jit(gradient(dpow, wrt = "x"))(x, 3L)
+#'
+#' # With a forward pass, x^(n - 1) is computed once, for the result and for
+#' # its gradient
+#' pow_fwd <- function(x, n) {
+#'   prim_custom_gradient(
+#'     list(x = x, n = n),
+#'     fn = pow_loop,
+#'     rule = rule_reverse(forward = function(inputs, params, required) {
+#'       p <- inputs$x^(inputs$n - 1L)
+#'       list(
+#'         outputs = p * inputs$x,
+#'         backward = function(inputs, outputs, grads, params, required) {
+#'           list(x = grads * inputs$n * p)
+#'         }
+#'       )
+#'     })
+#'   )
+#' }
+#' jit(gradient(pow_fwd, wrt = "x"))(x, 3L)
+#' @export
+prim_custom_gradient <- new_primitive(
+  "custom_gradient",
+  function(args, fn, rule) {
+    force(args)
+    if (!is.function(fn)) {
+      cli_abort(c(
+        "{.arg fn} must be a function.",
+        x = "Got {value_repr(fn)}."
+      ))
+    }
+    if (inherits(rule, "anvl_rule_reverse") && is.null(rule$forward)) {
+      cli_abort(c(
+        "{.arg rule} must have a forward pass where it is a {.fn rule_reverse}.",
+        x = "Got a reverse rule with only a backward pass.",
+        i = "Pass a function as {.arg rule} instead: it receives the arguments, the result and its gradient by name."
+      ))
+    }
+    if (!is.function(rule) && !inherits(rule, "anvl_rule_reverse")) {
+      cli_abort(c(
+        "{.arg rule} must be a function, or a {.fn rule_reverse} with a forward pass.",
+        x = "Got {value_repr(rule)}."
+      ))
+    }
+    named_list <- !is_arrayish(args) &&
+      is.list(args) &&
+      length(args) &&
+      !is.null(names(args)) &&
+      all(nzchar(names(args)))
+    if (!named_list) {
+      cli_abort(c(
+        "{.arg args} must be a non-empty list whose entries all have names.",
+        x = "Got {value_repr(args)}."
+      ))
+    }
+    duplicated_names <- unique(names(args)[duplicated(names(args))])
+    if (length(duplicated_names)) {
+      cli_abort(c(
+        "{.arg args} must not have two entries with the same name.",
+        x = "Got more than one entry named {value_repr(duplicated_names)}."
+      ))
+    }
+    leaves <- flatten(args)
+    if (!length(leaves)) {
+      cli_abort(c(
+        "{.arg args} must contain at least one array.",
+        x = "Got {value_repr(args)} without any."
+      ))
+    }
+    not_array <- which(!vapply(leaves, is_arrayish, logical(1L)))
+    if (length(not_array)) {
+      first <- not_array[[1L]]
+      cli_abort(c(
+        "{.arg args} must hold arrays, or trees of them.",
+        x = "Got {value_repr(leaves[[first]])} at `{pjrt::tree_path(build_tree(args), first)}`."
+      ))
+    }
+    reserved <- intersect(names(args), c("out", "grad", "required"))
+    if (length(reserved)) {
+      cli_abort(c(
+        "{.arg args} must not have an entry named {.val out}, {.val grad} or {.val required}.",
+        x = "Got {cli::qty(length(reserved))}{?an entry/entries} named {.val {reserved}}.",
+        i = "{.arg rule} receives the result of {.arg fn}, its gradient and which gradients are required under these names." # nolint
+      ))
+    }
+    # Otherwise R refuses the call with `unused argument`, printing the boxes.
+    assert_takes <- function(f, arg, nms) {
+      fmls <- names(formals(f))
+      missing <- setdiff(nms, fmls)
+      if (!"..." %in% fmls && length(missing)) {
+        cli_abort(c(
+          "{.arg {arg}} must have an argument for each value it receives.",
+          x = "Got a function with arguments {value_repr(fmls)}.",
+          i = "It has none for {value_repr(missing)}."
+        ))
+      }
+    }
+    assert_takes(fn, "fn", names(args))
+    if (is.function(rule)) {
+      assert_takes(rule, "rule", c(names(args), "out", "grad", "required"))
+    }
+
+    current_desc <- current_descriptor(silent = TRUE)
+    # In the order of `fn`'s formals, which is the order its graph takes them in.
+    args <- match_args_to_formals(fn, args)
+    args <- unflatten(build_tree(args), lapply(flatten(args), materialize_operand, desc = current_desc))
+
+    desc_fn <- local_descriptor()
+    fn_graph <- trace_fn(fn, args, desc = desc_fn)
+
+    # `fn`'s graph takes what it closes over after the arguments; the call's
+    # operands are the arguments, then the same captures. `rule` stays an R
+    # function: the reverse rule traces it once it knows which gradients are
+    # required.
+    captures <- purify_subgraphs(current_desc, list(fn_graph))
+
+    out <- graph_desc_add(
+      self,
+      args = c(flatten(args), captures),
+      params = list(fn = fn_graph, rule = rule, n_captures = length(captures)),
+      infer_fn = infer_custom_gradient,
+      desc = current_desc
+    )
+    unflatten(fn_graph$out_tree, out)
+  },
+  subgraphs = "fn",
+  static = 2:3
+)
+
 #' @title Primitive Sort
 #' @description
 #' Sorts arrays along the given axis.
@@ -3112,10 +3316,15 @@ prim_rng_bit_generator <- new_primitive(
 #'   Whether indices are guaranteed to be unique (no duplicates).
 #'   Setting to `TRUE` may improve performance but produces undefined
 #'   behavior if the indices are not actually unique. Default `FALSE`.
-#' @param update_fn (`function`)\cr
-#'   Binary function `f(old, new)` that combines the existing value in
-#'   `x` with the value from `update`. The default (`NULL`) uses
-#'   `function(old, new) new`, which replaces the old value.
+#' @param update_fn (`character(1)` | `function`)\cr
+#'   How an update combines with the value in `x` it lands on. One of
+#'   * `"replace"` (the default): the update replaces the value,
+#'   * `"add"`, `"sub"`, `"mul"`: the value plus, minus or times the update,
+#'   * `"max"`, `"min"`: the larger or the smaller of the two,
+#'
+#'   or a binary function `f(old, new)` of two scalars at `x`'s data type,
+#'   which returns one. Only a named `update_fn` can be differentiated, see
+#'   section Gradients.
 #' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @section Out of Bounds Behavior:
@@ -3123,8 +3332,22 @@ prim_rng_bit_generator <- new_primitive(
 #' update for that index is silently ignored.
 #' @section Update Order:
 #' When multiple indices in `scatter_indices` map to the same element
-#' of `x`, the order in which `update_fn` is applied is
-#' implementation-defined and may vary between plugins ("cpu", "cuda").
+#' of `x`, `update_fn` combines each of their updates with it in turn, so
+#' `"add"` adds them all up. The order is implementation-defined and may vary
+#' between plugins ("cpu", "cuda"), which matters for `"replace"`, where one
+#' of them is the one that ends up written.
+#' @section Gradients:
+#' [gradient()] differentiates a scatter whose `update_fn` is one of the names,
+#' but not a function, even one that computes the same.
+#' * With `"replace"`, an update gets the gradient only where it is the one
+#'   that was written.
+#' * With `"mul"`, the gradient with respect to `update` needs
+#'   `unique_indices = TRUE`.
+#' * With `"max"` and `"min"`, `x` and the updates that tie for the result
+#'   share its gradient equally.
+#'
+#' An update that falls outside of `x`, and is therefore ignored, gets a
+#' gradient of zero.
 #' @templateVar primitive_id scatter
 #' @template section_rules
 #' @section StableHLO:
@@ -3161,7 +3384,7 @@ prim_scatter <- new_primitive(
     index_vector_axis,
     indices_are_sorted = FALSE,
     unique_indices = FALSE,
-    update_fn = NULL
+    update_fn = "replace"
   ) {
     # Otherwise, delayed promise evaluation may add them to the update computation's descriptor.
     force(x)
@@ -3173,10 +3396,9 @@ prim_scatter <- new_primitive(
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     x <- operands$x
     update <- operands$update
-    if (is.null(update_fn)) {
-      update_fn <- function(old, new) new
-    } else if (!is.function(update_fn)) {
-      cli_abort("update_fn must be a function")
+    update_op <- scatter_update_op(update_fn)
+    if (!is.null(update_op)) {
+      update_fn <- scatter_update_fns[[update_op]]
     }
 
     current_desc <- current_descriptor(silent = TRUE)
@@ -3209,6 +3431,7 @@ prim_scatter <- new_primitive(
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
+        update_op = update_op,
         update_fn = update_fn_graph,
         n_captures = length(captures)
       ),
@@ -3219,6 +3442,36 @@ prim_scatter <- new_primitive(
   subgraphs = "update_fn",
   static = 4:12
 )
+
+# The update functions `prim_scatter()` knows by name. A scatter keeps the name
+# in its `update_op` parameter, and the reverse rule differentiates these and
+# nothing else.
+scatter_update_fns <- list(
+  replace = function(old, new) new,
+  add = function(old, new) prim_add(old, new),
+  sub = function(old, new) prim_sub(old, new),
+  mul = function(old, new) prim_mul(old, new),
+  max = function(old, new) prim_pmax(old, new),
+  min = function(old, new) prim_pmin(old, new)
+)
+
+# The name of the `update_fn` of `prim_scatter()` or `nv_subset_assign()`, or
+# `NULL` for a function.
+scatter_update_op <- function(update_fn, call = rlang::caller_env()) {
+  if (is.function(update_fn)) {
+    return(NULL)
+  }
+  if (!rlang::is_string(update_fn) || !update_fn %in% names(scatter_update_fns)) {
+    cli_abort(
+      c(
+        "{.arg update_fn} must be a function or one of {.or {.val {names(scatter_update_fns)}}}.",
+        x = "Got {value_repr(update_fn)}."
+      ),
+      call = call
+    )
+  }
+  update_fn
+}
 
 #' @title Primitive Gather
 #' @description
