@@ -846,7 +846,7 @@ describe("prim_while", {
 })
 
 describe("prim_custom_gradient", {
-  zero_rule <- function(x, out, grad) list(x = NULL)
+  zero_rule <- function(x, out, grad, required) list()
 
   it("returns the result of fn", {
     f <- function(x) prim_custom_gradient(list(x = x), fn = function(x) x * x + 1, rule = zero_rule)
@@ -868,7 +868,7 @@ describe("prim_custom_gradient", {
       prim_custom_gradient(
         list(b = b, a = a),
         fn = function(a, b) a - b,
-        rule = function(a, b, out, grad) list(a = NULL, b = NULL)
+        rule = function(a, b, out, grad, required) list()
       )
     })
     expect_equal(f(nv_scalar(1), nv_scalar(3)), nv_scalar(-2))
@@ -879,7 +879,7 @@ describe("prim_custom_gradient", {
       prim_custom_gradient(
         list(p = p),
         fn = function(p) list(s = p$w + p$b, d = list(p$w - p$b)),
-        rule = function(p, out, grad) list(p = NULL)
+        rule = function(p, out, grad, required) list()
       )
     })
     out <- f(list(w = nv_scalar(3), b = nv_scalar(1)))
@@ -900,7 +900,7 @@ describe("prim_custom_gradient", {
       prim_custom_gradient(
         list(x = x, c = 3),
         fn = function(x, c) x * c,
-        rule = function(x, c, out, grad) list(x = NULL, c = NULL)
+        rule = function(x, c, out, grad, required) list()
       )
     })
     expect_equal(f(nv_scalar(2)), nv_scalar(6))
@@ -917,7 +917,7 @@ describe("prim_custom_gradient", {
             body = function(i, y) list(i = i + 1L, y = y * x)
           )$y
         },
-        rule = function(x, n, out, grad) list(x = NULL, n = NULL)
+        rule = function(x, n, out, grad, required) list()
       )
     })
     expect_equal(f(nv_scalar(2), nv_scalar(5L)), nv_scalar(32))

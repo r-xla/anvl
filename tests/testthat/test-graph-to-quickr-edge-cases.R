@@ -58,7 +58,7 @@ test_that("graph_to_quickr does not validate the rule of prim_custom_gradient, w
       prim_custom_gradient(
         list(x = x),
         fn = function(x) x * x,
-        rule = function(x, out, grad) list(x = grad * 2 * nv_abs(x) * nv_sign(x))
+        rule = function(x, out, grad, required) list(x = grad * 2 * nv_abs(x) * nv_sign(x))
       )
     },
     list(x = nv_scalar(1, dtype = "f64"))

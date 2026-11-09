@@ -2308,13 +2308,7 @@ quickr_find_unsupported_prims <- function(graph, supported_prims) {
       unsupported_prims <- c(unsupported_prims, prim_name)
     }
     if (is_higher_order_primitive(call$primitive)) {
-      lowered <- subgraphs(call)
-      # `prim_custom_gradient()`'s `rule` is never lowered: a gradient is
-      # traced into the graph before it gets here.
-      if (call$primitive$name == "custom_gradient") {
-        lowered <- lowered["fn"]
-      }
-      for (subgraph in lowered) {
+      for (subgraph in subgraphs(call)) {
         unsupported_prims <- c(
           unsupported_prims,
           quickr_find_unsupported_prims(subgraph, supported_prims)

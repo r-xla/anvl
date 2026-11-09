@@ -979,11 +979,16 @@ describe("the sub-graph arguments a primitive traces", {
 
 describe("prim_custom_gradient", {
   x <- nv_scalar(2)
-  id_rule <- function(x, out, grad) list(x = grad)
+  id_rule <- function(x, out, grad, required) list(x = grad)
 
   it("refuses an fn or rule that is not a function", {
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = 1, rule = id_rule))
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r"))
+  })
+
+  it("refuses a reverse rule without a forward pass", {
+    rule <- rule_reverse(backward = function(inputs, outputs, grads, params, required) list(x = grads))
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule))
   })
 
   it("refuses args that are not a list with names", {
@@ -991,7 +996,11 @@ describe("prim_custom_gradient", {
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x), fn = function(x) x, rule = id_rule))
     expect_snapshot(
       error = TRUE,
-      prim_custom_gradient(list(out = x), fn = function(out) out, rule = function(...) list(out = NULL))
+      prim_custom_gradient(list(out = x), fn = function(out) out, rule = function(...) list())
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(required = x), fn = function(required) required, rule = function(...) list())
     )
     expect_snapshot(
       error = TRUE,
@@ -1002,7 +1011,7 @@ describe("prim_custom_gradient", {
   it("refuses args without an array, or with something else than one", {
     expect_snapshot(
       error = TRUE,
-      prim_custom_gradient(list(d = list()), fn = function(d) x, rule = function(d, out, grad) list(d = NULL))
+      prim_custom_gradient(list(d = list()), fn = function(d) x, rule = function(d, out, grad, required) list())
     )
     # Under `jit()`: an eager call's arguments are refused by `jit()` already.
     expect_snapshot(
@@ -1011,7 +1020,7 @@ describe("prim_custom_gradient", {
         prim_custom_gradient(
           list(x = x, p = list(w = x, b = "a")),
           fn = function(x, p) x,
-          rule = function(x, p, out, grad) list(x = grad, p = NULL)
+          rule = function(x, p, out, grad, required) list(x = grad)
         )
       })(x)
     )
@@ -1022,48 +1031,6 @@ describe("prim_custom_gradient", {
     expect_snapshot(
       error = TRUE,
       prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, grad) list(x = grad))
-    )
-  })
-
-  it("refuses a rule that does not return one gradient per argument", {
-    expect_snapshot(
-      error = TRUE,
-      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out, grad) grad)
-    )
-    expect_snapshot(
-      error = TRUE,
-      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out, grad) list(y = grad))
-    )
-  })
-
-  it("refuses a gradient of another structure or type than its argument", {
-    expect_snapshot(
-      error = TRUE,
-      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out, grad) list(x = list(grad, grad)))
-    )
-    expect_snapshot(
-      error = TRUE,
-      prim_custom_gradient(
-        list(a = x, b = x),
-        fn = function(a, b) a,
-        rule = function(a, b, out, grad) list(a = list(grad), b = list(grad))
-      )
-    )
-    expect_snapshot(
-      error = TRUE,
-      prim_custom_gradient(
-        list(p = list(w = x, b = x)),
-        fn = function(p) p$w,
-        rule = function(p, out, grad) list(p = list(w = grad, b = nv_convert(grad, "f64")))
-      )
-    )
-    expect_snapshot(
-      error = TRUE,
-      prim_custom_gradient(
-        list(x = nv_array(c(1, 2))),
-        fn = function(x) nv_sum(x),
-        rule = function(x, out, grad) list(x = grad)
-      )
     )
   })
 })

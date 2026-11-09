@@ -2076,28 +2076,8 @@ infer_while <- function(..., cond, body, n_captures) {
   outs_body
 }
 
-# The operands are the arguments of `fn`, then what `fn` and `rule` close over,
-# which only the lowering reads. `rule` gives each argument a gradient, which
-# must be of that argument's type.
+# The operands are the arguments of `fn`, then what it closes over, which only
+# the lowering reads. `rule` is checked when the reverse rule traces it.
 infer_custom_gradient <- function(..., fn, rule, n_captures) {
-  ins <- list(...)
-  arg_avals <- ins[seq_len(length(ins) - n_captures)]
-  grad_avals <- graph_output_avals(rule)
-  bad <- type_mismatches(arg_avals, grad_avals)
-  if (length(bad)) {
-    described <- sprintf(
-      "`%s` is %s, its gradient %s",
-      vapply(bad, function(i) pjrt::tree_path(fn$in_tree, i), character(1L)),
-      vapply(arg_avals[bad], repr, character(1L)),
-      vapply(grad_avals[bad], repr, character(1L))
-    )
-    cli_abort(
-      c(
-        "{.arg rule} must return a gradient of the same type as the argument it belongs to.",
-        x = "{described}."
-      ),
-      call = NULL
-    )
-  }
   graph_output_avals(fn)
 }

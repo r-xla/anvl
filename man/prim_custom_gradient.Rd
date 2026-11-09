@@ -10,24 +10,34 @@ prim_custom_gradient(args, fn, rule)
 \item{args}{(named \code{list()})\cr
 The arguments of \code{fn}: \code{\link{arrayish}} values, or trees of them in the sense
 of pjrt's \code{\link[pjrt:build_tree]{RTree}}, by name. \code{rule} gives the gradient
-with respect to these. No entry may be named \code{out} or \code{grad}, the names
-under which \code{rule} receives the result and its gradient. An R value
-materializes at its default data type, as in \code{\link[=prim_while]{prim_while()}}; one that
-only parameterizes \code{fn} can instead be closed over, where it takes the
-data type of the arrays it meets.}
+with respect to these. No entry may be named \code{out}, \code{grad} or \code{required},
+the names under which \code{rule} receives the result, its gradient and which
+gradients are required. An R value materializes at its default data type,
+as in \code{\link[=prim_while]{prim_while()}}.}
 
 \item{fn}{(\code{function})\cr
 Computes the result from the entries of \code{args}, which it receives as
 arguments. Returns an array, or a tree of them.}
 
-\item{rule}{(\code{function})\cr
-Computes the gradient. Receives the entries of \code{args} as arguments, plus
-\code{out}, the result of \code{fn}, and \code{grad}, the gradient with respect to \code{out},
-of the same structure, data types and shapes. Returns a named list with
-one entry per entry of \code{args}: the gradient with respect to it -- for an
-array \code{x}, the sum over the elements of \code{out} of their \code{grad} times their
-derivative with respect to \code{x} -- of \code{x}'s structure, data types and
-shapes, or \code{NULL} for a gradient of zero, e.g. for an integer.}
+\item{rule}{(\code{function} | \code{anvl_rule_reverse})\cr
+Computes the gradient. A function receives the entries of \code{args} as arguments, plus
+\code{out}, the result of \code{fn}, \code{grad}, the gradient with respect to \code{out}, of
+the same structure, data types and shapes, and \code{required}, a named
+\code{logical()} with one element per entry of \code{args}: \code{TRUE} where the
+gradient with respect to that entry is required, i.e. where any of its
+arrays requires one. Returns a named list with the gradient with respect
+to each required entry -- for an array \code{x}, the sum over the elements of
+\code{out} of their \code{grad} times their derivative with respect to \code{x} -- of
+\code{x}'s structure, data types and shapes. An entry that is not required,
+e.g. an integer, which never is, can be left out or be \code{NULL}.
+
+Alternatively, a \code{\link[=rule_reverse]{rule_reverse()}} with a \code{forward} pass, which replaces
+\code{fn} where the result is differentiated, so that the backward pass can
+read what the forward pass computed. Its passes are those of a
+primitive's rule, except that \code{inputs} are the entries of \code{args} by name
+rather than one array per operand, \code{params} is an empty list, and
+\code{outputs}, \code{grads}, \code{required} and the returned gradients are those of a
+function above.}
 }
 \value{
 (\code{\link{arrayish}} | \code{list})\cr
@@ -39,17 +49,16 @@ through the operations \code{fn} performs. Use it where those operations give no
 gradient -- e.g. a \code{\link[=prim_while]{prim_while()}} loop, which \code{\link[=gradient]{gradient()}} cannot
 differentiate -- or an inaccurate one, while the derivative has a formula of
 its own.
-
-\code{fn} alone determines the result; \code{rule} only runs when the result is
-differentiated. \code{rule} is written in anvl operations on the arguments
-themselves, so differentiating the gradient it returns differentiates
-\code{rule}: higher-order derivatives are correct as long as \code{rule} is.
 }
 \section{Gradients}{
 
-\code{fn} and \code{rule} may use values they close over, but \code{\link[=gradient]{gradient()}} cannot
-differentiate with respect to those, as \code{rule} only gives the gradient with
-respect to \code{args}. Pass such a value through \code{args} instead.
+\code{rule} is traced when the gradient is, once the function being
+differentiated has been traced. It can close over constants -- R values and
+arrays -- but not over a traced value: pass that through \code{args} instead.
+
+\code{fn} may close over traced values, but \code{\link[=gradient]{gradient()}} cannot differentiate
+with respect to those, as \code{rule} only gives the gradient with respect to
+\code{args}. Pass such a value through \code{args} instead.
 }
 
 \section{Implemented Rules}{
@@ -71,17 +80,18 @@ is traced, as anvl operations, before the program is lowered.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # x^n by repeated multiplication: a while loop, which gradient() cannot
 # differentiate on its own
+pow_loop <- function(x, n) {
+  prim_while(
+    init = list(i = 1L, y = x),
+    cond = function(i, y) i < n,
+    body = function(i, y) list(i = i + 1L, y = y * x)
+  )$y
+}
 pow <- function(x, n) {
   prim_custom_gradient(
     list(x = x, n = n),
-    fn = function(x, n) {
-      prim_while(
-        init = list(i = 1L, y = x),
-        cond = function(i, y) i < n,
-        body = function(i, y) list(i = i + 1L, y = y * x)
-      )$y
-    },
-    rule = function(x, n, out, grad) list(x = grad * n * x^(n - 1L), n = NULL)
+    fn = pow_loop,
+    rule = function(x, n, out, grad, required) list(x = grad * n * x^(n - 1L))
   )
 }
 x <- nv_scalar(2)
@@ -91,6 +101,25 @@ jit(gradient(pow, wrt = "x"))(x, 3L)
 # and, as it is computed from x, the second derivative 6 * x
 dpow <- function(x, n) gradient(pow, wrt = "x")(x, n)$x
 jit(gradient(dpow, wrt = "x"))(x, 3L)
+
+# With a forward pass, x^(n - 1) is computed once, for the result and for
+# its gradient
+pow_fwd <- function(x, n) {
+  prim_custom_gradient(
+    list(x = x, n = n),
+    fn = pow_loop,
+    rule = rule_reverse(forward = function(inputs, params, required) {
+      p <- inputs$x^(inputs$n - 1L)
+      list(
+        outputs = p * inputs$x,
+        backward = function(inputs, outputs, grads, params, required) {
+          list(x = grads * inputs$n * p)
+        }
+      )
+    })
+  )
+}
+jit(gradient(pow_fwd, wrt = "x"))(x, 3L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

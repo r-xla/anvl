@@ -1037,7 +1037,7 @@ test_that("quickr pipeline matches PJRT: prim_custom_gradient, also differentiat
     prim_custom_gradient(
       list(x = x),
       fn = function(x) x * x * x * k,
-      rule = function(x, out, grad) list(x = grad * 3 * x * x * k)
+      rule = function(x, out, grad, required) list(x = grad * 3 * x * x * k)
     )
   }
   cg_ops <- function(x) {
