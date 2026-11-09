@@ -1029,6 +1029,30 @@ test_that("quickr pipeline matches PJRT: control flow (if/while)", {
   expect_quickr_matches_pjrt_fn(cf_ops, templates, list(run_true, run_false))
 })
 
+test_that("quickr pipeline matches PJRT: prim_custom_gradient, also differentiated", {
+  skip_if_no_quickr_or_pjrt()
+
+  k <- nv_scalar(3, dtype = "f64")
+  cube <- function(x) {
+    prim_custom_gradient(
+      list(x = x),
+      fn = function(x) x * x * x * k,
+      rule = function(x, out, grad, required) list(x = grad * 3 * x * x * k)
+    )
+  }
+  cg_ops <- function(x) {
+    list(
+      value = cube(x),
+      grad = gradient(function(x) nv_sum(cube(x)))(x)[[1L]]
+    )
+  }
+
+  templates <- list(x = nv_array(c(0, 0, 0), dtype = "f64"))
+  run <- list(args = list(x = c(1, -2, 0.5)), info = "run")
+
+  expect_quickr_matches_pjrt_fn(cg_ops, templates, list(run))
+})
+
 test_that("quickr pipeline matches PJRT: reshape is column-major from rank 1 through 4", {
   skip_if_no_quickr_or_pjrt()
 

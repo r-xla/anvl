@@ -67,6 +67,9 @@ prepare_gradient_args <- function(args, wrt) {
 #' results and a closure with the signature of `backward` above, which can use
 #' intermediate values of the forward pass via lexical scoping.
 #'
+#' A rule with a `forward` pass can also be the `rule` of
+#' [prim_custom_gradient()].
+#'
 #' @param backward (`NULL` | `function`)\cr
 #'   Backward hook for the default case.
 #' @param forward (`NULL` | `function`)\cr
