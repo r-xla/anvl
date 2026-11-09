@@ -2665,6 +2665,24 @@ describe("nv_ppois", {
     }
   })
 
+  it("stays accurate on the log scale far into the tails of the asymptotic expansion", {
+    # Here exp(log dnorm - log pnorm) in the expansion's correction lost most of
+    # its digits to cancellation, and was NaN for lower_tail = FALSE in both dtypes
+    cases <- list(
+      f32 = list(k = c(3193900367872, 3162277675008), tolerance = 1e-6),
+      f64 = list(k = c(1.2e19, 1e19), tolerance = 1e-12)
+    )
+    for (dt in names(cases)) {
+      k <- cases[[dt]]$k
+      lambda <- rev(k)
+      for (lt in c(TRUE, FALSE)) {
+        got <- as.vector(nv_ppois(nv_array(k, dtype = dt), nv_array(lambda, dtype = dt), lower_tail = lt, log_p = TRUE))
+        want <- ppois(k, lambda, lower.tail = lt, log.p = TRUE)
+        expect_equal_elementwise(got, want, tolerance = cases[[dt]]$tolerance)
+      }
+    }
+  })
+
   it("matches base R ppois() for zero, infinite, negative and NaN lambda", {
     q <- c(-Inf, -1, 0, 0.5, 1, 3, Inf, NaN)
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))

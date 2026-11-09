@@ -2094,7 +2094,15 @@ ppois_asymp <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
   # CPU f64 `log1p()` gets wrong by up to ~120 ulp for probabilities in about
   # (0.586, 0.64). Fixed upstream in openxla/xla#46765, so deliberately not
   # worked around.
-  value <- np + nv_log1p(f * nv_exp(log_dnorm - np))
+  #
+  # The correction uses f * phi(z) / Phi(-z). For large z, subtracting the
+  # nearly equal logs of phi(z) and Phi(-z) loses precision and can give NaN.
+  # Above z = 2^8 (f32) or 2^16 (f64), approximate the ratio by z; the omitted
+  # terms have negligible effect on the result (a lower switch needs more
+  # terms, which cost XLA's CPU backend its loop unrolling: ~16% slower)
+  z <- if (lower_tail) s2pt else -s2pt
+  ratio <- nv_ifelse(z > (if (is_f32) 2^8 else 2^16), z, nv_exp(log_dnorm - np))
+  value <- np + nv_log1p(f * ratio)
   if (!grad) {
     return(list(value = value))
   }
@@ -2107,7 +2115,6 @@ ppois_asymp <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
   #   dpois(k) = phi(z) exp(-stirlerr(k)) / sqrt(k)  (s^2 / 2 is bd0(k, lambda))
   #   dpois(k) / tail = m exp(-stirlerr(k)) / (sqrt(k) (1 + f m))
   # where m = sqrt(2 / pi) / erfcx(z / sqrt(2)) is a moderate number.
-  z <- if (lower_tail) s2pt else -s2pt
   z_small <- nv_ifelse(z > 0, z, 1) * base::sqrt(0.5)
   m <- base::sqrt(2 / pi) / erfcx(z_small, if (is_f32) 8 else 20, if (is_f32) 6L else 8L)
   # stirlerr(k) minus its lookup table: k is always large here, and the lookup
