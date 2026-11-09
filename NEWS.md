@@ -1,5 +1,9 @@
 # anvl (development version)
 
+* New `prim_custom_gradient()` computes a value with one function and
+  differentiates it with another. A `rule_reverse()` with a forward pass can
+  take the place of the latter, so that the backward pass reads what the
+  forward pass computed.
 * `prim_scatter()`'s `update_fn` can be given by name: `"replace"` (the new
   default, replacing `NULL`), `"add"`, `"sub"`, `"mul"`, `"max"` or `"min"`.
   The gradient of a scatter is implemented for each of them, not only for

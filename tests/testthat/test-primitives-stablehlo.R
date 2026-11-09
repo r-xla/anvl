@@ -845,6 +845,85 @@ describe("prim_while", {
   })
 })
 
+describe("prim_custom_gradient", {
+  zero_rule <- function(x, out, grad, required) list()
+
+  it("returns the result of fn", {
+    f <- function(x) prim_custom_gradient(list(x = x), fn = function(x) x * x + 1, rule = zero_rule)
+    expect_equal(jit(f)(nv_array(c(1, 2, 3))), nv_array(c(2, 5, 10)))
+    # eagerly too
+    expect_equal(f(nv_array(c(1, 2, 3))), nv_array(c(2, 5, 10)))
+  })
+
+  it("lowers fn in place, with no trace of rule", {
+    f <- function(x) prim_custom_gradient(list(x = x), fn = function(x) exp(x), rule = zero_rule)
+    graph <- trace_fn(f, list(x = nv_aval("f32", 2L)))
+    mlir <- repr(stablehlo(graph)[[1L]])
+    expect_match(mlir, "stablehlo.exponential")
+    expect_no_match(mlir, "func.call|stablehlo.if|stablehlo.case")
+  })
+
+  it("passes arguments by name, in any order", {
+    f <- jit(function(a, b) {
+      prim_custom_gradient(
+        list(b = b, a = a),
+        fn = function(a, b) a - b,
+        rule = function(a, b, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(1), nv_scalar(3)), nv_scalar(-2))
+  })
+
+  it("takes and returns trees", {
+    f <- jit(function(p) {
+      prim_custom_gradient(
+        list(p = p),
+        fn = function(p) list(s = p$w + p$b, d = list(p$w - p$b)),
+        rule = function(p, out, grad, required) list()
+      )
+    })
+    out <- f(list(w = nv_scalar(3), b = nv_scalar(1)))
+    expect_equal(out, list(s = nv_scalar(4), d = list(nv_scalar(2))))
+  })
+
+  it("can capture values", {
+    k <- nv_scalar(10)
+    f <- jit(function(x) {
+      y <- x + 1
+      prim_custom_gradient(list(x = x), fn = function(x) x * k + y, rule = zero_rule)
+    })
+    expect_equal(f(nv_scalar(2)), nv_scalar(23))
+  })
+
+  it("materializes an R value in args at its default", {
+    f <- jit(function(x) {
+      prim_custom_gradient(
+        list(x = x, c = 3),
+        fn = function(x, c) x * c,
+        rule = function(x, c, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(2)), nv_scalar(6))
+  })
+
+  it("runs a loop in fn", {
+    f <- jit(function(x, n) {
+      prim_custom_gradient(
+        list(x = x, n = n),
+        fn = function(x, n) {
+          prim_while(
+            init = list(i = 1L, y = x),
+            cond = function(i, y) i < n,
+            body = function(i, y) list(i = i + 1L, y = y * x)
+          )$y
+        },
+        rule = function(x, n, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(2), nv_scalar(5L)), nv_scalar(32))
+  })
+})
+
 describe("prim_chol", {
   random_spd <- function(n) {
     m <- matrix(rnorm(n * n), n, n)
