@@ -3316,10 +3316,15 @@ prim_rng_bit_generator <- new_primitive(
 #'   Whether indices are guaranteed to be unique (no duplicates).
 #'   Setting to `TRUE` may improve performance but produces undefined
 #'   behavior if the indices are not actually unique. Default `FALSE`.
-#' @param update_fn (`function`)\cr
-#'   Binary function `f(old, new)` that combines the existing value in
-#'   `x` with the value from `update`. The default (`NULL`) uses
-#'   `function(old, new) new`, which replaces the old value.
+#' @param update_fn (`character(1)` | `function`)\cr
+#'   How an update combines with the value in `x` it lands on. One of
+#'   * `"replace"` (the default): the update replaces the value,
+#'   * `"add"`, `"sub"`, `"mul"`: the value plus, minus or times the update,
+#'   * `"max"`, `"min"`: the larger or the smaller of the two,
+#'
+#'   or a binary function `f(old, new)` of two scalars at `x`'s data type,
+#'   which returns one. Only a named `update_fn` can be differentiated, see
+#'   section Gradients.
 #' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @section Out of Bounds Behavior:
@@ -3327,8 +3332,22 @@ prim_rng_bit_generator <- new_primitive(
 #' update for that index is silently ignored.
 #' @section Update Order:
 #' When multiple indices in `scatter_indices` map to the same element
-#' of `x`, the order in which `update_fn` is applied is
-#' implementation-defined and may vary between plugins ("cpu", "cuda").
+#' of `x`, `update_fn` combines each of their updates with it in turn, so
+#' `"add"` adds them all up. The order is implementation-defined and may vary
+#' between plugins ("cpu", "cuda"), which matters for `"replace"`, where one
+#' of them is the one that ends up written.
+#' @section Gradients:
+#' [gradient()] differentiates a scatter whose `update_fn` is one of the names,
+#' but not a function, even one that computes the same.
+#' * With `"replace"`, an update gets the gradient only where it is the one
+#'   that was written.
+#' * With `"mul"`, the gradient with respect to `update` needs
+#'   `unique_indices = TRUE`.
+#' * With `"max"` and `"min"`, `x` and the updates that tie for the result
+#'   share its gradient equally.
+#'
+#' An update that falls outside of `x`, and is therefore ignored, gets a
+#' gradient of zero.
 #' @templateVar primitive_id scatter
 #' @template section_rules
 #' @section StableHLO:
@@ -3365,7 +3384,7 @@ prim_scatter <- new_primitive(
     index_vector_axis,
     indices_are_sorted = FALSE,
     unique_indices = FALSE,
-    update_fn = NULL
+    update_fn = "replace"
   ) {
     # Otherwise, delayed promise evaluation may add them to the update computation's descriptor.
     force(x)
@@ -3377,10 +3396,9 @@ prim_scatter <- new_primitive(
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     x <- operands$x
     update <- operands$update
-    if (is.null(update_fn)) {
-      update_fn <- function(old, new) new
-    } else if (!is.function(update_fn)) {
-      cli_abort("update_fn must be a function")
+    update_op <- scatter_update_op(update_fn)
+    if (!is.null(update_op)) {
+      update_fn <- scatter_update_fns[[update_op]]
     }
 
     current_desc <- current_descriptor(silent = TRUE)
@@ -3413,6 +3431,7 @@ prim_scatter <- new_primitive(
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
+        update_op = update_op,
         update_fn = update_fn_graph,
         n_captures = length(captures)
       ),
@@ -3423,6 +3442,36 @@ prim_scatter <- new_primitive(
   subgraphs = "update_fn",
   static = 4:12
 )
+
+# The update functions `prim_scatter()` knows by name. A scatter keeps the name
+# in its `update_op` parameter, and the reverse rule differentiates these and
+# nothing else.
+scatter_update_fns <- list(
+  replace = function(old, new) new,
+  add = function(old, new) prim_add(old, new),
+  sub = function(old, new) prim_sub(old, new),
+  mul = function(old, new) prim_mul(old, new),
+  max = function(old, new) prim_pmax(old, new),
+  min = function(old, new) prim_pmin(old, new)
+)
+
+# The name of the `update_fn` of `prim_scatter()` or `nv_subset_assign()`, or
+# `NULL` for a function.
+scatter_update_op <- function(update_fn, call = rlang::caller_env()) {
+  if (is.function(update_fn)) {
+    return(NULL)
+  }
+  if (!rlang::is_string(update_fn) || !update_fn %in% names(scatter_update_fns)) {
+    cli_abort(
+      c(
+        "{.arg update_fn} must be a function or one of {.or {.val {names(scatter_update_fns)}}}.",
+        x = "Got {value_repr(update_fn)}."
+      ),
+      call = call
+    )
+  }
+  update_fn
+}
 
 #' @title Primitive Gather
 #' @description

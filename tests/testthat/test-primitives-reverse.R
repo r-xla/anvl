@@ -1378,6 +1378,14 @@ describe("prim_gather", {
     grads <- f(x)
     expect_equal(grads[[1L]], nv_array(c(0, 0, 0, 1), dtype = "f64"))
   })
+
+  it("differentiates its own gradient, an adding scatter", {
+    # d/dy sum(y[array(c(1L, 1L, 2L))]^2) = c(4 * y1, 2 * y2, 0), whose sum has the gradient c(4, 2, 0)
+    f <- jit(gradient(function(x) {
+      sum(gradient(function(y) sum(y[array(c(1L, 1L, 2L))]^2))(x)[[1L]])
+    }))
+    expect_equal(as.vector(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(4, 2, 0))
+  })
 })
 
 describe("prim_scatter", {
@@ -1397,27 +1405,100 @@ describe("prim_scatter", {
     expect_equal(g[[1]], g[[2]][[1]])
   })
 
-  it("errors for non-simple replacement update_fn", {
-    expect_error(
-      jit(gradient(function(x) {
-        out <- prim_scatter(
-          x = x,
-          scatter_indices = nv_array(2L, dtype = "i64"),
-          update = nv_scalar(10, dtype = "f32"),
-          update_window_axes = integer(),
-          inserted_window_axes = 1L,
-          x_batching_axes = integer(),
-          scatter_indices_batching_axes = integer(),
-          scatter_axes_to_x_axes = 1L,
-          index_vector_axis = 1L,
-          indices_are_sorted = TRUE,
-          unique_indices = TRUE,
-          update_fn = function(old, new) prim_add(old, new)
-        )
-        nv_sum(out, axes = 1L, drop = TRUE)
-      }))(nv_array(1:5, dtype = "f32")),
-      "simple replacement"
+  # Scatter `update` (one value per index) into axis 1 of the vector `x`.
+  scatter_vec <- function(x, indices, update, update_fn = "replace", unique_indices = FALSE) {
+    prim_scatter(
+      x = x,
+      scatter_indices = nv_array(matrix(indices), dtype = "i32"),
+      update = update,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      unique_indices = unique_indices,
+      update_fn = update_fn
     )
+  }
+  grad_scatter_vec <- function(x, indices, update, update_fn = "replace", unique_indices = FALSE, w = NULL) {
+    w <- w %||% seq_along(x)
+    f <- function(x, update) {
+      sum(scatter_vec(x, indices, update, update_fn, unique_indices) * nv_array(w, dtype = "f64"))
+    }
+    out <- jit(gradient(f))(nv_array(x, dtype = "f64"), nv_array(update, dtype = "f64"))
+    lapply(out, function(g) as.vector(as_array(g)))
+  }
+
+  it("differentiates an update_fn given by name, not a function", {
+    expect_error(
+      grad_scatter_vec(c(1, 2, 3), 2L, 10, function(old, new) old + new),
+      "not implemented for an `update_fn` that is a function"
+    )
+    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 2L, 3L), c(10, 20, 30), "add")
+    expect_equal(g$x, c(1, 2, 3))
+    expect_equal(g$update, c(2, 2, 3))
+  })
+
+  it("errors for the gradient of a multiplying scatter's update with repeated indices", {
+    expect_error(
+      grad_scatter_vec(c(1, 2, 3), c(2L, 2L), c(10, 20), "mul"),
+      "needs `unique_indices = TRUE`"
+    )
+    # the gradient of `x` alone needs no unique indices
+    f <- jit(gradient(
+      function(x) {
+        update <- nv_array(c(10, 20), dtype = "f64")
+        sum(scatter_vec(x, c(2L, 2L), update, "mul"))
+      }
+    ))
+    expect_equal(as.vector(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))$x)), c(1, 200, 1))
+  })
+
+  it("gives no gradient to an update the scatter drops as out of bounds", {
+    for (update_fn in c("replace", "add", "max")) {
+      for (unique_indices in c(TRUE, FALSE)) {
+        g <- grad_scatter_vec(c(1, 2, 3), c(1L, 7L), c(10, 20), update_fn, unique_indices)
+        expect_equal(g$update, c(1, 0))
+      }
+    }
+  })
+
+  it("gives no gradient to an update window that does not fit into `x`", {
+    # a window of two values written at positions 4:5 fits; at 5:6 it is dropped
+    f <- function(update, start) {
+      x <- nv_array(rep(0, 5), dtype = "f64")
+      y <- prim_scatter(
+        x = x,
+        scatter_indices = nv_array(matrix(start, 1L, 1L), dtype = "i32"),
+        update = update,
+        update_window_axes = 2L,
+        inserted_window_axes = integer(),
+        x_batching_axes = integer(),
+        scatter_indices_batching_axes = integer(),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = "add"
+      )
+      sum(y * nv_array(1:5, dtype = "f64"))
+    }
+    g <- jit(gradient(f, wrt = "update"), static = "start")
+    update <- nv_array(matrix(c(1, 2), 1L, 2L), dtype = "f64")
+    expect_equal(as_array(g(update, 4L)$update), matrix(c(4, 5), 1L, 2L))
+    expect_equal(as_array(g(update, 5L)$update), matrix(c(0, 0), 1L, 2L))
+  })
+
+  it("subtracts", {
+    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 2L, 3L), c(10, 20, 30), "sub")
+    expect_equal(g$x, c(1, 2, 3))
+    expect_equal(g$update, -c(2, 2, 3))
+  })
+
+  it("splits the gradient of a maximum among ties", {
+    # position 1: x and both updates tie at 2
+    g <- grad_scatter_vec(c(2, 0), c(1L, 1L), c(2, 2), "max", w = c(1, 1))
+    expect_equal(g$x, c(1 / 3, 1))
+    expect_equal(g$update, c(1 / 3, 1 / 3))
   })
 })
 

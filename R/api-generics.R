@@ -928,18 +928,25 @@ sort.GraphBox <- sort.AnvlArray
 #' @export
 `[<-.AnvlArray` <- function(x, ..., value) {
   quos <- rlang::enquos(...)
-  has_inplace <- "inplace" %in% names(quos)
-  inplace <- FALSE
-  if (has_inplace) {
-    inplace <- rlang::eval_tidy(quos$inplace)
-    quos$inplace <- NULL
+  # The arguments of nv_subset_assign() that can come among the subscripts.
+  assign_args <- list(update_fn = "replace", inplace = FALSE)
+  passed <- intersect(names(quos), names(assign_args))
+  for (nm in passed) {
+    assign_args[[nm]] <- rlang::eval_tidy(quos[[nm]])
+    quos[[nm]] <- NULL
   }
-  n_args <- nargs() - 2L - has_inplace
+  n_args <- nargs() - 2L - length(passed)
   rank <- naxes(x)
   if (n_args > rank) {
     abort_too_many_subsets(n_args, shape(x))
   }
-  rlang::inject(nv_subset_assign(x, !!!quos, value = value, inplace = inplace))
+  rlang::inject(nv_subset_assign(
+    x,
+    !!!quos,
+    value = value,
+    update_fn = assign_args$update_fn,
+    inplace = assign_args$inplace
+  ))
 }
 
 #' @method [<- GraphBox

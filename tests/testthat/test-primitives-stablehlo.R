@@ -1708,8 +1708,36 @@ describe("prim_scatter update_fn", {
   }
 
   it("scatters with the default and with a combiner", {
-    expect_equal(as.numeric(scatter_with(NULL)), c(10, 0, 30))
+    expect_equal(as.numeric(scatter_with("replace")), c(10, 0, 30))
     expect_equal(as.numeric(scatter_with(function(old, new) prim_add(old, new))), c(10, 0, 30))
+  })
+
+  it("combines by name", {
+    scatter_named <- function(update_fn) {
+      out <- prim_scatter(
+        nv_array(c(2, 5, 3), dtype = "f64"),
+        nv_array(matrix(c(1L, 3L, 3L), ncol = 1)),
+        nv_array(c(4, 1, 6), dtype = "f64"),
+        update_window_axes = integer(0),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(0),
+        scatter_indices_batching_axes = integer(0),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = update_fn
+      )
+      as.numeric(out)
+    }
+    expect_equal(scatter_named("add"), c(6, 5, 10))
+    expect_equal(scatter_named("sub"), c(-2, 5, -4))
+    expect_equal(scatter_named("mul"), c(8, 5, 18))
+    expect_equal(scatter_named("max"), c(4, 5, 6))
+    expect_equal(scatter_named("min"), c(2, 5, 1))
+  })
+
+  it("rejects an unknown name", {
+    expect_error(scatter_with("plus"), "must be a function or one of")
+    expect_error(scatter_with(NULL), "must be a function or one of")
   })
 
   it("rejects a combiner that returns another data type", {

@@ -4,6 +4,15 @@
   differentiates it with another. A `rule_reverse()` with a forward pass can
   take the place of the latter, so that the backward pass reads what the
   forward pass computed.
+* `prim_scatter()`'s `update_fn` can be given by name: `"replace"` (the new
+  default, replacing `NULL`), `"add"`, `"sub"`, `"mul"`, `"max"` or `"min"`.
+  The gradient of a scatter is implemented for each of them, not only for
+  replacement; an `update_fn` that is a function is not differentiated.
+* `nv_subset_assign()` and `[<-` take `update_fn` too, so
+  `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
+  subset, every value of an index that is repeated in `i`.
+* Bugfix: An update that `prim_scatter()` drops as out of bounds no longer gets
+  a gradient when `unique_indices = TRUE`.
 * Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
   `prim_dynamic_update_slice()`) no longer wraps around to the last position.
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are

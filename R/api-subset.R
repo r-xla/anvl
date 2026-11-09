@@ -744,7 +744,8 @@ subset_scatter_body <- function(
   indices_are_sorted,
   unique_indices,
   update_shape,
-  flatten = FALSE
+  flatten = FALSE,
+  update_fn = "replace"
 ) {
   # `x` and `value` arrive at one data type: nv_subset_assign() brought them
   # there, which is also where a value `x`'s data type cannot hold is refused.
@@ -777,7 +778,8 @@ subset_scatter_body <- function(
     scatter_axes_to_x_axes = scatter_axes_to_x_axes,
     index_vector_axis = index_vector_axis,
     indices_are_sorted = indices_are_sorted,
-    unique_indices = unique_indices
+    unique_indices = unique_indices,
+    update_fn = update_fn
   )
   if (flatten) {
     out <- nv_reshape(out, x_shape)
@@ -793,7 +795,8 @@ subset_scatter_static <- c(
   "indices_are_sorted",
   "unique_indices",
   "update_shape",
-  "flatten"
+  "flatten",
+  "update_fn"
 )
 
 subset_scatter_core <- jit(subset_scatter_body, static = subset_scatter_static)
@@ -820,13 +823,28 @@ subset_scatter_core_inplace <- local({
 #'   An R object is materialized at its [default data type][default_dtypes].
 #' @inheritParams nv_subset
 #' @param value ([`arrayish`])\cr
-#'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
+#'   Replacement values, or with another `update_fn` the values to combine the
+#'   subset with. Scalars are broadcast to the subset shape and non-scalar
 #'   values must match it.
 #'   It is brought to `x`'s data type: an R value is built at it when its
 #'   category can reach it (`0L` serves an integer and a float `x` alike, while
 #'   `1.5` into an `i32` `x` is an error), and an array is converted unless that
 #'   would narrow it or leave its category (an `f64` value for an `f32` `x` is
 #'   an error).
+#' @param update_fn (`character(1)` | `function`)\cr
+#'   How `value` combines with the subset of `x`:
+#'   * `"replace"` (the default): `value` replaces it,
+#'   * `"add"`, `"sub"`, `"mul"`: it becomes the subset plus, minus or times
+#'     `value`,
+#'   * `"max"`, `"min"`: it becomes the larger or the smaller of the two,
+#'
+#'   or a binary function `f(old, new)` of two scalars, see [prim_scatter()].
+#'   Unlike `x[i] <- x[i] + value` in R, a position that `i` selects more than
+#'   once gets every one of its values: with `"add"`, `x[array(c(1L, 1L))]` adds
+#'   both to `x[1]`. [gradient()] differentiates the names, but not a function;
+#'   with `"mul"`, not with respect to `value` where `i` selects several
+#'   positions of an axis by an index array or a mask, since those may repeat.
+#'   With `[<-`, pass it among the subscripts, e.g. `x[1, update_fn = "add"] <- 1`.
 #' @param inplace (`logical(1)`)\cr
 #'   Whether to write into the memory of `x` instead of allocating a new array.
 #'   This avoids the copy of `x` that an eager subset assignment otherwise
@@ -839,7 +857,8 @@ subset_scatter_core_inplace <- local({
 #'   in jit mode. Inside `jit()`, the compiler already avoids the copy anyway.
 #'   Default is `FALSE`.
 #' @return ([`arrayish`])\cr
-#'   Has `x`'s data type and shape, with the subset replaced.
+#'   Has `x`'s data type and shape, with the subset replaced (or combined with
+#'   `value` as `update_fn` says).
 #' @seealso [nv_subset()], `r roxy_article("subsetting")` for a
 #'   comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -853,6 +872,9 @@ subset_scatter_core_inplace <- local({
 #' x[x > 6] <- 0L
 #' x
 #'
+#' # add to the subset instead of replacing it; a repeated index adds twice
+#' nv_subset_assign(x, array(c(1L, 1L)), 1, value = nv_scalar(10L), update_fn = "add")
+#'
 #' # write into the memory of `x` instead of copying it
 #' x[2, inplace = TRUE] <- nv_scalar(1L)
 #' x
@@ -860,7 +882,8 @@ subset_scatter_core_inplace <- local({
 # Not wrapped in `jit()`: the `...` subscripts are captured via NSE (`enquos()`),
 # which jit's argument handling cannot trace. The parsing stays here (eager) and
 # the array work is delegated to the jitted [subset_scatter_core()].
-nv_subset_assign <- function(x, ..., value, inplace = FALSE) {
+nv_subset_assign <- function(x, ..., value, update_fn = "replace", inplace = FALSE) {
+  scatter_update_op(update_fn)
   assert_flag(inplace)
   if (inplace && currently_tracing()) {
     cli_abort(c(
@@ -914,6 +937,7 @@ nv_subset_assign <- function(x, ..., value, inplace = FALSE) {
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices,
     update_shape = params$update_shape,
-    flatten = params$flatten %||% FALSE
+    flatten = params$flatten %||% FALSE,
+    update_fn = update_fn
   )
 }
