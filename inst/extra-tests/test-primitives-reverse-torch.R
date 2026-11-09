@@ -1112,3 +1112,349 @@ describe("prim_scan", {
   it("matches torch on a recurrence", verify_rnn_grad(reverse = FALSE))
   it("matches torch on a recurrence run in reverse", verify_rnn_grad(reverse = TRUE))
 })
+
+describe("prim_convolution", {
+  # Compares the gradients of `sum(conv(x, kernel) * cotangent)`. A random
+  # cotangent pins down where the gradient of each output lands, which the
+  # all-ones cotangent of a plain sum would not.
+  verify_conv_grad <- function(x_shape, kernel_shape, f_anvl, f_torch) {
+    x <- generate_test_data(x_shape, "f64")
+    kernel <- generate_test_data(kernel_shape, "f64")
+    x_torch <- torch::torch_tensor(x, dtype = torch::torch_float64(), requires_grad = TRUE)
+    kernel_torch <- torch::torch_tensor(kernel, dtype = torch::torch_float64(), requires_grad = TRUE)
+    out_torch <- f_torch(x_torch, kernel_torch)
+    cotangent <- generate_test_data(out_torch$shape, "f64")
+    torch::torch_sum(out_torch * torch::torch_tensor(cotangent, dtype = torch::torch_float64()))$backward()
+
+    f <- function(x, kernel, cotangent) nv_sum(f_anvl(x, kernel) * cotangent)
+    grads <- jit(gradient(f, wrt = c("x", "kernel")))(
+      nv_array(x, dtype = "f64"),
+      nv_array(kernel, dtype = "f64"),
+      nv_array(cotangent, dtype = "f64")
+    )
+    expect_equal(as_array(grads[[1L]]), as_array_torch(x_torch$grad), tolerance = 1e-8)
+    expect_equal(as_array(grads[[2L]]), as_array_torch(kernel_torch$grad), tolerance = 1e-8)
+  }
+
+  # A 1-D convolution in NCW layout.
+  conv1d_ncw <- function(x, kernel, padding, window_strides = 1L, x_dilation = 1L, kernel_dilation = 1L, ...) {
+    prim_convolution(
+      x,
+      kernel,
+      x_batch_axis = 1L,
+      x_feature_axis = 2L,
+      x_spatial_axes = 3L,
+      kernel_output_feature_axis = 1L,
+      kernel_input_feature_axis = 2L,
+      kernel_spatial_axes = 3L,
+      output_batch_axis = 1L,
+      output_feature_axis = 2L,
+      output_spatial_axes = 3L,
+      window_strides = window_strides,
+      padding = padding,
+      x_dilation = x_dilation,
+      kernel_dilation = kernel_dilation,
+      ...
+    )
+  }
+
+  it("matches nnf_conv1d with stride, padding and dilation", {
+    conv <- function(stride, padding, dilation) {
+      verify_conv_grad(
+        c(2L, 3L, 10L),
+        c(4L, 3L, 3L),
+        \(x, k) nv_conv1d(x, k, stride = stride, padding = padding, dilation = dilation),
+        \(x, k) torch::nnf_conv1d(x, k, stride = stride, padding = padding, dilation = dilation)
+      )
+    }
+    conv(stride = 1L, padding = 0L, dilation = 1L)
+    # the last input element falls outside every window
+    conv(stride = 3L, padding = 0L, dilation = 1L)
+    conv(stride = 2L, padding = 1L, dilation = 2L)
+    # padding wider than the window
+    conv(stride = 2L, padding = 3L, dilation = 1L)
+  })
+
+  it("matches nnf_conv2d with per-axis stride, padding and dilation", {
+    verify_conv_grad(
+      c(2L, 3L, 7L, 6L),
+      c(4L, 3L, 3L, 2L),
+      \(x, k) nv_conv2d(x, k, stride = c(2L, 1L), padding = c(1L, 0L), dilation = c(1L, 2L)),
+      \(x, k) torch::nnf_conv2d(x, k, stride = c(2L, 1L), padding = c(1L, 0L), dilation = c(1L, 2L))
+    )
+  })
+
+  it("matches nnf_conv2d with feature groups", {
+    conv <- function(x_shape, kernel_shape, groups) {
+      verify_conv_grad(
+        x_shape,
+        kernel_shape,
+        \(x, k) nv_conv2d(x, k, stride = 2L, padding = 1L, groups = groups),
+        \(x, k) torch::nnf_conv2d(x, k, stride = 2L, padding = 1L, groups = groups)
+      )
+    }
+    conv(c(2L, 4L, 5L, 5L), c(6L, 2L, 3L, 3L), groups = 2L)
+    # depthwise, with and without a channel multiplier
+    conv(c(1L, 3L, 5L, 5L), c(3L, 1L, 3L, 3L), groups = 3L)
+    conv(c(1L, 3L, 5L, 5L), c(6L, 1L, 3L, 3L), groups = 3L)
+  })
+
+  it("matches nnf_conv3d", {
+    verify_conv_grad(
+      c(1L, 2L, 4L, 5L, 4L),
+      c(3L, 2L, 2L, 3L, 2L),
+      \(x, k) nv_conv3d(x, k, stride = 2L, padding = 1L),
+      \(x, k) torch::nnf_conv3d(x, k, stride = 2L, padding = 1L)
+    )
+  })
+
+  it("matches nnf_pad + nnf_conv1d for asymmetric and negative padding", {
+    conv <- function(low, high, stride = 1L, dilation = 1L) {
+      verify_conv_grad(
+        c(2L, 3L, 9L),
+        c(4L, 3L, 3L),
+        \(x, k) {
+          padding <- matrix(c(low, high), nrow = 1L)
+          conv1d_ncw(x, k, padding = padding, window_strides = stride, kernel_dilation = dilation)
+        },
+        \(x, k) torch::nnf_conv1d(torch::nnf_pad(x, c(low, high)), k, stride = stride, dilation = dilation)
+      )
+    }
+    conv(2L, 0L)
+    conv(-1L, 2L)
+    conv(1L, -2L)
+    conv(-2L, 3L, stride = 2L, dilation = 2L)
+    conv(3L, -1L, stride = 3L)
+  })
+
+  it("matches a convolution of the zero-interleaved input for x_dilation", {
+    # `x_dilation = d` puts `d - 1` zeros between neighbouring elements of `x`.
+    interleave_zeros <- function(x, d) {
+      w <- x$shape[3L]
+      zeros <- rep(list(torch::torch_zeros_like(x)), d - 1L)
+      spread <- torch::torch_stack(c(list(x), zeros), dim = 4L)
+      spread$reshape(c(x$shape[1:2], d * w))[,, seq_len(d * (w - 1L) + 1L)]
+    }
+    conv <- function(x_dilation, stride = 1L, dilation = 1L, groups = 1L) {
+      verify_conv_grad(
+        c(2L, 4L, 5L),
+        c(6L, 4L %/% groups, 3L),
+        \(x, k) {
+          conv1d_ncw(
+            x,
+            k,
+            padding = matrix(1L, nrow = 1L, ncol = 2L),
+            window_strides = stride,
+            x_dilation = x_dilation,
+            kernel_dilation = dilation,
+            feature_group_count = groups
+          )
+        },
+        \(x, k) {
+          torch::nnf_conv1d(
+            interleave_zeros(x, x_dilation),
+            k,
+            stride = stride,
+            padding = 1L,
+            dilation = dilation,
+            groups = groups
+          )
+        }
+      )
+    }
+    conv(x_dilation = 2L)
+    conv(x_dilation = 3L, stride = 2L, dilation = 2L, groups = 2L)
+  })
+
+  # `batch_group_count = n` convolves the `i`-th of `n` blocks of the batch
+  # with the `i`-th block of output features, and stacks the results along
+  # the features.
+  batch_grouped_conv <- function(conv, x, kernel, n_groups, ...) {
+    xs <- torch::torch_chunk(x, n_groups, dim = 1L)
+    kernels <- torch::torch_chunk(kernel, n_groups, dim = 1L)
+    torch::torch_cat(Map(\(a, b) conv(a, b, ...), xs, kernels), dim = 2L)
+  }
+
+  it("matches per-block convolutions for batch_group_count", {
+    verify_conv_grad(
+      c(4L, 3L, 8L),
+      c(6L, 3L, 3L),
+      \(x, k) conv1d_ncw(x, k, padding = matrix(0L, nrow = 1L, ncol = 2L), batch_group_count = 2L),
+      \(x, k) batch_grouped_conv(torch::nnf_conv1d, x, k, 2L)
+    )
+  })
+
+  # `x` in NWC, `kernel` in WIO and the result in WON layout, compared with a
+  # torch convolution of the permuted arrays.
+  conv1d_nwc <- function(x, kernel, ...) {
+    prim_convolution(
+      x,
+      kernel,
+      x_batch_axis = 1L,
+      x_spatial_axes = 2L,
+      x_feature_axis = 3L,
+      kernel_spatial_axes = 1L,
+      kernel_input_feature_axis = 2L,
+      kernel_output_feature_axis = 3L,
+      output_spatial_axes = 1L,
+      output_feature_axis = 2L,
+      output_batch_axis = 3L,
+      window_strides = 2L,
+      padding = matrix(1L, nrow = 1L, ncol = 2L),
+      x_dilation = 1L,
+      kernel_dilation = 1L,
+      ...
+    )
+  }
+  to_ncw <- function(x, kernel) list(x$permute(c(1L, 3L, 2L)), kernel$permute(c(3L, 2L, 1L)))
+  from_ncw <- function(out) out$permute(c(3L, 2L, 1L))
+
+  it("follows any axis layout with feature groups", {
+    verify_conv_grad(
+      c(2L, 9L, 4L),
+      c(3L, 2L, 6L),
+      \(x, k) conv1d_nwc(x, k, feature_group_count = 2L),
+      \(x, k) {
+        ncw <- to_ncw(x, k)
+        from_ncw(torch::nnf_conv1d(ncw[[1L]], ncw[[2L]], stride = 2L, padding = 1L, groups = 2L))
+      }
+    )
+  })
+
+  it("follows any axis layout with batch groups", {
+    verify_conv_grad(
+      c(4L, 9L, 3L),
+      c(3L, 3L, 6L),
+      \(x, k) conv1d_nwc(x, k, batch_group_count = 2L),
+      \(x, k) {
+        ncw <- to_ncw(x, k)
+        from_ncw(batch_grouped_conv(torch::nnf_conv1d, ncw[[1L]], ncw[[2L]], 2L, stride = 2L, padding = 1L))
+      }
+    )
+  })
+
+  # `x` and the result in CHWN, `kernel` in IHWO layout: the feature axes come
+  # before the batch axis.
+  conv2d_chwn <- function(x, kernel, ...) {
+    prim_convolution(
+      x,
+      kernel,
+      x_feature_axis = 1L,
+      x_spatial_axes = 2:3,
+      x_batch_axis = 4L,
+      kernel_input_feature_axis = 1L,
+      kernel_spatial_axes = 2:3,
+      kernel_output_feature_axis = 4L,
+      output_feature_axis = 1L,
+      output_spatial_axes = 2:3,
+      output_batch_axis = 4L,
+      window_strides = c(2L, 1L),
+      padding = matrix(1L, nrow = 2L, ncol = 2L),
+      x_dilation = c(1L, 1L),
+      kernel_dilation = c(1L, 1L),
+      ...
+    )
+  }
+  to_nchw <- function(x, kernel) list(x$permute(c(4L, 1L, 2L, 3L)), kernel$permute(c(4L, 1L, 2L, 3L)))
+  from_nchw <- function(out) out$permute(c(2L, 3L, 4L, 1L))
+
+  it("follows a layout with the feature axes first, with feature groups", {
+    verify_conv_grad(
+      c(4L, 5L, 4L, 2L),
+      c(2L, 3L, 2L, 6L),
+      \(x, k) conv2d_chwn(x, k, feature_group_count = 2L),
+      \(x, k) {
+        nchw <- to_nchw(x, k)
+        from_nchw(torch::nnf_conv2d(nchw[[1L]], nchw[[2L]], stride = c(2L, 1L), padding = 1L, groups = 2L))
+      }
+    )
+  })
+
+  it("follows a layout with the feature axes first, with batch groups", {
+    verify_conv_grad(
+      c(3L, 5L, 4L, 4L),
+      c(3L, 3L, 2L, 6L),
+      \(x, k) conv2d_chwn(x, k, batch_group_count = 2L),
+      \(x, k) {
+        nchw <- to_nchw(x, k)
+        from_nchw(batch_grouped_conv(torch::nnf_conv2d, nchw[[1L]], nchw[[2L]], 2L, stride = c(2L, 1L), padding = 1L))
+      }
+    )
+  })
+})
+
+describe("prim_scatter", {
+  # `x$scatter_reduce(dim = 1, ...)` in torch is a scatter into axis 1 of `x`;
+  # for a matrix, every column is a batch of its own.
+  scatter_axis1 <- function(x, indices, update, update_fn, unique_indices = FALSE) {
+    if (length(shape(x)) == 1L) {
+      batching <- integer()
+    } else {
+      batching <- 2L
+    }
+    prim_scatter(
+      x,
+      indices,
+      update,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      x_batching_axes = batching,
+      scatter_indices_batching_axes = batching,
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = length(shape(indices)) + 1L,
+      unique_indices = unique_indices,
+      update_fn = update_fn
+    )
+  }
+
+  verify_scatter_grad <- function(x, indices, update, update_fn, reduce, unique_indices = FALSE) {
+    x_torch <- torch::torch_tensor(x, dtype = torch::torch_float64(), requires_grad = TRUE)
+    update_torch <- torch::torch_tensor(update, dtype = torch::torch_float64(), requires_grad = TRUE)
+    indices_torch <- torch::torch_tensor(indices, dtype = torch::torch_long())
+    out_torch <- x_torch$scatter_reduce(1L, indices_torch, update_torch, reduce = reduce, include_self = TRUE)
+    cotangent <- generate_test_data(dim(x) %||% length(x), "f64")
+    torch::torch_sum(out_torch * torch::torch_tensor(cotangent, dtype = torch::torch_float64()))$backward()
+
+    f <- function(x, update, indices, cotangent) {
+      nv_sum(scatter_axis1(x, indices, update, update_fn, unique_indices) * cotangent)
+    }
+    grads <- jit(gradient(f, wrt = c("x", "update")))(
+      nv_array(x, dtype = "f64"),
+      nv_array(update, dtype = "f64"),
+      nv_array(indices, dtype = "i64"),
+      nv_array(cotangent, dtype = "f64")
+    )
+    expect_equal(as_array(grads$x), as_array_torch(x_torch$grad), tolerance = 1e-8)
+    expect_equal(as_array(grads$update), as_array_torch(update_torch$grad), tolerance = 1e-8)
+  }
+
+  x <- generate_test_data(6L, "f64")
+  update <- generate_test_data(5L, "f64")
+  repeated <- array(c(2L, 5L, 2L, 1L, 2L))
+  x_mat <- generate_test_data(c(4L, 3L), "f64")
+  update_mat <- generate_test_data(c(5L, 3L), "f64")
+  repeated_mat <- matrix(c(1L, 3L, 1L, 4L, 1L, 2L, 2L, 4L, 1L, 2L, 3L, 3L, 3L, 1L, 4L), nrow = 5L)
+
+  it("adds", {
+    verify_scatter_grad(x, repeated, update, "add", "sum")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "add", "sum")
+  })
+
+  it("multiplies with unique indices", {
+    unique <- array(c(2L, 5L, 1L, 6L, 3L))
+    verify_scatter_grad(x, unique, update, "mul", "prod", unique_indices = TRUE)
+    unique_mat <- matrix(c(1L, 3L, 4L, 2L, 3L, 1L, 4L, 2L, 2L, 4L, 1L, 3L), nrow = 4L)
+    verify_scatter_grad(x_mat, unique_mat, update_mat[1:4, ], "mul", "prod", unique_indices = TRUE)
+  })
+
+  it("takes the maximum and minimum", {
+    verify_scatter_grad(x, repeated, update, "max", "amax")
+    verify_scatter_grad(x, repeated, update, "min", "amin")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "max", "amax")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "min", "amin")
+  })
+
+  it("splits the gradient of a maximum among ties like torch", {
+    verify_scatter_grad(c(1, 5, 2), array(c(2L, 2L, 3L, 1L)), c(5, 5, 3, 0), "max", "amax")
+  })
+})

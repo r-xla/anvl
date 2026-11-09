@@ -172,6 +172,7 @@ jit(gradient(loss_after_steps, wrt = "lr"))(nv_scalar(0.1), nv_array(c(1, 2)))
 `nv_while()`, in contrast, cannot be differentiated.
 Its number of iterations is only known when the program runs, so there is no fixed size for the intermediate states that computing the gradient needs to keep.
 Where the number of iterations is known, use `nv_scan()` instead.
+Where the derivative of what a loop computes has a formula of its own, `prim_custom_gradient()` attaches it.
 
 ## Limitations
 

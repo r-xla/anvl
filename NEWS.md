@@ -1,6 +1,24 @@
 # anvl (development version)
 
 * `gradient()` differentiates through `nv_scan()` / `prim_scan()`.
+* New `prim_custom_gradient()` computes a value with one function and
+  differentiates it with another. A `rule_reverse()` with a forward pass can
+  take the place of the latter, so that the backward pass reads what the
+  forward pass computed.
+* `prim_scatter()`'s `update_fn` can be given by name: `"replace"` (the new
+  default, replacing `NULL`), `"add"`, `"sub"`, `"mul"`, `"max"` or `"min"`.
+  The gradient of a scatter is implemented for each of them, not only for
+  replacement; an `update_fn` that is a function is not differentiated.
+* `nv_subset_assign()` and `[<-` take `update_fn` too, so
+  `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
+  subset, every value of an index that is repeated in `i`.
+* Bugfix: An update that `prim_scatter()` drops as out of bounds no longer gets
+  a gradient when `unique_indices = TRUE`.
+* Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
+  `prim_dynamic_update_slice()`) no longer wraps around to the last position.
+* `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
+  now differentiable.
+
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
@@ -37,6 +55,9 @@
   and `nv_qexp()`.
 * `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
   `potrf` custom call, which is about ten times faster on CPU.
+* `nv_triangular_solve()` / `prim_triangular_solve()`, and with them
+  `nv_solve()`, now lower to a BLAS `trsm` custom call on CPU, which runs
+  several times faster from about 100 rows on and compiles faster.
 * Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
   `lhs` has batching axes but no free axes.
 * Bugfix: `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0

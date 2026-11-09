@@ -774,6 +774,313 @@ scan_carry_requires <- function(body, required, carry_idx) {
   }
 }
 
+# The reverse rule replaces the forward pass of the call, where it is known
+# which entries of `args` require a gradient. A `rule` with a forward pass of
+# its own runs that, and its backward pass then reads what it computed. A
+# function `rule` keeps the call: it is recorded again, and `rule` is traced
+# and applied to the call's own inputs, outputs and cotangents. Either way the
+# gradient is recorded as anvl operations, so differentiating it differentiates
+# them in turn. Nothing gives a gradient for what `fn` closes over, so
+# differentiating with respect to that is refused.
+prim_custom_gradient[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+  fn <- params$fn
+  arg_idx <- seq_len(length(inputs) - params$n_captures)
+  if (any(required[-arg_idx])) {
+    cli_abort(
+      c(
+        "{.fn gradient} cannot differentiate with respect to a value that {.arg fn} of {.fn prim_custom_gradient} closes over.", # nolint
+        i = "Pass the value to {.arg fn} through {.arg args} instead."
+      ),
+      call = NULL
+    )
+  }
+  args <- unflatten(fn$in_tree, inputs[arg_idx])
+  # An entry of `args` requires a gradient where any of its arrays does.
+  required_entries <- vapply(
+    unflatten(fn$in_tree, as.list(required[arg_idx])),
+    \(r) any(unlist(r)),
+    logical(1L)
+  )
+  if (!is.function(params$rule)) {
+    return(custom_forward_pass(params$rule$forward, args, fn, required_entries, length(inputs)))
+  }
+  outputs <- graph_desc_add(prim_custom_gradient, args = inputs, params = params, infer_fn = infer_custom_gradient)
+  backward <- function(inputs, outputs, grads, params, required) {
+    traced <- trace_custom_gradient_rule(
+      params$rule,
+      args = args,
+      out = unflatten(fn$out_tree, outputs),
+      grad = unflatten(fn$out_tree, grads),
+      required = required_entries
+    )
+    cts <- vector("list", length(inputs))
+    cts[traced$leaves] <- graph_apply(traced$graph, c(inputs[arg_idx], outputs, grads))
+    cts
+  }
+  list(outputs = outputs, backward = backward)
+})
+
+# Traces `rule` of `prim_custom_gradient()` on `args`, `out` and `grad`, boxes
+# of the trace being differentiated, telling it which entries of `args` are
+# `required` (a named logical). Returns the graph, which takes the arrays of
+# `args`, `out` and `grad` and returns the gradients `rule` gave, and `leaves`:
+# the positions among the arrays of `args` these are the gradients of. `rule`
+# is checked here, as it is not traced before.
+trace_custom_gradient_rule <- function(rule, args, out, grad, required) {
+  call <- quote(prim_custom_gradient())
+  given <- NULL
+  rule_traced <- function(args, out, grad) {
+    grads <- do.call(rule, c(args, list(out = out, grad = grad, required = required)))
+    checked <- check_custom_gradients(grads, args, required, "{.arg rule}", call)
+    given <<- checked$given
+    checked$grads
+  }
+  desc <- local_descriptor()
+  graph <- trace_fn(rule_traced, list(args = args, out = out, grad = grad), desc = desc)
+
+  # A traced value `rule` closes over belongs to a trace that has been replayed
+  # by now; only arrays are constants here.
+  if (!all(vapply(graph$constants, \(g) is_concrete_array(g$aval), logical(1L)))) {
+    cli_abort(
+      c(
+        "{.arg rule} must not close over a traced value.",
+        i = "Pass it to {.arg rule} through {.arg args} instead."
+      ),
+      call = call
+    )
+  }
+
+  leaves <- given_leaves(args, given)
+  check_custom_gradient_types(
+    lapply(graph$inputs[leaves], \(g) g$aval),
+    graph_output_avals(graph),
+    build_tree(args),
+    leaves,
+    "{.arg rule}",
+    call
+  )
+  list(graph = graph, leaves = leaves)
+}
+
+# Runs `forward`, the forward pass of a `rule` of `prim_custom_gradient()`, on
+# `args`, the boxes of the call's arguments by entry, telling it which entries
+# are `required`. Returns what an alternative forward of a reverse rule does:
+# the boxes of its outputs, which must be of the types `fn` returns, and a
+# backward pass for the call's `n_inputs` operands. The backward pass
+# `forward` returns may close over what `forward` computed; apart from that,
+# the two passes may close over arrays only, not over another traced value.
+custom_forward_pass <- function(forward, args, fn, required, n_inputs) {
+  call <- quote(prim_custom_gradient())
+  desc <- current_descriptor()
+  # What a pass may read besides arrays: the arguments, then what the forward
+  # pass computes from them.
+  known <- hashtab()
+  for (box in flatten(args)) {
+    known[[box$gnode]] <- TRUE
+  }
+  n_before <- desc$statements$size()
+  result <- forward(args, list(), required)
+
+  valid <- is.list(result) &&
+    !is_arrayish(result) &&
+    all(c("outputs", "backward") %in% names(result)) &&
+    is.function(result$backward)
+  if (!valid) {
+    got <- if (!is.list(result) || is_arrayish(result)) {
+      "Got {value_repr(result)}."
+    } else if (!all(c("outputs", "backward") %in% names(result))) {
+      "Got a list with names {value_repr(names(result))}."
+    } else {
+      "Got {.field backward} {value_repr(result$backward)}."
+    }
+    cli_abort(
+      c(
+        "The forward pass of {.arg rule} must return a list with its {.field outputs} and its {.field backward} pass, a function.", # nolint
+        x = got
+      ),
+      call = call
+    )
+  }
+  if (!pjrt::tree_equal(build_tree(result$outputs), fn$out_tree)) {
+    cli_abort(
+      c(
+        "The forward pass of {.arg rule} must return {.field outputs} with the structure of the result of {.arg fn}.",
+        x = "Got {value_repr(result$outputs)}."
+      ),
+      call = call
+    )
+  }
+  outputs <- lapply(flatten(result$outputs), \(x) materialize_rdata_box(maybe_box_arrayish(x, desc)))
+  check_custom_reads(desc, n_before, known, outputs, "The forward pass of {.arg rule}", call)
+  fn_avals <- graph_output_avals(fn)
+  out_avals <- lapply(outputs, \(box) box$gnode$aval)
+  bad <- type_mismatches(fn_avals, out_avals)
+  if (length(bad)) {
+    paths <- vapply(bad, \(i) pjrt::tree_path(fn$out_tree, i), character(1L))
+    described <- sprintf(
+      "`fn` returns %s%s, the forward pass %s",
+      vapply(fn_avals[bad], repr, character(1L)),
+      ifelse(nzchar(paths), sprintf(" at `%s`", paths), ""),
+      vapply(out_avals[bad], repr, character(1L))
+    )
+    cli_abort(
+      c(
+        "The forward pass of {.arg rule} must return {.field outputs} of the same types as the result of {.arg fn}.",
+        x = "{described}."
+      ),
+      call = call
+    )
+  }
+
+  backward <- function(inputs, outputs, grads, params, required_inputs) {
+    desc <- current_descriptor()
+    for (grad in grads) {
+      if (is_graph_box(grad)) {
+        known[[grad$gnode]] <- TRUE
+      }
+    }
+    n_before <- desc$statements$size()
+    what <- "The backward pass of {.arg rule}"
+    grads <- result$backward(
+      args,
+      unflatten(fn$out_tree, outputs),
+      unflatten(fn$out_tree, grads),
+      list(),
+      required
+    )
+    checked <- check_custom_gradients(grads, args, required, what, call)
+    boxes <- lapply(flatten(checked$grads), maybe_box_arrayish, desc = desc)
+    check_custom_reads(desc, n_before, known, boxes, what, call)
+    leaves <- given_leaves(args, checked$given)
+    check_custom_gradient_types(
+      lapply(flatten(args)[leaves], \(box) box$gnode$aval),
+      lapply(boxes, \(box) box$gnode$aval),
+      build_tree(args),
+      leaves,
+      what,
+      call
+    )
+    cts <- vector("list", n_inputs)
+    cts[leaves] <- boxes
+    cts
+  }
+  list(outputs = outputs, backward = backward)
+}
+
+# Refuses a pass `what` of a `rule` of `prim_custom_gradient()` that read a
+# traced value it does not `know`: one that no call it recorded into `desc`
+# (those after the first `n_before`) computed, and that is no array. Checks the
+# operands of those calls and `results`, the boxes it returned, and adds what
+# those calls computed to `known`.
+check_custom_reads <- function(desc, n_before, known, results, what, call) {
+  is_known <- function(g) is_graph_literal(g) || isTRUE(known[[g]]) || is_concrete_array(g$aval)
+  calls <- desc$statements$as_list()
+  for (stmt in calls[seq_along(calls) > n_before]) {
+    if (!all(vapply(stmt$inputs, is_known, logical(1L)))) {
+      abort_custom_closure(what, call)
+    }
+    for (g in stmt$outputs) {
+      known[[g]] <- TRUE
+    }
+  }
+  if (!all(vapply(results, \(box) is_known(box$gnode), logical(1L)))) {
+    abort_custom_closure(what, call)
+  }
+}
+
+abort_custom_closure <- function(what, call) {
+  cli_abort(
+    c(
+      paste0(what, " must not close over a traced value."),
+      i = "Pass it to {.arg rule} through {.arg args} instead.",
+      i = if (startsWith(what, "The backward")) "The backward pass can close over what its forward pass computed."
+    ),
+    call = call
+  )
+}
+
+# Checks `grads`, the gradients a pass `what` of a `rule` of
+# `prim_custom_gradient()` returned, against `args` and which of its entries
+# are `required`: a list named by entries of `args`, with one for each
+# required entry, each of the structure of its entry. Returns those given,
+# in the order of `args`, and `given`, which entries they are of.
+check_custom_gradients <- function(grads, args, required, what, call) {
+  is_list <- is.list(grads) && !is_arrayish(grads)
+  grad_names <- if (is_list) names(grads)
+  valid_names <- !length(grads) ||
+    (!is.null(grad_names) &&
+      all(nzchar(grad_names)) &&
+      !anyDuplicated(grad_names) &&
+      all(grad_names %in% names(args)))
+  if (!is_list || !valid_names) {
+    got <- if (is_list) "Got a list with names {value_repr(grad_names)}." else "Got {value_repr(grads)}."
+    cli_abort(
+      c(
+        paste0(what, " must return a list of gradients, named by the entries of {.arg args} they belong to."),
+        x = got,
+        i = "{.arg args} has names {value_repr(names(args))}."
+      ),
+      call = call
+    )
+  }
+  given <- names(args) %in% names(Filter(Negate(is.null), grads))
+  missing <- names(args)[required & !given]
+  if (length(missing)) {
+    cli_abort(
+      c(
+        paste0(what, " must return the gradient of each entry of {.arg args} that is required."),
+        x = "Got none for {value_repr(missing)}.",
+        i = paste0(what, " receives which entries are required as {.arg required}.")
+      ),
+      call = call
+    )
+  }
+  grads <- grads[names(args)[given]]
+  same_structure <- vapply(
+    names(grads),
+    function(nm) pjrt::tree_equal(build_tree(grads[[nm]]), build_tree(args[[nm]])),
+    logical(1L)
+  )
+  if (!all(same_structure)) {
+    bad <- names(grads)[!same_structure]
+    cli_abort(
+      c(
+        paste0(what, " must return each gradient with the structure of the entry of {.arg args} it belongs to."),
+        x = "The {cli::qty(length(bad))}gradient{?s} of {value_repr(bad)} {cli::qty(length(bad))}{?has/have} another structure." # nolint
+      ),
+      call = call
+    )
+  }
+  list(grads = grads, given = given)
+}
+
+# The positions among the arrays of `args` that belong to the entries `given`.
+given_leaves <- function(args, given) {
+  which(rep(given, vapply(args, \(arg) length(flatten(arg)), integer(1L))))
+}
+
+# Refuses gradients whose avals `grad_avals` are not of the types of
+# `arg_avals`, the arrays at positions `leaves` of the arguments `in_tree`.
+check_custom_gradient_types <- function(arg_avals, grad_avals, in_tree, leaves, what, call) {
+  bad <- type_mismatches(arg_avals, grad_avals)
+  if (!length(bad)) {
+    return(invisible(NULL))
+  }
+  described <- sprintf(
+    "`%s` is %s, its gradient %s",
+    vapply(leaves[bad], function(i) pjrt::tree_path(in_tree, i), character(1L)),
+    vapply(arg_avals[bad], repr, character(1L)),
+    vapply(grad_avals[bad], repr, character(1L))
+  )
+  cli_abort(
+    c(
+      paste0(what, " must return a gradient of the same type as the argument it belongs to."),
+      x = "{described}."
+    ),
+    call = call
+  )
+}
+
 # Printing hands its argument back unchanged, so the cotangent passes through.
 prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   list(if (required[[1L]]) grads[[1L]])
@@ -1189,7 +1496,7 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
     scatter_axes_to_x_axes = axis,
     index_vector_axis = rank + 1L,
     unique_indices = FALSE,
-    update_fn = prim_add
+    update_fn = "add"
   ))
 }
 
@@ -1312,13 +1619,42 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
         unique_indices = unique_indices,
         # Use addition to accumulate gradients when multiple gather positions
         # read from the same source location
-        update_fn = prim_add
+        update_fn = "add"
       )
     },
     if (required[[2L]]) zeros_like(start_indices)
   )
 })
 
+
+# Which elements of a scatter's `update` land in `x`, as a boolean array of
+# `update`'s shape. XLA skips an update window that does not fit into `x`
+# entirely, whereas a gather clamps its start index into bounds -- so an update
+# is in bounds exactly when clamping leaves its start index unchanged.
+scatter_update_in_bounds <- function(
+  scatter_indices,
+  update_shape,
+  x_shape,
+  slice_sizes,
+  update_window_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis
+) {
+  clamped <- gather_clamp_indices(
+    start_indices = scatter_indices,
+    x_shape = x_shape,
+    slice_sizes = slice_sizes,
+    start_index_map = scatter_axes_to_x_axes,
+    index_vector_axis = index_vector_axis
+  )
+  in_bounds <- prim_eq(clamped, scatter_indices)
+  if (index_vector_axis <= naxes(scatter_indices)) {
+    in_bounds <- prim_all(in_bounds, axes = index_vector_axis, drop = TRUE)
+  }
+  # The remaining axes of the indices are `update`'s scatter axes, in order.
+  scatter_axes <- setdiff(seq_along(update_shape), update_window_axes)
+  prim_broadcast_in_axes(in_bounds, update_shape, scatter_axes)
+}
 
 prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   update_window_axes <- params$update_window_axes
@@ -1329,24 +1665,27 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   index_vector_axis <- params$index_vector_axis
   indices_are_sorted <- params$indices_are_sorted
   unique_indices <- params$unique_indices
-  update_fn_graph <- params$update_fn
 
   x <- inputs[[1L]]
   scatter_indices <- inputs[[2L]]
   update <- inputs[[3L]]
   grad <- grads[[1L]]
 
-  if (!identical(update_fn_graph$outputs[[1L]], update_fn_graph$inputs[[2L]])) {
-    cli_abort("Scatter reverse only supports simple replacement (update_fn = function(old, new) new)")
+  # Only an update function given by name is differentiated: what a function
+  # computes is not looked into.
+  kind <- params$update_op
+  if (is.null(kind)) {
+    cli_abort(c(
+      "The gradient of {.fn prim_scatter} is not implemented for an {.arg update_fn} that is a function.",
+      i = "Pass {.arg update_fn} by name instead: {.or {.val {names(scatter_update_fns)}}}."
+    ))
   }
-
-  # Generally, the reverse of scatter is:
-  # - for the update: gather from the gradient
-  # - for `x`: zero out the positions that were overwritten
-
-  # The only problem is when scatter writes multiple times to the same position (unique_indices = FALSE),
-  # XLA doesn't guarantee which update "wins" at each position. We use the ID trick from JAX's scatter JVP:
-  # https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
+  if (kind == "mul" && required[[3L]] && !unique_indices) {
+    cli_abort(c(
+      "The gradient of a multiplying {.fn prim_scatter} with respect to {.arg update} needs {.code unique_indices = TRUE}.",
+      i = "With repeated indices, the gradient of one update depends on every other update to its position."
+    ))
+  }
 
   update_shape <- shape(update)
   x_shape <- shape(x)
@@ -1359,8 +1698,8 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
     x_batching_axes = x_batching_axes
   )
 
-  # Scatter into (replacing) and gather from `x` at the forward scatter's positions.
-  scatter_at <- function(x, update, unique_indices) {
+  # Scatter into and gather from `x` at the forward scatter's positions.
+  scatter_at <- function(x, update, update_fn, unique_indices = params$unique_indices) {
     prim_scatter(
       x = x,
       scatter_indices = scatter_indices,
@@ -1373,10 +1712,10 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
       index_vector_axis = index_vector_axis,
       indices_are_sorted = indices_are_sorted,
       unique_indices = unique_indices,
-      update_fn = function(old, new) new
+      update_fn = update_fn
     )
   }
-  gather_at <- function(x, unique_indices) {
+  gather_at <- function(x, unique_indices = params$unique_indices) {
     prim_gather(
       x = x,
       start_indices = scatter_indices,
@@ -1391,54 +1730,122 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
       unique_indices = unique_indices
     )
   }
+  # A gather clamps an out-of-bounds index into `x`, but the forward scatter
+  # dropped that update, so its gradient is zero.
+  update_in_bounds <- function() {
+    scatter_update_in_bounds(
+      scatter_indices = scatter_indices,
+      update_shape = update_shape,
+      x_shape = x_shape,
+      slice_sizes = slice_sizes,
+      update_window_axes = update_window_axes,
+      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis
+    )
+  }
+  in_bounds_only <- function(update_grad) {
+    prim_ifelse(update_in_bounds(), update_grad, zeros_like(update_grad))
+  }
 
-  list(
-    # Gradient for `x`: zero out overwritten positions.
-    # Works for both unique and non-unique: scattering zero is idempotent.
-    if (required[[1L]]) scatter_at(grad, zeros_like(update), unique_indices),
-    # Gradient for scatter_indices: not differentiable
-    if (required[[2L]]) zeros_like(scatter_indices),
-    # Gradient for update: gather from gradient at update positions
-    if (required[[3L]]) {
-      if (unique_indices) {
-        gather_at(grad, unique_indices = TRUE)
-      } else {
-        # Non-unique indices: use the ID trick to determine which updates won.
-        # https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
-        # Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2 or 3 was assigned to position 1.
-        # -->
-        # 1. x <- c(0, 0)
-        # 2. Assign unique indices x[c(1, 1)] <- c(1, 2)
-        # 3. gather the winners: x[c(1, 1)], which e.g. gives c(2, 2)
-        # 4. Compare c(1, 2) == c(2, 2) = c(FALSE, TRUE) -> second one wins
-        # 5. Mask out the losers; grad[1] <- 0
-
-        # a) Create unique positive IDs for each update "batch" position
-        ids_shape <- update_shape
-        ids_shape[update_window_axes] <- 1L
-        num_ids <- prod(ids_shape)
-        id_dtype <- "i64"
-        update_ids <- prim_reshape(prim_iota(1L, num_ids, id_dtype, start = 1L), ids_shape)
-        update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
-
-        # b) Scatter IDs to see which update "wins" at each position
-        scattered_ids <- scatter_at(
-          prim_fill(0L, dtype = id_dtype, shape = x_shape),
-          update_ids,
-          unique_indices = FALSE
-        )
-
-        # c) Gather scattered IDs back to update positions
-        gathered_ids <- gather_at(scattered_ids, unique_indices = FALSE)
-
-        # d) Gather gradient and mask: only winning updates get gradient
-        grad_at_positions <- gather_at(grad, unique_indices = FALSE)
-        mask <- prim_eq(update_ids, gathered_ids)
-        prim_ifelse(mask, grad_at_positions, zeros_like(grad_at_positions))
+  grad_x <- NULL
+  grad_update <- NULL
+  switch(
+    kind,
+    replace = {
+      # `x` keeps the gradient where no update overwrote it. Scattering zeros
+      # is idempotent, so this holds for repeated indices too.
+      if (required[[1L]]) {
+        grad_x <- scatter_at(grad, zeros_like(update), "replace")
       }
+      if (required[[3L]]) {
+        grad_update <- if (unique_indices) {
+          in_bounds_only(gather_at(grad))
+        } else {
+          scatter_replace_winners_grad(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at)
+        }
+      }
+    },
+    add = ,
+    sub = {
+      # Every update enters its position linearly, repeated or not.
+      if (required[[1L]]) {
+        grad_x <- grad
+      }
+      if (required[[3L]]) {
+        grad_update <- in_bounds_only(gather_at(grad))
+        if (kind == "sub") grad_update <- prim_negate(grad_update)
+      }
+    },
+    mul = {
+      # result = x * (product of the updates to the position)
+      if (required[[1L]]) {
+        grad_x <- prim_mul(grad, scatter_at(ones_like(x), update, "mul"))
+      }
+      if (required[[3L]]) {
+        # unique indices: result = x * update at the update's position
+        grad_update <- in_bounds_only(gather_at(prim_mul(grad, x)))
+      }
+    },
+    max = ,
+    min = {
+      # The gradient goes to the values the result equals -- `x` and every
+      # update that ties with it share it equally, as for prim_pmax() and
+      # prim_max().
+      out <- outputs[[1L]]
+      grad_dtype <- dtype(grad)
+      retained <- prim_convert(prim_eq(x, out), dtype = grad_dtype)
+      won <- prim_and(prim_eq(update, gather_at(out)), update_in_bounds())
+      won <- prim_convert(won, dtype = grad_dtype)
+      n_winners <- prim_add(retained, scatter_at(zeros(grad_dtype, x_shape), won, "add"))
+      grad_share <- prim_div(grad, n_winners)
+      if (required[[1L]]) {
+        grad_x <- prim_mul(grad_share, retained)
+      }
+      if (required[[3L]]) grad_update <- prim_mul(won, gather_at(grad_share))
     }
   )
+
+  list(
+    grad_x,
+    # The indices are not differentiable.
+    if (required[[2L]]) zeros_like(scatter_indices),
+    grad_update
+  )
 })
+
+# The gradient of the updates of a replacing scatter whose indices may repeat.
+# XLA does not say which update wins a position, so we use the ID trick from
+# JAX's scatter JVP:
+# https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
+# Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2
+# or 3 was assigned to position 1.
+# 1. x <- c(0, 0)
+# 2. Assign unique indices x[c(1, 1)] <- c(1, 2)
+# 3. gather the winners: x[c(1, 1)], which e.g. gives c(2, 2)
+# 4. Compare c(1, 2) == c(2, 2) = c(FALSE, TRUE) -> second one wins
+# 5. Mask out the losers; grad[1] <- 0
+# An update the forward scatter dropped as out of bounds never wins, so it gets
+# no gradient either.
+scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at) {
+  # a) Create unique positive IDs for each update "batch" position
+  ids_shape <- update_shape
+  ids_shape[update_window_axes] <- 1L
+  num_ids <- prod(ids_shape)
+  id_dtype <- "i64"
+  update_ids <- prim_reshape(prim_iota(1L, num_ids, id_dtype, start = 1L), ids_shape)
+  update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
+
+  # b) Scatter IDs to see which update "wins" at each position
+  scattered_ids <- scatter_at(prim_fill(0L, dtype = id_dtype, shape = x_shape), update_ids, "replace", FALSE)
+
+  # c) Gather scattered IDs back to update positions
+  gathered_ids <- gather_at(scattered_ids, FALSE)
+
+  # d) Gather gradient and mask: only winning updates get gradient
+  grad_at_positions <- gather_at(grad, FALSE)
+  mask <- prim_eq(update_ids, gathered_ids)
+  prim_ifelse(mask, grad_at_positions, zeros_like(grad_at_positions))
+}
 
 diag_mask <- function(n) {
   prim_iota(axis = 1L, shape = c(n, n), dtype = "i32", start = 0L) ==
@@ -1568,4 +1975,115 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
   }
 
   list(grad_a, if (required[[2L]]) grad_b)
+})
+
+# Moves a group factor from axis `from` of `x` into axis `to`: `from` is cut
+# into `n_groups` contiguous blocks, and the block index becomes the slower
+# varying part of `to`. These are the blocks a grouped convolution splits a
+# feature or batch axis into.
+regroup_axis <- function(x, from, to, n_groups) {
+  shp <- shape(x)
+  split <- append(replace(shp, from, shp[[from]] %/% n_groups), n_groups, after = from)
+  x <- prim_reshape(x, split)
+  # Where the original axes sit after the split, with the block axis at `from + 1`.
+  pos <- seq_along(shp) + (seq_along(shp) > from)
+  x <- prim_transpose(x, append(pos, from + 1L, after = to))
+  shp[[from]] <- shp[[from]] %/% n_groups
+  shp[[to]] <- shp[[to]] * n_groups
+  prim_reshape(x, shp)
+}
+
+# Both cotangents are convolutions again, as in JAX's
+# `_conv_general_dilated_transpose_lhs()` / `_rhs()`: strides and dilations
+# trade places, and the roles of the axes are swapped.
+prim_convolution[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  kernel <- inputs[[2L]]
+  grad <- grads[[1L]]
+  fg_count <- params$feature_group_count
+  bg_count <- params$batch_group_count
+
+  # An empty cotangent carries no gradient and would only form degenerate
+  # convolutions.
+  if (any(shape(grad) == 0L)) {
+    return(list(
+      if (required[[1L]]) zeros_like(x),
+      if (required[[2L]]) zeros_like(kernel)
+    ))
+  }
+
+  x_extent <- dilate_shape(shape(x)[params$x_spatial_axes], params$x_dilation)
+  window_extent <- dilate_shape(shape(kernel)[params$kernel_spatial_axes], params$kernel_dilation)
+  grad_extent <- dilate_shape(shape(grad)[params$output_spatial_axes], params$window_strides)
+  pad_low <- params$padding[, 1L]
+
+  list(
+    if (required[[1L]]) {
+      # Slide the flipped kernel over the cotangent, spread out by the strides.
+      # A group's input features become its output features, so the group
+      # factor moves from the kernel's output feature axis into its input one.
+      flipped <- prim_rev(kernel, params$kernel_spatial_axes)
+      if (fg_count > 1L || bg_count > 1L) {
+        flipped <- regroup_axis(
+          flipped,
+          params$kernel_output_feature_axis,
+          params$kernel_input_feature_axis,
+          fg_count * bg_count
+        )
+      }
+      pad_before <- window_extent - pad_low - 1L
+      pad_after <- x_extent + window_extent - 1L - grad_extent - pad_before
+      grad_x <- prim_convolution(
+        grad,
+        flipped,
+        x_batch_axis = params$output_batch_axis,
+        x_feature_axis = params$output_feature_axis,
+        x_spatial_axes = params$output_spatial_axes,
+        kernel_input_feature_axis = params$kernel_output_feature_axis,
+        kernel_output_feature_axis = params$kernel_input_feature_axis,
+        kernel_spatial_axes = params$kernel_spatial_axes,
+        output_batch_axis = params$x_batch_axis,
+        output_feature_axis = params$x_feature_axis,
+        output_spatial_axes = params$x_spatial_axes,
+        window_strides = params$x_dilation,
+        padding = cbind(pad_before, pad_after, deparse.level = 0L),
+        x_dilation = params$window_strides,
+        kernel_dilation = params$kernel_dilation,
+        feature_group_count = fg_count * bg_count,
+        batch_group_count = 1L,
+        precision = params$precision
+      )
+      # The batch groups came out stacked along the feature axis.
+      if (bg_count > 1L) {
+        grad_x <- regroup_axis(grad_x, params$x_feature_axis, params$x_batch_axis, bg_count)
+      }
+      grad_x
+    },
+    if (required[[2L]]) {
+      # Correlate `x` with the cotangent, contracting over the batch: `x`'s
+      # features play its batch, and the cotangent is the window. Feature
+      # groups turn into batch groups and vice versa.
+      pad_high <- grad_extent - x_extent + window_extent - pad_low - 1L
+      prim_convolution(
+        x,
+        grad,
+        x_batch_axis = params$x_feature_axis,
+        x_feature_axis = params$x_batch_axis,
+        x_spatial_axes = params$x_spatial_axes,
+        kernel_input_feature_axis = params$output_batch_axis,
+        kernel_output_feature_axis = params$output_feature_axis,
+        kernel_spatial_axes = params$output_spatial_axes,
+        output_batch_axis = params$kernel_input_feature_axis,
+        output_feature_axis = params$kernel_output_feature_axis,
+        output_spatial_axes = params$kernel_spatial_axes,
+        window_strides = params$kernel_dilation,
+        padding = cbind(pad_low, pad_high, deparse.level = 0L),
+        x_dilation = params$x_dilation,
+        kernel_dilation = params$window_strides,
+        feature_group_count = bg_count,
+        batch_group_count = fg_count,
+        precision = params$precision
+      )
+    }
+  )
 })

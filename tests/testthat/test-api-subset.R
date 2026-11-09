@@ -852,6 +852,55 @@ describe("nv_subset_assign", {
   })
 })
 
+describe("nv_subset_assign(update_fn = )", {
+  it("combines the subset with `value`, every value of a repeated index", {
+    x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
+    value <- nv_array(c(10, 20, 30), dtype = "f64")
+    combine <- function(update_fn) {
+      as.vector(as_array(nv_subset_assign(x, array(c(1L, 1L, 3L)), value = value, update_fn = update_fn)))
+    }
+    expect_equal(combine("add"), c(31, 2, 33, 4))
+    expect_equal(combine("sub"), c(-29, 2, -27, 4))
+    expect_equal(combine("mul"), c(200, 2, 90, 4))
+    expect_equal(combine("max"), c(20, 2, 30, 4))
+    expect_equal(combine("min"), c(1, 2, 3, 4))
+    expect_equal(combine(function(old, new) old + 2 * new), c(61, 2, 63, 4))
+  })
+
+  it("broadcasts a scalar and works with a whole-array mask", {
+    x <- nv_matrix(1:6, nrow = 2)
+    expect_equal(
+      as_array(nv_subset_assign(x, 2, , value = 10L, update_fn = "add")),
+      matrix(c(1L, 12L, 3L, 14L, 5L, 16L), nrow = 2)
+    )
+    x[x > 3L, update_fn = "mul"] <- 2L
+    expect_equal(as_array(x), matrix(c(1L, 2L, 3L, 8L, 10L, 12L), nrow = 2))
+  })
+
+  it("is passed among the subscripts of `[<-`, not counted as one", {
+    x <- nv_array(1:3)
+    x[2, update_fn = "add"] <- 10L
+    expect_equal(as_array(x), array(c(1L, 12L, 3L)))
+    expect_error(x[1, 2, update_fn = "add"] <- 0L, "subset")
+  })
+
+  it("differentiates a named update_fn", {
+    w <- c(1, 2, 3, 4)
+    f <- function(x, value) {
+      y <- nv_subset_assign(x, array(c(1L, 1L, 3L)), value = value, update_fn = "add")
+      sum(y * nv_array(w, dtype = "f64"))
+    }
+    g <- jit(gradient(f))(nv_array(c(1, 2, 3, 4), dtype = "f64"), nv_array(c(10, 20, 30), dtype = "f64"))
+    expect_equal(as.vector(as_array(g$x)), w)
+    expect_equal(as.vector(as_array(g$value)), w[c(1, 1, 3)])
+  })
+
+  it("rejects an unknown update_fn", {
+    x <- nv_array(1:3)
+    expect_error(nv_subset_assign(x, 1, value = 0L, update_fn = "plus"), "must be a function or one of")
+  })
+})
+
 describe("nv_subset_assign(inplace = TRUE)", {
   it("gives the same result as a copying assignment", {
     x <- nv_matrix(1:6, nrow = 2)

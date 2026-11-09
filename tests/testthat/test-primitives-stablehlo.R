@@ -845,6 +845,85 @@ describe("prim_while", {
   })
 })
 
+describe("prim_custom_gradient", {
+  zero_rule <- function(x, out, grad, required) list()
+
+  it("returns the result of fn", {
+    f <- function(x) prim_custom_gradient(list(x = x), fn = function(x) x * x + 1, rule = zero_rule)
+    expect_equal(jit(f)(nv_array(c(1, 2, 3))), nv_array(c(2, 5, 10)))
+    # eagerly too
+    expect_equal(f(nv_array(c(1, 2, 3))), nv_array(c(2, 5, 10)))
+  })
+
+  it("lowers fn in place, with no trace of rule", {
+    f <- function(x) prim_custom_gradient(list(x = x), fn = function(x) exp(x), rule = zero_rule)
+    graph <- trace_fn(f, list(x = nv_aval("f32", 2L)))
+    mlir <- repr(stablehlo(graph)[[1L]])
+    expect_match(mlir, "stablehlo.exponential")
+    expect_no_match(mlir, "func.call|stablehlo.if|stablehlo.case")
+  })
+
+  it("passes arguments by name, in any order", {
+    f <- jit(function(a, b) {
+      prim_custom_gradient(
+        list(b = b, a = a),
+        fn = function(a, b) a - b,
+        rule = function(a, b, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(1), nv_scalar(3)), nv_scalar(-2))
+  })
+
+  it("takes and returns trees", {
+    f <- jit(function(p) {
+      prim_custom_gradient(
+        list(p = p),
+        fn = function(p) list(s = p$w + p$b, d = list(p$w - p$b)),
+        rule = function(p, out, grad, required) list()
+      )
+    })
+    out <- f(list(w = nv_scalar(3), b = nv_scalar(1)))
+    expect_equal(out, list(s = nv_scalar(4), d = list(nv_scalar(2))))
+  })
+
+  it("can capture values", {
+    k <- nv_scalar(10)
+    f <- jit(function(x) {
+      y <- x + 1
+      prim_custom_gradient(list(x = x), fn = function(x) x * k + y, rule = zero_rule)
+    })
+    expect_equal(f(nv_scalar(2)), nv_scalar(23))
+  })
+
+  it("materializes an R value in args at its default", {
+    f <- jit(function(x) {
+      prim_custom_gradient(
+        list(x = x, c = 3),
+        fn = function(x, c) x * c,
+        rule = function(x, c, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(2)), nv_scalar(6))
+  })
+
+  it("runs a loop in fn", {
+    f <- jit(function(x, n) {
+      prim_custom_gradient(
+        list(x = x, n = n),
+        fn = function(x, n) {
+          prim_while(
+            init = list(i = 1L, y = x),
+            cond = function(i, y) i < n,
+            body = function(i, y) list(i = i + 1L, y = y * x)
+          )$y
+        },
+        rule = function(x, n, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(2), nv_scalar(5L)), nv_scalar(32))
+  })
+})
+
 describe("prim_chol", {
   random_spd <- function(n) {
     m <- matrix(rnorm(n * n), n, n)
@@ -906,32 +985,56 @@ describe("prim_chol", {
   })
 })
 
-test_that("prim_triangular_solve", {
-  # Solve L %*% x = b where L = [[3, 0], [1, 2]]
-  L <- nv_matrix(c(3, 1, 0, 2), nrow = 2, dtype = "f64")
-  b <- nv_matrix(c(6, 5), nrow = 2, dtype = "f64")
-  x <- as_array(prim_triangular_solve(
-    L,
-    b,
-    left_side = TRUE,
-    lower = TRUE,
-    unit_diagonal = FALSE,
-    transpose_a = FALSE
-  ))
-  # x = L^{-1} b: 3*x1 = 6 -> x1 = 2; x1 + 2*x2 = 5 -> x2 = 1.5
-  expect_equal(c(x), c(2, 1.5), tolerance = 1e-5)
+describe("prim_triangular_solve", {
+  it("solves a lower triangular system, with and without transposing a", {
+    # Solve L %*% x = b where L = [[3, 0], [1, 2]]
+    L <- nv_matrix(c(3, 1, 0, 2), nrow = 2, dtype = "f64")
+    b <- nv_matrix(c(6, 5), nrow = 2, dtype = "f64")
+    x <- as_array(prim_triangular_solve(
+      L,
+      b,
+      left_side = TRUE,
+      lower = TRUE,
+      unit_diagonal = FALSE,
+      transpose_a = FALSE
+    ))
+    # x = L^{-1} b: 3*x1 = 6 -> x1 = 2; x1 + 2*x2 = 5 -> x2 = 1.5
+    expect_equal(c(x), c(2, 1.5), tolerance = 1e-5)
 
-  # Verify: solve with transpose_a = TRUE
-  x2 <- as_array(prim_triangular_solve(
-    L,
-    b,
-    left_side = TRUE,
-    lower = TRUE,
-    unit_diagonal = FALSE,
-    transpose_a = TRUE
-  ))
-  # L^T x = b: [[3,1],[0,2]] x = [6,5] -> 2*x2=5 -> x2=2.5; 3*x1+x2=6 -> x1=7/6
-  expect_equal(c(x2), c(7 / 6, 2.5), tolerance = 1e-5)
+    # Verify: solve with transpose_a = TRUE
+    x2 <- as_array(prim_triangular_solve(
+      L,
+      b,
+      left_side = TRUE,
+      lower = TRUE,
+      unit_diagonal = FALSE,
+      transpose_a = TRUE
+    ))
+    # L^T x = b: [[3,1],[0,2]] x = [6,5] -> 2*x2=5 -> x2=2.5; 3*x1+x2=6 -> x1=7/6
+    expect_equal(c(x2), c(7 / 6, 2.5), tolerance = 1e-5)
+  })
+
+  it("solves a batch of right-side, transposed systems through trsm on CPU", {
+    withr::local_seed(1L)
+    a <- array(rnorm(18L), c(2L, 3L, 3L))
+    b <- array(rnorm(24L), c(2L, 4L, 3L))
+    for (i in 1:2) {
+      diag(a[i, , ]) <- 3
+    }
+    x <- as_array(prim_triangular_solve(
+      nv_array(a, dtype = "f64"),
+      nv_array(b, dtype = "f64"),
+      left_side = FALSE,
+      lower = TRUE,
+      unit_diagonal = FALSE,
+      transpose_a = TRUE
+    ))
+    for (i in 1:2) {
+      l <- a[i, , ]
+      l[upper.tri(l)] <- 0
+      expect_equal(x[i, , ], b[i, , ] %*% solve(t(l)), tolerance = 1e-10)
+    }
+  })
 })
 
 # Sanity smoke tests for the linalg primitives.
@@ -1605,8 +1708,36 @@ describe("prim_scatter update_fn", {
   }
 
   it("scatters with the default and with a combiner", {
-    expect_equal(as.numeric(scatter_with(NULL)), c(10, 0, 30))
+    expect_equal(as.numeric(scatter_with("replace")), c(10, 0, 30))
     expect_equal(as.numeric(scatter_with(function(old, new) prim_add(old, new))), c(10, 0, 30))
+  })
+
+  it("combines by name", {
+    scatter_named <- function(update_fn) {
+      out <- prim_scatter(
+        nv_array(c(2, 5, 3), dtype = "f64"),
+        nv_array(matrix(c(1L, 3L, 3L), ncol = 1)),
+        nv_array(c(4, 1, 6), dtype = "f64"),
+        update_window_axes = integer(0),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(0),
+        scatter_indices_batching_axes = integer(0),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = update_fn
+      )
+      as.numeric(out)
+    }
+    expect_equal(scatter_named("add"), c(6, 5, 10))
+    expect_equal(scatter_named("sub"), c(-2, 5, -4))
+    expect_equal(scatter_named("mul"), c(8, 5, 18))
+    expect_equal(scatter_named("max"), c(4, 5, 6))
+    expect_equal(scatter_named("min"), c(2, 5, 1))
+  })
+
+  it("rejects an unknown name", {
+    expect_error(scatter_with("plus"), "must be a function or one of")
+    expect_error(scatter_with(NULL), "must be a function or one of")
   })
 
   it("rejects a combiner that returns another data type", {
@@ -1719,6 +1850,13 @@ describe("prim_dynamic_slice", {
       c(3L, 5L)
     )
   })
+  it("clamps an unsigned start index of 0 to the first position", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("ui8", "ui32", "ui64")) {
+      out <- prim_dynamic_slice(v, nv_scalar(0L, dtype = dt), slice_sizes = 2L)
+      expect_equal(as.integer(as_array(out)), c(10L, 20L))
+    }
+  })
 })
 
 describe("prim_dynamic_update_slice", {
@@ -1726,6 +1864,35 @@ describe("prim_dynamic_update_slice", {
     m <- nv_array(1:6, shape = c(2, 3))
     out <- prim_dynamic_update_slice(m, nv_array(9L, shape = c(1, 1)), nv_scalar(2L, "i64"), 1L)
     expect_equal(as.integer(out), c(1L, 9L, 3L, 4L, 5L, 6L))
+  })
+  it("clamps an unsigned start index of 0 to the first position", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("ui8", "ui32", "ui64")) {
+      out <- prim_dynamic_update_slice(v, nv_array(c(1L, 2L)), nv_scalar(0L, dtype = dt))
+      expect_equal(as.integer(as_array(out)), c(1L, 2L, 30L, 40L))
+    }
+  })
+})
+
+describe("prim_gather", {
+  it("clamps an unsigned index of 0 to the first position, like a signed one", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("i32", "ui8", "ui32", "ui64")) {
+      expect_equal(as.integer(as_array(v[nv_scalar(0L, dtype = dt)])), 10L)
+      expect_equal(as.integer(as_array(v[nv_scalar(2L, dtype = dt)])), 20L)
+    }
+  })
+})
+
+describe("prim_scatter", {
+  it("treats an unsigned index like a signed one", {
+    for (dt in c("i32", "ui8", "ui32", "ui64")) {
+      v <- nv_array(c(10L, 20L, 30L, 40L))
+      v[nv_scalar(0L, dtype = dt)] <- 99L
+      expect_equal(as.integer(as_array(v)), c(10L, 20L, 30L, 40L))
+      v[nv_scalar(2L, dtype = dt)] <- 99L
+      expect_equal(as.integer(as_array(v)), c(10L, 99L, 30L, 40L))
+    }
   })
 })
 
