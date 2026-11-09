@@ -88,7 +88,7 @@ You can also use the <code>[&lt;-</code> operator.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="va">x</span><span class="op">[</span><span class="va">...</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">value</span></span>
 <span></span>
-<span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">value</span>, inplace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">value</span>, update_fn <span class="op">=</span> <span class="st">"replace"</span>, inplace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -118,13 +118,29 @@ from the function's inputs does not.</p>
 
 <dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Replacement values. Scalars are broadcast to the subset shape and non-scalar
+Replacement values, or with another <code>update_fn</code> the values to combine the
+subset with. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
 It is brought to <code>x</code>'s data type: an R value is built at it when its
 category can reach it (<code>0L</code> serves an integer and a float <code>x</code> alike, while
 <code>1.5</code> into an <code>i32</code> <code>x</code> is an error), and an array is converted unless that
 would narrow it or leave its category (an <code>f64</code> value for an <code>f32</code> <code>x</code> is
 an error).</p></dd>
+
+
+<dt id="arg-update-fn">update_fn<a class="anchor" aria-label="anchor" href="#arg-update-fn"></a></dt>
+<dd><p>(<code>character(1)</code> | <code>function</code>)<br>
+How <code>value</code> combines with the subset of <code>x</code>:</p><ul><li><p><code>"replace"</code> (the default): <code>value</code> replaces it,</p></li>
+<li><p><code>"add"</code>, <code>"sub"</code>, <code>"mul"</code>: it becomes the subset plus, minus or times
+<code>value</code>,</p></li>
+<li><p><code>"max"</code>, <code>"min"</code>: it becomes the larger or the smaller of the two,</p></li>
+</ul><p>or a binary function <code>f(old, new)</code> of two scalars, see <code><a href="prim_scatter.html">prim_scatter()</a></code>.
+Unlike <code>x[i] &lt;- x[i] + value</code> in R, a position that <code>i</code> selects more than
+once gets every one of its values: with <code>"add"</code>, <code>x[array(c(1L, 1L))]</code> adds
+both to <code>x[1]</code>. <code><a href="gradient.html">gradient()</a></code> differentiates the names, but not a function;
+with <code>"mul"</code>, not with respect to <code>value</code> where <code>i</code> selects several
+positions of an axis by an index array or a mask, since those may repeat.
+With <code>[&lt;-</code>, pass it among the subscripts, e.g. <code>x[1, update_fn = "add"] &lt;- 1</code>.</p></dd>
 
 
 <dt id="arg-inplace">inplace<a class="anchor" aria-label="anchor" href="#arg-inplace"></a></dt>
@@ -144,7 +160,8 @@ Default is <code>FALSE</code>.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Has <code>x</code>'s data type and shape, with the subset replaced.</p>
+Has <code>x</code>'s data type and shape, with the subset replaced (or combined with
+<code>value</code> as <code>update_fn</code> says).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -177,6 +194,14 @@ comprehensive guide.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2 5 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3 6 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># add to the subset instead of replacing it; a repeated index adds twice</span></span></span>
+<span class="r-in"><span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span>, value <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">10L</span><span class="op">)</span>, update_fn <span class="op">=</span> <span class="st">"add"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  20  0  0  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  0  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  0  0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># write into the memory of `x` instead of copying it</span></span></span>

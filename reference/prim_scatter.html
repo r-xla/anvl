@@ -115,7 +115,7 @@ indices.</p>
 <span>  <span class="va">index_vector_axis</span>,</span>
 <span>  indices_are_sorted <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  unique_indices <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  update_fn <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  update_fn <span class="op">=</span> <span class="st">"replace"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -200,10 +200,13 @@ behavior if the indices are not actually unique. Default <code>FALSE</code>.</p>
 
 
 <dt id="arg-update-fn">update_fn<a class="anchor" aria-label="anchor" href="#arg-update-fn"></a></dt>
-<dd><p>(<code>function</code>)<br>
-Binary function <code>f(old, new)</code> that combines the existing value in
-<code>x</code> with the value from <code>update</code>. The default (<code>NULL</code>) uses
-<code>function(old, new) new</code>, which replaces the old value.</p></dd>
+<dd><p>(<code>character(1)</code> | <code>function</code>)<br>
+How an update combines with the value in <code>x</code> it lands on. One of</p><ul><li><p><code>"replace"</code> (the default): the update replaces the value,</p></li>
+<li><p><code>"add"</code>, <code>"sub"</code>, <code>"mul"</code>: the value plus, minus or times the update,</p></li>
+<li><p><code>"max"</code>, <code>"min"</code>: the larger or the smaller of the two,</p></li>
+</ul><p>or a binary function <code>f(old, new)</code> of two scalars at <code>x</code>'s data type,
+which returns one. Only a named <code>update_fn</code> can be differentiated, see
+section Gradients.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -223,8 +226,24 @@ update for that index is silently ignored.</p>
 
 
 <p>When multiple indices in <code>scatter_indices</code> map to the same element
-of <code>x</code>, the order in which <code>update_fn</code> is applied is
-implementation-defined and may vary between plugins ("cpu", "cuda").</p>
+of <code>x</code>, <code>update_fn</code> combines each of their updates with it in turn, so
+<code>"add"</code> adds them all up. The order is implementation-defined and may vary
+between plugins ("cpu", "cuda"), which matters for <code>"replace"</code>, where one
+of them is the one that ends up written.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="gradients">Gradients<a class="anchor" aria-label="anchor" href="#gradients"></a></h2>
+
+
+<p><code><a href="gradient.html">gradient()</a></code> differentiates a scatter whose <code>update_fn</code> is one of the names,
+but not a function, even one that computes the same.</p><ul><li><p>With <code>"replace"</code>, an update gets the gradient only where it is the one
+that was written.</p></li>
+<li><p>With <code>"mul"</code>, the gradient with respect to <code>update</code> needs
+<code>unique_indices = TRUE</code>.</p></li>
+<li><p>With <code>"max"</code> and <code>"min"</code>, <code>x</code> and the updates that tie for the result
+share its gradient equally.</p></li>
+</ul><p>An update that falls outside of <code>x</code>, and is therefore ignored, gets a
+gradient of zero.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>

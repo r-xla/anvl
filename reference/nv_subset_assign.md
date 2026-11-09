@@ -9,7 +9,7 @@ array. You can also use the `[<-` operator.
 # S3 method for class 'AnvlArray'
 x[...] <- value
 
-nv_subset_assign(x, ..., value, inplace = FALSE)
+nv_subset_assign(x, ..., value, update_fn = "replace", inplace = FALSE)
 ```
 
 ## Arguments
@@ -44,12 +44,36 @@ nv_subset_assign(x, ..., value, inplace = FALSE)
 - value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Replacement values. Scalars are broadcast to the subset shape and
+  Replacement values, or with another `update_fn` the values to combine
+  the subset with. Scalars are broadcast to the subset shape and
   non-scalar values must match it. It is brought to `x`'s data type: an
   R value is built at it when its category can reach it (`0L` serves an
   integer and a float `x` alike, while `1.5` into an `i32` `x` is an
   error), and an array is converted unless that would narrow it or leave
   its category (an `f64` value for an `f32` `x` is an error).
+
+- update_fn:
+
+  (`character(1)` \| `function`)  
+  How `value` combines with the subset of `x`:
+
+  - `"replace"` (the default): `value` replaces it,
+
+  - `"add"`, `"sub"`, `"mul"`: it becomes the subset plus, minus or
+    times `value`,
+
+  - `"max"`, `"min"`: it becomes the larger or the smaller of the two,
+
+  or a binary function `f(old, new)` of two scalars, see
+  [`prim_scatter()`](https://r-xla.github.io/anvl/reference/prim_scatter.md).
+  Unlike `x[i] <- x[i] + value` in R, a position that `i` selects more
+  than once gets every one of its values: with `"add"`,
+  `x[array(c(1L, 1L))]` adds both to `x[1]`.
+  [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+  differentiates the names, but not a function; with `"mul"`, not with
+  respect to `value` where `i` selects several positions of an axis by
+  an index array or a mask, since those may repeat. With `[<-`, pass it
+  among the subscripts, e.g. `x[1, update_fn = "add"] <- 1`.
 
 - inplace:
 
@@ -70,7 +94,8 @@ nv_subset_assign(x, ..., value, inplace = FALSE)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-Has `x`'s data type and shape, with the subset replaced.
+Has `x`'s data type and shape, with the subset replaced (or combined
+with `value` as `update_fn` says).
 
 ## See also
 
@@ -104,6 +129,14 @@ x
 #>  0 0 0 0
 #>  2 5 0 0
 #>  3 6 0 0
+#> [ CPUi32{3,4} ] 
+
+# add to the subset instead of replacing it; a repeated index adds twice
+nv_subset_assign(x, array(c(1L, 1L)), 1, value = nv_scalar(10L), update_fn = "add")
+#> AnvlArray
+#>  20  0  0  0
+#>   2  5  0  0
+#>   3  6  0  0
 #> [ CPUi32{3,4} ] 
 
 # write into the memory of `x` instead of copying it

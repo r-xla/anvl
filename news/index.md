@@ -2,6 +2,22 @@
 
 ## anvl (development version)
 
+- [`prim_scatter()`](https://r-xla.github.io/anvl/reference/prim_scatter.md)’s
+  `update_fn` can be given by name: `"replace"` (the new default,
+  replacing `NULL`), `"add"`, `"sub"`, `"mul"`, `"max"` or `"min"`. The
+  gradient of a scatter is implemented for each of them, not only for
+  replacement; an `update_fn` that is a function is not differentiated.
+
+- [`nv_subset_assign()`](https://r-xla.github.io/anvl/reference/nv_subset_assign.md)
+  and `[<-` take `update_fn` too, so
+  `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
+  subset, every value of an index that is repeated in `i`.
+
+- Bugfix: An update that
+  [`prim_scatter()`](https://r-xla.github.io/anvl/reference/prim_scatter.md)
+  drops as out of bounds no longer gets a gradient when
+  `unique_indices = TRUE`.
+
 - Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`,
   [`prim_dynamic_slice()`](https://r-xla.github.io/anvl/reference/prim_dynamic_slice.md),
   [`prim_dynamic_update_slice()`](https://r-xla.github.io/anvl/reference/prim_dynamic_update_slice.md))

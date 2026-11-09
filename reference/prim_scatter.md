@@ -26,7 +26,7 @@ prim_scatter(
   index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
-  update_fn = NULL
+  update_fn = "replace"
 )
 ```
 
@@ -113,10 +113,19 @@ prim_scatter(
 
 - update_fn:
 
-  (`function`)  
-  Binary function `f(old, new)` that combines the existing value in `x`
-  with the value from `update`. The default (`NULL`) uses
-  `function(old, new) new`, which replaces the old value.
+  (`character(1)` \| `function`)  
+  How an update combines with the value in `x` it lands on. One of
+
+  - `"replace"` (the default): the update replaces the value,
+
+  - `"add"`, `"sub"`, `"mul"`: the value plus, minus or times the
+    update,
+
+  - `"max"`, `"min"`: the larger or the smaller of the two,
+
+  or a binary function `f(old, new)` of two scalars at `x`'s data type,
+  which returns one. Only a named `update_fn` can be differentiated, see
+  section Gradients.
 
 ## Value
 
@@ -131,8 +140,28 @@ for that index is silently ignored.
 ## Update Order
 
 When multiple indices in `scatter_indices` map to the same element of
-`x`, the order in which `update_fn` is applied is implementation-defined
-and may vary between plugins ("cpu", "cuda").
+`x`, `update_fn` combines each of their updates with it in turn, so
+`"add"` adds them all up. The order is implementation-defined and may
+vary between plugins ("cpu", "cuda"), which matters for `"replace"`,
+where one of them is the one that ends up written.
+
+## Gradients
+
+[`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+differentiates a scatter whose `update_fn` is one of the names, but not
+a function, even one that computes the same.
+
+- With `"replace"`, an update gets the gradient only where it is the one
+  that was written.
+
+- With `"mul"`, the gradient with respect to `update` needs
+  `unique_indices = TRUE`.
+
+- With `"max"` and `"min"`, `x` and the updates that tie for the result
+  share its gradient equally.
+
+An update that falls outside of `x`, and is therefore ignored, gets a
+gradient of zero.
 
 ## Implemented Rules
 

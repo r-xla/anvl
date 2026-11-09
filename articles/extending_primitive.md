@@ -509,7 +509,8 @@ manual tests in:
 - `tests/testthat/test-primitives-stablehlo.R`
 - `tests/testthat/test-primitives-reverse.R`
 
-Also, ensure that no linter errors are present, `devtools::check()`
+Also, ensure that no linter errors are present,
+[`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
 passes, and format the code using `make format`.
 
 ## Higher-Order Primitives

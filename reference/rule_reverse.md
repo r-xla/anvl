@@ -59,7 +59,7 @@ rule_reverse(function(inputs, outputs, grads, params, required) {
 #> {
 #>     list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #> }
-#> <environment: 0x576e2572daa8>
+#> <environment: 0x5760ba39ebf0>
 #> 
 #> attr(,"class")
 #> [1] "anvl_rule_reverse"
