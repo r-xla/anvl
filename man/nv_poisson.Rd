@@ -93,9 +93,8 @@ a gradient can be taken.
 
 \section{Gradients}{
 
-\code{nv_dpois} and \code{nv_ppois} can be differentiated with respect to \code{lambda}.
-For \code{nv_ppois} only the first derivative is correct: second and higher
-derivatives are returned as zero. At \code{lambda = 0}, where
+\code{nv_dpois} and \code{nv_ppois} can be differentiated with respect to \code{lambda},
+to any order. At \code{lambda = 0}, where
 only a right derivative exists, the implementation returns it for
 \code{nv_dpois(0, lambda)} and, by convention, zero for the other probabilities
 at \code{lambda = 0}. \code{nv_qpois} is a step function, and autodiff returns a zero

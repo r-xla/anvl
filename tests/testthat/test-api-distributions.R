@@ -2724,6 +2724,31 @@ describe("nv_ppois", {
     }
   })
 
+  it("second derivative wrt lambda matches the analytic one", {
+    # The first derivative s is -/+ dpois(q) (over the probability on the log
+    # scale), so its derivative is s (q - lambda) / lambda, minus s^2 on the log
+    # scale. q = 3 at lambda = 3 is a zero of it
+    q <- c(0, 1, 3, 10, 25, 250, 1100)
+    lambda <- c(0.5, 2, 3, 7.5, 40, 240, 1000)
+    second <- function(lower_tail, log_p) {
+      f <- function(lambda) nv_ppois(as_f64(q), lambda, lower_tail = lower_tail, log_p = log_p)
+      d1 <- function(lambda) gradient(function(lambda) nv_sum(f(lambda)), wrt = "lambda")(lambda)[[1L]]
+      d2 <- jit(gradient(function(lambda) nv_sum(d1(lambda)), wrt = "lambda"))
+      as.vector(d2(as_f64(lambda))[[1L]])
+    }
+    flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
+    for (i in seq_len(nrow(flags))) {
+      lt <- flags$lower_tail[i]
+      lp <- flags$log_p[i]
+      s <- (if (lt) -1 else 1) * dpois(q, lambda) / (if (lp) ppois(q, lambda, lower.tail = lt) else 1)
+      want <- s * (q - lambda) / lambda - (if (lp) s^2 else 0)
+      # Relative to the size of the terms, as the second derivative is zero at
+      # the mean
+      err <- abs(second(lt, lp) - want) / pmax(abs(want), abs(s) / lambda)
+      expect_lt(max(err), 1e-12)
+    }
+  })
+
   it("gradient on the log scale stays accurate deep in either tail", {
     # On the log scale the gradient is dpois(k) / tail. Subtracting logs to get
     # it loses |log tail| ulps: errors of percents in f32 at lambda = 4,

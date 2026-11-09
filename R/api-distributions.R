@@ -899,27 +899,10 @@ sub_exact_prod <- function(c, a, b) {
 # Returns x unchanged, with no gradient flowing back through it (anvl currently
 # has no stop gradient primitive).
 #
-# Used where the derivative along this path should be zero, or where f(x) should
-# be computed by one formula but differentiated by another, because autodiff
-# through f is inaccurate or overflows. Compute the value on a detached input,
-# f(stop_gradient(x)), and if there is some g(x) that has the same derivative
-# as f, attach it with
-#
-#   f(stop_gradient(x)) + (g(x) - stop_gradient(g(x)))
-#
-# The added term is zero, but its derivatives is g's (hence f's), to every
-# order. So only g's derivative is used, never its value. For example,
-# `log_ratio()` uses:
-#
-#   f = log(x / y)         accurate value, but derivative can overflow
-#   g = log(x) - log(y)    inaccurate value when x is near y, clean derivative
-#
-# Only if there is no such g, attach f's derivative at the detached input:
-#
-#   f(stop_gradient(x)) + (x - stop_gradient(x)) * f'(stop_gradient(x))
-#
-# This gives the right first derivative, _but_ second and higher derivatives
-# come out as zero. Note that f' must be passed the detached input.
+# Used where the derivative along this path should be zero (e.g. for a step
+# function) and to keep a gradient from reaching a `nv_while()` loop, which has
+# no gradient rule. The round trip through an integer type suffices for both
+# cases.
 stop_gradient <- function(x) {
   float_dtype <- dtype(x)
   int_dtype <- if (float_dtype == "f32") "i32" else "i64"
@@ -971,39 +954,45 @@ skip_unless <- function(pending, init, compute) {
   )$value
 }
 
+# Adjusts gradient `g` from the result's shape to the input `like`'s shape.
+# Distribution functions only broadcast scalars: if `like` was broadcast, then
+# sum all entries of `g` to combine their contributions to the scalar input.
+# Otherwise, `g` already has the right shape and is simply returned unchanged.
+sum_like <- function(g, like) {
+  if (length(shape(like)) == length(shape(g))) g else nv_sum(g)
+}
+
 # Computes log(x / y) for positive normal x and y, rescaling y by a power
 # of two to avoid overflow or loss of precision in the ratio.
-# Attaches the derivatives 1 / x and -1 / y explicitly: in reverse mode,
-# XLA otherwise rewrites the derivative with respect to x as y / (x * y),
-# whose intermediate product can overflow or underflow.
-# Each gradient correction is zero unless its input is positive, normal,
-# and finite; the corrections leave the computed value unchanged.
+# The derivatives 1 / x and -1 / y are given by `prim_custom_gradient()`: in
+# reverse mode XLA would otherwise rewrite the derivative with respect to x as
+# y / (x * y), whose intermediate product can overflow or underflow. They are
+# zero where their input is not positive, normal and finite.
 log_ratio <- function(x, y) {
-  x_value <- stop_gradient(x)
-  y_value <- stop_gradient(y)
   is_f32 <- dtype(x) == "f32"
-  k <- if (is_f32) 126 else 1022
-  r <- x_value / y_value
-  over <- r == Inf
-  under <- r < 2^-k
-  y_scaled <- nv_ifelse(over, y_value * 2^k, nv_ifelse(under, y_value * 2^-k, y_value))
-  # Builds the shift with x's data type; choosing between plain R values
-  # would instead materialize it with the default floating-point type.
-  shift <- nv_scalar_like(x, k * base::log(2))
-  value <- nv_log(x_value / y_scaled) + nv_ifelse(over, shift, nv_ifelse(under, -shift, 0))
-
-  # Returns zero with the derivative of log(v) for positive, normal, finite v,
-  # taken from log's own rule so that it is right to every order: dividing by
-  # the detached v would give the right first derivative but zero second.
-  # Otherwise returns zero without a gradient correction. Using 1 as the input
-  # in that case also prevents NaN gradients in the untaken branch.
-  smallest_normal <- if (is_f32) 2^-126 else 2^-1022
-  log_derivative <- function(v, v_value) {
-    normal <- (v_value >= smallest_normal) & (v_value != Inf)
-    log_v <- nv_log(nv_ifelse(normal, v, 1))
-    nv_ifelse(normal, log_v - stop_gradient(log_v), 0)
-  }
-  value + log_derivative(x, x_value) - log_derivative(y, y_value)
+  prim_custom_gradient(
+    list(x = x, y = y),
+    fn = function(x, y) {
+      k <- if (is_f32) 126 else 1022
+      r <- x / y
+      over <- r == Inf
+      under <- r < 2^-k
+      y_scaled <- nv_ifelse(over, y * 2^k, nv_ifelse(under, y * 2^-k, y))
+      # Uses x's data type; a plain R value would take the default float type.
+      shift <- nv_scalar_like(x, k * base::log(2))
+      nv_log(x / y_scaled) + nv_ifelse(over, shift, nv_ifelse(under, -shift, 0))
+    },
+    rule = function(x, y, out, grad, required) {
+      smallest_normal <- if (is_f32) 2^-126 else 2^-1022
+      # The gradient times 1 / v, or zero. The divisor is 1 where v is not
+      # used, so the untaken branch cannot poison higher derivatives.
+      over_v <- function(v) {
+        normal <- (v >= smallest_normal) & (v != Inf)
+        sum_like(nv_ifelse(normal, grad / nv_ifelse(normal, v, 1), 0), v)
+      }
+      list(x = if (required[["x"]]) over_v(x), y = if (required[["y"]]) -over_v(y))
+    }
+  )
 }
 
 # Error of Stirling's approximation to log(n!),
@@ -2138,11 +2127,10 @@ ppois_asymp <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
 # Each series gives one tail directly and the other as its complement, which is
 # taken on the log scale to keep full accuracy either side. Returns the
 # probability, log dpois(k), and which elements took a series (whose error
-# `nv_qpois()` allows for). With `grad = TRUE` it also returns the gradient's
-# size wrt lambda: dpois(k), or on the log scale dpois(k) / probability. It
-# comes as two factors, `grad` and `grad_factor`, so each stays finite when
-# their product overflows.
-# Due to while loop in series, no gradient support.
+# `nv_qpois()` allows for). With `grad = TRUE` it also returns `grad`, the
+# size of the derivative wrt lambda: dpois(k), or on the log scale
+# dpois(k) / probability.
+# Due to while loop in series, no gradient support (see `ppois_differentiable()`).
 ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
   upper <- (lambda <= k) & (lambda < 0.8 * (k + 51))
   lower <- (k < lambda) & (k + 1 < 0.8 * (lambda + 50))
@@ -2193,15 +2181,13 @@ ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
       # The gradient, dpois(k) / tail, without logs. The tail the series sums
       # is dpois(k) times the sum (plus one for the lower), so the gradient is
       # just 1 / sum; subtracting logs would lose |log tail| ulps. If the upper
-      # sum underflowed it equals lambda / (k + 1), whose reciprocal can
-      # overflow, so it's kept as 1 / lambda times k + 1. The other tail is at
-      # least about a half, where subtracting logs is fine.
+      # sum underflowed it equals lambda / (k + 1). The other tail is at least
+      # about a half, where subtracting logs is fine.
       out$grad <- nv_ifelse(
         direct,
-        1 / nv_ifelse(underflowed, lambda, nv_ifelse(upper, sum, 1 + sum)),
+        nv_ifelse(underflowed, k + 1, 1) / nv_ifelse(underflowed, lambda, nv_ifelse(upper, sum, 1 + sum)),
         nv_exp(log_density - from_series)
       )
-      out$grad_factor <- nv_ifelse(direct & underflowed, k + 1, 1)
     }
     out
   }
@@ -2241,13 +2227,65 @@ ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
         series$grad,
         nv_ifelse(small_tail, asymp$grad, nv_exp(log_density - out$value))
       )
-      out$grad_factor <- nv_ifelse(use_series, series$grad_factor, 1)
     } else {
       out$grad <- nv_exp(log_density)
-      out$grad_factor <- nv_scalar_like(lambda, 1)
     }
   }
   out
+}
+
+# Adds derivatives of all orders with respect to lambda to `ppois_raw()`;
+# k has no gradient. Since the loops cannot be differentiated, we supply
+# the derivative with `prim_custom_gradient()`: -dpois(k) for the lower tail,
+# +dpois(k) for the upper tail, divided by the tail probability when log_p
+# is TRUE. The extra work is only done when a gradient is requested.
+ppois_differentiable <- function(k, lambda, lower_tail, log_p, is_f32) {
+  prim_custom_gradient(
+    list(k = k, lambda = lambda),
+    fn = function(k, lambda) ppois_raw(k, lambda, lower_tail, log_p, is_f32)$value,
+    rule = rule_reverse(forward = function(inputs, params, required) {
+      k <- inputs$k
+      lambda <- inputs$lambda
+      # Higher derivatives also differentiate this forward pass. Stop gradients
+      # through lambda here because the loops have no gradient rule;
+      # `ppois_slope()` supplies the higher derivatives.
+      raw <- ppois_raw(k, stop_gradient(lambda), lower_tail, log_p, is_f32, grad = required[["lambda"]])
+      backward <- function(inputs, outputs, grads, params, required_inputs) {
+        if (!required[["lambda"]]) {
+          return(list())
+        }
+        slope <- ppois_slope(if (lower_tail) -raw$grad else raw$grad, k, lambda, log_p)
+        # On the log scale, the slope can overflow when lambda is tiny:
+        # it is roughly (k + 1) / lambda. Pin zero incoming gradients at zero
+        # to avoid NaN from multiplying zero by an infinite slope.
+        list(lambda = sum_like(nv_ifelse(grads == 0, 0, grads * slope), lambda))
+      }
+      list(outputs = raw$value, backward = backward)
+    })
+  )
+}
+
+# Adds higher derivatives to `slope`, the derivative of the tail probability
+# with respect to lambda, computed without tracking gradients. Its derivative
+# can be calculated from its value s:
+#   ds/dlambda = s * (k - lambda) / lambda
+# For a log probability, we subtract s^2. Repeated application of rule gives
+# derivatives of any order.
+ppois_slope <- function(slope, k, lambda, log_p) {
+  prim_custom_gradient(
+    list(slope = slope, k = k, lambda = lambda),
+    fn = function(slope, k, lambda) slope,
+    rule = function(slope, k, lambda, out, grad, required) {
+      if (!required[["lambda"]]) {
+        return(list())
+      }
+      d <- out * ((k - lambda) / lambda)
+      if (log_p) {
+        d <- d - out * out
+      }
+      list(lambda = sum_like(grad * d, lambda))
+    }
+  )
 }
 
 #' @title The Poisson Distribution
@@ -2298,9 +2336,8 @@ ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
 #' @templateVar params `lambda`
 #' @template section_distribution_nonint
 #' @section Gradients:
-#' `nv_dpois` and `nv_ppois` can be differentiated with respect to `lambda`.
-#' For `nv_ppois` only the first derivative is correct: second and higher
-#' derivatives are returned as zero. At `lambda = 0`, where
+#' `nv_dpois` and `nv_ppois` can be differentiated with respect to `lambda`,
+#' to any order. At `lambda = 0`, where
 #' only a right derivative exists, the implementation returns it for
 #' `nv_dpois(0, lambda)` and, by convention, zero for the other probabilities
 #' at `lambda = 0`. `nv_qpois` is a step function, and autodiff returns a zero
@@ -2398,28 +2435,13 @@ nv_ppois <- jit(
     dt0 <- dt_zero(lower_tail, log_p)
     dt1 <- dt_one(lower_tail, log_p)
 
-    # Values just below a whole number count as that number, as in base R
+    # Values just below a whole number count as that number, as in base R. A
+    # step function of q, so k carries no gradient
     k <- whole_count(stop_gradient(nv_ifelse(regular, q, 0)))
     # Guarded on lambda's own conditions, so a scalar lambda stays scalar; the
     # elements it replaces are among those resolved directly below
     lambda_reg <- nv_ifelse((lambda > 0) & (lambda != Inf), lambda, 1)
-    raw <- ppois_raw(k, stop_gradient(lambda_reg), lower_tail, log_p, is_f32, grad = TRUE)
-
-    # The summation is not differentiable, so the exact derivative wrt `lambda`,
-    # -/+ dpois(k) (divided by the probability on the log scale), is attached
-    # by adding zero times it. Only the first derivative is right this way (see
-    # `stop_gradient()`): no differentiable function has this derivative but
-    # the distribution function itself.
-    # The derivative can overflow on the log scale (it's about (k + 1) / lambda
-    # for a tiny lambda), and 0 * Inf would make the value NaN. So the zero is
-    # multiplied by its two finite factors one at a time: the value stays exact,
-    # and only the gradient, their product, overflows. A non-finite factor
-    # gives a zero gradient.
-    finite <- nv_is_finite(raw$grad) & nv_is_finite(raw$grad_factor)
-    grad <- nv_ifelse(finite, raw$grad, 0)
-    delta <- lambda_reg - stop_gradient(lambda_reg)
-    delta <- if (lower_tail) -delta else delta
-    value <- raw$value + (delta * nv_ifelse(finite, raw$grad_factor, 0)) * grad
+    value <- ppois_differentiable(k, lambda_reg, lower_tail, log_p, is_f32)
 
     res <- nv_ifelse(below, dt0, nv_ifelse(at_one, dt1, nv_ifelse(lambda == Inf, dt0, value)))
     nv_ifelse(valid, res, NaN)
