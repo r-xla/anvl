@@ -14,7 +14,7 @@ describe("prim_sample_bits", {
   # Makes the random state with the key words and the counter words (low word
   # first) `words` the global random state.
   set_state <- function(words) {
-    nv_set_random_state(random_state_of_words(as.numeric(words)))
+    nv_set_rng_state(random_state_of_words(as.numeric(words)))
   }
   # The values of an unsigned integer array as decimal strings, which hold
   # every bit of a `ui32` or `ui64`, in an array of its shape.
@@ -25,7 +25,7 @@ describe("prim_sample_bits", {
   }
 
   it("splits with ThreeFry-2x32 as the known-answer vectors of the reference give it", {
-    local_nv_seed(NULL)
+    local_nv_seed(1L)
     # a 32-bit word given in hex, as a number
     h <- function(s) strtoi(substr(s, 1L, 4L), 16L) * 65536 + strtoi(substr(s, 5L, 8L), 16L)
     kat <- list(
@@ -38,12 +38,12 @@ describe("prim_sample_bits", {
       # the second, as in JAX's fold_in()
       set_state(h(c(k$key, rev(k$ctr))))
       # the fork returns the split (ThreeFry_k(c)) as the child's key
-      expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), h(k$out))
+      expect_identical(as.numeric(as_array(prim_fork_random_state()$key)), h(k$out))
     }
   })
 
   it("fills a shape in row-major order", {
-    local_nv_seed(NULL)
+    local_nv_seed(1L)
     # an R array's elements in row-major order
     row_major <- function(a) if (length(dim(a)) > 1L) as.vector(aperm(a)) else as.vector(a)
     shapes <- list(integer(), 1L, 0L, 5L, c(4L, 3L), c(3L, 3L), c(2L, 3L, 2L), c(4L, 1L, 3L))
@@ -60,7 +60,7 @@ describe("prim_sample_bits", {
   })
 
   it("truncates a 32-bit draw for a narrower data type", {
-    local_nv_seed(NULL)
+    local_nv_seed(1L)
     set_state(c(5, 0, 3, 0))
     wide <- as.numeric(as_array(prim_sample_bits(4L, "ui32")))
     for (width in c(8L, 16L)) {
@@ -101,24 +101,24 @@ describe("prim_fork_random_state() and the generator of prim_sample_bits()", {
 
   it("derives the keys of the first sampling calls from seed 0", {
     local_nv_seed(0L)
-    expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), c(1797259609, 2579123966))
-    expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), c(928981903, 3453687069))
+    expect_identical(as.numeric(as_array(prim_fork_random_state()$key)), c(1797259609, 2579123966))
+    expect_identical(as.numeric(as_array(prim_fork_random_state()$key)), c(928981903, 3453687069))
   })
 
   it("forks the random state into its split and a zero counter", {
     local_nv_seed(1L)
     child <- prim_fork_random_state()
     expect_identical(
-      state_words(random_state_of_arrays(child$random_key, child$random_counter)),
+      state_words(random_state_of_arrays(child$key, child$counter)),
       c(507451445, 1853169794, 0, 0)
     )
     expect_identical(state_words()[[3L]], 1)
   })
 
   it("splits at a counter past 2^32 with its high word", {
-    local_nv_seed(NULL)
-    nv_set_random_state(random_state_of_words(c(0, 1, 5, 1)))
-    expect_identical(as.numeric(as_array(prim_fork_random_state()$random_key)), c(4133157646, 253918841))
+    local_nv_seed(1L)
+    nv_set_rng_state(random_state_of_words(c(0, 1, 5, 1)))
+    expect_identical(as.numeric(as_array(prim_fork_random_state()$key)), c(4133157646, 253918841))
   })
 
   it("draws ui64 values, each an encrypted block", {

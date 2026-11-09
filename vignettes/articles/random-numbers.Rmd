@@ -10,8 +10,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this article, we will explain how to draw (pseudo) random numbers with {anvl}, which guarantees the draws come with, and how they are generated.
-The first part is what you need to use the samplers; the [how it works](#how-it-works) part at the end describes the generator itself and can be skipped.
+In this article, we will explain how to generate (pseudo) random numbers with {anvl}, which guarantees the draws come with, and how they are generated.
+{anvl} uses the counter-based ThreeFry-2x32 generator [@salmon2011parallel], and adopts the mechanism around it, how a seed becomes a key and how every draw derives a fresh key from it, from JAX [@jax2018github].
+The first part is what you need to use the samplers; the [how it works](#how-it-works) part at the end describes the generator itself.
 
 As in base R, random number generation uses a global state, the *global random state*, that every draw advances, and `nv_set_seed()` seeds it like `set.seed()` does:
 
@@ -25,7 +26,7 @@ nv_runif(3L)
 ```
 
 Calling `nv_set_seed()` is optional.
-While the global random state is not set, the first draw derives it from base R's RNG, so a `set.seed()` before the first draw makes the draws reproducible as well.
+Without it, the first draw derives the global random state from base R's RNG, so a `set.seed()` before the first draw makes the draws reproducible as well.
 This happens only once, though: after the first draw, calling `set.seed()` again does not reseed {anvl}'s random state; call `nv_set_seed()` for that.
 
 The available samplers are listed in the [distributions](../reference/index.html#distributions) section of the reference.
@@ -35,20 +36,8 @@ For example, below we sample a matrix of shape $2 \times 3$ from a normal distri
 nv_rnorm(c(2, 3), mean = 0, sd = 1)
 ```
 
-To draw integers, use `nv_sample_int()`, the counterpart to R's `sample.int()`:
-
-```{r}
-# roll six dice
-nv_sample_int(6L, 6L)
-```
-
-`nv_sample()` draws from an arbitrary population instead.
-Unlike R's `sample()`, its population argument is never overloaded with a count, so `nv_sample(5L, nv_array(6))` samples from the population `6` rather than from `1:6`:
-
-```{r}
-population <- nv_array(c(10, 20, 30))
-nv_sample(8L, population)
-```
+The samplers draw at the default float data type, `f32` unless set otherwise (see `default_dtypes()`).
+For more precision, draw at `f64`, per call with `dtype = "f64"` or for all calls with `options(anvl.default_dtypes = c(float = "f64", int = "i32"))`.
 
 ## Seeding for a scope
 
@@ -76,55 +65,70 @@ simulate(3L)
 simulate(3L)
 ```
 
+## Seeds and random states
+
+A seed and a random state are two different things, as in base R, where `set.seed()` takes a seed and `.Random.seed` holds the random state.
+The *random state* is the whole state of the generator, which every draw advances.
+In {anvl}, it consists of two 64-bit numbers, a *key* and a *counter*:
+
+* The key decides which numbers the draws give, and draws never change it.
+* The counter counts the *sampling calls* made with the key.
+  A sampling call draws its numbers from a fresh key, which it derives from the key and the counter, and then increments the counter by one.
+
+A *seed* is only a way to choose a random state to start from: `nv_set_seed()` turns the 32-bit integer it is given into a key and sets the counter to 0.
+Without `nv_set_seed()`, the first draw instead builds the key from two uniforms of base R's `runif()`, each scaled to a 32-bit integer, and sets the counter to 0.
+`nv_get_rng_state()` returns a copy of the global random state, an `AnvlRngState`, which prints the key and the counter in hexadecimal:
+
+```{r}
+nv_set_seed(42L)
+nv_get_rng_state()
+```
+
+The seed `42L` gave the key `0x2a`, which is 42 in hexadecimal.
+Draws keep the key and advance the counter: `nv_runif()` makes one sampling call, and `nv_rnorm()` two, one for each of the two batches of uniforms the Box-Muller transform takes.
+
+```{r}
+invisible(nv_runif(1000L))
+nv_get_rng_state()
+invisible(nv_rnorm(3L))
+nv_get_rng_state()
+```
+
+So a seed can only say where a sequence of draws starts, while a random state says where in it the draws are.
+Not every random state starts the sequence of a seed either: the seeds give only $2^{32} - 1$ of the $2^{64}$ keys, one for each R integer, and a key built from base R's RNG is almost never one of them.
+
+The [splitting keys](#splitting-keys) section describes how a sampling call derives its key.
+
 ## Saving and restoring the random state
 
-`nv_get_random_state()` returns a copy of the global random state, a key and a counter, which R holds itself and its `random_key` and `random_counter` return as `AnvlArray`s; `nv_set_random_state()` makes a saved random state the global random state again.
+As `nv_get_rng_state()` returns a copy, the draws after it do not advance it, and `nv_set_rng_state()` makes it the global random state again.
 Where `nv_set_seed()` restarts a sequence from its beginning, the two continue it where it stopped, e.g. to resume a simulation:
 
 ```{r}
 nv_set_seed(42L)
-random_state <- nv_get_random_state()
+random_state <- nv_get_rng_state()
 nv_runif(3L)
-nv_set_random_state(random_state)
+nv_set_rng_state(random_state)
 nv_runif(3L)
-```
-
-Like any R object, the random state can be written to a file with `saveRDS()` and read back with `readRDS()`:
-
-```{r}
-path <- tempfile(fileext = ".rds")
-saveRDS(nv_get_random_state(), path)
-nv_set_random_state(readRDS(path))
-```
-
-The key is fixed by the seed, and the counter counts the *sampling calls* made since, not the values drawn: `nv_runif()` makes one sampling call, and `nv_rnorm()` two, one for each of the two batches of uniforms the Box-Muller transform takes.
-
-```{r}
-nv_set_seed(42L)
-nv_get_random_state()
-invisible(nv_runif(1000L))
-nv_get_random_state()
-invisible(nv_rnorm(3L))
-nv_get_random_state()
 ```
 
 ## Random states of their own
 
-`nv_random_state()` creates a random state of its own, from a seed or, without one, from base R's RNG.
+`nv_rng_state()` creates a random state of its own from a seed.
 `with_nv_rng_state()` and, inside a function, `local_nv_rng_state()` make it the random state the samplers draw from, the counterparts of `with_nv_seed()` and `local_nv_seed()`.
 A random state is a reference object: every draw from it advances it in place, as draws from the global random state advance that, and the global random state is left alone:
 
 ```{r}
 nv_set_seed(1L)
-rng <- nv_random_state(42L)
+rng <- nv_rng_state(42L)
 with_nv_rng_state(rng, nv_runif(3L))
 with_nv_rng_state(rng, nv_runif(3L))
 rng
 # the global random state was not drawn from
-nv_get_random_state()
+nv_get_rng_state()
 ```
 
-A random state of a seed draws what the global random state of the same seed draws, so `nv_random_state(42L)` above drew what `nv_set_seed(42L)` draws.
+A random state of a seed draws what the global random state of the same seed draws, so `nv_rng_state(42L)` above drew what `nv_set_seed(42L)` draws.
 Random states of their own keep apart what should not depend on each other, e.g. one per chain of a simulation, so that adding a draw to one chain does not change the numbers of another.
 
 A compiled function takes a random state as an argument, like any other, and makes it the samplers' random state with `local_nv_rng_state()`:
@@ -134,8 +138,8 @@ step <- jit(function(x, rng) {
   local_nv_rng_state(rng)
   x + nv_rnorm(2L) + nv_runif(2L)
 })
-chain_1 <- nv_random_state(1L)
-chain_2 <- nv_random_state(2L)
+chain_1 <- nv_rng_state(1L)
+chain_2 <- nv_rng_state(2L)
 step(nv_array(c(0, 0)), chain_1)
 step(nv_array(c(0, 0)), chain_2)
 chain_1
@@ -150,20 +154,25 @@ A random state the function takes but never draws from is left as it is:
 ```{r}
 nv_set_seed(1L)
 f <- jit(function(x, rng) x + nv_runif(2L))
-rng <- nv_random_state(3L)
+rng <- nv_rng_state(3L)
 invisible(f(nv_array(c(0, 0)), rng))
 # `nv_runif(2L)` drew from the global random state, not from `rng`
 rng
-nv_get_random_state()
+nv_get_rng_state()
 ```
 
 A compiled function can also draw from a random state it closes over, rather than takes: the program then takes its key and counter as it takes those of the global random state, reading them at every call from the random state the function closed over when it was traced.
 In a compiled function, `local_nv_rng_state()` cannot be called inside the body of a loop: call it before the loop, as the random state it sets reaches the loop bodies after it.
 
-A compiled function must not draw from the same random state as two different ones, though, e.g. one passed to it twice, which would draw the same numbers.
-The [random states passed to a compiled function](#random-states-passed-to-a-compiled-function) section explains how this works.
+A compiled function cannot draw from the same random state as two different ones, though, e.g. one passed to it twice, which would draw the same numbers: the call signals an error and leaves the random state as it was.
+The [random state](internals.html#the-random-state) section of the internals article explains how a compiled function draws from random states, also in loops and branches.
 
-## Compiled and eager code
+## Properties
+
+This section summarizes what to expect from the numbers: how compiled code draws them, how many there are before they repeat, and how independent they are.
+It draws on a statistical analysis of the generator, which ran the random bits through the TestU01 batteries SmallCrush and Crush and through PractRand up to 256 GB, and found no defect.
+
+### Compiled and eager code
 
 A compiled function draws the same numbers as the same code run eagerly, and leaves the global random state where the eager code would leave it:
 
@@ -195,122 +204,34 @@ nv_set_seed(1L)
 nv_runif(2L)
 ```
 
-### Loops and branches
-
-A loop or a branch that samples draws the numbers of the equivalent eager code where it can, but not always.
-The table says, for each construct, by how many sampling calls it advances the global random state, where $N_{\mathrm{body}}$, $N_a$ and $N_b$ are the numbers of sampling calls its body or branches make, and whether it draws the numbers of the equivalent eager code:
-
-| Construct | Advance | Same numbers as eager code |
-|---|---|---|
-| `nv_scan(..., steps = n)` | $n \cdot N_{\mathrm{body}}$ | yes: an R `for` loop over the body |
-| `nv_if(pred, a, b)` | $\max(N_a, N_b)$, whichever branch runs | when $N_a = N_b$ |
-| `nv_while(cond, body)` | $1$, however often the body runs | no |
-
-A loop body draws from a random state of the function around it by closing over it, like any other value of that function.
-A random state cannot be part of a loop's state, the `init` of `nv_while()` or `nv_scan()`, nor of the `xs` of `nv_scan()`: the loop carries the random state itself.
-
-`nv_scan()` draws what the same body called in an R `for` loop draws:
+Within one draw, though, a value depends only on its position, so a smaller draw is the start of a larger one:
 
 ```{r}
-step <- function() nv_runif(1L)
-nv_set_seed(1L)
-jit(function() nv_scan(nv_scalar(0), body = function(carry, x) list(carry = carry, out = step()), steps = 3L)$out)()
-nv_set_seed(1L)
-for (i in 1:3) print(as_array(step()))
+with_nv_seed(1L, nv_runif(3L))
+with_nv_seed(1L, nv_runif(6L))
 ```
-
-`nv_if()` advances the random state by the larger number of sampling calls of its two branches, whichever branch runs, so the draws after it do not depend on which branch ran, and `nv_if(pred, f, f)` draws exactly what `f` draws:
-
-```{r}
-h <- jit(function(pred) nv_if(pred, function() nv_runif(1L), function() nv_rnorm(1L)))
-nv_set_seed(1L)
-invisible(h(TRUE))
-nv_get_random_state()
-nv_set_seed(1L)
-invisible(h(FALSE))
-nv_get_random_state()
-```
-
-`nv_while()` runs its body a number of times that is not known when the function is compiled.
-Its body therefore draws from a random state of its own, and the global random state advances by one, however often the body ran:
-
-```{r}
-walk <- jit(function(n) {
-  nv_while(
-    list(i = 0L, pos = nv_scalar(0)),
-    function(i, pos) i < n,
-    function(i, pos) list(i = i + 1L, pos = pos + nv_rnorm(integer()))
-  )$pos
-})
-for (n in c(1L, 10L, 100L)) {
-  nv_set_seed(1L)
-  walk(n)
-  print(nv_get_random_state())
-}
-```
-
-So the numbers an `nv_while()` loop draws differ from those of the same body run in an R `while` loop.
-Moving a prototype from an R `while` loop to `nv_while()` therefore changes the numbers, as does adding the first sampling call to a loop body that did not make one before.
-
-The function that `gradient()` differentiates runs once, so it advances the random state by its number of sampling calls, like straight-line code.
-Sampling is not possible in the condition of `nv_while()`, nor in the functions of a reduction or a scatter.
-
-## Properties
-
-This section summarizes what to expect from the numbers: how many there are before they repeat, how independent they are, and how precise.
-It draws on a statistical analysis of the generator, which ran the random bits through the TestU01 batteries SmallCrush and Crush and through PractRand up to 256 GB, and found no defect.
 
 ### Period and collisions
 
 The counter of a random state has 64 bits, and every sampling call of a random state draws from a key of its own, distinct from those of all other sampling calls of that random state.
-A random state therefore gives $2^{64}$ sampling calls before its draws repeat, far more than any program makes.
+A random state therefore gives $2^{64}$ sampling calls before its draws repeat.
 
 Keys of *different* random states, though, are not guaranteed to be distinct, and two sampling calls with the same key draw identical bits.
 Like any 64-bit keys, they are likely to coincide somewhere once there are about $2^{32}$ of them in total, by the birthday bound: with $n$ sampling calls spread over many random states, some two of them share a key with probability about $n^2 / 2^{65}$, which is $3 \cdot 10^{-4}$ for $10^8$ calls and 3 % for $10^9$.
-One seed whose random state makes all the calls never repeats a key, so prefer one `nv_set_seed()` followed by all the draws of a simulation over calling `nv_set_seed()` with a new seed for every replicate.
-JAX's generator has the same property.
 
-For the same reason, do not continue with a fork of the random state again and again, e.g. by making the random state that `prim_fork_random_state()` returns the global one in every iteration of a loop: each fork derives its key from the previous one, and such a chain of keys runs into a cycle after about $2^{32}$ forks.
+A *fork* of a random state (`prim_fork_random_state()`, which `nv_while()` uses for its loop body) is a new random state whose key is split off the random state's own.
+Forking a fork again and again chains keys, each derived from the one before, and such a chain runs into a cycle after about $2^{32}$ forks, so avoid it.
 
 ### Without replacement, almost with replacement
 
-Within one draw, no two blocks of 64 random bits are the same (the [how it works](#how-it-works) section explains why), and every value takes a block of its own: a 64-bit value is the block, and a 32-bit or narrower value the xor of its two 32-bit words.
-A draw is thus a sample *without* replacement from an urn of $2^{64}$ balls, where i.i.d. values would be a sample *with* replacement.
-The values the samplers use keep only some of these bits, and throwing bits away is what makes the two almost the same.
-Each value with $w$ bits is a colour that $2^{64 - w}$ balls share, and once every colour has many balls, drawing one ball barely changes the chance of drawing its colour again:
+Every sampler starts from uniforms, and within one draw, every uniform is made from 64 random bits of its own, and no two uniforms are made from the same 64 bits (the [how it works](#how-it-works) section explains why).
+A draw is thus a sample *without* replacement from an urn of $2^{64}$ balls, where i.i.d. uniforms would be a sample *with* replacement.
+A uniform has fewer bits, though: an `f64` uniform takes one of $2^{52}$ values and an `f32` uniform one of $2^{23}$, and fewer bits bring the two closer together.
+A uniform with $w$ bits is a colour that $2^{64 - w}$ balls share, $2^{12}$ for `f64` and $2^{41}$ for `f32`, and once every colour has many balls, drawing one ball barely changes the chance of drawing its colour again:
 
 ```{r, echo = FALSE, out.width = "100%"}
 knitr::include_graphics("figures/rng-urn.png")
 ```
-
-Only statistics built on repeated values, such as counts of ties, can see this, and even they hardly can: counting the repeats of `f64` uniforms in the largest possible draws reveals the shortfall only after about $6 \cdot 10^{14}$ values.
-Throwing bits away does not remove the dependence, though; it buries it among the repeats that $2^w$ values have anyway.
-The correlation between any function of the value at one position and the same function of the value at another is $-1 / (2^{64} - 1)$, whatever $w$.
-This leaves Monte Carlo averages exactly unbiased, and makes their variance smaller than for i.i.d. values by the factor $(2^{64} - n) / (2^{64} - 1)$, so the usual standard errors are conservative, by less than $10^{-10}$.
-Draws of different sampling calls use different keys, so this dependence is confined to a single draw.
-
-### `f32` and `f64`
-
-The default float data type is `f32` (see `default_dtypes()`), and an `f32` uniform is exactly uniform on a grid of only $2^{23} \approx 8.4$ million equally spaced values, where an `f64` uniform takes $2^{52}$ values.
-Where samples are many, or where their tails matter, the coarse `f32` grid shows, as the figure below illustrates:
-
-* *Ties.* Among $10^6$ `f32` uniforms, 5.7 % repeat an earlier one, against about 0.01 % for base R's `runif()`, whose grid has $2^{32}$ values, and none for `f64`.
-* *Tails.* `nv_rnorm()` uses the Box-Muller transform, whose radius $\sqrt{-2 \log U}$ cannot exceed $\sqrt{-2 \log 2^{-23}} = 5.65$ for `f32`.
-  An `f32` normal is never larger than that in absolute value, and the tail before it is too thin already: beyond $5.45$ (the genome-wide significance threshold of $5 \cdot 10^{-8}$) it has only 64 % of the mass of $N(0, 1)$.
-  For `f64` the limit is $8.49$, and the tails match $N(0, 1)$.
-* *Shifted intervals.* `nv_runif(n, 1e6, 1e6 + 1)` at `f32` takes only 17 distinct values, and returns the end points of the interval, because the scaled and shifted uniform is rounded to the coarser grid of floats around $10^6$.
-
-```{r, echo = FALSE, out.width = "100%"}
-knitr::include_graphics("figures/rng-f32-cost.png")
-```
-
-For simulations whose results depend on such details, draw at `f64`, either per call with `dtype = "f64"` or for all calls by making it the default float:
-
-```{r, eval = FALSE}
-options(anvl.default_dtypes = c(float = "f64", int = "i32"))
-```
-
-`nv_rbinom()`, `nv_sample_int()` and `nv_sample()` always draw `f64` uniforms internally, whatever the default float.
 
 ## How it works
 
@@ -327,41 +248,13 @@ In the future, we might add support for other generators as well.
 
 ThreeFry is a *block cipher*.
 For a fixed key $k$, $\mathrm{TF}_k$ maps 64 bits to 64 bits, and it can be inverted: it is a permutation of the $2^{64}$ blocks of 64 bits, and without the key, its output looks random.
-JAX's documentation calls this hashing, but it is a permutation and not a hash, and some properties of the generator rest on that, such as the one in the [without replacement, almost with replacement](#without-replacement-almost-with-replacement) section.
-
-Block ciphers are usually used for encryption, and AES is the best known one.
-On its own, a block cipher encrypts only a single block, so in practice it is a building block, used in a few standard ways:
-
-- *Encrypting messages of any length*, through a *mode of operation*.
-  In counter (CTR) mode, for example, the cipher encrypts the counters $0, 1, 2, \ldots$ and the result is xor'd into the message.
-  AES-GCM, counter mode with a check that the message has not been tampered with, encrypts most of the traffic of HTTPS.
-- *Authentication codes*: a short tag computed with the key that proves that a message is unaltered.
-- *Building hash functions*: the core of SHA-256 is a block cipher, and that of the Skein hash function is the Threefish block cipher.
-- *Generating random numbers*: encrypting a counter gives a cryptographically secure generator, which is how NIST's standard CTR_DRBG works with AES.
-
-A counter-based generator such as ThreeFry is counter mode without the message: the encrypted counters are the random bits themselves.
-ThreeFry is derived from Threefish, but with far fewer rounds (20 instead of 72) and a simpler key schedule [@salmon2011parallel].
-It trades cryptographic strength for speed and makes no claim of security; its quality rests on statistical tests such as TestU01's BigCrush, which it passes.
 
 ### Splitting keys
 
-A generator is *splittable* if it can derive new, independent keys from a key, so that separate computations can draw from one seed without coordinating with each other.
-@claessen2013splittable showed how to build one from a cryptographic hash: a new key is the hash of the key together with the new key's position.
-Their generator uses the Threefish-256 block cipher, and splits lazily: a split only appends a bit to a path of splits, and the path is hashed into a new key once it is full.
+A generator is *splittable* if it can derive new, independent keys from a key, so that separate computations can draw from one seed without coordinating with each other; see @claessen2013splittable for more on splittable generators.
 
-JAX's default generator builds on the same idea, with ThreeFry-2x32 [@jax2018github]; JAX also offers others, such as Philox, which {anvl} does not.
-Its `fold_in(key, n)` derives a key by encrypting the 32-bit integer $n$ under the key, and its experimental stateful generator, `jax.experimental.random.stateful_rng()`, derives the key of its $n$-th sampling call as `fold_in(key, n)` and then increments $n$.
-The global random state of {anvl} is such a generator, and with JAX's default settings (`jax_threefry_partitionable` on, the default since JAX 0.5.0, and `jax_enable_x64` off) it derives JAX's keys and draws JAX's bits:
-
-- a seed $s$, a 32-bit integer, gives the key of JAX's `jax.random.key(s)`, the 32-bit words $0$ and $s \bmod 2^{32}$;
-- the $c$-th sampling call of a random state with the key $k$ draws from the key $\mathrm{TF}_k(c)$, the counter encrypted with its high 32-bit word first, which is JAX's `fold_in(k, c)` for $c < 2^{32}$;
-- a draw of an unsigned integer data type from that key is JAX's `jax.random.bits(k', shape, dtype)` (for `"ui64"`, with `jax_enable_x64` on).
-
-The tests of {anvl} check these against values computed with JAX.
-The two differ in the counter and in the samplers.
-JAX's `fold_in()` takes only 32 bits, and `stateful_rng()` and the `Rngs` of Flax's NNX count in 32 bits, so their keys repeat after $2^{32}$ sampling calls, where the 64-bit counter of {anvl} keeps deriving new keys: for every $c$, its key of the $c$-th sampling call is the $c$-th key of JAX's `split(k, c + 1)`.
-Of the samplers, only `nv_runif()` gives the numbers of JAX's `uniform()`, apart from a uniform of exactly $0$, which it replaces by $2^{-24}$ (`f32`) or $2^{-53}$ (`f64`), and an invalid interval, for which it returns `NaN`.
-`nv_rnorm()` uses the Box-Muller transform and two sampling calls, where JAX's `normal()` inverts the normal distribution function and makes one, and `nv_sample_int()` is not JAX's `randint()`.
+{anvl} -- following the implementation of JAX -- is such a generator: it splits the key $k$ at the position $c$ into the new key $\mathrm{TF}_k(c)$, the position encrypted under the key.
+A random state is a key together with the position of its next split, the counter: every sampling call splits the key at the counter and increments the counter.
 
 The figure below shows the keys that the global random state derives for this short program:
 
@@ -369,13 +262,11 @@ The figure below shows the keys that the global random state derives for this sh
 nv_set_seed(1L)
 nv_runif(3L)
 nv_rnorm(2L)
-nv_while(...) # a loop whose body draws one value per iteration, run twice
 nv_runif(2L)
 ```
 
 Each sampling call splits the global random state at its counter into a fresh key, and draws a 64-bit block from it per value; `nv_rnorm()` makes two such calls.
-`nv_while()` splits it once as well, but makes the fresh key the start of a random state of its own, which the iterations of the loop split in turn.
-A key is either split or drawn from, never both: otherwise, a derived key could coincide with bits that were handed out as random numbers.
+A key is either split or drawn from, never both.
 Wrapping code in `jit()` does not change the keys.
 
 ```{r, echo = FALSE, out.width = "100%"}
@@ -386,79 +277,14 @@ The figure below shows the same program from the side of the keys.
 A key does not step through states: it fixes one sequence of 64-bit blocks, $x^k_0, x^k_1, x^k_2, \ldots$, where $x^k_t = \mathrm{TF}_k(t)$, and the same key always gives the same sequence.
 Splitting takes an entry of a key's sequence as a new key, and generating reads a key's sequence from its start, one entry per value.
 A sampling call does both, to two different keys: it splits the global key and generates from the new key.
-A fork only splits, and leaves the new key's sequence to be split again, once by each sampling call of the loop body.
 
 ```{r, echo = FALSE, out.width = "100%"}
 knitr::include_graphics("figures/rng-key-sequences.png")
 ```
 
-### Random states and sampling calls
-
-A *random state* is a pair $(k, c)$ of a key and a counter, two 64-bit unsigned integers.
-`nv_set_seed(s)` makes the global random state $(k_s, 0)$, where $k_s$ is the key JAX's `jax.random.key(s)` gives with its default settings.
-
-Every sampler is built from calls of the primitive `prim_sample_bits()`, the *sampling calls*.
-A sampling call on the random state $(k, c)$
-
-1. *splits* it: it derives the fresh key $k' = \mathrm{TF}_k(c)$, for $c < 2^{32}$ JAX's `fold_in(k, c)`;
-2. draws its values from $k'$ as JAX's `jax.random.bits()` does: the value at position $t$, counted in row-major order, is made from the encrypted block $\mathrm{TF}_{k'}(t)$ alone; a 64-bit value is the block, its two 32-bit words the high and the low half, and a narrower value the xor of the two words, keeping its low bits;
-3. advances the random state to $(k, c + 1)$, however many values it drew.
-
-The global key $k$ itself is only ever used to derive keys, never to draw values.
-For a fixed key, $\mathrm{TF}_k$ is a permutation, so the keys of the sampling calls of one random state are distinct until the counter wraps around after $2^{64}$ calls, and the positions of a draw get distinct 64-bit blocks; the [properties](#properties) section draws the consequences.
-A sampler's number of sampling calls is part of what it draws: if a sampler made more or fewer of them, every draw after it would change.
-
-A block per value takes twice as many encryptions for 32-bit and narrower values as making a value of each of a block's two words would.
-{anvl} takes a block per value nonetheless, as JAX does by default, because the value at a position then depends on the key and the position alone, not on the size of the draw, so that a smaller draw is the start of a larger one:
-
-```{r}
-with_nv_seed(1L, nv_runif(3L))
-with_nv_seed(1L, nv_runif(6L))
-```
-
-With a value of each word, the values after the first $\lceil n / 2 \rceil$ would be the second words of the blocks, and so change with the size $n$ of the draw.
-A block per value also lets a draw be computed in pieces, e.g. spread over devices, each knowing only its own positions, and it makes the bits, and with them the uniforms, those of JAX, so that the draws of {anvl} can be checked against JAX's.
-
-How a compiled function knows the counters of its sampling calls, and how loops and branches advance the random state, is the subject of the [random state](side-effects.html#the-random-state) section of the side effects article.
-
-### Random states passed to a compiled function
-
-A random state of its own is drawn from in the same way as the global one: the program takes its key and counter, the $j$-th sampling call from it splits at its counter plus $j$, and after the call {anvl} advances it in place by the number of sampling calls the program made from it.
-What differs is how the program gets to the random state of the call.
-
-The arguments of a compiled function are taken apart into their leaves, the values the program takes as inputs, and a random state is registered as a node of that tree whose one leaf is its words, the four 32-bit numbers R holds, as R data (see `pjrt::register_tree_node()`).
-So a random state among the arguments is one ordinary input, of the same type and shape whichever random state is passed, and the function is compiled only once for all of them; like other R data among the arguments, the call uploads it to the device of the other inputs.
-The program computes the key and the counter from it, and while it is traced, the function is given an `AnvlRandomState` that stands for them, which a sampler in the scope of `local_nv_rng_state()` of it draws from.
-The trace keeps that random state apart from the global one and from any other passed: each has its own inputs and counts its own sampling calls, so a function can draw from the global random state and from several random states of its own:
-
-```{r}
-nv_set_seed(1L)
-draw <- jit(function(a, b) {
-  list(nv_runif(1L), with_nv_rng_state(a, list(nv_runif(1L), nv_rnorm(1L))), with_nv_rng_state(b, nv_runif(1L)))
-})
-a <- nv_random_state(2L)
-b <- nv_random_state(3L)
-invisible(draw(a, b))
-# one sampling call from the global random state, three from `a`, one from `b`
-nv_get_random_state()
-a
-b
-```
-
-After the program has run, the dispatcher hands the arguments of the call back to {anvl}, which finds each random state the program drew from among them, by its place among the random states that flattening the arguments meets, and advances it.
-A random state the function closes over is not among its inputs: the program takes its key and counter as it takes those of the global random state, which it reads from it before every call, and {anvl} advances it after the call.
+For a fixed key, $\mathrm{TF}_k$ is a permutation, so the entries of a key's sequence are distinct: the sampling calls of one random state get distinct keys until its counter wraps around after $2^{64}$ calls, and the values of one draw distinct blocks, which the [properties](#properties) section builds on.
 
 ### From bits to numbers
 
-Every sampler starts from uniforms on $[0, 1)$, which it builds from random bits as the figure below shows.
-A sampling call first derives a fresh key $k'$ from the random state.
-It then encrypts the blocks $t = 0, 1, 2, \ldots$ under $k'$, one per uniform, each 64 random bits, two 32-bit words $y_0$ and $y_1$.
-An `f32` uniform takes the xor of its block's two words, $y_0 \oplus y_1$, and of its 32 bits keeps the top 23 and throws the other 9 away.
-The 23 bits are an integer $m$, which becomes the mantissa of a float whose exponent is that of $1.0$: the float is $1 + m \, 2^{-23}$, and subtracting $1$ gives the uniform $U = m \, 2^{-23}$.
-An `f64` uniform keeps the top 52 of its block's 64 bits in the same way.
-Both are the uniforms JAX's `uniform()` computes.
-This is where the grids of the [`f32` and `f64`](#f32-and-f64) section come from, and the $w$ bits of a value in the [without replacement, almost with replacement](#without-replacement-almost-with-replacement) section.
-
-```{r, echo = FALSE, out.width = "100%"}
-knitr::include_graphics("figures/rng-bits-to-uniform.png")
-```
+Every sampler starts from uniforms on $[0, 1)$, each made from the 64-bit block of its position: an `f64` uniform reads the block's top 52 bits as an integer $m$ and is $m \, 2^{-52}$, and an `f32` uniform reads the top 23 bits of the xor of the block's two 32-bit words and is $m \, 2^{-23}$.
+These are the $w$ bits of the [without replacement, almost with replacement](#without-replacement-almost-with-replacement) section.

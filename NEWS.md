@@ -17,7 +17,7 @@
 * New functions for the exponential distribution: `nv_{d,p,q}exp()`.
 * A side effects mechanism was added to anvl, which drives the RNG
   handling and provides a basis for more side effects in the future.
-  See the side effects article for more details.
+  See the side effects section of the internals article for more details.
 * Registering custom classes that can be (un-)flattened is now supported
   via `pjrt::register_tree_node()`.
 

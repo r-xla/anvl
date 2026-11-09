@@ -4,7 +4,7 @@ describe("desc_view", {
     expect_length(graph$side_effects, 1L)
     view <- graph$side_effects[[1L]]
     expect_true(identical(view$effect, global_random_state_handle))
-    expect_named(view$inputs, c("random_key", "random_counter"))
+    expect_named(view$inputs, c("key", "counter"))
     expect_identical(lapply(view$value, `[[`, "gnode"), view$inputs)
     expect_identical(view$n, 2)
     # the program hands back its count, not a value
@@ -78,7 +78,7 @@ describe("desc_use_side_effect", {
 describe("is_side_effect", {
   it("is TRUE for the handles of random states, and not for the random states", {
     expect_true(is_side_effect(global_random_state_handle))
-    expect_false(is_side_effect(nv_random_state(1L)))
+    expect_false(is_side_effect(nv_rng_state(1L)))
   })
 })
 
@@ -92,13 +92,13 @@ describe("side_effects_on_success", {
       \(a, b) {
         list(with_nv_rng_state(a, prim_sample_bits(1L, "ui32")), with_nv_rng_state(b, prim_sample_bits(1L, "ui32")))
       },
-      list(nv_random_state(1L), nv_random_state(2L))
+      list(nv_rng_state(1L), nv_rng_state(2L))
     )
-    rng <- nv_random_state(1L)
+    rng <- nv_rng_state(1L)
     on_success <- side_effects_on_success(graph)
     expect_error(on_success(list(), list(rng, rng)), "passed to the jitted function twice")
     expect_identical(state_words(rng)[[3L]], 0)
-    on_success(list(), list(rng, nv_random_state(2L)))
+    on_success(list(), list(rng, nv_rng_state(2L)))
     expect_identical(state_words(rng)[[3L]], 1)
   })
 

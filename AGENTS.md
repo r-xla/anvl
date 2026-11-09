@@ -131,7 +131,7 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 ## Side Effects
 
 A side effect is state outside the traced function that primitives read and update; currently
-only the random state. The side effects article describes the mechanism.
+only the random state. The side effects section of the internals article describes the mechanism.
 
 - **One kind, counted uses.** A side effect is changed by its uses in a way the trace knows, so a
   trace counts its uses and hands back the count, which the host adds after the run without
@@ -139,7 +139,7 @@ only the random state. The side effects article describes the mechanism.
   and returns, is planned; the mechanism once supported one (`git log -S side_effect_receive`).
 - **Three parts.**
   - The *handle* is the side effect's identity and never changes. Its class inherits from
-    `SideEffect`; for the random state it is an `AnvlRandomStateHandle`, see the top of
+    `SideEffect`; for the random state it is an `AnvlRngStateHandle`, see the top of
     `R/rng-trace.R`.
   - The optional *host object* is the state between calls, e.g. `globals$random_state`.
   - There is one *view* per trace that uses it (`SideEffectView()`, in `desc$side_effects`): its
@@ -155,9 +155,10 @@ only the random state. The side effects article describes the mechanism.
   run). `R/rng-trace.R` implements them for the random state; `R/rng.R` holds the user API and the
   random state as R holds it.
 - **The random state.** A jitted function can draw from the global random state, a random state
-  it takes as an argument, or one it closes over. In a trace it is an `AnvlRandomState` too, whose
-  `random_key` / `random_counter` read the trace's view. After a run, an argument's random state is
-  found by its place among the random states `pjrt::flatten()` meets (`random_state_argument()`).
+  it takes as an argument, or one it closes over. In a trace, one it takes as an argument is an
+  `AnvlRngState` of its handle alone (`traced_random_state()`). After a run, an argument's
+  random state is found by its place among the random states `pjrt::flatten()` meets
+  (`random_state_argument()`).
 - **Restrictions.** A random state cannot be part of a loop's state (`abort_if_side_effects()`),
   and `local_nv_rng_state()` does not work inside a loop body (`in_loop_body()`). The default it
   sets lives on the descriptor (`desc$default_random_state`), which traces opened in it find

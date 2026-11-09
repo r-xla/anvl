@@ -354,7 +354,7 @@ describe("prim_if", {
   })
 
   it("leaves the random state a branch draws from undifferentiated", {
-    local_nv_seed(NULL)
+    local_nv_seed(1L)
     f <- function(p, x) {
       a <- nv_if(
         p,

@@ -48,8 +48,8 @@ with_nv_seed(42L, nv_sample_int(6, 6L))
 Other rng:
 \code{\link[=local_nv_rng_state]{local_nv_rng_state()}},
 \code{\link{nv_normal}},
-\code{\link[=nv_random_state]{nv_random_state()}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
+\code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample]{nv_sample()}},
 \code{\link[=nv_set_seed]{nv_set_seed()}},
 \code{\link{nv_uniform}}

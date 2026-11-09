@@ -158,11 +158,11 @@ describe("nv_runif", {
     # for any other interval.
     advanced <- with_nv_seed(1L, {
       nv_runif(c(2, 3), min = 5, max = 5)
-      nv_get_random_state()
+      nv_get_rng_state()
     })
     plain <- with_nv_seed(1L, {
       nv_runif(c(2, 3))
-      nv_get_random_state()
+      nv_get_rng_state()
     })
     expect_identical(state_words(advanced), state_words(plain))
     expect_shape(out, c(2L, 3L))

@@ -8,8 +8,8 @@ prim_fork_random_state()
 }
 \value{
 (\code{list()})\cr
-The child random state: \code{random_key}, its key, a \code{"ui32"} array of shape
-\code{2}, and \code{random_counter}, its counter, a \code{"ui64"} scalar \code{0}.
+The child random state: \code{key}, a \code{"ui32"} array of shape \code{2}, and
+\code{counter}, a \code{"ui64"} scalar \code{0}.
 }
 \description{
 Splits the active random state \eqn{(k, c)} (see \code{\link[=nv_set_seed]{nv_set_seed()}}) like a

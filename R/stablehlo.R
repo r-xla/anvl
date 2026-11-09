@@ -57,10 +57,10 @@ env_get <- function(env, gval) {
 #' as the key and the counter of the global random state, see [nv_set_seed()]),
 #' and the phantom donated inputs (when `donate_unaliased_outputs = TRUE`), one
 #' per output that is not already aliased to a donated input, in the order of
-#' the outputs. Its results are the graph's outputs, followed by the values the
-#' graph returns for its side effects: a side effect that the program changes
-#' at run time returns its last value, while a random state returns none, as the
-#' host advances it by the number of draws (see `r roxy_article("side-effects")`).
+#' the outputs. Its results are the graph's outputs alone: it returns no value
+#' for a side effect, as the host advances it after the run by the number of
+#' its uses, e.g. the random state by the number of draws (see the side effects
+#' section of `r roxy_article("internals")`).
 #'
 #' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr

@@ -17,11 +17,9 @@ NULL
 # After the run, R advances each random state by the draws the program made from
 # it.
 #
-# What the traced function holds of a random state is an `AnvlRandomState` too:
+# What the traced function holds of a random state is an `AnvlRngState` too:
 # the one R holds, which it closes over, or, for one it received as an argument,
-# one of the handle alone (`traced_random_state()`). Either reads its key and
-# its counter where the trace is, after the draws so far
-# (`random_state_current()`).
+# one of the handle alone (`traced_random_state()`).
 #
 # `local_nv_rng_state()` makes a random state the default of the trace under
 # way, and of the traces opened in it (`active_random_state()`).
@@ -32,7 +30,7 @@ NULL
 # `counter` and `ordinal`. A handle is a list, which `identical()` compares by
 # its fields, and never changes.
 new_random_state_handle <- function(...) {
-  structure(list(...), class = c("AnvlRandomStateHandle", "SideEffect"))
+  structure(list(...), class = c("AnvlRngStateHandle", "SideEffect"))
 }
 
 # The global random state in every trace, which the samplers draw from unless
@@ -56,10 +54,7 @@ is_traced_random_state <- function(x) {
 traced_random_state <- function(handle) {
   x <- new.env(parent = emptyenv())
   x$handle <- handle
-  for (name in names(random_state_fields)) {
-    makeActiveBinding(name, random_state_binding(x, name), x)
-  }
-  structure(x, class = "AnvlRandomState")
+  structure(x, class = "AnvlRngState")
 }
 
 # The random state a jitted function receives for one among its arguments, of
@@ -73,9 +68,9 @@ traced_random_state <- function(handle) {
 # the order `pjrt::flatten()` meets them in (see `random_state_argument()`).
 argument_random_state <- function(words) {
   desc <- current_descriptor()
-  words <- materialize_rdata(words, random_state_dtype("random_key"))
+  words <- materialize_rdata(words, random_state_dtype("key"))
   key <- prim_static_slice(words, 1L, 2L, 1L)
-  counter <- prim_bitcast_convert(prim_static_slice(words, 3L, 4L, 1L), random_state_dtype("random_counter"))
+  counter <- prim_bitcast_convert(prim_static_slice(words, 3L, 4L, 1L), random_state_dtype("counter"))
   handle <- new_random_state_handle(
     key = key$gnode,
     counter = counter$gnode,
@@ -95,7 +90,7 @@ argument_random_state <- function(words) {
 # is. Registered when anvl is loaded.
 register_random_state_node <- function() {
   pjrt::register_tree_node(
-    "AnvlRandomState",
+    "AnvlRngState",
     # a random state has no aux data: its children are all of it
     flatten = function(x) {
       found <- globals$found_random_states
@@ -120,24 +115,14 @@ register_random_state_node <- function() {
         random_state_of_words(as.vector(children$words))
       }
     },
-    repr = function(children, aux) sprintf("AnvlRandomState(%s)", paste(children, collapse = ", "))
+    repr = function(children, aux) sprintf("AnvlRngState(%s)", paste(children, collapse = ", "))
   )
-}
-
-# The key and the counter of the random state of the handle `handle` in the
-# trace under way: those of its view there, the counter after the trace's draws.
-random_state_current <- function(handle) {
-  desc <- current_descriptor(silent = TRUE)
-  if (is.null(desc)) {
-    cli_abort("The random state of a traced function cannot be read after its trace.")
-  }
-  view_current(desc_view(desc, handle))
 }
 
 # The value of a random state in a trace, of the boxes `key` and `counter`,
 # labelled for printing.
 random_state_value <- function(key, counter) {
-  list(random_key = label_box(key, "key"), random_counter = label_box(counter, "counter"))
+  list(key = label_box(key, "key"), counter = label_box(counter, "counter"))
 }
 
 # `box`, with its node labelled `label` (see `GraphValue()`) unless it has a
@@ -180,7 +165,7 @@ in_loop_body <- function(desc) {
 # one the traced function closes over as implicit inputs, and those of a random
 # state passed as an argument from among its inputs, which it must be among.
 #' @export
-side_effect_start.AnvlRandomStateHandle <- function(effect, desc) {
+side_effect_start.AnvlRngStateHandle <- function(effect, desc) {
   if (is.null(effect$ordinal)) {
     inputs <- lapply(random_state_fields, function(field) {
       GraphValue(AbstractArray(dtype = field$dtype, shape = field$shape), label = field$label)
@@ -197,7 +182,7 @@ side_effect_start.AnvlRandomStateHandle <- function(effect, desc) {
 }
 
 #' @export
-side_effect_host_object.AnvlRandomStateHandle <- function(effect, args) {
+side_effect_host_object.AnvlRngStateHandle <- function(effect, args) {
   if (!is.null(effect$ordinal)) {
     random_state_argument(args, effect$ordinal)
   } else {
@@ -206,44 +191,44 @@ side_effect_host_object.AnvlRandomStateHandle <- function(effect, args) {
 }
 
 #' @export
-side_effect_input.AnvlRandomStateHandle <- function(effect, object, name) {
+side_effect_input.AnvlRngStateHandle <- function(effect, object, name) {
   random_state_buffer(object, name)
 }
 
 # A draw splits at the counter plus the draws before it, so that no draw waits
 # for another.
 #' @export
-side_effect_after.AnvlRandomStateHandle <- function(effect, value, n) {
-  random_state_value(value$random_key, counter_plus(value$random_counter, n))
+side_effect_after.AnvlRngStateHandle <- function(effect, value, n) {
+  random_state_value(value$key, counter_plus(value$counter, n))
 }
 
 # The fork: a call of `prim_fork_random_state()` that gives a child random
 # state, which a loop body advances as often as it runs.
 #' @export
-side_effect_fork.AnvlRandomStateHandle <- function(effect, value) {
+side_effect_fork.AnvlRngStateHandle <- function(effect, value) {
   out <- graph_desc_add(prim_fork_random_state, value, infer_fn = infer_fork_random_state)
   random_state_value(out[[1L]], out[[2L]])
 }
 
 # After a run, R advances the counter by the draws the program made.
 #' @export
-side_effect_advance.AnvlRandomStateHandle <- function(effect, object, n) {
+side_effect_advance.AnvlRngStateHandle <- function(effect, object, n) {
   object$words[3:4] <- counter_words_plus(object$words[3:4], n)
   invisible(NULL)
 }
 
 #' @export
-side_effect_format.AnvlRandomStateHandle <- function(effect, ids, n) {
-  sprintf("%s += %s", ids[["random_counter"]], format(n))
+side_effect_format.AnvlRngStateHandle <- function(effect, ids, n) {
+  sprintf("%s += %s", ids[["counter"]], format(n))
 }
 
 #' @export
-format.AnvlRandomStateHandle <- function(x, ...) {
-  "<AnvlRandomStateHandle>"
+format.AnvlRngStateHandle <- function(x, ...) {
+  "<AnvlRngStateHandle>"
 }
 
 #' @export
-print.AnvlRandomStateHandle <- function(x, ...) {
+print.AnvlRngStateHandle <- function(x, ...) {
   cat(format(x), "\n", sep = "")
   invisible(x)
 }

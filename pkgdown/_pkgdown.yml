@@ -67,8 +67,6 @@ navbar:
       - text: Other
       - text: Internals
         href: articles/internals.html
-      - text: Side Effects
-        href: articles/side-effects.html
       - text: Available Primitives
         href: articles/primitives.html
 
@@ -339,7 +337,7 @@ reference:
     desc: Seeding, saving and restoring the global random state the samplers draw from
     contents:
       - nv_set_seed
-      - nv_random_state
+      - nv_rng_state
       - local_nv_rng_state
 
   - subtitle: Utilities

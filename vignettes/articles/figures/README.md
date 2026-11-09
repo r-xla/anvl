@@ -9,7 +9,6 @@ with
 pdflatex rng-key-tree.tex && pdftocairo -png -r 300 -singlefile rng-key-tree.pdf rng-key-tree
 ```
 
-`rng-f32-cost.tex` reads curves that `Rscript rng-f32-data.R` writes; run it
-first. The numbers in the `rng-*` figures come from the analysis in
+The numbers in the `rng-*` figures come from the analysis in
 `rng-analysis/` of the [anvl-bench](https://github.com/r-xla/anvl-bench)
 repository.

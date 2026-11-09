@@ -57,7 +57,7 @@ describe("the functions a lowering builds once", {
       prim_sample_bits(2L, "ui32"),
       prim_sample_bits(c(2L, 3L), "ui32"),
       prim_sample_bits(2L, "ui64"),
-      prim_fork_random_state()$random_key
+      prim_fork_random_state()$key
     )
   }
 

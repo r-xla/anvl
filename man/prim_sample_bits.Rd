@@ -49,18 +49,18 @@ place.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_get_random_state()
+nv_get_rng_state()
 prim_sample_bits(2L, "ui32")
 # The counter is incremented by 1
-nv_get_random_state()
+nv_get_rng_state()
 # A random state of its own is drawn from within with_nv_rng_state():
-custom_rng <- nv_random_state(1L)
+custom_rng <- nv_rng_state(1L)
 custom_rng
 with_nv_rng_state(custom_rng, prim_sample_bits(2L, "ui32"))
 # And it is still updated
 custom_rng
 # And does not affect the global RNG
-nv_get_random_state()
+nv_get_rng_state()
 \dontshow{\}) # examplesIf}
 }
 \references{

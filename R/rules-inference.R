@@ -1866,14 +1866,14 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
-infer_sample_bits <- function(random_key, random_counter, shape, dtype) {
+infer_sample_bits <- function(key, counter, shape, dtype) {
   shape <- assert_shapevec(shape)
   dtype <- assert_dtype_param(dtype, categories = "uint")
   list(AbstractArray(dtype = dtype, shape = Shape(shape)))
 }
 
-infer_fork_random_state <- function(random_key, random_counter) {
-  list(random_key, random_counter)
+infer_fork_random_state <- function(key, counter) {
+  list(key, counter)
 }
 
 infer_cholesky <- function(x, lower) {

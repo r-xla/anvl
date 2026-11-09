@@ -10,8 +10,8 @@ local_nv_rng_state(rng_state, envir = parent.frame())
 with_nv_rng_state(rng_state, code)
 }
 \arguments{
-\item{rng_state}{(\code{AnvlRandomState})\cr
-The random state to draw from, as \code{\link[=nv_random_state]{nv_random_state()}} returns.}
+\item{rng_state}{(\code{AnvlRngState})\cr
+The random state to draw from, as \code{\link[=nv_rng_state]{nv_rng_state()}} returns.}
 
 \item{envir}{(\code{environment})\cr
 The scope whose exit restores the default from before.}
@@ -34,7 +34,7 @@ Outside of \code{\link[=jit]{jit()}}, \code{rng_state} is the global random stat
 In a function traced by \code{\link[=jit]{jit()}}, the samplers in the scope draw from
 \code{rng_state}, also in the bodies of loops, and the call advances it
 afterwards: a random state the jitted function takes as an argument, or one
-it closes over (see \code{\link[=nv_random_state]{nv_random_state()}}). It can be called in a branch of
+it closes over (see \code{\link[=nv_rng_state]{nv_rng_state()}}). It can be called in a branch of
 \code{\link[=nv_if]{nv_if()}} or a function \code{\link[=gradient]{gradient()}} differentiates, such as a jitted
 function called there, but not in the body of \code{\link[=nv_while]{nv_while()}} or \code{\link[=nv_scan]{nv_scan()}},
 nor in a function traced inside one: called before the loop, it reaches the
@@ -43,7 +43,7 @@ are called outside of \code{\link[=jit]{jit()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-rng <- nv_random_state(1L)
+rng <- nv_rng_state(1L)
 with_nv_rng_state(rng, list(nv_runif(2L), nv_rnorm(2L)))
 # both samplers drew from `rng`, three sampling calls in all
 rng
@@ -60,8 +60,8 @@ rng
 \seealso{
 Other rng:
 \code{\link{nv_normal}},
-\code{\link[=nv_random_state]{nv_random_state()}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
+\code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample]{nv_sample()}},
 \code{\link[=nv_sample_int]{nv_sample_int()}},
 \code{\link[=nv_set_seed]{nv_set_seed()}},

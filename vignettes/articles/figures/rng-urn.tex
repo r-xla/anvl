@@ -1,5 +1,5 @@
-% The positions of a draw get distinct 64-bit blocks: a draw without replacement
-% from an urn. Throwing bits away gives every value many balls, which makes
+% The values of a draw are made from distinct 64 random bits: a draw without
+% replacement from an urn. Fewer bits give every value many balls, which makes
 % drawing without replacement almost the same as drawing with replacement.
 % Build: see figures/README.md
 \documentclass[tikz, border = 6pt]{standalone}
@@ -51,7 +51,7 @@
 \begin{tikzpicture}[font = \small]
 
   % ---- (a) keep all 64 bits ---------------------------------------------
-  \node[title] at (1.45, 4.5) {All bits kept\\[-1pt]\footnotesize every value once};
+  \node[title] at (1.45, 4.5) {All 64 bits\\[-1pt]\footnotesize every value once};
   \urn{0}{0}{1}{c1, c2, c3, c4, c5, c6, c7, c8}{2}
   \node[note] at (1.45, -0.75)
     {$P(\text{next ball same colour})$\\[2pt]
@@ -59,7 +59,7 @@
      with replacement: $1/8$};
 
   % ---- (b) a few balls per colour ---------------------------------------
-  \node[title] at (6.45, 4.5) {Some bits thrown away\\[-1pt]\footnotesize every value twice};
+  \node[title] at (6.45, 4.5) {Fewer bits\\[-1pt]\footnotesize every value twice};
   \urn{5}{0}{1}{c1, c1, c2, c2, c3, c3, c4, c4}{0}
   \node[note] at (6.45, -0.75)
     {$P(\text{next ball same colour})$\\[2pt]
@@ -67,7 +67,7 @@
      with replacement: $1/4 = 0.25$};
 
   % ---- (c) many balls per colour ----------------------------------------
-  \node[title] at (11.45, 4.5) {More bits thrown away\\[-1pt]\footnotesize every value 10 times};
+  \node[title] at (11.45, 4.5) {Even fewer bits\\[-1pt]\footnotesize every value 10 times};
   \urn{10}{0}{5}{%
     c1, c1, c2, c2, c3, c3, c4, c4,
     c1, c1, c2, c2, c3, c3, c4, c4,
@@ -82,10 +82,10 @@
   % ---- in anvl ----------------------------------------------------------
   \node[font = \small, align = left, anchor = north west, text width = 14.6cm]
     at (-0.3, -1.85) {%
-    \textbf{In anvl}, the $2^{64}$ balls are the 64-bit blocks the block cipher can output, and a draw
+    \textbf{In anvl}, the $2^{64}$ balls are the values that 64 random bits can take, and a draw
     takes them without replacement.
-    A value with $w$ bits is a colour with $K = 2^{64 - w}$ balls, so two positions
-    of a draw get the same value with probability
+    A uniform with $w$ bits is a colour with $K = 2^{64 - w}$ balls, so two positions
+    of a draw get the same uniform with probability
     \[
       \frac{K - 1}{2^{64} - 1} \quad\text{instead of}\quad 2^{-w},
       \qquad\text{a shortfall of a fraction}\quad
@@ -93,11 +93,9 @@
     \]
     \renewcommand{\arraystretch}{1.15}%
     \begin{tabular}{@{}lccl@{}}
-      value & bits kept $w$ & balls per value $K$ & fewer repeats than i.i.d.\ by \\ \hline
-      \texttt{ui64}   & 64 & 1         & all of them: a draw never repeats a value \\
-      \texttt{f64} uniform & 52 & $2^{12} = 4096$ & a fraction of $2^{-12}$ \\
-      \texttt{ui32}   & 32 & $2^{32}$  & a fraction of $2^{-32}$ \\
-      \texttt{f32} uniform & 23 & $2^{41}$  & a fraction of $2^{-41}$ \\
+      uniform & bits $w$ & balls per value $K$ & fewer repeats than i.i.d.\ by \\ \hline
+      \texttt{f64} & 52 & $2^{12} = 4096$ & a fraction of $2^{-12}$ \\
+      \texttt{f32} & 23 & $2^{41}$        & a fraction of $2^{-41}$ \\
     \end{tabular}};
 
 \end{tikzpicture}

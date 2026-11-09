@@ -28,7 +28,7 @@ NULL
 # `nv_scan()`, the larger of the branches' counts for `nv_if()`. The number of
 # iterations of `nv_while()` is not known when it is traced, so the body of one
 # starts from a fork (`side_effect_fork()`), which is one use of the enclosing
-# trace. The side effects article describes the mechanism.
+# trace. The side effects section of the internals article describes the mechanism.
 #
 # This is the only kind of side effect for now. It is to be extended by a
 # second kind, a runtime side effect, such as the error flag of a check or the

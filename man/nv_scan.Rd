@@ -9,14 +9,12 @@ nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
 \arguments{
 \item{init}{(\code{\link{arrayish}} | \code{list()})\cr
 Initial carry: a single array or a (possibly nested) named list.
-Every slot must keep a fixed shape and dtype across steps. It must not
-contain a random state: to draw from one in \code{body}, make it the default
-before the loop with \code{\link[=local_nv_rng_state]{local_nv_rng_state()}}.}
+Every slot must keep a fixed shape and dtype across steps}
 
 \item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
 Per-step inputs, sliced along axis 1. All leaves must agree on
 the size of axis 1. \code{NULL} or a list with no leaves runs a counted
-loop over \code{steps} steps instead. It must not contain a random state.}
+loop over \code{steps} steps instead.}
 
 \item{body}{(\code{function})\cr
 Step function \verb{function(carry, x)} returning

@@ -121,7 +121,7 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
 # The four 32-bit words of the random state `random_state`, by default the
 # global one: its key's words, then its counter's low and high word (see
 # `random_state_of_words()`).
-state_words <- function(random_state = nv_get_random_state()) {
+state_words <- function(random_state = nv_get_rng_state()) {
   random_state$words
 }
 

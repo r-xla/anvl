@@ -14,26 +14,25 @@ NULL
 #' before that makes the draws reproducible too.
 #' Once anvl's random state is initialized, calling `set.seed()` no longer affects it.
 #'
-#' `nv_set_seed(seed)` is `nv_set_random_state(nv_random_state(seed))`, and
+#' `nv_set_seed(seed)` is `nv_set_rng_state(nv_rng_state(seed))`, and
 #' `local_nv_seed()` and `with_nv_seed()` are [local_nv_rng_state()] and
-#' [with_nv_rng_state()] of `nv_random_state(seed)`.
+#' [with_nv_rng_state()] of `nv_rng_state(seed)`.
 #'
 #' See `r roxy_article("random-numbers")` for more details.
-#' @param seed (`integer(1)` | `NULL`)\cr
-#'   The seed, a 32-bit integer, or `NULL` to derive the global random state
-#'   from base R's RNG at once.
-#' @param random_state (`AnvlRandomState` | `NULL`)\cr
-#'   A random state returned by `nv_get_random_state()`, of which the global
+#' @param seed (`integer(1)`)\cr
+#'   The seed, a 32-bit integer.
+#' @param rng_state (`AnvlRngState` | `NULL`)\cr
+#'   A random state returned by `nv_get_rng_state()`, of which the global
 #'   random state becomes a copy. `NULL` unsets the global random state, so
 #'   that the next draw derives it from base R's RNG.
 #' @param code (any)\cr
 #'   An expression to evaluate with the seeded global random state.
 #' @param envir (`environment`)\cr
 #'   The scope whose exit restores the global random state.
-#' @return `nv_set_seed()`, `local_nv_seed()` and `nv_set_random_state()`
+#' @return `nv_set_seed()`, `local_nv_seed()` and `nv_set_rng_state()`
 #'   return `NULL`, invisibly; `with_nv_seed()` returns the result of
-#'   evaluating `code`. `nv_get_random_state()` returns a copy of the global
-#'   random state, an `AnvlRandomState`, or `NULL` while it is not set.
+#'   evaluating `code`. `nv_get_rng_state()` returns a copy of the global
+#'   random state, an `AnvlRngState`, or `NULL` while it is not set.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_set_seed(42L)
@@ -45,10 +44,10 @@ NULL
 #' nv_runif(3L)
 #'
 #' # the counter counts sampling calls, not values
-#' nv_get_random_state()
+#' nv_get_rng_state()
 #'
 #' # an unset random state is derived from base R's RNG on the next draw
-#' nv_set_random_state(NULL)
+#' nv_set_rng_state(NULL)
 #' set.seed(1)
 #' nv_runif(3L)
 #'
@@ -58,31 +57,32 @@ NULL
 #' with_nv_seed(1L, jit(f)())
 #'
 #' # save the random state and continue from it later
-#' random_state <- nv_get_random_state()
+#' random_state <- nv_get_rng_state()
 #' nv_runif(2L)
-#' nv_set_random_state(random_state)
+#' nv_set_rng_state(random_state)
 #' nv_runif(2L)
 #' @export
 nv_set_seed <- function(seed) {
   abort_if_tracing("seeded")
-  nv_set_random_state(nv_random_state(seed))
+  nv_set_rng_state(nv_rng_state(seed))
 }
 
 #' @rdname nv_set_seed
 #' @export
-nv_get_random_state <- function() {
+nv_get_rng_state <- function() {
   abort_if_tracing("read")
   abort_if_no_rng()
   state <- globals$random_state
-  if (!is.null(state)) random_state_of_words(state$words)
+  # `NULL` visibly, which `if` alone would return invisibly
+  if (is.null(state)) NULL else random_state_of_words(state$words)
 }
 
 #' @rdname nv_set_seed
 #' @export
-nv_set_random_state <- function(random_state) {
+nv_set_rng_state <- function(rng_state) {
   abort_if_tracing("set")
   abort_if_no_rng()
-  globals$random_state <- if (!is.null(random_state)) random_state_of_words(assert_random_state(random_state)$words)
+  globals$random_state <- if (!is.null(rng_state)) random_state_of_words(assert_random_state(rng_state)$words)
   invisible(NULL)
 }
 
@@ -90,7 +90,7 @@ nv_set_random_state <- function(random_state) {
 #' @export
 local_nv_seed <- function(seed, envir = parent.frame()) {
   abort_if_tracing("seeded")
-  local_nv_rng_state(nv_random_state(seed), envir = envir)
+  local_nv_rng_state(nv_rng_state(seed), envir = envir)
 }
 
 #' @rdname nv_set_seed
@@ -101,18 +101,18 @@ with_nv_seed <- function(seed, code) {
 }
 
 #' @export
-format.AnvlRandomState <- function(x, ...) {
+format.AnvlRngState <- function(x, ...) {
   if (is_traced_random_state(x)) {
-    return("<AnvlRandomState> of a traced function")
+    return("<AnvlRngState> of a traced function")
   }
   # a 64-bit value of its high and low 32-bit word
   hex <- function(high, low) paste0("0x", format_hex32(high), format_hex32(low))
   w <- x$words
-  sprintf("<AnvlRandomState> key %s, counter %s", hex(w[[1L]], w[[2L]]), hex(w[[4L]], w[[3L]]))
+  sprintf("<AnvlRngState> key %s, counter %s", hex(w[[1L]], w[[2L]]), hex(w[[4L]], w[[3L]]))
 }
 
 #' @export
-print.AnvlRandomState <- function(x, ...) {
+print.AnvlRngState <- function(x, ...) {
   cat(format(x), "\n", sep = "")
   invisible(x)
 }
@@ -140,9 +140,9 @@ abort_if_no_rng <- function() {
 
 # `x` if it is a random state: outside of a trace, one R holds the words of, and
 # in a trace also one the traced function received (see `traced_random_state()`).
-assert_random_state <- function(x, arg = "random_state") {
+assert_random_state <- function(x, arg = "rng_state") {
   if (!is_random_state(x)) {
-    cli_abort("{.arg {arg}} must be a random state, as {.fn nv_random_state} or {.fn nv_get_random_state} return.")
+    cli_abort("{.arg {arg}} must be a random state, as {.fn nv_rng_state} or {.fn nv_get_rng_state} return.")
   }
   if (is_traced_random_state(x) && !currently_tracing()) {
     cli_abort("{.arg {arg}} is the random state of a traced function, which cannot be used after its trace.")
@@ -151,7 +151,7 @@ assert_random_state <- function(x, arg = "random_state") {
 }
 
 is_random_state <- function(x) {
-  inherits(x, "AnvlRandomState")
+  inherits(x, "AnvlRngState")
 }
 
 # ---- A random state on the host -----------------------------------------------
@@ -160,56 +160,27 @@ is_random_state <- function(x) {
 # the key's words, in the order of JAX's key data, then the counter's low and
 # high word. It is an environment, so that the draws from it advance it in
 # place, and R holds its words, so that advancing it runs no program and reading
-# it waits for none. Its `random_key` (`ui32`, shape 2) and `random_counter`
-# (`ui64` scalar) are active bindings that build the arrays of its words at
-# every read, on the default device. A jitted function takes its words, as bare
-# R data that the call uploads (see `register_random_state_node()`), so a
-# donation takes them from no random state.
+# it waits for none. A jitted function takes its words, as bare R data that the
+# call uploads (see `register_random_state_node()`), so a donation takes them
+# from no random state.
 random_state_of_words <- function(words) {
   x <- new.env(parent = emptyenv())
   x$words <- words
-  for (name in names(random_state_fields)) {
-    makeActiveBinding(name, random_state_binding(x, name), x)
-  }
-  structure(x, class = "AnvlRandomState")
+  structure(x, class = "AnvlRngState")
 }
 
-# The fields of a random state, by name: their words among its words (see
-# `random_state_of_words()`), their data type and shape, and the label of their
-# node in a printed graph.
+# The key and the counter of a random state, by name: their words among its
+# words (see `random_state_of_words()`), their data type and shape, and the
+# label of their node in a printed graph.
 random_state_fields <- list(
-  random_key = list(words = 1:2, dtype = "ui32", shape = 2L, label = "key"),
-  random_counter = list(words = 3:4, dtype = "ui64", shape = integer(), label = "counter")
+  key = list(words = 1:2, dtype = "ui32", shape = 2L, label = "key"),
+  counter = list(words = 3:4, dtype = "ui64", shape = integer(), label = "counter")
 )
-
-# The active binding of the field `name` of the random state `x`: the array of
-# its words, and in a trace the field where the trace is, after its draws so
-# far (see `random_state_current()`), so that a jitted function reads what the
-# same code reads eagerly.
-random_state_binding <- function(x, name) {
-  force(name)
-  function(value) {
-    if (!missing(value)) {
-      cli_abort("The key and the counter of a random state cannot be assigned.")
-    }
-    if (is_traced_random_state(x) || currently_tracing()) {
-      random_state_current(random_state_handle(x))[[name]]
-    } else {
-      random_state_array(x, name)
-    }
-  }
-}
 
 # The random state of the arrays `key` (`ui32`, shape 2) and `counter` (`ui64`
 # scalar), e.g. the ones `prim_fork_random_state()` returns.
 random_state_of_arrays <- function(key, counter) {
   random_state_of_words(bytes_words(c(as_raw(key), as_raw(counter))))
-}
-
-# The field `name` of the random state `x`, which R holds the words of, as an
-# array on the default device (see `random_state_buffer()`).
-random_state_array <- function(x, name) {
-  pjrt_anvl_array(random_state_buffer(x, name), random_state_dtype(name), random_state_fields[[name]]$shape)
 }
 
 # The buffer of the field `name` of the random state `x`, which R holds the
@@ -285,8 +256,7 @@ random_state_from_seed <- function(seed) {
 #' and a counter of the ThreeFry-2x32 generator, and every sampling call that
 #' draws from it advances it in place, so two draws from the same random state
 #' differ. R holds the key and the counter, so advancing a random state runs no
-#' program; its `random_key` and `random_counter` return them as arrays on the
-#' default device.
+#' program.
 #'
 #' A function compiled with [jit()] can draw from a random state it takes as an
 #' argument, also inside a list, or one it closes over, which it makes the
@@ -294,24 +264,21 @@ random_state_from_seed <- function(seed) {
 #' compiled program takes the key and the counter of an argument like other R
 #' data among the arguments, on the device of the call, and those of a random
 #' state it closes over as it takes the global random state's, from the random
-#' state it closed
-#' over when it was traced. After the call, the random state is advanced in
-#' place by the number of sampling calls the program made from it, as the global
-#' random state is. In the jitted function, a random state is an
-#' `AnvlRandomState` too, whose `random_key` and `random_counter` read what they
-#' read eagerly, the counter after the draws so far; but it is not a value
-#' there, which could be returned or carried through a loop. A jitted function
-#' must not draw from the same random state as two different ones, such as one
-#' passed to it twice, and cannot create one.
-#' @param seed (`integer(1)` | `NULL`)\cr
+#' state it closed over when it was traced. After the call, the random state is
+#' advanced in place by the number of sampling calls the program made from it,
+#' as the global random state is. In the jitted function, a random state is an
+#' `AnvlRngState` too, but it is not a value there, which could be returned
+#' or carried through a loop. A jitted function cannot draw from the same
+#' random state as two different ones, such as one passed to it twice, which
+#' is an error, and cannot create one.
+#' @param seed (`integer(1)`)\cr
 #'   The seed, a 32-bit integer, which gives the same random state as
-#'   [nv_set_seed()] gives the global random state. `NULL` derives it from
-#'   base R's RNG.
-#' @return (`AnvlRandomState`)\cr
+#'   [nv_set_seed()] gives the global random state.
+#' @return (`AnvlRngState`)\cr
 #'   A random state of the key that `seed` gives and the counter 0.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
-#' rng <- nv_random_state(42L)
+#' rng <- nv_rng_state(42L)
 #' with_nv_rng_state(rng, nv_runif(3L))
 #' # the random state was advanced, so the next draw differs
 #' with_nv_rng_state(rng, nv_runif(3L))
@@ -319,9 +286,9 @@ random_state_from_seed <- function(seed) {
 #'
 #' # a jitted function takes a random state as an argument
 #' f <- jit(function(x, rng) with_nv_rng_state(rng, x + nv_rnorm(2L)))
-#' f(nv_array(c(1, 2)), nv_random_state(1L))
+#' f(nv_array(c(1, 2)), nv_rng_state(1L))
 #' @export
-nv_random_state <- function(seed = NULL) {
+nv_rng_state <- function(seed) {
   # one created while tracing would be closed over, and its draws carry on from
   # call to call where the same code run eagerly starts afresh
   if (currently_tracing()) {
@@ -331,7 +298,7 @@ nv_random_state <- function(seed = NULL) {
     ))
   }
   abort_if_no_rng()
-  if (is.null(seed)) random_state_from_r() else random_state_from_seed(assert_int(seed, coerce = TRUE))
+  random_state_from_seed(assert_int(seed, coerce = TRUE))
 }
 
 #' @title Draw From a Random State for a Scope
@@ -346,14 +313,14 @@ nv_random_state <- function(seed = NULL) {
 #' In a function traced by [jit()], the samplers in the scope draw from
 #' `rng_state`, also in the bodies of loops, and the call advances it
 #' afterwards: a random state the jitted function takes as an argument, or one
-#' it closes over (see [nv_random_state()]). It can be called in a branch of
+#' it closes over (see [nv_rng_state()]). It can be called in a branch of
 #' [nv_if()] or a function [gradient()] differentiates, such as a jitted
 #' function called there, but not in the body of [nv_while()] or [nv_scan()],
 #' nor in a function traced inside one: called before the loop, it reaches the
 #' loop body. These functions trace the functions they are given also when they
 #' are called outside of [jit()].
-#' @param rng_state (`AnvlRandomState`)\cr
-#'   The random state to draw from, as [nv_random_state()] returns.
+#' @param rng_state (`AnvlRngState`)\cr
+#'   The random state to draw from, as [nv_rng_state()] returns.
 #' @param code (any)\cr
 #'   An expression to evaluate drawing from `rng_state`.
 #' @param envir (`environment`)\cr
@@ -362,7 +329,7 @@ nv_random_state <- function(seed = NULL) {
 #'   returns the result of evaluating `code`.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
-#' rng <- nv_random_state(1L)
+#' rng <- nv_rng_state(1L)
 #' with_nv_rng_state(rng, list(nv_runif(2L), nv_rnorm(2L)))
 #' # both samplers drew from `rng`, three sampling calls in all
 #' rng

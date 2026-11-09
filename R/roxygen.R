@@ -45,7 +45,6 @@ article_titles <- c(
   next_steps = "Next Steps",
   primitives = "Primitives Reference",
   `random-numbers` = "Random Number Generation",
-  `side-effects` = "Side Effects",
   static_shapes = "Static Shape Restriction",
   subsetting = "Subsetting",
   `type-promotion` = "Data Types and Promotion Rules"

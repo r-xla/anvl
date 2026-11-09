@@ -674,20 +674,20 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 # Each sampling call and each fork is a call of a function built once per
 # lowering (and draw shape and data type), so that many sampling calls lower
 # and compile quickly.
-prim_sample_bits[["stablehlo"]] <- function(random_key, random_counter, shape, dtype) {
+prim_sample_bits[["stablehlo"]] <- function(key, counter, shape, dtype) {
   shape <- as.integer(shape)
   dtype <- as.character(as_dtype(dtype))
-  random_state_call(paste0("sample_bits_", dtype, "_", shape_id(shape)), random_key, random_counter, function(key) {
-    list(threefry_draw(key, shape, dtype))
+  random_state_call(paste0("sample_bits_", dtype, "_", shape_id(shape)), key, counter, function(fresh_key) {
+    list(threefry_draw(fresh_key, shape, dtype))
   })
 }
 
-prim_fork_random_state[["stablehlo"]] <- function(random_key, random_counter) {
-  random_state_call("fork_random_state", random_key, random_counter, function(key) {
-    words <- lapply(key, hlo_reshape, 1L)
+prim_fork_random_state[["stablehlo"]] <- function(key, counter) {
+  random_state_call("fork_random_state", key, counter, function(fresh_key) {
+    words <- lapply(fresh_key, hlo_reshape, 1L)
     list(
       hlo_concatenate(words[[1L]], words[[2L]], dimension = 0L),
-      hlo_scalar(0L, dtype = "ui64", func = key[[1L]]$func)
+      hlo_scalar(0L, dtype = "ui64", func = fresh_key[[1L]]$func)
     )
   })
 }
@@ -701,8 +701,8 @@ prim_fork_random_state[["stablehlo"]] <- function(random_key, random_counter) {
 random_state_call <- function(id, key, counter, body) {
   callee <- lowering_func(id, function(id) {
     func <- local_func(id)
-    key <- stablehlo::hlo_input("random_key", "ui32", shape = 2L, func = func)
-    counter <- stablehlo::hlo_input("random_counter", "ui64", func = func)
+    key <- stablehlo::hlo_input("key", "ui32", shape = 2L, func = func)
+    counter <- stablehlo::hlo_input("counter", "ui64", func = func)
     key_words <- lapply(0:1, function(i) hlo_reshape(hlo_slice(key, i, i + 1L, 1L), integer()))
     # each word is cleared of the other first, so that the conversion is exact
     by32 <- hlo_scalar(32L, dtype = "ui64", func = func)
