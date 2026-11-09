@@ -1333,3 +1333,79 @@ describe("prim_convolution", {
     )
   })
 })
+
+describe("prim_scatter", {
+  # `x$scatter_reduce(dim = 1, ...)` in torch is a scatter into axis 1 of `x`;
+  # for a matrix, every column is a batch of its own.
+  scatter_axis1 <- function(x, indices, update, update_fn, unique_indices = FALSE) {
+    if (length(shape(x)) == 1L) {
+      batching <- integer()
+    } else {
+      batching <- 2L
+    }
+    prim_scatter(
+      x,
+      indices,
+      update,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      x_batching_axes = batching,
+      scatter_indices_batching_axes = batching,
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = length(shape(indices)) + 1L,
+      unique_indices = unique_indices,
+      update_fn = update_fn
+    )
+  }
+
+  verify_scatter_grad <- function(x, indices, update, update_fn, reduce, unique_indices = FALSE) {
+    x_torch <- torch::torch_tensor(x, dtype = torch::torch_float64(), requires_grad = TRUE)
+    update_torch <- torch::torch_tensor(update, dtype = torch::torch_float64(), requires_grad = TRUE)
+    indices_torch <- torch::torch_tensor(indices, dtype = torch::torch_long())
+    out_torch <- x_torch$scatter_reduce(1L, indices_torch, update_torch, reduce = reduce, include_self = TRUE)
+    cotangent <- generate_test_data(dim(x) %||% length(x), "f64")
+    torch::torch_sum(out_torch * torch::torch_tensor(cotangent, dtype = torch::torch_float64()))$backward()
+
+    f <- function(x, update, indices, cotangent) {
+      nv_sum(scatter_axis1(x, indices, update, update_fn, unique_indices) * cotangent)
+    }
+    grads <- jit(gradient(f, wrt = c("x", "update")))(
+      nv_array(x, dtype = "f64"),
+      nv_array(update, dtype = "f64"),
+      nv_array(indices, dtype = "i64"),
+      nv_array(cotangent, dtype = "f64")
+    )
+    expect_equal(as_array(grads$x), as_array_torch(x_torch$grad), tolerance = 1e-8)
+    expect_equal(as_array(grads$update), as_array_torch(update_torch$grad), tolerance = 1e-8)
+  }
+
+  x <- generate_test_data(6L, "f64")
+  update <- generate_test_data(5L, "f64")
+  repeated <- array(c(2L, 5L, 2L, 1L, 2L))
+  x_mat <- generate_test_data(c(4L, 3L), "f64")
+  update_mat <- generate_test_data(c(5L, 3L), "f64")
+  repeated_mat <- matrix(c(1L, 3L, 1L, 4L, 1L, 2L, 2L, 4L, 1L, 2L, 3L, 3L, 3L, 1L, 4L), nrow = 5L)
+
+  it("adds", {
+    verify_scatter_grad(x, repeated, update, "add", "sum")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "add", "sum")
+  })
+
+  it("multiplies with unique indices", {
+    unique <- array(c(2L, 5L, 1L, 6L, 3L))
+    verify_scatter_grad(x, unique, update, "mul", "prod", unique_indices = TRUE)
+    unique_mat <- matrix(c(1L, 3L, 4L, 2L, 3L, 1L, 4L, 2L, 2L, 4L, 1L, 3L), nrow = 4L)
+    verify_scatter_grad(x_mat, unique_mat, update_mat[1:4, ], "mul", "prod", unique_indices = TRUE)
+  })
+
+  it("takes the maximum and minimum", {
+    verify_scatter_grad(x, repeated, update, "max", "amax")
+    verify_scatter_grad(x, repeated, update, "min", "amin")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "max", "amax")
+    verify_scatter_grad(x_mat, repeated_mat, update_mat, "min", "amin")
+  })
+
+  it("splits the gradient of a maximum among ties like torch", {
+    verify_scatter_grad(c(1, 5, 2), array(c(2L, 2L, 3L, 1L)), c(5, 5, 3, 0), "max", "amax")
+  })
+})

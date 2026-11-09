@@ -936,6 +936,7 @@ prim_scatter[["stablehlo"]] <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
+  update_op,
   update_fn,
   n_captures,
   ...
