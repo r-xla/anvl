@@ -256,7 +256,7 @@ devtools::test()  # or run specific test files
 ## Checklist
 
 - [ ] Can be expressed in StableHLO
-- [ ] Primitive defined: `prim_<name> <- new_primitive("<name>", function(...) { graph_desc_add(self, ...) })` with roxygen docs and `@export` (auto-registered into the internal primitive registry). For simple shapes, use `make_unary_op()` / `make_binary_op()` / `make_reduce_op()` / `make_compare_op()` instead of writing the body by hand.
+- [ ] Primitive defined: `prim_<name> <- new_primitive("<name>", function(...) { graph_desc_add(self, ...) })` with roxygen docs and `@export` (auto-registered into the internal primitive registry). For simple shapes, use `make_unary_op()` / `make_binary_op()` / `make_reduce_op()` / `compare_op` instead of writing the body by hand.
 - [ ] Inference rule: `infer_<name>()` in `R/rules-inference.R` (or a shared one), with every refusal naming the argument and showing its value, snapshotted in `test-rules-inference.R`
 - [ ] StableHLO rule: `prim_<name>[["stablehlo"]]` in `R/rules-stablehlo.R`
 - [ ] Reverse rule: `prim_<name>[["reverse"]]` in `R/rules-reverse.R`

@@ -1118,6 +1118,13 @@ describe("nv_cumsum / nv_cumprod nan_rm", {
     expect_equal(as_array(nv_cumsum(x)), as_array(nv_cumsum(x, nan_rm = TRUE)))
     expect_equal(as_array(nv_cumprod(x)), as_array(nv_cumprod(x, nan_rm = TRUE)))
   })
+  it("reports a bad axis as the primitive's error when nan_rm = TRUE", {
+    x <- nv_array(c(1, NaN, 3))
+    call_of <- function(expr) deparse(conditionCall(tryCatch(expr, error = identity)))
+    expect_identical(call_of(nv_cumsum(x, axis = 2L, nan_rm = TRUE)), "prim_cumsum()")
+    expect_identical(call_of(nv_cumprod(x, axis = 2L, nan_rm = TRUE)), "prim_cumprod()")
+    expect_identical(call_of(nv_cummax(x, axis = 2L, nan_rm = TRUE)), "prim_cummax()")
+  })
 })
 
 describe("nv_cummax / nv_cummin nan_rm", {
