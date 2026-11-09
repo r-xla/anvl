@@ -978,7 +978,7 @@ describe("the sub-graph arguments a primitive traces", {
 })
 
 describe("prim_custom_gradient", {
-  x <- nv_scalar(2)
+  x <- nv_scalar(2, dtype = "f32")
   id_rule <- function(x, out, grad, required) list(x = grad)
 
   it("refuses an fn or rule that is not a function", {
