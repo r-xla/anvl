@@ -1385,3 +1385,114 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
 
   list(grad_a, if (required[[2L]]) grad_b)
 })
+
+# Moves a group factor from axis `from` of `x` into axis `to`: `from` is cut
+# into `n_groups` contiguous blocks, and the block index becomes the slower
+# varying part of `to`. These are the blocks a grouped convolution splits a
+# feature or batch axis into.
+regroup_axis <- function(x, from, to, n_groups) {
+  shp <- shape(x)
+  split <- append(replace(shp, from, shp[[from]] %/% n_groups), n_groups, after = from)
+  x <- prim_reshape(x, split)
+  # Where the original axes sit after the split, with the block axis at `from + 1`.
+  pos <- seq_along(shp) + (seq_along(shp) > from)
+  x <- prim_transpose(x, append(pos, from + 1L, after = to))
+  shp[[from]] <- shp[[from]] %/% n_groups
+  shp[[to]] <- shp[[to]] * n_groups
+  prim_reshape(x, shp)
+}
+
+# Both cotangents are convolutions again, as in JAX's
+# `_conv_general_dilated_transpose_lhs()` / `_rhs()`: strides and dilations
+# trade places, and the roles of the axes are swapped.
+prim_convolution[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  kernel <- inputs[[2L]]
+  grad <- grads[[1L]]
+  fg_count <- params$feature_group_count
+  bg_count <- params$batch_group_count
+
+  # An empty cotangent carries no gradient and would only form degenerate
+  # convolutions.
+  if (any(shape(grad) == 0L)) {
+    return(list(
+      if (required[[1L]]) zeros_like(x),
+      if (required[[2L]]) zeros_like(kernel)
+    ))
+  }
+
+  x_extent <- dilate_shape(shape(x)[params$x_spatial_axes], params$x_dilation)
+  window_extent <- dilate_shape(shape(kernel)[params$kernel_spatial_axes], params$kernel_dilation)
+  grad_extent <- dilate_shape(shape(grad)[params$output_spatial_axes], params$window_strides)
+  pad_low <- params$padding[, 1L]
+
+  list(
+    if (required[[1L]]) {
+      # Slide the flipped kernel over the cotangent, spread out by the strides.
+      # A group's input features become its output features, so the group
+      # factor moves from the kernel's output feature axis into its input one.
+      flipped <- prim_rev(kernel, params$kernel_spatial_axes)
+      if (fg_count > 1L || bg_count > 1L) {
+        flipped <- regroup_axis(
+          flipped,
+          params$kernel_output_feature_axis,
+          params$kernel_input_feature_axis,
+          fg_count * bg_count
+        )
+      }
+      pad_before <- window_extent - pad_low - 1L
+      pad_after <- x_extent + window_extent - 1L - grad_extent - pad_before
+      grad_x <- prim_convolution(
+        grad,
+        flipped,
+        x_batch_axis = params$output_batch_axis,
+        x_feature_axis = params$output_feature_axis,
+        x_spatial_axes = params$output_spatial_axes,
+        kernel_input_feature_axis = params$kernel_output_feature_axis,
+        kernel_output_feature_axis = params$kernel_input_feature_axis,
+        kernel_spatial_axes = params$kernel_spatial_axes,
+        output_batch_axis = params$x_batch_axis,
+        output_feature_axis = params$x_feature_axis,
+        output_spatial_axes = params$x_spatial_axes,
+        window_strides = params$x_dilation,
+        padding = cbind(pad_before, pad_after, deparse.level = 0L),
+        x_dilation = params$window_strides,
+        kernel_dilation = params$kernel_dilation,
+        feature_group_count = fg_count * bg_count,
+        batch_group_count = 1L,
+        precision = params$precision
+      )
+      # The batch groups came out stacked along the feature axis.
+      if (bg_count > 1L) {
+        grad_x <- regroup_axis(grad_x, params$x_feature_axis, params$x_batch_axis, bg_count)
+      }
+      grad_x
+    },
+    if (required[[2L]]) {
+      # Correlate `x` with the cotangent, contracting over the batch: `x`'s
+      # features play its batch, and the cotangent is the window. Feature
+      # groups turn into batch groups and vice versa.
+      pad_high <- grad_extent - x_extent + window_extent - pad_low - 1L
+      prim_convolution(
+        x,
+        grad,
+        x_batch_axis = params$x_feature_axis,
+        x_feature_axis = params$x_batch_axis,
+        x_spatial_axes = params$x_spatial_axes,
+        kernel_input_feature_axis = params$output_batch_axis,
+        kernel_output_feature_axis = params$output_feature_axis,
+        kernel_spatial_axes = params$output_spatial_axes,
+        output_batch_axis = params$kernel_input_feature_axis,
+        output_feature_axis = params$kernel_output_feature_axis,
+        output_spatial_axes = params$kernel_spatial_axes,
+        window_strides = params$kernel_dilation,
+        padding = cbind(pad_low, pad_high, deparse.level = 0L),
+        x_dilation = params$x_dilation,
+        kernel_dilation = params$window_strides,
+        feature_group_count = bg_count,
+        batch_group_count = fg_count,
+        precision = params$precision
+      )
+    }
+  )
+})

@@ -1583,6 +1583,14 @@ infer_scatter <- function(
 # Convolution and linear algebra
 # ---------------------------------------------------------------------------
 
+# The extent of each axis of `shape` with `dilation - 1` holes between
+# neighbouring elements. It runs in double, as a large dilation would
+# overflow an integer.
+dilate_shape <- function(shape, dilation) {
+  shape <- as.double(shape)
+  ifelse(shape == 0, 0, (shape - 1) * dilation + 1)
+}
+
 infer_convolution <- function(
   x,
   kernel,
@@ -1762,9 +1770,8 @@ infer_convolution <- function(
   result_shape[output_batch_axis] <- x_batch_size %/% bg_count
   result_shape[output_feature_axis] <- kernel_out_size
   for (sd in seq_len(n_spatial)) {
-    x_size <- as.double(x_shape[[x_spatial_axes[[sd]]]])
-    k_size <- as.double(kernel_shape[[kernel_spatial_axes[[sd]]]])
-    dilated_input <- if (x_size == 0) 0 else (x_size - 1) * x_dil[[sd]] + 1
+    k_size <- kernel_shape[[kernel_spatial_axes[[sd]]]]
+    dilated_input <- dilate_shape(x_shape[[x_spatial_axes[[sd]]]], x_dil[[sd]])
     padded_input <- pad[sd, 1L] + dilated_input + pad[sd, 2L]
 
     # XLA `CHECK`-fails (aborting the process) on a negative padded extent.
@@ -1777,14 +1784,14 @@ infer_convolution <- function(
     }
 
     # A zero-wide window would otherwise pass the arithmetic below.
-    if (k_size == 0) {
+    if (k_size == 0L) {
       cli_abort(c(
         "{.arg kernel} must not have a zero-sized spatial axis.",
         x = "Axis {kernel_spatial_axes[[sd]]} of {.arg kernel} is {.val {0L}}."
       ))
     }
 
-    dilated_window <- (k_size - 1) * kernel_dil[[sd]] + 1
+    dilated_window <- dilate_shape(k_size, kernel_dil[[sd]])
     num_windows <- if (padded_input == 0 || dilated_window > padded_input) {
       0
     } else {

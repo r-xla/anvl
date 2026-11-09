@@ -153,7 +153,7 @@ See `graph_desc_add()` for the detailed semantics.
 - `make_unary_op(infer_fn)` -- elementwise unary (e.g. `prim_abs`, `prim_negate`).
 - `make_binary_op(infer_fn)` -- elementwise binary (e.g. `prim_add`, `prim_mul`).
 - `make_reduce_op(infer_fn)` -- reductions with `axes` / `drop` parameters (e.g. `prim_sum`).
-- `make_compare_op(direction)` -- comparison ops with a fixed `direction` string (e.g. `prim_eq`, `prim_lt`).
+- `compare_op` -- the body of the comparison ops (e.g. `prim_eq`, `prim_lt`); passed as is, since each op's direction is set by its stablehlo rule.
 
 Used together with the matching inference rule, the primitive definition collapses to a one-liner:
 

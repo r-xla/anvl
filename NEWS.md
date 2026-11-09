@@ -24,6 +24,18 @@
 ## Bug fixes
 
 * `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+* Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
+  `prim_dynamic_update_slice()`) no longer wraps around to the last position.
+* `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
+  now differentiable.
+
+* `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
+  the default device, not the one they were saved from. Arrays of the
+  pjrt backend no longer cache their device in a `$device` field.
+
+* Bugfix: A classed R value, such as a `bit64::integer64` array, is an error
+  under `jit()` instead of being read through its storage type.
+* Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
   negative `sd`, like `rnorm()`.
 * `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
   gives a clear error for an empty population.
@@ -44,6 +56,23 @@
 * `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
 * `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
 * The gradient of `prim_dot_general()` with respect to `lhs` is right when
+* Bugfix: `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+* Bugfix: `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
+* Bugfix: `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+* Bugfix: `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
+  summed at the default float.
+* New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
+  create an array of the data type in their name.
+* New functions for the binomial distribution: `nv_dbinom()`, `nv_pbinom()` and
+  `nv_qbinom()`.
+* New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,
+  and `nv_qexp()`.
+* `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
+  `potrf` custom call, which is about ten times faster on CPU.
+* `nv_triangular_solve()` / `prim_triangular_solve()`, and with them
+  `nv_solve()`, now lower to a BLAS `trsm` custom call on CPU, which runs
+  several times faster from about 100 rows on and compiles faster.
+* Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
   `lhs` has batching axes but no free axes.
 * `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
   axis to size 0.

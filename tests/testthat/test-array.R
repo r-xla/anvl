@@ -564,6 +564,16 @@ describe("as_anvl_array", {
     expect_error(as_anvl_array(list()), "Expected arrayish")
   })
 
+  it("rejects a classed R value rather than reading its storage type", {
+    expect_error(as_anvl_array(structure(1, class = "myclass")), "Expected arrayish")
+    # Inside a trace too: an integer64 is a double underneath, so reading it as
+    # one would silently compute on its bit pattern.
+    i64 <- bit64::as.integer64(2:3)
+    dim(i64) <- 2L
+    f <- jit(function(x) nv_mul(x, i64))
+    expect_error(f(nv_array(1:2, dtype = "i64")), "Expected arrayish")
+  })
+
   it("passes traced boxes through unchanged under jit()", {
     f <- jit(function(x) {
       y <- as_anvl_array(x)

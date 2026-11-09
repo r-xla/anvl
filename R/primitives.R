@@ -1062,12 +1062,11 @@ prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3)
 
 # comparison primitives --------------------------------------------------------
 
-make_compare_op <- function(direction) {
-  force(direction)
-  function(lhs, rhs) {
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
-    graph_desc_add(self, operands, infer_fn = infer_compare)[[1L]]
-  }
+# The body shared by the comparison primitives; the direction is set by their
+# stablehlo rules.
+compare_op <- function(lhs, rhs) {
+  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+  graph_desc_add(self, operands, infer_fn = infer_compare)[[1L]]
 }
 
 #' @title Primitive Equal
@@ -1089,7 +1088,7 @@ make_compare_op <- function(direction) {
 #' # the R value is built at the array's data type instead
 #' prim_eq(1, nv_scalar(1, "f64"))
 #' @export
-prim_eq <- new_primitive("eq", make_compare_op("EQ"))
+prim_eq <- new_primitive("eq", compare_op)
 
 #' @title Primitive Not Equal
 #' @description
@@ -1110,7 +1109,7 @@ prim_eq <- new_primitive("eq", make_compare_op("EQ"))
 #' # the R value is built at the array's data type instead
 #' prim_ne(1, nv_scalar(2, "f64"))
 #' @export
-prim_ne <- new_primitive("ne", make_compare_op("NE"))
+prim_ne <- new_primitive("ne", compare_op)
 
 #' @title Primitive Greater Than
 #' @description
@@ -1131,7 +1130,7 @@ prim_ne <- new_primitive("ne", make_compare_op("NE"))
 #' # the R value is built at the array's data type instead
 #' prim_gt(2, nv_scalar(1, "f64"))
 #' @export
-prim_gt <- new_primitive("gt", make_compare_op("GT"))
+prim_gt <- new_primitive("gt", compare_op)
 
 #' @title Primitive Greater Than or Equal
 #' @description
@@ -1152,7 +1151,7 @@ prim_gt <- new_primitive("gt", make_compare_op("GT"))
 #' # the R value is built at the array's data type instead
 #' prim_ge(2, nv_scalar(1, "f64"))
 #' @export
-prim_ge <- new_primitive("ge", make_compare_op("GE"))
+prim_ge <- new_primitive("ge", compare_op)
 
 #' @title Primitive Less Than
 #' @description
@@ -1173,7 +1172,7 @@ prim_ge <- new_primitive("ge", make_compare_op("GE"))
 #' # the R value is built at the array's data type instead
 #' prim_lt(1, nv_scalar(2, "f64"))
 #' @export
-prim_lt <- new_primitive("lt", make_compare_op("LT"))
+prim_lt <- new_primitive("lt", compare_op)
 
 #' @title Primitive Less Than or Equal
 #' @description
@@ -1194,7 +1193,7 @@ prim_lt <- new_primitive("lt", make_compare_op("LT"))
 #' # the R value is built at the array's data type instead
 #' prim_le(1, nv_scalar(2, "f64"))
 #' @export
-prim_le <- new_primitive("le", make_compare_op("LE"))
+prim_le <- new_primitive("le", compare_op)
 
 # additional simple binary primitives -----------------------------------------
 
@@ -3481,7 +3480,10 @@ prim_chol <- new_primitive(
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("triangular_solve")`
+#' On CPU, an `f32` or `f64` solve lowers to a `"trsm"` [hlo_custom_call()]
+#' (backed by BLAS). Otherwise it lowers to [hlo_triangular_solve()], specified
+#' under [triangular_solve](https://openxla.org/stablehlo/spec#triangular_solve),
+#' which XLA runs through cuBLAS on CUDA.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # solve L %*% x = b where L is lower triangular

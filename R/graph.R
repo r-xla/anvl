@@ -91,9 +91,7 @@ NULL
 #' @return (`GraphStatement`)
 #' @export
 GraphStatement <- function(primitive, inputs, params, outputs) {
-  if (inherits(primitive, "AnvlPrimitive")) {
-    primitive <- attr(primitive, "definition")
-  }
+  primitive <- primitive_def(primitive)
   # hot-path constructor: no input validation
   structure(
     list(
@@ -986,9 +984,7 @@ graph_desc_add <- function(
   if (!is.null(device)) {
     desc$devices <- c(desc$devices, nv_device(device))
   }
-  if (inherits(primitive, "AnvlPrimitive")) {
-    primitive <- attr(primitive, "definition")
-  }
+  primitive <- primitive_def(primitive)
 
   # Box each input; an R value that no promotion rule materialized settles on
   # its default dtype here. `gnodes_in` is unnamed for the GraphStatement,
