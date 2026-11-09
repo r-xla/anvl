@@ -97,10 +97,6 @@ side_effect_format.default <- function(effect, ids, n) {
   sprintf("%s: %s %s", paste(ids, collapse = ", "), format(n), if (n == 1) "use" else "uses")
 }
 
-is_side_effect <- function(x) {
-  inherits(x, "SideEffect")
-}
-
 # ---- Views --------------------------------------------------------------------
 
 # The view of the side effect `effect` in one trace:
@@ -193,11 +189,16 @@ desc_close_side_effects <- function(desc) {
   invisible(desc)
 }
 
-# `x`, a tree, unless one of its leaves is the handle of a side effect: a loop
-# carries side effects itself, so they cannot also be passed through its state.
-# `arg` names the state.
+# Whether the tree `x` holds a random state, the one side effect the user holds.
+holds_side_effect <- function(x) {
+  any(vapply(flatten(x, is_leaf = is_rng_state), is_rng_state, logical(1L)))
+}
+
+# `x`, a tree, unless it holds a side effect: a loop carries side effects
+# itself, so they cannot also be passed through its state. `arg` names the
+# state.
 abort_if_side_effects <- function(x, arg, call = rlang::caller_env()) {
-  if (any(vapply(flatten(x), is_side_effect, logical(1L)))) {
+  if (holds_side_effect(x)) {
     cli_abort(
       c(
         "{.arg {arg}} must not contain a side effect, such as a random state.",
@@ -207,6 +208,21 @@ abort_if_side_effects <- function(x, arg, call = rlang::caller_env()) {
     )
   }
   invisible(x)
+}
+
+# `x`, what a traced function returned, unless it holds a side effect: one is no
+# value in a trace, which could be returned.
+abort_if_side_effect_returned <- function(x) {
+  if (holds_side_effect(x)) {
+    cli_abort(
+      c(
+        "A traced function cannot return a side effect, such as a random state.",
+        i = "Draw from it inside the function and return what it drew."
+      ),
+      call = NULL
+    )
+  }
+  x
 }
 
 # ---- Loops ----------------------------------------------------------------------

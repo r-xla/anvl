@@ -13,13 +13,13 @@ NULL
 #   from its words among its inputs, and its place among the random states of
 #   the arguments.
 # The program takes the key and the counter of the first two as implicit inputs,
-# and the words of the third as one of its inputs, which it computes them from.
+# and the words of the third among its inputs, which it computes them from.
 # After the run, R advances each random state by the draws the program made from
 # it.
 #
-# What the traced function holds of a random state is an `AnvlRngState` too:
-# the one R holds, which it closes over, or, for one it received as an argument,
-# one of the handle alone (`traced_rng_state()`).
+# What the traced function holds of a random state is an `AnvlRngState`: the one
+# R holds, which it closes over, or, for one it received as an argument, one of
+# its key and counter in the trace (`received_rng_state()`).
 #
 # `local_nv_rng_state()` makes a random state the default of the trace under
 # way, and of the traces opened in it (`active_rng_state()`).
@@ -44,77 +44,48 @@ rng_state_handle <- function(x) {
   x$handle %||% new_rng_state_handle(object = x)
 }
 
-# Whether `x`, a random state, is one a traced function received for an
-# argument, which only the trace can read.
+# Whether `x`, a random state, is one of a trace's key and counter, which only
+# the trace can read.
 is_traced_rng_state <- function(x) {
-  !is.null(x$handle)
+  is_graph_box(x$key)
 }
 
-# The random state of the handle `handle` that a traced function receives.
-traced_rng_state <- function(handle) {
+# The random state a jitted function receives for one among its arguments, of
+# whose key and counter the trace under way was given the 32-bit words, `key`
+# and `counter`, boxes of bare R data (see `AnvlRngState()`). The key is its
+# words, and the counter the bits of its low and high word, in the order
+# `prim_bitcast_convert()` reads them. Its handle knows its place among the
+# random states of the arguments, in the order the trace receives them, which is
+# the order `pjrt::flatten()` meets them in (see `rng_state_argument()`).
+received_rng_state <- function(key, counter) {
+  desc <- current_descriptor()
+  # the counter's words are `ui32`, like the key's
+  words_dtype <- rng_state_dtype("key")
+  value <- rng_state_value(
+    materialize_rdata(key, words_dtype),
+    prim_bitcast_convert(materialize_rdata(counter, words_dtype), rng_state_dtype("counter"))
+  )
+  handle <- new_rng_state_handle(
+    key = value$key$gnode,
+    counter = value$counter$gnode,
+    ordinal = length(desc$rng_state_args) + 1L
+  )
+  desc$rng_state_args <- c(desc$rng_state_args, list(handle))
   x <- new.env(parent = emptyenv())
+  x$key <- value$key
+  x$counter <- value$counter
   x$handle <- handle
   structure(x, class = "AnvlRngState")
 }
 
-# The random state a jitted function receives for one among its arguments, of
-# whose words the trace under way was given the box `words`, of bare R data (see
-# `register_rng_state_node()`). The program takes them at `f64`, which holds
-# them exactly, and converts them to `ui32` (see `build_r_staged()`), from which
-# it computes the key and the counter: the counter is the bits of its low and
-# its high word, in the order `prim_bitcast_convert()` reads them, as
-# `rng_state_buffer()` lays them out. Its handle knows its place among the
-# random states of the arguments, in the order the trace rebuilds them, which is
-# the order `pjrt::flatten()` meets them in (see `rng_state_argument()`).
-argument_rng_state <- function(words) {
-  desc <- current_descriptor()
-  words <- materialize_rdata(words, rng_state_dtype("key"))
-  key <- prim_static_slice(words, 1L, 2L, 1L)
-  counter <- prim_bitcast_convert(prim_static_slice(words, 3L, 4L, 1L), rng_state_dtype("counter"))
-  handle <- new_rng_state_handle(
-    key = key$gnode,
-    counter = counter$gnode,
-    ordinal = length(desc$rng_state_args) + 1L
-  )
-  desc$rng_state_args <- c(desc$rng_state_args, list(handle))
-  traced_rng_state(handle)
-}
-
-# A random state is a node of a tree (see `pjrt::register_tree_node()`). Outside
-# of a trace, its one child is its words, as bare R data: a jitted function
-# takes a random state among its arguments as one input, which the call uploads
-# to the device of its other inputs, and is traced with an
-# `argument_rng_state()` of it. In a trace, its one child is its handle,
-# which is no array: there a random state is not a value, and a function the
-# trace opens, such as the one `gradient()` differentiates, receives it as it
-# is. Registered when anvl is loaded.
+# A random state is a node of a tree (see `pjrt::register_tree_node()`) of its
+# key and its counter: a jitted function takes them among its arguments, and a
+# trace receives them (see `AnvlRngState()`). Registered when anvl is loaded.
 register_rng_state_node <- function() {
   pjrt::register_tree_node(
     "AnvlRngState",
-    # a random state has no aux data: its children are all of it
-    flatten = function(x) {
-      found <- globals$found_rng_states
-      if (!is.null(found)) {
-        found(x)
-        return(list(list(), NULL))
-      }
-      if (is_traced_rng_state(x) || currently_tracing()) {
-        return(list(list(handle = rng_state_handle(x)), NULL))
-      }
-      # an array: pjrt's dispatcher takes no other bare R data of length 4
-      list(list(words = array(x$words, dim = 4L)), NULL)
-    },
-    unflatten = function(children, aux) {
-      if (!is.null(children$handle)) {
-        traced_rng_state(children$handle)
-      } else if (is_graph_box(children$words)) {
-        argument_rng_state(children$words)
-      } else {
-        # words a trace takes for a static value, which `jit()` refuses for a
-        # random state (see `check_static_args()`)
-        rng_state_of_words(as.vector(children$words))
-      }
-    },
+    flatten = function(x) list(list(key = x$key, counter = x$counter), NULL),
+    unflatten = function(children, aux) AnvlRngState(children$key, children$counter),
     repr = function(children, aux) sprintf("AnvlRngState(%s)", paste(children, collapse = ", "))
   )
 }
@@ -166,7 +137,7 @@ in_loop_body <- function(desc) {
 # state passed as an argument from among its inputs, which it must be among.
 #' @export
 side_effect_start.AnvlRngStateHandle <- function(effect, desc) {
-  if (is.null(effect$ordinal)) {
+  if (is.null(effect$key)) {
     inputs <- lapply(rng_state_fields, function(field) {
       GraphValue(AbstractArray(dtype = field$dtype, shape = field$shape), label = field$label)
     })
@@ -175,7 +146,7 @@ side_effect_start.AnvlRngStateHandle <- function(effect, desc) {
   if (!any(vapply(desc$rng_state_args, identical, logical(1L), effect))) {
     cli_abort(c(
       "This random state cannot be drawn from here.",
-      i = "It was rebuilt by a trace inside the jitted function, such as a loop body, rather than passed to it."
+      i = "It was passed to a function traced inside the jitted function rather than to the jitted function."
     ))
   }
   SideEffectView(effect, rng_state_value(register_gval(desc, effect$key), register_gval(desc, effect$counter)))
@@ -213,7 +184,7 @@ side_effect_fork.AnvlRngStateHandle <- function(effect, value) {
 # After a run, R advances the counter by the draws the program made.
 #' @export
 side_effect_advance.AnvlRngStateHandle <- function(effect, object, n) {
-  object$words[3:4] <- counter_words_plus(object$words[3:4], n)
+  object$counter <- array(counter_words_plus(object$counter, n), dim = 2L)
   invisible(NULL)
 }
 
@@ -243,19 +214,13 @@ counter_words_plus <- function(counter, n) {
 }
 
 # The random state that is the `ordinal`-th random state among the arguments
-# `args` of a call, in the order `pjrt::flatten()` meets them in, which records
-# the random states it meets rather than flattening them.
+# `args` of a call, in the order `pjrt::flatten()` meets them in.
 rng_state_argument <- function(args, ordinal) {
-  found <- new.env(parent = emptyenv())
-  found$states <- list()
-  old <- globals$found_rng_states
-  globals$found_rng_states <- function(x) found$states <- c(found$states, list(x))
-  on.exit(assign("found_rng_states", old, envir = globals))
-  pjrt::flatten(args)
-  if (ordinal > length(found$states)) {
+  states <- Filter(is_rng_state, flatten(args, is_leaf = is_rng_state))
+  if (ordinal > length(states)) {
     cli_abort("The random state the jitted function drew from is no longer among its arguments.")
   }
-  found$states[[ordinal]]
+  states[[ordinal]]
 }
 
 # The `ui64` counter `counter` plus `n` (a whole R double below 2^53) in a

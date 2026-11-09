@@ -330,7 +330,7 @@ GraphDescriptor <- function(
   # `active_rng_state()`).
   env$default_rng_state <- NULL
   # The handles of the random states among the trace's arguments, in the order
-  # it rebuilt them (see `argument_rng_state()`).
+  # it received them (see `received_rng_state()`).
   env$rng_state_args <- list()
 
   structure(env, class = "GraphDescriptor")
@@ -784,7 +784,7 @@ trace_fn <- function(
     in_tree <- build_tree(args)
     args_flat <- flatten(args)
   }
-  f_flat <- pjrt::flatten_fun(f, in_tree = in_tree)
+  f_flat <- pjrt::flatten_fun(function(...) abort_if_side_effect_returned(f(...)), in_tree = in_tree)
   if (is.null(desc)) {
     desc <- local_descriptor(in_tree = in_tree, side_effects_mode = "program")
   } else {

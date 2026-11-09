@@ -633,17 +633,17 @@ A function can draw from the global random state and from random states of its o
 
 - `global_rng_state_handle` stands for the global random state. R holds it outside of any program; the program takes its key and counter as **implicit inputs**, which pjrt's dispatcher reads from it before every run, and does not count them among the call's arguments.
 - A random state the function closes over is taken the same way: its handle holds the random state R holds, which the implicit inputs are read from.
-- A random state passed to the jitted function as an argument gets a handle of its own when the trace rebuilds the arguments from their leaves, which holds the `GraphValue`s of the key and the counter the trace computes from the words it was given, and the random state's place among the random states of the arguments (`argument_rng_state()`). The function receives an `AnvlRngState` of that handle.
+- A random state passed to the jitted function as an argument is received by the trace as the words of its key and its counter, from which it computes the `ui32` key and the `ui64` counter (`received_rng_state()`). The function receives an `AnvlRngState` of these, whose handle holds their `GraphValue`s and the random state's place among the random states of the arguments.
 
 `local_nv_rng_state()` makes a random state's handle the default of the draws in its scope, on the descriptor of the trace under way (`desc$default_rng_state`), which the traces opened in it find through their parents.
 
 In a trace, a random state is not a value: it cannot be returned, carried through a loop, or passed to an operation as an array.
 
-A random state among the arguments is not special to the dispatcher: `AnvlRngState` is registered as a node of pjrt's argument tree (`pjrt::register_tree_node()`), whose one child is its words, the four 32-bit numbers R holds, as bare R data.
-So the arguments are flattened into leaves, a random state contributing one, and the program takes it as an ordinary input, which the dispatcher uploads to the device of the call's other inputs, and computes the key and the counter from it.
-Every random state gives a leaf of the same type, so one compiled program serves every random state passed there.
-In a trace, a random state flattens to one leaf, its handle, so that a function the trace opens, such as the one `gradient()` differentiates, receives it as it is.
-After the run, pjrt hands the call's arguments to the entry's `on_success()`, which flattens them again with `pjrt::flatten()`, recording the random states it meets, and advances the one at the handle's place among them (`rng_state_argument()`).
+A random state among the arguments is not special to the dispatcher: `AnvlRngState` is registered as a node of pjrt's argument tree (`pjrt::register_tree_node()`), whose children are its key and its counter.
+R holds them as their 32-bit words, two numbers each, so the arguments are flattened into leaves, a random state contributing two of bare R data, which the program takes as ordinary inputs that the dispatcher uploads to the device of the call's other inputs.
+Every random state gives leaves of the same type, so one compiled program serves every random state passed there.
+`gradient()` flattens its arguments with `pjrt::flatten(is_leaf = )`, which stops at a random state, so that the function it differentiates receives it as it is and its draws continue those of the enclosing trace.
+After the run, pjrt hands the call's arguments to the entry's `on_success()`, which finds the random states among them the same way and advances the one at the handle's place among them (`rng_state_argument()`).
 
 ```{r, echo = FALSE, out.width = "100%"}
 knitr::include_graphics("figures/se-instances.png")

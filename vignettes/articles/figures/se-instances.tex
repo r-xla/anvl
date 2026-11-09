@@ -1,11 +1,12 @@
 % The random states one compiled function draws from, and their views:
-% the arguments are flattened into leaves, a random state contributing one (its
-% words, as R data), and each random state among the arguments has a view
-% of its own, identified by a handle that knows its place among the random
-% states of the arguments; the global random state is taken as implicit inputs.
-% After the run, on_success() finds each argument's random state again by that
-% place, flattening the arguments with pjrt::flatten(), and advances it by the
-% draws the trace counted for it.
+% the arguments are flattened into leaves, a random state contributing two (the
+% words of its key and of its counter, as R data), and each random state among
+% the arguments has a view of its own, identified by a handle that knows its
+% place among the random states of the arguments; the global random state is
+% taken as implicit inputs. After the run, on_success() finds each argument's
+% random state again by that place, flattening the arguments with
+% pjrt::flatten(is_leaf = ), and advances it by the draws the trace counted for
+% it.
 % Build: see figures/README.md
 \documentclass[tikz, border = 6pt]{standalone}
 \usepackage[T1]{fontenc}
@@ -58,16 +59,20 @@
   % ---- the leaves ----------------------------------------------------------
   \node[coltitle] at (6.9, 0.6) {leaves};
   \node[leaf]    (L1) at (5.3, -0.8) {x};
-  \node[rngleaf] (L2) at (5.3, -1.6) {rng1\$words};
-  \node[leaf]    (L3) at (5.3, -4.0) {y};
-  \node[rngleaf] (L4) at (5.3, -4.8) {rng2\$words};
-  \foreach \i in {1, ..., 4} \node[num] at (L\i.west) {\i\ };
+  \node[rngleaf] (L2) at (5.3, -1.6) {rng1\$key};
+  \node[rngleaf] (L3) at (5.3, -2.4) {rng1\$counter};
+  \node[leaf]    (L4) at (5.3, -4.0) {y};
+  \node[rngleaf] (L5) at (5.3, -4.8) {rng2\$key};
+  \node[rngleaf] (L6) at (5.3, -5.6) {rng2\$counter};
+  \foreach \i in {1, ..., 6} \node[num] at (L\i.west) {\i\ };
   \draw[edge] (x.east) -- ($(L1.west) + (-0.45, 0)$);
   \draw[edge] (r1.east) -- ($(L2.west) + (-0.45, 0)$);
-  \draw[edge] (y.east) -- ($(L3.west) + (-0.45, 0)$);
-  \draw[edge] (r2.east) -- ($(L4.west) + (-0.45, 0)$);
-  \node[note, anchor = north west] at (5.3, -5.3)
-    {a random state is a tree node\\of one leaf, its words as R data};
+  \draw[edge] (r1.east) -- ($(L3.west) + (-0.45, 0)$);
+  \draw[edge] (y.east) -- ($(L4.west) + (-0.45, 0)$);
+  \draw[edge] (r2.east) -- ($(L5.west) + (-0.45, 0)$);
+  \draw[edge] (r2.east) -- ($(L6.west) + (-0.45, 0)$);
+  \node[note, anchor = north west] at (5.3, -6.1)
+    {a random state is a tree node of two\\leaves, the words of its key and its\\counter as R data};
 
   % ---- the views in the trace ----------------------------------------------
   \node[coltitle] at (12.0, 0.6) {views in the trace};
@@ -77,22 +82,24 @@
      \texttt{nv\_runif(2)}: \texttt{n = 1}};
   \node[inst] (I2) at (9.8, -2.0)
     {view of \texttt{rng1}, the 1st random state\\
-     key and counter computed from leaf 2\\
+     key and counter computed from leaves 2 and 3\\
      \texttt{with\_nv\_rng\_state(rng1, nv\_rnorm(2))}: \texttt{n = 2}};
   \node[inst] (I5) at (9.8, -4.9)
     {view of \texttt{rng2}, the 2nd random state\\
-     key and counter computed from leaf 4\\
+     key and counter computed from leaves 5 and 6\\
      \texttt{with\_nv\_rng\_state(p\$rng2, nv\_runif(2))}: \texttt{n = 1}};
   \draw[edge] (L2.east) to[out = 0, in = 180] (I2.west);
-  \draw[edge] (L4.east) to[out = 0, in = 180] (I5.west);
+  \draw[edge] (L3.east) to[out = 0, in = 180] (I2.west);
+  \draw[edge] (L5.east) to[out = 0, in = 180] (I5.west);
+  \draw[edge] (L6.east) to[out = 0, in = 180] (I5.west);
 
   % ---- after the run -------------------------------------------------------
-  \node[note, anchor = north west, text width = 15.2cm] at (-0.2, -6.6)
+  \node[note, anchor = north west, text width = 15.2cm] at (-0.2, -7.4)
     {After the run, pjrt hands the call's arguments to \texttt{on\_success()}.
-     It flattens them again with \texttt{pjrt::flatten()}, which meets the random
-     states in the order of the leaves, finds the 1st (\texttt{rng1}) and the 2nd
-     (\texttt{rng2}), and advances them by 2 and 1; the global random state is
-     advanced by 1.};
+     It flattens them again with \texttt{pjrt::flatten(is\_leaf = )}, which stops
+     at the random states and meets them in the order of the leaves, finds the
+     1st (\texttt{rng1}) and the 2nd (\texttt{rng2}), and advances them by 2 and
+     1; the global random state is advanced by 1.};
 
 \end{tikzpicture}
 \end{document}

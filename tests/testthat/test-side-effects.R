@@ -75,13 +75,6 @@ describe("desc_use_side_effect", {
   })
 })
 
-describe("is_side_effect", {
-  it("is TRUE for the handles of random states, and not for the random states", {
-    expect_true(is_side_effect(global_rng_state_handle))
-    expect_false(is_side_effect(nv_rng_state(1L)))
-  })
-})
-
 describe("side_effects_on_success", {
   it("is NULL for a graph without side effects", {
     expect_null(side_effects_on_success(trace_fn(function(x) x + 1, list(x = nv_aval("f32", integer())))))

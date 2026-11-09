@@ -8,16 +8,15 @@ NULL
 #' @title Set the Global Random State
 #' @description
 #' `nv_set_seed()` seeds the global random state, like base R's [set.seed()].
-#' Until it is set, the first draw derives it from base R's RNG.
+#' Until it is set, its first use derives it from base R's RNG.
 #' `nv_get_rng_state()` and `nv_set_rng_state()` save and restore it, and
 #' `local_nv_seed()` and `with_nv_seed()` seed it for a scope.
 #'
 #' See `r roxy_article("random-numbers")` for more details.
 #' @param seed (`integer(1)`)\cr
 #'   The seed, a 32-bit integer.
-#' @param rng_state (`AnvlRngState` | `NULL`)\cr
-#'   A random state, as `nv_get_rng_state()` returns, or `NULL` to unset the
-#'   global random state.
+#' @param rng_state (`AnvlRngState`)\cr
+#'   A random state, as `nv_get_rng_state()` returns.
 #' @param code (any)\cr
 #'   An expression to evaluate with the seeded global random state.
 #' @param envir (`environment`)\cr
@@ -25,7 +24,7 @@ NULL
 #' @return `nv_set_seed()`, `local_nv_seed()` and `nv_set_rng_state()`
 #'   return `NULL`, invisibly; `with_nv_seed()` returns the result of
 #'   evaluating `code`. `nv_get_rng_state()` returns a copy of the global
-#'   random state, an `AnvlRngState`, or `NULL` while it is not set.
+#'   random state, an `AnvlRngState`.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_set_seed(42L)
@@ -51,9 +50,7 @@ nv_set_seed <- function(seed) {
 nv_get_rng_state <- function() {
   abort_if_tracing("read")
   abort_if_no_rng()
-  state <- globals$rng_state
-  # `NULL` visibly, which `if` alone would return invisibly
-  if (is.null(state)) NULL else rng_state_of_words(state$words)
+  rng_state_copy(global_rng_state())
 }
 
 #' @rdname nv_set_seed
@@ -61,7 +58,7 @@ nv_get_rng_state <- function() {
 nv_set_rng_state <- function(rng_state) {
   abort_if_tracing("set")
   abort_if_no_rng()
-  globals$rng_state <- if (!is.null(rng_state)) rng_state_of_words(assert_rng_state(rng_state)$words)
+  globals$rng_state <- rng_state_copy(assert_rng_state(rng_state))
   invisible(NULL)
 }
 
@@ -86,7 +83,7 @@ format.AnvlRngState <- function(x, ...) {
   }
   # a 64-bit value of its high and low 32-bit word
   hex <- function(high, low) paste0("0x", format_hex32(high), format_hex32(low))
-  w <- x$words
+  w <- rng_state_words(x)
   sprintf("<AnvlRngState> key %s, counter %s", hex(w[[1L]], w[[2L]]), hex(w[[4L]], w[[3L]]))
 }
 
@@ -118,7 +115,7 @@ abort_if_no_rng <- function() {
 }
 
 # `x` if it is a random state: outside of a trace, one R holds the words of, and
-# in a trace also one the traced function received (see `traced_rng_state()`).
+# in a trace also one of the trace's key and counter (see `AnvlRngState()`).
 assert_rng_state <- function(x, arg = "rng_state") {
   if (!is_rng_state(x)) {
     cli_abort("{.arg {arg}} must be a random state, as {.fn nv_rng_state} or {.fn nv_get_rng_state} return.")
@@ -133,27 +130,50 @@ is_rng_state <- function(x) {
   inherits(x, "AnvlRngState")
 }
 
-# ---- A random state on the host -----------------------------------------------
+# ---- A random state -----------------------------------------------------------
 
-# The random state of the 32-bit words `words` (whole R doubles in [0, 2^32)):
-# the key's words, in the order of JAX's key data, then the counter's low and
-# high word. It is an environment, so that the draws from it advance it in
-# place, and R holds its words, so that advancing it runs no program and reading
-# it waits for none. A jitted function takes its words, as bare R data that the
-# call uploads (see `register_rng_state_node()`), so a donation takes them
-# from no random state.
-rng_state_of_words <- function(words) {
+# The random state of the key `key` and the counter `counter`. A trace and a
+# jitted function see them as a `ui32` array of shape 2 and a `ui64` scalar,
+# which they are in a trace: boxes of it. R holds them as their 32-bit words
+# (whole R doubles in [0, 2^32)), each an array of shape 2: the key's in the
+# order of JAX's key data, the counter's low and high one. A jitted function
+# takes those words as bare R data, which the call uploads to its device, and
+# its trace receives them as the key and the counter (see
+# `received_rng_state()`). It is an environment, so that the draws from it
+# advance it in place, and R holds its words, so that advancing it runs no
+# program and reading it waits for none.
+AnvlRngState <- function(key, counter) {
+  if (is_rdata_box(key)) {
+    return(received_rng_state(key, counter))
+  }
   x <- new.env(parent = emptyenv())
-  x$words <- words
+  x$key <- key
+  x$counter <- counter
   structure(x, class = "AnvlRngState")
 }
 
-# The key and the counter of a random state, by name: their words among its
-# words (see `rng_state_of_words()`), their data type and shape, and the
-# label of their node in a printed graph.
+# A random state R holds, of the same key and counter as `x`, which the draws
+# from `x` leave intact.
+rng_state_copy <- function(x) {
+  AnvlRngState(x$key, x$counter)
+}
+
+# The 32-bit words of the random state `x`, which R holds: the key's, then the
+# counter's low and high one.
+rng_state_words <- function(x) {
+  c(as.vector(x$key), as.vector(x$counter))
+}
+
+# The random state of the 32-bit words `words` (see `rng_state_words()`).
+rng_state_of_words <- function(words) {
+  AnvlRngState(array(words[1:2], dim = 2L), array(words[3:4], dim = 2L))
+}
+
+# The key and the counter of a random state, by name: their data type and shape
+# in a trace, and the label of their node in a printed graph.
 rng_state_fields <- list(
-  key = list(words = 1:2, dtype = "ui32", shape = 2L, label = "key"),
-  counter = list(words = 3:4, dtype = "ui64", shape = integer(), label = "counter")
+  key = list(dtype = "ui32", shape = 2L, label = "key"),
+  counter = list(dtype = "ui64", shape = integer(), label = "counter")
 )
 
 # The random state of the arrays `key` (`ui32`, shape 2) and `counter` (`ui64`
@@ -168,7 +188,7 @@ rng_state_of_arrays <- function(key, counter) {
 rng_state_buffer <- function(x, name) {
   field <- rng_state_fields[[name]]
   pjrt_buffer(
-    words_bytes(x$words[field$words]),
+    words_bytes(as.vector(x[[name]])),
     dtype = field$dtype,
     shape = field$shape,
     device = default_device("pjrt"),
@@ -198,8 +218,8 @@ bytes_words <- function(bytes) {
   colSums(matrix(as.numeric(bytes), nrow = 4L) * 256^(0:3))
 }
 
-# The global random state as R holds it, outside of any program, which the
-# first draw from it derives from base R's RNG.
+# The global random state as R holds it, outside of any program, which its
+# first use derives from base R's RNG.
 global_rng_state <- function() {
   if (is.null(globals$rng_state)) {
     globals$rng_state <- rng_state_from_r()
@@ -220,9 +240,7 @@ rng_state_from_r <- function() {
   rng_state_of_key(floor(stats::runif(2L) * 2^32))
 }
 
-# The random state of the 32-bit integer `seed`: the key of JAX's `key(seed)`
-# with `jax_enable_x64` off, JAX's default, the words 0 and `seed` read as an
-# unsigned 32-bit integer.
+# The random state of the 32-bit integer `seed`
 rng_state_from_seed <- function(seed) {
   rng_state_of_key(c(0, seed %% 2^32))
 }

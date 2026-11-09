@@ -37,9 +37,11 @@ peek_r_type <- function(x) {
   to_abstract(x)$r_type %||% "value"
 }
 
+# A random state among the arguments is a leaf, which the traced function
+# receives as it is, so that its draws continue those of the enclosing trace.
 prepare_gradient_args <- function(args, wrt) {
-  args_flat <- flatten(args)
-  in_tree <- build_tree(args)
+  args_flat <- flatten(args, is_leaf = is_rng_state)
+  in_tree <- build_tree(args, is_leaf = is_rng_state)
   is_wrt_flat <- if (!is.null(wrt)) {
     pjrt::tree_leaf_mask(in_tree, wrt)
   } else {

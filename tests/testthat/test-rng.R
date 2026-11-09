@@ -36,11 +36,11 @@ forked_state <- function(seed) {
 }
 
 # Leaves the global random state unset until the calling scope exits, so that
-# the next draw derives it from base R's RNG.
+# its next use derives it from base R's RNG.
 local_unset_rng_state <- function(envir = parent.frame()) {
-  old <- nv_get_rng_state()
-  nv_set_rng_state(NULL)
-  withr::defer(nv_set_rng_state(old), envir = envir)
+  old <- globals$rng_state
+  globals$rng_state <- NULL
+  withr::defer(assign("rng_state", old, envir = globals), envir = envir)
 }
 
 describe("nv_set_seed", {
@@ -89,7 +89,7 @@ describe("nv_set_seed", {
     withr::local_seed(3L)
     expect_false(identical(as_array(nv_runif(3L)), a))
     stats::runif(1L)
-    nv_set_rng_state(NULL)
+    globals$rng_state <- NULL
     withr::local_seed(3L)
     expect_identical(as_array(nv_runif(3L)), a)
   })
@@ -146,10 +146,14 @@ describe("local_nv_seed", {
 })
 
 describe("nv_get_rng_state", {
-  it("is NULL while the global random state is not set", {
+  it("derives the global random state from base R's RNG if it is not set", {
     local_unset_rng_state()
-    expect_null(nv_get_rng_state())
-    expect_visible(nv_get_rng_state())
+    withr::local_seed(3L)
+    key <- floor(stats::runif(2L) * 2^32)
+    withr::local_seed(3L)
+    expect_identical(state_words(nv_get_rng_state()), c(key, 0, 0))
+    # once
+    expect_identical(state_words(nv_get_rng_state()), c(key, 0, 0))
   })
 
   it("returns a copy of the global random state", {
@@ -214,13 +218,8 @@ describe("nv_get_rng_state", {
 })
 
 describe("nv_set_rng_state", {
-  it("unsets the global random state with NULL", {
-    local_nv_seed(1L)
-    nv_set_rng_state(NULL)
-    expect_null(nv_get_rng_state())
-  })
-
   it("rejects what is not a random state", {
+    expect_error(nv_set_rng_state(NULL), "must be a random state")
     expect_error(nv_set_rng_state(c(1, 2, 3, 4)), "must be a random state")
     key <- nv_array(c(1, 2), dtype = "ui32")
     counter <- nv_scalar(0L, dtype = "ui64")
@@ -294,7 +293,6 @@ describe("a sampling call", {
 describe("global_rng_state_handle", {
   it("is a list of no fields, which the package stores as it is", {
     expect_identical(unclass(global_rng_state_handle), list())
-    expect_true(is_side_effect(global_rng_state_handle))
   })
 })
 
@@ -754,6 +752,19 @@ describe("the global random state in a traced graph", {
   })
 })
 
+describe("AnvlRngState", {
+  it("is a tree of the words of its key and its counter, which R holds", {
+    rng <- nv_rng_state(7L)
+    with_nv_rng_state(rng, nv_runif(1L))
+    expect_identical(flatten(rng), list(array(c(0, 7), dim = 2L), array(c(1, 0), dim = 2L)))
+    copy <- unflatten(build_tree(rng), flatten(rng))
+    expect_identical(state_words(copy), state_words(rng))
+    # a random state of its own
+    with_nv_rng_state(copy, nv_runif(1L))
+    expect_identical(state_words(rng), c(0, 7, 1, 0))
+  })
+})
+
 describe("nv_rng_state", {
   it("is a node of the argument tree, which prints it as a random state", {
     expect_match(format(pjrt::build_tree(list(rng = nv_rng_state(1L)))), "AnvlRngState")
@@ -850,10 +861,10 @@ describe("nv_rng_state", {
       \(rng1, rng2) list(with_nv_rng_state(rng1, nv_runif(1L)), with_nv_rng_state(rng2, nv_runif(1L))),
       list(nv_rng_state(1L), nv_rng_state(2L))
     )
-    # each random state is one input of the graph, its words, and has a view of
-    # its own, whose handle knows its place among the random states of the
-    # arguments
-    expect_length(graph$inputs, 2L)
+    # each random state is two inputs of the graph, the words of its key and of
+    # its counter, and has a view of its own, whose handle knows its place
+    # among the random states of the arguments
+    expect_length(graph$inputs, 4L)
     expect_length(graph$side_effects, 2L)
     draws <- Filter(function(call) call$primitive$name == "sample_bits", graph$statements)
     expect_length(draws, 2L)
@@ -863,10 +874,12 @@ describe("nv_rng_state", {
       expect_s3_class(view$effect, "AnvlRngStateHandle")
       expect_null(view$inputs)
       expect_identical(view$n, 1)
-      # its draw takes the key and the counter the graph computes from its words
+      # its draw takes the key and the counter the graph computes from their words
       expect_identical(draws[[i]]$inputs, list(view$effect$key, view$effect$counter))
-      convert <- Find(function(call) identical(call$inputs, graph$inputs[i]), graph$statements)
-      expect_identical(convert$primitive$name, "convert")
+      for (input in graph$inputs[2L * i - 1:0]) {
+        convert <- Find(function(call) identical(call$inputs, list(input)), graph$statements)
+        expect_identical(convert$primitive$name, "convert")
+      }
     }
     expect_false(identical(graph$side_effects[[1L]]$effect, graph$side_effects[[2L]]$effect))
     # the global random state is not used
@@ -895,6 +908,11 @@ describe("nv_rng_state", {
     expect_true(eq_device(device(out), dev))
     expect_identical(as_array(out), with_nv_rng_state(nv_rng_state(1L), as_array(nv_runif(2L))))
     expect_identical(state_words(rng)[[3L]], 1)
+  })
+
+  it("cannot be returned from a jitted function", {
+    expect_error(jit(function(rng) rng)(nv_rng_state(1L)), "cannot return a side effect")
+    expect_error(jit(function(rng) list(1, rng))(nv_rng_state(1L)), "cannot return a side effect")
   })
 
   it("is refused as a static argument", {
