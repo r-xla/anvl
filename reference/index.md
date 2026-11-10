@@ -556,6 +556,10 @@ distributions
   [`nv_pbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md)
   [`nv_qbinom()`](https://r-xla.github.io/anvl/reference/nv_binomial.md)
   : The Binomial Distribution
+- [`nv_dpois()`](https://r-xla.github.io/anvl/reference/nv_poisson.md)
+  [`nv_ppois()`](https://r-xla.github.io/anvl/reference/nv_poisson.md)
+  [`nv_qpois()`](https://r-xla.github.io/anvl/reference/nv_poisson.md) :
+  The Poisson Distribution
 - [`nv_dexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
   [`nv_pexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)
   [`nv_qexp()`](https://r-xla.github.io/anvl/reference/nv_exponential.md)

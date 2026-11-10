@@ -20,7 +20,8 @@ nv_qbinom(p, size, prob, lower_tail = TRUE, log_p = FALSE)
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Quantiles at which to evaluate the density (`x`) or the distribution
-  function (`q`). These are counts, given as integers or floats.
+  function (`q`). These are counts, given as integers or floats; see
+  Non-Integer Values for values that are not whole numbers.
 
 - size:
 
@@ -68,7 +69,9 @@ probability mass function: \$\$p(x) = \binom{n}{x} p^x (1-p)^{n-x},
 \quad x = 0, \ldots, n\$\$ and zero elsewhere.
 
 Invalid arguments give `NaN`, as in base R, but without a warning (that
-is `prob` outside \\\[0, 1\]\\, or a negative `size`).
+is `prob` outside \\\[0, 1\]\\, or a `size` that is negative or not a
+whole number). `size` is taken as a whole number with the same tolerance
+as `x` (see Non-Integer Values).
 
 `nv_dbinom` uses the saddle point expansion of Loader (2000), as base R
 does. `nv_pbinom` uses the incomplete beta function methods of DiDonato
@@ -78,6 +81,29 @@ fraction, and an asymptotic expansion for large `size` near the mean. If
 the continued fraction has not converged after 1000 iterations, the
 result is `NaN`. `nv_qbinom` finds the smallest \\x\\ with \\P(X \le x)
 \ge p\\, starting from a Cornish-Fisher approximation as base R does.
+Above `2^24` in `f32` and `2^53` in `f64` not every whole number is a
+float, and `nv_qbinom` then returns the smallest float \\x\\ with \\P(X
+\le x) \ge p\\.
+
+## Non-Integer Values
+
+`x` and `q` are counts, but any value is accepted, and one that is not a
+whole number is treated as in base R, without its warnings:
+
+- `nv_dbinom()` takes an `x` within a relative `1e-9` of a whole number,
+  that is with \\\|x - \mathrm{round}(x)\| \le 10^{-9} \max(\|x\|, 1)\\,
+  as that whole number. Any other `x` has probability zero.
+
+- `nv_pbinom()` rounds `q` down, except that a `q` within `1e-7` below a
+  whole number counts as that number.
+
+- A negative `x` or `q` is below the support even where it is within the
+  tolerance of zero: such an `x` has probability zero, and such a `q`
+  has \\P(X \le q) = 0\\.
+
+Finite quantiles from `nv_qbinom()` are always whole numbers. Since `x`
+and `q` are used only as whole numbers, their gradient is zero wherever
+a gradient can be taken.
 
 ## Gradients
 
@@ -86,10 +112,11 @@ result is `NaN`. `nv_qbinom` finds the smallest \\x\\ with \\P(X \le x)
 `x > 0`, the log-density is `-Inf` and has no derivative: it diverges.
 With `log = TRUE` the gradient returned there is zero, which is a
 convention of this implementation, not the mathematical derivative.
-`nv_pbinom` and `nv_qbinom` iterate until convergence in a
+`nv_pbinom` iterates until convergence in a
 [`nv_while()`](https://r-xla.github.io/anvl/reference/nv_while.md) loop,
 so [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
-cannot differentiate them.
+cannot differentiate it. `nv_qbinom` is a step function, and autodiff
+returns a zero gradient for all of its arguments.
 
 ## Data Types
 

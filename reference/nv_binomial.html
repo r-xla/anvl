@@ -102,7 +102,8 @@ and <code>prob</code>.</p>
 <dl><dt id="arg-x-q">x, q<a class="anchor" aria-label="anchor" href="#arg-x-q"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Quantiles at which to evaluate the density (<code>x</code>) or the distribution
-function (<code>q</code>). These are counts, given as integers or floats.</p></dd>
+function (<code>q</code>). These are counts, given as integers or floats; see
+Non-Integer Values for values that are not whole numbers.</p></dd>
 
 
 <dt id="arg-size">size<a class="anchor" aria-label="anchor" href="#arg-size"></a></dt>
@@ -148,7 +149,9 @@ probability mass function:
 $$p(x) = \binom{n}{x} p^x (1-p)^{n-x}, \quad x = 0, \ldots, n$$
 and zero elsewhere.</p>
 <p>Invalid arguments give <code>NaN</code>, as in base R, but without a warning (that is
-<code>prob</code> outside \([0, 1]\), or a negative <code>size</code>).</p>
+<code>prob</code> outside \([0, 1]\), or a <code>size</code> that is negative or not a whole
+number). <code>size</code> is taken as a whole number with the same tolerance as <code>x</code>
+(see Non-Integer Values).</p>
 <p><code>nv_dbinom</code> uses the saddle point expansion of
 Loader (2000), as base R does. <code>nv_pbinom</code> uses the
 incomplete beta function methods of DiDonato &amp; Morris (1992)
@@ -156,7 +159,27 @@ that base R's <code><a href="https://rdrr.io/r/stats/Beta.html" class="external-
 expansion for large <code>size</code> near the mean. If the continued fraction has not
 converged after 1000 iterations, the result is <code>NaN</code>. <code>nv_qbinom</code> finds the
 smallest \(x\) with \(P(X \le x) \ge p\), starting from a Cornish-Fisher
-approximation as base R does.</p>
+approximation as base R does. Above <code>2^24</code> in <code>f32</code> and <code>2^53</code> in <code>f64</code> not
+every whole number is a float, and <code>nv_qbinom</code> then returns the smallest float
+\(x\) with \(P(X \le x) \ge p\).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="non-integer-values">Non-Integer Values<a class="anchor" aria-label="anchor" href="#non-integer-values"></a></h2>
+
+
+<p><code>x</code> and <code>q</code> are counts, but any value is accepted, and one that is not a
+whole number is treated as in base R, without its warnings:</p><ul><li><p><code>nv_dbinom()</code> takes an <code>x</code> within a relative <code>1e-9</code> of a whole
+number, that is with
+\(|x - \mathrm{round}(x)| \le 10^{-9} \max(|x|, 1)\),
+as that whole number. Any other <code>x</code> has probability zero.</p></li>
+<li><p><code>nv_pbinom()</code> rounds <code>q</code> down, except that a <code>q</code> within <code>1e-7</code> below
+a whole number counts as that number.</p></li>
+<li><p>A negative <code>x</code> or <code>q</code> is below the support even where it is within the
+tolerance of zero: such an <code>x</code> has probability zero, and such a <code>q</code> has
+\(P(X \le q) = 0\).</p></li>
+</ul><p>Finite quantiles from <code>nv_qbinom()</code> are always whole numbers. Since
+<code>x</code> and <code>q</code> are used only as whole numbers, their gradient is zero wherever
+a gradient can be taken.</p>
     </div>
     <div class="section level2">
     <h2 id="gradients">Gradients<a class="anchor" aria-label="anchor" href="#gradients"></a></h2>
@@ -167,8 +190,9 @@ approximation as base R does.</p>
 <code>x &gt; 0</code>, the log-density is <code>-Inf</code> and has no derivative: it diverges. With
 <code>log = TRUE</code> the gradient returned there is zero, which is a convention of
 this implementation, not the mathematical derivative.
-<code>nv_pbinom</code> and <code>nv_qbinom</code> iterate until convergence in a
-<code><a href="nv_while.html">nv_while()</a></code> loop, so <code><a href="gradient.html">gradient()</a></code> cannot differentiate them.</p>
+<code>nv_pbinom</code> iterates until convergence in a <code><a href="nv_while.html">nv_while()</a></code> loop, so
+<code><a href="gradient.html">gradient()</a></code> cannot differentiate it. <code>nv_qbinom</code> is a step function, and
+autodiff returns a zero gradient for all of its arguments.</p>
     </div>
     <div class="section level2">
     <h2 id="data-types">Data Types<a class="anchor" aria-label="anchor" href="#data-types"></a></h2>
@@ -276,7 +300,7 @@ promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code> <c
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Sebastian Fischer, Daniel Falbel, Tomasz Kalinowski, Nikolai German.</p>
+  <p>Developed by Sebastian Fischer, Daniel Falbel, Tomasz Kalinowski, Nikolai German, Louis Aslett.</p>
 </div>
 
 <div class="pkgdown-footer-right">

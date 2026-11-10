@@ -13,7 +13,7 @@
 - **Nikolai German**. Author.
   [](https://orcid.org/https://orcid.org/0009-0001-7394-8367)
 
-- **Louis Aslett**. Contributor.
+- **Louis Aslett**. Author.
   [](https://orcid.org/https://orcid.org/0000-0003-2211-233X)
 
 - **Hugh Graham**. Contributor.
@@ -24,13 +24,13 @@
 Source:
 [`DESCRIPTION`](https://github.com/r-xla/anvl/blob/main/DESCRIPTION)
 
-Fischer S, Falbel D, Kalinowski T, German N (2026). *anvl: Accelerated
-Array Computing and Automatic Differentiation*. R package version 0.5.1,
-<https://r-xla.github.io/anvl/>.
+Fischer S, Falbel D, Kalinowski T, German N, Aslett L (2026). *anvl:
+Accelerated Array Computing and Automatic Differentiation*. R package
+version 0.5.1, <https://r-xla.github.io/anvl/>.
 
     @Manual{,
       title = {anvl: Accelerated Array Computing and Automatic Differentiation},
-      author = {Sebastian Fischer and Daniel Falbel and Tomasz Kalinowski and Nikolai German},
+      author = {Sebastian Fischer and Daniel Falbel and Tomasz Kalinowski and Nikolai German and Louis Aslett},
       year = {2026},
       note = {R package version 0.5.1},
       url = {https://r-xla.github.io/anvl/},

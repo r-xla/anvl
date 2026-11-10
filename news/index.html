@@ -141,6 +141,7 @@
 <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> no longer returns <code>Inf</code> / <code>-Inf</code> when a uniform draw is exactly 0.</li>
 <li>nv_mean()<code>,</code>nv_var()<code>and</code>nv_sd()` no longer overflow on an integer input, which is now summed at the default float.</li>
 <li>New <code><a href="../reference/nv_dtype_constructors.html">nv_bool()</a></code>, <code>nv_int{8,16,32,64}()</code>, <code>nv_uint{8,16,32,64}()</code>, <code><a href="../reference/nv_dtype_constructors.html">nv_float32()</a></code> and <code><a href="../reference/nv_dtype_constructors.html">nv_float64()</a></code> create an array of the data type in their name.</li>
+<li>New functions for the Poisson distribution: <code><a href="../reference/nv_poisson.html">nv_dpois()</a></code>, <code><a href="../reference/nv_poisson.html">nv_ppois()</a></code>, and <code><a href="../reference/nv_poisson.html">nv_qpois()</a></code>.</li>
 <li>New functions for the binomial distribution: <code><a href="../reference/nv_binomial.html">nv_dbinom()</a></code>, <code><a href="../reference/nv_binomial.html">nv_pbinom()</a></code> and <code><a href="../reference/nv_binomial.html">nv_qbinom()</a></code>.</li>
 <li>New functions for the exponential distribution: <code><a href="../reference/nv_exponential.html">nv_dexp()</a></code>, <code><a href="../reference/nv_exponential.html">nv_pexp()</a></code>, and <code><a href="../reference/nv_exponential.html">nv_qexp()</a></code>.</li>
 <li>
@@ -467,7 +468,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Sebastian Fischer, Daniel Falbel, Tomasz Kalinowski, Nikolai German.</p>
+  <p>Developed by Sebastian Fischer, Daniel Falbel, Tomasz Kalinowski, Nikolai German, Louis Aslett.</p>
 </div>
 
 <div class="pkgdown-footer-right">
