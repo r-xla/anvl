@@ -93,6 +93,7 @@ metadata needed for execution.</p>
 <span>  <span class="va">args_flat</span>,</span>
 <span>  <span class="va">in_tree</span>,</span>
 <span>  donate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  xla_options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  arg_device <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fallback_device <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -122,6 +123,11 @@ Tree structure of the inputs.</p></dd>
 <dt id="arg-donate">donate<a class="anchor" aria-label="anchor" href="#arg-donate"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>)<br>
 Names of the arguments whose buffers should be donated.</p></dd>
+
+
+<dt id="arg-xla-options">xla_options<a class="anchor" aria-label="anchor" href="#arg-xla-options"></a></dt>
+<dd><p>(named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
+XLA options for this compile, passed to <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_compile.html" class="external-link">pjrt::pjrt_compile()</a></code>.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>

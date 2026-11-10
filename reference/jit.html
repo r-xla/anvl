@@ -130,6 +130,14 @@ falling back to <code><a href="default_device.html">default_device()</a></code>.
 arguments whose buffers the compiled program may reuse for its outputs.
 A donated array must not be used again after the call; this can save
 memory and copies for large inputs. Must not overlap with <code>static</code>.</p></li>
+<li><p><code>xla_options</code> (named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>, default <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>), <code>"pjrt"</code> only: XLA
+options for compiling this function, passed to <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_compile.html" class="external-link">pjrt::pjrt_compile()</a></code>,
+which describes the names and values it takes. They apply to this
+function's compiles only, unlike <code>XLA_FLAGS</code>, which applies to every
+compile of the R session. A jitted function called inside another
+one's trace is traced into the outer program, so only the options of
+the outermost <code>jit()</code> take effect: pass them as
+<code>jit(value_and_gradient(f), xla_options = ...)</code>, not to a jitted <code>f</code>.</p></li>
 <li><p><code>unwrap</code> (<code>logical(1)</code>, default <code>FALSE</code>), <code>"quickr"</code> only: if <code>TRUE</code>,
 the compiled function returns plain R arrays instead of
 <code><a href="AnvlArray.html">AnvlArray</a></code>s, which is useful when the output is consumed by non-anvl

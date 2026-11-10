@@ -12,6 +12,7 @@ compile_pjrt(
   args_flat,
   in_tree,
   donate = character(),
+  xla_options = list(),
   device = NULL,
   arg_device = NULL,
   fallback_device = NULL,
@@ -40,6 +41,12 @@ compile_pjrt(
 
   ([`character()`](https://rdrr.io/r/base/character.html))  
   Names of the arguments whose buffers should be donated.
+
+- xla_options:
+
+  (named [`list()`](https://rdrr.io/r/base/list.html))  
+  XLA options for this compile, passed to
+  [`pjrt::pjrt_compile()`](https://r-xla.github.io/pjrt/reference/pjrt_compile.html).
 
 - device:
 

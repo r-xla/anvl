@@ -59,6 +59,18 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
     after the call; this can save memory and copies for large inputs.
     Must not overlap with `static`.
 
+  - `xla_options` (named [`list()`](https://rdrr.io/r/base/list.html),
+    default [`list()`](https://rdrr.io/r/base/list.html)), `"pjrt"`
+    only: XLA options for compiling this function, passed to
+    [`pjrt::pjrt_compile()`](https://r-xla.github.io/pjrt/reference/pjrt_compile.html),
+    which describes the names and values it takes. They apply to this
+    function's compiles only, unlike `XLA_FLAGS`, which applies to every
+    compile of the R session. A jitted function called inside another
+    one's trace is traced into the outer program, so only the options of
+    the outermost `jit()` take effect: pass them as
+    `jit(value_and_gradient(f), xla_options = ...)`, not to a jitted
+    `f`.
+
   - `unwrap` (`logical(1)`, default `FALSE`), `"quickr"` only: if
     `TRUE`, the compiled function returns plain R arrays instead of
     [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)s,

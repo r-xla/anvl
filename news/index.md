@@ -15,6 +15,9 @@
 
 ### Features
 
+- [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) takes XLA
+  options for the pjrt backend, `xla_options`, which apply to that
+  function’s compiles only.
 - `AnvlArray`s can now be serialized.
 - New
   [`nv_bool()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md),
