@@ -26,12 +26,12 @@ Source:
 
 Fischer S, Falbel D, Kalinowski T, German N, Aslett L (2026). *anvl:
 Accelerated Array Computing and Automatic Differentiation*. R package
-version 0.5.1, <https://r-xla.github.io/anvl/>.
+version 0.6.0, <https://r-xla.github.io/anvl/>.
 
     @Manual{,
       title = {anvl: Accelerated Array Computing and Automatic Differentiation},
       author = {Sebastian Fischer and Daniel Falbel and Tomasz Kalinowski and Nikolai German and Louis Aslett},
       year = {2026},
-      note = {R package version 0.5.1},
+      note = {R package version 0.6.0},
       url = {https://r-xla.github.io/anvl/},
     }

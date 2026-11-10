@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.1</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,9 +76,9 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.6.0" id="anvl-060">anvl 0.6.0<a class="anchor" aria-label="anchor" href="#anvl-060"></a></h2>
 <div class="section level3">
-<h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
+<h3 id="breaking-changes-0-6-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-6-0"></a></h3>
 <ul><li>
 <code>transform_gradient()</code> is renamed to <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code>.</li>
 <li>
@@ -86,7 +86,7 @@
 <li>The RNG state is now handled by {anvl} itself and RNG states no longer have to be passed around. This comes with functions such as <code><a href="../reference/nv_set_seed.html">nv_set_seed()</a></code>. See the random numbers article for more details.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
+<h3 id="features-0-6-0">Features<a class="anchor" aria-label="anchor" href="#features-0-6-0"></a></h3>
 <ul><li>
 <code><a href="../reference/jit.html">jit()</a></code> takes XLA options for the pjrt backend, <code>xla_options</code>, which apply to that function’s compiles only.</li>
 <li>
@@ -106,7 +106,7 @@
 <code><a href="../reference/gradient.html">gradient()</a></code> differentiates through <code><a href="../reference/nv_scan.html">nv_scan()</a></code> / <code><a href="../reference/prim_scan.html">prim_scan()</a></code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<h3 id="bug-fixes-0-6-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-6-0"></a></h3>
 <ul><li>
 <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> returns <code>NaN</code> for a <code>NaN</code> <code>mean</code> or a non-finite or negative <code>sd</code>, like <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm()</a></code>.</li>
 <li>An unsigned dynamic index of 0 (in <code>[</code>, <code>[&lt;-</code>, <code><a href="../reference/prim_dynamic_slice.html">prim_dynamic_slice()</a></code>, <code><a href="../reference/prim_dynamic_update_slice.html">prim_dynamic_update_slice()</a></code>) no longer wraps around to the last position.</li>
@@ -158,7 +158,7 @@
 <li>An update that <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> drops as out of bounds no longer gets a gradient when <code>unique_indices = TRUE</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>
+<h3 id="performance-0-6-0">Performance<a class="anchor" aria-label="anchor" href="#performance-0-6-0"></a></h3>
 <ul><li>Converting <code>AnvlArray</code>s to R is now faster.</li>
 <li>Cholesky decomposition is now much faster.</li>
 <li>Linear algebra primitives in <code>f32</code> are now faster on windows.</li>

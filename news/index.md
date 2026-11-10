@@ -1,6 +1,6 @@
 # Changelog
 
-## anvl (development version)
+## anvl 0.6.0
 
 ### Breaking changes
 
