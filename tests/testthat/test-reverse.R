@@ -613,6 +613,29 @@ test_that("gradient() inside a sub-graph takes an R argument at the data type it
   expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
 })
 
+describe("graph_apply", {
+  graph <- trace_fn(function(x) nv_exp(x) * x, list(x = nv_aval("f64", integer())))
+
+  it("can apply the same graph twice in one trace", {
+    # Applied to its own result: were the second application's gvals those of
+    # the first, its input would be its own output.
+    f <- function(x) {
+      once <- graph_apply(graph, list(x))
+      graph_apply(graph, once)[[1L]]
+    }
+    traced <- trace_fn(f, list(x = nv_aval("f64", integer())))
+    defined <- unlist(lapply(traced$statements, \(call) call$outputs))
+    expect_false(anyDuplicated(vapply(defined, rlang::obj_address, character(1L))) > 0L)
+    once <- exp(2) * 2
+    expect_equal(as.numeric(jit(f)(nv_scalar(2, "f64"))), exp(once) * once)
+  })
+
+  it("refuses to read an input passed as NULL", {
+    f <- function(x) graph_apply(graph, list(NULL))[[1L]]
+    expect_error(trace_fn(f, list(x = nv_aval("f64", integer()))), "passed as `NULL`")
+  })
+})
+
 describe("graph_gradient", {
   it("keeps the side effects of the graph it differentiates", {
     graph <- trace_fn(function(x) x * nv_runif(integer()), list(x = nv_aval("f32", integer())))

@@ -424,6 +424,18 @@ describe("prim_if", {
     )
     expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
   })
+
+  it("differentiates a scan inside a branch", {
+    f <- function(p, x) {
+      nv_if(
+        p,
+        function() nv_scan(nv_scalar(1, "f64"), x, function(carry, x) list(carry = carry * x, out = NULL))$carry,
+        function() nv_sum(x)
+      )
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(true_, x)[[1L]]), c(6, 3, 2))
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
+  })
 })
 
 describe("prim_custom_gradient", {
@@ -1812,6 +1824,275 @@ describe("prim_broadcast_in_axes reverse", {
   })
 })
 
+describe("prim_scan", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+
+  it("differentiates an array that is both the initial carry and a capture", {
+    # acc -> acc * x twice: x^3, d/dx sum(x^3) = 3 x^2
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 2L)$carry$acc)
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(3, 12, 27))
+  })
+
+  it("keeps one copy of a residual computed from the captures alone", {
+    # h -> exp(W) h three times; exp(W) is what the backward pass reads for the
+    # cotangent of h, and it is the same at every step.
+    f <- function(W, h) {
+      body <- function(carry, xs) list(carry = list(h = nv_matmul(nv_exp(W), carry$h)), out = NULL)
+      nv_sum(prim_scan(list(h = h), list(), body, steps = 3L)$carry$h)
+    }
+    W_r <- matrix(c(0.1, -0.2, 0.3, 0.05), 2L, 2L)
+    h_r <- c(1, 2)
+    grads <- jit(gradient(f))(nv_array(W_r, dtype = "f64"), nv_array(h_r, dtype = "f64", shape = c(2L, 1L)))
+    E <- exp(W_r)
+    E3 <- E %*% E %*% E
+    expect_equal(as.numeric(grads$h), as.numeric(t(E3) %*% c(1, 1)))
+    # d/dW sum(E^3 h) = (E^T u_1 h^T + u_2 (E h)^T + u_3 (E^2 h)^T) * E, with
+    # u_k the cotangent before the k-th last step.
+    u3 <- c(1, 1)
+    u2 <- t(E) %*% u3
+    u1 <- t(E) %*% u2
+    dE <- u3 %*% t(E %*% E %*% h_r) + u2 %*% t(E %*% h_r) + u1 %*% t(h_r)
+    expect_equal(as_array(grads$W), dE * E)
+
+    avals <- list(nv_aval("f64", c(2L, 2L)), nv_aval("f64", c(2L, 1L)))
+    graph <- trace_fn(gradient(f), avals)
+    scans <- Filter(\(call) call$primitive$name == "scan", graph$statements)
+    out_shapes <- lapply(unlist(lapply(scans, \(call) call$outputs)), \(g) shape(g$aval))
+    expect_false(list(c(3L, 2L, 2L)) %in% out_shapes)
+    # Nor does the forward scan carry it, which would cost a copy per step, or
+    # compute it again: it reads the copy computed before it.
+    fwd <- Filter(\(call) !call$params$reverse, scans)[[1L]]
+    expect_false(list(c(2L, 2L)) %in% lapply(fwd$outputs, \(g) shape(g$aval)))
+    expect_false("exp" %in% vapply(fwd$params$body$statements, \(call) call$primitive$name, character(1L)))
+  })
+
+  it("reads a residual that is also a stacked output from that output", {
+    # The backward pass of tanh reads h_t, which the body also returns; it is
+    # stacked once, next to the carry each step starts from.
+    f <- function(w, h) {
+      body <- function(carry, xs) {
+        h <- tanh(carry$h * w)
+        list(carry = list(h = h), out = h)
+      }
+      nv_sum(prim_scan(list(h = h), list(), body, steps = 3L)$out)
+    }
+    f_unrolled <- function(w, h) {
+      total <- 0
+      for (t in 1:3) {
+        h <- tanh(h * w)
+        total <- total + nv_sum(h)
+      }
+      total
+    }
+    args <- list(nv_array(c(0.5, -0.3), dtype = "f64"), nv_array(c(0.2, 0.9), dtype = "f64"))
+    grads <- do.call(jit(gradient(f)), args)
+    expected <- do.call(jit(gradient(f_unrolled)), args)
+    expect_equal(as.numeric(grads[[1L]]), as.numeric(expected[[1L]]))
+    expect_equal(as.numeric(grads[[2L]]), as.numeric(expected[[2L]]))
+
+    graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
+    fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
+    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    expect_length(stacked, 2L)
+  })
+
+  it("reads the carry a step starts from out of a stacked output that returns it", {
+    # The backward pass of c$h * w reads c$h, which the body also stacks.
+    f <- function(w, h) {
+      body <- function(carry, xs) list(carry = list(h = carry$h * w), out = carry$h)
+      r <- prim_scan(list(h = h), list(), body, steps = 3L)
+      nv_sum(r$out * r$out) + nv_sum(r$carry$h)
+    }
+    f_unrolled <- function(w, h) {
+      total <- 0
+      for (t in 1:3) {
+        total <- total + nv_sum(h * h)
+        h <- h * w
+      }
+      total + nv_sum(h)
+    }
+    args <- list(nv_array(c(0.5, -1.5), dtype = "f64"), nv_array(c(0.2, 0.9), dtype = "f64"))
+    grads <- do.call(jit(gradient(f)), args)
+    expected <- do.call(jit(gradient(f_unrolled)), args)
+    expect_equal(as.numeric(grads[[1L]]), as.numeric(expected[[1L]]))
+    expect_equal(as.numeric(grads[[2L]]), as.numeric(expected[[2L]]))
+
+    graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
+    fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
+    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    expect_length(stacked, 1L)
+  })
+
+  it("passes the forward scan only what its step reads", {
+    # The step reads sum(tanh(w)); w and tanh(w), a residual of the backward
+    # pass, are computed from before the scan but not read in it.
+    f <- function(w, h) {
+      body <- function(carry, xs) list(carry = list(h = carry$h * nv_sum(tanh(w))), out = NULL)
+      nv_sum(prim_scan(list(h = h), list(), body, steps = 3L)$carry$h)
+    }
+    f_unrolled <- function(w, h) {
+      for (t in 1:3) {
+        h <- h * nv_sum(tanh(w))
+      }
+      nv_sum(h)
+    }
+    args <- list(nv_array(c(0.5, -0.3), dtype = "f64"), nv_array(c(0.2, 0.9), dtype = "f64"))
+    grads <- do.call(jit(gradient(f)), args)
+    expected <- do.call(jit(gradient(f_unrolled)), args)
+    expect_equal(as.numeric(grads[[1L]]), as.numeric(expected[[1L]]))
+    expect_equal(as.numeric(grads[[2L]]), as.numeric(expected[[2L]]))
+
+    graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
+    fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
+    expect_equal(fwd$params$n_captures, 1L)
+  })
+
+  it("differentiates a value an integer xs indexes into", {
+    # x[1] is read twice, x[3] once, x[2] never.
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(s = carry$s + x[xs$i]), out = NULL)
+      prim_scan(list(s = nv_scalar(0, "f64")), list(i = nv_array(c(1L, 3L, 1L))), body, steps = 3L)$carry$s
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(2, 0, 1))
+  })
+
+  it("leaves a scan that does not depend on wrt alone", {
+    f <- function(x, y) {
+      body <- function(carry, xs) list(carry = list(s = carry$s + xs$v), out = NULL)
+      prim_scan(list(s = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$s * y
+    }
+    grads <- jit(gradient(f, wrt = "y"))(x, nv_scalar(2, "f64"))
+    expect_equal(as.numeric(grads$y), 6)
+  })
+
+  it("differentiates a captured value without differentiating xs", {
+    f <- function(xs, w) {
+      body <- function(carry, x) list(carry = list(s = carry$s + x$v * w), out = NULL)
+      prim_scan(list(s = nv_scalar(0, "f64")), list(v = xs), body, steps = 3L)$carry$s
+    }
+    grads <- jit(gradient(f, wrt = "w"))(x, nv_scalar(2, "f64"))
+    expect_equal(as.numeric(grads$w), 6)
+  })
+
+  it("differentiates an if in the body that reads the carry and a slice", {
+    f <- function(p, x) {
+      body <- function(carry, xs) {
+        a <- nv_if(p, function() carry$a + xs$v * xs$v, function() carry$a)
+        list(carry = list(a = a), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x)$x), c(2, 4, 6))
+  })
+
+  it("differentiates a value an earlier call's reverse rule replaced", {
+    f <- function(x) {
+      y <- nv_sort(x)
+      body <- function(carry, xs) list(carry = list(a = carry$a + nv_sum(y * y)), out = NULL)
+      prim_scan(list(a = nv_scalar(0, "f64")), list(), body, steps = 2L)$carry$a
+    }
+    expect_equal(as.numeric(jit(gradient(f))(nv_array(c(3, 1, 2), dtype = "f64"))[[1L]]), c(12, 4, 8))
+  })
+
+  it("leaves a carry that does not depend on wrt undifferentiated", {
+    # The scan carries the random state the body draws from. That state has no
+    # reverse rule, and needs none: it does not depend on x.
+    f <- function(x) {
+      body <- function(carry, xs) {
+        z <- nv_rnorm(integer(), dtype = "f64")
+        list(carry = list(a = carry$a + xs$v * z), out = z)
+      }
+      r <- prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      list(value = r$carry$a, draws = r$out)
+    }
+    draws <- with_nv_seed(1L, as.numeric(jit(f)(x)$draws))
+    loss <- function(x) f(x)$value
+    grad <- with_nv_seed(1L, jit(gradient(loss))(x)[[1L]])
+    expect_equal(as.numeric(grad), draws)
+  })
+
+  it("differentiates its own backward pass", {
+    # d/dx sum(d/dx sum(x^3)) = 6 x
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 2L)$carry$acc)
+    }
+    g <- function(x) nv_sum(gradient(f)(x)[[1L]])
+    expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), c(6, 12, 18))
+  })
+
+  it("differentiates a residual computed before the scan to the third order", {
+    # h exp(w)^3 = h exp(3 w), so d^3/dw^3 = 27 h exp(3 w).
+    f <- function(w, h) {
+      body <- function(carry, xs) list(carry = list(h = carry$h * nv_exp(w)), out = NULL)
+      prim_scan(list(h = h), list(), body, steps = 3L)$carry$h
+    }
+    d1 <- function(w, h) gradient(f)(w, h)$w
+    d2 <- function(w, h) gradient(d1)(w, h)$w
+    d3 <- function(w, h) gradient(d2)(w, h)$w
+    w <- nv_scalar(0.3, "f64")
+    h <- nv_scalar(0.7, "f64")
+    expect_equal(as.numeric(jit(d3)(w, h)), 27 * 0.7 * exp(0.9))
+  })
+
+  it("leaves the random state it draws from undifferentiated after the scan", {
+    # A draw after the scan continues from the random state the scan leaves,
+    # and needs no gradient either.
+    f <- function(x) {
+      body <- function(carry, xs) {
+        z <- nv_rnorm(integer(), dtype = "f64")
+        list(carry = list(a = carry$a + xs$v * z), out = z)
+      }
+      r <- prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      last <- nv_rnorm(integer(), dtype = "f64")
+      list(value = r$carry$a * last, draws = r$out, last = last)
+    }
+    run <- with_nv_seed(1L, jit(f)(x))
+    loss <- function(x) f(x)$value
+    grad <- with_nv_seed(1L, jit(gradient(loss))(x)[[1L]])
+    expect_equal(as.numeric(grad), as.numeric(run$draws) * as.numeric(run$last))
+  })
+
+  it("passes the gradient straight through a scan of zero steps", {
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 0L)$carry$acc)
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(1, 1, 1))
+  })
+
+  it("differentiates a scan nested in another scan", {
+    inner <- function(x) {
+      body <- function(carry, xs) list(carry = list(acc = carry$acc * x), out = NULL)
+      nv_sum(prim_scan(list(acc = x), list(), body, steps = 2L)$carry$acc)
+    }
+    f <- function(x) {
+      body <- function(carry, xs) list(carry = list(a = carry$a + inner(x)), out = NULL)
+      prim_scan(list(a = nv_scalar(0, "f64")), list(), body, steps = 2L)$carry$a
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(6, 24, 54))
+  })
+
+  it("differentiates a value a nested scan closes over from two levels out", {
+    # The inner body reads `w` and the outer slice; both are threaded through
+    # the outer body as its inputs. loss = w * 2 * sum(x).
+    f <- function(x, w) {
+      outer <- function(carry, xs) {
+        inner <- function(c2, xs2) list(carry = list(b = c2$b + w * xs$v), out = NULL)
+        r <- prim_scan(list(b = carry$a), list(), inner, steps = 2L)
+        list(carry = list(a = r$carry$b), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), outer, steps = 3L)$carry$a
+    }
+    grads <- jit(gradient(f))(x, nv_scalar(2, "f64"))
+    expect_equal(as.numeric(grads$x), c(4, 4, 4))
+    expect_equal(as.numeric(grads$w), 12)
+  })
+})
+
 describe("prim_print", {
   x <- nv_array(c(1, 2, 3), dtype = "f64")
   # The number of times a print ran: each one shows the value 7 on a line of
@@ -1836,6 +2117,52 @@ describe("prim_print", {
     }
     g <- jit(gradient(f, wrt = "x"))
     expect_equal(prints_of_seven(g(nv_scalar(TRUE), x)), 1L)
+  })
+
+  it("prints once per step of a differentiated scan", {
+    f <- function(x) {
+      body <- function(carry, xs) {
+        prim_print(nv_scalar(7L))
+        list(carry = list(a = carry$a + xs$v * xs$v), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    expect_equal(prints_of_seven(jit(gradient(f))(x)), 3L)
+  })
+
+  it("prints once per step where a residual is computed before the scan", {
+    # exp(w) is the same at every step, so it is computed before the scan --
+    # without the print next to it.
+    f <- function(x, w) {
+      body <- function(carry, xs) {
+        e <- nv_exp(prim_print(w))
+        list(carry = list(a = carry$a * e + xs$v), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(1, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    g <- jit(gradient(f, wrt = "x"))
+    expect_equal(prints_of_seven(g(x, nv_scalar(7, "f64"))), 3L)
+  })
+
+  it("prints once per step where a residual comes from an if that prints", {
+    # exp(w) is the same at every step, but computing it before the scan would
+    # run the print once more.
+    f <- function(x, w) {
+      body <- function(carry, xs) {
+        k <- nv_if(
+          w > 0,
+          function() {
+            prim_print(nv_scalar(7L))
+            nv_exp(w)
+          },
+          function() w
+        )
+        list(carry = list(a = carry$a * k + xs$v), out = NULL)
+      }
+      prim_scan(list(a = nv_scalar(1, "f64")), list(v = x), body, steps = 3L)$carry$a
+    }
+    g <- jit(gradient(f, wrt = "x"))
+    expect_equal(prints_of_seven(g(x, nv_scalar(0.4, "f64"))), 3L)
   })
 })
 

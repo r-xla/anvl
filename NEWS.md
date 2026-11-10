@@ -36,6 +36,7 @@
 * `nv_subset_assign()` and `[<-` take `update_fn` too, so
   `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
   subset, every value of an index that is repeated in `i`.
+* `gradient()` differentiates through `nv_scan()` / `prim_scan()`.
 
 ## Bug fixes
 
