@@ -26,7 +26,8 @@ AnvlGraph(
   constants = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  rdata_types = NULL
+  rdata_types = NULL,
+  side_effects = list()
 )
 ```
 
@@ -88,6 +89,17 @@ AnvlGraph(
   Together with the inputs' own avals this says everything about how a
   call's arguments are uploaded: the aval gives the data type and shape,
   this gives the R type it is uploaded from.
+
+- side_effects:
+
+  ([`list()`](https://rdrr.io/r/base/list.html))  
+  The graph's views of the side effects it uses, in the order of their
+  first use, e.g. of a random state it draws from: the value its uses
+  start from (`$value`), their number (`$n`), and the
+  [`GraphValue`](https://r-xla.github.io/anvl/reference/GraphValue.md)s
+  the graph takes for it beyond its inputs (`$inputs`). A sub-graph's
+  views are folded into its inputs and outputs by the construct that
+  traced it.
 
 ## Value
 

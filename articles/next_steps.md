@@ -359,19 +359,27 @@ chol(nv_array(m))
 
 R’s [`rnorm()`](https://rdrr.io/r/stats/Normal.html) and friends are
 only called once, while tracing, so their result is fixed in the
-compiled function. Use {anvl}’s own generators instead, which take the
-random state as an explicit input and return a new one:
+compiled function. Use {anvl}’s own generators instead:
 
 ``` r
 
-draw <- jit(function(state) nv_rnorm(state, shape = 2L))
-res <- draw(nv_rng_state(42L))
-res$values
+draw <- jit(function() nv_rnorm(2L))
+draw()
 ```
 
     ## AnvlArray
-    ##  1.6360
-    ##  1.1787
+    ##  0.8734
+    ##  0.5105
+    ## [ CPUf32{2} ]
+
+``` r
+
+draw()
+```
+
+    ## AnvlArray
+    ##  2.1332
+    ##  1.4731
     ## [ CPUf32{2} ]
 
 See the [Random Number

@@ -9,6 +9,10 @@ The resulting graph can be lowered to StableHLO (via
 transformed (e.g. via
 [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)).
 
+When `f` uses a side effect, the graph records it in its `side_effects`
+field rather than among its inputs and outputs (see
+[`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md)).
+
 ## Usage
 
 ``` r

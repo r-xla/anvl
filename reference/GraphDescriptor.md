@@ -36,7 +36,9 @@ GraphDescriptor(
   static_args_flat = NULL,
   devices = character(),
   default_dtypes = NULL,
-  backend
+  backend,
+  side_effects_mode = NULL,
+  parent = NULL
 )
 ```
 
@@ -122,6 +124,43 @@ GraphDescriptor(
   fills it in from
   [`active_backend()`](https://r-xla.github.io/anvl/reference/active_backend.md),
   so only a direct call has to name it.
+
+- side_effects_mode:
+
+  (`NULL` \| `character(1)`)  
+  Where the trace's view of a side effect starts on its first use:
+
+  - `"program"`: where the side effect says: an implicit input of the
+    program, which the graph records in its `side_effects` rather than
+    among its inputs, an argument, or a value the program creates. The
+    top level of
+    [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) and
+    [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md)
+    takes side effects this way.
+
+  - `"loop"`: as fresh inputs of the graph, which the graph also returns
+    there. The bodies of
+    [`nv_while()`](https://r-xla.github.io/anvl/reference/nv_while.md)
+    and [`nv_scan()`](https://r-xla.github.io/anvl/reference/nv_scan.md)
+    take side effects this way, and hand them on to the next iteration.
+
+  - `"capture"`: as the value of `parent`'s view, which the graph closes
+    over and continues. The branches of
+    [`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md) and the
+    function
+    [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+    differentiates take side effects this way.
+
+  - `NULL`: not at all. Such a trace cannot hand back what it did, so
+    using a side effect there is an error.
+
+- parent:
+
+  (`NULL` \| `GraphDescriptor`)  
+  The trace this one is opened in, or `NULL` for a trace at the top
+  level.
+  [`local_descriptor()`](https://r-xla.github.io/anvl/reference/local_descriptor.md)
+  fills it in.
 
 ## Value
 

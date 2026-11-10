@@ -88,7 +88,7 @@ replacement, analogous to R's <code><a href="https://rdrr.io/r/base/sample.html"
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sample_int</span><span class="op">(</span><span class="va">shape</span>, <span class="va">state</span>, <span class="va">n</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sample_int</span><span class="op">(</span><span class="va">shape</span>, <span class="va">n</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -98,13 +98,6 @@ replacement, analogous to R's <code><a href="https://rdrr.io/r/base/sample.html"
 <dl><dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 Shape of the result.</p></dd>
-
-
-<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-RNG state: a 1-D array of two <code>ui64</code> elements, as <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned <code>state</code> has them too.</p></dd>
 
 
 <dt id="arg-n">n<a class="anchor" aria-label="anchor" href="#arg-n"></a></dt>
@@ -121,34 +114,42 @@ The sampled values are converted to it, so it must hold <code>n</code>.
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
-Elements <code>state</code>, the updated RNG state, and <code>values</code>, the sampled integers
-of shape <code>shape</code> and data type <code>dtype</code>.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+The sampled integers, of shape <code>shape</code> and data type <code>dtype</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="random-state">Random State<a class="anchor" aria-label="anchor" href="#random-state"></a></h2>
+
+
+<p>The draws come from the active random state: the global random state (see
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>), or the random state that <code><a href="local_nv_rng_state.html">with_nv_rng_state()</a></code> or
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code> make the default for a scope. They advance it in
+place.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="nv_sample.html">nv_sample()</a></code> to sample from an arbitrary population.</p>
 <p>Other rng:
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code>,
 <code><a href="nv_normal.html">nv_normal</a></code>,
 <code><a href="nv_rbinom.html">nv_rbinom()</a></code>,
 <code><a href="nv_rng_state.html">nv_rng_state()</a></code>,
 <code><a href="nv_sample.html">nv_sample()</a></code>,
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>,
 <code><a href="nv_uniform.html">nv_uniform</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># roll six dice; `state` is the updated RNG state</span></span></span>
-<span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_sample_int</span><span class="op">(</span><span class="fl">6</span>, <span class="va">state</span>, <span class="fl">6L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># roll six dice</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">with_nv_seed</a></span><span class="op">(</span><span class="fl">42L</span>, <span class="fu">nv_sample_int</span><span class="op">(</span><span class="fl">6</span>, <span class="fl">6L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{6} ] </span>
 </code></pre></div>
     </div>

@@ -13,7 +13,7 @@ nv_punif(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
+nv_runif(shape, min = 0, max = 1, dtype = NULL)
 ```
 
 ## Arguments
@@ -56,14 +56,6 @@ nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Shape of the result.
 
-- state:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  RNG state: a 1-D array of two `ui64` elements, as
-  [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
-  returns. The data type and length are fixed by the generator, not by
-  the default data types, and the returned `state` has them too.
-
 - dtype:
 
   (`NULL` \| `character(1)` \|
@@ -75,19 +67,15 @@ nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
 
 ## Value
 
-([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) \|
-named `list` of two
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) with
 the same shape as `x`/`q`/`p` and the float data type described under
 Data Types.
 
-`nv_runif()` returns a named `list` of two
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md):
-`state`, the updated RNG state with the input `state`'s data type and
-shape, and `values`, the sample of shape `shape` and the data type
-described under `dtype`.
+`nv_runif()` returns the sample, an
+[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
+shape `shape` and the data type described under `dtype`.
 
 ## Details
 
@@ -118,9 +106,23 @@ An R value for `min` or `max` takes the computing data type. An array is
 promoted to it, so a wider one (e.g. `f64` for an `f32` `x`) is an
 error.
 
+## Random State
+
+The draws come from the active random state: the global random state
+(see
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)),
+or the random state that
+[`with_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+or
+[`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+make the default for a scope. They advance it in place.
+
 ## Random generation
 
-`nv_runif` samples from the open interval \\(a, b)\\.
+`nv_runif` draws uniforms on the open interval \\(0, 1)\\ and scales
+them to \\(a, b)\\. Rounding to the data type can still give \\a\\ or
+\\b\\ where the interval is narrow next to its magnitude, e.g. for
+`nv_runif(n, 1e6, 1e6 + 1)` at `f32`.
 
 `min` and `max` are
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md), so
@@ -129,17 +131,19 @@ they have been reshaped to `shape`, and so may either be scalars or have
 exactly that shape. As in base R's
 [`runif()`](https://rdrr.io/r/stats/Uniform.html), an element whose
 `min` equals its `max` is that value, and one whose `min` or `max` is
-not finite, or whose `max` is less than its `min`, is `NaN`. The RNG
+not finite, or whose `max` is less than its `min`, is `NaN`. The random
 state is advanced regardless.
 
 ## See also
 
 Other rng:
+[`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md),
 [`nv_normal`](https://r-xla.github.io/anvl/reference/nv_normal.md),
 [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md),
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
 [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md),
-[`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
+[`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)
 
 ## Examples
 
@@ -242,20 +246,17 @@ nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 #>   9.0484e-01
 #> [ CPUf64{3} ] 
 
-# `state` is the updated RNG state, `values` the sample
-state <- nv_rng_state(42L)
-result <- nv_runif(c(2, 3), state)
-result$values
+with_nv_seed(42L, nv_runif(c(2, 3)))
 #> AnvlArray
-#>  0.8690 0.1506 0.5203
-#>  0.3103 0.9928 0.1065
+#>  0.5303 0.3134 0.9015
+#>  0.6983 0.6181 0.6219
 #> [ CPUf32{2,3} ] 
 
 # `min`/`max` may also be arrays of the same shape as the sample
 lower <- nv_array(matrix(c(0, 10, 20, 30, 40, 50), nrow = 2))
-nv_runif(c(2, 3), state, min = lower, max = lower + 1)$values
+nv_runif(c(2, 3), min = lower, max = lower + 1)
 #> AnvlArray
-#>   0.8690 20.1506 40.5203
-#>  10.3103 30.9928 50.1065
+#>   0.6672 20.7215 40.1268
+#>  10.3543 30.4211 50.0421
 #> [ CPUf32{2,3} ] 
 ```

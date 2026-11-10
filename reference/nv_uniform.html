@@ -94,7 +94,7 @@ distribution on the interval from <code>min</code> to <code>max</code>.</p>
 <span></span>
 <span><span class="fu">nv_qunif</span><span class="op">(</span><span class="va">p</span>, min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">1</span>, lower_tail <span class="op">=</span> <span class="cn">TRUE</span>, log_p <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_runif</span><span class="op">(</span><span class="va">shape</span>, <span class="va">state</span>, min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">1</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_runif</span><span class="op">(</span><span class="va">shape</span>, min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">1</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -138,13 +138,6 @@ Probabilities at which to evaluate the quantile function. Values outside
 Shape of the result.</p></dd>
 
 
-<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-RNG state: a 1-D array of two <code>ui64</code> elements, as <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned <code>state</code> has them too.</p></dd>
-
-
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/xlamisc/reference/DataType.html" class="external-link">DataType</a></code>)<br>
 Floating point data type of the sample.
@@ -154,11 +147,10 @@ The default (<code>NULL</code>) takes it from <code>min</code> and <code>max</co
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code><a href="arrayish.html">arrayish</a></code> | named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br><code>nv_dunif()</code>, <code>nv_punif()</code>, and <code>nv_qunif()</code> return an <code><a href="arrayish.html">arrayish</a></code> with the
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>nv_dunif()</code>, <code>nv_punif()</code>, and <code>nv_qunif()</code> return an <code><a href="arrayish.html">arrayish</a></code> with the
 same shape as <code>x</code>/<code>q</code>/<code>p</code> and the float data type described under Data Types.</p>
-<p><code>nv_runif()</code> returns a named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>: <code>state</code>, the updated
-RNG state with the input <code>state</code>'s data type and shape, and <code>values</code>, the
-sample of shape <code>shape</code> and the data type described under <code>dtype</code>.</p>
+<p><code>nv_runif()</code> returns the sample, an <code><a href="arrayish.html">arrayish</a></code> of shape <code>shape</code> and the data
+type described under <code>dtype</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -187,25 +179,39 @@ large integer may change in that conversion.</p>
 promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code> <code>x</code>) is an error.</p>
     </div>
     <div class="section level2">
+    <h2 id="random-state">Random State<a class="anchor" aria-label="anchor" href="#random-state"></a></h2>
+
+
+<p>The draws come from the active random state: the global random state (see
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>), or the random state that <code><a href="local_nv_rng_state.html">with_nv_rng_state()</a></code> or
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code> make the default for a scope. They advance it in
+place.</p>
+    </div>
+    <div class="section level2">
     <h2 id="random-generation">Random generation<a class="anchor" aria-label="anchor" href="#random-generation"></a></h2>
 
 
-<p><code>nv_runif</code> samples from the open interval \((a, b)\).</p>
+<p><code>nv_runif</code> draws uniforms on the open interval \((0, 1)\) and scales them
+to \((a, b)\). Rounding to the data type can still give \(a\) or
+\(b\) where the interval is narrow next to its magnitude, e.g. for
+<code>nv_runif(n, 1e6, 1e6 + 1)</code> at <code>f32</code>.</p>
 <p><code>min</code> and <code>max</code> are <code><a href="arrayish.html">arrayish</a></code>, so they may vary across the sample: they
 are applied to the draws after they have been reshaped to <code>shape</code>, and so
 may either be scalars or have exactly that shape. As in base R's <code><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif()</a></code>,
 an element whose <code>min</code> equals its <code>max</code> is that value, and one whose <code>min</code> or
-<code>max</code> is not finite, or whose <code>max</code> is less than its <code>min</code>, is <code>NaN</code>. The RNG
-state is advanced regardless.</p>
+<code>max</code> is not finite, or whose <code>max</code> is less than its <code>min</code>, is <code>NaN</code>. The
+random state is advanced regardless.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Other rng:
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code>,
 <code><a href="nv_normal.html">nv_normal</a></code>,
 <code><a href="nv_rbinom.html">nv_rbinom()</a></code>,
 <code><a href="nv_rng_state.html">nv_rng_state()</a></code>,
 <code><a href="nv_sample.html">nv_sample()</a></code>,
-<code><a href="nv_sample_int.html">nv_sample_int()</a></code></p></div>
+<code><a href="nv_sample_int.html">nv_sample_int()</a></code>,
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -308,21 +314,18 @@ state is advanced regardless.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   9.0484e-01</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf64{3} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># `state` is the updated RNG state, `values` the sample</span></span></span>
-<span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_runif</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">with_nv_seed</a></span><span class="op">(</span><span class="fl">42L</span>, <span class="fu">nv_runif</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.8690 0.1506 0.5203</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.3103 0.9928 0.1065</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.5303 0.3134 0.9015</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.6983 0.6181 0.6219</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># `min`/`max` may also be arrays of the same shape as the sample</span></span></span>
 <span class="r-in"><span><span class="va">lower</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span>, <span class="fl">50</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_runif</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span>, min <span class="op">=</span> <span class="va">lower</span>, max <span class="op">=</span> <span class="va">lower</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">$</span><span class="va">values</span></span></span>
+<span class="r-in"><span><span class="fu">nv_runif</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, min <span class="op">=</span> <span class="va">lower</span>, max <span class="op">=</span> <span class="va">lower</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   0.8690 20.1506 40.5203</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  10.3103 30.9928 50.1065</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   0.6672 20.7215 40.1268</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  10.3543 30.4211 50.0421</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 </code></pre></div>
     </div>

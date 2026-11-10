@@ -106,7 +106,8 @@ graph is then lowered, e.g. with <code><a href="stablehlo.html">stablehlo()</a><
 <span>  constants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  is_static_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  static_args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  rdata_types <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  rdata_types <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  side_effects <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -165,6 +166,16 @@ arrives as an array and already has a data type. <code>NULL</code> when no input
 from R data, which is the common case. Together with the inputs' own avals
 this says everything about how a call's arguments are uploaded: the aval
 gives the data type and shape, this gives the R type it is uploaded from.</p></dd>
+
+
+<dt id="arg-side-effects">side_effects<a class="anchor" aria-label="anchor" href="#arg-side-effects"></a></dt>
+<dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
+The graph's views of the side effects it uses, in the order of their first
+use, e.g. of a random state it draws from: the value its uses start from
+(<code>$value</code>), their number (<code>$n</code>), and the <code><a href="GraphValue.html">GraphValue</a></code>s the graph takes
+for it beyond its inputs (<code>$inputs</code>).
+A sub-graph's views are folded into its inputs and outputs by the
+construct that traced it.</p></dd>
 
 </dl></div>
     <div class="section level2">

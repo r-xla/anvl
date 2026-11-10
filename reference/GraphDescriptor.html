@@ -122,7 +122,9 @@ program.</p>
 <span>  static_args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  default_dtypes <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  <span class="va">backend</span></span>
+<span>  <span class="va">backend</span>,</span>
+<span>  side_effects_mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  parent <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -202,6 +204,29 @@ of the <code>anvl.default_dtypes</code> option applies to the trace, so switchin
 active backend inside a traced body changes nothing.
 <code><a href="local_descriptor.html">local_descriptor()</a></code> fills it in from <code><a href="active_backend.html">active_backend()</a></code>, so only a
 direct call has to name it.</p></dd>
+
+
+<dt id="arg-side-effects-mode">side_effects_mode<a class="anchor" aria-label="anchor" href="#arg-side-effects-mode"></a></dt>
+<dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
+Where the trace's view of a side effect starts on its first use:</p><ul><li><p><code>"program"</code>: where the side effect says: an implicit input of the
+program, which the graph records in its <code>side_effects</code> rather than among
+its inputs, an argument, or a value the program creates. The top level
+of <code><a href="jit.html">jit()</a></code> and <code><a href="trace_fn.html">trace_fn()</a></code> takes side effects this way.</p></li>
+<li><p><code>"loop"</code>: as fresh inputs of the graph, which the graph also returns
+there. The bodies of <code><a href="nv_while.html">nv_while()</a></code> and <code><a href="nv_scan.html">nv_scan()</a></code> take side effects this
+way, and hand them on to the next iteration.</p></li>
+<li><p><code>"capture"</code>: as the value of <code>parent</code>'s view, which the graph closes
+over and continues. The branches of <code><a href="nv_if.html">nv_if()</a></code> and the function
+<code><a href="gradient.html">gradient()</a></code> differentiates take side effects this way.</p></li>
+<li><p><code>NULL</code>: not at all. Such a trace cannot hand back what it did, so using
+a side effect there is an error.</p></li>
+</ul></dd>
+
+
+<dt id="arg-parent">parent<a class="anchor" aria-label="anchor" href="#arg-parent"></a></dt>
+<dd><p>(<code>NULL</code> | <code>GraphDescriptor</code>)<br>
+The trace this one is opened in, or <code>NULL</code> for a trace at the top level.
+<code><a href="local_descriptor.html">local_descriptor()</a></code> fills it in.</p></dd>
 
 </dl></div>
     <div class="section level2">

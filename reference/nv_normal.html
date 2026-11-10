@@ -97,7 +97,7 @@ standard deviation <code>sd</code>.</p>
 <span></span>
 <span><span class="fu">nv_qnorm</span><span class="op">(</span><span class="va">p</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span>, lower_tail <span class="op">=</span> <span class="cn">TRUE</span>, log_p <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="va">shape</span>, <span class="va">state</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="va">shape</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span>, dtype <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -145,13 +145,6 @@ Probabilities at which to evaluate the quantile function. Values outside
 Shape of the result.</p></dd>
 
 
-<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-RNG state: a 1-D array of two <code>ui64</code> elements, as <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned <code>state</code> has them too.</p></dd>
-
-
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/xlamisc/reference/DataType.html" class="external-link">DataType</a></code>)<br>
 Floating point data type of the sample. The default (<code>NULL</code>) uses the
@@ -161,11 +154,10 @@ common data type of <code>mean</code> and <code>sd</code>, and the
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code><a href="arrayish.html">arrayish</a></code> | named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br><code>nv_dnorm()</code>, <code>nv_pnorm()</code> and <code>nv_qnorm()</code> return an <code><a href="arrayish.html">arrayish</a></code> with the
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>nv_dnorm()</code>, <code>nv_pnorm()</code> and <code>nv_qnorm()</code> return an <code><a href="arrayish.html">arrayish</a></code> with the
 shape of <code>x</code>/<code>q</code>/<code>p</code> and the float data type described under Data Types.</p>
-<p><code>nv_rnorm()</code> returns a named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>: <code>state</code>, the updated
-RNG state with the input <code>state</code>'s data type and shape, and <code>values</code>, the
-sample of shape <code>shape</code> and the data type described under <code>dtype</code>.</p>
+<p><code>nv_rnorm()</code> returns the sample, an <code><a href="arrayish.html">arrayish</a></code> of shape <code>shape</code> and the data
+type described under <code>dtype</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -196,6 +188,15 @@ large integer may change in that conversion.</p>
 promoted to it, so a wider one (e.g. <code>f64</code> for an <code>f32</code> <code>x</code>) is an error.</p>
     </div>
     <div class="section level2">
+    <h2 id="random-state">Random State<a class="anchor" aria-label="anchor" href="#random-state"></a></h2>
+
+
+<p>The draws come from the active random state: the global random state (see
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>), or the random state that <code><a href="local_nv_rng_state.html">with_nv_rng_state()</a></code> or
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code> make the default for a scope. They advance it in
+place.</p>
+    </div>
+    <div class="section level2">
     <h2 id="random-generation">Random generation<a class="anchor" aria-label="anchor" href="#random-generation"></a></h2>
 
 
@@ -205,7 +206,7 @@ structure, use a Cholesky decomposition.</p>
 are applied to the draws after they have been reshaped to <code>shape</code>, and so
 may either be scalars or have exactly that shape. As in base R's <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm()</a></code>,
 an element whose <code>mean</code> is <code>NaN</code>, or whose <code>sd</code> is not finite or negative, is
-<code>NaN</code>. The RNG state is advanced regardless.</p>
+<code>NaN</code>. The random state is advanced regardless.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -222,10 +223,12 @@ ISBN 0-7458-0289-3.</p>
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code>nv_rnorm()</code> for sampling from a normal distribution.</p>
 <p>Other rng:
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code>,
 <code><a href="nv_rbinom.html">nv_rbinom()</a></code>,
 <code><a href="nv_rng_state.html">nv_rng_state()</a></code>,
 <code><a href="nv_sample.html">nv_sample()</a></code>,
 <code><a href="nv_sample_int.html">nv_sample_int()</a></code>,
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>,
 <code><a href="nv_uniform.html">nv_uniform</a></code></p></div>
     </div>
 
@@ -301,21 +304,18 @@ ISBN 0-7458-0289-3.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   -1.1015</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    1.3096</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf64{3} ] </span>
-<span class="r-in"><span><span class="co"># `state` is the updated RNG state, `values` the sample</span></span></span>
-<span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_rnorm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">with_nv_seed</a></span><span class="op">(</span><span class="fl">42L</span>, <span class="fu">nv_rnorm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -0.2568  0.5714  0.6761</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   0.5345 -2.0000  0.0002</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -1.2172  1.9579  0.2044</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -0.8427 -0.1720  0.8960</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># `sd` may also be an array of the same shape as the sample</span></span></span>
 <span class="r-in"><span><span class="va">sds</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.1</span>, <span class="fl">1</span>, <span class="fl">10</span>, <span class="fl">100</span>, <span class="fl">1000</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span>, sd <span class="op">=</span> <span class="va">sds</span><span class="op">)</span><span class="op">$</span><span class="va">values</span></span></span>
+<span class="r-in"><span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, sd <span class="op">=</span> <span class="va">sds</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   -0.0026   0.5714  67.6114</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    0.0535 -19.9998   0.2251</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    0.0087   1.0790  74.7185</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    0.1132   5.1053 546.2689</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 </code></pre></div>
     </div>

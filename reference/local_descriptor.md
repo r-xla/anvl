@@ -8,6 +8,8 @@ The graph is automatically removed when exiting the current scope. After
 the graph is either cleaned up automatically (by exiting the scope) or
 finalized, the previously built graph is restored, i.e., accessible via
 [`current_descriptor()`](https://r-xla.github.io/anvl/reference/current_descriptor.md).
+That previously built graph, `NULL` if there is none, is the `parent` of
+the new one.
 
 ## Usage
 
@@ -22,7 +24,7 @@ local_descriptor(..., envir = parent.frame())
   (`any`)  
   Additional arguments to pass to the
   [`GraphDescriptor`](https://r-xla.github.io/anvl/reference/GraphDescriptor.md)
-  constructor.
+  constructor, except `parent`.
 
 - envir:
 

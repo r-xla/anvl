@@ -13,7 +13,7 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
+nv_rnorm(shape, mean = 0, sd = 1, dtype = NULL)
 ```
 
 ## Arguments
@@ -59,14 +59,6 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Shape of the result.
 
-- state:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  RNG state: a 1-D array of two `ui64` elements, as
-  [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
-  returns. The data type and length are fixed by the generator, not by
-  the default data types, and the returned `state` has them too.
-
 - dtype:
 
   (`NULL` \| `character(1)` \|
@@ -78,19 +70,15 @@ nv_rnorm(shape, state, mean = 0, sd = 1, dtype = NULL)
 
 ## Value
 
-([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) \|
-named `list` of two
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) with
 the shape of `x`/`q`/`p` and the float data type described under Data
 Types.
 
-`nv_rnorm()` returns a named `list` of two
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md):
-`state`, the updated RNG state with the input `state`'s data type and
-shape, and `values`, the sample of shape `shape` and the data type
-described under `dtype`.
+`nv_rnorm()` returns the sample, an
+[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
+shape `shape` and the data type described under `dtype`.
 
 ## Details
 
@@ -123,6 +111,17 @@ An R value for `mean` or `sd` takes the computing data type. An array is
 promoted to it, so a wider one (e.g. `f64` for an `f32` `x`) is an
 error.
 
+## Random State
+
+The draws come from the active random state: the global random state
+(see
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)),
+or the random state that
+[`with_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+or
+[`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+make the default for a scope. They advance it in place.
+
 ## Random generation
 
 `nv_rnorm` samples via the Box-Muller transform. To sample with a
@@ -135,7 +134,7 @@ they have been reshaped to `shape`, and so may either be scalars or have
 exactly that shape. As in base R's
 [`rnorm()`](https://rdrr.io/r/stats/Normal.html), an element whose
 `mean` is `NaN`, or whose `sd` is not finite or negative, is `NaN`. The
-RNG state is advanced regardless.
+random state is advanced regardless.
 
 ## References
 
@@ -151,10 +150,12 @@ Ellis Horwood. ISBN 0-7458-0289-3.
 `nv_rnorm()` for sampling from a normal distribution.
 
 Other rng:
+[`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md),
 [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md),
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
 [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md),
 [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md),
 [`nv_uniform`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
 
 ## Examples
@@ -230,20 +231,17 @@ nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 #>   -1.1015
 #>    1.3096
 #> [ CPUf64{3} ] 
-# `state` is the updated RNG state, `values` the sample
-state <- nv_rng_state(42L)
-result <- nv_rnorm(c(2, 3), state)
-result$values
+with_nv_seed(42L, nv_rnorm(c(2, 3)))
 #> AnvlArray
-#>  -0.2568  0.5714  0.6761
-#>   0.5345 -2.0000  0.0002
+#>  -1.2172  1.9579  0.2044
+#>  -0.8427 -0.1720  0.8960
 #> [ CPUf32{2,3} ] 
 
 # `sd` may also be an array of the same shape as the sample
 sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
-nv_rnorm(c(2, 3), state, sd = sds)$values
+nv_rnorm(c(2, 3), sd = sds)
 #> AnvlArray
-#>   -0.0026   0.5714  67.6114
-#>    0.0535 -19.9998   0.2251
+#>    0.0087   1.0790  74.7185
+#>    0.1132   5.1053 546.2689
 #> [ CPUf32{2,3} ] 
 ```

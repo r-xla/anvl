@@ -101,13 +101,16 @@ along axis 1 with that axis dropped.</p>
 <dl><dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
 Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-shape and data type across steps.</p></dd>
+shape and data type across steps. It must not contain a random state: to
+draw from one in <code>body</code>, make it the default before the loop with
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code>.</p></dd>
 
 
 <dt id="arg-xs">xs<a class="anchor" aria-label="anchor" href="#arg-xs"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
 Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-all of size <code>steps</code> along it. An empty list runs a counted loop.</p></dd>
+all of size <code>steps</code> along it. An empty list runs a counted loop. It must
+not contain a random state.</p></dd>
 
 
 <dt id="arg-body">body<a class="anchor" aria-label="anchor" href="#arg-body"></a></dt>

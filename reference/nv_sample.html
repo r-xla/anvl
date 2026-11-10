@@ -91,7 +91,7 @@ integers <code>1</code> to <code>n</code> is <code><a href="nv_sample_int.html">
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sample</span><span class="op">(</span><span class="va">shape</span>, <span class="va">state</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sample</span><span class="op">(</span><span class="va">shape</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -103,13 +103,6 @@ integers <code>1</code> to <code>n</code> is <code><a href="nv_sample_int.html">
 Shape of the result.</p></dd>
 
 
-<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-RNG state: a 1-D array of two <code>ui64</code> elements, as <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned <code>state</code> has them too.</p></dd>
-
-
 <dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 The population vector to sample from. Must not be empty.
@@ -118,34 +111,41 @@ An R value materializes at its <a href="default_dtypes.html">default data type</
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
-Elements <code>state</code>, the updated RNG state, and <code>values</code>, the sample of shape
-<code>shape</code> and <code>x</code>'s data type.</p>
+    <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
+The sample, of shape <code>shape</code> and <code>x</code>'s data type.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="random-state">Random State<a class="anchor" aria-label="anchor" href="#random-state"></a></h2>
+
+
+<p>The draws come from the active random state: the global random state (see
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>), or the random state that <code><a href="local_nv_rng_state.html">with_nv_rng_state()</a></code> or
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code> make the default for a scope. They advance it in
+place.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="nv_sample_int.html">nv_sample_int()</a></code> to sample the integers <code>1</code> to <code>n</code>.</p>
 <p>Other rng:
+<code><a href="local_nv_rng_state.html">local_nv_rng_state()</a></code>,
 <code><a href="nv_normal.html">nv_normal</a></code>,
 <code><a href="nv_rbinom.html">nv_rbinom()</a></code>,
 <code><a href="nv_rng_state.html">nv_rng_state()</a></code>,
 <code><a href="nv_sample_int.html">nv_sample_int()</a></code>,
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>,
 <code><a href="nv_uniform.html">nv_uniform</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the sample takes the population's data type</span></span></span>
-<span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_sample</span><span class="op">(</span><span class="fl">5</span>, <span class="va">state</span>, <span class="va">pop</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">with_nv_seed</a></span><span class="op">(</span><span class="fl">42L</span>, <span class="fu">nv_sample</span><span class="op">(</span><span class="fl">5</span>, <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  20</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  30</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  20</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  30</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{5} ] </span>
 </code></pre></div>
     </div>

@@ -323,6 +323,23 @@ primitive calls it performs – must depend only on:</p>
 dynamic input, and</li>
 <li>The <em>value</em> of each static input.</li>
 </ol>
+<p>However, there is currently one exception top this rule, which
+concerns the handling of the RNG state. Stochastic functions, which are
+those functions that call <code><a href="../reference/prim_sample_bits.html">prim_sample_bits()</a></code> either
+directly or indirectly, automatically advance the RNG state that was
+either passed explicitly or implicitly and as such have side
+effects:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;AnvlRngState&gt; key 0xea30ba97efe42c9e, counter 0x0000000000000000</span></span>
+<span><span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"ui32"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  2.0749e+09</span></span>
+<span><span class="co">#&gt; [ CPUui32{1} ]</span></span>
+<span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;AnvlRngState&gt; key 0xea30ba97efe42c9e, counter 0x0000000000000001</span></span></code></pre></div>
+<p>See the <a href="random-numbers.html">random numbers</a> article for
+more information.</p>
 <p>The next subsections each show what tracing does to particular R code
 and where its behavior might be surprising.</p>
 </div>
@@ -334,7 +351,7 @@ graph. Because <code>for</code> is not an {anvl} primitive, it will be
 executed as usual and every primitive call encountered will be recorded
 in the graph as a statement. Here we apply the <code>linear</code>
 function <code>n</code> times.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">linear_repeated</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">b</span>, <span class="va">n</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">)</span> <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">linear</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">b</span><span class="op">)</span></span>
 <span>  <span class="va">x</span></span>
@@ -367,7 +384,7 @@ iterations the loop runs.</p>
 <p>Tracing runs only the <code>if</code>-branch that the condition
 selects at trace time. One common scenario is where the branch depends
 on a static input flag:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">linear_maybe</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">b</span>, <span class="va">use_bias</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">use_bias</span><span class="op">)</span> <span class="fu">linear</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">b</span><span class="op">)</span> <span class="kw">else</span> <span class="va">x</span> <span class="op">*</span> <span class="va">w</span></span>
 <span><span class="op">}</span></span>
@@ -387,7 +404,7 @@ branch.</p>
 <p>Where things go wrong is if the evaluation trace depends on something
 that does not influence the cache key, such as a value from the
 enclosing environment:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">threshold</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
 <span><span class="va">h</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">threshold</span> <span class="op">&gt;</span> <span class="fl">0.5</span><span class="op">)</span> <span class="va">x</span> <span class="op">*</span> <span class="fl">2</span> <span class="kw">else</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1</span></span>
@@ -416,7 +433,7 @@ closed-over values used as plain operands – their value at trace time is
 read once and baked into the graph.</p>
 <p>Here we close over a default bias instead of taking it as an
 argument:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">default_b</span> <span class="op">&lt;-</span> <span class="fl">5</span></span>
 <span><span class="va">linear_default_b</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span><span class="op">)</span> <span class="fu">linear</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">default_b</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">linear_default_b</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_scalar</span>, w <span class="op">=</span> <span class="va">f32_scalar</span><span class="op">)</span><span class="op">)</span></span>
@@ -443,7 +460,7 @@ effect while the graph is being built</strong>, not on subsequent
 calls.</p>
 <p>A common R pattern for stateful objects is to wrap them in an
 environment, since environments give you reference semantics:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">new_model</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">beta</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">new.env</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  <span class="va">e</span><span class="op">$</span><span class="va">beta</span> <span class="op">&lt;-</span> <span class="va">beta</span></span>
@@ -457,7 +474,7 @@ environment, since environments give you reference semantics:</p>
 <code>model$grad_step()</code> would nudge <code>model$beta</code> one
 step further along the gradient. But wrapping <code>grad_step</code>
 with <code><a href="../reference/jit.html">jit()</a></code> breaks the function on two levels:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu">new_model</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">grad_step_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">model</span><span class="op">$</span><span class="va">grad_step</span><span class="op">)</span></span>
 <span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
@@ -506,7 +523,7 @@ constants</a> above), so every call returns the same
 <em>pure</em>: their output depends only on their arguments, and any
 state updates have to happen at the call site, not inside the
 function:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grad_step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">beta</span>, <span class="va">beta_grad</span>, <span class="va">lr</span><span class="op">)</span> <span class="va">beta</span> <span class="op">-</span> <span class="va">beta_grad</span> <span class="op">*</span> <span class="va">lr</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">beta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
@@ -559,7 +576,7 @@ automatically.</li>
 </ul>
 <p>See the documentation of the <code>device</code> arg in
 <code><a href="../reference/jit.html">help(jit)</a></code> for more information.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="va">y</span><span class="op">)</span></span>
 <span><span class="va">add_cpu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="va">y</span>, device <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span></span>
 <span></span>

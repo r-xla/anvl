@@ -82,7 +82,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">GraphValue</span><span class="op">(</span><span class="va">aval</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">GraphValue</span><span class="op">(</span><span class="va">aval</span>, label <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -92,6 +92,12 @@
 <dl><dt id="arg-aval">aval<a class="anchor" aria-label="anchor" href="#arg-aval"></a></dt>
 <dd><p>(<code><a href="AbstractArray.html">AbstractArray</a></code>)<br>
 The abstract value of the variable.</p></dd>
+
+
+<dt id="arg-label">label<a class="anchor" aria-label="anchor" href="#arg-label"></a></dt>
+<dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
+What the value is, for a printed graph to name it after, e.g. <code>"key"</code> for
+the key of the random state, which is printed as <code>%key1</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

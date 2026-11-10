@@ -2,6 +2,35 @@
 
 ## anvl (development version)
 
+### Breaking changes
+
+- `transform_gradient()` is renamed to
+  [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md).
+- `prim_rng_bit_generator()` is replaced by
+  [`prim_sample_bits()`](https://r-xla.github.io/anvl/reference/prim_sample_bits.md).
+- The RNG state is now handled by {anvl} itself and RNG states no longer
+  have to be passed around. This comes with functions such as
+  [`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md).
+  See the random numbers article for more details.
+
+### Features
+
+- `AnvlArray`s can now be serialized.
+- New
+  [`nv_bool()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md),
+  `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`,
+  [`nv_float32()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  and
+  [`nv_float64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
+  create an array of the data type in their name.
+- New functions for the binomial distribution: `nv_{d,p,q}binom()`.
+- New functions for the exponential distribution: `nv_{d,p,q}exp()`.
+- A side effects mechanism was added to anvl, which drives the RNG
+  handling and provides a basis for more side effects in the future. See
+  the side effects section of the internals article for more details.
+- Registering custom classes that can be (un-)flattened is now supported
+  via
+  [`pjrt::register_tree_node()`](https://r-xla.github.io/pjrt/reference/register_tree_node.html).
 - Bugfix:
   [`nv_cumsum()`](https://r-xla.github.io/anvl/reference/nv_cumsum.md),
   [`nv_cumprod()`](https://r-xla.github.io/anvl/reference/nv_cumprod.md),
@@ -29,11 +58,13 @@
   and `[<-` take `update_fn` too, so
   `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
   subset, every value of an index that is repeated in `i`.
-- Bugfix: An update that
-  [`prim_scatter()`](https://r-xla.github.io/anvl/reference/prim_scatter.md)
-  drops as out of bounds no longer gets a gradient when
-  `unique_indices = TRUE`.
-- Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`,
+
+### Bug fixes
+
+- [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
+  returns `NaN` for a `NaN` `mean` or a non-finite or negative `sd`,
+  like [`rnorm()`](https://rdrr.io/r/stats/Normal.html).
+- An unsigned dynamic index of 0 (in `[`, `[<-`,
   [`prim_dynamic_slice()`](https://r-xla.github.io/anvl/reference/prim_dynamic_slice.md),
   [`prim_dynamic_update_slice()`](https://r-xla.github.io/anvl/reference/prim_dynamic_update_slice.md))
   no longer wraps around to the last position.
@@ -47,58 +78,62 @@
   [`saveRDS()`](https://rdrr.io/r/base/readRDS.html) and friends; they
   load onto the default device, not the one they were saved from. Arrays
   of the pjrt backend no longer cache their device in a `$device` field.
-- Bugfix: A classed R value, such as a
+- A classed R value, such as a
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
   array, is an error under
   [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) instead of
   being read through its storage type.
-- Bugfix:
-  [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
+- [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
   returns `NaN` for a `NaN` `mean` or a non-finite or negative `sd`,
   like [`rnorm()`](https://rdrr.io/r/stats/Normal.html).
-- Bugfix:
-  [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md)
+- [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md)
   accepts `size = 0`, like
   [`rbinom()`](https://rdrr.io/r/stats/Binomial.html), and
   [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md)
   gives a clear error for an empty population.
-- Breaking: `transform_gradient()` is renamed to
-  [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md).
-- Bugfix: [`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md)
-  counts down at an unsigned data type instead of erroring.
-- Bugfix: The gradient of an empty strided
+- [`nv_seq()`](https://r-xla.github.io/anvl/reference/nv_seq.md) counts
+  down at an unsigned data type instead of erroring.
+- The gradient of an empty strided
   [`prim_static_slice()`](https://r-xla.github.io/anvl/reference/prim_static_slice.md)
   has the shape of its input.
-- Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0
-  and in `x` at exponent 0.
-- Bugfix: The gradient of
+- The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in
+  `x` at exponent 0.
+- The gradient of
   [`nv_pad()`](https://r-xla.github.io/anvl/reference/nv_pad.md) /
   [`prim_pad()`](https://r-xla.github.io/anvl/reference/prim_pad.md)
   works for negative edge padding.
-- Bugfix: The gradient of
+- The gradient of
   [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/reference/prim_broadcast_in_axes.md)
   is no longer permuted for broadcast axes that are not in increasing
   order.
-- Bugfix: An `NA` in an [`array()`](https://rdrr.io/r/base/array.html)
-  subset index now gives an informative error.
-- Bugfix: the common data type of arrays and R values no longer depends
-  on the order of the arguments; the R values take the data type the
-  arrays agree on.
-- Bugfix: `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
-- Bugfix:
-  [`nv_subset()`](https://r-xla.github.io/anvl/reference/nv_subset.md)
+- An `NA` in an [`array()`](https://rdrr.io/r/base/array.html) subset
+  index now gives an informative error.
+- The common data type of arrays and R values no longer depends on the
+  order of the arguments; the R values take the data type the arrays
+  agree on.
+- `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+- [`nv_subset()`](https://r-xla.github.io/anvl/reference/nv_subset.md)
   accepts an R value as `x`, like
   [`nv_subset_assign()`](https://r-xla.github.io/anvl/reference/nv_subset_assign.md)
   does.
-- Bugfix:
-  [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md) no
+- [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md) no
   longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
-- Bugfix:
-  [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md),
+- [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md),
   [`nv_var()`](https://r-xla.github.io/anvl/reference/nv_var.md) and
   [`nv_sd()`](https://r-xla.github.io/anvl/reference/nv_sd.md) no longer
-  overflow on an integer input, which is now summed at the default
-  float.
+  overflow on an integer input, which is now
+- The gradient of
+  [`prim_dot_general()`](https://r-xla.github.io/anvl/reference/prim_dot_general.md)
+  with respect to `lhs` is right when
+- `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+- [`nv_subset()`](https://r-xla.github.io/anvl/reference/nv_subset.md)
+  accepts an R value as `x`, like
+  [`nv_subset_assign()`](https://r-xla.github.io/anvl/reference/nv_subset_assign.md)
+  does.
+- [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md) no
+  longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+- nv_mean()`,`nv_var()`and`nv_sd()\` no longer overflow on an integer
+  input, which is now summed at the default float.
 - New
   [`nv_bool()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md),
   `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`,
@@ -131,9 +166,18 @@
   [`prim_dot_general()`](https://r-xla.github.io/anvl/reference/prim_dot_general.md)
   with respect to `lhs` is right when `lhs` has batching axes but no
   free axes.
-- Bugfix:
-  [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/reference/nv_broadcast_arrays.md)
+- [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/reference/nv_broadcast_arrays.md)
   broadcasts a size-1 axis that meets a size-0 axis to size 0.
+- An update that
+  [`prim_scatter()`](https://r-xla.github.io/anvl/reference/prim_scatter.md)
+  drops as out of bounds no longer gets a gradient when
+  `unique_indices = TRUE`.
+
+### Performance
+
+- Converting `AnvlArray`s to R is now faster.
+- Cholesky decomposition is now much faster.
+- Linear algebra primitives in `f32` are now faster on windows.
 
 ## anvl 0.5.1
 

@@ -34,7 +34,7 @@ nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) \|
   [`list()`](https://rdrr.io/r/base/list.html))  
   Initial carry: a single array or a (possibly nested) named list. Every
-  slot must keep a fixed shape and dtype across steps.
+  slot must keep a fixed shape and dtype across steps
 
 - xs:
 

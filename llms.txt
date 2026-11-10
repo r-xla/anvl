@@ -710,12 +710,27 @@ distributions
 - [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
   : Sample Integers
 
+### Random Numbers
+
+Seeding, saving and restoring the global random state the samplers draw
+from
+
+- [`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)
+  [`nv_get_rng_state()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)
+  [`nv_set_rng_state()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)
+  [`local_nv_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)
+  [`with_nv_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)
+  : Set the Global Random State
+- [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
+  : Create a Random State
+- [`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+  [`with_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+  : Draw From a Random State for a Scope
+
 ### Utilities
 
 Helpers supporting the API functions
 
-- [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
-  : Generate RNG State
 - [`nv_print()`](https://r-xla.github.io/anvl/reference/nv_print.md) :
   Print Array
 
@@ -1071,12 +1086,12 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Reshape
 - [`prim_rev()`](https://r-xla.github.io/anvl/reference/prim_rev.md) :
   Primitive Reverse
-- [`prim_rng_bit_generator()`](https://r-xla.github.io/anvl/reference/prim_rng_bit_generator.md)
-  : Primitive RNG Bit Generator
 - [`prim_round()`](https://r-xla.github.io/anvl/reference/prim_round.md)
   : Primitive Round
 - [`prim_rsqrt()`](https://r-xla.github.io/anvl/reference/prim_rsqrt.md)
   : Primitive Reciprocal Square Root
+- [`prim_sample_bits()`](https://r-xla.github.io/anvl/reference/prim_sample_bits.md)
+  : Primitive Random Bits
 - [`prim_scan()`](https://r-xla.github.io/anvl/reference/prim_scan.md) :
   Primitive Scan
 - [`prim_scatter()`](https://r-xla.github.io/anvl/reference/prim_scatter.md)

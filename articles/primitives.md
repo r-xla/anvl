@@ -1,6 +1,6 @@
 # Primitives Reference
 
-The table below shows all 102 primitives and which rules they implement.
+The table below shows all 103 primitives and which rules they implement.
 Note that a rule might be missing because it was just not added yet, or
 because it does not apply for a specific primitive.
 
@@ -48,6 +48,7 @@ because it does not apply for a specific primitive.
 | expm1                  |     ✓     |    ✓    |   ✓    |
 | fill                   |     ✓     |    ✗    |   ✓    |
 | floor                  |     ✓     |    ✓    |   ✓    |
+| fork_rng_state         |     ✓     |    ✗    |   ✗    |
 | gather                 |     ✓     |    ✓    |   ✓    |
 | ge                     |     ✓     |    ✓    |   ✓    |
 | gt                     |     ✓     |    ✓    |   ✓    |
@@ -82,9 +83,9 @@ because it does not apply for a specific primitive.
 | remainder              |     ✓     |    ✓    |   ✗    |
 | reshape                |     ✓     |    ✓    |   ✓    |
 | rev                    |     ✓     |    ✓    |   ✓    |
-| rng_bit_generator      |     ✓     |    ✗    |   ✗    |
 | round                  |     ✓     |    ✓    |   ✗    |
 | rsqrt                  |     ✓     |    ✓    |   ✗    |
+| sample_bits            |     ✓     |    ✗    |   ✗    |
 | scan                   |     ✓     |    ✗    |   ✗    |
 | scatter                |     ✓     |    ✓    |   ✓    |
 | shift_left             |     ✓     |    ✓    |   ✗    |

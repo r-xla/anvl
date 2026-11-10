@@ -223,6 +223,30 @@ primitive calls it performs – must depend only on:
     input, and
 2.  The *value* of each static input.
 
+However, there is currently one exception top this rule, which concerns
+the handling of the RNG state. Stochastic functions, which are those
+functions that call
+[`prim_sample_bits()`](https://r-xla.github.io/anvl/reference/prim_sample_bits.md)
+either directly or indirectly, automatically advance the RNG state that
+was either passed explicitly or implicitly and as such have side
+effects:
+
+``` r
+
+nv_get_rng_state()
+#> <AnvlRngState> key 0xea30ba97efe42c9e, counter 0x0000000000000000
+prim_sample_bits(1L, "ui32")
+#> AnvlArray
+#>  2.0749e+09
+#> [ CPUui32{1} ]
+nv_get_rng_state()
+#> <AnvlRngState> key 0xea30ba97efe42c9e, counter 0x0000000000000001
+```
+
+See the [random
+numbers](https://r-xla.github.io/anvl/articles/random-numbers.md)
+article for more information.
+
 The next subsections each show what tracing does to particular R code
 and where its behavior might be surprising.
 

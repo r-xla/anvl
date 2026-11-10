@@ -15,9 +15,17 @@ The rule for translating a primitive to stablehlo is
 `prim_<name>[["stablehlo"]]`.
 
 The arguments of the resulting function are, in this order: the graph's
-constants, the graph's inputs, and the phantom donated inputs (when
-`donate_unaliased_outputs = TRUE`), one per output that is not already
-aliased to a donated input, in the order of the outputs.
+constants, the graph's inputs, the inputs of the graph's side effects
+(such as the key and the counter of the global random state, see
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)),
+and the phantom donated inputs (when `donate_unaliased_outputs = TRUE`),
+one per output that is not already aliased to a donated input, in the
+order of the outputs. Its results are the graph's outputs alone: it
+returns no value for a side effect, as the host advances it after the
+run by the number of its uses, e.g. the random state by the number of
+draws (see the side effects section of the
+[Internals](https://r-xla.github.io/anvl/articles/internals.html)
+article).
 
 This is a low-level function; most users should use
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) instead.
@@ -93,7 +101,7 @@ stablehlo(
 ## Value
 
 (`list`)  
-Of length 3:
+Of length 4:
 
 - the
   [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)
@@ -108,6 +116,15 @@ Of length 3:
   when `donate_unaliased_outputs = TRUE`. Each entry is a
   `list(dtype, shape)` describing the buffer the executor must allocate.
   Empty when no phantoms were added.
+
+- The other
+  [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)s
+  the function calls, which a program must define next to it: functions
+  the lowering rules build once and call wherever they need them, e.g.
+  the ThreeFry block cipher of
+  [`prim_sample_bits()`](https://r-xla.github.io/anvl/reference/prim_sample_bits.md).
+  Empty for most graphs, and always for a nested lowering (`id = ""`),
+  whose calls the top-level lowering collects.
 
 ## See also
 

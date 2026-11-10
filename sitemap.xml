@@ -85,6 +85,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/local_default_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/local_default_dtypes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/local_descriptor.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/local_nv_rng_state.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/map_tree.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/naxes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/new_primitive.html</loc></url>
@@ -207,6 +208,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/nv_select.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_seq.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_serialize.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/nv_set_seed.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_shift_left.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_shift_right_arithmetic.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_shift_right_logical.html</loc></url>
@@ -320,9 +322,9 @@
 <url><loc>https://r-xla.github.io/anvl/reference/prim_remainder.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_reshape.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_rev.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/reference/prim_rng_bit_generator.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_round.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_rsqrt.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/prim_sample_bits.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_scan.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_scatter.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_shift_left.html</loc></url>

@@ -17,13 +17,17 @@ prim_scan(init, xs, body, steps, reverse = FALSE)
 
   ([`list()`](https://rdrr.io/r/base/list.html))  
   Initial carry: a (possibly nested) list of arrays. Every leaf keeps
-  its shape and data type across steps.
+  its shape and data type across steps. It must not contain a random
+  state: to draw from one in `body`, make it the default before the loop
+  with
+  [`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md).
 
 - xs:
 
   ([`list()`](https://rdrr.io/r/base/list.html))  
   Per-step inputs: a (possibly nested) list of arrays sliced along axis
-  1, all of size `steps` along it. An empty list runs a counted loop.
+  1, all of size `steps` along it. An empty list runs a counted loop. It
+  must not contain a random state.
 
 - body:
 

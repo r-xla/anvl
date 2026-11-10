@@ -193,12 +193,11 @@ dynamic input.
 
 ``` r
 
-nv_rbernoulli <- jit(function(state, p) {
+nv_rbernoulli <- jit(function(p) {
   stopifnot((p >= 0) && (p <= 1))
-  out <- nv_runif(1L, state)
-  list(state = out$state, values = nv_convert(out$values <= p, default_int()))
+  nv_convert(nv_runif(1L) <= p, default_int())
 }, static = "p")
-nv_rbernoulli(nv_rng_state(1L), 0.2)$values
+nv_rbernoulli(0.2)
 #> AnvlArray
 #>  0
 #> [ CPUi32{1} ]

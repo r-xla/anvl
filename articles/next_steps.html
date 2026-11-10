@@ -388,15 +388,19 @@ definite contains <code>NaN</code>s:</p>
 </h2>
 <p>R’s <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm()</a></code> and friends are only called once, while
 tracing, so their result is fixed in the compiled function. Use {anvl}’s
-own generators instead, which take the random state as an explicit input
-and return a new one:</p>
+own generators instead:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">draw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">state</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="va">state</span>, shape <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">draw</span><span class="op">(</span><span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">res</span><span class="op">$</span><span class="va">values</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">draw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">draw</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  1.6360</span></span>
-<span><span class="co">##  1.1787</span></span>
+<span><span class="co">##  0.8734</span></span>
+<span><span class="co">##  0.5105</span></span>
+<span><span class="co">## [ CPUf32{2} ]</span></span></code></pre>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">draw</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2.1332</span></span>
+<span><span class="co">##  1.4731</span></span>
 <span><span class="co">## [ CPUf32{2} ]</span></span></code></pre>
 <p>See the <a href="random-numbers.html">Random Number Generation</a>
 article for more.</p>
@@ -425,7 +429,7 @@ there are various differences to be aware of. For an overview, see the
 <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code> does not work for it. Use <code><a href="../reference/nv_save.html">nv_save()</a></code>
 and <code><a href="../reference/nv_save.html">nv_read()</a></code> instead, which use the <a href="https://huggingface.co/docs/safetensors/index" class="external-link">safetensors</a>
 format.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".safetensors"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_save.html">nv_save</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>w <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, b <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span><span class="op">)</span>, <span class="va">path</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_save.html">nv_read</a></span><span class="op">(</span><span class="va">path</span><span class="op">)</span><span class="op">$</span><span class="va">w</span></span></code></pre></div>
@@ -444,7 +448,7 @@ deliberately strict – for example, they do not combine
 <code>AnvlArray</code>s of different data types – but can express things
 for which there is no <code>nv_*</code> function, such as reducing an
 <code>AnvlArray</code> with an arbitrary function:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">logsumexp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_reduce.html">prim_reduce</a></span><span class="op">(</span><span class="va">x</span>, init <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>, axes <span class="op">=</span> <span class="fl">1L</span>, reducer <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="../reference/nv_pmax.html">nv_pmax</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log1p</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">a</span> <span class="op">-</span> <span class="va">b</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>

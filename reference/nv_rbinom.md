@@ -7,7 +7,7 @@ distribution.
 ## Usage
 
 ``` r
-nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
+nv_rbinom(shape, size = 1L, prob = 0.5, dtype = NULL)
 ```
 
 ## Arguments
@@ -16,14 +16,6 @@ nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Shape of the result.
-
-- state:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  RNG state: a 1-D array of two `ui64` elements, as
-  [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
-  returns. The data type and length are fixed by the generator, not by
-  the default data types, and the returned `state` has them too.
 
 - size:
 
@@ -46,29 +38,38 @@ nv_rbinom(shape, state, size = 1L, prob = 0.5, dtype = NULL)
 
 ## Value
 
-(named `list` of two
-[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-Elements `state`, the updated RNG state, and `values`, the sample of
-shape `shape` and data type `dtype`.
+([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+The sample, of shape `shape` and data type `dtype`.
+
+## Random State
+
+The draws come from the active random state: the global random state
+(see
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)),
+or the random state that
+[`with_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+or
+[`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
+make the default for a scope. They advance it in place.
 
 ## See also
 
 Other rng:
+[`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md),
 [`nv_normal`](https://r-xla.github.io/anvl/reference/nv_normal.md),
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
 [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md),
 [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md),
 [`nv_uniform`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
 
 ## Examples
 
 ``` r
-# Bernoulli samples; `state` is the updated RNG state
-state <- nv_rng_state(42L)
-result <- nv_rbinom(c(2, 3), state)
-result$values
+# Bernoulli samples
+with_nv_seed(42L, nv_rbinom(c(2, 3)))
 #> AnvlArray
-#>  0 1 1
-#>  0 0 1
+#>  1 0 0
+#>  1 1 0
 #> [ CPUi32{2,3} ] 
 ```

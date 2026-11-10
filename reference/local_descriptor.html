@@ -9,11 +9,15 @@
 The graph is automatically removed when exiting the current scope.
 After the graph is either cleaned up automatically (by exiting the scope)
 or finalized, the previously built graph is restored,
-i.e., accessible via current_descriptor()."><meta property="og:description" content="Creates a new GraphDescriptor which is afterwards accessible via current_descriptor().
+i.e., accessible via current_descriptor().
+That previously built graph, NULL if there is none, is the parent of the
+new one."><meta property="og:description" content="Creates a new GraphDescriptor which is afterwards accessible via current_descriptor().
 The graph is automatically removed when exiting the current scope.
 After the graph is either cleaned up automatically (by exiting the scope)
 or finalized, the previously built graph is restored,
-i.e., accessible via current_descriptor()."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+i.e., accessible via current_descriptor().
+That previously built graph, NULL if there is none, is the parent of the
+new one."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -89,7 +93,9 @@ i.e., accessible via current_descriptor()."><meta property="og:image" content="h
 The graph is automatically removed when exiting the current scope.
 After the graph is either cleaned up automatically (by exiting the scope)
 or finalized, the previously built graph is restored,
-i.e., accessible via <code><a href="current_descriptor.html">current_descriptor()</a></code>.</p>
+i.e., accessible via <code><a href="current_descriptor.html">current_descriptor()</a></code>.
+That previously built graph, <code>NULL</code> if there is none, is the <code>parent</code> of the
+new one.</p>
     </div>
 
     <div class="section level2">
@@ -103,7 +109,8 @@ i.e., accessible via <code><a href="current_descriptor.html">current_descriptor(
 
 <dl><dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>(<code>any</code>)<br>
-Additional arguments to pass to the <code><a href="GraphDescriptor.html">GraphDescriptor</a></code> constructor.</p></dd>
+Additional arguments to pass to the <code><a href="GraphDescriptor.html">GraphDescriptor</a></code> constructor,
+except <code>parent</code>.</p></dd>
 
 
 <dt id="arg-envir">envir<a class="anchor" aria-label="anchor" href="#arg-envir"></a></dt>

@@ -76,26 +76,21 @@ There are a few things to note in the code below:
     a native R conditional.
 2.  we sample a scalar uniform random number by setting
     `shape = integer()`
-3.  the RNG state is passed around explicitly.
 
 ``` r
 
-mh_step <- function(theta, rng_state, b, proposal_sd) {
-  rng_out <- nv_rnorm(shape(theta), rng_state, dtype = "f64")
-  rng_state <- rng_out[[1L]]
-  proposal <- theta + proposal_sd * rng_out[[2L]]
+mh_step <- function(theta, b, proposal_sd) {
+  proposal <- theta + proposal_sd * nv_rnorm(shape(theta), dtype = "f64")
 
   log_current <- log_density(theta, b)
   log_proposed <- log_density(proposal, b)
   log_accept <- log_proposed - log_current
 
-  rng_out <- nv_runif(integer(), rng_state, dtype = "f64")
-  rng_state <- rng_out[[1L]]
-  u <- rng_out[[2L]]
+  u <- nv_runif(integer(), dtype = "f64")
 
   accept <- log(u) < log_accept
   new_theta <- nv_if(accept, \() proposal, \() theta)
-  list(theta = new_theta, rng_state = rng_state)
+  new_theta
 }
 ```
 
@@ -106,21 +101,18 @@ below, avoiding R loop overhead.
 
 ``` r
 
-mh_sample <- jit(function(theta, rng_state, b, proposal_sd, thin) {
-  result <- nv_while(
-    init = list(theta = theta, rng_state = rng_state, i = nv_scalar(0L)),
-    cond = \(theta, rng_state, i) i < thin,
-    body = \(theta, rng_state, i) {
-      c(mh_step(theta, rng_state, b, proposal_sd), list(i = i + 1L))
-    }
-  )[1:2]
+mh_sample <- jit(function(theta, b, proposal_sd, thin) {
+  nv_while(
+    init = list(theta = theta, i = nv_scalar(0L)),
+    cond = \(theta, i) i < thin,
+    body = \(theta, i) list(theta = mh_step(theta, b, proposal_sd), i = i + 1L)
+  )$theta
 })
 ```
 
 ## Running the Sampler
 
-We specify the required parameters and run the sampler. Again, note that
-we are passing around the RNG state explicitly.
+We specify the required parameters and run the sampler.
 
 ``` r
 
@@ -128,26 +120,18 @@ n_samples <- 20000L
 n_warmup <- 5000L
 thin <- nv_scalar(200L)
 
+nv_set_seed(42L)
 theta <- nv_array(c(0, 0), dtype = "f64")
-rng_state <- nv_rng_state(42L)
 proposal_sd <- nv_scalar(3, dtype = "f64")
 
-result <- mh_sample(theta, rng_state, b_t, proposal_sd, thin)
-theta <- result$theta
-rng_state <- result$rng_state
-
 for (i in seq_len(n_warmup)) {
-  result <- mh_sample(theta, rng_state, b_t, proposal_sd, thin)
-  theta <- result$theta
-  rng_state <- result$rng_state
+  theta <- mh_sample(theta, b_t, proposal_sd, thin)
 }
 
 thetas <- vector("list", n_samples)
 
 for (i in seq_len(n_samples)) {
-  result <- mh_sample(theta, rng_state, b_t, proposal_sd, thin)
-  theta <- result$theta
-  rng_state <- result$rng_state
+  theta <- mh_sample(theta, b_t, proposal_sd, thin)
   thetas[[i]] <- theta
 }
 
@@ -176,8 +160,8 @@ The banana distribution has known analytical moments. Since \\\theta_1
 &nbsp;
 
     ##   Parameter     MH_Mean True_Mean    MH_SD   True_SD
-    ## 1    theta1 0.022700775         0 9.951290 10.000000
-    ## 2    theta2 0.007257402         0 1.731445  1.732051
+    ## 1    theta1 0.018700165         0 9.956090 10.000000
+    ## 2    theta2 0.001135642         0 1.716271  1.732051
 
 The Metropolis-Hastings estimates closely match the analytical moments,
 confirming the correctness of our implementation.

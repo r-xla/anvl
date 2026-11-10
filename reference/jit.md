@@ -73,6 +73,13 @@ jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 (`JitFunction`)  
 A `function` with the same formals as `f`.
 
+## Stochastic Functions
+
+A function that draws random numbers also reads and advances the global
+random state. See the the [Random Number
+Generation](https://r-xla.github.io/anvl/articles/random-numbers.html)
+article for more details.
+
 ## Backend and device
 
 A jitted function runs on the active backend *when it is called*

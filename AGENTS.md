@@ -251,8 +251,11 @@ graphs and error messages name a function the reader can look up.
 [`new_primitive()`](https://r-xla.github.io/anvl/reference/new_primitive.md)
 lexically binds `self` (the `AnvlPrimitiveDef`) into the body’s
 enclosing environment, so inside a primitive body you write
-`graph_desc_add(self, ...)` — never the primitive name as a string.
-Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+`graph_desc_add(self, ...)` — never the primitive name as a string. A
+primitive with nothing for a user to call it for is not exported, and
+has a comment instead of roxygen docs (`prim_fork_rng_state()`, which
+only `side_effect_fork()` calls). Interpretation rules are accessed via
+`prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** – JIT lowering rules in `R/rules-stablehlo.R`. These
   convert traced operations into StableHLO IR. Since stablehlo uses
@@ -261,6 +264,18 @@ Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
   [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md).
 - **`quickr`** – R-native lowering rules in `R/rules-quickr.R` for the
   quickr backend.
+
+## Side Effects
+
+A side effect is state outside the traced function that primitives read
+and update; currently only the random state. A trace counts the uses of
+each side effect it meets, and after the run the host advances the state
+by that count. The generic mechanism (loops, branches, gradients,
+lowering, the host) is in `R/side-effects.R`, the random state’s
+implementation of it in `R/rng-trace.R`, and the random number API in
+`R/rng.R`. The side effects section of the internals article
+(`vignettes/articles/internals.Rmd`) describes the mechanism; read it
+before changing any of this.
 
 ## Jit-wrapping
 
@@ -305,6 +320,13 @@ StableHLO IR or quickr code for compilation.
 
 Key types: `GraphValue` (traced variable), `GraphLiteral` (embedded
 constant), `AbstractArray` (shape + dtype metadata), `AnvlGraph`.
+
+The trace under way is a `GraphDescriptor`
+([`current_descriptor()`](https://r-xla.github.io/anvl/reference/current_descriptor.md)).
+A function that modifies one in place starts with `desc_` and takes the
+descriptor as its first argument (`desc_begin_loop(desc, ...)`,
+`desc_end_capture(desc, ...)`), so every call shows which trace it
+changes.
 
 ## NSE and Tracing
 

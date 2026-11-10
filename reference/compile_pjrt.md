@@ -97,3 +97,15 @@ With elements:
 - `phantom_specs`: One `list(dtype, shape)` per phantom donated input
   the executor must allocate for an output (see
   [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)).
+
+- `implicit_inputs`: One `list(get, dtype, shape)` per value of a side
+  effect the program takes from outside of it, which pjrt's dispatcher
+  supplies as an input after the call's own:
+  [`get()`](https://rdrr.io/r/base/get.html) takes no arguments and
+  returns the current value, a `PJRTBuffer` of `dtype` and `shape`, e.g.
+  the key of the global random state.
+
+- `on_success`: `NULL`, or a function pjrt's dispatcher calls after
+  every successful run with the call's arguments: it advances the host
+  object of each side effect by its count, e.g. a random state passed as
+  an argument.

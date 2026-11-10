@@ -848,6 +848,596 @@ does not:</p>
 </div>
 </div>
 <div class="section level2">
+<h2 id="side-effects">Side Effects<a class="anchor" aria-label="anchor" href="#side-effects"></a>
+</h2>
+<p>A traced <code>AnvlGraph</code> describes a pure function: its
+outputs depend on its inputs alone, and running it changes nothing else.
+Some primitives do not fit this picture: they read and update state that
+lives outside of the program. Drawing random numbers is the example in
+{anvl} today: every draw reads the random state and advances it, and the
+random state lives in the global random state that
+<code><a href="../reference/nv_set_seed.html">nv_set_seed()</a></code> seeds, or in a random state object that
+<code><a href="../reference/nv_rng_state.html">nv_rng_state()</a></code> creates. {anvl} handles such state as a
+<strong>side effect</strong>: state that some primitives read and
+update, which the user never passes to them by hand, and which {anvl}
+takes through the trace instead.</p>
+<p>This section describes the mechanism. The <a href="random-numbers.html">random numbers</a> article is the user-facing
+side of the random state.</p>
+<div class="section level3">
+<h3 id="counted-uses">Counted Uses<a class="anchor" aria-label="anchor" href="#counted-uses"></a>
+</h3>
+<p>A side effect is changed by its uses in a way the trace knows: the
+state after <span class="math inline">\(n\)</span> uses is a function of
+the state before and of <span class="math inline">\(n\)</span>. A trace
+counts the uses, and hands back the count. The random state is one: a
+draw advances its counter by one, whatever it draws.</p>
+<p>This lets the host advance the state by the count right after the
+call, without waiting for the program, so that a call never waits for
+the program of the call before it, also when CPU and GPU programs draw
+from the same random state.</p>
+<p>It is the only kind of side effect for now. The mechanism is to be
+extended by a second kind, a <em>runtime</em> side effect, which is
+changed by what the program computes, such as the error code of a check
+or the token that orders prints: a trace would hand back its value
+instead of a count, which the program returns to the host.</p>
+</div>
+<div class="section level3">
+<h3 id="three-parts">Three Parts<a class="anchor" aria-label="anchor" href="#three-parts"></a>
+</h3>
+<p>A side effect has up to three parts, each of which lives somewhere
+else:</p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th>part</th>
+<th>what it is</th>
+<th>where it lives</th>
+<th>for how long</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>host object</td>
+<td>the state between calls, e.g. the <code>AnvlRngState</code>, whose
+key and counter R holds as 32-bit words; before every run the program’s
+implicit inputs are read from it, and after the run it is updated. A
+side effect that starts afresh in every program has none.</td>
+<td>on the host: <code>globals$rng_state</code> for the global random
+state, the user’s own object for a random state passed as an argument or
+closed over</td>
+<td>from call to call</td>
+</tr>
+<tr class="even">
+<td>handle</td>
+<td>the side effect’s identity, which never changes; its class says
+which side effect it is, and inherits from <code>SideEffect</code>
+</td>
+<td>
+<code>global_rng_state_handle</code> in the package namespace; for a
+random state the traced function closes over or receives as an argument,
+an <code>AnvlRngStateHandle</code> the trace creates for it</td>
+<td>for good, or one compilation</td>
+</tr>
+<tr class="odd">
+<td>view</td>
+<td>the side effect’s value in one trace
+(<code>SideEffectView()</code>)</td>
+<td>
+<code>desc$side_effects</code> of that trace, then the
+<code>side_effects</code> of its graph</td>
+<td>one trace</td>
+</tr>
+</tbody>
+</table>
+<p>Every side effect has a handle, and a view in every trace that uses
+it. Only one whose state lasts from call to call has a host object.</p>
+</div>
+<div class="section level3">
+<h3 id="one-view-per-trace">One View per Trace<a class="anchor" aria-label="anchor" href="#one-view-per-trace"></a>
+</h3>
+<p>A <em>trace</em> is one run of <code><a href="../reference/trace_fn.html">trace_fn()</a></code> with a
+<code>GraphDescriptor</code> of its own, which becomes one
+<code>AnvlGraph</code>: the outermost trace of <code><a href="../reference/jit.html">jit()</a></code> or
+<code><a href="../reference/trace_fn.html">trace_fn()</a></code> is the program, and every function a
+higher-order primitive traces is one more trace, such as each branch of
+<code><a href="../reference/nv_if.html">nv_if()</a></code> or the body of <code><a href="../reference/nv_scan.html">nv_scan()</a></code>.</p>
+<p>Every trace keeps one <strong>view</strong> of each side effect it
+uses, in <code>desc$side_effects</code>, in the order of first use: its
+value in that trace, a named list of <code>GraphBox</code>es, the number
+of uses since that value (<code>n</code>), the <code>GraphValue</code>s
+the trace takes for it beyond its own inputs (<code>inputs</code>), and
+for a loop body those it returns for it beyond its own outputs
+(<code>outputs</code>). A use passes the side effect’s handle, and
+<code>desc_view(desc, effect)</code> finds the trace’s view, or creates
+it on first use. Where a view starts is decided by the trace’s
+<code>side_effects_mode</code> (see <code><a href="../reference/GraphDescriptor.html">?GraphDescriptor</a></code>),
+which whoever opens the trace passes to
+<code><a href="../reference/local_descriptor.html">local_descriptor()</a></code>:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>mode</th>
+<th>trace</th>
+<th>the view starts from</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>"program"</code></td>
+<td>the outermost trace of <code><a href="../reference/jit.html">jit()</a></code> or
+<code><a href="../reference/trace_fn.html">trace_fn()</a></code>
+</td>
+<td>wherever the side effect says (<code>side_effect_start()</code>):
+implicit inputs from the host, an argument, or a value the program
+creates</td>
+</tr>
+<tr class="even">
+<td><code>"loop"</code></td>
+<td>the body of <code><a href="../reference/nv_while.html">nv_while()</a></code> or <code><a href="../reference/nv_scan.html">nv_scan()</a></code>
+</td>
+<td>fresh inputs, which the loop carries</td>
+</tr>
+<tr class="odd">
+<td><code>"capture"</code></td>
+<td>a branch of <code><a href="../reference/nv_if.html">nv_if()</a></code>, the function
+<code><a href="../reference/gradient.html">gradient()</a></code> differentiates</td>
+<td>the enclosing trace’s view: its value, and its count</td>
+</tr>
+<tr class="even">
+<td><code>NULL</code></td>
+<td>the condition of <code><a href="../reference/nv_while.html">nv_while()</a></code>, the function of a
+reduction, a scatter or a sort</td>
+<td>nowhere: using a side effect is an error, as such a function cannot
+hand back what it did</td>
+</tr>
+</tbody>
+</table>
+<p>A graph keeps the views of its trace in its <code>side_effects</code>
+field, apart from its <code>inputs</code> and <code>outputs</code>, so
+that <code>in_tree</code> and <code>out_tree</code> keep describing what
+the user passes and gets back:</p>
+<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"ui32"</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">view</span> <span class="op">&lt;-</span> <span class="va">graph</span><span class="op">$</span><span class="va">side_effects</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">view</span><span class="op">$</span><span class="va">effect</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlRngStateHandle&gt;</span></span></code></pre>
+<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">view</span><span class="op">$</span><span class="va">n</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 1</span></span></code></pre>
+<div class="sourceCode" id="cb93"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">view</span><span class="op">$</span><span class="va">inputs</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] "key"     "counter"</span></span></code></pre>
+<p>The figure follows a function that draws three times from the global
+random state, from its trace to a call: the numbers in the function, the
+graph and the view mark what each note describes, and the part of the
+graph that implements the random state is blue.</p>
+<p><img src="figures/se-trace.png" class="r-plt" alt="" width="100%"></p>
+<p>A sub-graph’s views are folded into its inputs and outputs by the
+construct that traced it.</p>
+</div>
+<div class="section level3">
+<h3 id="what-comes-back-out">What Comes Back Out<a class="anchor" aria-label="anchor" href="#what-comes-back-out"></a>
+</h3>
+<p>Inside a loop, a side effect carries its value from one iteration to
+the next. Out of a loop, a branch, a differentiated function or the
+program, it hands back its count:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>construct</th>
+<th>the count</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>straight-line uses</td>
+<td>each use adds one</td>
+</tr>
+<tr class="even">
+<td><code>nv_scan(steps = k)</code></td>
+<td>adds <span class="math inline">\(k\)</span> times the body’s
+count</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/nv_while.html">nv_while()</a></code></td>
+<td>the body starts from a fork (<code>side_effect_fork()</code>), one
+use of the enclosing trace; the loop adds nothing else</td>
+</tr>
+<tr class="even">
+<td><code><a href="../reference/nv_if.html">nv_if()</a></code></td>
+<td>continues after the larger of the branches’ counts</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/gradient.html">gradient()</a></code></td>
+<td>continues after the differentiated function’s count</td>
+</tr>
+<tr class="even">
+<td>the program</td>
+<td>no output; <code>side_effect_advance()</code> adds the count on the
+host</td>
+</tr>
+</tbody>
+</table>
+<p>The figure follows a draw in the body of an <code><a href="../reference/nv_scan.html">nv_scan()</a></code> of
+three steps, and one after the loop. Every step runs the same code, so
+the body’s view starts from fresh inputs, which the loop carries from
+step to step. The program’s view counts three times the body’s draw
+instead of taking the loop’s result, so that the draw after the loop
+does not depend on the loop.</p>
+<p><img src="figures/se-trace-loop.png" class="r-plt" alt="" width="100%"></p>
+<p>The number of iterations of <code><a href="../reference/nv_while.html">nv_while()</a></code> is not known when
+it is traced, so a side effect cannot count them: the loop forks it
+instead, and the enclosing trace counts the fork as one use. The figure
+follows a draw in the body of an <code><a href="../reference/nv_while.html">nv_while()</a></code>, and one after
+the loop.</p>
+<p><img src="figures/se-trace-while.png" class="r-plt" alt="" width="100%"></p>
+<p>Only one branch of <code><a href="../reference/nv_if.html">nv_if()</a></code> runs, and which one is not
+known when it is traced: both branches start from the enclosing trace’s
+view, and the enclosing trace continues after the larger of their
+counts. The figure follows an <code><a href="../reference/nv_if.html">nv_if()</a></code> whose branches draw
+once and twice, and a draw after it.</p>
+<p><img src="figures/se-trace-if.png" class="r-plt" alt="" width="100%"></p>
+<p>A side effect cannot also be passed through the state of a loop by
+hand, as the loop carries it itself; <code><a href="../reference/nv_while.html">nv_while()</a></code> and
+<code><a href="../reference/nv_scan.html">nv_scan()</a></code> refuse one there.</p>
+</div>
+<div class="section level3">
+<h3 id="what-a-side-effect-provides">What a Side Effect Provides<a class="anchor" aria-label="anchor" href="#what-a-side-effect-provides"></a>
+</h3>
+<p>All of this is generic code in <code>R/side-effects.R</code>. A side
+effect only provides a few S3 methods on its handle:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>generic</th>
+<th>the random state</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>side_effect_start(effect, desc)</code></td>
+<td>the key and counter of the global random state and of one closed
+over as implicit inputs, a random state argument’s as computed from its
+words among the inputs</td>
+</tr>
+<tr class="even">
+<td><code>side_effect_host_object(effect, args)</code></td>
+<td>the global random state, the one closed over, or the one among the
+call’s arguments</td>
+</tr>
+<tr class="odd">
+<td><code>side_effect_input(effect, object, name)</code></td>
+<td>the buffer of the key or the counter, built from the words R
+holds</td>
+</tr>
+<tr class="even">
+<td><code>side_effect_after(effect, value, n)</code></td>
+<td>the key and the counter plus <code>n</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code>side_effect_fork(effect, value)</code></td>
+<td>a call of <code>prim_fork_rng_state()</code>
+</td>
+</tr>
+<tr class="even">
+<td><code>side_effect_advance(effect, object, n)</code></td>
+<td>advances the object’s counter by <code>n</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code>side_effect_format(effect, ids, n)</code></td>
+<td>the <code>then</code> line of a printed graph,
+<code>%counter1 += n</code>; the default says <code>n</code> uses</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="the-random-state">The Random State<a class="anchor" aria-label="anchor" href="#the-random-state"></a>
+</h3>
+<p>A random state is a ThreeFry key <span class="math inline">\(k\)</span> and a counter <span class="math inline">\(c\)</span>. A draw <em>splits</em> it at its
+counter, deriving a fresh key from <span class="math inline">\(k\)</span> and <span class="math inline">\(c\)</span> to draw from, and advances the counter
+by one, however many values it drew. Because a draw’s values depend on
+nothing but the key and the counter it splits at, the random state is a
+side effect whose uses are counted: the state after <span class="math inline">\(n\)</span> draws is the key <span class="math inline">\(k\)</span> and the counter <span class="math inline">\(c + n\)</span>, whatever the draws computed. So a
+compiled function does not have to hand the random state from one draw
+to the next, nor return it:</p>
+<ul>
+<li>the program takes the key and the counter as inputs, and the <span class="math inline">\(j\)</span>-th draw splits at the counter <span class="math inline">\(c + j\)</span>, computed from the one the program
+took, so that no draw waits for another;</li>
+<li>the program returns no random state: after the run, {anvl} advances
+the counter by the number of draws the trace counted.</li>
+</ul>
+<p><img src="figures/se-run.png" class="r-plt" alt="" width="100%"></p>
+<p>The printed graph shows the same: the key and the counter are inputs,
+labelled <code>%key1</code> and <code>%counter1</code>, the second and
+third draw take counters computed from <code>%counter1</code>, and the
+<code>then</code> block after the graph says what happens after the run:
+the counter advances by the number of draws, here
+<code>%counter1 += 3</code>.</p>
+<div class="sourceCode" id="cb95"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span></span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (%key1: ui32[2], %counter1: ui64[]) {</span></span>
+<span><span class="co">##   %1: ui32[2] = sample_bits [shape = 2, dtype = "ui32"] (%key1, %counter1)</span></span>
+<span><span class="co">##   %counter2: ui64[] = add(%counter1, 1:ui64)</span></span>
+<span><span class="co">##   %2: ui32[2] = sample_bits [shape = 2, dtype = "ui32"] (%key1, %counter2)</span></span>
+<span><span class="co">##   %counter3: ui64[] = add(%counter1, 2:ui64)</span></span>
+<span><span class="co">##   %3: ui32[2] = sample_bits [shape = 2, dtype = "ui32"] (%key1, %counter3)</span></span>
+<span><span class="co">##   return (%1, %2, %3)</span></span>
+<span><span class="co">## } then {</span></span>
+<span><span class="co">##   %counter1 += 3</span></span>
+<span><span class="co">## }</span></span></code></pre>
+<p>Fixing every advance when the function is traced, rather than when it
+runs, is what lets every draw compute its counter from the counter the
+program starts from, and the host advance the random state after a call
+by a number known in advance. The same property will let a future
+<code>vmap()</code> or <code>parallel_map()</code> of a function give
+each element the counter a hand-written loop over the elements would
+give it.</p>
+<p>So a compiled function draws exactly what the same calls made one
+after the other without <code><a href="../reference/jit.html">jit()</a></code> would draw, and leaves the
+global random state where they would leave it:</p>
+<div class="sourceCode" id="cb97"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>, <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">eager</span> <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000001, counter 0x0000000000000003</span></span></code></pre>
+<div class="sourceCode" id="cb99"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">compiled</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000001, counter 0x0000000000000003</span></span></code></pre>
+<div class="sourceCode" id="cb101"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">eager</span>, <span class="va">as_array</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">compiled</span>, <span class="va">as_array</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] TRUE</span></span></code></pre>
+<p>A draw is one call of <code>desc_use_side_effect()</code>: it finds
+the trace’s view of the random state that
+<code>active_rng_state()</code> names (the one
+<code><a href="../reference/local_nv_rng_state.html">local_nv_rng_state()</a></code> made the default of the trace or of a
+trace it is opened in, or else the global one), passes the view’s key
+and its counter plus <code>n</code> (<code>view_current()</code>) to the
+call as ordinary operands, and counts the draw. The call returns no
+random state: the next draw computes its own counter from the view
+again.</p>
+<div class="sourceCode" id="cb103"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prim_sample_bits</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span></span>
+<span>  <span class="st">"sample_bits"</span>,</span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">shape</span>, <span class="va">dtype</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/graph_desc_add.html">graph_desc_add</a></span><span class="op">(</span></span>
+<span>      <span class="va">self</span>,</span>
+<span>      <span class="fu">desc_use_side_effect</span><span class="op">(</span><span class="fu"><a href="../reference/current_descriptor.html">current_descriptor</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu">active_rng_state</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>shape <span class="op">=</span> <span class="va">shape</span>, dtype <span class="op">=</span> <span class="va">dtype</span><span class="op">)</span>,</span>
+<span>      infer_fn <span class="op">=</span> <span class="va">infer_sample_bits</span></span>
+<span>    <span class="op">)</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  static <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"shape"</span>, <span class="st">"dtype"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><img src="figures/se-use.png" class="r-plt" alt="" width="100%"></p>
+<div class="section level4">
+<h4 id="random-states-of-their-own">Random States of Their Own<a class="anchor" aria-label="anchor" href="#random-states-of-their-own"></a>
+</h4>
+<p>A function can draw from the global random state and from random
+states of its own, and the trace keeps them apart: each has its own
+handle, and so its own view.</p>
+<ul>
+<li>
+<code>global_rng_state_handle</code> stands for the global random
+state. R holds it outside of any program; the program takes its key and
+counter as <strong>implicit inputs</strong>, which pjrt’s dispatcher
+reads from it before every run, and does not count them among the call’s
+arguments.</li>
+<li>A random state the function closes over is taken the same way: its
+handle holds the random state R holds, which the implicit inputs are
+read from.</li>
+<li>A random state passed to the jitted function as an argument is
+received by the trace as the words of its key and its counter, from
+which it computes the <code>ui32</code> key and the <code>ui64</code>
+counter (<code>received_rng_state()</code>). The function receives an
+<code>AnvlRngState</code> of these, whose handle holds their
+<code>GraphValue</code>s and the random state’s place among the random
+states of the arguments.</li>
+</ul>
+<p><code><a href="../reference/local_nv_rng_state.html">local_nv_rng_state()</a></code> makes a random state’s handle the
+default of the draws in its scope, on the descriptor of the trace under
+way (<code>desc$default_rng_state</code>), which the traces opened in it
+find through their parents.</p>
+<p>In a trace, a random state is not a value: it cannot be returned,
+carried through a loop, or passed to an operation as an array.</p>
+<p>A random state among the arguments is not special to the dispatcher:
+<code>AnvlRngState</code> is registered as a node of pjrt’s argument
+tree (<code><a href="https://r-xla.github.io/pjrt/reference/register_tree_node.html" class="external-link">pjrt::register_tree_node()</a></code>), whose children are its
+key and its counter. R holds them as their 32-bit words, two numbers
+each, so the arguments are flattened into leaves, a random state
+contributing two of bare R data, which the program takes as ordinary
+inputs that the dispatcher uploads to the device of the call’s other
+inputs. Every random state gives leaves of the same type, so one
+compiled program serves every random state passed there.
+<code><a href="../reference/gradient.html">gradient()</a></code> flattens its arguments with
+<code>pjrt::flatten(is_leaf = )</code>, which stops at a random state,
+so that the function it differentiates receives it as it is and its
+draws continue those of the enclosing trace. After the run, pjrt hands
+the call’s arguments to the entry’s <code>on_success()</code>, which
+finds the random states among them the same way and advances the one at
+the handle’s place among them (<code>rng_state_argument()</code>).</p>
+<p><img src="figures/se-instances.png" class="r-plt" alt="" width="100%"></p>
+<p>So one side effect can appear several times in a graph, once per
+random state:</p>
+<div class="sourceCode" id="cb104"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span></span>
+<span>  \<span class="op">(</span><span class="va">rng1</span>, <span class="va">rng2</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">rng1</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">rng2</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">graph</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (</span></span>
+<span><span class="co">##   %key1: ui32[2], %counter1: ui64[], %key2: ui32[2], %counter2: ui64[]</span></span>
+<span><span class="co">## ) {</span></span>
+<span><span class="co">##   %1: ui32[2] = sample_bits [shape = 2, dtype = "ui32"] (%key1, %counter1)</span></span>
+<span><span class="co">##   %2: ui32[2] = sample_bits [shape = 2, dtype = "ui32"] (%key2, %counter2)</span></span>
+<span><span class="co">##   return (%1, %2)</span></span>
+<span><span class="co">## } then {</span></span>
+<span><span class="co">##   %counter1 += 1</span></span>
+<span><span class="co">##   %counter2 += 1</span></span>
+<span><span class="co">## }</span></span></code></pre>
+<div class="sourceCode" id="cb106"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">graph</span><span class="op">$</span><span class="va">side_effects</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="st">"n"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 1 1</span></span></code></pre>
+<p>and a compiled function advances each random state it is passed by
+its own draws, and the global random state by the rest:</p>
+<div class="sourceCode" id="cb108"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">rng1</span>, <span class="va">p</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">rng1</span>, <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">rng2</span>, <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="va">rng1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">rng2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="va">rng1</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>rng2 <span class="op">=</span> <span class="va">rng2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">rng1</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000001, counter 0x0000000000000002</span></span></code></pre>
+<div class="sourceCode" id="cb110"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">rng2</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000002, counter 0x0000000000000001</span></span></code></pre>
+<div class="sourceCode" id="cb112"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000003, counter 0x0000000000000001</span></span></code></pre>
+<p>The same random state passed twice cannot work this way, and is an
+error: it would have two views that start from the same key and counter
+and so draw the same numbers. <code>on_success()</code> finds every
+view’s host object before it advances any, and refuses an object found
+twice.</p>
+</div>
+<div class="section level4">
+<h4 id="loops-and-branches">Loops and Branches<a class="anchor" aria-label="anchor" href="#loops-and-branches"></a>
+</h4>
+<p>A loop body or a branch is traced once but runs any number of times,
+or not at all. For the draws to stay known when the function is traced,
+the generic code hands what a sub-trace’s view did to the enclosing
+trace’s view, which for the random state means:</p>
+<p><img src="figures/se-subgraphs.png" class="r-plt" alt="" width="100%"></p>
+<ul>
+<li>
+<code><a href="../reference/nv_scan.html">nv_scan()</a></code> runs its body a known number of times. The
+body takes the random state as one more member of the carry: it starts
+at the enclosing trace’s next count, and returns it after its own draws,
+so that step <span class="math inline">\(i\)</span> splits at the
+counters after <span class="math inline">\(i\)</span> bodies. The
+enclosing trace continues after the number of steps times the body’s
+draws (<code>desc_begin_loop()</code>,
+<code>desc_end_loop()</code>).</li>
+<li>
+<code><a href="../reference/nv_if.html">nv_if()</a></code> lets both branches start from the enclosing
+trace’s view and continue its count; the enclosing trace then continues
+after the larger of the two branches’ draws, whichever branch ran
+(<code>desc_end_capture()</code>).</li>
+<li>
+<code><a href="../reference/nv_while.html">nv_while()</a></code> runs its body a number of times not known
+when it is traced, so the body cannot continue the enclosing count.
+Instead the loop <em>forks</em> the random state: it splits it once,
+like a draw, but makes the fresh key a child random state with the
+counter 0, which the body carries through the loop and advances as often
+as it runs. The enclosing trace advances by one, the fork, however often
+the body ran, and drops the child after the loop
+(<code>side_effect_fork()</code>).</li>
+<li>The function <code><a href="../reference/gradient.html">gradient()</a></code> differentiates runs once, so
+its draws continue the enclosing count like straight-line code; its
+graph starts from the enclosing trace’s view, and hands its draws to the
+enclosing trace like a branch does
+(<code>desc_end_capture()</code>).</li>
+</ul>
+<div class="sourceCode" id="cb114"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span></span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/nv_while.html">nv_while</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>i <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span>, \<span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="va">i</span> <span class="op">&lt;</span> <span class="va">n</span>, \<span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"ui32"</span><span class="op">)</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>i <span class="op">=</span> <span class="va">i</span> <span class="op">+</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>    <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"i32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (%x1: i32[], %key1: ui32[2], %counter1: ui64[]) {</span></span>
+<span><span class="co">##   (%key2, %counter2): (ui32[2], ui64[]) = fork_rng_state(%key1, %counter1)</span></span>
+<span><span class="co">##   (%1, %key3, %counter3): (i32[], ui32[2], ui64[]) = while [</span></span>
+<span><span class="co">##     cond = (%x2: i32[], %key4: ui32[2], %counter4: ui64[], %x3: i32[]) {</span></span>
+<span><span class="co">##       %2: bool[] = lt(%x2, %x3)</span></span>
+<span><span class="co">##       return %2</span></span>
+<span><span class="co">##     },</span></span>
+<span><span class="co">##     body = (%x4: i32[], %key5: ui32[2], %counter5: ui64[], %x5: i32[]) {</span></span>
+<span><span class="co">##       %3: ui32[1] = sample_bits [shape = 1, dtype = "ui32"] (%key5, %counter5)</span></span>
+<span><span class="co">##       %4: i32[] = add(%x4, 1:i32)</span></span>
+<span><span class="co">##       %counter6: ui64[] = add(%counter5, 1:ui64)</span></span>
+<span><span class="co">##       return (%4, %key5, %counter6)</span></span>
+<span><span class="co">##     },</span></span>
+<span><span class="co">##     n_captures = 1</span></span>
+<span><span class="co">##   ] (0:i32, %key2, %counter2, %x1)</span></span>
+<span><span class="co">##   return %1</span></span>
+<span><span class="co">## } then {</span></span>
+<span><span class="co">##   %counter1 += 1</span></span>
+<span><span class="co">## }</span></span></code></pre>
+<p>The loop body takes the child random state as <code>%key5</code> and
+<code>%counter5</code>, and hands the advanced counter to the next
+iteration; the enclosing graph forks once and uses the random state
+once.</p>
+<p>The fork splits the random state <span class="math inline">\((k,
+c)\)</span> like a draw, but instead of drawing from the fresh key <span class="math inline">\(k_w = \mathrm{TF}_k(c)\)</span>, it returns the
+child random state <span class="math inline">\((k_w, 0)\)</span>, and
+advances the random state to <span class="math inline">\((k, c +
+1)\)</span>. It is the primitive <code>prim_fork_rng_state()</code>,
+which is not exported: what it gives is a random state, which is not a
+value in a trace, so only <code>side_effect_fork()</code> calls it.</p>
+<p>The fork is the price of fixing every advance when the function is
+traced: <code><a href="../reference/nv_while.html">nv_while()</a></code> is the one construct whose eager
+counterpart, an R <code>while</code> loop, draws differently.</p>
+</div>
+</div>
+<div class="section level3">
+<h3 id="lowering-and-running">Lowering and Running<a class="anchor" aria-label="anchor" href="#lowering-and-running"></a>
+</h3>
+<p><code><a href="../reference/stablehlo.html">stablehlo()</a></code> lowers the views’ <code>inputs</code> to
+more inputs of the program, after the graph’s own inputs; a random state
+passed as an argument is among the graph’s inputs already. The pjrt
+backend (<code>compile_graph_pjrt()</code>) then hands pjrt’s
+dispatcher:</p>
+<ul>
+<li>
+<code>implicit_inputs</code>
+(<code>side_effects_implicit_inputs()</code>): one
+<code>list(get, dtype, shape)</code> per view input, whose
+<code><a href="https://rdrr.io/r/base/get.html" class="external-link">get()</a></code> reads the buffer of that name from the side effect’s
+host object (<code>side_effect_host_object()</code>,
+<code>side_effect_input()</code>), e.g. the global random state’s key,
+which it builds from the words R holds. The buffer may live on any
+device; pjrt copies it to the program’s device if it is on another.</li>
+<li>
+<code>on_success(outputs, args)</code>
+(<code>side_effects_on_success()</code>): called after every successful
+run with the call’s arguments. It finds every view’s host object,
+refuses one found twice, and advances each by its count
+(<code>side_effect_advance()</code>). It keeps only plain data, the
+handles and the counts, so a cached program keeps no trace alive.</li>
+</ul>
+<p>None of this is part of the cache key: whether a program uses a side
+effect is decided by the program, and which random state is passed by
+the arguments’ leaves, whose types are always the same. The quickr
+backend runs no side effects, so it refuses a function that uses
+one.</p>
+</div>
+</div>
+<div class="section level2">
 <h2 id="backend-and-device-in-jit">Backend and Device in <code>jit()</code><a class="anchor" aria-label="anchor" href="#backend-and-device-in-jit"></a>
 </h2>
 <p>A compiled program runs on one backend and on one device of that
@@ -895,7 +1485,7 @@ names a device, the program runs on <code><a href="../reference/default_device.h
 <p>The inputs alone are therefore not enough to know the device: the
 body can name one that <code><a href="../reference/jit.html">jit()</a></code> only sees while tracing. The
 function below has no inputs, but it still runs on the GPU:</p>
-<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb116"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>An array the function creates <em>without</em> naming a device, such
@@ -914,7 +1504,7 @@ to <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>;
 trace, where it counts exactly like the device of an array input. To
 choose the device of such a program from the outside, pass it to the
 constructor through a static argument:</p>
-<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb117"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">dev</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2L</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, device <span class="op">=</span> <span class="va">dev</span><span class="op">)</span>, static <span class="op">=</span> <span class="st">"dev"</span><span class="op">)</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -942,13 +1532,13 @@ arrays.</li>
 programs.</li>
 </ol>
 <p>With our implementation, the following is possible:</p>
-<div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb119"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  3</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb94"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb121"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_mul.html">nv_mul</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -961,13 +1551,13 @@ programs.</li>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  4</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb96"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb123"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">times_4</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  8</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <p>Otherwise, we would need the following:</p>
-<div class="sourceCode" id="cb98"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb125"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times_2_r</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_mul.html">nv_mul</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
