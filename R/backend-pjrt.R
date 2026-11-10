@@ -35,7 +35,8 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       out_tree = compiled$out_tree,
       out_avals = compiled$out_avals,
       implicit_inputs = compiled$implicit_inputs,
-      on_success = compiled$on_success
+      on_success = compiled$on_success,
+      uses_default_device = compiled$uses_default_device
     )
   }
 }
@@ -144,6 +145,10 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'     successful run with the call's arguments: it advances the host object
 #'     of each side effect by its count, e.g. a random state passed as an
 #'     argument.
+#'   - `uses_default_device`: Whether the program was compiled for
+#'     `fallback_device` (or the default device) because nothing else named
+#'     one. `FALSE` means its device is fixed by `device`, the inputs or the
+#'     traced arrays, which the default device does not affect.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -175,6 +180,7 @@ compile_pjrt <- function(
   # A requested device is used as is: everything is moved to it, whatever
   # devices the trace found. Otherwise the array inputs and the traced arrays
   # must all agree on one.
+  uses_default_device <- FALSE
   if (is.null(device)) {
     unique_devices <- unique(c(desc$devices, if (!is.null(arg_device)) list(arg_device)))
     if (length(unique_devices) == 0L) {
@@ -183,6 +189,7 @@ compile_pjrt <- function(
       # on it, so compile for that exact device; only a caller with no
       # dispatcher in front of it falls back to the default.
       device <- fallback_device %||% default_device("pjrt")
+      uses_default_device <- TRUE
     } else if (length(unique_devices) > 1L) {
       devices_str <- paste0(vapply(unique_devices, as.character, character(1L)), collapse = ", ")
       cli_abort(c(
@@ -194,7 +201,11 @@ compile_pjrt <- function(
     }
   }
 
-  compile_graph_pjrt(graph, donate = donate, device = device)
+  out <- compile_graph_pjrt(graph, donate = donate, device = device)
+  # Sound because the trace never reads the default device: an array created
+  # without one while tracing is "plain" and placed on the compile device.
+  out$uses_default_device <- uses_default_device
+  out
 }
 
 # pjrt's dispatcher supplies the side effects the program takes as implicit

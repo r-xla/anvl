@@ -46,6 +46,9 @@
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
+* A jitted function called without array inputs whose program is pinned to a
+  device by an array it closes over no longer recompiles when the default
+  device changes.
 * A classed R value, such as a `bit64::integer64` array, is an error
   under `jit()` instead of being read through its storage type.
 * `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or

@@ -73,6 +73,10 @@ e.g. the key of the global random state.
 successful run with the call's arguments: it advances the host object
 of each side effect by its count, e.g. a random state passed as an
 argument.
+\item \code{uses_default_device}: Whether the program was compiled for
+\code{fallback_device} (or the default device) because nothing else named
+one. \code{FALSE} means its device is fixed by \code{device}, the inputs or the
+traced arrays, which the default device does not affect.
 }
 }
 \description{
