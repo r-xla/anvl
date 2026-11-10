@@ -61,6 +61,10 @@
   and `[<-` take `update_fn` too, so
   `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
   subset, every value of an index that is repeated in `i`.
+- [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+  differentiates through
+  [`nv_scan()`](https://r-xla.github.io/anvl/reference/nv_scan.md) /
+  [`prim_scan()`](https://r-xla.github.io/anvl/reference/prim_scan.md).
 
 ### Bug fixes
 

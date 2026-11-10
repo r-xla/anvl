@@ -72,6 +72,16 @@ nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
 the stacked outputs (structure of `body`'s `out`, each leaf gaining a
 leading axis of size `steps`).
 
+## Gradients
+
+Unlike
+[`nv_while()`](https://r-xla.github.io/anvl/reference/nv_while.md), a
+scan is differentiable with
+[`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md), with
+respect to `init`, `xs` and the arrays `body` closes over. The forward
+pass keeps what the backward pass needs of each step, so the memory a
+gradient takes grows linearly with `steps`.
+
 ## See also
 
 [`prim_scan()`](https://r-xla.github.io/anvl/reference/prim_scan.md),
@@ -95,4 +105,17 @@ nv_scan(
 #>   6
 #>  10
 #> [ CPUf32{4} ] 
+
+# a scan is differentiable: the gradient of a cumulative product
+f <- function(x) {
+  nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+}
+jit(gradient(f))(nv_array(c(1, 2, 3)))
+#> $x
+#> AnvlArray
+#>  6
+#>  3
+#>  2
+#> [ CPUf32{3} ] 
+#> 
 ```

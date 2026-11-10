@@ -124,7 +124,8 @@ types and shapes.</p>
 
 <p><code><a href="gradient.html">gradient()</a></code> cannot differentiate a while loop: its trip count is only known
 at run time, so there is no static size for the per-iteration states the
-backward pass needs.</p>
+backward pass needs. <code><a href="nv_scan.html">nv_scan()</a></code>, whose number of steps is static, is
+differentiable.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

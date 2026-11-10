@@ -252,10 +252,12 @@ conventions of other frameworks such as PyTorch.
 ## Control Flow
 
 [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
-differentiates through
-[`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md), including
-the values its branches close over. The gradient flows through the
-branch the predicate selects:
+differentiates through the control-flow functions
+[`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md) and
+[`nv_scan()`](https://r-xla.github.io/anvl/reference/nv_scan.md). Values
+their functions close over are differentiated as well. For
+[`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md), the
+gradient flows through the branch the predicate selects:
 
 ``` r
 
@@ -275,9 +277,34 @@ f_grad(nv_array(c(1, 2)), nv_scalar(FALSE))
 #> [ CPUf32{2} ]
 ```
 
+A loop with a fixed number of steps can be written with
+[`nv_scan()`](https://r-xla.github.io/anvl/reference/nv_scan.md). Below,
+`x` takes three steps of gradient descent on \\\sum_i x_i^2\\, and we
+differentiate the loss it ends at with respect to the learning rate
+`lr`:
+
+``` r
+
+loss_after_steps <- function(lr, x) {
+  step <- \(x, unused) list(carry = x - lr * 2 * x, out = NULL)
+  x_final <- nv_scan(x, body = step, steps = 3L)$carry
+  sum(x_final^2L)
+}
+jit(gradient(loss_after_steps, wrt = "lr"))(nv_scalar(0.1), nv_array(c(1, 2)))
+#> $lr
+#> AnvlArray
+#>  -19.6608
+#> [ CPUf32{} ]
+```
+
 [`nv_while()`](https://r-xla.github.io/anvl/reference/nv_while.md), in
-contrast, cannot be differentiated. Where the derivative of what a loop
-computes has a formula of its own,
+contrast, cannot be differentiated. Its number of iterations is only
+known when the program runs, so there is no fixed size for the
+intermediate states that computing the gradient needs to keep. Where the
+number of iterations is known, use
+[`nv_scan()`](https://r-xla.github.io/anvl/reference/nv_scan.md)
+instead. Where the derivative of what a loop computes has a formula of
+its own,
 [`prim_custom_gradient()`](https://r-xla.github.io/anvl/reference/prim_custom_gradient.md)
 attaches it.
 

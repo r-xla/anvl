@@ -86,7 +86,7 @@ because it does not apply for a specific primitive.
 | round                  |     ✓     |    ✓    |   ✗    |
 | rsqrt                  |     ✓     |    ✓    |   ✗    |
 | sample_bits            |     ✓     |    ✗    |   ✗    |
-| scan                   |     ✓     |    ✗    |   ✗    |
+| scan                   |     ✓     |    ✓    |   ✗    |
 | scatter                |     ✓     |    ✓    |   ✓    |
 | shift_left             |     ✓     |    ✓    |   ✗    |
 | shift_right_arithmetic |     ✓     |    ✓    |   ✗    |

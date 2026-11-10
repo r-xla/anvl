@@ -47,6 +47,8 @@ types and shapes.
 cannot differentiate a while loop: its trip count is only known at run
 time, so there is no static size for the per-iteration states the
 backward pass needs.
+[`nv_scan()`](https://r-xla.github.io/anvl/reference/nv_scan.md), whose
+number of steps is static, is differentiable.
 
 ## See also
 

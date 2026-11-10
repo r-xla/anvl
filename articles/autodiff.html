@@ -335,9 +335,11 @@ are differentiable everywhere except at a few points. At these points,
 <div class="section level2">
 <h2 id="control-flow">Control Flow<a class="anchor" aria-label="anchor" href="#control-flow"></a>
 </h2>
-<p><code><a href="../reference/gradient.html">gradient()</a></code> differentiates through <code><a href="../reference/nv_if.html">nv_if()</a></code>,
-including the values its branches close over. The gradient flows through
-the branch the predicate selects:</p>
+<p><code><a href="../reference/gradient.html">gradient()</a></code> differentiates through the control-flow
+functions <code><a href="../reference/nv_if.html">nv_if()</a></code> and <code><a href="../reference/nv_scan.html">nv_scan()</a></code>. Values their
+functions close over are differentiated as well. For
+<code><a href="../reference/nv_if.html">nv_if()</a></code>, the gradient flows through the branch the
+predicate selects:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">square</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_if.html">nv_if</a></span><span class="op">(</span><span class="va">square</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>, \<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">f_grad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="../reference/gradient.html">gradient</a></span><span class="op">(</span><span class="va">f</span>, wrt <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span><span class="op">)</span></span>
@@ -353,9 +355,29 @@ the branch the predicate selects:</p>
 <span><span class="co">#&gt;  1</span></span>
 <span><span class="co">#&gt;  1</span></span>
 <span><span class="co">#&gt; [ CPUf32{2} ]</span></span></code></pre></div>
-<p><code><a href="../reference/nv_while.html">nv_while()</a></code>, in contrast, cannot be differentiated. Where
-the derivative of what a loop computes has a formula of its own,
-<code><a href="../reference/prim_custom_gradient.html">prim_custom_gradient()</a></code> attaches it.</p>
+<p>A loop with a fixed number of steps can be written with
+<code><a href="../reference/nv_scan.html">nv_scan()</a></code>. Below, <code>x</code> takes three steps of
+gradient descent on <span class="math inline">\(\sum_i x_i^2\)</span>,
+and we differentiate the loss it ends at with respect to the learning
+rate <code>lr</code>:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">loss_after_steps</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">lr</span>, <span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">step</span> <span class="op">&lt;-</span> \<span class="op">(</span><span class="va">x</span>, <span class="va">unused</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>carry <span class="op">=</span> <span class="va">x</span> <span class="op">-</span> <span class="va">lr</span> <span class="op">*</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">x</span>, out <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span>  <span class="va">x_final</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_scan.html">nv_scan</a></span><span class="op">(</span><span class="va">x</span>, body <span class="op">=</span> <span class="va">step</span>, steps <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span><span class="op">$</span><span class="va">carry</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x_final</span><span class="op">^</span><span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="../reference/gradient.html">gradient</a></span><span class="op">(</span><span class="va">loss_after_steps</span>, wrt <span class="op">=</span> <span class="st">"lr"</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; $lr</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  -19.6608</span></span>
+<span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
+<p><code><a href="../reference/nv_while.html">nv_while()</a></code>, in contrast, cannot be differentiated. Its
+number of iterations is only known when the program runs, so there is no
+fixed size for the intermediate states that computing the gradient needs
+to keep. Where the number of iterations is known, use
+<code><a href="../reference/nv_scan.html">nv_scan()</a></code> instead. Where the derivative of what a loop
+computes has a formula of its own, <code><a href="../reference/prim_custom_gradient.html">prim_custom_gradient()</a></code>
+attaches it.</p>
 </div>
 <div class="section level2">
 <h2 id="limitations">Limitations<a class="anchor" aria-label="anchor" href="#limitations"></a>
