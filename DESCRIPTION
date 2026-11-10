@@ -9,7 +9,7 @@ Authors@R: c(
     person("Tomasz", "Kalinowski", , "tomasz@posit.co", role = "aut"),
     person("Nikolai", "German", , "niko.german@gmail.com", role = "aut",
            comment = c(ORCID = "https://orcid.org/0009-0001-7394-8367")),
-    person("Louis", "Aslett", , "louis.aslett@durham.ac.uk", role = "ctb",
+    person("Louis", "Aslett", , "louis.aslett@durham.ac.uk", role = "aut",
            comment = c(ORCID = "https://orcid.org/0000-0003-2211-233X")),
     person("Hugh", "Graham", , "hugh@belian.earth", role = "ctb",
            comment = c(ORCID = "https://orcid.org/0000-0001-9451-5010"))
