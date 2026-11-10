@@ -41,9 +41,13 @@ memory and copies for large inputs. Must not overlap with \code{static}.
 options for compiling this function, passed to \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}},
 which describes the names and values it takes. They apply to this
 function's compiles only, unlike \code{XLA_FLAGS}, which applies to every
-compile of the R session. For example,
+compile of the R session. A jitted function called inside another
+one's trace is traced into the outer program, so only the options of
+the outermost \code{jit()} take effect: pass them as
+\code{jit(value_and_gradient(f), xla_options = ...)}, not to a jitted \code{f}.
+For example, on the CPU,
 \code{list(xla_backend_extra_options = "xla_cpu_use_multi_output_fusion")}
-keeps XLA's CPU compiler from recomputing cheap values inside every
+keeps XLA's compiler from recomputing cheap values inside every
 kernel that reads them, which can make compile time quadratic in the
 size of the program, e.g. for the gradient of a long chain of
 \code{\link[=nv_pmax]{nv_pmax()}} calls.
