@@ -785,3 +785,124 @@
       ! `false` must be a function.
       x Got "x".
 
+# prim_custom_gradient / refuses an fn or rule that is not a function
+
+    Code
+      prim_custom_gradient(list(x = x), fn = 1, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `fn` must be a function.
+      x Got 1.
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r")
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must be a function, or a `rule_reverse()` with a forward pass.
+      x Got "r".
+
+# prim_custom_gradient / refuses a reverse rule without a forward pass
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must have a forward pass where it is a `rule_reverse()`.
+      x Got a reverse rule with only a backward pass.
+      i Pass a function as `rule` instead: it receives the arguments, the result and its gradient by name.
+
+# prim_custom_gradient / refuses args that are not a list with names
+
+    Code
+      prim_custom_gradient(x, fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must be a non-empty list whose entries all have names.
+      x Got f32[].
+
+---
+
+    Code
+      prim_custom_gradient(list(x), fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must be a non-empty list whose entries all have names.
+      x Got <list> of length 1.
+
+---
+
+    Code
+      prim_custom_gradient(list(out = x), fn = function(out) out, rule = function(...)
+        list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have an entry named "out", "grad" or "required".
+      x Got an entry named "out".
+      i `rule` receives the result of `fn`, its gradient and which gradients are required under these names.
+
+---
+
+    Code
+      prim_custom_gradient(list(required = x), fn = function(required) required,
+      rule = function(...) list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have an entry named "out", "grad" or "required".
+      x Got an entry named "required".
+      i `rule` receives the result of `fn`, its gradient and which gradients are required under these names.
+
+---
+
+    Code
+      prim_custom_gradient(stats::setNames(list(x, x), c("x", "x")), fn = function(x)
+        x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have two entries with the same name.
+      x Got more than one entry named "x".
+
+# prim_custom_gradient / refuses args without an array, or with something else than one
+
+    Code
+      prim_custom_gradient(list(d = list()), fn = function(d) x, rule = function(d,
+        out, grad, required) list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must contain at least one array.
+      x Got <list> of length 1 without any.
+
+---
+
+    Code
+      jit(function(x) {
+        prim_custom_gradient(list(x = x, p = list(w = x, b = "a")), fn = function(x,
+          p) x, rule = function(x, p, out, grad, required) list(x = grad))
+      })(x)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must hold arrays, or trees of them.
+      x Got "a" at `p$b`.
+
+# prim_custom_gradient / refuses an fn or rule without an argument for a value it receives
+
+    Code
+      prim_custom_gradient(list(y = x), fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `fn` must have an argument for each value it receives.
+      x Got a function with arguments "x".
+      i It has none for "y".
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, grad)
+        list(x = grad))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must have an argument for each value it receives.
+      x Got a function with arguments c("x", "grad").
+      i It has none for c("out", "required").
+

@@ -1460,6 +1460,7 @@ infer_scatter <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
+  update_op,
   update_fn,
   n_captures
 ) {
@@ -2050,4 +2051,10 @@ infer_while <- function(..., cond, body, n_captures) {
   }
 
   outs_body
+}
+
+# The operands are the arguments of `fn`, then what it closes over, which only
+# the lowering reads. `rule` is checked when the reverse rule traces it.
+infer_custom_gradient <- function(..., fn, rule, n_captures) {
+  graph_output_avals(fn)
 }
