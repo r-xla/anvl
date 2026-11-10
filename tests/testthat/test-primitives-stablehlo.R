@@ -10,12 +10,152 @@ test_that("prim_cos", {
   expect_equal(c(out), c(1, 0, -1, 0), tolerance = 1e-15)
 })
 
-test_that("prim_rng_bit_generator", {
-  out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
-  expect_named(out, c("state", "values"))
-  expect_dtype(out$state, "ui64")
-  expect_shape(out$state, 2L)
-  expect_shape(out$values, c(2L, 2L))
+describe("prim_sample_bits", {
+  # Makes the random state with the key words and the counter words (low word
+  # first) `words` the global random state.
+  set_state <- function(words) {
+    nv_set_rng_state(rng_state_of_words(as.numeric(words)))
+  }
+  # The values of an unsigned integer array as decimal strings, which hold
+  # every bit of a `ui32` or `ui64`, in an array of its shape.
+  bits <- function(x) {
+    # a `ui64` of 2^63 or more reads back wrapped, which is fine for comparing
+    a <- as_array(x, check = FALSE)
+    if (length(shape(x))) array(as.character(a), shape(x)) else as.character(a)
+  }
+
+  it("splits with ThreeFry-2x32 as the known-answer vectors of the reference give it", {
+    local_nv_seed(1L)
+    # a 32-bit word given in hex, as a number
+    h <- function(s) strtoi(substr(s, 1L, 4L), 16L) * 65536 + strtoi(substr(s, 5L, 8L), 16L)
+    kat <- list(
+      list(ctr = c("00000000", "00000000"), key = c("00000000", "00000000"), out = c("6b200159", "99ba4efe")),
+      list(ctr = c("ffffffff", "ffffffff"), key = c("ffffffff", "ffffffff"), out = c("1cb996fc", "bb002be7")),
+      list(ctr = c("243f6a88", "85a308d3"), key = c("13198a2e", "03707344"), out = c("c4923a9c", "483df7a0"))
+    )
+    for (k in kat) {
+      # the counter's high word is the hash's first input word, its low word
+      # the second, as in JAX's fold_in()
+      set_state(h(c(k$key, rev(k$ctr))))
+      # the fork returns the split (ThreeFry_k(c)) as the child's key
+      expect_identical(as.numeric(as_array(prim_fork_rng_state()$key)), h(k$out))
+    }
+  })
+
+  it("fills a shape in row-major order", {
+    local_nv_seed(1L)
+    # an R array's elements in row-major order
+    row_major <- function(a) if (length(dim(a)) > 1L) as.vector(aperm(a)) else as.vector(a)
+    shapes <- list(integer(), 1L, 0L, 5L, c(4L, 3L), c(3L, 3L), c(2L, 3L, 2L), c(4L, 1L, 3L))
+    for (shape in shapes) {
+      for (dtype in c("ui8", "ui32", "ui64")) {
+        set_state(c(7, 0, 11, 0))
+        shaped <- prim_sample_bits(shape, dtype)
+        expect_shape(shaped, shape)
+        set_state(c(7, 0, 11, 0))
+        flat <- prim_sample_bits(prod(shape), dtype)
+        expect_identical(row_major(bits(shaped)), as.vector(bits(flat)))
+      }
+    }
+  })
+
+  it("truncates a 32-bit draw for a narrower data type", {
+    local_nv_seed(1L)
+    set_state(c(5, 0, 3, 0))
+    wide <- as.numeric(as_array(prim_sample_bits(4L, "ui32")))
+    for (width in c(8L, 16L)) {
+      set_state(c(5, 0, 3, 0))
+      expect_identical(as.numeric(as_array(prim_sample_bits(4L, paste0("ui", width)))), wide %% 2^width)
+    }
+  })
+
+  it("draws every unsigned data type", {
+    local_nv_seed(1L)
+    for (dtype in c("ui8", "ui16", "ui32", "ui64")) {
+      out <- prim_sample_bits(c(2L, 3L), dtype)
+      expect_dtype(out, dtype)
+      expect_shape(out, c(2L, 3L))
+      # the bits are random, not a constant: 64 draws of 8 bits or more repeat
+      # a value only rarely
+      values <- as.numeric(as.character(as_array(prim_sample_bits(64L, dtype), check = FALSE)))
+      expect_gt(length(unique(values)), 40L)
+    }
+  })
+
+  it("draws a shape with no elements", {
+    local_nv_seed(1L)
+    expect_shape(prim_sample_bits(c(2L, 0L), "ui32"), c(2L, 0L))
+  })
+
+  it("refuses a draw of more values than an R integer holds", {
+    lower <- function(shape) stablehlo(trace_fn(function() prim_sample_bits(shape, "ui32"), list()))
+    expect_error(lower(c(65536L, 32768L)), "more than 2147483647 values")
+  })
+})
+
+describe("prim_fork_rng_state() and the generator of prim_sample_bits()", {
+  # Known answers computed with JAX 0.11.2, whose
+  # `jax.experimental.random.stateful_rng()` derives the key of its n-th draw as
+  # `fold_in(key(seed), n)` and draws with `jax.random.bits()` and
+  # `jax.random.uniform()` (with `jax_threefry_partitionable`, its default).
+
+  it("derives the keys of the first sampling calls from seed 0", {
+    local_nv_seed(0L)
+    expect_identical(as.numeric(as_array(prim_fork_rng_state()$key)), c(1797259609, 2579123966))
+    expect_identical(as.numeric(as_array(prim_fork_rng_state()$key)), c(928981903, 3453687069))
+  })
+
+  it("forks the random state into its split and a zero counter", {
+    local_nv_seed(1L)
+    child <- prim_fork_rng_state()
+    expect_identical(
+      state_words(rng_state_of_arrays(child$key, child$counter)),
+      c(507451445, 1853169794, 0, 0)
+    )
+    expect_identical(state_words()[[3L]], 1)
+  })
+
+  it("splits at a counter past 2^32 with its high word", {
+    local_nv_seed(1L)
+    nv_set_rng_state(rng_state_of_words(c(0, 1, 5, 1)))
+    expect_identical(as.numeric(as_array(prim_fork_rng_state()$key)), c(4133157646, 253918841))
+  })
+
+  it("draws ui64 values, each an encrypted block", {
+    local_nv_seed(1L)
+    # the values 15912746244612290068, 11621925242097073948 and
+    # 3386276387959728876, each as its low and its high 32-bit word
+    words <- nv_bitcast_convert(prim_sample_bits(3L, "ui64"), dtype = "ui32")
+    expect_identical(
+      as.numeric(as_array(words)),
+      c(1863054868, 3704974950, 2639757084, 2705940334, 4288801516, 788428910)
+    )
+  })
+
+  it("draws ui32 and narrower values, each the xor of the two words of a block of its own", {
+    draw <- function(dtype) with_nv_seed(1L, as.numeric(as_array(prim_sample_bits(3L, dtype))))
+    expect_identical(draw("ui32"), c(3017709682, 1008607346, 3512701570))
+    expect_identical(draw("ui16"), c(39026, 8306, 37506))
+    expect_identical(draw("ui8"), c(114, 114, 130))
+  })
+
+  it("draws f32 and f64 uniforms from the top bits of their values", {
+    # each uniform as the integer m of its grid: m 2^-23 for f32, m 2^-52 for f64
+    draw <- function(dtype, scale) with_nv_seed(1L, as.numeric(as_array(nv_runif(3L, dtype = dtype))) * scale)
+    expect_identical(draw("f32", 2^23), c(5893964, 1969936, 6860745))
+    expect_identical(draw("f64", 2^52), c(3884947813626047, 2837384092308855, 826727633779230))
+  })
+
+  it("draws values that do not depend on the size of the draw", {
+    for (dtype in c("ui8", "ui32", "ui64")) {
+      start <- with_nv_seed(1L, as_array(prim_sample_bits(3L, dtype), check = FALSE))
+      expect_identical(with_nv_seed(1L, as_array(prim_sample_bits(6L, dtype), check = FALSE))[1:3], start)
+    }
+    for (dtype in c("f32", "f64")) {
+      start <- with_nv_seed(1L, as_array(nv_runif(3L, dtype = dtype)))
+      expect_identical(with_nv_seed(1L, as_array(nv_runif(6L, dtype = dtype)))[1:3], start)
+    }
+  })
 })
 
 describe("prim_bitcast_convert", {
@@ -845,6 +985,85 @@ describe("prim_while", {
   })
 })
 
+describe("prim_custom_gradient", {
+  zero_rule <- function(x, out, grad, required) list()
+
+  it("returns the result of fn", {
+    f <- function(x) prim_custom_gradient(list(x = x), fn = function(x) x * x + 1, rule = zero_rule)
+    expect_equal(jit(f)(nv_array(c(1, 2, 3))), nv_array(c(2, 5, 10)))
+    # eagerly too
+    expect_equal(f(nv_array(c(1, 2, 3))), nv_array(c(2, 5, 10)))
+  })
+
+  it("lowers fn in place, with no trace of rule", {
+    f <- function(x) prim_custom_gradient(list(x = x), fn = function(x) exp(x), rule = zero_rule)
+    graph <- trace_fn(f, list(x = nv_aval("f32", 2L)))
+    mlir <- repr(stablehlo(graph)[[1L]])
+    expect_match(mlir, "stablehlo.exponential")
+    expect_no_match(mlir, "func.call|stablehlo.if|stablehlo.case")
+  })
+
+  it("passes arguments by name, in any order", {
+    f <- jit(function(a, b) {
+      prim_custom_gradient(
+        list(b = b, a = a),
+        fn = function(a, b) a - b,
+        rule = function(a, b, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(1), nv_scalar(3)), nv_scalar(-2))
+  })
+
+  it("takes and returns trees", {
+    f <- jit(function(p) {
+      prim_custom_gradient(
+        list(p = p),
+        fn = function(p) list(s = p$w + p$b, d = list(p$w - p$b)),
+        rule = function(p, out, grad, required) list()
+      )
+    })
+    out <- f(list(w = nv_scalar(3), b = nv_scalar(1)))
+    expect_equal(out, list(s = nv_scalar(4), d = list(nv_scalar(2))))
+  })
+
+  it("can capture values", {
+    k <- nv_scalar(10)
+    f <- jit(function(x) {
+      y <- x + 1
+      prim_custom_gradient(list(x = x), fn = function(x) x * k + y, rule = zero_rule)
+    })
+    expect_equal(f(nv_scalar(2)), nv_scalar(23))
+  })
+
+  it("materializes an R value in args at its default", {
+    f <- jit(function(x) {
+      prim_custom_gradient(
+        list(x = x, c = 3),
+        fn = function(x, c) x * c,
+        rule = function(x, c, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(2)), nv_scalar(6))
+  })
+
+  it("runs a loop in fn", {
+    f <- jit(function(x, n) {
+      prim_custom_gradient(
+        list(x = x, n = n),
+        fn = function(x, n) {
+          prim_while(
+            init = list(i = 1L, y = x),
+            cond = function(i, y) i < n,
+            body = function(i, y) list(i = i + 1L, y = y * x)
+          )$y
+        },
+        rule = function(x, n, out, grad, required) list()
+      )
+    })
+    expect_equal(f(nv_scalar(2), nv_scalar(5L)), nv_scalar(32))
+  })
+})
+
 describe("prim_chol", {
   random_spd <- function(n) {
     m <- matrix(rnorm(n * n), n, n)
@@ -906,32 +1125,56 @@ describe("prim_chol", {
   })
 })
 
-test_that("prim_triangular_solve", {
-  # Solve L %*% x = b where L = [[3, 0], [1, 2]]
-  L <- nv_matrix(c(3, 1, 0, 2), nrow = 2, dtype = "f64")
-  b <- nv_matrix(c(6, 5), nrow = 2, dtype = "f64")
-  x <- as_array(prim_triangular_solve(
-    L,
-    b,
-    left_side = TRUE,
-    lower = TRUE,
-    unit_diagonal = FALSE,
-    transpose_a = FALSE
-  ))
-  # x = L^{-1} b: 3*x1 = 6 -> x1 = 2; x1 + 2*x2 = 5 -> x2 = 1.5
-  expect_equal(c(x), c(2, 1.5), tolerance = 1e-5)
+describe("prim_triangular_solve", {
+  it("solves a lower triangular system, with and without transposing a", {
+    # Solve L %*% x = b where L = [[3, 0], [1, 2]]
+    L <- nv_matrix(c(3, 1, 0, 2), nrow = 2, dtype = "f64")
+    b <- nv_matrix(c(6, 5), nrow = 2, dtype = "f64")
+    x <- as_array(prim_triangular_solve(
+      L,
+      b,
+      left_side = TRUE,
+      lower = TRUE,
+      unit_diagonal = FALSE,
+      transpose_a = FALSE
+    ))
+    # x = L^{-1} b: 3*x1 = 6 -> x1 = 2; x1 + 2*x2 = 5 -> x2 = 1.5
+    expect_equal(c(x), c(2, 1.5), tolerance = 1e-5)
 
-  # Verify: solve with transpose_a = TRUE
-  x2 <- as_array(prim_triangular_solve(
-    L,
-    b,
-    left_side = TRUE,
-    lower = TRUE,
-    unit_diagonal = FALSE,
-    transpose_a = TRUE
-  ))
-  # L^T x = b: [[3,1],[0,2]] x = [6,5] -> 2*x2=5 -> x2=2.5; 3*x1+x2=6 -> x1=7/6
-  expect_equal(c(x2), c(7 / 6, 2.5), tolerance = 1e-5)
+    # Verify: solve with transpose_a = TRUE
+    x2 <- as_array(prim_triangular_solve(
+      L,
+      b,
+      left_side = TRUE,
+      lower = TRUE,
+      unit_diagonal = FALSE,
+      transpose_a = TRUE
+    ))
+    # L^T x = b: [[3,1],[0,2]] x = [6,5] -> 2*x2=5 -> x2=2.5; 3*x1+x2=6 -> x1=7/6
+    expect_equal(c(x2), c(7 / 6, 2.5), tolerance = 1e-5)
+  })
+
+  it("solves a batch of right-side, transposed systems through trsm on CPU", {
+    withr::local_seed(1L)
+    a <- array(rnorm(18L), c(2L, 3L, 3L))
+    b <- array(rnorm(24L), c(2L, 4L, 3L))
+    for (i in 1:2) {
+      diag(a[i, , ]) <- 3
+    }
+    x <- as_array(prim_triangular_solve(
+      nv_array(a, dtype = "f64"),
+      nv_array(b, dtype = "f64"),
+      left_side = FALSE,
+      lower = TRUE,
+      unit_diagonal = FALSE,
+      transpose_a = TRUE
+    ))
+    for (i in 1:2) {
+      l <- a[i, , ]
+      l[upper.tri(l)] <- 0
+      expect_equal(x[i, , ], b[i, , ] %*% solve(t(l)), tolerance = 1e-10)
+    }
+  })
 })
 
 # Sanity smoke tests for the linalg primitives.
@@ -1605,8 +1848,36 @@ describe("prim_scatter update_fn", {
   }
 
   it("scatters with the default and with a combiner", {
-    expect_equal(as.numeric(scatter_with(NULL)), c(10, 0, 30))
+    expect_equal(as.numeric(scatter_with("replace")), c(10, 0, 30))
     expect_equal(as.numeric(scatter_with(function(old, new) prim_add(old, new))), c(10, 0, 30))
+  })
+
+  it("combines by name", {
+    scatter_named <- function(update_fn) {
+      out <- prim_scatter(
+        nv_array(c(2, 5, 3), dtype = "f64"),
+        nv_array(matrix(c(1L, 3L, 3L), ncol = 1)),
+        nv_array(c(4, 1, 6), dtype = "f64"),
+        update_window_axes = integer(0),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(0),
+        scatter_indices_batching_axes = integer(0),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = update_fn
+      )
+      as.numeric(out)
+    }
+    expect_equal(scatter_named("add"), c(6, 5, 10))
+    expect_equal(scatter_named("sub"), c(-2, 5, -4))
+    expect_equal(scatter_named("mul"), c(8, 5, 18))
+    expect_equal(scatter_named("max"), c(4, 5, 6))
+    expect_equal(scatter_named("min"), c(2, 5, 1))
+  })
+
+  it("rejects an unknown name", {
+    expect_error(scatter_with("plus"), "must be a function or one of")
+    expect_error(scatter_with(NULL), "must be a function or one of")
   })
 
   it("rejects a combiner that returns another data type", {
@@ -1719,6 +1990,13 @@ describe("prim_dynamic_slice", {
       c(3L, 5L)
     )
   })
+  it("clamps an unsigned start index of 0 to the first position", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("ui8", "ui32", "ui64")) {
+      out <- prim_dynamic_slice(v, nv_scalar(0L, dtype = dt), slice_sizes = 2L)
+      expect_equal(as.integer(as_array(out)), c(10L, 20L))
+    }
+  })
 })
 
 describe("prim_dynamic_update_slice", {
@@ -1726,6 +2004,35 @@ describe("prim_dynamic_update_slice", {
     m <- nv_array(1:6, shape = c(2, 3))
     out <- prim_dynamic_update_slice(m, nv_array(9L, shape = c(1, 1)), nv_scalar(2L, "i64"), 1L)
     expect_equal(as.integer(out), c(1L, 9L, 3L, 4L, 5L, 6L))
+  })
+  it("clamps an unsigned start index of 0 to the first position", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("ui8", "ui32", "ui64")) {
+      out <- prim_dynamic_update_slice(v, nv_array(c(1L, 2L)), nv_scalar(0L, dtype = dt))
+      expect_equal(as.integer(as_array(out)), c(1L, 2L, 30L, 40L))
+    }
+  })
+})
+
+describe("prim_gather", {
+  it("clamps an unsigned index of 0 to the first position, like a signed one", {
+    v <- nv_array(c(10L, 20L, 30L, 40L))
+    for (dt in c("i32", "ui8", "ui32", "ui64")) {
+      expect_equal(as.integer(as_array(v[nv_scalar(0L, dtype = dt)])), 10L)
+      expect_equal(as.integer(as_array(v[nv_scalar(2L, dtype = dt)])), 20L)
+    }
+  })
+})
+
+describe("prim_scatter", {
+  it("treats an unsigned index like a signed one", {
+    for (dt in c("i32", "ui8", "ui32", "ui64")) {
+      v <- nv_array(c(10L, 20L, 30L, 40L))
+      v[nv_scalar(0L, dtype = dt)] <- 99L
+      expect_equal(as.integer(as_array(v)), c(10L, 20L, 30L, 40L))
+      v[nv_scalar(2L, dtype = dt)] <- 99L
+      expect_equal(as.integer(as_array(v)), c(10L, 99L, 30L, 40L))
+    }
   })
 })
 

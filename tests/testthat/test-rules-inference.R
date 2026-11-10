@@ -579,9 +579,8 @@ test_that("prim_round", {
   expect_snapshot(error = TRUE, prim_round(nv_array(c(1.5, 2.5)), method = "bogus"))
 })
 
-test_that("prim_rng_bit_generator", {
-  state <- nv_array(c(1, 2), dtype = "ui64")
-  expect_snapshot(error = TRUE, prim_rng_bit_generator(state, "MERSENNE", "f32", 3L))
+test_that("prim_sample_bits", {
+  expect_snapshot(error = TRUE, prim_sample_bits(3L, "f32"))
 })
 
 test_that("prim_fill", {
@@ -973,6 +972,64 @@ describe("the sub-graph arguments a primitive traces", {
     expect_snapshot(
       error = TRUE,
       prim_if(nv_scalar(TRUE), function() nv_scalar(1L), "x")
+    )
+  })
+})
+
+describe("prim_custom_gradient", {
+  x <- nv_scalar(2, dtype = "f32")
+  id_rule <- function(x, out, grad, required) list(x = grad)
+
+  it("refuses an fn or rule that is not a function", {
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = 1, rule = id_rule))
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r"))
+  })
+
+  it("refuses a reverse rule without a forward pass", {
+    rule <- rule_reverse(backward = function(inputs, outputs, grads, params, required) list(x = grads))
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule))
+  })
+
+  it("refuses args that are not a list with names", {
+    expect_snapshot(error = TRUE, prim_custom_gradient(x, fn = function(x) x, rule = id_rule))
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x), fn = function(x) x, rule = id_rule))
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(out = x), fn = function(out) out, rule = function(...) list())
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(required = x), fn = function(required) required, rule = function(...) list())
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(stats::setNames(list(x, x), c("x", "x")), fn = function(x) x, rule = id_rule)
+    )
+  })
+
+  it("refuses args without an array, or with something else than one", {
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(d = list()), fn = function(d) x, rule = function(d, out, grad, required) list())
+    )
+    # Under `jit()`: an eager call's arguments are refused by `jit()` already.
+    expect_snapshot(
+      error = TRUE,
+      jit(function(x) {
+        prim_custom_gradient(
+          list(x = x, p = list(w = x, b = "a")),
+          fn = function(x, p) x,
+          rule = function(x, p, out, grad, required) list(x = grad)
+        )
+      })(x)
+    )
+  })
+
+  it("refuses an fn or rule without an argument for a value it receives", {
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(y = x), fn = function(x) x, rule = id_rule))
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, grad) list(x = grad))
     )
   })
 })

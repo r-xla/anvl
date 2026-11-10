@@ -128,7 +128,7 @@ reference:
       - dim.AnvlArray
       - length.AnvlArray
 
-  - title: API Functions
+  - title: Array API
     desc: User-facing `nv_*` functions for array operations
 
   - subtitle: Type Conversion and Broadcasting
@@ -333,10 +333,16 @@ reference:
       - nv_sample
       - nv_sample_int
 
+  - subtitle: Random Numbers
+    desc: Seeding, saving and restoring the global random state the samplers draw from
+    contents:
+      - nv_set_seed
+      - nv_rng_state
+      - local_nv_rng_state
+
   - subtitle: Utilities
     desc: Helpers supporting the API functions
     contents:
-      - nv_rng_state
       - nv_print
 
   - title: Data Types and Promotion

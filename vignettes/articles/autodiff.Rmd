@@ -157,6 +157,7 @@ f_grad(nv_array(c(1, 2)), nv_scalar(FALSE))
 ```
 
 `nv_while()`, in contrast, cannot be differentiated.
+Where the derivative of what a loop computes has a formula of its own, `prim_custom_gradient()` attaches it.
 
 ## Limitations
 

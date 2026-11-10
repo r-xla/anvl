@@ -353,20 +353,23 @@ describe("prim_if", {
     expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(6, 12, 18))
   })
 
-  it("leaves an RNG state a branch returns undifferentiated", {
-    f <- function(p, x, st) {
-      r <- nv_if(
+  it("leaves the random state a branch draws from undifferentiated", {
+    local_nv_seed(1L)
+    f <- function(p, x) {
+      a <- nv_if(
         p,
-        function() {
-          d <- nv_rnorm(integer(), st, dtype = "f64")
-          list(st = d$state, a = nv_sum(x) * d$values)
-        },
-        function() list(st = st, a = nv_sum(x))
+        function() nv_sum(x) * nv_rnorm(integer(), dtype = "f64"),
+        function() nv_sum(x)
       )
-      r$a + nv_rnorm(integer(), r$st, dtype = "f64")$values
+      a + nv_rnorm(integer(), dtype = "f64")
     }
-    grad <- jit(gradient(f, wrt = "x"))(false_, x, nv_rng_state(1L))$x
+    grad <- jit(gradient(f, wrt = "x"))(false_, x)$x
     expect_equal(as.numeric(grad), c(1, 1, 1))
+
+    # through the branch that draws, the gradient is that draw
+    z <- with_nv_seed(1L, as.numeric(nv_rnorm(integer(), dtype = "f64")))
+    grad <- with_nv_seed(1L, jit(gradient(f, wrt = "x"))(true_, x)$x)
+    expect_equal(as.numeric(grad), rep(z, 3L))
   })
 
   it("lets a branch take the gradient of a value it closes over", {
@@ -420,6 +423,448 @@ describe("prim_if", {
       cos(c(1, 2, 3)) * c(1, 2, 3) + sin(c(1, 2, 3))
     )
     expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
+  })
+})
+
+describe("prim_custom_gradient", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  y <- nv_array(c(4, 5, 6), dtype = "f64")
+
+  # x^n by repeated multiplication, which gradient() cannot differentiate
+  pow_loop <- function(x, n) {
+    prim_while(
+      init = list(i = 1L, y = x),
+      cond = function(i, y) i < n,
+      body = function(i, y) list(i = i + 1L, y = y * x)
+    )$y
+  }
+  pow <- function(x, n) {
+    prim_custom_gradient(
+      list(x = x, n = n),
+      fn = pow_loop,
+      rule = function(x, n, out, grad, required) list(x = grad * n * x^(n - 1L))
+    )
+  }
+  # The same with a forward pass, which keeps x^(n - 1) for the backward one.
+  pow_fwd <- function(x, n) {
+    prim_custom_gradient(
+      list(x = x, n = n),
+      fn = pow_loop,
+      rule = rule_reverse(forward = function(inputs, params, required) {
+        p <- inputs$x^(inputs$n - 1L)
+        list(
+          outputs = p * inputs$x,
+          backward = function(inputs, outputs, grads, params, required) list(x = grads * inputs$n * p)
+        )
+      })
+    )
+  }
+  d <- function(f) function(x, n) nv_sum(gradient(f, wrt = "x")(x, n)$x)
+
+  it("differentiates with rule instead of through fn", {
+    f <- function(x) {
+      nv_sum(prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x * x,
+        rule = function(x, out, grad, required) list(x = grad * 10)
+      ))
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(10, 10, 10))
+  })
+
+  it("gives a gradient where fn has none", {
+    f <- function(x, n) nv_sum(pow(x, n))
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(x, 3L)$x), 3 * c(1, 2, 3)^2)
+  })
+
+  it("differentiates the gradient again through rule", {
+    f <- function(x, n) nv_sum(pow(x, n))
+    expect_equal(as.numeric(jit(gradient(d(f), wrt = "x"))(x, 3L)$x), 6 * c(1, 2, 3))
+    expect_equal(as.numeric(jit(gradient(d(d(f)), wrt = "x"))(x, 3L)$x), c(6, 6, 6))
+  })
+
+  it("applies rule afresh each time a gradient is differentiated", {
+    # Each order applies `rule` once more into the same trace, so its values
+    # must not collide with those the previous order recorded.
+    cube <- function(x) {
+      prim_custom_gradient(list(x = x), fn = function(x) x * x * x, rule = function(x, out, grad, required) {
+        list(x = grad * 3 * x * x)
+      })
+    }
+    my_exp <- function(x) {
+      prim_custom_gradient(
+        list(x = x),
+        fn = function(x) exp(x),
+        rule = function(x, out, grad, required) list(x = grad * out)
+      )
+    }
+    d1 <- function(f) function(x) gradient(f)(x)[[1L]]
+    x <- nv_scalar(0.5, dtype = "f64")
+    expect_equal(as.numeric(jit(d1(d1(d1(cube))))(x)), 6)
+    expect_equal(as.numeric(jit(d1(d1(d1(my_exp))))(x)), exp(0.5))
+    vg <- jit(value_and_gradient(d1(cube)))(x)
+    expect_equal(as.numeric(vg$value), 0.75)
+    expect_equal(as.numeric(vg$grad[[1L]]), 3)
+  })
+
+  it("passes rule the result and the gradient with respect to it", {
+    my_exp <- function(x) {
+      prim_custom_gradient(
+        list(x = x),
+        fn = function(x) exp(x),
+        rule = function(x, out, grad, required) list(x = grad * out)
+      )
+    }
+    f <- function(x) nv_sum(my_exp(x) * nv_array(c(1, 2, 3), dtype = "f64"))
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(1, 2, 3) * exp(c(1, 2, 3)))
+    # the second derivative goes through the rule again, via `out`
+    g <- function(x) nv_sum(gradient(function(x) nv_sum(my_exp(x)))(x)[[1L]])
+    expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), exp(c(1, 2, 3)))
+  })
+
+  it("traces rule only when the result is differentiated", {
+    f <- function(x) {
+      nv_sum(prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x * x,
+        rule = function(x, out, grad, required) stop("rule was traced")
+      ))
+    }
+    expect_equal(as.numeric(jit(f)(x)), 14)
+    expect_error(jit(gradient(f))(x), "rule was traced")
+  })
+
+  it("tells rule which entries of args require a gradient", {
+    seen <- NULL
+    f <- function(a, b) {
+      nv_sum(prim_custom_gradient(
+        list(a = a, b = b),
+        fn = function(a, b) a * b,
+        rule = function(a, b, out, grad, required) {
+          seen <<- required
+          list(a = grad * b, b = grad * a)
+        }
+      ))
+    }
+    jit(gradient(f, wrt = "a"))(x, y)
+    expect_equal(seen, c(a = TRUE, b = FALSE))
+    jit(gradient(f))(x, y)
+    expect_equal(seen, c(a = TRUE, b = TRUE))
+  })
+
+  it("requires an entry of args when any of its arrays requires a gradient", {
+    seen <- NULL
+    f <- function(w, b) {
+      nv_sum(prim_custom_gradient(
+        list(p = list(w = w, b = b)),
+        fn = function(p) p$w * p$b,
+        rule = function(p, out, grad, required) {
+          seen <<- required
+          list(p = list(w = grad * p$b, b = grad * p$w))
+        }
+      ))
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "w"))(x, y)$w), c(4, 5, 6))
+    expect_equal(seen, c(p = TRUE))
+  })
+
+  it("lets rule leave out a gradient that is not required", {
+    f <- function(a, b) {
+      nv_sum(prim_custom_gradient(
+        list(a = a, b = b),
+        fn = function(a, b) a * b,
+        rule = function(a, b, out, grad, required) list(a = grad * b)
+      ))
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "a"))(x, y)$a), c(4, 5, 6))
+  })
+
+  it("refuses a rule that leaves out a required gradient", {
+    f <- function(a, b) {
+      nv_sum(prim_custom_gradient(
+        list(a = a, b = b),
+        fn = function(a, b) a * b,
+        rule = function(a, b, out, grad, required) list(a = grad * b, b = NULL)
+      ))
+    }
+    expect_snapshot(error = TRUE, jit(gradient(f))(x, y))
+  })
+
+  it("differentiates trees of arguments and results", {
+    f <- function(p) {
+      r <- prim_custom_gradient(
+        list(p = p),
+        fn = function(p) list(s = p$w + p$b, d = p$w - p$b),
+        rule = function(p, out, grad, required) list(p = list(w = grad$s + grad$d, b = grad$s - grad$d))
+      )
+      nv_sum(r$s * 3 + r$d)
+    }
+    grads <- jit(gradient(f))(list(w = nv_scalar(1, "f64"), b = nv_scalar(2, "f64")))
+    expect_equal(as.numeric(grads$p$w), 4)
+    expect_equal(as.numeric(grads$p$b), 2)
+  })
+
+  it("lets fn close over traced values, and rule over constants", {
+    k <- nv_scalar(5, dtype = "f64")
+    f <- function(x, y) {
+      s <- y * 3
+      two <- nv_scalar(2, dtype = "f64")
+      nv_sum(prim_custom_gradient(
+        list(x = x, y = y),
+        fn = function(x, y) x * y * k * two + s,
+        rule = function(x, y, out, grad, required) list(x = grad * y * k * two)
+      ))
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(x, nv_scalar(2, dtype = "f64"))$x), c(20, 20, 20))
+  })
+
+  it("refuses a rule that closes over a traced value", {
+    f <- function(x, y) {
+      s <- y * 2
+      nv_sum(prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x * s,
+        rule = function(x, out, grad, required) list(x = grad * s)
+      ))
+    }
+    expect_snapshot(error = TRUE, jit(gradient(f, wrt = "x"))(x, nv_scalar(2, dtype = "f64")))
+  })
+
+  it("refuses to differentiate a value fn closes over", {
+    f <- function(x) {
+      y <- x * 2
+      nv_sum(prim_custom_gradient(
+        list(z = x),
+        fn = function(z) z + y,
+        rule = function(z, out, grad, required) list(z = grad)
+      ))
+    }
+    expect_snapshot(error = TRUE, jit(gradient(f))(x))
+  })
+
+  it("refuses a rule that does not return a list of gradients by name", {
+    differentiate <- function(rule) {
+      f <- function(x) nv_sum(prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule))
+      jit(gradient(f))(x)
+    }
+    expect_snapshot(error = TRUE, differentiate(function(x, out, grad, required) grad))
+    expect_snapshot(error = TRUE, differentiate(function(x, out, grad, required) list(x = grad, y = grad)))
+  })
+
+  it("refuses a gradient of another structure or type than its argument", {
+    s <- nv_scalar(2, dtype = "f64")
+    differentiate <- function(args, fn, rule) {
+      f <- function(args) nv_sum(prim_custom_gradient(args, fn = fn, rule = rule))
+      jit(gradient(f))(args)
+    }
+    expect_snapshot(
+      error = TRUE,
+      differentiate(list(x = s), function(x) x, function(x, out, grad, required) list(x = list(grad, grad)))
+    )
+    expect_snapshot(
+      error = TRUE,
+      differentiate(
+        list(p = list(w = s, b = s)),
+        function(p) p$w,
+        function(p, out, grad, required) list(p = list(w = grad, b = nv_convert(grad, "f32")))
+      )
+    )
+    expect_snapshot(
+      error = TRUE,
+      differentiate(list(x = x), function(x) nv_sum(x), function(x, out, grad, required) list(x = grad))
+    )
+  })
+
+  it("works in a branch of prim_if()", {
+    f <- function(p, x) {
+      nv_if(
+        p,
+        function() {
+          nv_sum(prim_custom_gradient(list(x = x), fn = function(x) x * x, rule = function(x, out, grad, required) {
+            list(x = grad * 7)
+          }))
+        },
+        function() nv_sum(x)
+      )
+    }
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x)$x), c(7, 7, 7))
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(FALSE), x)$x), c(1, 1, 1))
+  })
+
+  describe("with a forward pass", {
+    it("differentiates with the backward pass, which reads what the forward pass kept", {
+      f <- function(x, n) nv_sum(pow_fwd(x, n))
+      expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(x, 3L)$x), c(3, 12, 27))
+    })
+
+    it("differentiates the gradient again through the operations of both passes", {
+      f <- function(x, n) nv_sum(pow_fwd(x, n))
+      expect_equal(as.numeric(jit(gradient(d(f), wrt = "x"))(x, 3L)$x), c(6, 12, 18))
+      expect_equal(as.numeric(jit(gradient(d(d(f)), wrt = "x"))(x, 3L)$x), c(6, 6, 6))
+    })
+
+    it("runs fn, and traces the forward pass only when the result is differentiated", {
+      f <- function(x) {
+        nv_sum(prim_custom_gradient(
+          list(x = x),
+          fn = function(x) x * x,
+          rule = rule_reverse(forward = function(inputs, params, required) stop("forward was traced"))
+        ))
+      }
+      expect_equal(as.numeric(jit(f)(x)), 14)
+      expect_error(jit(gradient(f))(x), "forward was traced")
+    })
+
+    it("passes both passes the entries of args by name, no params, and which entries are required", {
+      seen <- list()
+      f <- function(a, b) {
+        nv_sum(prim_custom_gradient(
+          list(a = a, b = b),
+          fn = function(a, b) a * b,
+          rule = rule_reverse(forward = function(inputs, params, required) {
+            seen$forward <<- list(names(inputs), params, required)
+            list(
+              outputs = inputs$a * inputs$b,
+              backward = function(inputs, outputs, grads, params, required) {
+                seen$backward <<- list(names(inputs), params, required)
+                list(a = grads * inputs$b)
+              }
+            )
+          })
+        ))
+      }
+      expect_equal(as.numeric(jit(gradient(f, wrt = "a"))(x, y)$a), c(4, 5, 6))
+      expect_equal(seen$forward, list(c("a", "b"), list(), c(a = TRUE, b = FALSE)))
+      expect_equal(seen$backward, list(c("a", "b"), list(), c(a = TRUE, b = FALSE)))
+    })
+
+    it("differentiates trees of arguments and results", {
+      f <- function(p) {
+        r <- prim_custom_gradient(
+          list(p = p),
+          fn = function(p) list(s = p$w + p$b, d = p$w - p$b),
+          rule = rule_reverse(forward = function(inputs, params, required) {
+            p <- inputs$p
+            list(
+              outputs = list(s = p$w + p$b, d = p$w - p$b),
+              backward = function(inputs, outputs, grads, params, required) {
+                list(p = list(w = grads$s + grads$d, b = grads$s - grads$d))
+              }
+            )
+          })
+        )
+        nv_sum(r$s * 3 + r$d)
+      }
+      grads <- jit(gradient(f))(list(w = nv_scalar(1, "f64"), b = nv_scalar(2, "f64")))
+      expect_equal(as.numeric(grads$p$w), 4)
+      expect_equal(as.numeric(grads$p$b), 2)
+    })
+
+    it("works in a branch of prim_if()", {
+      f <- function(p, x) nv_if(p, function() nv_sum(pow_fwd(x, 3L)), function() nv_sum(x))
+      expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x)$x), c(3, 12, 27))
+      expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(FALSE), x)$x), c(1, 1, 1))
+    })
+
+    it("lets both passes close over arrays", {
+      k <- nv_scalar(5, dtype = "f64")
+      f <- function(x) {
+        nv_sum(prim_custom_gradient(
+          list(x = x),
+          fn = function(x) x * k,
+          rule = rule_reverse(forward = function(inputs, params, required) {
+            list(
+              outputs = inputs$x * k,
+              backward = function(inputs, outputs, grads, params, required) list(x = grads * k * 2)
+            )
+          })
+        ))
+      }
+      expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(10, 10, 10))
+    })
+
+    it("refuses a forward or backward pass that closes over a traced value", {
+      differentiate <- function(forward) {
+        f <- function(x, y) {
+          s <- y * 2
+          nv_sum(prim_custom_gradient(
+            list(x = x),
+            fn = function(x) x * s,
+            rule = rule_reverse(forward = forward(s))
+          ))
+        }
+        jit(gradient(f, wrt = "x"))(x, nv_scalar(2, dtype = "f64"))
+      }
+      expect_snapshot(
+        error = TRUE,
+        differentiate(function(s) {
+          function(inputs, params, required) {
+            list(
+              outputs = inputs$x * s,
+              backward = function(inputs, outputs, grads, params, required) list(x = grads)
+            )
+          }
+        })
+      )
+      expect_snapshot(
+        error = TRUE,
+        differentiate(function(s) {
+          function(inputs, params, required) {
+            list(
+              outputs = inputs$x * 4,
+              backward = function(inputs, outputs, grads, params, required) list(x = grads * s)
+            )
+          }
+        })
+      )
+    })
+
+    it("refuses a forward pass that does not return its outputs and a backward pass", {
+      differentiate <- function(forward) {
+        f <- function(x) {
+          nv_sum(prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule_reverse(forward = forward)))
+        }
+        jit(gradient(f))(x)
+      }
+      expect_snapshot(error = TRUE, differentiate(function(inputs, params, required) inputs$x))
+      expect_snapshot(
+        error = TRUE,
+        differentiate(function(inputs, params, required) list(outputs = inputs$x, backward = "b"))
+      )
+    })
+
+    it("refuses outputs of another structure or type than the result of fn", {
+      differentiate <- function(outputs) {
+        f <- function(x) {
+          nv_sum(prim_custom_gradient(
+            list(x = x),
+            fn = function(x) x,
+            rule = rule_reverse(forward = function(inputs, params, required) {
+              list(
+                outputs = outputs(inputs$x),
+                backward = function(inputs, outputs, grads, params, required) list(x = grads)
+              )
+            })
+          ))
+        }
+        jit(gradient(f))(x)
+      }
+      expect_snapshot(error = TRUE, differentiate(function(x) list(x, x)))
+      expect_snapshot(error = TRUE, differentiate(function(x) nv_convert(x, "f32")))
+    })
+
+    it("refuses a backward pass that leaves out a required gradient", {
+      f <- function(x) {
+        nv_sum(prim_custom_gradient(
+          list(x = x),
+          fn = function(x) x,
+          rule = rule_reverse(forward = function(inputs, params, required) {
+            list(outputs = inputs$x, backward = function(inputs, outputs, grads, params, required) list())
+          })
+        ))
+      }
+      expect_snapshot(error = TRUE, jit(gradient(f))(x))
+    })
   })
 })
 
@@ -936,6 +1381,14 @@ describe("prim_gather", {
     grads <- f(x)
     expect_equal(grads[[1L]], nv_array(c(0, 0, 0, 1), dtype = "f64"))
   })
+
+  it("differentiates its own gradient, an adding scatter", {
+    # d/dy sum(y[array(c(1L, 1L, 2L))]^2) = c(4 * y1, 2 * y2, 0), whose sum has the gradient c(4, 2, 0)
+    f <- jit(gradient(function(x) {
+      sum(gradient(function(y) sum(y[array(c(1L, 1L, 2L))]^2))(x)[[1L]])
+    }))
+    expect_equal(as.vector(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(4, 2, 0))
+  })
 })
 
 describe("prim_scatter", {
@@ -955,27 +1408,100 @@ describe("prim_scatter", {
     expect_equal(g[[1]], g[[2]][[1]])
   })
 
-  it("errors for non-simple replacement update_fn", {
-    expect_error(
-      jit(gradient(function(x) {
-        out <- prim_scatter(
-          x = x,
-          scatter_indices = nv_array(2L, dtype = "i64"),
-          update = nv_scalar(10, dtype = "f32"),
-          update_window_axes = integer(),
-          inserted_window_axes = 1L,
-          x_batching_axes = integer(),
-          scatter_indices_batching_axes = integer(),
-          scatter_axes_to_x_axes = 1L,
-          index_vector_axis = 1L,
-          indices_are_sorted = TRUE,
-          unique_indices = TRUE,
-          update_fn = function(old, new) prim_add(old, new)
-        )
-        nv_sum(out, axes = 1L, drop = TRUE)
-      }))(nv_array(1:5, dtype = "f32")),
-      "simple replacement"
+  # Scatter `update` (one value per index) into axis 1 of the vector `x`.
+  scatter_vec <- function(x, indices, update, update_fn = "replace", unique_indices = FALSE) {
+    prim_scatter(
+      x = x,
+      scatter_indices = nv_array(matrix(indices), dtype = "i32"),
+      update = update,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      unique_indices = unique_indices,
+      update_fn = update_fn
     )
+  }
+  grad_scatter_vec <- function(x, indices, update, update_fn = "replace", unique_indices = FALSE, w = NULL) {
+    w <- w %||% seq_along(x)
+    f <- function(x, update) {
+      sum(scatter_vec(x, indices, update, update_fn, unique_indices) * nv_array(w, dtype = "f64"))
+    }
+    out <- jit(gradient(f))(nv_array(x, dtype = "f64"), nv_array(update, dtype = "f64"))
+    lapply(out, function(g) as.vector(as_array(g)))
+  }
+
+  it("differentiates an update_fn given by name, not a function", {
+    expect_error(
+      grad_scatter_vec(c(1, 2, 3), 2L, 10, function(old, new) old + new),
+      "not implemented for an `update_fn` that is a function"
+    )
+    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 2L, 3L), c(10, 20, 30), "add")
+    expect_equal(g$x, c(1, 2, 3))
+    expect_equal(g$update, c(2, 2, 3))
+  })
+
+  it("errors for the gradient of a multiplying scatter's update with repeated indices", {
+    expect_error(
+      grad_scatter_vec(c(1, 2, 3), c(2L, 2L), c(10, 20), "mul"),
+      "needs `unique_indices = TRUE`"
+    )
+    # the gradient of `x` alone needs no unique indices
+    f <- jit(gradient(
+      function(x) {
+        update <- nv_array(c(10, 20), dtype = "f64")
+        sum(scatter_vec(x, c(2L, 2L), update, "mul"))
+      }
+    ))
+    expect_equal(as.vector(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))$x)), c(1, 200, 1))
+  })
+
+  it("gives no gradient to an update the scatter drops as out of bounds", {
+    for (update_fn in c("replace", "add", "max")) {
+      for (unique_indices in c(TRUE, FALSE)) {
+        g <- grad_scatter_vec(c(1, 2, 3), c(1L, 7L), c(10, 20), update_fn, unique_indices)
+        expect_equal(g$update, c(1, 0))
+      }
+    }
+  })
+
+  it("gives no gradient to an update window that does not fit into `x`", {
+    # a window of two values written at positions 4:5 fits; at 5:6 it is dropped
+    f <- function(update, start) {
+      x <- nv_array(rep(0, 5), dtype = "f64")
+      y <- prim_scatter(
+        x = x,
+        scatter_indices = nv_array(matrix(start, 1L, 1L), dtype = "i32"),
+        update = update,
+        update_window_axes = 2L,
+        inserted_window_axes = integer(),
+        x_batching_axes = integer(),
+        scatter_indices_batching_axes = integer(),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = "add"
+      )
+      sum(y * nv_array(1:5, dtype = "f64"))
+    }
+    g <- jit(gradient(f, wrt = "update"), static = "start")
+    update <- nv_array(matrix(c(1, 2), 1L, 2L), dtype = "f64")
+    expect_equal(as_array(g(update, 4L)$update), matrix(c(4, 5), 1L, 2L))
+    expect_equal(as_array(g(update, 5L)$update), matrix(c(0, 0), 1L, 2L))
+  })
+
+  it("subtracts", {
+    g <- grad_scatter_vec(c(1, 2, 3), c(2L, 2L, 3L), c(10, 20, 30), "sub")
+    expect_equal(g$x, c(1, 2, 3))
+    expect_equal(g$update, -c(2, 2, 3))
+  })
+
+  it("splits the gradient of a maximum among ties", {
+    # position 1: x and both updates tie at 2
+    g <- grad_scatter_vec(c(2, 0), c(1L, 1L), c(2, 2), "max", w = c(1, 1))
+    expect_equal(g$x, c(1 / 3, 1))
+    expect_equal(g$update, c(1 / 3, 1 / 3))
   })
 })
 
@@ -1310,5 +1836,16 @@ describe("prim_print", {
     }
     g <- jit(gradient(f, wrt = "x"))
     expect_equal(prints_of_seven(g(nv_scalar(TRUE), x)), 1L)
+  })
+})
+
+describe("prim_convolution", {
+  it("has zero gradients when the result is empty", {
+    # a width-3 window does not fit into a width-2 input
+    x <- nv_array(1:4, shape = c(1L, 2L, 2L), dtype = "f32")
+    kernel <- nv_array(1:12, shape = c(2L, 2L, 3L), dtype = "f32")
+    grads <- jit(gradient(function(x, kernel) nv_sum(nv_conv1d(x, kernel))))(x, kernel)
+    expect_equal(as_array(grads[[1L]]), array(0, c(1L, 2L, 2L)))
+    expect_equal(as_array(grads[[2L]]), array(0, c(2L, 2L, 3L)))
   })
 })

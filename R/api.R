@@ -2909,6 +2909,9 @@ nv_eye <- jit(
 
 # The `nan_rm = TRUE` treatment of a reduction: replace NaN by `value`, the
 # reduction's identity. A non-float array holds no NaN and is returned as is.
+# Callers assign the result before passing it to the primitive: an argument
+# promise forced inside the primitive's body would run these operations there,
+# and an error the primitive then raises would no longer be attributed to it.
 .replace_nan <- function(x, value, nan_rm) {
   if (nan_rm && is_dtype_float(peek_dtype(x))) nv_ifelse(nv_is_nan(x), value, x) else x
 }
@@ -2984,7 +2987,8 @@ nv_sum <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    prim_sum(.replace_nan(x, 0L, nan_rm), axes = axes, drop = drop)
+    x <- .replace_nan(x, 0L, nan_rm)
+    prim_sum(x, axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3071,7 +3075,8 @@ nv_prod <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    prim_prod(.replace_nan(x, 1L, nan_rm), axes = axes, drop = drop)
+    x <- .replace_nan(x, 1L, nan_rm)
+    prim_prod(x, axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3284,7 +3289,8 @@ nv_cumsum <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    prim_cumsum(.replace_nan(cum$x, 0L, nan_rm), axis = cum$axis)
+    x <- .replace_nan(cum$x, 0L, nan_rm)
+    prim_cumsum(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3311,7 +3317,8 @@ nv_cumprod <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    prim_cumprod(.replace_nan(cum$x, 1L, nan_rm), axis = cum$axis)
+    x <- .replace_nan(cum$x, 1L, nan_rm)
+    prim_cumprod(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3381,7 +3388,8 @@ nv_cummin <- jit(
 # the reduction's identity.
 .nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
   cum <- .resolve_cum_input(as_anvl_array(x), axis)
-  out <- prim_cum(.replace_nan(cum$x, identity_val, nan_rm), axis = cum$axis)
+  x <- .replace_nan(cum$x, identity_val, nan_rm)
+  out <- prim_cum(x, axis = cum$axis)
   if (indices) out else out$values
 }
 
@@ -3482,7 +3490,7 @@ nv_while <- prim_while
 #'
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
-#'   Every slot must keep a fixed shape and dtype across steps.
+#'   Every slot must keep a fixed shape and dtype across steps
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
 #'   Per-step inputs, sliced along axis 1. All leaves must agree on
 #'   the size of axis 1. `NULL` or a list with no leaves runs a counted
@@ -3514,6 +3522,9 @@ nv_while <- prim_while
 #' )$out
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
+  # before `as_anvl_array()` meets a random state among them
+  abort_if_side_effects(init, "init")
+  abort_if_side_effects(xs, "xs")
   init <- map_tree(init, as_anvl_array)
   xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
 
@@ -3856,9 +3867,13 @@ nv_extract_diag <- jit(function(x) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
+  n <- min(shape(x))
+  if (n == 0L) {
+    return(prim_reshape(x, shape = 0L))
+  }
   prim_gather(
     x,
-    start_indices = diag_indices(x, min(shape(x))),
+    start_indices = diag_indices(x, n),
     offset_axes = integer(0L),
     collapsed_slice_axes = c(1L, 2L),
     x_batching_axes = integer(0L),
@@ -4395,6 +4410,9 @@ nv_top_k <- jit(
 #'
 #' A quantile generally falls between two elements, so a non-float `x` is
 #' computed (and returned) at the default float data type.
+#'
+#' Reducing over an axis of size 0 is an error: there is no element to take a
+#' quantile of.
 #' @section Interpolation modes:
 #' For `n` reduced elements and a probability `q`, let
 #' `h = 1 + (n - 1) * q` be the position `q` falls at in the sorted values,
@@ -4474,6 +4492,13 @@ nv_quantile <- jit(
     # The sort below only ever orders one axis, so reducing several means
     # ranking their elements together in one flattened axis.
     axes <- sort(.resolve_reduce_axes(x, axes))
+    empty <- axes[shape(x)[axes] == 0L]
+    if (length(empty) > 0L) {
+      cli_abort(c(
+        "{.arg x} must have at least one element along the reduced axes.",
+        x = "{.arg x} has size 0 along {cli::qty(length(empty))}ax{?is/es} {empty}."
+      ))
+    }
     flat <- .flatten_reduce_axes(x, axes, drop)
     x <- flat$x
 
@@ -4485,6 +4510,12 @@ nv_quantile <- jit(
     shp_kd <- replace(shp, axis, 1L)
     shp_K <- replace(shp, axis, K)
     out_dtype <- dtype(x)
+
+    # A kept axis of size 0 leaves no slice to take a quantile of, and the
+    # gathers below have nothing to index into.
+    if (prod(shp) == 0L) {
+      return(nv_empty_like(x, shape = if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape))
+    }
 
     # Selection instead of a full sort when every requested order statistic lies
     # in one end of the axis. Ascending position j of a slice's n_valid sorted
@@ -4522,9 +4553,9 @@ nv_quantile <- jit(
     budget <- ceiling(n_axis / 2L) + 1L
     k_lo <- as.integer(ceiling((n_axis - 1L) * max(probs)) + 1L)
     k_hi <- as.integer(n_axis - floor((n_axis - 1L) * min(probs)))
-    path <- if (n_axis > 0L && k_lo <= budget) {
+    path <- if (k_lo <= budget) {
       "low"
-    } else if (n_axis > 0L && k_hi <= budget) {
+    } else if (k_hi <= budget) {
       "high"
     } else {
       "sort"

@@ -4,25 +4,19 @@
 \alias{nv_sample}
 \title{Sample from a Population}
 \usage{
-nv_sample(shape, state, x)
+nv_sample(shape, x)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
-
-\item{state}{(\code{\link{arrayish}})\cr
-RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned \code{state} has them too.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 The population vector to sample from. Must not be empty.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
 }
 \value{
-(named \code{list} of two \code{\link{arrayish}})\cr
-Elements \code{state}, the updated RNG state, and \code{values}, the sample of shape
-\code{shape} and \code{x}'s data type.
+(\code{\link{arrayish}})\cr
+The sample, of shape \code{shape} and \code{x}'s data type.
 }
 \description{
 Samples elements of a 1-D array with equal probability and with
@@ -31,23 +25,30 @@ replacement, analogous to R's \code{sample()}.
 Unlike R's \code{sample()}, \code{x} is always the population itself: sampling the
 integers \code{1} to \code{n} is \code{\link[=nv_sample_int]{nv_sample_int()}} and never an overload of \code{x}.
 }
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the sample takes the population's data type
-state <- nv_rng_state(42L)
-pop <- nv_array(c(10, 20, 30))
-result <- nv_sample(5, state, pop)
-result$values
+with_nv_seed(42L, nv_sample(5, nv_array(c(10, 20, 30))))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_sample_int]{nv_sample_int()}} to sample the integers \code{1} to \code{n}.
 
 Other rng:
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}},
 \code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
 \code{\link{nv_uniform}}
 }
 \concept{rng}

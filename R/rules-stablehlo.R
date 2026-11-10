@@ -21,8 +21,15 @@ region_input <- function(dtype, shape = integer()) {
   stablehlo::FuncValue(id, vt, func)
 }
 
-# Indices shifted from 1-based to 0-based, and back.
+# Indices shifted from 1-based to 0-based, and back. An unsigned index is first
+# converted to a signed data type wide enough to hold it, so that index 0
+# becomes -1 (out of bounds below) instead of wrapping around to the largest
+# value.
 hlo_zero_based_indices <- function(indices) {
+  dt <- dtype(indices)
+  if (is_dtype_uint(dt)) {
+    indices <- hlo_convert(indices, as_dtype(paste0("i", min(2L * dtype_width(dt), 64L))))
+  }
   hlo_subtract(indices, hlo_ones_like(indices))
 }
 
@@ -96,18 +103,18 @@ prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {
 # and the two agree once every axis is reversed: the row-major linear index of
 # the reversed operand is its column-major one. So the operand is reversed,
 # reshaped to the reversed shape and reversed back; XLA folds the transposes
-# into the layout, and a rank <= 1 side has nothing to reverse.
+# into the layout, and a side with at most one axis has nothing to reverse.
 prim_reshape[["stablehlo"]] <- function(x, shape, output_types) {
-  rank_in <- length(shape(x))
-  rank_out <- length(shape)
-  if (rank_in > 1L) {
-    x <- hlo_transpose(x, rev(seq_len(rank_in)) - 1L)
+  n_axes_in <- length(shape(x))
+  n_axes_out <- length(shape)
+  if (n_axes_in > 1L) {
+    x <- hlo_transpose(x, rev(seq_len(n_axes_in)) - 1L)
   }
-  if (rank_out <= 1L) {
+  if (n_axes_out <= 1L) {
     return(list(hlo_reshape(x, shape, output_types = output_types)))
   }
   out <- hlo_reshape(x, rev(shape))
-  list(hlo_transpose(out, rev(seq_len(rank_out)) - 1L, output_types = output_types))
+  list(hlo_transpose(out, rev(seq_len(n_axes_out)) - 1L, output_types = output_types))
 }
 
 prim_concatenate[["stablehlo"]] <- function(..., axis, output_types) {
@@ -207,6 +214,10 @@ prim_all[["stablehlo"]] <- function(x, axes, drop) {
 # as JAX does; XLA optimizes this pattern.
 .hlo_cum_reduce_window <- function(x, inputs, init_values, body, axis) {
   shp <- shape(x)
+  # reduce_window rejects a window of size 0, and there is nothing to accumulate.
+  if (shp[[axis]] == 0L) {
+    return(inputs)
+  }
   n_axes <- length(shp)
   window_dimensions <- replace(rep(1L, n_axes), axis, shp[[axis]])
   ones <- rep(1L, n_axes)
@@ -469,15 +480,15 @@ prim_bitcast_convert[["stablehlo"]] <- function(x, dtype, output_types) {
   lane <- bitcast_lane(dtype(x), dtype)
   if (lane$joins) {
     # anvl's leading lane axis is the trailing one stablehlo consumes
-    rank <- length(shape(x))
-    x <- hlo_transpose(x, c(seq_len(rank - 1L), 0L))
+    n_axes <- length(shape(x))
+    x <- hlo_transpose(x, c(seq_len(n_axes - 1L), 0L))
   }
   if (!lane$splits) {
     return(list(hlo_bitcast_convert(x, dtype, output_types = output_types)))
   }
-  rank_out <- length(shape(x)) + 1L
+  n_axes_out <- length(shape(x)) + 1L
   out <- hlo_bitcast_convert(x, dtype)
-  list(hlo_transpose(out, c(rank_out - 1L, seq_len(rank_out - 1L) - 1L), output_types = output_types))
+  list(hlo_transpose(out, c(n_axes_out - 1L, seq_len(n_axes_out - 1L) - 1L), output_types = output_types))
 }
 
 # unary simple math jit rules ---------------------------------------------------
@@ -669,8 +680,122 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 
 # RNG jit rules --------------------------------------------------------
 
-prim_rng_bit_generator[["stablehlo"]] <- function(state, rng_algorithm, dtype, shape) {
-  hlo_rng_bit_generator(state, rng_algorithm, dtype, shape)
+# A random state is a ThreeFry-2x32 key, `ui32[2]` (the words of JAX's key data), and a
+# counter, `ui64`. ?prim_sample_bits says which values a sampling call draws.
+# Each sampling call and each fork is a call of a function built once per
+# lowering (and draw shape and data type), so that many sampling calls lower
+# and compile quickly.
+prim_sample_bits[["stablehlo"]] <- function(key, counter, shape, dtype) {
+  shape <- as.integer(shape)
+  dtype <- as.character(as_dtype(dtype))
+  rng_state_call(paste0("sample_bits_", dtype, "_", shape_id(shape)), key, counter, function(fresh_key) {
+    list(threefry_draw(fresh_key, shape, dtype))
+  })
+}
+
+prim_fork_rng_state[["stablehlo"]] <- function(key, counter) {
+  rng_state_call("fork_rng_state", key, counter, function(fresh_key) {
+    words <- lapply(fresh_key, hlo_reshape, 1L)
+    list(
+      hlo_concatenate(words[[1L]], words[[2L]], dimension = 0L),
+      hlo_scalar(0L, dtype = "ui64", func = fresh_key[[1L]]$func)
+    )
+  })
+}
+
+# A call of the function `id` of the lowering, built on first use, that splits
+# the random state with the key `key` at the counter `counter` and returns what
+# `body()` computes from the key ThreeFry_key(counter) (two `ui32` scalars). It
+# encrypts the counter with its high word as the first input word and its low
+# word as the second: for a counter c below 2^32 the key is JAX's
+# `fold_in(key, c)`, and for every c the c-th key of JAX's `split(key, c + 1)`.
+rng_state_call <- function(id, key, counter, body) {
+  callee <- lowering_func(id, function(id) {
+    func <- local_func(id)
+    key <- stablehlo::hlo_input("key", "ui32", shape = 2L, func = func)
+    counter <- stablehlo::hlo_input("counter", "ui64", func = func)
+    key_words <- lapply(0:1, function(i) hlo_reshape(hlo_slice(key, i, i + 1L, 1L), integer()))
+    # each word is cleared of the other first, so that the conversion is exact
+    by32 <- hlo_scalar(32L, dtype = "ui64", func = func)
+    low <- hlo_shift_right_logical(hlo_shift_left(counter, by32), by32)
+    high <- hlo_shift_right_logical(counter, by32)
+    counter_words <- list(hlo_convert(high, "ui32"), hlo_convert(low, "ui32"))
+    do.call(stablehlo::hlo_return, c(body(threefry2x32(key_words, counter_words)), list(func = func)))
+  })
+  stablehlo::hlo_call(callee, key, counter, simplify = FALSE)
+}
+
+# `shape` as part of a function name.
+shape_id <- function(shape) {
+  if (length(shape)) paste(shape, collapse = "x") else "scalar"
+}
+
+# The values of shape `shape` and unsigned data type `dtype` a draw from the
+# key `key` (two `ui32` scalars) gives, as JAX's `jax.random.bits()` gives them
+# by default (`jax_threefry_partitionable`): the value at the row-major index t
+# is made from the block that encrypts the input words (0, t) alone, so that it
+# does not depend on how many values the draw has. A `ui64` value is the
+# block's first word shifted into the high half and its second word in the low
+# half, and a narrower value the xor of the two words, truncated to its low
+# bits.
+threefry_draw <- function(key, shape, dtype) {
+  func <- key[[1L]]$func
+  n <- prod(shape)
+  if (n > .Machine$integer.max) {
+    limit <- .Machine$integer.max
+    cli_abort(c("Cannot draw more than {limit} values at once.", i = "Draw fewer values at once."))
+  }
+  n <- as.integer(n)
+  zeros <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = "ui32", func = func), integer(), n)
+  index <- hlo_iota(iota_dimension = 0L, dtype = "ui32", shape = n, func = func)
+  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, integer(), n), list(zeros, index))
+  if (dtype == "ui64") {
+    by32 <- hlo_broadcast_in_dim(hlo_scalar(32L, dtype = "ui64", func = func), integer(), n)
+    high <- hlo_shift_left(hlo_convert(words[[1L]], "ui64"), by32)
+    return(hlo_reshape(hlo_or(high, hlo_convert(words[[2L]], "ui64")), shape))
+  }
+  values <- hlo_xor(words[[1L]], words[[2L]])
+  if (dtype != "ui32") {
+    # keep the low bits, so that the conversion is exact
+    mask <- hlo_broadcast_in_dim(
+      hlo_scalar(as.integer(2^dtype_width(as_dtype(dtype)) - 1), dtype = "ui32", func = func),
+      integer(),
+      n
+    )
+    values <- hlo_convert(hlo_and(values, mask), dtype)
+  }
+  hlo_reshape(values, shape)
+}
+
+# ThreeFry-2x32 with 20 rounds (Salmon et al., 2011), as XLA implements it: the
+# key `key` and the input `x` are each two `ui32` arrays of the same shape, and
+# so is the result.
+threefry2x32 <- function(key, x) {
+  shp <- shape(x[[1L]]$value_type)
+  func <- x[[1L]]$func
+  const <- function(value) hlo_broadcast_in_dim(hlo_scalar(value, dtype = "ui32", func = func), integer(), shp)
+  rotate_left <- function(v, d) {
+    hlo_or(hlo_shift_left(v, const(d)), hlo_shift_right_logical(v, const(32L - d)))
+  }
+  rotations <- list(c(13L, 15L, 26L, 6L), c(17L, 29L, 16L, 24L))
+  rounds <- function(x, r) {
+    for (d in rotations[[r]]) {
+      x[[1L]] <- hlo_add(x[[1L]], x[[2L]])
+      x[[2L]] <- hlo_xor(x[[1L]], rotate_left(x[[2L]], d))
+    }
+    x
+  }
+
+  # 0x1BD11BDA is the parity constant of the key schedule
+  ks <- list(key[[1L]], key[[2L]], hlo_xor(hlo_xor(const(0x1BD11BDAL), key[[1L]]), key[[2L]]))
+  x[[1L]] <- hlo_add(x[[1L]], ks[[1L]])
+  x[[2L]] <- hlo_add(x[[2L]], ks[[2L]])
+  for (i in 1:5) {
+    x <- rounds(x, (i - 1L) %% 2L + 1L)
+    x[[1L]] <- hlo_add(x[[1L]], ks[[i %% 3L + 1L]])
+    x[[2L]] <- hlo_add(hlo_add(x[[2L]], ks[[(i + 1L) %% 3L + 1L]]), const(i))
+  }
+  x
 }
 
 prim_print[["stablehlo"]] <- function(x, header, footer) {
@@ -813,6 +938,18 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   c(res[1L + seq_len(n_carry)], res[1L + n_carry + seq_len(n_out)])
 }
 
+# The operands are `fn`'s inputs: its arguments, then the captures. Its
+# operations are lowered in place. `rule` is not lowered: a gradient is traced,
+# as anvl operations, before the program is lowered.
+prim_custom_gradient[["stablehlo"]] <- function(..., fn, rule, n_captures) {
+  env <- HloEnv()
+  ins <- list(...)
+  for (k in seq_along(fn$inputs)) {
+    env_add(env, fn$inputs[[k]], ins[[k]])
+  }
+  lower_graph_calls(fn, env, stablehlo::.current_func())
+}
+
 prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
   ops <- list(...)
   hlo_sort(
@@ -887,14 +1024,14 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
     return(hlo_top_k(x, k = k)[[1L]])
   }
   shp <- shape(x$value_type)
-  rank <- length(shp)
+  n_axes <- length(shp)
   sorted <- hlo_sort(
     x,
-    dimension = rank - 1L,
+    dimension = n_axes - 1L,
     is_stable = FALSE,
     comparator = .build_sort_comparator(list(x), decreasing = TRUE, canonicalize = FALSE)
   )
-  hlo_slice(sorted[[1L]], rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
+  hlo_slice(sorted[[1L]], rep(0L, n_axes), replace(shp, n_axes, k), rep(1L, n_axes))
 }
 
 prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
@@ -929,6 +1066,7 @@ prim_scatter[["stablehlo"]] <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
+  update_op,
   update_fn,
   n_captures,
   ...
@@ -1055,6 +1193,31 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
 }
 
 prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a, output_types) {
+  # XLA lowers `stablehlo.triangular_solve` to cuBLAS trsm on CUDA, but on the
+  # CPU expands it into blocked HLO that is several times slower than BLAS
+  # trsm. So, as JAX does, the CPU takes pjrt's `trsm` custom call for the data
+  # types BLAS has. It stands in for the op: same attributes and semantics, on
+  # XLA's default row-major layout.
+  if (identical(current_platform(), "cpu") && as.character(dtype(a)) %in% c("f32", "f64")) {
+    row_major <- rev(seq_len(length(shape(b$value_type))) - 1L)
+    x <- hlo_custom_call(
+      a,
+      b,
+      call_target_name = "trsm",
+      api_version = 4L,
+      has_side_effect = FALSE,
+      backend_config = stablehlo::CustomOpBackendConfig(list(
+        stablehlo::BoolAttr(name = "left_side", value = left_side),
+        stablehlo::BoolAttr(name = "lower", value = lower),
+        stablehlo::BoolAttr(name = "transpose_a", value = transpose_a),
+        stablehlo::BoolAttr(name = "unit_diagonal", value = unit_diagonal)
+      )),
+      output_types = output_types,
+      operand_layouts = list(row_major, row_major),
+      result_layouts = list(row_major)
+    )
+    return(list(x))
+  }
   list(hlo_triangular_solve(
     a,
     b,

@@ -267,6 +267,7 @@ describe("an R value at its use site", {
     expect_equal(jit(function(x) x * 2L)(nv_scalar(1, dtype = "i16")), nv_scalar(2L, dtype = "i16"))
     expect_equal(jit(function(x) 2 + x)(nv_scalar(1)), nv_scalar(3))
     expect_equal(jit(function(x) nv_mul(2, x))(nv_scalar(3, dtype = "f64")), nv_scalar(6, dtype = "f64")) # nolint
+    # jarl-ignore redundant_equals: the test is about the literal meeting `==`
     expect_equal(jit(function(x) x == TRUE)(nv_scalar(FALSE)), nv_scalar(FALSE))
   })
 
@@ -637,20 +638,19 @@ describe("an R value in an nv_* function", {
   })
 
   it("names no data type for nv_rnorm(), which falls back to the default float", {
-    state <- nv_rng_state(42L)
     # Bare R values have no data type, so the sample falls back to the default
     # float rather than to whatever R stores its numbers as.
-    expect_dtype(nv_rnorm(4L, state, mean = 0, sd = 1)[[2L]], default_float())
+    expect_dtype(nv_rnorm(4L, mean = 0, sd = 1), default_float())
     # A real array names it.
-    expect_dtype(nv_rnorm(4L, state, mean = nv_scalar(0, dtype = "f64"))[[2L]], "f64")
-    expect_dtype(nv_rnorm(4L, state, sd = nv_scalar(1, dtype = "f64"))[[2L]], "f64")
+    expect_dtype(nv_rnorm(4L, mean = nv_scalar(0, dtype = "f64")), "f64")
+    expect_dtype(nv_rnorm(4L, sd = nv_scalar(1, dtype = "f64")), "f64")
     # An integer array cannot name one, so the default float stands.
-    expect_dtype(nv_rnorm(4L, state, mean = nv_scalar(0L))[[2L]], default_float())
+    expect_dtype(nv_rnorm(4L, mean = nv_scalar(0L)), default_float())
     # ... and an explicit `dtype` still wins.
-    expect_dtype(nv_rnorm(4L, state, dtype = "f64", mean = 0)[[2L]], "f64")
+    expect_dtype(nv_rnorm(4L, dtype = "f64", mean = 0), "f64")
     # An f64 mean cannot be narrowed to an f32 sample.
     expect_error(
-      nv_rnorm(4L, state, dtype = "f32", mean = nv_scalar(0, dtype = "f64")),
+      nv_rnorm(4L, dtype = "f32", mean = nv_scalar(0, dtype = "f64")),
       "not promotable"
     )
   })

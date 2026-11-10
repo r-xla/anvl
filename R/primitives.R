@@ -4,6 +4,7 @@
 #' @include promotion.R
 #' @include primitive.R
 #' @include jit.R
+#' @include side-effects.R
 
 # `operands` names the two arguments: `lhs` / `rhs` for an operator whose two
 # sides play the same role, names of their own where they differ.
@@ -1061,12 +1062,11 @@ prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3)
 
 # comparison primitives --------------------------------------------------------
 
-make_compare_op <- function(direction) {
-  force(direction)
-  function(lhs, rhs) {
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
-    graph_desc_add(self, operands, infer_fn = infer_compare)[[1L]]
-  }
+# The body shared by the comparison primitives; the direction is set by their
+# stablehlo rules.
+compare_op <- function(lhs, rhs) {
+  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+  graph_desc_add(self, operands, infer_fn = infer_compare)[[1L]]
 }
 
 #' @title Primitive Equal
@@ -1088,7 +1088,7 @@ make_compare_op <- function(direction) {
 #' # the R value is built at the array's data type instead
 #' prim_eq(1, nv_scalar(1, "f64"))
 #' @export
-prim_eq <- new_primitive("eq", make_compare_op("EQ"))
+prim_eq <- new_primitive("eq", compare_op)
 
 #' @title Primitive Not Equal
 #' @description
@@ -1109,7 +1109,7 @@ prim_eq <- new_primitive("eq", make_compare_op("EQ"))
 #' # the R value is built at the array's data type instead
 #' prim_ne(1, nv_scalar(2, "f64"))
 #' @export
-prim_ne <- new_primitive("ne", make_compare_op("NE"))
+prim_ne <- new_primitive("ne", compare_op)
 
 #' @title Primitive Greater Than
 #' @description
@@ -1130,7 +1130,7 @@ prim_ne <- new_primitive("ne", make_compare_op("NE"))
 #' # the R value is built at the array's data type instead
 #' prim_gt(2, nv_scalar(1, "f64"))
 #' @export
-prim_gt <- new_primitive("gt", make_compare_op("GT"))
+prim_gt <- new_primitive("gt", compare_op)
 
 #' @title Primitive Greater Than or Equal
 #' @description
@@ -1151,7 +1151,7 @@ prim_gt <- new_primitive("gt", make_compare_op("GT"))
 #' # the R value is built at the array's data type instead
 #' prim_ge(2, nv_scalar(1, "f64"))
 #' @export
-prim_ge <- new_primitive("ge", make_compare_op("GE"))
+prim_ge <- new_primitive("ge", compare_op)
 
 #' @title Primitive Less Than
 #' @description
@@ -1172,7 +1172,7 @@ prim_ge <- new_primitive("ge", make_compare_op("GE"))
 #' # the R value is built at the array's data type instead
 #' prim_lt(1, nv_scalar(2, "f64"))
 #' @export
-prim_lt <- new_primitive("lt", make_compare_op("LT"))
+prim_lt <- new_primitive("lt", compare_op)
 
 #' @title Primitive Less Than or Equal
 #' @description
@@ -1193,7 +1193,7 @@ prim_lt <- new_primitive("lt", make_compare_op("LT"))
 #' # the R value is built at the array's data type instead
 #' prim_le(1, nv_scalar(2, "f64"))
 #' @export
-prim_le <- new_primitive("le", make_compare_op("LE"))
+prim_le <- new_primitive("le", compare_op)
 
 # additional simple binary primitives -----------------------------------------
 
@@ -2519,14 +2519,17 @@ prim_if <- new_primitive(
 
     current_desc <- current_descriptor(silent = TRUE)
 
-    desc_true <- local_descriptor()
+    desc_true <- local_descriptor(side_effects_mode = "capture")
     true_graph <- trace_fn(true, list(), desc = desc_true)
-    desc_false <- local_descriptor()
+    desc_false <- local_descriptor(side_effects_mode = "capture")
     false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
+    # A branch that uses a side effect closes over the enclosing trace's view
+    # of it, which continues after the larger of the branches' counts.
+    desc_end_capture(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
@@ -2603,13 +2606,14 @@ prim_while <- new_primitive(
     if (is.null(state_names) || any(state_names == "")) {
       cli_abort("{.arg init} must have only named arguments.")
     }
+    abort_if_side_effects(init, "init")
 
     current_desc <- current_descriptor(silent = TRUE)
     init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     desc_cond <- local_descriptor()
     cond_graph <- trace_fn(cond, init, desc = desc_cond)
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
@@ -2620,17 +2624,27 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
+    # A body that uses side effects carries them as the last members of the
+    # loop state, which `cond` takes too but does not read. The loop runs a
+    # number of times not known while tracing, so a side effect forks: the body
+    # advances a value derived from the current one, which the loop itself
+    # advances by one use, and drops it at the end.
+    loop <- desc_begin_loop(current_desc, body_graph, steps = NULL)
+    cond_graph$inputs <- c(cond_graph$inputs, side_effects_loop_twins(loop))
+    operands <- c(flatten(init), loop$operands)
+
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
     captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = c(flatten(init), captures),
+      args = c(operands, captures),
       params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
+    out <- desc_end_loop(current_desc, loop, out)
 
     unflatten(body_graph$out_tree, out)
   },
@@ -2649,10 +2663,13 @@ prim_while <- new_primitive(
 #' along axis 1 with that axis dropped.
 #' @param init (`list()`)\cr
 #'   Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-#'   shape and data type across steps.
+#'   shape and data type across steps. It must not contain a random state: to
+#'   draw from one in `body`, make it the default before the loop with
+#'   [local_nv_rng_state()].
 #' @param xs (`list()`)\cr
 #'   Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-#'   all of size `steps` along it. An empty list runs a counted loop.
+#'   all of size `steps` along it. An empty list runs a counted loop. It must
+#'   not contain a random state.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning `list(carry = , out = )`,
 #'   where `carry` has the structure of `init` and `out` is a (possibly
@@ -2689,6 +2706,8 @@ prim_scan <- new_primitive(
     # delayed promise evaluation can cause the value to be added to the wrong graph descriptor
     force(init)
     force(xs)
+    abort_if_side_effects(init, "init")
+    abort_if_side_effects(xs, "xs")
     if (!is.function(body)) {
       cli_abort("{.arg body} must be a function.")
     }
@@ -2750,8 +2769,14 @@ prim_scan <- new_primitive(
       list(carry = st$carry, out = st$out)
     }
 
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # A body that uses side effects carries them as the last leaves of the
+    # carry.
+    n_user_carry <- n_carry
+    loop <- desc_begin_loop(current_desc, body_graph, steps = steps, at = n_carry)
+    init_flat <- c(init_flat, loop$operands)
+    n_carry <- n_carry + length(loop$operands)
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
     captures <- purify_subgraphs(current_desc, list(body_graph))
@@ -2798,10 +2823,215 @@ prim_scan <- new_primitive(
       infer_fn = infer_fn,
       desc = current_desc
     )
+    out <- desc_end_loop(current_desc, loop, out, at = n_user_carry)
     unflatten(body_graph$out_tree, out)
   },
   subgraphs = "body",
   static = 3:5
+)
+
+#' @title Primitive Custom Gradient
+#' @description
+#' Calls `fn` on `args`, but differentiates the result with `rule` instead of
+#' through the operations `fn` performs. Use it where those operations give no
+#' gradient -- e.g. a [prim_while()] loop, which [gradient()] cannot
+#' differentiate -- or an inaccurate one, while the derivative has a formula of
+#' its own.
+#' @param args (named `list()`)\cr
+#'   The arguments of `fn`: [`arrayish`] values, or trees of them in the sense
+#'   of pjrt's [`RTree`][pjrt::build_tree], by name. `rule` gives the gradient
+#'   with respect to these. No entry may be named `out`, `grad` or `required`,
+#'   the names under which `rule` receives the result, its gradient and which
+#'   gradients are required. An R value materializes at its default data type,
+#'   as in [prim_while()].
+#' @param fn (`function`)\cr
+#'   Computes the result from the entries of `args`, which it receives as
+#'   arguments. Returns an array, or a tree of them.
+#' @param rule (`function` | `anvl_rule_reverse`)\cr
+#'   Computes the gradient. A function receives the entries of `args` as arguments, plus
+#'   `out`, the result of `fn`, `grad`, the gradient with respect to `out`, of
+#'   the same structure, data types and shapes, and `required`, a named
+#'   `logical()` with one element per entry of `args`: `TRUE` where the
+#'   gradient with respect to that entry is required, i.e. where any of its
+#'   arrays requires one. Returns a named list with the gradient with respect
+#'   to each required entry -- for an array `x`, the sum over the elements of
+#'   `out` of their `grad` times their derivative with respect to `x` -- of
+#'   `x`'s structure, data types and shapes. An entry that is not required,
+#'   e.g. an integer, which never is, can be left out or be `NULL`.
+#'
+#'   Alternatively, a [rule_reverse()] with a `forward` pass, which replaces
+#'   `fn` where the result is differentiated, so that the backward pass can
+#'   read what the forward pass computed. Its passes are those of a
+#'   primitive's rule, except that `inputs` are the entries of `args` by name
+#'   rather than one array per operand, `params` is an empty list, and
+#'   `outputs`, `grads`, `required` and the returned gradients are those of a
+#'   function above.
+#' @return ([`arrayish`] | `list`)\cr
+#'   The result of `fn`.
+#' @section Gradients:
+#' `rule` is traced when the gradient is, once the function being
+#' differentiated has been traced. It can close over constants -- R values and
+#' arrays -- but not over a traced value: pass that through `args` instead.
+#'
+#' `fn` may close over traced values, but [gradient()] cannot differentiate
+#' with respect to those, as `rule` only gives the gradient with respect to
+#' `args`. Pass such a value through `args` instead.
+#' @templateVar primitive_id custom_gradient
+#' @template section_rules
+#' @section StableHLO:
+#' Lowers the operations of `fn` in place. `rule` is not lowered: a gradient
+#' is traced, as anvl operations, before the program is lowered.
+#' @seealso [gradient()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' # x^n by repeated multiplication: a while loop, which gradient() cannot
+#' # differentiate on its own
+#' pow_loop <- function(x, n) {
+#'   prim_while(
+#'     init = list(i = 1L, y = x),
+#'     cond = function(i, y) i < n,
+#'     body = function(i, y) list(i = i + 1L, y = y * x)
+#'   )$y
+#' }
+#' pow <- function(x, n) {
+#'   prim_custom_gradient(
+#'     list(x = x, n = n),
+#'     fn = pow_loop,
+#'     rule = function(x, n, out, grad, required) list(x = grad * n * x^(n - 1L))
+#'   )
+#' }
+#' x <- nv_scalar(2)
+#' pow(x, 3L)
+#' # the derivative 3 * x^2
+#' jit(gradient(pow, wrt = "x"))(x, 3L)
+#' # and, as it is computed from x, the second derivative 6 * x
+#' dpow <- function(x, n) gradient(pow, wrt = "x")(x, n)$x
+#' jit(gradient(dpow, wrt = "x"))(x, 3L)
+#'
+#' # With a forward pass, x^(n - 1) is computed once, for the result and for
+#' # its gradient
+#' pow_fwd <- function(x, n) {
+#'   prim_custom_gradient(
+#'     list(x = x, n = n),
+#'     fn = pow_loop,
+#'     rule = rule_reverse(forward = function(inputs, params, required) {
+#'       p <- inputs$x^(inputs$n - 1L)
+#'       list(
+#'         outputs = p * inputs$x,
+#'         backward = function(inputs, outputs, grads, params, required) {
+#'           list(x = grads * inputs$n * p)
+#'         }
+#'       )
+#'     })
+#'   )
+#' }
+#' jit(gradient(pow_fwd, wrt = "x"))(x, 3L)
+#' @export
+prim_custom_gradient <- new_primitive(
+  "custom_gradient",
+  function(args, fn, rule) {
+    force(args)
+    if (!is.function(fn)) {
+      cli_abort(c(
+        "{.arg fn} must be a function.",
+        x = "Got {value_repr(fn)}."
+      ))
+    }
+    if (inherits(rule, "anvl_rule_reverse") && is.null(rule$forward)) {
+      cli_abort(c(
+        "{.arg rule} must have a forward pass where it is a {.fn rule_reverse}.",
+        x = "Got a reverse rule with only a backward pass.",
+        i = "Pass a function as {.arg rule} instead: it receives the arguments, the result and its gradient by name."
+      ))
+    }
+    if (!is.function(rule) && !inherits(rule, "anvl_rule_reverse")) {
+      cli_abort(c(
+        "{.arg rule} must be a function, or a {.fn rule_reverse} with a forward pass.",
+        x = "Got {value_repr(rule)}."
+      ))
+    }
+    named_list <- !is_arrayish(args) &&
+      is.list(args) &&
+      length(args) &&
+      !is.null(names(args)) &&
+      all(nzchar(names(args)))
+    if (!named_list) {
+      cli_abort(c(
+        "{.arg args} must be a non-empty list whose entries all have names.",
+        x = "Got {value_repr(args)}."
+      ))
+    }
+    duplicated_names <- unique(names(args)[duplicated(names(args))])
+    if (length(duplicated_names)) {
+      cli_abort(c(
+        "{.arg args} must not have two entries with the same name.",
+        x = "Got more than one entry named {value_repr(duplicated_names)}."
+      ))
+    }
+    leaves <- flatten(args)
+    if (!length(leaves)) {
+      cli_abort(c(
+        "{.arg args} must contain at least one array.",
+        x = "Got {value_repr(args)} without any."
+      ))
+    }
+    not_array <- which(!vapply(leaves, is_arrayish, logical(1L)))
+    if (length(not_array)) {
+      first <- not_array[[1L]]
+      cli_abort(c(
+        "{.arg args} must hold arrays, or trees of them.",
+        x = "Got {value_repr(leaves[[first]])} at `{pjrt::tree_path(build_tree(args), first)}`."
+      ))
+    }
+    reserved <- intersect(names(args), c("out", "grad", "required"))
+    if (length(reserved)) {
+      cli_abort(c(
+        "{.arg args} must not have an entry named {.val out}, {.val grad} or {.val required}.",
+        x = "Got {cli::qty(length(reserved))}{?an entry/entries} named {.val {reserved}}.",
+        i = "{.arg rule} receives the result of {.arg fn}, its gradient and which gradients are required under these names." # nolint
+      ))
+    }
+    # Otherwise R refuses the call with `unused argument`, printing the boxes.
+    assert_takes <- function(f, arg, nms) {
+      fmls <- names(formals(f))
+      missing <- setdiff(nms, fmls)
+      if (!"..." %in% fmls && length(missing)) {
+        cli_abort(c(
+          "{.arg {arg}} must have an argument for each value it receives.",
+          x = "Got a function with arguments {value_repr(fmls)}.",
+          i = "It has none for {value_repr(missing)}."
+        ))
+      }
+    }
+    assert_takes(fn, "fn", names(args))
+    if (is.function(rule)) {
+      assert_takes(rule, "rule", c(names(args), "out", "grad", "required"))
+    }
+
+    current_desc <- current_descriptor(silent = TRUE)
+    # In the order of `fn`'s formals, which is the order its graph takes them in.
+    args <- match_args_to_formals(fn, args)
+    args <- unflatten(build_tree(args), lapply(flatten(args), materialize_operand, desc = current_desc))
+
+    desc_fn <- local_descriptor()
+    fn_graph <- trace_fn(fn, args, desc = desc_fn)
+
+    # `fn`'s graph takes what it closes over after the arguments; the call's
+    # operands are the arguments, then the same captures. `rule` stays an R
+    # function: the reverse rule traces it once it knows which gradients are
+    # required.
+    captures <- purify_subgraphs(current_desc, list(fn_graph))
+
+    out <- graph_desc_add(
+      self,
+      args = c(flatten(args), captures),
+      params = list(fn = fn_graph, rule = rule, n_captures = length(captures)),
+      infer_fn = infer_custom_gradient,
+      desc = current_desc
+    )
+    unflatten(fn_graph$out_tree, out)
+  },
+  subgraphs = "fn",
+  static = 2:3
 )
 
 #' @title Primitive Sort
@@ -3010,55 +3240,74 @@ prim_print <- new_primitive(
 )
 
 # RNG primitives
-#' @title Primitive RNG Bit Generator
+#' @title Primitive Random Bits
 #' @description
-#' Generates pseudo-random numbers using the specified algorithm and returns
-#' the updated RNG state together with the generated values.
-#' @param state ([`arrayish`])\cr
-#'   RNG state: a 1-D array of the `ui64` data type. Its length depends on
-#'   `rng_algorithm` -- exactly 2 for `"THREE_FRY"`, 2 or 3 for `"PHILOX"`,
-#'   and whatever the implementation wants for `"DEFAULT"`.
-#' @param rng_algorithm (`character(1)`)\cr
-#'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
-#'   leaving the choice to the implementation.
-#' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values. Can be any numeric data type.
+#' Draws random bits from the active random state (see [nv_set_seed()]) with
+#' the ThreeFry-2x32 counter-based generator of
+#' `r cite_bib("salmon2011parallel")`, and advances that random state by one
+#' step.
+#'
+#' See `r roxy_article("random-numbers")` for more details.
 #' @template param_shape
-#' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state with the input `state`'s data type
-#'   and shape, and `values`, the random values with the given `dtype` and
-#'   `shape`.
-#' @templateVar primitive_id rng_bit_generator
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
+#' @template section_rng_state
+#' @return ([`arrayish`])\cr
+#'   The random bits, of data type `dtype` and shape `shape`. Every value is
+#'   made from an encrypted 64-bit block of its own: a `"ui64"` value is the
+#'   block, and a narrower value the xor of the block's two 32-bit words,
+#'   truncated to its low bits, as JAX's `jax.random.bits()` does by default.
+#'   The value at a position thus does not depend on the number of values
+#'   drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
+#'   `shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` is not a
+#'   draw of `6` filled into `c(2, 3)` in R's column-major order.
+#' @references
+#' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
+#' @templateVar primitive_id sample_bits
 #' @template section_rules
-#' @section StableHLO:
-#' `r roxy_spec("rng_bit_generator")`
 #' @seealso [nv_runif()], [nv_rnorm()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # THREE_FRY, the default, takes a two-element state
-#' state <- nv_array(c(0L, 0L), dtype = "ui64")
-#' prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
-#'
-#' # the updated state feeds the next draw, so the two differ
-#' out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
-#' prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
-#'
-#' # PHILOX also accepts a three-element state
-#' prim_rng_bit_generator(
-#'   nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
-#'   dtype = "i32", shape = 4L
-#' )
+#' nv_get_rng_state()
+#' prim_sample_bits(2L, "ui32")
+#' # The counter is incremented by 1
+#' nv_get_rng_state()
+#' # A random state of its own is drawn from within with_nv_rng_state():
+#' custom_rng <- nv_rng_state(1L)
+#' custom_rng
+#' with_nv_rng_state(custom_rng, prim_sample_bits(2L, "ui32"))
+#' # And it is still updated
+#' custom_rng
+#' # And does not affect the global RNG
+#' nv_get_rng_state()
 #' @export
-prim_rng_bit_generator <- new_primitive(
-  "rng_bit_generator",
-  function(state, rng_algorithm = "THREE_FRY", dtype, shape) {
+prim_sample_bits <- new_primitive(
+  "sample_bits",
+  function(shape, dtype) {
+    # the key and the counter this draw splits at, which the call takes as its
+    # operands
     graph_desc_add(
       self,
-      list(state = state),
-      params = list(rng_algorithm = rng_algorithm, dtype = dtype, shape = shape),
-      infer_fn = infer_rng_bit_generator
-    )
+      desc_use_side_effect(current_descriptor(), active_rng_state()),
+      params = list(shape = shape, dtype = dtype),
+      infer_fn = infer_sample_bits
+    )[[1L]]
   },
-  static = 2:4
+  static = c("shape", "dtype")
+)
+
+# Primitive fork of the random state, which is not exported: what it gives is a
+# random state, which is no value in a trace, so only `side_effect_fork()` calls
+# it, for the body of an `nv_while()` that draws. It splits the active random
+# state (k, c) like a draw of `prim_sample_bits()` does, advancing it to
+# (k, c + 1), and instead of drawing from the fresh key returns the child random
+# state (ThreeFry_k(c), 0) as `list(key = <ui32[2]>, counter = <ui64[]>)`.
+prim_fork_rng_state <- new_primitive(
+  "fork_rng_state",
+  function() {
+    # the fork is a use of the random state, as a draw is
+    effect <- active_rng_state()
+    side_effect_fork(effect, desc_use_side_effect(current_descriptor(), effect))
+  }
 )
 
 #' @title Primitive Scatter
@@ -3113,10 +3362,15 @@ prim_rng_bit_generator <- new_primitive(
 #'   Whether indices are guaranteed to be unique (no duplicates).
 #'   Setting to `TRUE` may improve performance but produces undefined
 #'   behavior if the indices are not actually unique. Default `FALSE`.
-#' @param update_fn (`function`)\cr
-#'   Binary function `f(old, new)` that combines the existing value in
-#'   `x` with the value from `update`. The default (`NULL`) uses
-#'   `function(old, new) new`, which replaces the old value.
+#' @param update_fn (`character(1)` | `function`)\cr
+#'   How an update combines with the value in `x` it lands on. One of
+#'   * `"replace"` (the default): the update replaces the value,
+#'   * `"add"`, `"sub"`, `"mul"`: the value plus, minus or times the update,
+#'   * `"max"`, `"min"`: the larger or the smaller of the two,
+#'
+#'   or a binary function `f(old, new)` of two scalars at `x`'s data type,
+#'   which returns one. Only a named `update_fn` can be differentiated, see
+#'   section Gradients.
 #' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @section Out of Bounds Behavior:
@@ -3124,8 +3378,22 @@ prim_rng_bit_generator <- new_primitive(
 #' update for that index is silently ignored.
 #' @section Update Order:
 #' When multiple indices in `scatter_indices` map to the same element
-#' of `x`, the order in which `update_fn` is applied is
-#' implementation-defined and may vary between plugins ("cpu", "cuda").
+#' of `x`, `update_fn` combines each of their updates with it in turn, so
+#' `"add"` adds them all up. The order is implementation-defined and may vary
+#' between plugins ("cpu", "cuda"), which matters for `"replace"`, where one
+#' of them is the one that ends up written.
+#' @section Gradients:
+#' [gradient()] differentiates a scatter whose `update_fn` is one of the names,
+#' but not a function, even one that computes the same.
+#' * With `"replace"`, an update gets the gradient only where it is the one
+#'   that was written.
+#' * With `"mul"`, the gradient with respect to `update` needs
+#'   `unique_indices = TRUE`.
+#' * With `"max"` and `"min"`, `x` and the updates that tie for the result
+#'   share its gradient equally.
+#'
+#' An update that falls outside of `x`, and is therefore ignored, gets a
+#' gradient of zero.
 #' @templateVar primitive_id scatter
 #' @template section_rules
 #' @section StableHLO:
@@ -3162,7 +3430,7 @@ prim_scatter <- new_primitive(
     index_vector_axis,
     indices_are_sorted = FALSE,
     unique_indices = FALSE,
-    update_fn = NULL
+    update_fn = "replace"
   ) {
     # Otherwise, delayed promise evaluation may add them to the update computation's descriptor.
     force(x)
@@ -3174,10 +3442,9 @@ prim_scatter <- new_primitive(
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     x <- operands$x
     update <- operands$update
-    if (is.null(update_fn)) {
-      update_fn <- function(old, new) new
-    } else if (!is.function(update_fn)) {
-      cli_abort("update_fn must be a function")
+    update_op <- scatter_update_op(update_fn)
+    if (!is.null(update_op)) {
+      update_fn <- scatter_update_fns[[update_op]]
     }
 
     current_desc <- current_descriptor(silent = TRUE)
@@ -3210,6 +3477,7 @@ prim_scatter <- new_primitive(
         index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
+        update_op = update_op,
         update_fn = update_fn_graph,
         n_captures = length(captures)
       ),
@@ -3220,6 +3488,36 @@ prim_scatter <- new_primitive(
   subgraphs = "update_fn",
   static = 4:12
 )
+
+# The update functions `prim_scatter()` knows by name. A scatter keeps the name
+# in its `update_op` parameter, and the reverse rule differentiates these and
+# nothing else.
+scatter_update_fns <- list(
+  replace = function(old, new) new,
+  add = function(old, new) prim_add(old, new),
+  sub = function(old, new) prim_sub(old, new),
+  mul = function(old, new) prim_mul(old, new),
+  max = function(old, new) prim_pmax(old, new),
+  min = function(old, new) prim_pmin(old, new)
+)
+
+# The name of the `update_fn` of `prim_scatter()` or `nv_subset_assign()`, or
+# `NULL` for a function.
+scatter_update_op <- function(update_fn, call = rlang::caller_env()) {
+  if (is.function(update_fn)) {
+    return(NULL)
+  }
+  if (!rlang::is_string(update_fn) || !update_fn %in% names(scatter_update_fns)) {
+    cli_abort(
+      c(
+        "{.arg update_fn} must be a function or one of {.or {.val {names(scatter_update_fns)}}}.",
+        x = "Got {value_repr(update_fn)}."
+      ),
+      call = call
+    )
+  }
+  update_fn
+}
 
 #' @title Primitive Gather
 #' @description
@@ -3420,7 +3718,10 @@ prim_chol <- new_primitive(
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("triangular_solve")`
+#' On CPU, an `f32` or `f64` solve lowers to a `"trsm"` [hlo_custom_call()]
+#' (backed by BLAS). Otherwise it lowers to [hlo_triangular_solve()], specified
+#' under [triangular_solve](https://openxla.org/stablehlo/spec#triangular_solve),
+#' which XLA runs through cuBLAS on CUDA.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # solve L %*% x = b where L is lower triangular

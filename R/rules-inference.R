@@ -1460,6 +1460,7 @@ infer_scatter <- function(
   index_vector_axis,
   indices_are_sorted,
   unique_indices,
+  update_op,
   update_fn,
   n_captures
 ) {
@@ -1582,6 +1583,14 @@ infer_scatter <- function(
 # ---------------------------------------------------------------------------
 # Convolution and linear algebra
 # ---------------------------------------------------------------------------
+
+# The extent of each axis of `shape` with `dilation - 1` holes between
+# neighbouring elements. It runs in double, as a large dilation would
+# overflow an integer.
+dilate_shape <- function(shape, dilation) {
+  shape <- as.double(shape)
+  ifelse(shape == 0, 0, (shape - 1) * dilation + 1)
+}
 
 infer_convolution <- function(
   x,
@@ -1762,9 +1771,8 @@ infer_convolution <- function(
   result_shape[output_batch_axis] <- x_batch_size %/% bg_count
   result_shape[output_feature_axis] <- kernel_out_size
   for (sd in seq_len(n_spatial)) {
-    x_size <- as.double(x_shape[[x_spatial_axes[[sd]]]])
-    k_size <- as.double(kernel_shape[[kernel_spatial_axes[[sd]]]])
-    dilated_input <- if (x_size == 0) 0 else (x_size - 1) * x_dil[[sd]] + 1
+    k_size <- kernel_shape[[kernel_spatial_axes[[sd]]]]
+    dilated_input <- dilate_shape(x_shape[[x_spatial_axes[[sd]]]], x_dil[[sd]])
     padded_input <- pad[sd, 1L] + dilated_input + pad[sd, 2L]
 
     # XLA `CHECK`-fails (aborting the process) on a negative padded extent.
@@ -1777,14 +1785,14 @@ infer_convolution <- function(
     }
 
     # A zero-wide window would otherwise pass the arithmetic below.
-    if (k_size == 0) {
+    if (k_size == 0L) {
       cli_abort(c(
         "{.arg kernel} must not have a zero-sized spatial axis.",
         x = "Axis {kernel_spatial_axes[[sd]]} of {.arg kernel} is {.val {0L}}."
       ))
     }
 
-    dilated_window <- (k_size - 1) * kernel_dil[[sd]] + 1
+    dilated_window <- dilate_shape(k_size, kernel_dil[[sd]])
     num_windows <- if (padded_input == 0 || dilated_window > padded_input) {
       0
     } else {
@@ -1866,38 +1874,14 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
-infer_rng_bit_generator <- function(state, rng_algorithm, dtype, shape) {
-  assert_array_dtype(state, "uint", naxes = 1L)
-  if (dtype(state) != as_dtype("ui64")) {
-    cli_abort(c(
-      "{.arg state} must be {.val ui64}.",
-      x = "Got {.val {as.character(dtype(state))}}."
-    ))
-  }
+infer_sample_bits <- function(key, counter, shape, dtype) {
+  shape <- assert_shapevec(shape)
+  dtype <- assert_dtype_param(dtype, categories = "uint")
+  list(AbstractArray(dtype = dtype, shape = Shape(shape)))
+}
 
-  assert_choice_param(rng_algorithm, c("DEFAULT", "THREE_FRY", "PHILOX"))
-
-  state_size <- shape(state)[[1L]]
-  if (rng_algorithm == "THREE_FRY" && state_size != 2L) {
-    cli_abort(c(
-      "{.val THREE_FRY} requires an {.arg state} of length {.val {2L}}.",
-      x = "Got {.val {state_size}}."
-    ))
-  }
-  if (rng_algorithm == "PHILOX" && !(state_size %in% c(2L, 3L))) {
-    cli_abort(c(
-      "{.val PHILOX} requires an {.arg state} of length {.val {2L}} or {.val {3L}}.",
-      x = "Got {.val {state_size}}."
-    ))
-  }
-
-  out_dtype <- assert_dtype_param(dtype, categories = c("int", "uint", "float"))
-
-  # (C1)
-  list(
-    state = AbstractArray(dtype = "ui64", shape = state$shape),
-    values = AbstractArray(dtype = out_dtype, shape = Shape(assert_shapevec(shape)))
-  )
+infer_fork_rng_state <- function(key, counter) {
+  list(key, counter)
 }
 
 infer_cholesky <- function(x, lower) {
@@ -2015,11 +1999,11 @@ infer_while <- function(..., cond, body, n_captures) {
   inputs_body <- lapply(body$inputs[state_idx], function(inp) inp$aval)
   # The names of `init`, read off the body's input tree rather than passed as a
   # param (which would reach the lowering rules).
+  # The side effects a body carries come after the state.
   state_names <- pjrt::tree_child_names(body$in_tree)
-  labels <- if (length(state_names) == length(outs)) {
-    state_names
-  } else {
-    sprintf("state %d", seq_along(outs))
+  labels <- sprintf("state %d", seq_along(outs))
+  if (length(state_names) <= length(outs)) {
+    labels[seq_along(state_names)] <- state_names
   }
   describe <- function(idx, a, b, verbs) {
     sprintf(
@@ -2067,4 +2051,10 @@ infer_while <- function(..., cond, body, n_captures) {
   }
 
   outs_body
+}
+
+# The operands are the arguments of `fn`, then what it closes over, which only
+# the lowering reads. `rule` is checked when the reverse rule traces it.
+infer_custom_gradient <- function(..., fn, rule, n_captures) {
+  graph_output_avals(fn)
 }
