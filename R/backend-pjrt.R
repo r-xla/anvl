@@ -9,7 +9,7 @@ NULL
 # anvl considers sound to key on. `info` carries the tree, the flat leaves, the
 # static mask, and the avals the cache key was built from.
 # `device` is the jit's device policy: NULL (infer) or a concrete device.
-jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
+jit_pjrt_compile_cb <- function(f, static, donate, xla_options, device = NULL) {
   function(info) {
     check_static_args(info$args, static)
     compiled <- compile_pjrt(
@@ -17,6 +17,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
       donate = donate,
+      xla_options = xla_options,
       device = device,
       arg_device = dispatch_arg_device(info),
       fallback_device = info$default_device,
@@ -42,7 +43,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
 }
 
 # device: NULL | PJRTDevice
-jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
+jit_pjrt_impl <- function(f, static, cache_size, donate, xla_options, device) {
   if (!is.null(device)) {
     device <- backend_device(device, "pjrt")
   }
@@ -53,7 +54,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   # call's device.
   dispatcher <- pjrt::dispatcher(
     cache_size,
-    jit_pjrt_compile_cb(f, static, donate, device),
+    jit_pjrt_compile_cb(f, static, donate, xla_options, device),
     static = static,
     # The tag every AnvlArray input must carry and that the dispatcher stamps
     # on the arrays it returns; it also selects pjrt's native execution engine.
@@ -106,6 +107,8 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Tree structure of the inputs.
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
+#' @param xla_options (named `list()`)\cr
+#'   XLA options for this compile, passed to [`pjrt::pjrt_compile()`].
 #' @param device (`NULL` | `character(1)` | `PJRTDevice`)\cr
 #'   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from
 #'   `arg_device` and traced arrays.
@@ -155,6 +158,7 @@ compile_pjrt <- function(
   args_flat,
   in_tree,
   donate = character(),
+  xla_options = list(),
   device = NULL,
   arg_device = NULL,
   fallback_device = NULL,
@@ -201,7 +205,7 @@ compile_pjrt <- function(
     }
   }
 
-  out <- compile_graph_pjrt(graph, donate = donate, device = device)
+  out <- compile_graph_pjrt(graph, donate = donate, device = device, xla_options = xla_options)
   # Sound because the trace never reads the default device: an array created
   # without one while tracing is "plain" and placed on the compile device.
   out$uses_default_device <- uses_default_device
@@ -210,7 +214,7 @@ compile_pjrt <- function(
 
 # pjrt's dispatcher supplies the side effects the program takes as implicit
 # inputs, and calls the entry's `on_success` after a run.
-compile_graph_pjrt <- function(graph, donate = character(), device) {
+compile_graph_pjrt <- function(graph, donate = character(), device, xla_options = list()) {
   platform_name <- if (is.character(device)) device else platform(device)
   out <- stablehlo(
     graph,
@@ -251,7 +255,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
   # the functions `func` calls are defined next to it
   src <- paste(vapply(c(out[[4L]], list(func)), stablehlo::repr, character(1L)), collapse = "\n\n")
   program <- pjrt_program(src = src, format = "mlir")
-  exec <- pjrt_compile(program, device = device)
+  exec <- pjrt_compile(program, device = device, xla_options = xla_options)
 
   list(
     exec = exec,
@@ -337,14 +341,15 @@ AnvlBackendPjrt <- function() {
     device = function(x) xlamisc::device(x$data),
     new_device = function(x) pjrt::pjrt_device(x),
     print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
-    jit = function(f, static, cache_size, donate = character(), device = NULL) {
+    jit = function(f, static, cache_size, donate = character(), xla_options = list(), device = NULL) {
       assert_subset(donate, formalArgs2(f))
+      assert_list(xla_options)
       # static is checked in jit() itself
       common <- intersect(donate, static)
       if (length(common)) {
         cli_abort("{.val {common}} cannot be both in {.arg donate} and {.arg static}.")
       }
-      jit_pjrt_impl(f, static, cache_size, donate, device)
+      jit_pjrt_impl(f, static, cache_size, donate, xla_options, device)
     },
     await_data = function(x) pjrt::await(x$data),
     default_dtypes = list(float = "f32", int = "i32")
