@@ -78,6 +78,9 @@
   [`saveRDS()`](https://rdrr.io/r/base/readRDS.html) and friends; they
   load onto the default device, not the one they were saved from. Arrays
   of the pjrt backend no longer cache their device in a `$device` field.
+- A jitted function called without array inputs whose program is pinned
+  to a device by an array it closes over no longer recompiles when the
+  default device changes.
 - A classed R value, such as a
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
   array, is an error under

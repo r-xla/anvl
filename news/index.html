@@ -110,6 +110,7 @@
 <code><a href="../reference/prim_convolution.html">prim_convolution()</a></code> and <code><a href="../reference/nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="../reference/nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="../reference/nv_conv3d.html">nv_conv3d()</a></code> are now differentiable.</li>
 <li>
 <code>AnvlArray</code>s can now be saved with <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code> and friends; they load onto the default device, not the one they were saved from. Arrays of the pjrt backend no longer cache their device in a <code>$device</code> field.</li>
+<li>A jitted function called without array inputs whose program is pinned to a device by an array it closes over no longer recompiles when the default device changes.</li>
 <li>A classed R value, such as a <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> array, is an error under <code><a href="../reference/jit.html">jit()</a></code> instead of being read through its storage type.</li>
 <li>
 <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> returns <code>NaN</code> for a <code>NaN</code> <code>mean</code> or a non-finite or negative <code>sd</code>, like <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm()</a></code>.</li>

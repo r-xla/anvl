@@ -176,6 +176,10 @@ e.g. the key of the global random state.</p></li>
 successful run with the call's arguments: it advances the host object
 of each side effect by its count, e.g. a random state passed as an
 argument.</p></li>
+<li><p><code>uses_default_device</code>: Whether the program was compiled for
+<code>fallback_device</code> (or the default device) because nothing else named
+one. <code>FALSE</code> means its device is fixed by <code>device</code>, the inputs or the
+traced arrays, which the default device does not affect.</p></li>
 </ul></div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
