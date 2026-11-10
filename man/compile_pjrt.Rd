@@ -9,6 +9,7 @@ compile_pjrt(
   args_flat,
   in_tree,
   donate = character(),
+  xla_options = list(),
   device = NULL,
   arg_device = NULL,
   fallback_device = NULL,
@@ -27,6 +28,9 @@ Tree structure of the inputs.}
 
 \item{donate}{(\code{character()})\cr
 Names of the arguments whose buffers should be donated.}
+
+\item{xla_options}{(named \code{list()})\cr
+XLA options for this compile, passed to \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \code{PJRTDevice})\cr
 Target device (e.g. \code{"cpu"}, \code{"cuda"}). If \code{NULL}, inferred from
