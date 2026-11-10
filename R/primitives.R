@@ -4,6 +4,7 @@
 #' @include promotion.R
 #' @include primitive.R
 #' @include jit.R
+#' @include side-effects.R
 
 # `operands` names the two arguments: `lhs` / `rhs` for an operator whose two
 # sides play the same role, names of their own where they differ.
@@ -2518,14 +2519,17 @@ prim_if <- new_primitive(
 
     current_desc <- current_descriptor(silent = TRUE)
 
-    desc_true <- local_descriptor()
+    desc_true <- local_descriptor(side_effects_mode = "capture")
     true_graph <- trace_fn(true, list(), desc = desc_true)
-    desc_false <- local_descriptor()
+    desc_false <- local_descriptor(side_effects_mode = "capture")
     false_graph <- trace_fn(false, list(), desc = desc_false)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
+    # A branch that uses a side effect closes over the enclosing trace's view
+    # of it, which continues after the larger of the branches' counts.
+    desc_end_capture(current_desc, list(true_graph, false_graph))
 
     # What the branches close over becomes their inputs -- both take all of it,
     # in the same order -- and the call's operands after `pred`.
@@ -2602,13 +2606,14 @@ prim_while <- new_primitive(
     if (is.null(state_names) || any(state_names == "")) {
       cli_abort("{.arg init} must have only named arguments.")
     }
+    abort_if_side_effects(init, "init")
 
     current_desc <- current_descriptor(silent = TRUE)
     init <- unflatten(build_tree(init), lapply(flatten(init), materialize_operand, desc = current_desc))
 
     desc_cond <- local_descriptor()
     cond_graph <- trace_fn(cond, init, desc = desc_cond)
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(body, init, desc = desc_body)
 
     if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
@@ -2619,17 +2624,27 @@ prim_while <- new_primitive(
       cli_abort("body must have the same input and output structure")
     }
 
+    # A body that uses side effects carries them as the last members of the
+    # loop state, which `cond` takes too but does not read. The loop runs a
+    # number of times not known while tracing, so a side effect forks: the body
+    # advances a value derived from the current one, which the loop itself
+    # advances by one use, and drops it at the end.
+    loop <- desc_begin_loop(current_desc, body_graph, steps = NULL)
+    cond_graph$inputs <- c(cond_graph$inputs, side_effects_loop_twins(loop))
+    operands <- c(flatten(init), loop$operands)
+
     # `cond` and `body` take the state, then what either of them closes over;
     # the call's operands are the same.
     captures <- purify_subgraphs(current_desc, list(cond_graph, body_graph))
 
     out <- graph_desc_add(
       self,
-      args = c(flatten(init), captures),
+      args = c(operands, captures),
       params = list(cond = cond_graph, body = body_graph, n_captures = length(captures)),
       infer_fn = infer_while,
       desc = current_desc
     )
+    out <- desc_end_loop(current_desc, loop, out)
 
     unflatten(body_graph$out_tree, out)
   },
@@ -2648,10 +2663,13 @@ prim_while <- new_primitive(
 #' along axis 1 with that axis dropped.
 #' @param init (`list()`)\cr
 #'   Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-#'   shape and data type across steps.
+#'   shape and data type across steps. It must not contain a random state: to
+#'   draw from one in `body`, make it the default before the loop with
+#'   [local_nv_rng_state()].
 #' @param xs (`list()`)\cr
 #'   Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-#'   all of size `steps` along it. An empty list runs a counted loop.
+#'   all of size `steps` along it. An empty list runs a counted loop. It must
+#'   not contain a random state.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning `list(carry = , out = )`,
 #'   where `carry` has the structure of `init` and `out` is a (possibly
@@ -2688,6 +2706,8 @@ prim_scan <- new_primitive(
     # delayed promise evaluation can cause the value to be added to the wrong graph descriptor
     force(init)
     force(xs)
+    abort_if_side_effects(init, "init")
+    abort_if_side_effects(xs, "xs")
     if (!is.function(body)) {
       cli_abort("{.arg body} must be a function.")
     }
@@ -2749,8 +2769,14 @@ prim_scan <- new_primitive(
       list(carry = st$carry, out = st$out)
     }
 
-    desc_body <- local_descriptor()
+    desc_body <- local_descriptor(side_effects_mode = "loop")
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body)
+    # A body that uses side effects carries them as the last leaves of the
+    # carry.
+    n_user_carry <- n_carry
+    loop <- desc_begin_loop(current_desc, body_graph, steps = steps, at = n_carry)
+    init_flat <- c(init_flat, loop$operands)
+    n_carry <- n_carry + length(loop$operands)
     # The body takes the carry, the `xs` slices, then what it closes over; the
     # call's operands are the carry, `xs`, then the same captures.
     captures <- purify_subgraphs(current_desc, list(body_graph))
@@ -2797,6 +2823,7 @@ prim_scan <- new_primitive(
       infer_fn = infer_fn,
       desc = current_desc
     )
+    out <- desc_end_loop(current_desc, loop, out, at = n_user_carry)
     unflatten(body_graph$out_tree, out)
   },
   subgraphs = "body",
@@ -3213,55 +3240,74 @@ prim_print <- new_primitive(
 )
 
 # RNG primitives
-#' @title Primitive RNG Bit Generator
+#' @title Primitive Random Bits
 #' @description
-#' Generates pseudo-random numbers using the specified algorithm and returns
-#' the updated RNG state together with the generated values.
-#' @param state ([`arrayish`])\cr
-#'   RNG state: a 1-D array of the `ui64` data type. Its length depends on
-#'   `rng_algorithm` -- exactly 2 for `"THREE_FRY"`, 2 or 3 for `"PHILOX"`,
-#'   and whatever the implementation wants for `"DEFAULT"`.
-#' @param rng_algorithm (`character(1)`)\cr
-#'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
-#'   leaving the choice to the implementation.
-#' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values. Can be any numeric data type.
+#' Draws random bits from the active random state (see [nv_set_seed()]) with
+#' the ThreeFry-2x32 counter-based generator of
+#' `r cite_bib("salmon2011parallel")`, and advances that random state by one
+#' step.
+#'
+#' See `r roxy_article("random-numbers")` for more details.
 #' @template param_shape
-#' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `state`, the updated RNG state with the input `state`'s data type
-#'   and shape, and `values`, the random values with the given `dtype` and
-#'   `shape`.
-#' @templateVar primitive_id rng_bit_generator
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   An unsigned integer data type: `"ui8"`, `"ui16"`, `"ui32"` or `"ui64"`.
+#' @template section_rng_state
+#' @return ([`arrayish`])\cr
+#'   The random bits, of data type `dtype` and shape `shape`. Every value is
+#'   made from an encrypted 64-bit block of its own: a `"ui64"` value is the
+#'   block, and a narrower value the xor of the block's two 32-bit words,
+#'   truncated to its low bits, as JAX's `jax.random.bits()` does by default.
+#'   The value at a position thus does not depend on the number of values
+#'   drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
+#'   `shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` is not a
+#'   draw of `6` filled into `c(2, 3)` in R's column-major order.
+#' @references
+#' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
+#' @templateVar primitive_id sample_bits
 #' @template section_rules
-#' @section StableHLO:
-#' `r roxy_spec("rng_bit_generator")`
 #' @seealso [nv_runif()], [nv_rnorm()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # THREE_FRY, the default, takes a two-element state
-#' state <- nv_array(c(0L, 0L), dtype = "ui64")
-#' prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
-#'
-#' # the updated state feeds the next draw, so the two differ
-#' out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
-#' prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
-#'
-#' # PHILOX also accepts a three-element state
-#' prim_rng_bit_generator(
-#'   nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
-#'   dtype = "i32", shape = 4L
-#' )
+#' nv_get_rng_state()
+#' prim_sample_bits(2L, "ui32")
+#' # The counter is incremented by 1
+#' nv_get_rng_state()
+#' # A random state of its own is drawn from within with_nv_rng_state():
+#' custom_rng <- nv_rng_state(1L)
+#' custom_rng
+#' with_nv_rng_state(custom_rng, prim_sample_bits(2L, "ui32"))
+#' # And it is still updated
+#' custom_rng
+#' # And does not affect the global RNG
+#' nv_get_rng_state()
 #' @export
-prim_rng_bit_generator <- new_primitive(
-  "rng_bit_generator",
-  function(state, rng_algorithm = "THREE_FRY", dtype, shape) {
+prim_sample_bits <- new_primitive(
+  "sample_bits",
+  function(shape, dtype) {
+    # the key and the counter this draw splits at, which the call takes as its
+    # operands
     graph_desc_add(
       self,
-      list(state = state),
-      params = list(rng_algorithm = rng_algorithm, dtype = dtype, shape = shape),
-      infer_fn = infer_rng_bit_generator
-    )
+      desc_use_side_effect(current_descriptor(), active_rng_state()),
+      params = list(shape = shape, dtype = dtype),
+      infer_fn = infer_sample_bits
+    )[[1L]]
   },
-  static = 2:4
+  static = c("shape", "dtype")
+)
+
+# Primitive fork of the random state, which is not exported: what it gives is a
+# random state, which is no value in a trace, so only `side_effect_fork()` calls
+# it, for the body of an `nv_while()` that draws. It splits the active random
+# state (k, c) like a draw of `prim_sample_bits()` does, advancing it to
+# (k, c + 1), and instead of drawing from the fresh key returns the child random
+# state (ThreeFry_k(c), 0) as `list(key = <ui32[2]>, counter = <ui64[]>)`.
+prim_fork_rng_state <- new_primitive(
+  "fork_rng_state",
+  function() {
+    # the fork is a use of the random state, as a draw is
+    effect <- active_rng_state()
+    side_effect_fork(effect, desc_use_side_effect(current_descriptor(), effect))
+  }
 )
 
 #' @title Primitive Scatter

@@ -1,6 +1,28 @@
 # anvl (development version)
 
-* `gradient()` differentiates through `nv_scan()` / `prim_scan()`.
+## Breaking changes
+
+* `transform_gradient()` is renamed to `graph_gradient()`.
+* `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`.
+* The RNG state is now handled by {anvl} itself and RNG states no
+  longer have to be passed around. This comes with functions such
+  as `nv_set_seed()`. See the random numbers article for more details.
+
+## Features
+
+* `AnvlArray`s can now be serialized.
+* New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()`
+  and `nv_float64()` create an array of the data type in their name.
+* New functions for the binomial distribution: `nv_{d,p,q}binom()`.
+* New functions for the exponential distribution: `nv_{d,p,q}exp()`.
+* A side effects mechanism was added to anvl, which drives the RNG
+  handling and provides a basis for more side effects in the future.
+  See the side effects section of the internals article for more details.
+* Registering custom classes that can be (un-)flattened is now supported
+  via `pjrt::register_tree_node()`.
+* Bugfix: `nv_cumsum()`, `nv_cumprod()`, `nv_cummax()`, `nv_cummin()`, `nv_extract_diag()`,
+  `nv_trace()` and `nv_quantile()` now accept an array with a size-0 axis; `nv_quantile()`
+  reducing over one is an informative error.
 * New `prim_custom_gradient()` computes a value with one function and
   differentiates it with another. A `rule_reverse()` with a forward pass can
   take the place of the latter, so that the backward pass reads what the
@@ -12,40 +34,46 @@
 * `nv_subset_assign()` and `[<-` take `update_fn` too, so
   `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
   subset, every value of an index that is repeated in `i`.
-* Bugfix: An update that `prim_scatter()` drops as out of bounds no longer gets
-  a gradient when `unique_indices = TRUE`.
-* Bugfix: An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
+* `gradient()` differentiates through `nv_scan()` / `prim_scan()`.
+
+## Bug fixes
+
+* `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
   `prim_dynamic_update_slice()`) no longer wraps around to the last position.
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
   now differentiable.
-
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
-
-* Bugfix: A classed R value, such as a `bit64::integer64` array, is an error
+* A classed R value, such as a `bit64::integer64` array, is an error
   under `jit()` instead of being read through its storage type.
-* Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+* `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
   negative `sd`, like `rnorm()`.
-* Bugfix: `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
+* `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
   gives a clear error for an empty population.
-* Breaking: `transform_gradient()` is renamed to `graph_gradient()`.
-* Bugfix: `nv_seq()` counts down at an unsigned data type instead of erroring.
-* Bugfix: The gradient of an empty strided `prim_static_slice()` has the shape
+* `nv_seq()` counts down at an unsigned data type instead of erroring.
+* The gradient of an empty strided `prim_static_slice()` has the shape
   of its input.
-* Bugfix: The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in
+* The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in
   `x` at exponent 0.
-* Bugfix: The gradient of `nv_pad()` / `prim_pad()` works for negative edge
+* The gradient of `nv_pad()` / `prim_pad()` works for negative edge
   padding.
-* Bugfix: The gradient of `prim_broadcast_in_axes()` is no longer permuted for
+* The gradient of `prim_broadcast_in_axes()` is no longer permuted for
   broadcast axes that are not in increasing order.
-* Bugfix: An `NA` in an `array()` subset index now gives an informative error.
-* Bugfix: the common data type of arrays and R values no longer depends on the order of the
+* An `NA` in an `array()` subset index now gives an informative error.
+* The common data type of arrays and R values no longer depends on the order of the
   arguments; the R values take the data type the arrays agree on.
-* Bugfix: `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
-* Bugfix: `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
-* Bugfix: `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
-* Bugfix: `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
+* `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+* `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
+* `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+* `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
+* The gradient of `prim_dot_general()` with respect to `lhs` is right when
+* `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+* `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
+* `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+* nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
   summed at the default float.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
@@ -60,8 +88,16 @@
   several times faster from about 100 rows on and compiles faster.
 * Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
   `lhs` has batching axes but no free axes.
-* Bugfix: `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
+* `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
   axis to size 0.
+* An update that `prim_scatter()` drops as out of bounds no longer gets
+  a gradient when `unique_indices = TRUE`.
+
+## Performance
+
+* Converting `AnvlArray`s to R is now faster.
+* Cholesky decomposition is now much faster.
+* Linear algebra primitives in `f32` are now faster on windows.
 
 # anvl 0.5.1
 

@@ -153,6 +153,33 @@ test_that("evaluates each argument exactly once, also under S3 dispatch", {
   expect_equal(n, 1L)
 })
 
+describe("a jitted function called in a trace", {
+  # `note(name)` records `name` in `seen$names` when it is evaluated.
+  seen <- new.env()
+  note <- function(name) {
+    seen$names <- c(seen$names, name)
+    nv_scalar(1)
+  }
+
+  it("evaluates its arguments before its body, in the order an eager call does", {
+    # the body reads the arguments in reverse
+    g <- jit(function(a, b, ...) ..1 + b + a)
+    seen$names <- character()
+    g(note("a"), note("b"), note("dots"))
+    expect_identical(seen$names, c("a", "b", "dots"))
+    seen$names <- character()
+    jit(function() g(note("a"), note("b"), note("dots")))()
+    expect_identical(seen$names, c("a", "b", "dots"))
+  })
+
+  it("evaluates an argument it does not use, as an eager call does", {
+    g <- jit(function(x, unused) x)
+    seen$names <- character()
+    jit(function() g(nv_scalar(1), note("unused")))()
+    expect_identical(seen$names, "unused")
+  })
+})
+
 test_that("jitted function has class JitFunction", {
   f_jit <- jit(function(x) x)
   expect_s3_class(f_jit, "JitFunction")

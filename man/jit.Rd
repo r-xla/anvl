@@ -56,6 +56,13 @@ Wraps a function so that it is traced and compiled on first call. Subsequent
 calls with the same input structure, shapes, and dtypes hit an LRU cache and
 skip recompilation.
 }
+\section{Stochastic Functions}{
+
+A function that draws random numbers also reads and advances the global
+random state.
+See the the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random Number Generation} article for more details.
+}
+
 \section{Backend and device}{
 
 A jitted function runs on the active backend \emph{when it is called}

@@ -752,7 +752,7 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
 # requires one, or if the body makes it depend on something that does -- a
 # required `xs` or capture, or another such slot. The set only grows, so this
 # reaches its fixed point within `n_carry` rounds. A slot outside it, such as
-# an RNG state or a counter, is neither differentiated nor has to be.
+# a random state or a counter, is neither differentiated nor has to be.
 scan_carry_requires <- function(body, required, carry_idx) {
   seeds <- required
   repeat {

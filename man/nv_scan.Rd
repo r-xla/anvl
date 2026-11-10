@@ -9,7 +9,7 @@ nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
 \arguments{
 \item{init}{(\code{\link{arrayish}} | \code{list()})\cr
 Initial carry: a single array or a (possibly nested) named list.
-Every slot must keep a fixed shape and dtype across steps.}
+Every slot must keep a fixed shape and dtype across steps}
 
 \item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
 Per-step inputs, sliced along axis 1. All leaves must agree on

@@ -353,20 +353,23 @@ describe("prim_if", {
     expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(6, 12, 18))
   })
 
-  it("leaves an RNG state a branch returns undifferentiated", {
-    f <- function(p, x, st) {
-      r <- nv_if(
+  it("leaves the random state a branch draws from undifferentiated", {
+    local_nv_seed(1L)
+    f <- function(p, x) {
+      a <- nv_if(
         p,
-        function() {
-          d <- nv_rnorm(integer(), st, dtype = "f64")
-          list(st = d$state, a = nv_sum(x) * d$values)
-        },
-        function() list(st = st, a = nv_sum(x))
+        function() nv_sum(x) * nv_rnorm(integer(), dtype = "f64"),
+        function() nv_sum(x)
       )
-      r$a + nv_rnorm(integer(), r$st, dtype = "f64")$values
+      a + nv_rnorm(integer(), dtype = "f64")
     }
-    grad <- jit(gradient(f, wrt = "x"))(false_, x, nv_rng_state(1L))$x
+    grad <- jit(gradient(f, wrt = "x"))(false_, x)$x
     expect_equal(as.numeric(grad), c(1, 1, 1))
+
+    # through the branch that draws, the gradient is that draw
+    z <- with_nv_seed(1L, as.numeric(nv_rnorm(integer(), dtype = "f64")))
+    grad <- with_nv_seed(1L, jit(gradient(f, wrt = "x"))(true_, x)$x)
+    expect_equal(as.numeric(grad), rep(z, 3L))
   })
 
   it("lets a branch take the gradient of a value it closes over", {
@@ -1995,19 +1998,20 @@ describe("prim_scan", {
   })
 
   it("leaves a carry that does not depend on wrt undifferentiated", {
-    # The RNG state has no reverse rule, and needs none: it does not depend on x.
-    f <- function(x, st) {
+    # The scan carries the random state the body draws from. That state has no
+    # reverse rule, and needs none: it does not depend on x.
+    f <- function(x) {
       body <- function(carry, xs) {
-        r <- nv_rnorm(integer(), carry$st, dtype = "f64")
-        list(carry = list(st = r$state, a = carry$a + xs$v * r$values), out = r$values)
+        z <- nv_rnorm(integer(), dtype = "f64")
+        list(carry = list(a = carry$a + xs$v * z), out = z)
       }
-      r <- prim_scan(list(st = st, a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      r <- prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
       list(value = r$carry$a, draws = r$out)
     }
-    st <- nv_rng_state(1L)
-    draws <- as.numeric(jit(f)(x, st)$draws)
-    loss <- function(x, st) f(x, st)$value
-    expect_equal(as.numeric(jit(gradient(loss, wrt = "x"))(x, st)$x), draws)
+    draws <- with_nv_seed(1L, as.numeric(jit(f)(x)$draws))
+    loss <- function(x) f(x)$value
+    grad <- with_nv_seed(1L, jit(gradient(loss))(x)[[1L]])
+    expect_equal(as.numeric(grad), draws)
   })
 
   it("differentiates its own backward pass", {
@@ -2034,21 +2038,21 @@ describe("prim_scan", {
     expect_equal(as.numeric(jit(d3)(w, h)), 27 * 0.7 * exp(0.9))
   })
 
-  it("leaves an RNG state it carries on undifferentiated after the scan", {
-    # The final state feeds another draw, which needs no gradient either.
-    f <- function(x, st) {
+  it("leaves the random state it draws from undifferentiated after the scan", {
+    # A draw after the scan continues from the random state the scan leaves,
+    # and needs no gradient either.
+    f <- function(x) {
       body <- function(carry, xs) {
-        d <- nv_rnorm(integer(), carry$st, dtype = "f64")
-        list(carry = list(st = d$state, a = carry$a + xs$v * d$values), out = d$values)
+        z <- nv_rnorm(integer(), dtype = "f64")
+        list(carry = list(a = carry$a + xs$v * z), out = z)
       }
-      r <- prim_scan(list(st = st, a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
-      last <- nv_rnorm(integer(), r$carry$st, dtype = "f64")$values
+      r <- prim_scan(list(a = nv_scalar(0, "f64")), list(v = x), body, steps = 3L)
+      last <- nv_rnorm(integer(), dtype = "f64")
       list(value = r$carry$a * last, draws = r$out, last = last)
     }
-    st <- nv_rng_state(1L)
-    run <- jit(f)(x, st)
-    loss <- function(x, st) f(x, st)$value
-    grad <- jit(gradient(loss, wrt = "x"))(x, st)$x
+    run <- with_nv_seed(1L, jit(f)(x))
+    loss <- function(x) f(x)$value
+    grad <- with_nv_seed(1L, jit(gradient(loss))(x)[[1L]])
     expect_equal(as.numeric(grad), as.numeric(run$draws) * as.numeric(run$last))
   })
 
