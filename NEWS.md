@@ -1,5 +1,8 @@
 # anvl (development version)
 
+* Bugfix: `nv_cumsum()`, `nv_cumprod()`, `nv_cummax()`, `nv_cummin()`, `nv_extract_diag()`,
+  `nv_trace()` and `nv_quantile()` now accept an array with a size-0 axis; `nv_quantile()`
+  reducing over one is an informative error.
 * New `prim_custom_gradient()` computes a value with one function and
   differentiates it with another. A `rule_reverse()` with a forward pass can
   take the place of the latter, so that the backward pass reads what the
@@ -17,11 +20,9 @@
   `prim_dynamic_update_slice()`) no longer wraps around to the last position.
 * `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
   now differentiable.
-
 * `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
   the default device, not the one they were saved from. Arrays of the
   pjrt backend no longer cache their device in a `$device` field.
-
 * Bugfix: A classed R value, such as a `bit64::integer64` array, is an error
   under `jit()` instead of being read through its storage type.
 * Bugfix: `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
