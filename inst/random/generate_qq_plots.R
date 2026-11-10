@@ -1,9 +1,9 @@
 f <- function() {
-  nv_rnorm(nv_array(c(1, 2), dtype = "ui64"), dtype = "f64", shape = c(200L, 300L, 400L))
+  nv_rnorm(dtype = "f64", shape = c(200L, 300L, 400L))
 }
 g <- jit(f)
 out <- g()
-Z <- as_array(out[[2]])
+Z <- as_array(out)
 
 # Open PNG device first
 png("inst/random/qq_rnorm.png", width = 800, height = 800)

@@ -3490,7 +3490,7 @@ nv_while <- prim_while
 #'
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
-#'   Every slot must keep a fixed shape and dtype across steps.
+#'   Every slot must keep a fixed shape and dtype across steps
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
 #'   Per-step inputs, sliced along axis 1. All leaves must agree on
 #'   the size of axis 1. `NULL` or a list with no leaves runs a counted
@@ -3522,6 +3522,9 @@ nv_while <- prim_while
 #' )$out
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
+  # before `as_anvl_array()` meets a random state among them
+  abort_if_side_effects(init, "init")
+  abort_if_side_effects(xs, "xs")
   init <- map_tree(init, as_anvl_array)
   xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
 

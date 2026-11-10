@@ -14,7 +14,7 @@ nv_punif(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qunif(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_runif(shape, state, min = 0, max = 1, dtype = NULL)
+nv_runif(shape, min = 0, max = 1, dtype = NULL)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -42,24 +42,18 @@ Probabilities at which to evaluate the quantile function. Values outside
 \item{shape}{(\code{integer()})\cr
 Shape of the result.}
 
-\item{state}{(\code{\link{arrayish}})\cr
-RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
-returns. The data type and length are fixed by the generator, not by the
-default data types, and the returned \code{state} has them too.}
-
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Floating point data type of the sample.
 The default (\code{NULL}) takes it from \code{min} and \code{max}, and uses the
 \link[=default_dtypes]{default float type} where both are R values.}
 }
 \value{
-(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+(\code{\link{arrayish}})\cr
 \code{nv_dunif()}, \code{nv_punif()}, and \code{nv_qunif()} return an \code{\link{arrayish}} with the
 same shape as \code{x}/\code{q}/\code{p} and the float data type described under Data Types.
 
-\code{nv_runif()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
-RNG state with the input \code{state}'s data type and shape, and \code{values}, the
-sample of shape \code{shape} and the data type described under \code{dtype}.
+\code{nv_runif()} returns the sample, an \code{\link{arrayish}} of shape \code{shape} and the data
+type described under \code{dtype}.
 }
 \description{
 Density (\code{nv_dunif}), distribution function (\code{nv_punif}), quantile
@@ -92,16 +86,27 @@ An R value for \code{min} or \code{max} takes the computing data type. An array 
 promoted to it, so a wider one (e.g. \code{f64} for an \code{f32} \code{x}) is an error.
 }
 
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \section{Random generation}{
 
-\code{nv_runif} samples from the open interval \eqn{(a, b)}.
+\code{nv_runif} draws uniforms on the open interval \eqn{(0, 1)} and scales them
+to \eqn{(a, b)}. Rounding to the data type can still give \eqn{a} or
+\eqn{b} where the interval is narrow next to its magnitude, e.g. for
+\code{nv_runif(n, 1e6, 1e6 + 1)} at \code{f32}.
 
 \code{min} and \code{max} are \code{\link{arrayish}}, so they may vary across the sample: they
 are applied to the draws after they have been reshaped to \code{shape}, and so
 may either be scalars or have exactly that shape. As in base R's \code{runif()},
 an element whose \code{min} equals its \code{max} is that value, and one whose \code{min} or
-\code{max} is not finite, or whose \code{max} is less than its \code{min}, is \code{NaN}. The RNG
-state is advanced regardless.
+\code{max} is not finite, or whose \code{max} is less than its \code{min}, is \code{NaN}. The
+random state is advanced regardless.
 }
 
 \examples{
@@ -128,22 +133,21 @@ nv_qunif(p, min = -1, max = 2)
 nv_qunif(p, lower_tail = FALSE)
 nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 
-# `state` is the updated RNG state, `values` the sample
-state <- nv_rng_state(42L)
-result <- nv_runif(c(2, 3), state)
-result$values
+with_nv_seed(42L, nv_runif(c(2, 3)))
 
 # `min`/`max` may also be arrays of the same shape as the sample
 lower <- nv_array(matrix(c(0, 10, 20, 30, 40, 50), nrow = 2))
-nv_runif(c(2, 3), state, min = lower, max = lower + 1)$values
+nv_runif(c(2, 3), min = lower, max = lower + 1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 Other rng:
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}},
 \code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_sample]{nv_sample()}},
-\code{\link[=nv_sample_int]{nv_sample_int()}}
+\code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}}
 }
 \concept{rng}

@@ -64,6 +64,15 @@ for an array one. \code{NULL} for a call whose inputs are all arrays.
 \item \code{device}: The \code{PJRTDevice} the executable was compiled for.
 \item \code{phantom_specs}: One \code{list(dtype, shape)} per phantom donated input the
 executor must allocate for an output (see \code{\link[=stablehlo]{stablehlo()}}).
+\item \code{implicit_inputs}: One \code{list(get, dtype, shape)} per value of a side
+effect the program takes from outside of it, which pjrt's dispatcher
+supplies as an input after the call's own: \code{get()} takes no arguments
+and returns the current value, a \code{PJRTBuffer} of \code{dtype} and \code{shape},
+e.g. the key of the global random state.
+\item \code{on_success}: \code{NULL}, or a function pjrt's dispatcher calls after every
+successful run with the call's arguments: it advances the host object
+of each side effect by its count, e.g. a random state passed as an
+argument.
 }
 }
 \description{

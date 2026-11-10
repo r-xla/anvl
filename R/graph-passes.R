@@ -1,6 +1,10 @@
+# Calls `fn` on every use of a node in `graph`: the operands of its calls and
+# its outputs. Inputs and constants are definitions, not uses, and are not
+# visited, so a constant that no call reads and no output returns is not visited
+# at all.
 # Sub-graphs are closed -- what they read of this graph is an operand of their
 # call -- so the passes below never have to look into them.
-traverse_gnodes <- function(graph, fn) {
+traverse_uses <- function(graph, fn) {
   for (call in graph$statements) {
     for (input in call$inputs) {
       fn(input)
@@ -25,7 +29,8 @@ copy_graph <- function(graph) {
     static_args_flat = graph$static_args_flat,
     # Positional, one entry per input: a pass may replace an input in place but
     # must not reorder or drop one, so this carries over as it is.
-    rdata_types = graph$rdata_types
+    rdata_types = graph$rdata_types,
+    side_effects = graph$side_effects
   )
 }
 
@@ -33,7 +38,7 @@ remove_unused_constants <- function(graph) {
   new_graph <- copy_graph(graph)
 
   is_used <- hashtab()
-  traverse_gnodes(new_graph, function(gval) {
+  traverse_uses(new_graph, function(gval) {
     if (is_graph_value(gval) && is_concrete_array(gval$aval)) {
       is_used[[gval]] <- TRUE
     }
