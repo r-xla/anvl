@@ -43,12 +43,6 @@
 #'     one's trace is traced into the outer program, so only the options of
 #'     the outermost `jit()` take effect: pass them as
 #'     `jit(value_and_gradient(f), xla_options = ...)`, not to a jitted `f`.
-#'     For example, on the CPU,
-#'     `list(xla_backend_extra_options = "xla_cpu_use_multi_output_fusion")`
-#'     keeps XLA's compiler from recomputing cheap values inside every
-#'     kernel that reads them, which can make compile time quadratic in the
-#'     size of the program, e.g. for the gradient of a long chain of
-#'     [`nv_pmax()`] calls.
 #'   * `unwrap` (`logical(1)`, default `FALSE`), `"quickr"` only: if `TRUE`,
 #'     the compiled function returns plain R arrays instead of
 #'     [`AnvlArray`]s, which is useful when the output is consumed by non-anvl
