@@ -3264,6 +3264,7 @@ prim_print <- new_primitive(
 #' @section StableHLO:
 #' `r roxy_spec("optimization_barrier")`
 #' All arrays in `xs` share a single barrier.
+#' @seealso [nv_optimization_barrier()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Prevent fusion of the square root and multiplication with the addition.
 #' f <- jit(function(x) {

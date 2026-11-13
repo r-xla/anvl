@@ -55,3 +55,6 @@ f <- jit(function(x) {
 f(nv_array(c(1, 4, 9)))
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\code{\link[=nv_optimization_barrier]{nv_optimization_barrier()}}
+}
