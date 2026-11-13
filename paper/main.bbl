@@ -1,0 +1,444 @@
+\begin{thebibliography}{65}
+\newcommand{\enquote}[1]{``#1''}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi:\discretionary{}{}{}#1}\else
+  \providecommand{\doi}{doi:\discretionary{}{}{}\begingroup
+  \urlstyle{rm}\Url}\fi
+\providecommand{\eprint}[2][]{\url{#2}}
+
+\bibitem[{ref(2018)}]{ref-reticulate-issue197}
+ (2018).
+\newblock \enquote{What Should {NA} Be Converted to in {Python}? Issue \#197,
+  rstudio/reticulate.}
+\newblock \url{https://github.com/rstudio/reticulate/issues/197}.
+\newblock Accessed 2026-09-24.
+
+\bibitem[{ref(2024)}]{ref-reticulate-issue1647}
+ (2024).
+\newblock \enquote{Reticulate Can't Handle Large Integer Values. Issue \#1647,
+  rstudio/reticulate.}
+\newblock \url{https://github.com/rstudio/reticulate/issues/1647}.
+\newblock Accessed 2026-09-24.
+
+\bibitem[{Abadi \emph{et~al.}(2016)Abadi, Barham, Chen, Chen, Davis, Dean,
+  Devin, Ghemawat, Irving, Isard \emph{et~al.}}]{ref-abadi2016tensorflow}
+Abadi M, Barham P, Chen J, Chen Z, Davis A, Dean J, Devin M, Ghemawat S, Irving
+  G, Isard M, \emph{et~al.} (2016).
+\newblock \enquote{{TensorFlow}: A System for Large-Scale Machine Learning.}
+\newblock In \emph{12th USENIX Symposium on Operating Systems Design and
+  Implementation (OSDI 16)}, pp. 265--283.
+
+\bibitem[{Allaire and Tang(2025)}]{ref-r-tensorflow}
+Allaire J, Tang Y (2025).
+\newblock \emph{tensorflow: R Interface to TensorFlow}.
+\newblock R package version 2.20.0,
+  \urlprefix\url{https://CRAN.R-project.org/package=tensorflow}.
+
+\bibitem[{Ansel \emph{et~al.}(2024)Ansel, Yang, He, Gimelshein, Jain,
+  Voznesensky \emph{et~al.}}]{ref-ansel2024pytorch}
+Ansel J, Yang E, He H, Gimelshein N, Jain A, Voznesensky M, \emph{et~al.}
+  (2024).
+\newblock \enquote{{PyTorch} 2: Faster Machine Learning Through Dynamic
+  {Python} Bytecode Transformation and Graph Compilation.}
+\newblock In \emph{Proceedings of the 29th ACM International Conference on
+  Architectural Support for Programming Languages and Operating Systems, Volume
+  2}, pp. 929--947.
+\newblock \doi{10.1145/3620665.3640366}.
+
+\bibitem[{Bell(2012)}]{ref-cppad}
+Bell BM (2012).
+\newblock \enquote{CppAD: a package for C++ algorithmic differentiation.}
+\newblock \emph{Computational Infrastructure for Operations Research},
+  \textbf{57}(10), 3.
+
+\bibitem[{Bezanson \emph{et~al.}(2017)Bezanson, Edelman, Karpinski, and
+  Shah}]{ref-bezanson2017julia}
+Bezanson J, Edelman A, Karpinski S, Shah VB (2017).
+\newblock \enquote{Julia: A Fresh Approach to Numerical Computing.}
+\newblock \emph{SIAM Review}, \textbf{59}(1), 65--98.
+
+\bibitem[{Bradbury \emph{et~al.}(2018)Bradbury, Frostig, Hawkins, Johnson,
+  Leary, Maclaurin, Necula, Paszke, Vander{P}las, Wanderman-{M}ilne, and
+  Zhang}]{ref-jax}
+Bradbury J, Frostig R, Hawkins P, Johnson MJ, Leary C, Maclaurin D, Necula G,
+  Paszke A, Vander{P}las J, Wanderman-{M}ilne S, Zhang Q (2018).
+\newblock \enquote{JAX: Composable Transformations of Python+NumPy Programs.}
+\newblock Github repository. URL \url{https://github.com/jax-ml/jax}.
+
+\bibitem[{Buckner \emph{et~al.}(2010)Buckner, Wilson, Seligman, Athey, Watson,
+  and Meng}]{ref-gputools}
+Buckner J, Wilson J, Seligman M, Athey B, Watson S, Meng F (2010).
+\newblock \enquote{The {gputools} Package Enables {GPU} Computing in {R}.}
+\newblock \emph{Bioinformatics}, \textbf{26}(1), 134--135.
+\newblock \doi{10.1093/bioinformatics/btp608}.
+
+\bibitem[{B{\"u}rkner(2017)}]{ref-brms}
+B{\"u}rkner PC (2017).
+\newblock \enquote{brms: An R package for Bayesian multilevel models using
+  Stan.}
+\newblock \emph{Journal of statistical software}, \textbf{80}, 1--28.
+
+\bibitem[{Carpenter \emph{et~al.}(2017)Carpenter, Gelman, Hoffman, Lee,
+  Goodrich, Betancourt, Brubaker, Guo, Li, and Riddell}]{ref-stan}
+Carpenter B, Gelman A, Hoffman MD, Lee D, Goodrich B, Betancourt M, Brubaker M,
+  Guo J, Li P, Riddell A (2017).
+\newblock \enquote{Stan: A probabilistic programming language.}
+\newblock \emph{Journal of statistical software}, \textbf{76}, 1--32.
+
+\bibitem[{Carpenter \emph{et~al.}(2015)Carpenter, Hoffman, Brubaker, Lee, Li,
+  and Betancourt}]{ref-stanmath}
+Carpenter B, Hoffman MD, Brubaker M, Lee D, Li P, Betancourt M (2015).
+\newblock \enquote{The {Stan} Math Library: Reverse-Mode Automatic
+  Differentiation in {C++}.}
+\newblock \emph{arXiv preprint arXiv:1509.07164}.
+
+\bibitem[{de~Valpine \emph{et~al.}(2017)de~Valpine, Turek, Paciorek,
+  Anderson-Bergman, Lang, and Bodik}]{ref-nimble}
+de~Valpine P, Turek D, Paciorek CJ, Anderson-Bergman C, Lang DT, Bodik R
+  (2017).
+\newblock \enquote{Programming with Models: Writing Statistical Algorithms for
+  General Model Structures with {NIMBLE}.}
+\newblock \emph{Journal of Computational and Graphical Statistics},
+  \textbf{26}(2), 403--413.
+\newblock \doi{10.1080/10618600.2016.1172487}.
+
+\bibitem[{Degris(2024)}]{ref-gx}
+Degris T (2024).
+\newblock \enquote{{GX}: A Domain Specific Programming Language for
+  Array-Computing.}
+\newblock \urlprefix\url{https://github.com/gx-org/gx}.
+
+\bibitem[{Determan(2019)}]{ref-gpur}
+Determan C (2019).
+\newblock \emph{{gpuR}: {GPU} Functions for {R} Objects}.
+\newblock R package, archived on CRAN in November 2025,
+  \urlprefix\url{https://CRAN.R-project.org/package=gpuR}.
+
+\bibitem[{Eddelbuettel and Fran\c{c}ois(2011)}]{ref-rcpp}
+Eddelbuettel D, Fran\c{c}ois R (2011).
+\newblock \enquote{{Rcpp}: Seamless {R} and {C++} Integration.}
+\newblock \emph{Journal of Statistical Software}, \textbf{40}(8), 1--18.
+\newblock \doi{10.18637/jss.v040.i08}.
+
+\bibitem[{{Elixir Nx Team}(2026)}]{ref-nx}
+{Elixir Nx Team} (2026).
+\newblock \emph{Nx: Multi-Dimensional Arrays (Tensors) and Numerical
+  Definitions for Elixir}.
+\newblock \urlprefix\url{https://github.com/elixir-nx/nx}.
+
+\bibitem[{{EnzymeAD Contributors}(2026)}]{ref-reactant}
+{EnzymeAD Contributors} (2026).
+\newblock \emph{Reactant.jl: Optimize Julia Functions with {MLIR} and {XLA}}.
+\newblock \urlprefix\url{https://github.com/EnzymeAD/Reactant.jl}.
+
+\bibitem[{Falbel and Luraschi(2025{\natexlab{a}})}]{ref-torch-memory}
+Falbel D, Luraschi J (2025{\natexlab{a}}).
+\newblock \enquote{Memory Management.}
+\newblock \url{https://torch.mlverse.org/docs/articles/memory-management}.
+\newblock Torch for R documentation, accessed 2026-09-25.
+
+\bibitem[{Falbel and Luraschi(2025{\natexlab{b}})}]{ref-rtorch}
+Falbel D, Luraschi J (2025{\natexlab{b}}).
+\newblock \emph{torch: Tensors and Neural Networks with 'GPU' Acceleration}.
+\newblock \doi{10.32614/CRAN.package.torch}.
+\newblock R package version 0.17.0,
+  \urlprefix\url{https://CRAN.R-project.org/package=torch}.
+
+\bibitem[{Fidler \emph{et~al.}(2025)Fidler, Hallow, Wilkins, and
+  Wang}]{ref-rxode2}
+Fidler M, Hallow M, Wilkins J, Wang W (2025).
+\newblock \emph{rxode2: Facilities for Simulating from {ODE}-Based Models}.
+\newblock R package version 5.0.1,
+  \urlprefix\url{https://CRAN.R-project.org/package=rxode2}.
+
+\bibitem[{FitzJohn(2025)}]{ref-odin}
+FitzJohn R (2025).
+\newblock \emph{odin: ODE Generation and Integration}.
+\newblock \doi{10.32614/CRAN.package.odin}.
+\newblock R package version 1.2.7,
+  \urlprefix\url{https://CRAN.R-project.org/package=odin}.
+
+\bibitem[{Gabry \emph{et~al.}(2025)Gabry, \v{C}e\v{s}novar, Johnson, and
+  Bronder}]{ref-cmdstanr}
+Gabry J, \v{C}e\v{s}novar R, Johnson A, Bronder S (2025).
+\newblock \emph{cmdstanr: {R} Interface to 'CmdStan'}.
+\newblock R package version 0.9.0,
+  \urlprefix\url{https://mc-stan.org/cmdstanr/}.
+
+\bibitem[{Golding(2019)}]{ref-greta}
+Golding N (2019).
+\newblock \enquote{{greta}: Simple and Scalable Statistical Modelling in {R}.}
+\newblock \emph{Journal of Open Source Software}, \textbf{4}(40), 1601.
+\newblock \doi{10.21105/joss.01601}.
+
+\bibitem[{Graham(2026)}]{ref-garry}
+Graham H (2026).
+\newblock \emph{garry: Lazy, Spatial-Aware Raster Arrays with JIT-Compiled
+  Kernels}.
+\newblock R package version 0.1.0,
+  \urlprefix\url{https://github.com/belian-earth/garry}.
+
+\bibitem[{Griewank and Walther(2008)}]{ref-griewank2008evaluating}
+Griewank A, Walther A (2008).
+\newblock \emph{Evaluating derivatives: principles and techniques of
+  algorithmic differentiation}.
+\newblock 2nd edition. SIAM.
+\newblock \doi{10.1137/1.9780898717761}.
+
+\bibitem[{Guennebaud \emph{et~al.}(2010)Guennebaud, Jacob
+  \emph{et~al.}}]{ref-eigen}
+Guennebaud G, Jacob B, \emph{et~al.} (2010).
+\newblock \emph{\pkg{Eigen} v3}.
+\newblock \urlprefix\url{https://eigen.tuxfamily.org}.
+
+\bibitem[{Hannun \emph{et~al.}(2023)Hannun, Digani, Katharopoulos, and
+  Collobert}]{ref-mlx}
+Hannun A, Digani J, Katharopoulos A, Collobert R (2023).
+\newblock \enquote{{MLX}: Efficient and Flexible Machine Learning on {Apple}
+  Silicon.}
+\newblock \urlprefix\url{https://github.com/ml-explore/mlx}.
+
+\bibitem[{Harris \emph{et~al.}(2020)Harris, Millman, Van Der~Walt, Gommers,
+  Virtanen, Cournapeau, Wieser, Taylor, Berg, Smith
+  \emph{et~al.}}]{ref-harris2020array}
+Harris CR, Millman KJ, Van Der~Walt SJ, Gommers R, Virtanen P, Cournapeau D,
+  Wieser E, Taylor J, Berg S, Smith NJ, \emph{et~al.} (2020).
+\newblock \enquote{Array Programming with NumPy.}
+\newblock \emph{Nature}, \textbf{585}(7825), 357--362.
+
+\bibitem[{He and Zou(2021)}]{ref-functorch}
+He H, Zou R (2021).
+\newblock \enquote{functorch: {JAX}-like Composable Function Transforms for
+  {PyTorch}.}
+\newblock \urlprefix\url{https://github.com/pytorch/functorch}.
+
+\bibitem[{Hess and Palma(2019)}]{ref-apollo}
+Hess S, Palma D (2019).
+\newblock \enquote{Apollo: A Flexible, Powerful and Customisable Freeware
+  Package for Choice Model Estimation and Application.}
+\newblock \emph{Journal of Choice Modelling}, \textbf{32}, 100170.
+\newblock \doi{10.1016/j.jocm.2019.100170}.
+
+\bibitem[{Kalinowski(2026)}]{ref-quickr}
+Kalinowski T (2026).
+\newblock \emph{quickr: Compiler for R}.
+\newblock R package version 0.3.0.9000,
+  \urlprefix\url{https://github.com/t-kalinowski/quickr}.
+
+\bibitem[{Kalinowski \emph{et~al.}(2026{\natexlab{a}})Kalinowski, Allaire, and
+  Chollet}]{ref-keras3}
+Kalinowski T, Allaire J, Chollet F (2026{\natexlab{a}}).
+\newblock \emph{keras3: R Interface to Keras}.
+\newblock R package version 1.5.1,
+  \urlprefix\url{https://CRAN.R-project.org/package=keras3}.
+
+\bibitem[{Kalinowski \emph{et~al.}(2026{\natexlab{b}})Kalinowski, Ushey,
+  Allaire, and Tang}]{ref-reticulate}
+Kalinowski T, Ushey K, Allaire J, Tang Y (2026{\natexlab{b}}).
+\newblock \emph{reticulate: Interface to 'Python'}.
+\newblock \doi{10.32614/CRAN.package.reticulate}.
+\newblock R package version 1.47.0,
+  \urlprefix\url{https://CRAN.R-project.org/package=reticulate}.
+
+\bibitem[{Kr{\"a}mer and Xie(2026)}]{ref-ast2ast}
+Kr{\"a}mer K, Xie F (2026).
+\newblock \emph{ast2ast}.
+\newblock \urlprefix\url{https://github.com/Konrad1991/ast2ast/}.
+
+\bibitem[{Kristensen(2025)}]{ref-rtmb}
+Kristensen K (2025).
+\newblock \emph{{RTMB}: {R} Bindings for {TMB}}.
+\newblock \doi{10.32614/CRAN.package.RTMB}.
+\newblock \urlprefix\url{https://CRAN.R-project.org/package=RTMB}.
+
+\bibitem[{Kristensen \emph{et~al.}(2016)Kristensen, Nielsen, Berg, Skaug, and
+  Bell}]{ref-tmb}
+Kristensen K, Nielsen A, Berg CW, Skaug H, Bell BM (2016).
+\newblock \enquote{TMB: Automatic Differentiation and Laplace Approximation.}
+\newblock \emph{Journal of Statistical Software}, \textbf{70}(5).
+\newblock ISSN 1548-7660.
+\newblock \doi{10.18637/jss.v070.i05}.
+\newblock \urlprefix\url{http://dx.doi.org/10.18637/jss.v070.i05}.
+
+\bibitem[{Lobato-Fern\'{a}ndez \emph{et~al.}(2025)Lobato-Fern\'{a}ndez,
+  Ferrer-Bonsoms, and Rubio}]{ref-gpumatrix}
+Lobato-Fern\'{a}ndez C, Ferrer-Bonsoms JA, Rubio A (2025).
+\newblock \emph{{GPUmatrix}: Basic Linear Algebra with {GPU}}.
+\newblock R package version 1.0.3,
+  \urlprefix\url{https://CRAN.R-project.org/package=GPUmatrix}.
+
+\bibitem[{Maclaurin \emph{et~al.}(2015)Maclaurin, Duvenaud, and
+  Adams}]{ref-autograd}
+Maclaurin D, Duvenaud D, Adams RP (2015).
+\newblock \enquote{Autograd: Effortless Gradients in {NumPy}.}
+\newblock In \emph{ICML 2015 AutoML Workshop}.
+\newblock \urlprefix\url{https://github.com/HIPS/autograd}.
+
+\bibitem[{Morandat \emph{et~al.}(2012)Morandat, Hill, Osvald, and
+  Vitek}]{ref-evaluating-r}
+Morandat F, Hill B, Osvald L, Vitek J (2012).
+\newblock \enquote{Evaluating the design of the R language: Objects and
+  functions for data analysis.}
+\newblock In \emph{European conference on object-oriented programming}, pp.
+  104--131. Springer.
+
+\bibitem[{Neal(2011)}]{ref-neal2011mcmc}
+Neal RM (2011).
+\newblock \enquote{{MCMC} Using {H}amiltonian Dynamics.}
+\newblock In S~Brooks, A~Gelman, GL~Jones, XL~Meng (eds.), \emph{Handbook of
+  Markov Chain Monte Carlo}, pp. 113--162. Chapman and Hall/CRC.
+
+\bibitem[{Nocedal and Wright(2006)}]{ref-nocedal2006numerical}
+Nocedal J, Wright SJ (2006).
+\newblock \emph{Numerical Optimization}.
+\newblock 2nd edition. Springer-Verlag, New York.
+\newblock \doi{10.1007/978-0-387-40065-5}.
+
+\bibitem[{{OpenXLA Team}(2026)}]{ref-openxla}
+{OpenXLA Team} (2026).
+\newblock \emph{OpenXLA}.
+\newblock \urlprefix\url{https://openxla.org/}.
+
+\bibitem[{Paszke \emph{et~al.}(2019)Paszke, Gross, Massa, Lerer, Bradbury,
+  Chanan, Killeen, Lin, Gimelshein, Antiga \emph{et~al.}}]{ref-pytorch}
+Paszke A, Gross S, Massa F, Lerer A, Bradbury J, Chanan G, Killeen T, Lin Z,
+  Gimelshein N, Antiga L, \emph{et~al.} (2019).
+\newblock \enquote{PyTorch: An Imperative Style, High-Performance Deep Learning
+  Library.}
+\newblock \emph{Advances in neural information processing systems},
+  \textbf{32}.
+
+\bibitem[{Pav(2023)}]{ref-madness}
+Pav SE (2023).
+\newblock \emph{{madness}: Automatic Differentiation of Multivariate
+  Operations}.
+\newblock R package version 0.2.8,
+  \urlprefix\url{https://github.com/shabbychef/madness}.
+
+\bibitem[{Perdry(2024)}]{ref-salad}
+Perdry H (2024).
+\newblock \emph{salad: Simple Automatic Differentiation}.
+\newblock \doi{10.32614/CRAN.package.salad}.
+\newblock R package version 1.2,
+  \urlprefix\url{https://CRAN.R-project.org/package=salad}.
+
+\bibitem[{Pfeifer(2026{\natexlab{a}})}]{ref-gomlx}
+Pfeifer J (2026{\natexlab{a}}).
+\newblock \emph{GoMLX: An Accelerated Machine Learning Framework for Go}.
+\newblock \urlprefix\url{https://github.com/gomlx/gomlx}.
+
+\bibitem[{Pfeifer(2026{\natexlab{b}})}]{ref-gopjrt}
+Pfeifer J (2026{\natexlab{b}}).
+\newblock \emph{gopjrt: Go Wrappers for {OpenXLA} {PJRT}}.
+\newblock \urlprefix\url{https://github.com/gomlx/gopjrt}.
+
+\bibitem[{{PJRT Team}(2026)}]{ref-pjrt}
+{PJRT Team} (2026).
+\newblock \emph{PJRT: Pluggable JIT RunTime}.
+\newblock \urlprefix\url{https://openxla.org/pjrt/}.
+
+\bibitem[{{Posit Software, PBC}(2026{\natexlab{a}})}]{ref-reticulate-arrays}
+{Posit Software, PBC} (2026{\natexlab{a}}).
+\newblock \enquote{Arrays in {R} and {Python}.}
+\newblock \url{https://rstudio.github.io/reticulate/articles/arrays.html}.
+\newblock Reticulate vignette, accessed 2026-09-24.
+
+\bibitem[{{Posit Software, PBC}(2026{\natexlab{b}})}]{ref-reticulate-pyrequire}
+{Posit Software, PBC} (2026{\natexlab{b}}).
+\newblock \enquote{Declare {Python} Requirements: py\_require().}
+\newblock \url{https://rstudio.github.io/reticulate/reference/py_require.html}.
+\newblock Reticulate 1.47.0 reference, accessed 2026-09-24.
+
+\bibitem[{{Posit Software, PBC}(2026{\natexlab{c}})}]{ref-tf-slicing}
+{Posit Software, PBC} (2026{\natexlab{c}}).
+\newblock \enquote{Introduction to Tensor Slicing.}
+\newblock
+  \url{https://tensorflow.rstudio.com/guides/tensorflow/tensor_slicing}.
+\newblock TensorFlow for R guide, accessed 2026-09-24.
+
+\bibitem[{{R Core Team}(2025{\natexlab{a}})}]{ref-r}
+{R Core Team} (2025{\natexlab{a}}).
+\newblock \emph{R: A Language and Environment for Statistical Computing}.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \urlprefix\url{https://www.R-project.org/}.
+
+\bibitem[{{R Core Team}(2025{\natexlab{b}})}]{ref-r-exts}
+{R Core Team} (2025{\natexlab{b}}).
+\newblock \emph{Writing \proglang{R} Extensions}.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock
+  \urlprefix\url{https://CRAN.R-project.org/doc/manuals/r-release/R-exts.html}.
+
+\bibitem[{Sartore(2025)}]{ref-dual}
+Sartore L (2025).
+\newblock \emph{dual: Automatic Differentiation with Dual Numbers}.
+\newblock \doi{10.32614/CRAN.package.dual}.
+\newblock R package version 0.0.6,
+  \urlprefix\url{https://CRAN.R-project.org/package=dual}.
+
+\bibitem[{{StableHLO Team}(2026)}]{ref-stablehlo}
+{StableHLO Team} (2026).
+\newblock \emph{StableHLO}.
+\newblock \urlprefix\url{https://openxla.org/stablehlo/spec}.
+
+\bibitem[{{The IREE Authors}(2019)}]{ref-iree}
+{The IREE Authors} (2019).
+\newblock \enquote{{IREE}.}
+\newblock \urlprefix\url{https://github.com/iree-org/iree}.
+
+\bibitem[{{The JAX Authors}(2024)}]{ref-autodidax}
+{The JAX Authors} (2024).
+\newblock \enquote{Autodidax: {JAX} Core from Scratch.}
+\newblock \urlprefix\url{https://docs.jax.dev/en/latest/autodidax.html}.
+
+\bibitem[{{The MicroJAX Authors}(2024)}]{ref-microjax}
+{The MicroJAX Authors} (2024).
+\newblock \emph{MicroJAX}.
+\newblock \urlprefix\url{https://github.com/joey00072/microjax}.
+
+\bibitem[{Tierney \emph{et~al.}(2018)Tierney, Becker, and
+  Kalibera}]{ref-altrep}
+Tierney L, Becker G, Kalibera T (2018).
+\newblock \enquote{{ALTREP}: Alternative Representations for {R} Objects.}
+\newblock
+  \urlprefix\url{https://svn.r-project.org/R/branches/ALTREP/ALTREP.html}.
+
+\bibitem[{Towell(2026)}]{ref-nabla}
+Towell A (2026).
+\newblock \emph{nabla: Exact Derivatives via Automatic Differentiation}.
+\newblock R package version 0.7.1,
+  \urlprefix\url{https://github.com/queelius/nabla}.
+
+\bibitem[{Turcotte \emph{et~al.}(2020)Turcotte, Goel, K{\v{r}}ikava, and
+  Vitek}]{ref-turcotte2020types}
+Turcotte A, Goel A, K{\v{r}}ikava F, Vitek J (2020).
+\newblock \enquote{Designing Types for {R}, Empirically.}
+\newblock \emph{Proceedings of the ACM on Programming Languages},
+  \textbf{4}(OOPSLA), 181:1--181:25.
+\newblock \doi{10.1145/3428249}.
+
+\bibitem[{Urbanek(2026)}]{ref-opencl-r}
+Urbanek S (2026).
+\newblock \emph{{OpenCL}: Interface Allowing {R} to Use {OpenCL}}.
+\newblock R package version 0.2-11,
+  \urlprefix\url{https://CRAN.R-project.org/package=OpenCL}.
+
+\bibitem[{Wang and Morgan(2025)}]{ref-gpumagic}
+Wang J, Morgan M (2025).
+\newblock \emph{{gpuMagic}: An {OpenCL} Compiler with the Capacity to Compile
+  {R} Functions and Run the Code on {GPU}}.
+\newblock Bioconductor package, removed with Bioconductor 3.23,
+  \urlprefix\url{https://bioconductor.org/packages/gpuMagic}.
+
+\bibitem[{Wilke \emph{et~al.}(2026)Wilke, Thomason, Reimert, Kosenkov, Barrett,
+  Parry, and Vernon}]{ref-rextendr}
+Wilke CO, Thomason A, Reimert MM, Kosenkov I, Barrett M, Parry J, Vernon K
+  (2026).
+\newblock \emph{rextendr: Build 'Rust' Powered 'R' Packages}.
+\newblock R package version 0.5.0,
+  \urlprefix\url{https://CRAN.R-project.org/package=rextendr}.
+
+\end{thebibliography}

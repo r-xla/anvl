@@ -1,3 +1,0 @@
-* [ ] abbreviations consistently used
-* [ ] each sentence is in its own line
-* [ ] Citations correct
