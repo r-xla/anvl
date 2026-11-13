@@ -3,7 +3,7 @@
 # Older TeX distributions need xparse loaded explicitly for \NewDocumentCommand.
 set -euo pipefail
 cd "$(dirname "$0")"
-grep -q '\\usepackage{xparse}' RJwrapper.tex || sed -i 's/\\usepackage{RJournal}/\\usepackage{RJournal}\n\\usepackage{xparse}/' RJwrapper.tex
+grep -q '\\usepackage{xparse}' RJwrapper.tex || perl -0pi -e 's/\\usepackage\{RJournal\}/\\usepackage{RJournal}\n\\usepackage{xparse}/' RJwrapper.tex
 pdflatex -interaction=nonstopmode RJwrapper.tex > /dev/null || true
 bibtex RJwrapper > /dev/null || true
 pdflatex -interaction=nonstopmode RJwrapper.tex > /dev/null || true

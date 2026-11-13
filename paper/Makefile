@@ -1,6 +1,6 @@
 # Render the paper: knit with rjtools (writes paper.tex and RJwrapper.tex), then run LaTeX.
 pdf: figures/overview.pdf
-	-Rscript -e 'rmarkdown::render("paper.Rmd", output_format = rjtools::rjournal_pdf_article(toc = FALSE))'
+	-Rscript -e 'rmarkdown::render("paper.Rmd", output_format = rjtools::rjournal_pdf_article(toc = FALSE), clean = FALSE)'
 	./build-pdf.sh
 
 # TikZ figures are standalone LaTeX documents.
