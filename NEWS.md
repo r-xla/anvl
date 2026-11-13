@@ -1,3 +1,11 @@
+# anvl (development version)
+
+## Features
+
+* New `prim_optimization_barrier()` returns its input arrays unchanged and
+  keeps the compiler from moving computations across it, so the operations
+  that produce the arrays are not fused with those that use them.
+
 # anvl 0.6.0
 
 ## Breaking changes

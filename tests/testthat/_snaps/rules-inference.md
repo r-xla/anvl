@@ -366,6 +366,24 @@
       ! `decreasing` must be TRUE or FALSE.
       x Got "yes".
 
+# prim_optimization_barrier
+
+    Code
+      prim_optimization_barrier(list())
+    Condition
+      Error in `prim_optimization_barrier()`:
+      ! `xs` must be a non-empty list of arrayish values.
+      x Got nothing to pass through the barrier.
+
+---
+
+    Code
+      prim_optimization_barrier(nv_array(1:4, dtype = "i32"))
+    Condition
+      Error in `prim_optimization_barrier()`:
+      ! `xs` must be a non-empty list of arrayish values.
+      x Got i32[4].
+
 # prim_dot_general
 
     Code
