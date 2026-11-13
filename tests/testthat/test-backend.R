@@ -87,6 +87,55 @@ test_that("install_anvl rejects backends that have nothing to install", {
   expect_error(install_anvl("not-a-backend"))
 })
 
+describe("skip_if_no_pjrt_plugin", {
+  # An empty plugin cache and none of the variables that make a plugin
+  # available otherwise. The plugin this session already loaded is unaffected.
+  local_no_pjrt_plugin <- function(envir = parent.frame()) {
+    withr::local_envvar(
+      R_USER_CACHE_DIR = withr::local_tempdir(.local_envir = envir),
+      PJRT_PLUGIN_PATH_CPU = NA,
+      PJRT_PLUGIN_PATH_CUDA = NA,
+      PJRT_INSTALL = NA,
+      .local_envir = envir
+    )
+  }
+
+  it("skips when the plugin is neither downloaded, pointed to, nor allowed to download", {
+    local_no_pjrt_plugin()
+    expect_condition(skip_if_no_pjrt_plugin("cpu"), class = "skip")
+    withr::local_envvar(PJRT_INSTALL = "0")
+    expect_condition(skip_if_no_pjrt_plugin("cpu"), class = "skip")
+  })
+
+  it("does not skip when the plugin is downloaded", {
+    local_no_pjrt_plugin()
+    dir.create(file.path(tools::R_user_dir("pjrt", "cache"), "cpu"), recursive = TRUE)
+    expect_no_condition(skip_if_no_pjrt_plugin("cpu"), class = "skip")
+  })
+
+  it("does not skip when PJRT_PLUGIN_PATH_<PLATFORM> points to the plugin", {
+    local_no_pjrt_plugin()
+    withr::local_envvar(PJRT_PLUGIN_PATH_CPU = "libpjrt_cpu.so")
+    expect_no_condition(skip_if_no_pjrt_plugin("cpu"), class = "skip")
+    expect_condition(skip_if_no_pjrt_plugin("cuda"), class = "skip")
+  })
+
+  it("does not skip when PJRT_INSTALL=1 allows downloading the plugin", {
+    local_no_pjrt_plugin()
+    withr::local_envvar(PJRT_INSTALL = "1")
+    expect_no_condition(skip_if_no_pjrt_plugin("cpu"), class = "skip")
+  })
+
+  it("defaults to the platform of the default device", {
+    local_no_pjrt_plugin()
+    withr::local_envvar(PJRT_PLUGIN_PATH_CPU = "libpjrt_cpu.so")
+    local_default_device("cuda:1")
+    expect_condition(skip_if_no_pjrt_plugin(), class = "skip")
+    local_default_device("cpu")
+    expect_no_condition(skip_if_no_pjrt_plugin(), class = "skip")
+  })
+})
+
 describe("eager code", {
   it("rejects an array of another backend instead of guessing a default", {
     skip_if_no_quickr()

@@ -1,3 +1,8 @@
+# anvl (development version)
+
+* New `skip_if_no_pjrt_plugin()` skips a test when no PJRT plugin is available,
+  as on CRAN. The new "Depending on anvl" article explains its use.
+
 # anvl 0.6.0
 
 ## Breaking changes

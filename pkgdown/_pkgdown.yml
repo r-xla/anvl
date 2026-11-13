@@ -69,6 +69,9 @@ navbar:
         href: articles/internals.html
       - text: Available Primitives
         href: articles/primitives.html
+      - text: Packages
+      - text: "Depending on anvl"
+        href: articles/depending-on-anvl.html
 
 reference:
   - title: Array
@@ -478,3 +481,8 @@ reference:
     contents:
       - anvl-package
       - install_anvl
+
+  - title: Testing
+    desc: Helpers for the tests of packages that depend on anvl
+    contents:
+      - skip_if_no_pjrt_plugin

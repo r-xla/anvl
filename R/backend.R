@@ -320,3 +320,48 @@ install_anvl <- function(backend = active_backend(), ...) {
   )
   invisible(NULL)
 }
+
+#' Skip a Test When No PJRT Plugin Is Available
+#'
+#' @description
+#' Skips the calling \CRANpkg{testthat} test unless the PJRT plugin for
+#' `platform` can be used without a prompt or an error: it is downloaded, the
+#' `PJRT_PLUGIN_PATH_<PLATFORM>` environment variable (e.g.
+#' `PJRT_PLUGIN_PATH_CPU`) points to it, or `PJRT_INSTALL=1` allows downloading
+#' it on first use.
+#'
+#' The PJRT plugins are downloaded rather than shipped with \CRANpkg{pjrt}, so
+#' no plugin is available on CRAN. A package that depends on anvl calls this at
+#' the top of each test that runs anvl code on the `"pjrt"` backend; see
+#' `r roxy_article("depending-on-anvl")`.
+#'
+#' @param platform (`NULL` | `character(1)`)\cr
+#'   Platform whose plugin the test needs, e.g. `"cpu"` or `"cuda"`. `NULL`
+#'   takes the platform of the [default device][default_device()], which is
+#'   where a test that names no device runs. It is read off the device's
+#'   identifier, so no plugin is loaded to find it.
+#' @return (`NULL`)\cr
+#'   Invisibly, when the plugin is available. Otherwise, the test is skipped.
+#' @seealso [install_anvl()]
+#' @examplesIf requireNamespace("testthat", quietly = TRUE)
+#' testthat::test_that("arrays add up", {
+#'   skip_if_no_pjrt_plugin()
+#'   testthat::expect_equal(as_array(nv_scalar(1) + 2), 3)
+#' })
+#' @export
+skip_if_no_pjrt_plugin <- function(platform = NULL) {
+  platform <- platform %||% sub(":.*$", "", as.character(default_device_id()))
+  assert_string(platform)
+  if (!pjrt_plugin_available(platform)) {
+    testthat::skip(sprintf("The PJRT plugin for platform '%s' is not available.", platform))
+  }
+  invisible(NULL)
+}
+
+# Whether the PJRT plugin for `platform` loads without a prompt or an error,
+# by the rules of `pjrt:::plugin_path()` and `pjrt:::confirm_plugin_install()`.
+pjrt_plugin_available <- function(platform) {
+  nzchar(Sys.getenv(paste0("PJRT_PLUGIN_PATH_", toupper(platform)))) ||
+    pjrt::plugins_downloaded(platform) ||
+    identical(Sys.getenv("PJRT_INSTALL"), "1")
+}

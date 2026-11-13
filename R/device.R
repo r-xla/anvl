@@ -15,8 +15,13 @@
 #' @export
 default_device <- function(backend = NULL) {
   backend <- backend %||% active_backend()
-  device <- getOption("anvl.default_device") %||% globals[["env_default_device"]] %||% "cpu"
-  backend_device(device, backend)
+  backend_device(default_device_id(), backend)
+}
+
+# The identifier (or device object) `default_device()` resolves, without
+# resolving it: no backend is asked, so no PJRT plugin is loaded.
+default_device_id <- function() {
+  getOption("anvl.default_device") %||% globals[["env_default_device"]] %||% "cpu"
 }
 
 #' @title Temporarily Set the Default Device
