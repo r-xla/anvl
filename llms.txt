@@ -131,6 +131,15 @@ Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
 ✓ supported  ·  WSL2: via the Windows Subsystem for Linux  ·  ✗ not
 supported
 
+## anvl in the Wild
+
+Projects that build on {anvl}:
+
+|  |  |
+|:--:|----|
+| [![garry logo](reference/figures/logo-garry.png)](https://github.com/belian-earth/garry) | [**garry**](https://github.com/belian-earth/garry) is a lazy, spatial-aware raster engine. It plans a whole raster computation as one graph, runs it in chunks across processes, and JIT-compiles the numeric kernels with {anvl}. |
+| [![Apollo logo](reference/figures/logo-apollo.png)](https://www.apollochoicemodelling.com) | [**Apollo**](https://www.apollochoicemodelling.com) is a flexible package for the estimation and application of choice models. |
+
 ## Acknowledgments
 
 - This work is supported by [MaRDI](https://www.mardi4nfdi.de).
