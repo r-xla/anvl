@@ -204,6 +204,27 @@ describe("infer_sort()", {
   })
 })
 
+describe("infer_optimization_barrier()", {
+  it("mirrors each input, whatever its data type and shape", {
+    x <- nv_aval("f32", c(2L, 3L))
+    i <- nv_aval("i32", integer())
+    expect_equal(infer_optimization_barrier(x, i), list(x, i))
+  })
+
+  it("names `xs`, the argument the primitive collects the arrays in", {
+    expect_error(
+      infer_optimization_barrier(nv_aval("f32", 3L), 1L),
+      "`xs[[2]]` must be an array",
+      fixed = TRUE
+    )
+    expect_error(
+      infer_optimization_barrier(),
+      "`xs` must be a non-empty list",
+      fixed = TRUE
+    )
+  })
+})
+
 describe("infer_dot_general()", {
   it("puts the batch axes first, then the free axes of lhs and rhs", {
     lhs <- nv_aval("f32", c(5L, 2L, 3L))
@@ -639,6 +660,11 @@ test_that("prim_sort", {
   # against `xs[[1L]]`. It answers in the rule's terms instead.
   expect_snapshot(error = TRUE, prim_sort(list(), axis = 1L))
   expect_snapshot(error = TRUE, prim_sort(list(nv_array(1:4)), axis = 1L, decreasing = "yes"))
+})
+
+test_that("prim_optimization_barrier", {
+  expect_snapshot(error = TRUE, prim_optimization_barrier(list()))
+  expect_snapshot(error = TRUE, prim_optimization_barrier(nv_array(1:4, dtype = "i32")))
 })
 
 test_that("prim_dot_general", {

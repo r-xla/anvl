@@ -602,6 +602,61 @@ nv_static_slice <- prim_static_slice
 #' @export
 nv_print <- prim_print
 
+#' @title Optimization Barrier
+#' @description
+#' Returns the input arrays unchanged, converting any R values to arrays, and
+#' prevents the compiler from moving computations across the barrier.
+#' Operations that produce the input arrays must complete before operations that
+#' use the returned arrays.
+#'
+#' A barrier prevents fusion between these operations. This can improve
+#' performance when fusion would prevent vectorization or repeat an expensive
+#' computation. It can also increase memory traffic, so benchmark the result
+#' before using a barrier for performance.
+#'
+#' [prim_optimization_barrier()] takes a flat list of arrays. This function also
+#' accepts a single array or a nested list, and returns it with the same
+#' structure and names. All arrays share a single barrier.
+#' @param x ([`arrayish`] | `list`)\cr
+#'   An array or a list of arrays, nested to any depth (see
+#'   [`RTree`][pjrt::build_tree]). The arrays may have different data types and
+#'   shapes. R values are materialized at their
+#'   [default data type][default_dtypes].
+#' @return ([`arrayish`] | `list`)\cr
+#'   An array or nested list of arrays with the same structure and names as
+#'   `x`. Existing arrays retain their values, data types and shapes; R values
+#'   are materialized as described above. A list without any elements to pass
+#'   through, such as `list()` or `list(a = list())`, is returned unchanged.
+#' @section Gradients:
+#' [gradient()] passes the gradients through unchanged, with a separate
+#' barrier in the backward pass. See [prim_optimization_barrier()].
+#' @seealso [prim_optimization_barrier()] for the underlying primitive.
+#' @examplesIf pjrt::plugins_downloaded()
+#' # Prevent fusion of the square root and multiplication with the addition.
+#' f <- jit(function(x) {
+#'   out <- nv_optimization_barrier(list(a = sqrt(x), b = x * 2))
+#'   out$a + out$b
+#' })
+#' f(nv_array(c(1, 4, 9)))
+#'
+#' # A single array is returned as an array.
+#' nv_optimization_barrier(nv_array(1:3))
+#' @export
+nv_optimization_barrier <- function(x) {
+  # Reject random states: the barrier would pass a state's internal values
+  # through as arrays and rebuild the state from them, giving a copy that cannot
+  # be used to draw random values.
+  abort_if_side_effects(x, "x", hint = "A random state is not an array; pass the arrays drawn from it instead.")
+  x <- map_tree(x, as_anvl_array)
+  leaves <- flatten(x)
+  # Skip the barrier when there are no arrays; the primitive requires at
+  # least one operand.
+  if (!length(leaves)) {
+    return(x)
+  }
+  unflatten(build_tree(x), prim_optimization_barrier(leaves))
+}
+
 #' @title Conditional Element Selection
 #' @description
 #' Selects elements from `yes` or `no` based on `test`, mirroring R's

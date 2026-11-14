@@ -2931,6 +2931,47 @@ describe("nv_mod", {
   })
 })
 
+describe("nv_optimization_barrier", {
+  it("returns a single array as an array", {
+    x <- nv_array(c(1, 2, 3), dtype = "f64")
+    expect_equal(nv_optimization_barrier(x), x)
+    expect_equal(jit(nv_optimization_barrier)(x), x)
+  })
+
+  it("returns a nested tree with its structure", {
+    x <- list(a = nv_array(c(1, 2), dtype = "f32"), b = list(nv_array(1:3, dtype = "i32"), c = nv_scalar(TRUE)))
+    expect_equal(nv_optimization_barrier(x), x)
+    expect_equal(jit(nv_optimization_barrier)(x), x)
+  })
+
+  it("lowers one barrier for all arrays of the tree", {
+    f <- function(x) nv_optimization_barrier(list(a = x, b = list(x * 2)))
+    mlir <- repr(stablehlo(trace_fn(f, list(x = nv_aval("f32", 3L))))[[1L]])
+    expect_length(gregexpr("stablehlo.optimization_barrier", mlir, fixed = TRUE)[[1L]], 1L)
+  })
+
+  it("materializes R values at their default data type", {
+    out <- nv_optimization_barrier(list(a = 1, b = 2L))
+    expect_equal(dtype(out$a), default_float())
+    expect_equal(dtype(out$b), default_int())
+  })
+
+  it("returns a tree without any elements to pass through as it is", {
+    expect_equal(nv_optimization_barrier(list()), list())
+    expect_equal(nv_optimization_barrier(list(a = list())), list(a = list()))
+  })
+
+  it("refuses a random state without pointing at a loop", {
+    x <- list(a = nv_array(1), rng = nv_rng_state(1L))
+    expect_error(nv_optimization_barrier(x), "must not contain a side effect")
+    expect_error(nv_optimization_barrier(x), "pass the arrays drawn from it")
+    expect_no_match(
+      tryCatch(nv_optimization_barrier(x), error = conditionMessage),
+      "loop"
+    )
+  })
+})
+
 describe("nv_scan", {
   cumsum_body <- function(carry, x) {
     s <- carry + x
