@@ -1,6 +1,6 @@
 # Primitives Reference
 
-The table below shows all 103 primitives and which rules they implement.
+The table below shows all 104 primitives and which rules they implement.
 Note that a rule might be missing because it was just not added yet, or
 because it does not apply for a specific primitive.
 
@@ -68,6 +68,7 @@ because it does not apply for a specific primitive.
 | ne                     |     ✓     |    ✓    |   ✓    |
 | negate                 |     ✓     |    ✓    |   ✓    |
 | not                    |     ✓     |    ✓    |   ✓    |
+| optimization_barrier   |     ✓     |    ✓    |   ✓    |
 | or                     |     ✓     |    ✓    |   ✓    |
 | pad                    |     ✓     |    ✓    |   ✓    |
 | plogis                 |     ✓     |    ✓    |   ✓    |

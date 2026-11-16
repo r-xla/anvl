@@ -746,6 +746,8 @@ Helpers supporting the API functions
 
 - [`nv_print()`](https://r-xla.github.io/anvl/reference/nv_print.md) :
   Print Array
+- [`nv_optimization_barrier()`](https://r-xla.github.io/anvl/reference/nv_optimization_barrier.md)
+  : Optimization Barrier
 
 ## Data Types and Promotion
 
@@ -1069,6 +1071,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Negation
 - [`prim_not()`](https://r-xla.github.io/anvl/reference/prim_not.md) :
   Primitive Bitwise Not
+- [`prim_optimization_barrier()`](https://r-xla.github.io/anvl/reference/prim_optimization_barrier.md)
+  : Primitive Optimization Barrier
 - [`prim_or()`](https://r-xla.github.io/anvl/reference/prim_or.md) :
   Primitive Bitwise Or
 - [`prim_pad()`](https://r-xla.github.io/anvl/reference/prim_pad.md) :

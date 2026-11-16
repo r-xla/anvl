@@ -76,6 +76,13 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
+<div class="section level3">
+<h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
+<ul><li>New <code><a href="../reference/prim_optimization_barrier.html">prim_optimization_barrier()</a></code> returns its input arrays unchanged and keeps the compiler from moving computations across it, so the operations that produce the arrays are not fused with those that use them. <code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> does the same for a single array or a tree of arrays, returning it with the same structure.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="anvl-060">anvl 0.6.0<a class="anchor" aria-label="anchor" href="#anvl-060"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-0-6-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-6-0"></a></h3>

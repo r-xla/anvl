@@ -177,6 +177,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/nv_negate.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_normal.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_not.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/nv_optimization_barrier.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_or.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_order.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/nv_outer.html</loc></url>
@@ -308,6 +309,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/prim_ne.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_negate.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_not.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/prim_optimization_barrier.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_or.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_pad.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/prim_plogis.html</loc></url>
