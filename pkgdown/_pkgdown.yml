@@ -345,6 +345,7 @@ reference:
     desc: Helpers supporting the API functions
     contents:
       - nv_print
+      - nv_optimization_barrier
 
   - title: Data Types and Promotion
     desc: Data types, their defaults, and the rules for promoting inputs to a common one

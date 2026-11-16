@@ -1837,6 +1837,14 @@ local({
     }
   )
 
+  # quickr does not fuse operations; lower the barrier to plain assignments.
+  quickr_register_prim_lowerer(
+    prim_optimization_barrier,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      Map(rlang::call2, rep("<-", length(out_syms)), out_syms, inputs)
+    }
+  )
+
   quickr_register_prim_lowerer(
     prim_scatter,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {

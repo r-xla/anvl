@@ -2166,6 +2166,38 @@ describe("prim_print", {
   })
 })
 
+describe("prim_optimization_barrier", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  y <- nv_array(c(-1, 0.5), dtype = "f64")
+
+  it("passes the gradients through", {
+    f <- function(x, y) {
+      out <- prim_optimization_barrier(list(x * x, y))
+      nv_sum(out[[1L]]) + nv_sum(out[[2L]] * 3)
+    }
+    grads <- jit(gradient(f))(x, y)
+    expect_equal(as.numeric(grads$x), c(2, 4, 6))
+    expect_equal(as.numeric(grads$y), c(3, 3))
+  })
+
+  it("gives no gradient to an array that requires none", {
+    i <- nv_array(1:3, dtype = "i32")
+    f <- function(x, i) {
+      out <- prim_optimization_barrier(list(x * x, i))
+      nv_sum(out[[1L]] * nv_convert(out[[2L]], "f64"))
+    }
+    grad <- jit(gradient(f, wrt = "x"))(x, i)
+    expect_equal(as.numeric(grad$x), c(2, 8, 18))
+  })
+
+  it("puts the cotangents behind a barrier of their own", {
+    f <- function(x) nv_sum(prim_optimization_barrier(list(x * x))[[1L]])
+    graph <- trace_fn(gradient(f), list(x = nv_aval("f64", 3L)))
+    mlir <- repr(stablehlo(graph)[[1L]])
+    expect_length(gregexpr("stablehlo.optimization_barrier", mlir, fixed = TRUE)[[1L]], 2L)
+  })
+})
+
 describe("prim_convolution", {
   it("has zero gradients when the result is empty", {
     # a width-3 window does not fit into a width-2 input

@@ -821,6 +821,10 @@ prim_print[["stablehlo"]] <- function(x, header, footer) {
   list(x)
 }
 
+prim_optimization_barrier[["stablehlo"]] <- function(..., output_types) {
+  hlo_optimization_barrier(..., simplify = FALSE, output_types = output_types)
+}
+
 # higher order primitives --------------------------------------------------------
 
 # The operands after `pred` are the branches' inputs. A StableHLO `if` region

@@ -194,15 +194,21 @@ holds_side_effect <- function(x) {
   any(vapply(flatten(x, is_leaf = is_rng_state), is_rng_state, logical(1L)))
 }
 
-# `x`, a tree, unless it holds a side effect: a loop carries side effects
-# itself, so they cannot also be passed through its state. `arg` names the
-# state.
-abort_if_side_effects <- function(x, arg, call = rlang::caller_env()) {
+# Reject trees containing side effects, and return `x` otherwise. `arg` is the
+# caller's argument name. A loop carries side effects itself, so they cannot
+# also be passed through its state; the default hint explains how to use
+# random states in loops. Other callers can supply a more relevant hint.
+abort_if_side_effects <- function(
+  x,
+  arg,
+  hint = "To draw from it in the loop body, make it the default before the loop with {.fn local_nv_rng_state}.",
+  call = rlang::caller_env()
+) {
   if (holds_side_effect(x)) {
     cli_abort(
       c(
         "{.arg {arg}} must not contain a side effect, such as a random state.",
-        i = "To draw from it in the loop body, make it the default before the loop with {.fn local_nv_rng_state}."
+        i = hint
       ),
       call = call
     )
