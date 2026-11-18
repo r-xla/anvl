@@ -148,9 +148,8 @@ Projects that build on {anvl}:
 </td>
 <td>
 <a href="https://github.com/belian-earth/garry"><b>garry</b></a> is a
-lazy, spatial-aware raster engine. It plans a whole raster computation
-as one graph, runs it in chunks across processes, and JIT-compiles the
-numeric kernels with {anvl}.
+lazy, spatial-aware raster engine that JIT-compiles its numeric kernels
+with {anvl}.
 </td>
 </tr>
 <tr>
@@ -163,6 +162,10 @@ flexible package for the estimation and application of choice models.
 </td>
 </tr>
 </table>
+
+If you are building a package on {anvl}, see the [Depending on
+anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.html)
+article for how to test it.
 
 ## Acknowledgments
 
