@@ -94,36 +94,38 @@ params_repr <- function(parts) {
 # no axes) reads as `integer()`. Rules run this before indexing or comparing
 # with a param, so that an `NA` never reaches an `if ()`.
 assert_int_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL, min_len = NULL) {
-  force(arg)
-  x <- x %||% integer()
+  # `x` is never rebound, so that `arg` still deparses the argument when it is
+  # forced, which only an error does: the check runs on every traced operation
+  # that takes an integer parameter.
+  value <- x %||% integer()
   # A param fixed at one entry is spoken of in the singular.
   one <- identical(len, 1L)
-  whole <- if (one) "be a whole number" else "contain whole numbers"
-  problem <- if (!is.numeric(x) || is.object(x)) {
+  problem <- if (!is.numeric(value) || is.object(value)) {
     paste0("be a whole number", if (!one) " vector")
-  } else if (anyNA(x)) {
+  } else if (anyNA(value)) {
     if (one) "not be a missing value" else "not contain missing values"
-  } else if (any(x != trunc(x))) {
-    whole
-  } else if (any(abs(x) > .Machine$integer.max)) {
-    paste(whole, "in the integer range")
-  } else if (!is.null(len) && length(x) != len) {
+  } else if (any(value != trunc(value))) {
+    if (one) "be a whole number" else "contain whole numbers"
+  } else if (any(abs(value) > .Machine$integer.max)) {
+    paste(if (one) "be a whole number" else "contain whole numbers", "in the integer range")
+  } else if (!is.null(len) && length(value) != len) {
     "have {len} entr{cli::qty(len)}{?y/ies}"
-  } else if (!is.null(min_len) && length(x) < min_len) {
+  } else if (!is.null(min_len) && length(value) < min_len) {
     "have at least {min_len} entr{cli::qty(min_len)}{?y/ies}"
   }
   if (!is.null(problem)) {
     cli_abort(c(
       paste0("{.arg {arg}} must ", problem, "."),
-      x = "Got {value_repr(x)}."
+      x = "Got {value_repr(value)}."
     ))
   }
-  invisible(as.integer(x))
+  invisible(as.integer(value))
 }
 
 # A data type the caller named, optionally restricted to some categories.
 assert_dtype_param <- function(x, arg = rlang::as_label(substitute(x)), categories = NULL) {
-  out <- tryCatch(as_dtype(x), error = function(e) NULL)
+  # a data type mostly arrives as one already, which needs no `tryCatch()`
+  out <- if (inherits(x, "DataType")) x else tryCatch(as_dtype(x), error = function(e) NULL)
   if (is.null(out)) {
     cli_abort(c(
       "{.arg {arg}} must name a data type.",

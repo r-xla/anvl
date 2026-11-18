@@ -24,31 +24,32 @@ assert_shape_not_null <- function(x, arg) {
 #'   `x` as an integer vector.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
-  # Before `x` is rebound below: `caller_arg()` deparses whatever `x` holds
-  # when it is first forced, so an unforced default would name the value
-  # (`-2L`) rather than the argument (`shape`).
-  force(var_name)
+  # `x` is never rebound, so that `var_name`, which deparses whatever `x` holds
+  # when it is forced, names the argument (`shape`) rather than the value
+  # (`-2L`) -- and is forced for an error only: the check runs on every traced
+  # operation that takes a shape.
+  #
   # `NULL` is refused rather than read as the empty shape `assert_int_param()`
   # takes it for: a shape is not a set of axes a caller spells with `c()`, and
   # silently building a scalar out of a forgotten argument hides the mistake.
   assert_shape_not_null(x, var_name)
-  x <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL)
-  if (any(x < 0L)) {
+  shape <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL)
+  if (any(shape < 0L)) {
     cli_abort(c(
       "{.arg {var_name}} must not contain a negative axis size.",
-      x = "Got {value_repr(x)}."
+      x = "Got {value_repr(shape)}."
     ))
   }
   # XLA counts an array's elements in an int64. A shape past that -- easy to
   # type, `1:1000` is one -- is otherwise refused at compile time with a raw
   # "overflow in static extent product" listing every axis size.
-  if (prod(as.double(x)) >= 2^63) {
+  if (prod(as.double(shape)) >= 2^63) {
     cli_abort(c(
       "{.arg {var_name}} must describe an array with fewer than 2^63 elements.",
-      x = "Got {value_repr(x)}."
+      x = "Got {value_repr(shape)}."
     ))
   }
-  as.integer(x)
+  shape
 }
 
 # Normalize possibly-negative axis indices.

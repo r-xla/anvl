@@ -16,8 +16,8 @@ GraphValue <- function(aval, label = NULL) {
   env <- new.env(parent = emptyenv())
   env$aval <- aval
   env$label <- label
-
-  structure(env, class = "GraphValue")
+  class(env) <- "GraphValue"
+  env
 }
 
 #' @title Graph Literal
@@ -31,8 +31,8 @@ GraphLiteral <- function(aval) {
   # hot-path constructor: no input validation
   env <- new.env(parent = emptyenv())
   env$aval <- aval
-
-  structure(env, class = "GraphLiteral")
+  class(env) <- "GraphLiteral"
+  env
 }
 
 is_graph_literal <- function(x) {
@@ -93,15 +93,9 @@ NULL
 GraphStatement <- function(primitive, inputs, params, outputs) {
   primitive <- primitive_def(primitive)
   # hot-path constructor: no input validation
-  structure(
-    list(
-      primitive = primitive,
-      inputs = inputs,
-      params = params,
-      outputs = outputs
-    ),
-    class = "GraphStatement"
-  )
+  call <- list(primitive = primitive, inputs = inputs, params = params, outputs = outputs)
+  class(call) <- "GraphStatement"
+  call
 }
 
 #' @title Graph of Statements
@@ -343,7 +337,13 @@ shape.GraphValue <- function(x, ...) {
 
 #' @export
 dtype.GraphValue <- function(x, ...) {
-  dtype(x$aval)
+  aval_dtype(x$aval)
+}
+
+# The data type of the aval `aval`, read off its field: `dtype()` is called
+# several times per traced operation, and only an `RData` has none.
+aval_dtype <- function(aval) {
+  if (inherits(aval, "RData")) dtype(aval) else aval$dtype
 }
 
 #' @export
@@ -395,20 +395,20 @@ descriptor_to_graph <- function(descriptor) {
 #' @export
 GraphBox <- function(gnode, desc) {
   # hot-path constructor: no input validation
-  structure(
-    list(gnode = gnode, desc = desc),
-    class = "GraphBox"
-  )
+  box <- list(gnode = gnode, desc = desc)
+  class(box) <- "GraphBox"
+  box
 }
 
 #' @export
 shape.GraphBox <- function(x, ...) {
-  shape(x$gnode)
+  # every aval keeps its shape in a field (see `shape.AbstractArray()`)
+  unclass(x$gnode$aval$shape)
 }
 
 #' @export
 dtype.GraphBox <- function(x, ...) {
-  dtype(x$gnode)
+  aval_dtype(x$gnode$aval)
 }
 
 #' @export
@@ -515,7 +515,7 @@ register_input <- function(desc, x) {
   }
   desc$inputs <- c(desc$inputs, list(x))
   box <- GraphBox(x, desc)
-  desc$gval_to_box[[x]] <- box
+  sethash(desc$gval_to_box, x, box)
   box
 }
 
@@ -524,13 +524,15 @@ register_gvals <- function(desc, gvals) {
 }
 
 register_gval <- function(desc, x) {
-  # hot path (one call per traced output): no input validation
-  box <- desc$gval_to_box[[x]]
+  # hot path (one call per traced output): no input validation, and the
+  # hashtab is read and written directly rather than through `[[`
+  table <- desc$gval_to_box
+  box <- gethash(table, x)
   if (!is.null(box)) {
     return(box)
   }
   box <- GraphBox(x, desc)
-  desc$gval_to_box[[x]] <- box
+  sethash(table, x, box)
   box
 }
 
@@ -988,9 +990,17 @@ graph_desc_add <- function(
 
   # Box each input; an R value that no promotion rule materialized settles on
   # its default dtype here. `gnodes_in` is unnamed for the GraphStatement,
-  # `avals_in` keeps the arg names for infer_fn.
-  gnodes_in <- lapply(unname(args), \(arg) materialize_rdata_box(maybe_box_arrayish(arg, desc))$gnode)
-  avals_in <- stats::setNames(lapply(gnodes_in, \(gnode) gnode$aval), names(args))
+  # `avals_in` keeps the arg names for infer_fn. Mostly, every input is a box
+  # of this trace already, which `C_operand_nodes` reads off at once.
+  operands <- .Call(C_operand_nodes, args, desc)
+  if (is.null(operands)) {
+    gnodes_in <- lapply(unname(args), \(arg) materialize_rdata_box(maybe_box_arrayish(arg, desc))$gnode)
+    avals_in <- lapply(gnodes_in, `[[`, "aval")
+    names(avals_in) <- names(args)
+  } else {
+    gnodes_in <- operands[[1L]]
+    avals_in <- operands[[2L]]
+  }
   # The primitive under way is named by its wrapper, on the way in; this clears
   # it again once inference has passed, so that a later error somewhere else in
   # the traced function is not attributed to the last primitive that ran.
@@ -999,11 +1009,18 @@ graph_desc_add <- function(
   # An output is computed, whatever its inputs were: an inference rule that
   # hands an input's aval back (`infer_generic_biv()` returns `lhs`) must not
   # make `sin(y)` of a closed-over `y` look like `y` itself. Only a constant's
-  # node carries a `ConcreteArray`.
-  gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))
-  call <- GraphStatement(primitive, gnodes_in, params, gvals_out)
-  desc$statements$add(call)
-  register_gvals(desc, gvals_out)
+  # node carries a `ConcreteArray`. `C_record_call` builds the statement, a
+  # fresh GraphValue per output (as `GraphValue(abstract_aval(aval))`) and a
+  # box of each, which are recorded and registered here.
+  call <- .Call(C_record_call, primitive, gnodes_in, params, ats_out, desc)
+  desc$statements$add(call[[1L]])
+  table <- desc$gval_to_box
+  gvals <- call[[2L]]
+  boxes <- call[[3L]]
+  for (i in seq_along(gvals)) {
+    sethash(table, gvals[[i]], boxes[[i]])
+  }
+  boxes
 }
 
 # A primitive is named for the `prim_*()` that exports it, so the call an error

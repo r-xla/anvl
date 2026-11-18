@@ -65,3 +65,8 @@ tests/testthat/_snaps/*.new.md
 vignettes/articles/figures/*.aux
 vignettes/articles/figures/*.log
 vignettes/articles/figures/*.pdf
+
+# Compiled code
+src/*.o
+src/*.so
+src/*.dll

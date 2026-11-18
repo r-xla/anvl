@@ -164,12 +164,18 @@ jit <- function(
   .jit_dots <- "..." %in% names(.jit_formals)
   # `names()` of no formals at all is NULL, which is not a character vector.
   .jit_names <- setdiff(as.character(names(.jit_formals)), "...")
+  # The calls that forward the supplied arguments to `f` inside a trace, one
+  # per set of supplied arguments, built on first use.
+  .jit_fwd_calls <- new.env(parent = emptyenv())
 
   wrapper <- function() {
     # We don't use eval + match.call() because evaluating a call that itself is a
     # primitive might then get added twice to a graph
     .jit_env <- environment()
-    .jit_given <- intersect(.jit_names, as.character(names(match.call())))
+    # The formals the call supplies, by a `missing()` of each, which `jit()`
+    # splices in below: it runs on every call, also inside a trace, where
+    # `match.call()` would cost several times as much.
+    .jit_given <- .jit_given_expr
 
     # The supplied arguments are evaluated before `f` runs, in the order of its
     # formals and then `...` -- inside a trace too, so that what they draw from
@@ -185,12 +191,18 @@ jit <- function(
     # Inside tracing: pass through to unwrapped function. The arguments are
     # forwarded as the names they are bound to here.
     if (currently_tracing()) {
-      .jit_fwd <- lapply(.jit_given, as.name)
-      names(.jit_fwd) <- .jit_given
-      if (.jit_dots) {
-        .jit_fwd <- c(.jit_fwd, list(quote(...)))
+      .jit_key <- paste(c("|", .jit_given), collapse = "|")
+      .jit_call <- .jit_fwd_calls[[.jit_key]]
+      if (is.null(.jit_call)) {
+        .jit_fwd <- lapply(.jit_given, as.name)
+        names(.jit_fwd) <- .jit_given
+        if (.jit_dots) {
+          .jit_fwd <- c(.jit_fwd, list(quote(...)))
+        }
+        .jit_call <- as.call(c(list(.jit_cfg$f), .jit_fwd))
+        assign(.jit_key, .jit_call, envir = .jit_fwd_calls)
       }
-      return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
+      return(eval(.jit_call, .jit_env))
     }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]
@@ -221,6 +233,11 @@ jit <- function(
     # closure's argument re-capture (and do.call()).
     .jit_run(.jit_args)
   }
+  given <- lapply(.jit_names, function(nm) call("if", call("!", call("missing", as.name(nm))), nm))
+  body(wrapper) <- do.call(
+    substitute,
+    list(body(wrapper), list(.jit_given_expr = as.call(c(list(as.name("c"), character()), given))))
+  )
   formals(wrapper) <- .jit_formals
   class(wrapper) <- "JitFunction"
   wrapper

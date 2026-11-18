@@ -378,8 +378,19 @@ align_arrayish <- function(args) {
 # arrives with every digit it had; anything that already has a dtype is
 # converted.
 materialize_at <- function(x, dtype, device = NULL) {
-  if (is_rdata_box(x)) {
-    return(materialize_rdata(x, dtype))
+  # hot path: a box, mostly one at the data type asked for already
+  if (is_graph_box(x)) {
+    aval <- x$gnode$aval
+    if (is_rdata(aval)) {
+      return(materialize_rdata(x, dtype))
+    }
+    if (!inherits(dtype, "DataType")) {
+      dtype <- as_dtype(dtype)
+    }
+    if (identical(unclass(aval$dtype), unclass(dtype))) {
+      return(x)
+    }
+    return(prim_convert(x, dtype = dtype))
   }
   if (is_valid_r(x)) {
     if (currently_tracing()) {
@@ -908,13 +919,17 @@ backend.QuickrDevice <- function(x, ...) {
 #'
 #' @export
 AbstractArray <- function(dtype, shape) {
-  shape <- as_shape(shape)
-  dtype <- as_dtype(dtype)
-
-  structure(
-    list(dtype = dtype, shape = shape),
-    class = "AbstractArray"
-  )
+  # hot path: inference rules build one per output, mostly from a data type
+  # and a shape that need no conversion
+  if (!is_shape(shape)) {
+    shape <- as_shape(shape)
+  }
+  if (!inherits(dtype, "DataType")) {
+    dtype <- as_dtype(dtype)
+  }
+  x <- list(dtype = dtype, shape = shape)
+  class(x) <- "AbstractArray"
+  x
 }
 
 is_abstract_array <- function(x) {
@@ -1154,7 +1169,8 @@ eq_type <- function(e1, e2) {
       call = NULL
     )
   }
-  dtype(e1) == dtype(e2) && identical(e1$shape, e2$shape)
+  # data types are compared as values: `==` on two of them dispatches twice
+  identical(unclass(e1$dtype), unclass(e2$dtype)) && identical(e1$shape, e2$shape)
 }
 
 #' @rdname eq_type
@@ -1260,14 +1276,15 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #'
 #' @export
 to_abstract <- function(x, pure = FALSE) {
-  x <- if (is_anvl_array(x)) {
+  # a box first: tracing asks for the aval of one most often
+  x <- if (is_graph_box(x)) {
+    x$gnode$aval
+  } else if (is_anvl_array(x)) {
     ConcreteArray(x)
   } else if (is_abstract_array(x)) {
     x
   } else if (test_atomic(x) && (is.logical(x) || is.numeric(x))) {
     RData(shape = shape(x), r_type = typeof(x))
-  } else if (is_graph_box(x)) {
-    x$gnode$aval
   } else {
     cli_abort("internal error: {.cls {class(x)}} is not an array-like object")
   }
