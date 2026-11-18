@@ -164,14 +164,16 @@ assert_choice_param <- function(x, choices, arg = rlang::as_label(substitute(x))
 
 # Sizes that become a shape, so they must also be non-negative.
 assert_size_param <- function(x, arg = rlang::as_label(substitute(x))) {
-  x <- assert_int_param(x, arg)
-  if (any(x < 0L)) {
+  # `x` is never rebound, so that `arg` still deparses the argument when an
+  # error forces it
+  size <- assert_int_param(x, arg)
+  if (any(size < 0L)) {
     cli_abort(c(
       "{.arg {arg}} must not be negative.",
-      x = "Got {value_repr(x)}."
+      x = "Got {value_repr(size)}."
     ))
   }
-  invisible(x)
+  invisible(size)
 }
 
 # A result shape computed in double from the caller's `parts` (params that fit
