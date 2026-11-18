@@ -3239,6 +3239,61 @@ prim_print <- new_primitive(
   }
 )
 
+# Optimization barrier primitive
+#' @title Primitive Optimization Barrier
+#' @description
+#' Returns the input arrays unchanged and prevents the compiler from moving
+#' computations across the barrier. Operations that produce the input arrays
+#' must complete before operations that use the returned arrays.
+#'
+#' A barrier prevents fusion between these operations. This can improve
+#' performance when fusion would prevent vectorization or repeat an expensive
+#' computation. It can also increase memory traffic, so benchmark the result
+#' before using a barrier for performance.
+#'
+#' During reverse-mode differentiation, gradients pass through unchanged,
+#' with a separate barrier in the backward pass.
+#' @param xs (`list` of [`arrayish`])\cr
+#'   A non-empty list of arrays. The arrays may have different data types and
+#'   shapes.
+#' @return (`list` of [`arrayish`])\cr
+#'   The input arrays, with their values, data types, shapes, order and names
+#'   preserved.
+#' @templateVar primitive_id optimization_barrier
+#' @template section_rules
+#' @section StableHLO:
+#' `r roxy_spec("optimization_barrier")`
+#' All arrays in `xs` share a single barrier.
+#' @seealso [nv_optimization_barrier()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' # Prevent fusion of the square root and multiplication with the addition.
+#' f <- jit(function(x) {
+#'   out <- prim_optimization_barrier(list(a = sqrt(x), b = x * 2))
+#'   out$a + out$b
+#' })
+#' f(nv_array(c(1, 4, 9)))
+#' @export
+prim_optimization_barrier <- new_primitive(
+  "optimization_barrier",
+  function(xs) {
+    # An AnvlArray is itself a list; reject it here so its fields aren't
+    # treated as separate operands. infer_optimization_barrier() checks
+    # for an empty list.
+    if (is_arrayish(xs) || !is.list(xs)) {
+      cli_abort(
+        c(
+          "{.arg xs} must be a non-empty list of arrayish values.",
+          x = "Got {value_repr(xs)}."
+        ),
+        call = print_call_repr(self)
+      )
+    }
+    out <- graph_desc_add(self, args = xs, infer_fn = infer_optimization_barrier)
+    names(out) <- names(xs)
+    out
+  }
+)
+
 # RNG primitives
 #' @title Primitive Random Bits
 #' @description

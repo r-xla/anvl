@@ -1053,6 +1053,23 @@ test_that("quickr pipeline matches PJRT: prim_custom_gradient, also differentiat
   expect_quickr_matches_pjrt_fn(cg_ops, templates, list(run))
 })
 
+test_that("quickr pipeline matches PJRT: prim_optimization_barrier", {
+  skip_if_no_quickr_or_pjrt()
+
+  barrier_ops <- function(x, i) {
+    out <- prim_optimization_barrier(list(a = sqrt(x), b = i * 2L))
+    list(a = out$a + 1, b = out$b)
+  }
+
+  templates <- list(
+    x = nv_array(c(0, 0, 0), dtype = "f64"),
+    i = nv_array(c(0L, 0L), dtype = "i32")
+  )
+  run <- list(args = list(x = c(1, 4, 9), i = c(2L, -3L)), info = "run")
+
+  expect_quickr_matches_pjrt_fn(barrier_ops, templates, list(run))
+})
+
 test_that("quickr pipeline matches PJRT: reshape is column-major from rank 1 through 4", {
   skip_if_no_quickr_or_pjrt()
 

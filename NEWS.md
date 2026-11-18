@@ -2,6 +2,13 @@
 
 * New `skip_if_no_pjrt_plugin()` skips a test when no PJRT plugin is available,
   as on CRAN. The new "Depending on anvl" article explains its use.
+## Features
+
+* New `prim_optimization_barrier()` returns its input arrays unchanged and
+  keeps the compiler from moving computations across it, so the operations
+  that produce the arrays are not fused with those that use them.
+  `nv_optimization_barrier()` does the same for a single array or a tree of
+  arrays, returning it with the same structure.
 
 # anvl 0.6.0
 

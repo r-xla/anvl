@@ -118,6 +118,30 @@ knitr::kable(support, align = "llcc")
 
 ✓ supported &nbsp;·&nbsp; WSL2: via the Windows Subsystem for Linux &nbsp;·&nbsp; ✗ not supported
 
+## anvl in the Wild
+
+Projects that build on {anvl}:
+
+<table>
+<tr>
+<td align="center" width="140">
+<a href="https://github.com/belian-earth/garry"><img src="man/figures/logo-garry.png" alt="garry logo" height="100" /></a>
+</td>
+<td>
+<a href="https://github.com/belian-earth/garry"><b>garry</b></a> is a lazy, spatial-aware raster engine.
+It plans a whole raster computation as one graph, runs it in chunks across processes, and JIT-compiles the numeric kernels with {anvl}.
+</td>
+</tr>
+<tr>
+<td align="center" width="140">
+<a href="https://www.apollochoicemodelling.com"><img src="man/figures/logo-apollo.png" alt="Apollo logo" width="110" /></a>
+</td>
+<td>
+<a href="https://www.apollochoicemodelling.com"><b>Apollo</b></a> is a flexible package for the estimation and application of choice models.
+</td>
+</tr>
+</table>
+
 ## Acknowledgments
 
 - This work is supported by [MaRDI](https://www.mardi4nfdi.de).

@@ -1086,6 +1086,14 @@ prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(if (required[[1L]]) grads[[1L]])
 })
 
+# The derivative is the identity. Apply a barrier to the required cotangents
+# to prevent fusion across this point in the backward pass.
+prim_optimization_barrier[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  out <- vector("list", length(inputs))
+  out[required] <- prim_optimization_barrier(grads[required])
+  out
+})
+
 # convert reverse -----------------
 
 # A conversion is the identity, and so passes the cotangent through, only

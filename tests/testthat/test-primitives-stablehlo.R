@@ -1474,6 +1474,45 @@ test_that("prim_print hands its argument back untouched", {
   expect_equal(same, x)
 })
 
+describe("prim_optimization_barrier", {
+  x <- nv_array(c(1, 4, 9), dtype = "f64")
+  i <- nv_array(1:6, shape = c(2L, 3L), dtype = "i32")
+  p <- nv_scalar(TRUE)
+  a <- nv_array(as.double(1:24), shape = c(2L, 3L, 4L), dtype = "f32")
+  empty <- nv_array(numeric(), shape = c(0L, 2L), dtype = "f32")
+
+  it("returns its arrays unchanged, with their names", {
+    xs <- list(x = x, i = i, p = p, a = a, empty = empty)
+    expect_equal(prim_optimization_barrier(xs), xs)
+    expect_equal(jit(prim_optimization_barrier)(xs), xs)
+  })
+
+  it("takes a single array, in a list of its own", {
+    expect_equal(prim_optimization_barrier(list(x)), list(x))
+  })
+
+  it("passes the values computed before it on to what comes after it", {
+    f <- jit(function(x) {
+      out <- prim_optimization_barrier(list(a = sqrt(x), b = x * 2))
+      out$a + out$b
+    })
+    expect_equal(f(x), nv_array(c(3, 10, 21), dtype = "f64"))
+  })
+
+  it("lowers to one barrier over all of its arrays", {
+    f <- function(x, i) prim_optimization_barrier(list(x, i))
+    graph <- trace_fn(f, list(x = nv_aval("f32", 3L), i = nv_aval("i32", c(2L, 3L))))
+    mlir <- repr(stablehlo(graph)[[1L]])
+    expect_length(gregexpr("stablehlo.optimization_barrier", mlir, fixed = TRUE)[[1L]], 1L)
+    expect_match(mlir, "(tensor<3xf32>, tensor<2x3xi32>) -> (tensor<3xf32>, tensor<2x3xi32>)", fixed = TRUE)
+  })
+
+  it("takes a list of arrays, not an array", {
+    expect_error(prim_optimization_barrier(x), "non-empty list")
+    expect_error(prim_optimization_barrier(list()), "non-empty list")
+  })
+})
+
 describe("prim_sort", {
   it("sorts a 1D vector", {
     x <- nv_array(c(3, 1, 4, 2, 5))

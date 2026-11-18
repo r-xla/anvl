@@ -898,6 +898,21 @@ infer_identity <- function(x, ...) {
   list(x)
 }
 
+# Operands are passed separately here. Use the public argument name `xs`
+# in validation errors so callers can identify the invalid list element.
+infer_optimization_barrier <- function(...) {
+  if (!...length()) {
+    cli_abort(c(
+      "{.arg xs} must be a non-empty list of arrayish values.",
+      x = "Got nothing to pass through the barrier."
+    ))
+  }
+  assert_arrays(..., .arg = "xs")
+
+  # (C1) each output has the data type and shape of its input
+  lapply(unname(list(...)), function(x) AbstractArray(dtype = dtype(x), shape = x$shape))
+}
+
 # ---------------------------------------------------------------------------
 # Contraction, indexing and reduction rules
 # ---------------------------------------------------------------------------
