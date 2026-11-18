@@ -180,8 +180,8 @@ static SEXP new_graph_value(SEXP aval) {
 // The call of the primitive `primitive` on the graph nodes `gnodes` with the
 // parameters `params`, whose inference rule returned the avals `out_avals`, in
 // the trace `desc`: list(statement, gvals, boxes), the GraphStatement, a fresh
-// GraphValue per output and a GraphBox of each in `desc`, which the caller
-// records and registers.
+// GraphValue per output and a GraphBox of each in `desc`, named as
+// `out_avals`, which the caller records and registers.
 SEXP anvl_record_call(SEXP primitive, SEXP gnodes, SEXP params, SEXP out_avals,
                       SEXP desc) {
   R_xlen_t n = XLENGTH(out_avals);
@@ -197,6 +197,11 @@ SEXP anvl_record_call(SEXP primitive, SEXP gnodes, SEXP params, SEXP out_avals,
                    classed_list(2, box_values, box_names, "GraphBox"));
     UNPROTECT(2);
   }
+  // the outputs keep the names the inference rule gave them, which callers
+  // read the boxes by
+  SEXP out_names = Rf_getAttrib(out_avals, R_NamesSymbol);
+  Rf_setAttrib(gvals, R_NamesSymbol, out_names);
+  Rf_setAttrib(boxes, R_NamesSymbol, out_names);
   SEXP stmt_values[4] = {primitive, gnodes, params, gvals};
   const char *stmt_names[4] = {"primitive", "inputs", "params", "outputs"};
   SEXP statement =

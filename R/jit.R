@@ -172,10 +172,10 @@ jit <- function(
     # We don't use eval + match.call() because evaluating a call that itself is a
     # primitive might then get added twice to a graph
     .jit_env <- environment()
-    # The formals the call supplies, by a `missing()` of each, which `jit()`
-    # splices in below: it runs on every call, also inside a trace, where
-    # `match.call()` would cost several times as much.
-    .jit_given <- .jit_given_expr
+    # The formals the call supplies. Not `missing()`: an argument forwarded
+    # from a caller in which it is missing is supplied, and must reach `f`
+    # rather than `f`'s own default.
+    .jit_given <- .jit_names[.jit_names %in% names(match.call())]
 
     # The supplied arguments are evaluated before `f` runs, in the order of its
     # formals and then `...` -- inside a trace too, so that what they draw from
@@ -233,11 +233,6 @@ jit <- function(
     # closure's argument re-capture (and do.call()).
     .jit_run(.jit_args)
   }
-  given <- lapply(.jit_names, function(nm) call("if", call("!", call("missing", as.name(nm))), nm))
-  body(wrapper) <- do.call(
-    substitute,
-    list(body(wrapper), list(.jit_given_expr = as.call(c(list(as.name("c"), character()), given))))
-  )
   formals(wrapper) <- .jit_formals
   class(wrapper) <- "JitFunction"
   wrapper
