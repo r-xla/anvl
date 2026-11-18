@@ -553,11 +553,13 @@ get_box_or_register_const <- function(desc, x) {
   }
   if (is_valid_r_lit(x)) {
     gval <- GraphLiteral(LiteralArray(x, shape = integer()))
-    box <- desc$gval_to_box[[gval]] <- GraphBox(gval, desc)
+    box <- GraphBox(gval, desc)
+    sethash(desc$gval_to_box, gval, box)
     return(box)
   }
   if (is_graph_literal(x)) {
-    box <- desc$gval_to_box[[x]] <- GraphBox(x, desc)
+    box <- GraphBox(x, desc)
+    sethash(desc$gval_to_box, x, box)
     return(box)
   }
   if (!is_graph_value(x)) {

@@ -171,8 +171,8 @@ dtype_int_range <- function(dtype) {
 # exist. Only integer data types are checked -- a double at a narrow float
 # overflows to `Inf`, as it does in R.
 assert_r_fits_dtype <- function(x, dtype) {
-  dt <- as_dtype(dtype)
-  if (!is_dtype_int(dt) && !is_dtype_uint(dt)) {
+  dt <- if (inherits(dtype, "DataType")) dtype else as_dtype(dtype)
+  if (!dtype_category_names[[unclass(dt)]] %in% c("int", "uint")) {
     return(invisible(x))
   }
   range <- dtype_int_range(dt)

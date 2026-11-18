@@ -356,8 +356,12 @@ current_default_dtypes <- function() {
     return(effective_default_dtypes(active_backend()))
   }
   # Insert options over desc$default_dtypes -- the pair the dispatcher keyed
-  # the program on.
-  apply_default_dtypes(desc$default_dtypes, option_default_dtypes(desc$backend))
+  # the program on. Mostly, no option is set, and the pair is the trace's.
+  override <- option_default_dtypes(desc$backend)
+  if (!length(override)) {
+    return(desc$default_dtypes)
+  }
+  apply_default_dtypes(desc$default_dtypes, override)
 }
 
 default_dtype <- function(x, defaults = current_default_dtypes()) {

@@ -8,6 +8,7 @@ static const R_CallMethodDef call_methods[] = {
     {"boxes_dtype", (DL_FUNC)&anvl_boxes_dtype, 2},
     {"operand_nodes", (DL_FUNC)&anvl_operand_nodes, 2},
     {"record_call", (DL_FUNC)&anvl_record_call, 5},
+    {"same_aval_type", (DL_FUNC)&anvl_same_aval_type, 2},
     {NULL, NULL, 0}};
 
 void R_init_anvl(DllInfo *dll) {

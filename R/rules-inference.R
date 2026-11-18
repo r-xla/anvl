@@ -203,14 +203,28 @@ dtype_categories_repr <- function(categories) {
 
 # Does `dt` belong to any of the categories "float", "int", "uint", "bool"?
 dtype_in_categories <- function(dt, categories) {
-  checks <- list(
-    float = is_dtype_float,
-    int = is_dtype_int,
-    uint = is_dtype_uint,
-    bool = is_dtype_bool
-  )
-  any(vapply(checks[categories], function(check) check(dt), logical(1L)))
+  dtype_category_names[[unclass(as_dtype(dt))]] %in% categories
 }
+
+# The category of each data type, by name, as `xlamisc::dtype_category()` gives
+# it: a lookup, as the inference rules ask for it on every traced operation.
+dtype_category_names <- c(
+  bool = "bool",
+  i8 = "int",
+  i16 = "int",
+  i32 = "int",
+  i64 = "int",
+  ui8 = "uint",
+  ui16 = "uint",
+  ui32 = "uint",
+  ui64 = "uint",
+  f16 = "float",
+  bf16 = "float",
+  f32 = "float",
+  f64 = "float",
+  c64 = "complex",
+  c128 = "complex"
+)
 
 assert_array <- function(x, arg = rlang::as_label(substitute(x))) {
   if (!inherits(x, "AbstractArray")) {
@@ -279,6 +293,10 @@ assert_same_type <- function(
   arg_x = rlang::as_label(substitute(x)),
   arg_y = rlang::as_label(substitute(y))
 ) {
+  # the arrays of almost every call agree, which `C_same_aval_type` sees at once
+  if (.Call(C_same_aval_type, x, y)) {
+    return(invisible(NULL))
+  }
   assert_array(x, arg = arg_x)
   assert_array(y, arg = arg_y)
   if (!eq_type(x, y)) {
@@ -610,7 +628,7 @@ infer_broadcast_in_axes <- function(x, shape, broadcast_axes) {
   }
 
   # (C1)
-  list(AbstractArray(dtype = dtype(x), shape = Shape(shape)))
+  list(AbstractArray(dtype = dtype(x), shape = as_shape(shape)))
 }
 
 infer_transpose <- function(x, perm) {

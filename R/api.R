@@ -726,6 +726,10 @@ make_do_binary <- function(f, operands = c("lhs", "rhs")) {
       if (same_typed_boxes(!!syms[[1L]], !!syms[[2L]])) {
         return(f(!!!syms))
       }
+      args <- box_and_literal(!!!syms)
+      if (!is.null(args)) {
+        return(f(args[[1L]], args[[2L]]))
+      }
       args <- nv_promote_to_common(!!!syms)
       args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
       do.call(f, args)
@@ -737,6 +741,31 @@ make_do_binary <- function(f, operands = c("lhs", "rhs")) {
 # shape, which an element-wise operation neither promotes nor broadcasts.
 same_typed_boxes <- function(x, y) {
   !is.null(.Call(C_boxes_dtype, list(x, y), TRUE))
+}
+
+# The operands `lhs` and `rhs` of an element-wise operation brought to their
+# common data type and shape, when one is a traced array and the other an R
+# scalar of a category the array's data type covers (`x * 2`, `1 - p`): the
+# array is left as it is, and the R value is built at its data type and
+# broadcast to its shape, as `nv_promote_to_common()` and
+# `nv_broadcast_scalars()` would do. `NULL` otherwise.
+box_and_literal <- function(lhs, rhs) {
+  lhs_is_r <- is_valid_r_lit(lhs)
+  if (lhs_is_r == is_valid_r_lit(rhs)) {
+    return(NULL)
+  }
+  box <- if (lhs_is_r) rhs else lhs
+  value <- if (lhs_is_r) lhs else rhs
+  dtype <- .Call(C_boxes_dtype, list(box), FALSE)
+  if (is.null(dtype) || dtype_category(dtype) < dtype_category(default_dtype_r(typeof(value)))) {
+    return(NULL)
+  }
+  literal <- build_r_at(value, dtype)
+  box_shape <- shape(box)
+  if (length(box_shape)) {
+    literal <- nv_broadcast_to(literal, box_shape)
+  }
+  if (lhs_is_r) list(literal, box) else list(box, literal)
 }
 
 #' @title Addition

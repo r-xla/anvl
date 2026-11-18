@@ -697,14 +697,29 @@ common_dtype_of <- function(..., .fallback = NULL) {
 NULL
 
 dtype_category <- function(dtype) {
-  if (is_dtype_bool(dtype)) {
-    1L
-  } else if (is_dtype_float(dtype)) {
-    3L
-  } else {
-    2L
-  }
+  dtype_category_ranks[[unclass(dtype)]]
 }
+
+# The rank `dtype_category()` gives each data type, by name: a lookup rather
+# than `is_dtype_bool()` / `is_dtype_float()`, as promotion asks for it on every
+# R value a traced operation meets.
+dtype_category_ranks <- c(
+  bool = 1L,
+  i8 = 2L,
+  i16 = 2L,
+  i32 = 2L,
+  i64 = 2L,
+  ui8 = 2L,
+  ui16 = 2L,
+  ui32 = 2L,
+  ui64 = 2L,
+  f16 = 3L,
+  bf16 = 3L,
+  f32 = 3L,
+  f64 = 3L,
+  c64 = 2L,
+  c128 = 2L
+)
 
 promote_dt_rdata <- function(rdtype, dtype) {
   if (dtype_category(dtype) >= dtype_category(rdtype)) dtype else rdtype

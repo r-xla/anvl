@@ -208,3 +208,17 @@ SEXP anvl_record_call(SEXP primitive, SEXP gnodes, SEXP params, SEXP out_avals,
   UNPROTECT(4);
   return out;
 }
+
+// Whether the avals `x` and `y` are arrays of one data type and shape, neither
+// of them an R value (`eq_type()`), for the inference rules of element-wise
+// operations to accept them at once.
+SEXP anvl_same_aval_type(SEXP x, SEXP y) {
+  if (TYPEOF(x) != VECSXP || TYPEOF(y) != VECSXP ||
+      !Rf_inherits(x, "AbstractArray") || !Rf_inherits(y, "AbstractArray") ||
+      Rf_inherits(x, "RData") || Rf_inherits(y, "RData")) {
+    return Rf_ScalarLogical(FALSE);
+  }
+  int same = same_dtype(list_elt(x, "dtype"), list_elt(y, "dtype")) &&
+             same_shape(list_elt(x, "shape"), list_elt(y, "shape"));
+  return Rf_ScalarLogical(same);
+}

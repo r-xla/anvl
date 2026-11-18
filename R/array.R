@@ -985,14 +985,9 @@ ConcreteArray <- function(data) {
     cli_abort("data must be an AnvlArray")
   }
 
-  structure(
-    list(
-      dtype = dtype_from_buffer(data),
-      shape = Shape(shape(data)),
-      data = data
-    ),
-    class = c("ConcreteArray", "AbstractArray")
-  )
+  x <- list(dtype = dtype_from_buffer(data), shape = as_shape(shape(data)), data = data)
+  class(x) <- c("ConcreteArray", "AbstractArray")
+  x
 }
 
 #' @title Literal Array Class
@@ -1038,16 +1033,12 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
     cli_abort("AnvlArray must contain exactly one element.")
   }
   shape <- as_shape(shape)
-  dtype <- as_dtype(dtype)
-
-  structure(
-    list(
-      data = data,
-      dtype = dtype,
-      shape = shape
-    ),
-    class = c("LiteralArray", "AbstractArray")
-  )
+  if (!inherits(dtype, "DataType")) {
+    dtype <- as_dtype(dtype)
+  }
+  x <- list(data = data, dtype = dtype, shape = shape)
+  class(x) <- c("LiteralArray", "AbstractArray")
+  x
 }
 
 #' @title Iota Array Class
@@ -1297,6 +1288,11 @@ to_abstract <- function(x, pure = FALSE) {
 
 as_shape <- function(x) {
   if (is_shape(x)) {
+    x
+  } else if (is.integer(x) && is.null(attributes(x)) && !anyNA(x) && all(x >= 0L)) {
+    # hot path: the axis sizes as plain integers, which `stablehlo::Shape()`
+    # would only check again
+    class(x) <- "Shape"
     x
   } else if (test_integerish(x, any.missing = FALSE, lower = 0L)) {
     Shape(as.integer(x))
