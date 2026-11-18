@@ -1011,3 +1011,10 @@ Low-level primitive operations (prim\_\* functions)
   : anvl: Accelerated Array Computing and Automatic Differentiation
 - [`install_anvl()`](https://r-xla.github.io/anvl/reference/install_anvl.md)
   : Install What a Backend Needs to Run
+
+## Testing
+
+Helpers for the tests of packages that depend on anvl
+
+- [`skip_if_no_plugin()`](https://r-xla.github.io/anvl/reference/skip_if_no_plugin.md)
+  : Skip a Test When No PJRT Plugin Is Available

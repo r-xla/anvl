@@ -5,6 +5,8 @@
 - [Get Started](https://r-xla.github.io/anvl/articles/anvl.md):
 - [Automatic
   Differentiation](https://r-xla.github.io/anvl/articles/autodiff.md):
+- [Depending on
+  anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.md):
 - [Efficiency](https://r-xla.github.io/anvl/articles/efficiency.md):
 - [Extending the
   API](https://r-xla.github.io/anvl/articles/extending_api.md):

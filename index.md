@@ -137,8 +137,12 @@ Projects that build on {anvl}:
 
 |  |  |
 |:--:|----|
-| [![garry logo](reference/figures/logo-garry.png)](https://github.com/belian-earth/garry) | [**garry**](https://github.com/belian-earth/garry) is a lazy, spatial-aware raster engine. It plans a whole raster computation as one graph, runs it in chunks across processes, and JIT-compiles the numeric kernels with {anvl}. |
+| [![garry logo](reference/figures/logo-garry.png)](https://github.com/belian-earth/garry) | [**garry**](https://github.com/belian-earth/garry) is a lazy, spatial-aware raster engine that JIT-compiles its numeric kernels with {anvl}. |
 | [![Apollo logo](reference/figures/logo-apollo.png)](https://www.apollochoicemodelling.com) | [**Apollo**](https://www.apollochoicemodelling.com) is a flexible package for the estimation and application of choice models. |
+
+If you are building a package on {anvl}, see the [Depending on
+anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.html)
+article for how to test it.
 
 ## Acknowledgments
 

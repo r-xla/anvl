@@ -4,6 +4,7 @@ pkgdown_sha: ~
 articles:
   articles/anvl: anvl.html
   articles/autodiff: autodiff.html
+  articles/depending-on-anvl: depending-on-anvl.html
   articles/efficiency: efficiency.html
   articles/extending_api: extending_api.html
   articles/extending_primitive: extending_primitive.html
@@ -20,7 +21,7 @@ articles:
   articles/static_shapes: static_shapes.html
   articles/subsetting: subsetting.html
   articles/type-promotion: type-promotion.html
-last_built: 2026-11-16T14:46Z
+last_built: 2026-11-18T04:33Z
 urls:
   reference: https://r-xla.github.io/anvl/reference
   article: https://r-xla.github.io/anvl/articles

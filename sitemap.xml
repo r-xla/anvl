@@ -5,6 +5,7 @@
 <url><loc>https://r-xla.github.io/anvl/LICENSE.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/articles/anvl.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/articles/autodiff.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/articles/depending-on-anvl.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/articles/efficiency.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/articles/extending_api.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/articles/extending_primitive.html</loc></url>
@@ -356,6 +357,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/reexports.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/rule_reverse.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/shape.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/skip_if_no_plugin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/stablehlo.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/subgraphs.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/to_abstract.html</loc></url>

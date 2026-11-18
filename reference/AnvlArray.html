@@ -58,6 +58,8 @@ be a CPU or a GPU."><meta property="og:image" content="https://r-xla.github.io/a
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Packages</h6></li>
+    <li><a class="dropdown-item" href="../articles/depending-on-anvl.html">Depending on anvl</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -310,8 +312,9 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span>shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1e+45 *</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013 1.4013 1.4013</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013 1.4013 1.4013</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

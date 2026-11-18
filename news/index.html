@@ -54,6 +54,8 @@
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Packages</h6></li>
+    <li><a class="dropdown-item" href="../articles/depending-on-anvl.html">Depending on anvl</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -79,7 +81,8 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
-<ul><li>New <code><a href="../reference/prim_optimization_barrier.html">prim_optimization_barrier()</a></code> returns its input arrays unchanged and keeps the compiler from moving computations across it, so the operations that produce the arrays are not fused with those that use them. <code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> does the same for a single array or a tree of arrays, returning it with the same structure.</li>
+<ul><li>New <code><a href="../reference/skip_if_no_plugin.html">skip_if_no_plugin()</a></code> skips a test when no PJRT plugin is available, as on CRAN. The new “Depending on anvl” article explains its use.</li>
+<li>New <code><a href="../reference/prim_optimization_barrier.html">prim_optimization_barrier()</a></code> returns its input arrays unchanged and keeps the compiler from moving computations across it, so the operations that produce the arrays are not fused with those that use them. <code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> does the same for a single array or a tree of arrays, returning it with the same structure.</li>
 </ul></div>
 </div>
     <div class="section level2">

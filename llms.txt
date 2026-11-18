@@ -137,8 +137,12 @@ Projects that build on {anvl}:
 
 |  |  |
 |:--:|----|
-| [![garry logo](reference/figures/logo-garry.png)](https://github.com/belian-earth/garry) | [**garry**](https://github.com/belian-earth/garry) is a lazy, spatial-aware raster engine. It plans a whole raster computation as one graph, runs it in chunks across processes, and JIT-compiles the numeric kernels with {anvl}. |
+| [![garry logo](reference/figures/logo-garry.png)](https://github.com/belian-earth/garry) | [**garry**](https://github.com/belian-earth/garry) is a lazy, spatial-aware raster engine that JIT-compiles its numeric kernels with {anvl}. |
 | [![Apollo logo](reference/figures/logo-apollo.png)](https://www.apollochoicemodelling.com) | [**Apollo**](https://www.apollochoicemodelling.com) is a flexible package for the estimation and application of choice models. |
+
+If you are building a package on {anvl}, see the [Depending on
+anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.html)
+article for how to test it.
 
 ## Acknowledgments
 
@@ -1164,6 +1168,13 @@ Low-level primitive operations (prim\_\* functions)
 - [`install_anvl()`](https://r-xla.github.io/anvl/reference/install_anvl.md)
   : Install What a Backend Needs to Run
 
+## Testing
+
+Helpers for the tests of packages that depend on anvl
+
+- [`skip_if_no_plugin()`](https://r-xla.github.io/anvl/reference/skip_if_no_plugin.md)
+  : Skip a Test When No PJRT Plugin Is Available
+
 # Articles
 
 ### All vignettes
@@ -1171,6 +1182,8 @@ Low-level primitive operations (prim\_\* functions)
 - [Get Started](https://r-xla.github.io/anvl/articles/anvl.md):
 - [Automatic
   Differentiation](https://r-xla.github.io/anvl/articles/autodiff.md):
+- [Depending on
+  anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.md):
 - [Efficiency](https://r-xla.github.io/anvl/articles/efficiency.md):
 - [Extending the
   API](https://r-xla.github.io/anvl/articles/extending_api.md):

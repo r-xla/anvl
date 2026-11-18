@@ -82,6 +82,8 @@
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="articles/primitives.html">Available Primitives</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Packages</h6></li>
+    <li><a class="dropdown-item" href="articles/depending-on-anvl.html">Depending on anvl</a></li>
   </ul>
 </li>
       </ul>
@@ -249,7 +251,7 @@
 <a href="https://github.com/belian-earth/garry" class="external-link"><img src="reference/figures/logo-garry.png" alt="garry logo" height="100"></a>
 </td>
 <td>
-<a href="https://github.com/belian-earth/garry" class="external-link"><b>garry</b></a> is a lazy, spatial-aware raster engine. It plans a whole raster computation as one graph, runs it in chunks across processes, and JIT-compiles the numeric kernels with {anvl}.
+<a href="https://github.com/belian-earth/garry" class="external-link"><b>garry</b></a> is a lazy, spatial-aware raster engine that JIT-compiles its numeric kernels with {anvl}.
 </td>
 </tr>
 <tr>
@@ -261,6 +263,7 @@
 </td>
 </tr>
 </table>
+<p>If you are building a package on {anvl}, see the <a href="https://r-xla.github.io/anvl/articles/depending-on-anvl.html">Depending on anvl</a> article for how to test it.</p>
 </div>
 <div class="section level2">
 <h2 id="acknowledgments">Acknowledgments<a class="anchor" aria-label="anchor" href="#acknowledgments"></a>
