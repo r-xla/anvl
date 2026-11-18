@@ -17,7 +17,7 @@ make_binary_op <- function(infer_rule, operands = c("lhs", "rhs")) {
   rlang::new_function(
     rlang::set_names(rep(list(rlang::missing_arg()), 2L), operands),
     rlang::expr({
-      operands <- apply_promotion(list(!!!rlang::syms(rlang::set_names(operands))), promotion_rdata_common())
+      operands <- apply_promotion(list(!!!rlang::syms(rlang::set_names(operands))), rdata_common_promotion)
       graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
     })
   )
@@ -42,7 +42,7 @@ promote_start_indices <- function(indices) {
   }
   # Named only for the messages; the graph keeps them positional.
   names(indices) <- sprintf("..%d", seq_along(indices))
-  unname(apply_promotion(indices, promotion_rdata_common()))
+  unname(apply_promotion(indices, rdata_common_promotion))
 }
 
 #' @title Primitive Fill
@@ -292,7 +292,7 @@ prim_dot_general <- new_primitive(
   "dot_general",
   function(lhs, rhs, contracting_axes, batching_axes, precision = "highest") {
     # `precision` is checked by `infer_dot_general()`, with every other param.
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), rdata_common_promotion)
     graph_desc_add(
       self,
       operands,
@@ -417,7 +417,7 @@ prim_concatenate <- new_primitive(
     axis <- resolve_axis(axis, naxes(dots[[1L]]))
     graph_desc_add(
       self,
-      args = apply_promotion(dots, promotion_rdata_common()),
+      args = apply_promotion(dots, rdata_common_promotion),
       params = list(axis = axis),
       infer_fn = infer_concatenate
     )[[1L]]
@@ -593,7 +593,7 @@ prim_dynamic_update_slice <- new_primitive(
   "dynamic_update_slice",
   function(x, update, ...) {
     start_indices <- promote_start_indices(list(...))
-    operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, update = update), rdata_common_promotion)
     graph_desc_add(
       self,
       args = c(operands, start_indices),
@@ -947,7 +947,7 @@ prim_reduce <- new_primitive(
     force(init)
     force(reducer)
     # Settled before the reducer is traced below, which reads `dtype(init)`.
-    operands <- apply_promotion(list(x = x, init = init), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, init = init), rdata_common_promotion)
     x <- operands$x
     init <- operands$init
 
@@ -1065,7 +1065,7 @@ prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3)
 # The body shared by the comparison primitives; the direction is set by their
 # stablehlo rules.
 compare_op <- function(lhs, rhs) {
-  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), rdata_common_promotion)
   graph_desc_add(self, operands, infer_fn = infer_compare)[[1L]]
 }
 
@@ -2055,7 +2055,7 @@ prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni))
 prim_psigamma <- new_primitive(
   "psigamma",
   function(x, deriv) {
-    operands <- apply_promotion(list(x = x, deriv = deriv), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, deriv = deriv), rdata_common_promotion)
     graph_desc_add(self, operands, infer_fn = infer_polygamma)[[1L]]
   }
 )
@@ -2203,7 +2203,7 @@ prim_popcnt <- new_primitive(
 prim_clamp <- new_primitive(
   "clamp",
   function(x, min, max) {
-    operands <- apply_promotion(list(x = x, min = min, max = max), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, min = min, max = max), rdata_common_promotion)
     graph_desc_add(
       self,
       operands,
@@ -2326,7 +2326,7 @@ prim_iota <- new_primitive(
 prim_pad <- new_primitive(
   "pad",
   function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
-    operands <- apply_promotion(list(x = x, padding_value = padding_value), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, padding_value = padding_value), rdata_common_promotion)
     graph_desc_add(
       self,
       operands,
@@ -2455,7 +2455,7 @@ prim_ifelse <- new_primitive(
   "ifelse",
   function(test, yes, no) {
     # `test` is a bool and keeps out of it; the two branches must agree.
-    operands <- apply_promotion(list(yes = yes, no = no), promotion_rdata_common())
+    operands <- apply_promotion(list(yes = yes, no = no), rdata_common_promotion)
     graph_desc_add(
       self,
       c(list(test = test), operands),
@@ -3494,7 +3494,7 @@ prim_scatter <- new_primitive(
     # Settled before `peek_dtype(x)` below builds the update computation's
     # parameter slots. `scatter_indices` keeps out of it: it is an index array,
     # not an operand `x` and `update` have to agree with.
-    operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, update = update), rdata_common_promotion)
     x <- operands$x
     update <- operands$update
     update_op <- scatter_update_op(update_fn)
@@ -3790,7 +3790,7 @@ prim_chol <- new_primitive(
 prim_triangular_solve <- new_primitive(
   "triangular_solve",
   function(a, b, left_side, lower, unit_diagonal, transpose_a) {
-    operands <- apply_promotion(list(a = a, b = b), promotion_rdata_common())
+    operands <- apply_promotion(list(a = a, b = b), rdata_common_promotion)
     graph_desc_add(
       self,
       operands,
@@ -4048,7 +4048,7 @@ prim_convolution <- new_primitive(
     batch_group_count = 1L,
     precision = "highest"
   ) {
-    operands <- apply_promotion(list(x = x, kernel = kernel), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, kernel = kernel), rdata_common_promotion)
     graph_desc_add(
       self,
       operands,

@@ -48,11 +48,13 @@ NULL
 #' @export
 RData <- function(shape, r_type) {
   shape <- as_shape(shape)
-  r_type <- match.arg(r_type, c("double", "integer", "logical"))
-  structure(
-    list(r_type = r_type, shape = shape),
-    class = c("RData", "AbstractArray")
-  )
+  # one is built for every R value a traced operation meets
+  if (!(is.character(r_type) && length(r_type) == 1L && r_type %in% c("double", "integer", "logical"))) {
+    r_type <- match.arg(r_type, c("double", "integer", "logical"))
+  }
+  x <- list(r_type = r_type, shape = shape)
+  class(x) <- c("RData", "AbstractArray")
+  x
 }
 
 is_rdata <- function(x) {

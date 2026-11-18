@@ -422,6 +422,11 @@ apply_promotion <- function(operands, promote) {
   if (!length(operands)) {
     return(operands)
   }
+  # Traced arrays of one data type, the operands of almost every primitive, are
+  # what `promotion_rdata_common()` leaves as they are.
+  if (identical(promote, rdata_common_promotion) && !is.null(.Call(C_boxes_dtype, operands, FALSE))) {
+    return(operands)
+  }
   # Materialize every operand the rule places at the data type it named, and
   # leave the rest as they are. `as_anvl_arrays()` does the same but converts
   # the untouched ones as well, and places them on a device.
@@ -528,14 +533,14 @@ resolve_rdata_common <- function(args, positions) {
   avals <- lapply(args[positions], to_abstract)
   is_r <- vapply(avals, is_rdata, logical(1L))
   # An error here is about one particular argument, so it says which.
-  labels <- vapply(positions, function(i) arg_label(args, i), character(1L))
-  settled <- unique(lapply(avals[!is_r], peek_dtype))
+  labels <- function() vapply(positions, function(i) arg_label(args, i), character(1L))
+  settled <- unique(lapply(avals[!is_r], `[[`, "dtype"))
   if (length(settled) > 1L) {
     # There is no common data type to reach without converting one of them,
     # which this rule does not do.
     described <- sprintf(
       "%s is %s",
-      labels[!is_r],
+      labels()[!is_r],
       vapply(avals[!is_r], function(a) sprintf("`%s`", as.character(peek_dtype(a))), character(1L))
     )
     cli_abort(
@@ -552,7 +557,7 @@ resolve_rdata_common <- function(args, positions) {
     # type; there is no data type for a mix of them to meet at.
     r_types <- vapply(avals[is_r], function(a) a$r_type, character(1L))
     if (length(unique(r_types)) > 1L) {
-      described <- sprintf("%s is an R %s", labels[is_r], r_types)
+      described <- sprintf("%s is an R %s", labels()[is_r], r_types)
       cli_abort(
         c(
           "The R values here have no data type to agree on.",
@@ -571,7 +576,7 @@ resolve_rdata_common <- function(args, positions) {
     if (!rdata_in_category(r_type, target)) {
       cli_abort(
         c(
-          "{labels[[j]]} is an R {r_type}, which cannot be used at the {.val {as.character(target)}} data type here.", # nolint
+          "{labels()[[j]]} is an R {r_type}, which cannot be used at the {.val {as.character(target)}} data type here.", # nolint
           i = "A literal is only ever built at a data type of its own category: a double becomes a float, an integer an integer, a logical a {.val bool}.", # nolint
           i = "Use an operation that promotes across categories, or convert explicitly with {.fn nv_convert}."
         ),
@@ -612,6 +617,11 @@ common_dtype_of <- function(..., .fallback = NULL) {
   args <- list(...)
   if (length(args) == 0L) {
     cli_abort("No arguments provided")
+  }
+  # mostly, the inputs are traced arrays of one data type already
+  same <- .Call(C_boxes_dtype, args, FALSE)
+  if (!is.null(same)) {
+    return(same)
   }
   avals <- lapply(args, to_abstract)
   is_r <- vapply(avals, is_rdata, logical(1L))
@@ -687,14 +697,29 @@ common_dtype_of <- function(..., .fallback = NULL) {
 NULL
 
 dtype_category <- function(dtype) {
-  if (is_dtype_bool(dtype)) {
-    1L
-  } else if (is_dtype_float(dtype)) {
-    3L
-  } else {
-    2L
-  }
+  dtype_category_ranks[[unclass(dtype)]]
 }
+
+# The rank `dtype_category()` gives each data type, by name: a lookup rather
+# than `is_dtype_bool()` / `is_dtype_float()`, as promotion asks for it on every
+# R value a traced operation meets.
+dtype_category_ranks <- c(
+  bool = 1L,
+  i8 = 2L,
+  i16 = 2L,
+  i32 = 2L,
+  i64 = 2L,
+  ui8 = 2L,
+  ui16 = 2L,
+  ui32 = 2L,
+  ui64 = 2L,
+  f16 = 3L,
+  bf16 = 3L,
+  f32 = 3L,
+  f64 = 3L,
+  c64 = 2L,
+  c128 = 2L
+)
 
 promote_dt_rdata <- function(rdtype, dtype) {
   if (dtype_category(dtype) >= dtype_category(rdtype)) dtype else rdtype
@@ -823,3 +848,10 @@ promote_to_common_float <- function(...) {
   args <- promote_numeric_operands(..., .fallback = default_float())
   lapply(args, function(x) if (is_dtype_float(dtype(x))) x else nv_convert(x, default_float()))
 }
+
+# The rules anvl's own functions apply on every call, built once here: a rule is
+# a closure, which costs far more to build than to apply.
+rdata_common_promotion <- promotion_rdata_common()
+common_promotion <- promotion_common()
+like_x_promotion <- promotion_like("x")
+branches_common_promotion <- promotion_common(on = c("yes", "no"))

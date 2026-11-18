@@ -58,13 +58,14 @@ NULL
 #' @import checkmate
 #' @import xlamisc
 #' @importFrom pjrt pjrt_buffer pjrt_scalar pjrt_execute pjrt_compile pjrt_program elt_type
-#' @importFrom utils hashtab maphash
+#' @importFrom utils hashtab maphash gethash sethash
 #' @importFrom utils head tail getFromNamespace install.packages
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%
 #' @importFrom methods formalArgs is
 #' @importFrom utils capture.output
 #' @importFrom stats median quantile setNames
+#' @useDynLib anvl, .registration = TRUE, .fixes = "C_"
 ## usethis namespace: end
 NULL
 

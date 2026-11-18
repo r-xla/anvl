@@ -156,8 +156,10 @@ new_primitive <- function(
 # function `jit()` wraps. `trace_fn()` does the rewriting of the error's call,
 # and `graph_desc_add()` clears the marker once inference has passed.
 mark_primitive_body <- function(body) {
+  # `globals` is spliced in as the environment itself, which a primitive
+  # defined outside of anvl cannot name, and which is not looked up per call
   rlang::expr({
-    base::assign("infer_primitive", self, envir = utils::getFromNamespace("globals", "anvl"))
+    base::assign("infer_primitive", self, envir = !!globals)
     !!body
   })
 }

@@ -93,6 +93,10 @@ nv_broadcast_scalars <- jit(function(...) {
   assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shapes <- lapply(args, shape)
+  # mostly, nothing is to be broadcast
+  if (all(vapply(shapes, identical, logical(1L), shapes[[1L]]))) {
+    return(args)
+  }
   non_scalar_shapes <- Filter(\(s) length(s) > 0L, shapes)
 
   if (length(non_scalar_shapes) == 0L) {
@@ -135,7 +139,7 @@ nv_broadcast_scalars <- jit(function(...) {
 #' @export
 nv_promote_to_common <- jit(function(...) {
   assert_some_arrays(...)
-  as_anvl_arrays(..., .promote = promotion_common())
+  as_anvl_arrays(..., .promote = common_promotion)
 })
 
 #' @title Broadcast Arrays to a Common Shape
@@ -545,7 +549,7 @@ nv_rbind <- jit(function(...) {
   # Promoted here rather than in `nv_concatenate()`: an R value has to be
   # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
-  args <- as_anvl_arrays(..., .promote = promotion_common())
+  args <- as_anvl_arrays(..., .promote = common_promotion)
   bind_along(args, stack_axis = 1L, fn_name = "nv_rbind")
 })
 
@@ -553,7 +557,7 @@ nv_rbind <- jit(function(...) {
 #' @export
 nv_cbind <- jit(function(...) {
   assert_some_arrays(...)
-  args <- as_anvl_arrays(..., .promote = promotion_common())
+  args <- as_anvl_arrays(..., .promote = common_promotion)
   bind_along(args, stack_axis = 2L, fn_name = "nv_cbind")
 })
 
@@ -683,6 +687,14 @@ nv_optimization_barrier <- function(x) {
 #' nv_ifelse(test, nv_scalar(1L), nv_scalar(0.5))
 #' @export
 nv_ifelse <- jit(function(test, yes, no) {
+  # Traced branches of one data type and shape, and a traced test of that
+  # shape, are neither promoted nor broadcast: the common case, which skips
+  # both.
+  if (
+    same_typed_boxes(yes, no) && is_graph_box(test) && !is_rdata(test$gnode$aval) && identical(shape(test), shape(yes))
+  ) {
+    return(prim_ifelse(test, yes, no))
+  }
   # All three are aligned together -- so an R literal branch is built on the
   # device of `test` rather than on the default one and then conflicting with it
   # -- but only the two branches are promoted, `test` staying a bool.
@@ -690,7 +702,7 @@ nv_ifelse <- jit(function(test, yes, no) {
     test = test,
     yes = yes,
     no = no,
-    .promote = promotion_common(on = c("yes", "no"))
+    .promote = branches_common_promotion
   )
   args <- nv_broadcast_scalars(args$test, args$yes, args$no)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
@@ -705,14 +717,55 @@ nv_ifelse <- jit(function(test, yes, no) {
 # `operands` names the two arguments, as in `make_binary_op()`.
 make_do_binary <- function(f, operands = c("lhs", "rhs")) {
   force(f)
+  syms <- rlang::syms(operands)
   jit(rlang::new_function(
     rlang::set_names(rep(list(rlang::missing_arg()), 2L), operands),
     rlang::expr({
-      args <- nv_promote_to_common(!!!rlang::syms(operands))
+      # Two traced arrays of one data type and shape are neither promoted nor
+      # broadcast: the common case, which skips both.
+      if (same_typed_boxes(!!syms[[1L]], !!syms[[2L]])) {
+        return(f(!!!syms))
+      }
+      args <- box_and_literal(!!!syms)
+      if (!is.null(args)) {
+        return(f(args[[1L]], args[[2L]]))
+      }
+      args <- nv_promote_to_common(!!!syms)
       args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
       do.call(f, args)
     })
   ))
+}
+
+# Whether `x` and `y` are traced arrays, not R values, of one data type and one
+# shape, which an element-wise operation neither promotes nor broadcasts.
+same_typed_boxes <- function(x, y) {
+  !is.null(.Call(C_boxes_dtype, list(x, y), TRUE))
+}
+
+# The operands `lhs` and `rhs` of an element-wise operation brought to their
+# common data type and shape, when one is a traced array and the other an R
+# scalar of a category the array's data type covers (`x * 2`, `1 - p`): the
+# array is left as it is, and the R value is built at its data type and
+# broadcast to its shape, as `nv_promote_to_common()` and
+# `nv_broadcast_scalars()` would do. `NULL` otherwise.
+box_and_literal <- function(lhs, rhs) {
+  lhs_is_r <- is_valid_r_lit(lhs)
+  if (lhs_is_r == is_valid_r_lit(rhs)) {
+    return(NULL)
+  }
+  box <- if (lhs_is_r) rhs else lhs
+  value <- if (lhs_is_r) lhs else rhs
+  dtype <- .Call(C_boxes_dtype, list(box), FALSE)
+  if (is.null(dtype) || dtype_category(dtype) < dtype_category(default_dtype_r(typeof(value)))) {
+    return(NULL)
+  }
+  literal <- build_r_at(value, dtype)
+  box_shape <- shape(box)
+  if (length(box_shape)) {
+    literal <- nv_broadcast_to(literal, box_shape)
+  }
+  if (lhs_is_r) list(literal, box) else list(box, literal)
 }
 
 #' @title Addition
@@ -1169,7 +1222,7 @@ nv_xor <- make_do_binary(prim_xor, c("x", "y"))
 # brought to `x`'s data type rather than meeting it at a common one.
 make_shift <- function(f) {
   jit(function(x, shift) {
-    args <- as_anvl_arrays(x = x, shift = shift, .promote = promotion_like("x"))
+    args <- as_anvl_arrays(x = x, shift = shift, .promote = like_x_promotion)
     args <- nv_broadcast_scalars(args$x, args$shift)
     do.call(f, args)
   })
@@ -2018,7 +2071,7 @@ nv_popcnt <- prim_popcnt
 #' nv_clamp(x, 0L, 1L)
 #' @export
 nv_clamp <- jit(function(x, min, max) {
-  args <- as_anvl_arrays(x = x, min = min, max = max, .promote = promotion_like("x"))
+  args <- as_anvl_arrays(x = x, min = min, max = max, .promote = like_x_promotion)
   prim_clamp(args$x, args$min, args$max)
 })
 
@@ -2265,7 +2318,7 @@ nv_pad <- function(x, value, low, high, interior = NULL) {
   # `promotion_like("x")` rather than the primitive's own rule: crossing a
   # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
   # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
-  args <- as_anvl_arrays(x = x, value = value, .promote = promotion_like("x"))
+  args <- as_anvl_arrays(x = x, value = value, .promote = like_x_promotion)
   interior <- interior %||% rep(0L, naxes(args$x))
   prim_pad(args$x, args$value, low, high, interior)
 }
@@ -4175,7 +4228,7 @@ crossprod_operands <- function(x, y) {
     x <- as_anvl_array(x)
     return(list(x, x))
   }
-  as_anvl_arrays(x, y, .promote = promotion_common())
+  as_anvl_arrays(x, y, .promote = common_promotion)
 }
 
 # Sorting and searching --------------------------------------------------------
@@ -5007,7 +5060,7 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 .nv_convnd <- function(x, kernel, n, stride, padding, dilation, groups, precision) {
   # The `nv_*` layer promotes across data types; `prim_convolution()` would
   # require `x` and `kernel` to agree already.
-  args <- as_anvl_arrays(x = x, kernel = kernel, .promote = promotion_common())
+  args <- as_anvl_arrays(x = x, kernel = kernel, .promote = common_promotion)
   x <- args$x
   kernel <- args$kernel
   assert_int(groups, lower = 1L)

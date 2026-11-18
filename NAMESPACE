@@ -796,10 +796,12 @@ importFrom(stats,
 importFrom(utils,
   capture.output,
   getFromNamespace,
+  gethash,
   hashtab,
   head,
   install.packages,
   maphash,
+  sethash,
   tail
 )
 importFrom(xlamisc,
@@ -812,3 +814,4 @@ importFrom(xlamisc,
   naxes,
   shape
 )
+useDynLib(anvl, .registration = TRUE, .fixes = "C_")
