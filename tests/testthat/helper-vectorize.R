@@ -19,6 +19,10 @@
 # the primitives as an inner `vectorize()` leaves them, e.g. with batching axes
 # of their own. `extra = FALSE` skips these two.
 #
+# A random draw in `f` is checked against a loop over the slices from the
+# random state the vectorized call started from, which `vectorize()` must draw
+# what it draws (`randomness = "different"`).
+#
 # `f` only takes arrays: bind the parameters a primitive takes in a closure.
 # Every primitive whose vectorize rule runs is recorded in `vectorize_tested`,
 # which the end of test-primitives-vectorize.R checks against the primitives
@@ -79,7 +83,11 @@ check_vectorize <- function(f, args, subsets, tolerance) {
       vec_args[[nm]] <- move_batch_axis(args[[nm]], in_axes[[nm]])
     }
     f_vec <- vectorize(f, in_axes = in_axes, out_axes = unflatten(slice_graph$out_tree, out_axes))
+    rng_state <- if (length(slice_graph$side_effects)) nv_get_rng_state()
     actual <- flatten(do.call(jit(f_vec), vec_args))
+    if (!is.null(rng_state)) {
+      nv_set_rng_state(rng_state)
+    }
     slices <- lapply(seq_len(size), function(i) {
       slice_args <- call_args
       for (nm in mapped) {

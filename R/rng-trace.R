@@ -181,6 +181,23 @@ side_effect_fork.AnvlRngStateHandle <- function(effect, value) {
   rng_state_value(out[[1L]], out[[2L]])
 }
 
+# Slice i of `vectorize()` starts (i - 1) * n draws after `value`, where the
+# i-th run of a loop over the slices would: every slice has the same key, and
+# the counters step by `n`. `n` enters as R integer literals, as in
+# `counter_plus()`.
+#' @export
+side_effect_stack.AnvlRngStateHandle <- function(effect, value, n, size) {
+  steps <- prim_iota(1L, size, dtype = "ui64", start = 0L)
+  offsets <- steps * as.integer(n %% 2^31)
+  if (n >= 2^31) {
+    offsets <- offsets + nv_shift_left(steps * as.integer(n %/% 2^31), 31L)
+  }
+  rng_state_value(
+    prim_broadcast_in_axes(value$key, c(size, 2L), 2L),
+    value$counter + offsets
+  )
+}
+
 # After a run, R advances the counter by the draws the program made.
 #' @export
 side_effect_advance.AnvlRngStateHandle <- function(effect, object, n) {

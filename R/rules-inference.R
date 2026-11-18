@@ -1889,10 +1889,12 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
+# A sampling call that `vectorize()` batched draws from a batch of random
+# states, of the shape of `counter`, one draw of shape `shape` from each.
 infer_sample_bits <- function(key, counter, shape, dtype) {
   shape <- assert_shapevec(shape)
   dtype <- assert_dtype_param(dtype, categories = "uint")
-  list(AbstractArray(dtype = dtype, shape = Shape(shape)))
+  list(AbstractArray(dtype = dtype, shape = Shape(c(shape(counter), shape))))
 }
 
 infer_fork_rng_state <- function(key, counter) {

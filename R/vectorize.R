@@ -11,14 +11,22 @@
 #' leaf of a nested argument is mapped over along the same axis. The other
 #' arguments are passed to each application of `f` unchanged. `out_axes` says
 #' along which axis each output of `f` is stacked.
+#'
+#' `randomness` says what the random draws of `f` (see [nv_set_seed()]) give
+#' the slices, as PyTorch's `torch.func.vmap()` does. By default, every slice
+#' draws numbers of its own: the same ones a loop over the slices, applying `f`
+#' to one after the other, would draw, so `vectorize()` changes how fast a
+#' simulation runs, not its results. With `"same"`, every slice draws the same
+#' numbers, the ones a single application of `f` draws, and the random state
+#' advances as after that application.
 #' @param f (`function`)\cr
 #'   Function to vectorize.
 #' @param in_axes (`integer(1)` | named `list()` | named `integer()`)\cr
 #'   The arguments to map over and their batch axes. A single axis maps over
 #'   every argument that is an array, along that axis. That includes every
 #'   argument of the enclosing [`jit()`] that is not static, R data among them;
-#'   other plain R values -- such as static arguments, or an R array written
-#'   inside the traced function -- are passed on unchanged.
+#'   other values -- such as static arguments, a random state, or an R array
+#'   written inside the traced function -- are passed on unchanged.
 #'   A named list or vector gives the axis of each argument to map over, by
 #'   its name; arguments it leaves out or gives `NULL` are passed on
 #'   unchanged. A nested argument takes one axis for all of its leaves. All
@@ -31,6 +39,9 @@
 #'   axes per slice can be stacked along axes `1` to `n + 1`. `NULL` returns an
 #'   output as it is, which works for one that does not depend on the
 #'   arguments mapped over.
+#' @param randomness (`character(1)`)\cr
+#'   Whether the slices draw `"different"` (the default) or the `"same"`
+#'   random numbers.
 #' @return (`function`)\cr
 #'   Has the same formals as `f` and must be called inside [`jit()`]. It returns
 #'   what `f` returns, with the batch axis added to every output where
@@ -60,13 +71,21 @@
 #'
 #' # map over the columns instead: each column divided by its sum
 #' jit(vectorize(function(x) x / sum(x), in_axes = 2L, out_axes = 2L))(x)
-vectorize <- function(f, in_axes = 1L, out_axes = 1L) {
+#'
+#' # every row gets noise of its own, the noise a loop over the rows would draw
+#' noisy <- function(x) x + nv_rnorm(shape = 2L)
+#' nv_set_seed(1L)
+#' jit(vectorize(noisy))(x)
+#' # or the same noise for every row
+#' jit(vectorize(noisy, randomness = "same"))(x)
+vectorize <- function(f, in_axes = 1L, out_axes = 1L, randomness = "different") {
   assert_function(f)
   in_axes <- check_in_axes(f, in_axes)
   check_out_axes(out_axes)
+  assert_choice(randomness, c("different", "same"))
   transformation_fn(f, function(call_args) {
     assert_in_trace("vectorize")
-    vectorize_call(f, call_args, in_axes, out_axes)
+    vectorize_call(f, call_args, in_axes, out_axes, randomness)
   })
 }
 
@@ -112,10 +131,11 @@ check_out_axes <- function(out_axes) {
 
 # Traces `f` on one slice of the arguments `in_axes` maps over and replays the
 # graph into the current descriptor, batched along a leading axis, which then
-# moves to where `out_axes` puts it.
-vectorize_call <- function(f, call_args, in_axes, out_axes) {
-  args_flat <- flatten(call_args)
-  in_tree <- build_tree(call_args)
+# moves to where `out_axes` puts it. A random state among the arguments is a
+# leaf, which `f` receives as it is.
+vectorize_call <- function(f, call_args, in_axes, out_axes, randomness) {
+  args_flat <- flatten(call_args, is_leaf = is_rng_state)
+  in_tree <- build_tree(call_args, is_leaf = is_rng_state)
   # The argument each flat leaf belongs to.
   sizes <- pjrt::tree_child_sizes(in_tree)
   arg_names <- pjrt::tree_child_names(in_tree) %||% rep("", length(sizes))
@@ -173,15 +193,25 @@ vectorize_call <- function(f, call_args, in_axes, out_axes) {
     cli_abort("{.fn vectorize} needs at least one argument to map over.")
   }
 
-  graph <- trace_fn(f, args_flat = trace_args, in_tree = in_tree)
+  # `f` takes the side effects it uses as fresh inputs, which are bound to the
+  # values the slices start from once its uses are counted.
+  enclosing <- current_descriptor()
+  desc <- local_descriptor(side_effects_mode = "vectorize")
+  graph <- trace_fn(f, args_flat = trace_args, in_tree = in_tree, desc = desc)
   is_input <- !graph$is_static_flat
   operands <- Map(
     function(box, axis) if (is.null(axis)) box else move_axis(box, axis, 1L),
     graph_operands(graph, args_flat),
     leaf_axes[is_input]
   )
+  side_effects <- desc_bind_vectorized(enclosing, graph, size, randomness)
 
-  res <- graph_vectorize(graph, operands, is_mapped[is_input], size)
+  res <- graph_vectorize(
+    graph,
+    c(operands, side_effects$operands),
+    c(is_mapped[is_input], side_effects$batched),
+    size
+  )
   outs <- Map(
     function(out, batched, axis, j) {
       path <- pjrt::tree_path(graph$out_tree, j)

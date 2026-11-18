@@ -1,3 +1,9 @@
+# `f` applied to the rows of the matrix `x` one after the other, with the
+# results stacked as rows: what `vectorize(f)` gives, random draws included.
+apply_rows <- function(f, x) {
+  do.call(rbind, lapply(seq_len(shape(x)[[1L]]), function(i) as_r(f(x[i, ]))))
+}
+
 describe("vectorize", {
   x <- nv_array(matrix(1:6, nrow = 3L), dtype = "f32")
 
@@ -169,6 +175,61 @@ describe("vectorize", {
     f_ab <- vectorize(vectorize(f, in_axes = list(b = 1L)), in_axes = list(a = 1L))
     out <- jit(f_ab)(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(10, 20), dtype = "f32"))
     expect_equal(as_r(out), outer(c(1, 2, 3), c(10, 20)))
+  })
+
+  it("draws for every slice what a loop over the slices draws", {
+    f <- function(x) x + nv_runif(shape = 2L) + nv_runif(shape = 2L)
+    local_nv_seed(1L)
+    out <- as_r(jit(vectorize(f))(x))
+    after <- state_words()
+    local_nv_seed(1L)
+    expect_equal(out, apply_rows(jit(f), x), tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
+  it("draws the same for every slice with randomness \"same\", as one application of f does", {
+    f <- function(x) x + nv_runif(shape = 2L)
+    local_nv_seed(1L)
+    out <- as_r(jit(vectorize(f, randomness = "same"))(x))
+    after <- state_words()
+    local_nv_seed(1L)
+    noise <- as_r(nv_runif(shape = 2L))
+    expect_equal(out, as_r(x) + matrix(noise, 3L, 2L, byrow = TRUE), tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
+  it("draws in a nested vectorize() what nested loops draw", {
+    f <- function(x) x + nv_runif(shape = integer())
+    y <- nv_array(matrix(0, 2L, 3L), dtype = "f32")
+    local_nv_seed(1L)
+    out <- as_r(jit(vectorize(vectorize(f)))(y))
+    after <- state_words()
+    local_nv_seed(1L)
+    f_jit <- jit(f)
+    expected <- t(sapply(1:2, function(i) sapply(1:3, function(j) as_r(f_jit(y[i, j])))))
+    expect_equal(out, expected, tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
+  it("draws in a gradient it maps over what a loop over the slices draws", {
+    f <- function(x) gradient(function(x) sum(x * nv_runif(shape = 2L)))(x)[[1L]]
+    local_nv_seed(1L)
+    out <- as_r(jit(vectorize(f))(x))
+    local_nv_seed(1L)
+    expect_equal(out, apply_rows(jit(f), x), tolerance = 1e-6)
+  })
+
+  it("passes a random state among the arguments to every slice, which draws from it as a loop does", {
+    f <- function(x, rng) with_nv_rng_state(rng, x + nv_runif(shape = 2L))
+    rng <- nv_rng_state(1L)
+    out <- as_r(jit(vectorize(f))(x, rng))
+    rng_loop <- nv_rng_state(1L)
+    expect_equal(out, apply_rows(function(row) jit(f)(row, rng_loop), x), tolerance = 1e-6)
+    expect_identical(state_words(rng), state_words(rng_loop))
+  })
+
+  it("rejects randomness other than \"different\" and \"same\"", {
+    expect_error(vectorize(function(x) x, randomness = "error"), "randomness")
   })
 
   it("must be called inside jit", {

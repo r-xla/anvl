@@ -423,6 +423,17 @@ describe("vectorize rules on operands of more axes", {
   })
 })
 
+describe("prim_sample_bits", {
+  it("vectorizes into a draw for every slice", {
+    withr::local_seed(1L)
+    local_nv_seed(1L)
+    x <- rand_array(c(3L, 2L))
+    for (dtype in c("ui8", "ui32", "ui64")) {
+      autotest_vectorize(function(x) list(x, prim_sample_bits(c(2L, 3L), dtype)), x = x)
+    }
+  })
+})
+
 # Every primitive with a vectorize rule must have been applied by one of the
 # `autotest_vectorize()` calls above (see helper-vectorize.R).
 describe("vectorize rules", {

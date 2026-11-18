@@ -4,7 +4,7 @@
 \alias{vectorize}
 \title{Vectorize a Function}
 \usage{
-vectorize(f, in_axes = 1L, out_axes = 1L)
+vectorize(f, in_axes = 1L, out_axes = 1L, randomness = "different")
 }
 \arguments{
 \item{f}{(\code{function})\cr
@@ -14,8 +14,8 @@ Function to vectorize.}
 The arguments to map over and their batch axes. A single axis maps over
 every argument that is an array, along that axis. That includes every
 argument of the enclosing \code{\link[=jit]{jit()}} that is not static, R data among them;
-other plain R values -- such as static arguments, or an R array written
-inside the traced function -- are passed on unchanged.
+other values -- such as static arguments, a random state, or an R array
+written inside the traced function -- are passed on unchanged.
 A named list or vector gives the axis of each argument to map over, by
 its name; arguments it leaves out or gives \code{NULL} are passed on
 unchanged. A nested argument takes one axis for all of its leaves. All
@@ -29,6 +29,10 @@ output below it. An output with \code{n}
 axes per slice can be stacked along axes \code{1} to \code{n + 1}. \code{NULL} returns an
 output as it is, which works for one that does not depend on the
 arguments mapped over.}
+
+\item{randomness}{(\code{character(1)})\cr
+Whether the slices draw \code{"different"} (the default) or the \code{"same"}
+random numbers.}
 }
 \value{
 (\code{function})\cr
@@ -49,6 +53,14 @@ sees one slice of such an argument at a time, with that axis dropped. Every
 leaf of a nested argument is mapped over along the same axis. The other
 arguments are passed to each application of \code{f} unchanged. \code{out_axes} says
 along which axis each output of \code{f} is stacked.
+
+\code{randomness} says what the random draws of \code{f} (see \code{\link[=nv_set_seed]{nv_set_seed()}}) give
+the slices, as PyTorch's \code{torch.func.vmap()} does. By default, every slice
+draws numbers of its own: the same ones a loop over the slices, applying \code{f}
+to one after the other, would draw, so \code{vectorize()} changes how fast a
+simulation runs, not its results. With \code{"same"}, every slice draws the same
+numbers, the ones a single application of \code{f} draws, and the random state
+advances as after that application.
 }
 \section{Supported Primitives}{
 
@@ -76,6 +88,13 @@ jit(vectorize(f, in_axes = list(x = 1L)))(x, nv_array(c(1, 2), dtype = "f32"))
 
 # map over the columns instead: each column divided by its sum
 jit(vectorize(function(x) x / sum(x), in_axes = 2L, out_axes = 2L))(x)
+
+# every row gets noise of its own, the noise a loop over the rows would draw
+noisy <- function(x) x + nv_rnorm(shape = 2L)
+nv_set_seed(1L)
+jit(vectorize(noisy))(x)
+# or the same noise for every row
+jit(vectorize(noisy, randomness = "same"))(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

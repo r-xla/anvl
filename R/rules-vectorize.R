@@ -189,3 +189,11 @@ prim_bitcast_convert[["vectorize"]] <- rule_vectorize(function(inputs, batched, 
   }
   list(out)
 })
+
+# A draw from a batch of random states draws from each of them (see
+# `infer_sample_bits()`): the batch axis leads the key and the counter, and
+# leads the draws.
+prim_sample_bits[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  operands <- Map(batch_operand, inputs, batched, MoreArgs = list(size = size))
+  graph_desc_add(prim_sample_bits, operands, params = params, infer_fn = infer_sample_bits)
+})

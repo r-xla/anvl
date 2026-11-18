@@ -90,6 +90,29 @@ outer_product <- vectorize(vectorize(function(a, b) a * b, in_axes = list(b = 1L
 jit(outer_product)(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(10, 20), dtype = "f32"))
 ```
 
+## Random Numbers
+
+A function that draws random numbers (see the [random numbers](random-numbers.html) article) draws numbers of its own for every slice.
+They are the numbers a loop applying it to one slice after the other draws, and the random state advances as it does after that loop, so vectorizing a simulation changes how fast it runs, not its results:
+
+```{r}
+noisy <- function(x) x + nv_rnorm(shape = 2L)
+
+nv_set_seed(1L)
+jit(vectorize(noisy))(x)
+
+nv_set_seed(1L)
+noisy_jit <- jit(noisy)
+lapply(1:3, function(i) noisy_jit(x[i, ]))
+```
+
+With `randomness = "same"`, as in PyTorch's `torch.func.vmap()`, every slice draws the same numbers, the ones a single application of the function draws, and the random state advances as after that application:
+
+```{r}
+nv_set_seed(1L)
+jit(vectorize(noisy, randomness = "same"))(x)
+```
+
 ## Limitations
 
 `vectorize()` needs a rule for every primitive that a value mapped over goes through.

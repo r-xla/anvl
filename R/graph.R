@@ -254,6 +254,8 @@ AnvlGraph <- function(
 #'   - `"loop"`: as fresh inputs of the graph, which the graph also returns
 #'     there. The bodies of [nv_while()] and [nv_scan()] take side effects this
 #'     way, and hand them on to the next iteration.
+#'   - `"vectorize"`: as fresh inputs of the graph, which [vectorize()] binds
+#'     to the values the slices start from.
 #'   - `"capture"`: as the value of `parent`'s view, which the graph closes
 #'     over and continues. The branches of [nv_if()] and the function
 #'     [gradient()] differentiates take side effects this way.

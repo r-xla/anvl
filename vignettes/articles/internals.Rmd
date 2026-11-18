@@ -492,6 +492,7 @@ Where a view starts is decided by the trace's `side_effects_mode` (see `?GraphDe
 |---|---|---|
 | `"program"` | the outermost trace of `jit()` or `trace_fn()` | wherever the side effect says (`side_effect_start()`): implicit inputs from the host, an argument, or a value the program creates |
 | `"loop"` | the body of `nv_while()` or `nv_scan()` | fresh inputs, which the loop carries |
+| `"vectorize"` | the function `vectorize()` maps | fresh inputs, which `vectorize()` binds to the values the slices start from |
 | `"capture"` | a branch of `nv_if()`, the function `gradient()` differentiates | the enclosing trace's view: its value, and its count |
 | `NULL` | the condition of `nv_while()`, the function of a reduction, a scatter or a sort | nowhere: using a side effect is an error, as such a function cannot hand back what it did |
 
@@ -525,6 +526,7 @@ Out of a loop, a branch, a differentiated function or the program, it hands back
 | `nv_while()` | the body starts from a fork (`side_effect_fork()`), one use of the enclosing trace; the loop adds nothing else |
 | `nv_if()` | continues after the larger of the branches' counts |
 | `gradient()` | continues after the differentiated function's count |
+| `vectorize()` | adds the number of slices times the function's count, or the function's count with `randomness = "same"` |
 | the program | no output; `side_effect_advance()` adds the count on the host |
 
 The figure follows a draw in the body of an `nv_scan()` of three steps, and one after the loop.
@@ -563,6 +565,7 @@ A side effect only provides a few S3 methods on its handle:
 | `side_effect_input(effect, object, name)` | the buffer of the key or the counter, built from the words R holds |
 | `side_effect_after(effect, value, n)` | the key and the counter plus `n` |
 | `side_effect_fork(effect, value)` | a call of `prim_fork_rng_state()` |
+| `side_effect_stack(effect, value, n, size)` | the key for every slice, and the counter plus $(i - 1) n$ for slice $i$; the default refuses `randomness = "different"` |
 | `side_effect_advance(effect, object, n)` | advances the object's counter by `n` |
 | `side_effect_format(effect, ids, n)` | the `then` line of a printed graph, `%counter1 += n`; the default says `n` uses |
 
@@ -590,7 +593,7 @@ trace_fn(
 ```
 
 Fixing every advance when the function is traced, rather than when it runs, is what lets every draw compute its counter from the counter the program starts from, and the host advance the random state after a call by a number known in advance.
-The same property will let a future `vmap()` or `parallel_map()` of a function give each element the counter a hand-written loop over the elements would give it.
+The same property lets `vectorize()` give each slice the counters a hand-written loop over the slices would give it, and will let a future `parallel_map()` do the same for its elements.
 
 So a compiled function draws exactly what the same calls made one after the other without `jit()` would draw, and leaves the global random state where they would leave it:
 
@@ -642,7 +645,7 @@ In a trace, a random state is not a value: it cannot be returned, carried throug
 A random state among the arguments is not special to the dispatcher: `AnvlRngState` is registered as a node of pjrt's argument tree (`pjrt::register_tree_node()`), whose children are its key and its counter.
 R holds them as their 32-bit words, two numbers each, so the arguments are flattened into leaves, a random state contributing two of bare R data, which the program takes as ordinary inputs that the dispatcher uploads to the device of the call's other inputs.
 Every random state gives leaves of the same type, so one compiled program serves every random state passed there.
-`gradient()` flattens its arguments with `pjrt::flatten(is_leaf = )`, which stops at a random state, so that the function it differentiates receives it as it is and its draws continue those of the enclosing trace.
+`gradient()` and `vectorize()` flatten their arguments with `pjrt::flatten(is_leaf = )`, which stops at a random state, so that the function they transform receives it as it is and its draws continue those of the enclosing trace.
 After the run, pjrt hands the call's arguments to the entry's `on_success()`, which finds the random states among them the same way and advances the one at the handle's place among them (`rng_state_argument()`).
 
 ```{r, echo = FALSE, out.width = "100%"}
@@ -690,6 +693,7 @@ knitr::include_graphics("figures/se-subgraphs.png")
 - `nv_if()` lets both branches start from the enclosing trace's view and continue its count; the enclosing trace then continues after the larger of the two branches' draws, whichever branch ran (`desc_end_capture()`).
 - `nv_while()` runs its body a number of times not known when it is traced, so the body cannot continue the enclosing count. Instead the loop *forks* the random state: it splits it once, like a draw, but makes the fresh key a child random state with the counter 0, which the body carries through the loop and advances as often as it runs. The enclosing trace advances by one, the fork, however often the body ran, and drops the child after the loop (`side_effect_fork()`).
 - The function `gradient()` differentiates runs once, so its draws continue the enclosing count like straight-line code; its graph starts from the enclosing trace's view, and hands its draws to the enclosing trace like a branch does (`desc_end_capture()`).
+- The function `vectorize()` maps runs once per slice, all slices at once. It takes the random state as fresh inputs, which are bound to a batch of random states once its $m$ draws are counted (`desc_bind_vectorized()`): with `randomness = "different"`, slice $i$ starts at the counter $c + (i - 1) m$, where a loop over the slices would start it (`side_effect_stack()`), and the enclosing trace continues after $m$ times the number of slices; with `"same"`, every slice starts at $c$, and the enclosing trace continues after $m$. A draw from a batch of random states draws from each of them: the vectorize rule of `prim_sample_bits()` passes it the batch of keys and counters.
 
 ```{r}
 trace_fn(
