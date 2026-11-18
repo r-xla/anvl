@@ -1,0 +1,53 @@
+% Asynchronous execution, kept simple: R calls a jitted function twice, runs other code, and only
+% then needs the values. The code, and a timeline of R and the device (not to scale), with the
+% device's work in the accent color and R's waiting in gray. Shared style in style.tex.
+% Build: make figures/async.pdf
+\documentclass[tikz, border = 6pt]{standalone}
+\input{style}
+
+\tikzset{
+  code/.style = {lines, column 2/.style = {nodes = {text = black!45}}},
+  lane/.style = {font = \footnotesize, text = black!70, anchor = east},
+  span/.style = {draw, rounded corners = 1pt, minimum height = 5mm, inner sep = 1pt,
+    font = \ttfamily\scriptsize, anchor = west},
+  rwork/.style = {span, draw = black!45, fill = black!8},
+  rwait/.style = {span, draw = black!35, dashed, fill = white, text = black!45},
+  dwork/.style = {span, draw = accent!80!black, fill = accent!15, text = accent!60!black}
+}
+
+\begin{document}
+\begin{tikzpicture}
+
+  \matrix[code] (code) at (0, 0) {
+    f <- jit(function(x) x \%*\% x) &[12pt] \\
+    y <- f(x) & \# returns at once \\
+    z <- f(y) & \# returns at once \\
+    \# ... other R code ... & \\
+    v <- as\_array(z) & \# waits for z \\
+  };
+  \begin{scope}[on background layer]
+    \node[plainbox, fit = (code)] (codebox) {};
+  \end{scope}
+
+  % The timeline, not to scale: R on top, the device below.
+  \begin{scope}[shift = {($(codebox.north east) + (1.6, -0.55)$)}]
+    \node[lane] at (-0.15, 0) {R};
+    \node[lane] at (-0.15, -1.1) {device};
+
+    \node[rwork, minimum width = 1.0cm] (call1) at (0, 0) {f(x)};
+    \node[rwork, minimum width = 1.0cm] (call2) at (1.05, 0) {f(y)};
+    \node[rwork, minimum width = 1.6cm] (other) at (2.1, 0) {other code};
+    \node[rwait, minimum width = 1.6cm] (wait) at (3.75, 0) {waits};
+    \node[rwork, minimum width = 0.9cm] (copy) at (5.4, 0) {copy};
+
+    \node[dwork, minimum width = 2.6cm] (dy) at (0.55, -1.1) {y = x \%*\% x};
+    \node[dwork, minimum width = 2.2cm] (dz) at (3.2, -1.1) {z = y \%*\% y};
+
+    \draw[flow] (call1.south) -- (call1.south |- dy.north);
+    \draw[flow] (call2.south) to[out = -90, in = 90] ($(dz.north west) + (0.2, 0)$);
+    \draw[flow] (dz.east) to[out = 0, in = -90] (copy.south);
+    \draw[flow] (0, -1.75) -- (6.4, -1.75) node[right, font = \scriptsize, text = black!55] {time};
+  \end{scope}
+
+\end{tikzpicture}
+\end{document}

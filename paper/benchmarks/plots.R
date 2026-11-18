@@ -21,13 +21,22 @@ summarize_results <- function(res) {
   })
 }
 
+# The font family is "" (the device's default) unless the option `paper.plot_family` names one;
+# figures/runtime.R sets it to Latin Modern, the font of the paper and of its other figures.
 bench_theme <- function() {
-  theme_bw(base_size = 9) + theme(legend.position = "right", legend.title = element_blank())
+  # Compact legend keys, so that the twelve configurations of the chains plot fit its height.
+  theme_bw(base_size = 9, base_family = getOption("paper.plot_family", "")) +
+    theme(legend.position = "right", legend.title = element_blank(),
+      legend.key.height = unit(9, "pt"), legend.key.spacing.y = unit(1, "pt"))
 }
 
+# anvl is teal, the color of anvl in the other figures of the paper (figures/style.tex).
+anvl_colors <- c(cpu1 = "#21908c", cpu16 = "#5ec962", gpu = "#0f4f4c")
+
 bench_colors <- c(
-  "anvl, 1 core" = "#1b9e77", "anvl, 16 cores" = "#66a61e", "anvl, 16 cores (one program)" = "#66a61e",
-  "anvl, GPU" = "#7570b3", "Stan, GPU (OpenCL)" = "#a6761d",
+  "anvl, 1 core" = anvl_colors[["cpu1"]], "anvl, 16 cores" = anvl_colors[["cpu16"]],
+  "anvl, 16 cores (one program)" = anvl_colors[["cpu16"]],
+  "anvl, GPU" = anvl_colors[["gpu"]], "Stan, GPU (OpenCL)" = "#a6761d",
   "torch, 1 core" = "#e7298a", "torch, 16 threads" = "#f781bf", "torch, GPU" = "#666666",
   "TMB, 1 core" = "#1f78b4", "TMB, 16 cores" = "#a6cee3",
   "Stan, 1 core" = "#d95f02", "Stan, 16 cores" = "#e6ab02"
@@ -75,8 +84,8 @@ plot_scaling <- function(files) {
   s <- stats::aggregate(time ~ method + cores, data = res, FUN = stats::median)
   s$method <- factor(s$method, levels = c("anvl", "stan_threads", "stan", "torch", "tmb"),
     labels = c("anvl", "Stan (reduce_sum)", "Stan", "torch", "TMB (OpenMP)"))
-  colors <- c("anvl" = "#1b9e77", "Stan (reduce_sum)" = "#e6ab02", "Stan" = "#d95f02", "torch" = "#e7298a",
-    "TMB (OpenMP)" = "#1f78b4", "anvl, GPU" = "#7570b3", "Stan, GPU (OpenCL)" = "#a6761d", "torch, GPU" = "#666666")
+  colors <- c("anvl" = anvl_colors[["cpu1"]], "Stan (reduce_sum)" = "#e6ab02", "Stan" = "#d95f02", "torch" = "#e7298a",
+    "TMB (OpenMP)" = "#1f78b4", "anvl, GPU" = anvl_colors[["gpu"]], "Stan, GPU (OpenCL)" = "#a6761d", "torch, GPU" = "#666666")
   p <- ggplot(s, aes(cores, time, color = method)) +
     geom_line(data = s[s$method != "Stan", ]) +
     geom_point(size = 1.5) +

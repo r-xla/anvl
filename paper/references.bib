@@ -24,6 +24,13 @@
   url = {https://openxla.org/}
 }
 
+@Manual{ref-xla,
+  title = {{XLA}: Accelerated Linear Algebra},
+  author = {{OpenXLA Team}},
+  year = {2026},
+  url = {https://openxla.org/xla}
+}
+
 @Manual{ref-gopjrt,
   title = {gopjrt: Go Wrappers for {OpenXLA} {PJRT}},
   author = {Jan Pfeifer},
@@ -52,13 +59,27 @@
   url = {https://github.com/Konrad1991/ast2ast/}
 }
 
-@software{ref-iree,
-  author = {{The IREE Authors}},
-  license = {Apache-2.0 WITH LLVM-exception},
-  month = sep,
-  title = {{IREE}},
-  url = {https://github.com/iree-org/iree},
-  year = {2019}
+@Manual{ref-cran-policy,
+  title = {{CRAN} Repository Policy},
+  author = {{CRAN Repository Maintainers}},
+  year = {2026},
+  note = {Revision 6985},
+  url = {https://cran.r-project.org/web/packages/policies.html}
+}
+
+@Manual{ref-metal,
+  title = {Metal Shading Language Specification},
+  author = {{Apple Inc.}},
+  year = {2026},
+  note = {Version 4.1},
+  url = {https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf}
+}
+
+@Manual{ref-iree,
+  title = {{IREE}: Intermediate Representation Execution Environment},
+  author = {{IREE Team}},
+  year = {2026},
+  url = {https://iree.dev/}
 }
 
 @Manual{ref-rtorch,
@@ -467,9 +488,17 @@
 @Manual{ref-gpumatrix,
   title = {{GPUmatrix}: Basic Linear Algebra with {GPU}},
   author = {C\'{e}sar Lobato-Fern\'{a}ndez and Juan A. Ferrer-Bonsoms and Angel Rubio},
-  year = {2025},
+  year = {2026},
   note = {R package version 1.0.3},
   url = {https://CRAN.R-project.org/package=GPUmatrix},
+}
+
+@Manual{ref-cudaml,
+  title = {{cuda.ml}: {R} Interface for the {RAPIDS} {cuML} Suite of Libraries},
+  author = {Yitao Li and Tomasz Kalinowski and Daniel Falbel},
+  year = {2026},
+  note = {R package version 0.4.0},
+  url = {https://CRAN.R-project.org/package=cuda.ml},
 }
 
 @Manual{ref-gpumagic,
@@ -639,4 +668,95 @@
   author = {Ga{\"e}l Guennebaud and Beno{\^i}t Jacob and others},
   year = {2010},
   url = {https://eigen.tuxfamily.org},
+}
+
+@article{ref-rir,
+  title = {Contextual Dispatch for Function Specialization},
+  author = {Olivier Fl{\"u}ckiger and Guido Chari and Ming-Ho Yee and Jan Je{\v{c}}men and Jakob Hain and Jan Vitek},
+  journal = {Proceedings of the ACM on Programming Languages},
+  volume = {4},
+  number = {OOPSLA},
+  pages = {1--24},
+  year = {2020},
+  doi = {10.1145/3428288},
+}
+
+@inproceedings{ref-fastr,
+  title = {A Fast Abstract Syntax Tree Interpreter for {R}},
+  author = {Tomas Kalibera and Petr Maj and Floreal Morandat and Jan Vitek},
+  booktitle = {Proceedings of the 10th ACM SIGPLAN/SIGOPS International Conference on Virtual Execution Environments},
+  pages = {89--102},
+  year = {2014},
+  publisher = {ACM},
+  doi = {10.1145/2576195.2576205},
+}
+
+@inproceedings{ref-threefry,
+  title = {Parallel Random Numbers: As Easy as 1, 2, 3},
+  author = {John K. Salmon and Mark A. Moraes and Ron O. Dror and David E. Shaw},
+  booktitle = {Proceedings of 2011 International Conference for High Performance Computing, Networking, Storage and Analysis},
+  pages = {1--12},
+  year = {2011},
+  publisher = {ACM},
+  doi = {10.1145/2063384.2063405},
+}
+
+@article{ref-scipy,
+  title = {{SciPy} 1.0: Fundamental Algorithms for Scientific Computing in {Python}},
+  author = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and Haberland, Matt and Reddy, Tyler and Cournapeau, David and others},
+  journal = {Nature Methods},
+  volume = {17},
+  number = {3},
+  pages = {261--272},
+  year = {2020},
+  doi = {10.1038/s41592-019-0686-2},
+}
+
+@Misc{ref-gspmd,
+  title = {{GSPMD}: General and Scalable Parallelization for {ML} Computation Graphs},
+  author = {Yuanzhong Xu and HyoukJoong Lee and Dehao Chen and Blake Hechtman and Yanping Huang and Rahul Joshi and Maxim Krikun and Dmitry Lepikhin and Andy Ly and Marcello Maggioni and Ruoming Pang and Noam Shazeer and Shibo Wang and Tao Wang and Yonghui Wu and Zhifeng Chen},
+  year = {2021},
+  howpublished = {arXiv:2105.04663},
+  doi = {10.48550/arXiv.2105.04663},
+}
+
+@Misc{ref-pallas,
+  author = {{The JAX Authors}},
+  title = {Pallas: A {JAX} Kernel Language},
+  year = {2026},
+  url = {https://docs.jax.dev/en/latest/pallas/index.html}
+}
+
+@article{ref-bugs,
+  title = {The {BUGS} Project: Evolution, Critique and Future Directions},
+  author = {Lunn, David and Spiegelhalter, David and Thomas, Andrew and Best, Nicky},
+  journal = {Statistics in Medicine},
+  volume = {28},
+  number = {25},
+  pages = {3049--3067},
+  year = {2009},
+  doi = {10.1002/sim.3680},
+}
+
+@Manual{ref-stanli,
+  title = {{stanli}: The {Stan} Language Interpreter},
+  author = {Sean Talts},
+  year = {2026},
+  note = {R package version 0.28.0},
+  url = {https://github.com/seantalts/stanli},
+}
+
+@Manual{ref-tinytorch,
+  title = {{tinytorch}: Minimal {R} Bindings to {libtorch} ({Linux})},
+  author = {Troy Hernandez},
+  year = {2026},
+  note = {R package version 0.2.0},
+  url = {https://github.com/cornball-ai/tinytorch},
+}
+
+@Manual{ref-stan-guide,
+  title = {{Stan} User's Guide},
+  author = {{Stan Development Team}},
+  year = {2026},
+  url = {https://mc-stan.org/docs/stan-users-guide/},
 }
