@@ -486,4 +486,4 @@ reference:
   - title: Testing
     desc: Helpers for the tests of packages that depend on anvl
     contents:
-      - skip_if_no_pjrt_plugin
+      - skip_if_no_plugin

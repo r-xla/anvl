@@ -345,11 +345,11 @@ install_anvl <- function(backend = active_backend(), ...) {
 #' @seealso [install_anvl()]
 #' @examplesIf requireNamespace("testthat", quietly = TRUE)
 #' testthat::test_that("arrays add up", {
-#'   skip_if_no_pjrt_plugin()
+#'   skip_if_no_plugin()
 #'   testthat::expect_equal(as_array(nv_scalar(1) + 2), 3)
 #' })
 #' @export
-skip_if_no_pjrt_plugin <- function(platform = NULL) {
+skip_if_no_plugin <- function(platform = NULL) {
   platform <- platform %||% sub(":.*$", "", as.character(default_device_id()))
   assert_string(platform)
   if (!pjrt_plugin_available(platform)) {

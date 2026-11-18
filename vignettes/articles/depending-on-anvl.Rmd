@@ -13,24 +13,24 @@ CRAN's check machines neither have a plugin nor set `PJRT_INSTALL`, so a test th
 
 ## Skipping the Tests
 
-Start each such test with `skip_if_no_pjrt_plugin()`:
+Start each such test with `skip_if_no_plugin()`:
 
 ```{r, eval = FALSE}
 test_that("my_model() recovers the coefficients", {
-  anvl::skip_if_no_pjrt_plugin()
+  anvl::skip_if_no_plugin()
   fit <- my_model(x, y)
   expect_equal(coef(fit), beta, tolerance = 1e-4)
 })
 ```
 
 It skips the test unless the plugin is downloaded, the `PJRT_PLUGIN_PATH_<PLATFORM>` environment variable points to one, or `PJRT_INSTALL=1` allows downloading it.
-By default it asks for the plugin of the platform of the default device, which is where a test that names no device runs; a test that needs another one names it, e.g. `skip_if_no_pjrt_plugin("cuda")`.
+By default it asks for the plugin of the platform of the default device, which is where a test that names no device runs; a test that needs another one names it, e.g. `skip_if_no_plugin("cuda")`.
 
 Use it instead of `skip_on_cran()`.
-That one decides by the `NOT_CRAN` environment variable, which says where the check runs, while `skip_if_no_pjrt_plugin()` decides by whether the plugin is there, so the tests run wherever it is.
+That one decides by the `NOT_CRAN` environment variable, which says where the check runs, while `skip_if_no_plugin()` decides by whether the plugin is there, so the tests run wherever it is.
 To run them in your own CI, set `PJRT_INSTALL=1` or call `anvl::install_anvl()` before the check.
 
 ## Reverse Dependency Checks
 
 Before each release of {anvl}, we run the reverse dependency checks, `R CMD check` of the packages that depend on {anvl} against the new version, with the PJRT plugins installed.
-The tests guarded by `skip_if_no_pjrt_plugin()` therefore run there, even though CRAN skips them, so a change in {anvl} that breaks your package is caught before the release.
+The tests guarded by `skip_if_no_plugin()` therefore run there, even though CRAN skips them, so a change in {anvl} that breaks your package is caught before the release.
