@@ -9,6 +9,8 @@
   that produce the arrays are not fused with those that use them.
   `nv_optimization_barrier()` does the same for a single array or a tree of
   arrays, returning it with the same structure.
+* Tracing is several times faster, which shortens the first call of a jitted
+  function: recording an operation is now done largely in C.
 
 # anvl 0.6.0
 
