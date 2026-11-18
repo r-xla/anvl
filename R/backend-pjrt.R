@@ -9,7 +9,7 @@ NULL
 # anvl considers sound to key on. `info` carries the tree, the flat leaves, the
 # static mask, and the avals the cache key was built from.
 # `device` is the jit's device policy: NULL (infer) or a concrete device.
-jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
+jit_pjrt_compile_cb <- function(f, static, donate, xla_options, device = NULL) {
   function(info) {
     check_static_args(info$args, static)
     compiled <- compile_pjrt(
@@ -17,6 +17,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
       donate = donate,
+      xla_options = xla_options,
       device = device,
       arg_device = dispatch_arg_device(info),
       fallback_device = info$default_device,
@@ -33,13 +34,16 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       client = pjrt::pjrt_client(pjrt::platform(compiled$device)),
       device = compiled$device,
       out_tree = compiled$out_tree,
-      out_avals = compiled$out_avals
+      out_avals = compiled$out_avals,
+      implicit_inputs = compiled$implicit_inputs,
+      on_success = compiled$on_success,
+      uses_default_device = compiled$uses_default_device
     )
   }
 }
 
 # device: NULL | PJRTDevice
-jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
+jit_pjrt_impl <- function(f, static, cache_size, donate, xla_options, device) {
   if (!is.null(device)) {
     device <- backend_device(device, "pjrt")
   }
@@ -50,7 +54,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   # call's device.
   dispatcher <- pjrt::dispatcher(
     cache_size,
-    jit_pjrt_compile_cb(f, static, donate, device),
+    jit_pjrt_compile_cb(f, static, donate, xla_options, device),
     static = static,
     # The tag every AnvlArray input must carry and that the dispatcher stamps
     # on the arrays it returns; it also selects pjrt's native execution engine.
@@ -103,6 +107,8 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Tree structure of the inputs.
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
+#' @param xla_options (named `list()`)\cr
+#'   XLA options for this compile, passed to [`pjrt::pjrt_compile()`].
 #' @param device (`NULL` | `character(1)` | `PJRTDevice`)\cr
 #'   Target device (e.g. `"cpu"`, `"cuda"`). If `NULL`, inferred from
 #'   `arg_device` and traced arrays.
@@ -133,18 +139,32 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `device`: The `PJRTDevice` the executable was compiled for.
 #'   - `phantom_specs`: One `list(dtype, shape)` per phantom donated input the
 #'     executor must allocate for an output (see [`stablehlo()`]).
+#'   - `implicit_inputs`: One `list(get, dtype, shape)` per value of a side
+#'     effect the program takes from outside of it, which pjrt's dispatcher
+#'     supplies as an input after the call's own: `get()` takes no arguments
+#'     and returns the current value, a `PJRTBuffer` of `dtype` and `shape`,
+#'     e.g. the key of the global random state.
+#'   - `on_success`: `NULL`, or a function pjrt's dispatcher calls after every
+#'     successful run with the call's arguments: it advances the host object
+#'     of each side effect by its count, e.g. a random state passed as an
+#'     argument.
+#'   - `uses_default_device`: Whether the program was compiled for
+#'     `fallback_device` (or the default device) because nothing else named
+#'     one. `FALSE` means its device is fixed by `device`, the inputs or the
+#'     traced arrays, which the default device does not affect.
 #' @keywords internal
 compile_pjrt <- function(
   f,
   args_flat,
   in_tree,
   donate = character(),
+  xla_options = list(),
   device = NULL,
   arg_device = NULL,
   fallback_device = NULL,
   default_dtypes = NULL
 ) {
-  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt")
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt", side_effects_mode = "program")
   graph <- trace_fn(
     f,
     desc = desc,
@@ -164,6 +184,7 @@ compile_pjrt <- function(
   # A requested device is used as is: everything is moved to it, whatever
   # devices the trace found. Otherwise the array inputs and the traced arrays
   # must all agree on one.
+  uses_default_device <- FALSE
   if (is.null(device)) {
     unique_devices <- unique(c(desc$devices, if (!is.null(arg_device)) list(arg_device)))
     if (length(unique_devices) == 0L) {
@@ -172,6 +193,7 @@ compile_pjrt <- function(
       # on it, so compile for that exact device; only a caller with no
       # dispatcher in front of it falls back to the default.
       device <- fallback_device %||% default_device("pjrt")
+      uses_default_device <- TRUE
     } else if (length(unique_devices) > 1L) {
       devices_str <- paste0(vapply(unique_devices, as.character, character(1L)), collapse = ", ")
       cli_abort(c(
@@ -183,10 +205,16 @@ compile_pjrt <- function(
     }
   }
 
-  compile_graph_pjrt(graph, donate = donate, device = device)
+  out <- compile_graph_pjrt(graph, donate = donate, device = device, xla_options = xla_options)
+  # Sound because the trace never reads the default device: an array created
+  # without one while tracing is "plain" and placed on the compile device.
+  out$uses_default_device <- uses_default_device
+  out
 }
 
-compile_graph_pjrt <- function(graph, donate = character(), device) {
+# pjrt's dispatcher supplies the side effects the program takes as implicit
+# inputs, and calls the entry's `on_success` after a run.
+compile_graph_pjrt <- function(graph, donate = character(), device, xla_options = list()) {
   platform_name <- if (is.character(device)) device else platform(device)
   out <- stablehlo(
     graph,
@@ -224,9 +252,10 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     )
   })
 
-  src <- stablehlo::repr(func)
+  # the functions `func` calls are defined next to it
+  src <- paste(vapply(c(out[[4L]], list(func)), stablehlo::repr, character(1L)), collapse = "\n\n")
   program <- pjrt_program(src = src, format = "mlir")
-  exec <- pjrt_compile(program, device = device)
+  exec <- pjrt_compile(program, device = device, xla_options = xla_options)
 
   list(
     exec = exec,
@@ -239,7 +268,9 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     # call without any R input needs no declaration at all.
     input_dtypes = graph_input_dtypes(graph),
     device = device(exec),
-    phantom_specs = phantom_specs
+    phantom_specs = phantom_specs,
+    implicit_inputs = side_effects_implicit_inputs(graph),
+    on_success = side_effects_on_success(graph)
   )
 }
 
@@ -307,17 +338,18 @@ AnvlBackendPjrt <- function() {
     as_array = function(x, check) xlamisc::as_array(x$data, check = check),
     as_raw = function(x, row_major) xlamisc::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),
-    device = function(x) x$device,
+    device = function(x) xlamisc::device(x$data),
     new_device = function(x) pjrt::pjrt_device(x),
     print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
-    jit = function(f, static, cache_size, donate = character(), device = NULL) {
+    jit = function(f, static, cache_size, donate = character(), xla_options = list(), device = NULL) {
       assert_subset(donate, formalArgs2(f))
+      assert_list(xla_options)
       # static is checked in jit() itself
       common <- intersect(donate, static)
       if (length(common)) {
         cli_abort("{.val {common}} cannot be both in {.arg donate} and {.arg static}.")
       }
-      jit_pjrt_impl(f, static, cache_size, donate, device)
+      jit_pjrt_impl(f, static, cache_size, donate, xla_options, device)
     },
     await_data = function(x) pjrt::await(x$data),
     default_dtypes = list(float = "f32", int = "i32")
@@ -326,18 +358,20 @@ AnvlBackendPjrt <- function() {
   backend
 }
 
-# Wrap a PJRT buffer into an AnvlArray. The dtype/shape/device of a buffer are
+# Wrap a PJRT buffer into an AnvlArray. The dtype/shape of a buffer are
 # immutable, so they are resolved once here and cached on the AnvlArray (as the
-# plain/quickr backends already do for dtype/shape). This turns the per-call
-# dtype()/shape()/device() reads on the hot dispatch path into plain field
-# accesses instead of repeated S3-dispatch -> C++/pjrt calls.
-pjrt_anvl_array <- function(buf) {
+# plain/quickr backends already do). This turns the per-call dtype()/shape()
+# reads on the hot dispatch path into plain field accesses instead of repeated
+# S3-dispatch -> C++/pjrt calls. The device is not cached: a PJRTDevice is an
+# external pointer, which would not survive serializing the array, while the
+# buffer itself does. A caller that knows the buffer's `dtype` (a `DataType`)
+# and `shape` passes them, which saves reading them.
+pjrt_anvl_array <- function(buf, dtype = xlamisc::dtype(buf), shape = xlamisc::shape(buf)) {
   structure(
     list(
       data = buf,
-      dtype = xlamisc::dtype(buf),
-      shape = xlamisc::shape(buf),
-      device = device(buf),
+      dtype = dtype,
+      shape = shape,
       backend = "pjrt"
     ),
     class = "AnvlArray"

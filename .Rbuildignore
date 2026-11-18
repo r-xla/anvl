@@ -8,7 +8,6 @@
 ^\.github$
 ^LICENSE\.md$
 ^.ccache.*
-CLAUDE.md
 SPEC.md
 ^README\.Rmd$
 ^_pkgdown\.yml$

@@ -32,11 +32,14 @@ AnvlPrimitiveDef <- function(name, subgraphs = character()) {
 
 primitive_env <- new.env(parent = emptyenv())
 
+# The `AnvlPrimitiveDef` of `x`, which is either that definition or the
+# `AnvlPrimitive` callable carrying it.
+primitive_def <- function(x) {
+  if (inherits(x, "AnvlPrimitive")) attr(x, "definition") else x
+}
+
 is_higher_order_primitive <- function(x) {
-  if (inherits(x, "AnvlPrimitive")) {
-    x <- attr(x, "definition")
-  }
-  length(x$subgraphs) > 0L
+  length(primitive_def(x)$subgraphs) > 0L
 }
 
 
@@ -179,10 +182,7 @@ mark_primitive_body <- function(body) {
 #'   primitive that is not higher-order.
 #' @export
 subgraphs <- function(statement) {
-  p <- statement$primitive
-  if (inherits(p, "AnvlPrimitive")) {
-    p <- attr(p, "definition")
-  }
+  p <- primitive_def(statement$primitive)
   if (!is_higher_order_primitive(p)) {
     return(list())
   }

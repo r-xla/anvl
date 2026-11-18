@@ -32,6 +32,12 @@
 #' - [`nv_serialize()`] / [`nv_unserialize()`]:
 #'   Serialize/deserialize arrays to/from raw vectors.
 #'
+#' An array can also be saved like any R object, e.g. with [`saveRDS()`].
+#' Its device is not saved: an array of the pjrt backend loads onto the
+#' [default device][default_device] at the time it is read, so an array saved
+#' on a GPU also loads on a machine without one. anvl arranges this when it
+#' is loaded, so load anvl before reading arrays.
+#'
 #' @section Backend:
 #' An `AnvlArray` is backend-dependent: it belongs to exactly one backend
 #' (`"pjrt"` or the experimental `"quickr"`) and lives on a device of that backend.

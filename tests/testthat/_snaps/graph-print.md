@@ -233,6 +233,19 @@
         return %1
       }
 
+# format.AnvlGraph() / names the side effects of a graph after its inputs
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: ui32[2], %key1: ui32[2], %counter1: ui64[]) {
+        %1: ui32[2] = sample_bits [shape = 2, dtype = "ui32"] (%key1, %counter1)
+        %2: ui32[2] = add(%x1, %1)
+        return %2
+      } then {
+        %counter1 += 1
+      }
+
 # format.AnvlGraph() / has nothing between the signature and the return when there are no calls
 
     Code

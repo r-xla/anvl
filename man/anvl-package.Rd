@@ -85,11 +85,11 @@ Authors:
   \item Daniel Falbel \email{daniel@posit.co} (\href{https://orcid.org/0009-0006-0143-2392}{ORCID})
   \item Tomasz Kalinowski \email{tomasz@posit.co}
   \item Nikolai German \email{niko.german@gmail.com} (\href{https://orcid.org/0009-0001-7394-8367}{ORCID})
+  \item Louis Aslett \email{louis.aslett@durham.ac.uk} (\href{https://orcid.org/0000-0003-2211-233X}{ORCID})
 }
 
 Other contributors:
 \itemize{
-  \item Louis Aslett \email{louis.aslett@durham.ac.uk} (\href{https://orcid.org/0000-0003-2211-233X}{ORCID}) [contributor]
   \item Hugh Graham \email{hugh@belian.earth} (\href{https://orcid.org/0000-0001-9451-5010}{ORCID}) [contributor]
 }
 

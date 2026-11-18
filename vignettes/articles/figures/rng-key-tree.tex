@@ -1,0 +1,73 @@
+% The keys the global random state derives for a short program: every sampling
+% call splits the state at its counter, and a key is either split or drawn from,
+% never both.
+% Build: see figures/README.md
+\documentclass[tikz, border = 6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usetikzlibrary{positioning, calc, arrows.meta, fit, backgrounds}
+
+\definecolor{hash}{HTML}{5B8C5A}
+\definecolor{keep}{HTML}{2A7AB0}
+
+\tikzset{
+  >={Stealth[length = 2mm]},
+  state/.style = {draw, rounded corners = 2pt, inner sep = 4pt, align = center,
+    font = \small},
+  key/.style = {draw = hash!80!black, fill = hash!15, rounded corners = 2pt,
+    inner sep = 3pt, font = \small, minimum height = 6mm},
+  bits/.style = {draw = keep!80!black, fill = keep!15, inner sep = 2.5pt,
+    font = \footnotesize, minimum height = 5mm},
+  code/.style = {font = \ttfamily\footnotesize, text = black!65, anchor = south west,
+    inner sep = 1pt},
+  edge/.style = {->, black!70},
+  elabel/.style = {font = \footnotesize, fill = white, inner sep = 1pt}
+}
+
+\begin{document}
+\begin{tikzpicture}
+
+  % ---- the global random state --------------------------------------------
+  \node[state] (root) at (0, -2.0)
+    {\texttt{nv\_set\_seed(1)}\\[2pt]global state\\$(k,\ c = 0)$};
+
+  % ---- one split per sampling call ----------------------------------------
+  \foreach \c/\y/\name in {0/0/k0, 1/-1.4/k1, 2/-2.6/k2, 3/-4.0/k3} {
+    \node[key] (\name) at (4.2, \y) {$k_{\c} = \mathrm{TF}_k(\c)$};
+    \draw[edge] (root.east) to[out = 0, in = 180] (\name.west);
+    \node[elabel, anchor = south east] at ($(\name.west) + (-0.3, 0.02)$) {$c = \c$};
+  }
+
+  \node[code] at (k0.north west) {nv\_runif(3)};
+  \node[code] at (k1.north west) {nv\_rnorm(2), first batch};
+  \node[code] at (k2.north west) {nv\_rnorm(2), second batch};
+  \node[code] at (k3.north west) {nv\_runif(2)};
+
+  % ---- draws: one block per position t ------------------------------------
+  \node[bits, right = 0.9 of k0] (b00) {$\mathrm{TF}_{k_0}(0)$};
+  \node[bits, right = 0.12 of b00] (b01) {$\mathrm{TF}_{k_0}(1)$};
+  \node[bits, right = 0.12 of b01] (b02) {$\mathrm{TF}_{k_0}(2)$};
+  \draw[edge] (k0) -- (b00);
+
+  \node[bits, right = 0.9 of k1] (b10) {$\mathrm{TF}_{k_1}(0)$};
+  \draw[edge] (k1) -- (b10);
+  \node[bits, right = 0.9 of k2] (b20) {$\mathrm{TF}_{k_2}(0)$};
+  \draw[edge] (k2) -- (b20);
+
+  \node[bits, right = 0.9 of k3] (b30) {$\mathrm{TF}_{k_3}(0)$};
+  \node[bits, right = 0.12 of b30] (b31) {$\mathrm{TF}_{k_3}(1)$};
+  \draw[edge] (k3) -- (b30);
+
+  % ---- afterwards -----------------------------------------------------------
+  \node[state, below = 1.0 of root] (after) {afterwards\\$(k,\ c = 4)$};
+  \draw[edge, densely dotted] (root) -- node[elabel, right = 2pt, align = left] {4 sampling\\calls} (after);
+
+  % ---- legend ---------------------------------------------------------------
+  \node[key, minimum height = 4mm] (lk) at (0, -5.4) {};
+  \node[right = 1pt of lk, font = \footnotesize] (lkt) {key: only split};
+  \node[bits, minimum height = 4mm, right = 0.5 of lkt] (lb) {};
+  \node[right = 1pt of lb, font = \footnotesize] (lbt) {64 bits of one position: only drawn};
+
+\end{tikzpicture}
+\end{document}

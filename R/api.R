@@ -602,6 +602,61 @@ nv_static_slice <- prim_static_slice
 #' @export
 nv_print <- prim_print
 
+#' @title Optimization Barrier
+#' @description
+#' Returns the input arrays unchanged, converting any R values to arrays, and
+#' prevents the compiler from moving computations across the barrier.
+#' Operations that produce the input arrays must complete before operations that
+#' use the returned arrays.
+#'
+#' A barrier prevents fusion between these operations. This can improve
+#' performance when fusion would prevent vectorization or repeat an expensive
+#' computation. It can also increase memory traffic, so benchmark the result
+#' before using a barrier for performance.
+#'
+#' [prim_optimization_barrier()] takes a flat list of arrays. This function also
+#' accepts a single array or a nested list, and returns it with the same
+#' structure and names. All arrays share a single barrier.
+#' @param x ([`arrayish`] | `list`)\cr
+#'   An array or a list of arrays, nested to any depth (see
+#'   [`RTree`][pjrt::build_tree]). The arrays may have different data types and
+#'   shapes. R values are materialized at their
+#'   [default data type][default_dtypes].
+#' @return ([`arrayish`] | `list`)\cr
+#'   An array or nested list of arrays with the same structure and names as
+#'   `x`. Existing arrays retain their values, data types and shapes; R values
+#'   are materialized as described above. A list without any elements to pass
+#'   through, such as `list()` or `list(a = list())`, is returned unchanged.
+#' @section Gradients:
+#' [gradient()] passes the gradients through unchanged, with a separate
+#' barrier in the backward pass. See [prim_optimization_barrier()].
+#' @seealso [prim_optimization_barrier()] for the underlying primitive.
+#' @examplesIf pjrt::plugins_downloaded()
+#' # Prevent fusion of the square root and multiplication with the addition.
+#' f <- jit(function(x) {
+#'   out <- nv_optimization_barrier(list(a = sqrt(x), b = x * 2))
+#'   out$a + out$b
+#' })
+#' f(nv_array(c(1, 4, 9)))
+#'
+#' # A single array is returned as an array.
+#' nv_optimization_barrier(nv_array(1:3))
+#' @export
+nv_optimization_barrier <- function(x) {
+  # Reject random states: the barrier would pass a state's internal values
+  # through as arrays and rebuild the state from them, giving a copy that cannot
+  # be used to draw random values.
+  abort_if_side_effects(x, "x", hint = "A random state is not an array; pass the arrays drawn from it instead.")
+  x <- map_tree(x, as_anvl_array)
+  leaves <- flatten(x)
+  # Skip the barrier when there are no arrays; the primitive requires at
+  # least one operand.
+  if (!length(leaves)) {
+    return(x)
+  }
+  unflatten(build_tree(x), prim_optimization_barrier(leaves))
+}
+
 #' @title Conditional Element Selection
 #' @description
 #' Selects elements from `yes` or `no` based on `test`, mirroring R's
@@ -2909,6 +2964,9 @@ nv_eye <- jit(
 
 # The `nan_rm = TRUE` treatment of a reduction: replace NaN by `value`, the
 # reduction's identity. A non-float array holds no NaN and is returned as is.
+# Callers assign the result before passing it to the primitive: an argument
+# promise forced inside the primitive's body would run these operations there,
+# and an error the primitive then raises would no longer be attributed to it.
 .replace_nan <- function(x, value, nan_rm) {
   if (nan_rm && is_dtype_float(peek_dtype(x))) nv_ifelse(nv_is_nan(x), value, x) else x
 }
@@ -2984,7 +3042,8 @@ nv_sum <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    prim_sum(.replace_nan(x, 0L, nan_rm), axes = axes, drop = drop)
+    x <- .replace_nan(x, 0L, nan_rm)
+    prim_sum(x, axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3071,7 +3130,8 @@ nv_prod <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    prim_prod(.replace_nan(x, 1L, nan_rm), axes = axes, drop = drop)
+    x <- .replace_nan(x, 1L, nan_rm)
+    prim_prod(x, axes = axes, drop = drop)
   },
   static = 2:4
 )
@@ -3284,7 +3344,8 @@ nv_cumsum <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    prim_cumsum(.replace_nan(cum$x, 0L, nan_rm), axis = cum$axis)
+    x <- .replace_nan(cum$x, 0L, nan_rm)
+    prim_cumsum(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3311,7 +3372,8 @@ nv_cumprod <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    prim_cumprod(.replace_nan(cum$x, 1L, nan_rm), axis = cum$axis)
+    x <- .replace_nan(cum$x, 1L, nan_rm)
+    prim_cumprod(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3381,7 +3443,8 @@ nv_cummin <- jit(
 # the reduction's identity.
 .nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
   cum <- .resolve_cum_input(as_anvl_array(x), axis)
-  out <- prim_cum(.replace_nan(cum$x, identity_val, nan_rm), axis = cum$axis)
+  x <- .replace_nan(cum$x, identity_val, nan_rm)
+  out <- prim_cum(x, axis = cum$axis)
   if (indices) out else out$values
 }
 
@@ -3440,7 +3503,8 @@ nv_if <- prim_if
 #' @section Gradients:
 #' [gradient()] cannot differentiate a while loop: its trip count is only known
 #' at run time, so there is no static size for the per-iteration states the
-#' backward pass needs.
+#' backward pass needs. [nv_scan()], whose number of steps is static, is
+#' differentiable.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the loop state is a named list, and each member keeps its data type
@@ -3482,7 +3546,7 @@ nv_while <- prim_while
 #'
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
-#'   Every slot must keep a fixed shape and dtype across steps.
+#'   Every slot must keep a fixed shape and dtype across steps
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
 #'   Per-step inputs, sliced along axis 1. All leaves must agree on
 #'   the size of axis 1. `NULL` or a list with no leaves runs a counted
@@ -3503,6 +3567,11 @@ nv_while <- prim_while
 #' @return `list(carry = , out = )`: the final carry (same structure as
 #'   `init`) and the stacked outputs (structure of `body`'s `out`, each
 #'   leaf gaining a leading axis of size `steps`).
+#' @section Gradients:
+#' Unlike [nv_while()], a scan is differentiable with [gradient()], with
+#' respect to `init`, `xs` and the arrays `body` closes over. The forward pass
+#' keeps what the backward pass needs of each step, so the memory a gradient
+#' takes grows linearly with `steps`.
 #' @seealso [prim_scan()], [nv_while()], [nv_cumsum()] for fixed associative scans.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # cumulative sum along axis 1
@@ -3512,8 +3581,17 @@ nv_while <- prim_while
 #'   xs = x,
 #'   body = function(carry, x) list(carry = carry + x, out = carry + x)
 #' )$out
+#'
+#' # a scan is differentiable: the gradient of a cumulative product
+#' f <- function(x) {
+#'   nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+#' }
+#' jit(gradient(f))(nv_array(c(1, 2, 3)))
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
+  # before `as_anvl_array()` meets a random state among them
+  abort_if_side_effects(init, "init")
+  abort_if_side_effects(xs, "xs")
   init <- map_tree(init, as_anvl_array)
   xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
 
@@ -3856,9 +3934,13 @@ nv_extract_diag <- jit(function(x) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
+  n <- min(shape(x))
+  if (n == 0L) {
+    return(prim_reshape(x, shape = 0L))
+  }
   prim_gather(
     x,
-    start_indices = diag_indices(x, min(shape(x))),
+    start_indices = diag_indices(x, n),
     offset_axes = integer(0L),
     collapsed_slice_axes = c(1L, 2L),
     x_batching_axes = integer(0L),
@@ -4395,6 +4477,9 @@ nv_top_k <- jit(
 #'
 #' A quantile generally falls between two elements, so a non-float `x` is
 #' computed (and returned) at the default float data type.
+#'
+#' Reducing over an axis of size 0 is an error: there is no element to take a
+#' quantile of.
 #' @section Interpolation modes:
 #' For `n` reduced elements and a probability `q`, let
 #' `h = 1 + (n - 1) * q` be the position `q` falls at in the sorted values,
@@ -4474,6 +4559,13 @@ nv_quantile <- jit(
     # The sort below only ever orders one axis, so reducing several means
     # ranking their elements together in one flattened axis.
     axes <- sort(.resolve_reduce_axes(x, axes))
+    empty <- axes[shape(x)[axes] == 0L]
+    if (length(empty) > 0L) {
+      cli_abort(c(
+        "{.arg x} must have at least one element along the reduced axes.",
+        x = "{.arg x} has size 0 along {cli::qty(length(empty))}ax{?is/es} {empty}."
+      ))
+    }
     flat <- .flatten_reduce_axes(x, axes, drop)
     x <- flat$x
 
@@ -4485,6 +4577,12 @@ nv_quantile <- jit(
     shp_kd <- replace(shp, axis, 1L)
     shp_K <- replace(shp, axis, K)
     out_dtype <- dtype(x)
+
+    # A kept axis of size 0 leaves no slice to take a quantile of, and the
+    # gathers below have nothing to index into.
+    if (prod(shp) == 0L) {
+      return(nv_empty_like(x, shape = if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape))
+    }
 
     # Selection instead of a full sort when every requested order statistic lies
     # in one end of the axis. Ascending position j of a slice's n_valid sorted
@@ -4522,9 +4620,9 @@ nv_quantile <- jit(
     budget <- ceiling(n_axis / 2L) + 1L
     k_lo <- as.integer(ceiling((n_axis - 1L) * max(probs)) + 1L)
     k_hi <- as.integer(n_axis - floor((n_axis - 1L) * min(probs)))
-    path <- if (n_axis > 0L && k_lo <= budget) {
+    path <- if (k_lo <= budget) {
       "low"
-    } else if (n_axis > 0L && k_hi <= budget) {
+    } else if (k_hi <= budget) {
       "high"
     } else {
       "sort"

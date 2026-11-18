@@ -50,6 +50,23 @@ test_that("graph_to_quickr lowerers validate unsupported primitives in nested su
   )
 })
 
+test_that("graph_to_quickr does not validate the rule of prim_custom_gradient, which it never lowers", {
+  skip_if_no_quickr()
+
+  graph <- trace_fn(
+    function(x) {
+      prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x * x,
+        rule = function(x, out, grad, required) list(x = grad * 2 * nv_abs(x) * nv_sign(x))
+      )
+    },
+    list(x = nv_scalar(1, dtype = "f64"))
+  )
+
+  expect_equal(graph_to_quickr_function(graph, unwrap = TRUE)(3), 9)
+})
+
 test_that("graph_to_quickr_function errors on unsupported ranks", {
   skip_if_no_quickr()
 

@@ -37,6 +37,14 @@ falling back to \code{\link[=default_device]{default_device()}}.}
 arguments whose buffers the compiled program may reuse for its outputs.
 A donated array must not be used again after the call; this can save
 memory and copies for large inputs. Must not overlap with \code{static}.
+\item \code{xla_options} (named \code{list()}, default \code{list()}), \code{"pjrt"} only: XLA
+options for compiling this function, passed to \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}},
+which describes the names and values it takes. They apply to this
+function's compiles only, unlike \code{XLA_FLAGS}, which applies to every
+compile of the R session. A jitted function called inside another
+one's trace is traced into the outer program, so only the options of
+the outermost \code{jit()} take effect: pass them as
+\code{jit(value_and_gradient(f), xla_options = ...)}, not to a jitted \code{f}.
 \item \code{unwrap} (\code{logical(1)}, default \code{FALSE}), \code{"quickr"} only: if \code{TRUE},
 the compiled function returns plain R arrays instead of
 \code{\link{AnvlArray}}s, which is useful when the output is consumed by non-anvl
@@ -56,6 +64,13 @@ Wraps a function so that it is traced and compiled on first call. Subsequent
 calls with the same input structure, shapes, and dtypes hit an LRU cache and
 skip recompilation.
 }
+\section{Stochastic Functions}{
+
+A function that draws random numbers also reads and advances the global
+random state.
+See the the \href{https://r-xla.github.io/anvl/articles/random-numbers.html}{Random Number Generation} article for more details.
+}
+
 \section{Backend and device}{
 
 A jitted function runs on the active backend \emph{when it is called}

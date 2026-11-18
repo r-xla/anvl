@@ -37,9 +37,11 @@ peek_r_type <- function(x) {
   to_abstract(x)$r_type %||% "value"
 }
 
+# A random state among the arguments is a leaf, which the traced function
+# receives as it is, so that its draws continue those of the enclosing trace.
 prepare_gradient_args <- function(args, wrt) {
-  args_flat <- flatten(args)
-  in_tree <- build_tree(args)
+  args_flat <- flatten(args, is_leaf = is_rng_state)
+  in_tree <- build_tree(args, is_leaf = is_rng_state)
   is_wrt_flat <- if (!is.null(wrt)) {
     pjrt::tree_leaf_mask(in_tree, wrt)
   } else {
@@ -67,6 +69,9 @@ prepare_gradient_args <- function(args, wrt) {
 #' results and a closure with the signature of `backward` above, which can use
 #' intermediate values of the forward pass via lexical scoping.
 #'
+#' A rule with a `forward` pass can also be the `rule` of
+#' [prim_custom_gradient()].
+#'
 #' @param backward (`NULL` | `function`)\cr
 #'   Backward hook for the default case.
 #' @param forward (`NULL` | `function`)\cr
@@ -78,7 +83,7 @@ prepare_gradient_args <- function(args, wrt) {
 #' rule_reverse(function(inputs, outputs, grads, params, required) {
 #'   list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #' })
-#' @seealso [`transform_gradient()`]
+#' @seealso [`graph_gradient()`]
 #' @export
 rule_reverse <- function(backward = NULL, forward = NULL) {
   if (is.null(backward) == is.null(forward)) {
@@ -124,11 +129,17 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #' @examples
 #' graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
 #' graph
-#' transform_gradient(graph, "lhs")
-transform_gradient <- function(graph, wrt) {
+#' graph_gradient(graph, "lhs")
+graph_gradient <- function(graph, wrt) {
   # `graph` may be a promise of a trace, which must not run inside `desc`.
   force(graph)
   desc <- local_descriptor()
+  # The gradient takes the side effects of `graph` as `graph` does, through the
+  # same inputs, and makes the same uses of them.
+  desc$side_effects <- lapply(graph$side_effects, function(x) {
+    value <- lapply(x$value, function(box) register_gval(desc, box$gnode))
+    SideEffectView(x$effect, value, n = x$n, inputs = x$inputs)
+  })
   res <- graph_value_and_grad(graph, wrt)
   desc$outputs <- lapply(res$grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
@@ -140,7 +151,7 @@ transform_gradient <- function(graph, wrt) {
 
 # Here we compute the gradients of a graph and write it into the current descriptor
 # This can either be a call to the gradient (inputs are provided)
-# Or just the gradient itself, i.e. then the inputs are NULL (used for transform_gradient).
+# Or just the gradient itself, i.e. then the inputs are NULL (used for graph_gradient).
 graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
@@ -153,8 +164,9 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
 
   box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
+  replayed <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
   list(
-    value = lapply(graph$outputs, function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)),
+    value = lapply(graph$outputs, replayed),
     grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
   )
 }
@@ -258,9 +270,10 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
   })
 }
 
-# Splits the reverse of a sub-graph into two closed graphs, so that its
-# backward pass does not have to rerun the forward one, as JAX's partial
-# evaluation of a `cond` does:
+# Splits the reverse of a sub-graph -- a branch of `prim_if()`, the body of
+# `prim_scan()` -- into two closed graphs, so that its backward pass does not
+# have to rerun the forward one, as JAX's partial evaluation of a `cond` or a
+# `scan` does:
 #   - fwd: `graph`'s forward pass, taking the same inputs, returning its
 #     outputs and then the residuals -- the values computed by the forward
 #     pass that `bwd` reads.
@@ -281,7 +294,7 @@ split_vjp <- function(graph, needed) {
   # array it closed over stays a constant.
   map <- hashtab()
   inputs <- lapply(graph$inputs, function(g) {
-    map[[g]] <- GraphValue(aval = g$aval)
+    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
   })
   captured <- Filter(\(g) !is_concrete_array(g$aval), bwd$constants)
   residuals <- Filter(\(g) is.null(map[[g]]), captured)
@@ -291,7 +304,7 @@ split_vjp <- function(graph, needed) {
     if (is.null(desc_fwd$gval_to_box[[g]])) {
       cli_abort("Internal error: the backward pass of a sub-graph read a value from outside it.")
     }
-    map[[g]] <- GraphValue(aval = g$aval)
+    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
   }
   substitute_gnodes(bwd, map)
   bwd$inputs <- c(bwd$inputs, inputs, lapply(residuals, \(g) map[[g]]))
@@ -336,7 +349,7 @@ requirements_from <- function(graph, targets) {
 # Forward propagation over `graph`'s calls, starting from the seeded
 # `required_env`: a call's float outputs require a gradient exactly when one of
 # its operands does. An integer or boolean output never does -- it has no
-# derivative, and the reverse rules give such values a zero -- so an RNG state
+# derivative, and the reverse rules give such values a zero -- so a random state
 # or a loop counter computed alongside a float does not drag the calls it feeds
 # into the backward pass. Literals are inlined constants and never do either.
 propagate_requirements <- function(graph, required_env) {
@@ -354,8 +367,9 @@ propagate_requirements <- function(graph, required_env) {
 }
 
 # Replays `graph`'s forward pass into `desc`, call by call. `split_vjp()` uses
-# it to rebuild a branch of `prim_if()`, `graph_apply()` to rerun a closed
-# graph, `graph_value_and_grad()` to replay what `gradient()` traced into the
+# it to rebuild a sub-graph -- a branch of `prim_if()`, the body of
+# `prim_scan()` -- `graph_apply()` to rerun a closed graph,
+# `graph_value_and_grad()` to replay what `gradient()` traced into the
 # descriptor it is called in.
 #
 # Returns:
@@ -365,22 +379,26 @@ propagate_requirements <- function(graph, required_env) {
 #     added (they fall through).
 #   - backwards: ordered list that needs to be traversed in reverse for the
 #     backward pass.
+#   - translate: function(original gval) -> the gval `desc` holds for it.
 #
 # `inputs` are the boxes the graph's inputs are bound to -- the arguments
-# passed to the gradient function. Without them, the graph's inputs become
-# inputs of `desc`.
+# passed to the gradient function -- with `NULL` for one the graph does not
+# read. Without them, the graph's inputs become inputs of `desc`.
+#
+# `fresh = TRUE` gives every replayed call new output gvals, so that `trans`
+# maps every output the graph computes, not only the replaced ones.
 #
 # With `required_env`, a call none of whose operands requires a gradient keeps
 # its plain forward even where its rule has a replacement: the backward pass
 # skips it, so what the replacement keeps for it -- an if's residuals -- would
 # be computed for nothing.
-rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL) {
+rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL, fresh = FALSE) {
   if (is.null(inputs)) {
     register_inputs(desc, graph$inputs)
   } else {
     # A box of an enclosing trace -- an operand of the call the sub-graph
     # belongs to -- is captured by `desc` like any other value from outside.
-    inputs <- lapply(inputs, maybe_box_arrayish, desc = desc)
+    inputs <- lapply(inputs, \(x) if (!is.null(x)) maybe_box_arrayish(x, desc = desc))
   }
 
   # Existing GraphValues are reused where possible to minimize cloning.
@@ -391,12 +409,21 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     if (is_graph_literal(g)) {
       return(g)
     }
+    if (isTRUE(unbound[[g]])) {
+      cli_abort("Internal error: a replayed graph read an input that was passed as `NULL`.")
+    }
     trans[[g]] %||% g
   }
   # The graph is pure, so its inputs are GraphValues of its own: bind each to
-  # the value passed for it.
+  # the value passed for it. One passed as `NULL` must not be read: it would
+  # fall through to a GraphValue `desc` never defined.
+  unbound <- hashtab()
   for (i in seq_along(inputs)) {
-    trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
+    if (is.null(inputs[[i]])) {
+      unbound[[graph$inputs[[i]]]] <- TRUE
+    } else {
+      trans[[graph$inputs[[i]]]] <- inputs[[i]]$gnode
+    }
   }
   # An array `desc` already holds is read from the GraphValue it has for it.
   const_boxes <- register_consts(desc, graph$constants)
@@ -422,11 +449,18 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     if (is.null(rule) || is.null(rule$forward) || !needs_grad) {
       # No rule, a backward-only rule, or a call the backward pass skips: the
       # forward computation is unchanged, so the original output gvals are
-      # reused directly. The statement is rebuilt only to read its inputs
-      # through `trans`, in case an upstream alternative forward replaced one
-      # of them.
+      # reused directly, unless `fresh` asks for new ones. The statement is
+      # rebuilt to read its inputs through `trans`, in case an upstream
+      # alternative forward replaced one of them.
       new_inputs <- lapply(call$inputs, translate_gnode)
-      replay_statement(desc, call, new_inputs)
+      new_outputs <- call$outputs
+      if (fresh) {
+        new_outputs <- lapply(call$outputs, \(g) GraphValue(aval = g$aval))
+        for (j in seq_along(call$outputs)) {
+          trans[[call$outputs[[j]]]] <- new_outputs[[j]]
+        }
+      }
+      replay_statement(desc, call, new_inputs, new_outputs)
 
       # Without a backward rule `backwards[[i]]` stays NULL. `run_backward_pass`
       # treats that as "skip if no input requires grad, otherwise abort":
@@ -437,7 +471,7 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
         backwards[[i]] <- list(
           fn = rule$backward,
           inputs = lapply(new_inputs, GraphBox, desc = desc),
-          outputs = lapply(call$outputs, GraphBox, desc = desc),
+          outputs = lapply(new_outputs, GraphBox, desc = desc),
           params = call$params
         )
       }
@@ -464,19 +498,21 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
     }
   }
 
-  list(trans = trans, backwards = backwards)
+  list(trans = trans, backwards = backwards, translate = translate_gnode)
 }
 
 # Replays `graph` into the current descriptor as a function of `inputs`
-# (boxes, one per graph input) and returns the boxes of its outputs, e.g. a
-# branch of `prim_if()`'s forward pass that `split_vjp()` prepared. No backward
-# pass follows, so every call keeps its plain forward: an empty `required_env`
-# says that nothing requires a gradient.
+# (boxes, one per graph input, or `NULL` for an input the graph does not read)
+# and returns the boxes of its outputs, e.g. a branch of `prim_if()`'s forward
+# pass that `split_vjp()` prepared. No backward pass follows, so every call
+# keeps its plain forward: an empty `required_env` says that nothing requires a
+# gradient. Every call gets new output gvals, so that a graph applied more than
+# once in one trace never defines the same value twice.
 graph_apply <- function(graph, inputs) {
   desc <- current_descriptor()
-  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env = hashtab())
+  rebuilt <- rebuild_forward_into(graph, desc, inputs, required_env = hashtab(), fresh = TRUE)
   lapply(graph$outputs, function(out) {
-    g <- if (is_graph_literal(out)) out else rebuilt$trans[[out]] %||% out
+    g <- rebuilt$translate(out)
     desc$gval_to_box[[g]] %||% GraphBox(g, desc)
   })
 }
@@ -578,7 +614,7 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #'   argument of `f` (or per `wrt` entry), each structured like that argument.
 #'   For `value_and_gradient()`, it returns `list(value = , grad = )`: the
 #'   return value of `f`, and that same `list` of gradients.
-#' @seealso `r roxy_article("autodiff")`, [`transform_gradient()`] for the
+#' @seealso `r roxy_article("autodiff")`, [`graph_gradient()`] for the
 #'   low-level graph transformation.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -634,8 +670,13 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
       call = call
     )
   }
-  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree)
+  # A side effect `f` uses closes over the enclosing trace's value, and its
+  # uses continue the enclosing trace's.
+  enclosing <- current_descriptor()
+  desc <- local_descriptor(side_effects_mode = "capture")
+  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
   res <- graph_value_and_grad(graph, wrt, graph_operands(graph, prep$args_flat))
+  desc_end_capture(enclosing, list(graph))
   list(
     value = unflatten(graph$out_tree, res$value),
     grad = unflatten(gradient_out_tree(graph, wrt), res$grad)

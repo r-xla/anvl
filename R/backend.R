@@ -237,6 +237,11 @@ active_backend <- function() {
 
 # The backends a user can select: `"plain"` only holds constants during tracing.
 assert_backend <- function(backend) {
+  # `default_device()` asserts its backend on every call, so a valid one returns
+  # before `setdiff()` and `assert_choice()`, which cost as much as an upload
+  if (is.character(backend) && length(backend) == 1L && backend %in% names(globals$backends) && backend != "plain") {
+    return(invisible(backend))
+  }
   assert_choice(backend, setdiff(names(globals$backends), "plain"))
 }
 

@@ -70,6 +70,6 @@ result$grad
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-the \href{https://r-xla.github.io/anvl/articles/autodiff.html}{Automatic Differentiation} article, \code{\link[=transform_gradient]{transform_gradient()}} for the
+the \href{https://r-xla.github.io/anvl/articles/autodiff.html}{Automatic Differentiation} article, \code{\link[=graph_gradient]{graph_gradient()}} for the
 low-level graph transformation.
 }

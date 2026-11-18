@@ -28,6 +28,53 @@ test_that("await on an AnvlArray returns the array invisibly", {
   expect_identical(out$value, x)
 })
 
+describe("AnvlArray serialization", {
+  roundtrip <- function(x) {
+    path <- withr::local_tempfile(fileext = ".rds")
+    saveRDS(x, path)
+    readRDS(path)
+  }
+
+  it("round-trips an array through saveRDS()", {
+    x <- nv_array(array(as.double(1:6), c(2L, 3L)), dtype = "f32")
+    y <- roundtrip(x)
+    expect_identical(dtype(y), dtype(x))
+    expect_identical(shape(y), shape(x))
+    expect_identical(as_array(y), as_array(x))
+  })
+
+  it("loads a pjrt array onto the default device", {
+    skip_if(!is_cpu())
+    x <- nv_array(c(1, 2, 3))
+    local_default_device("cpu:1")
+    y <- roundtrip(x)
+    expect_identical(device(y), default_device())
+    expect_identical(device(y), nv_device("cpu:1"))
+  })
+
+  it("can compute with a reloaded array", {
+    y <- roundtrip(nv_array(c(1, 2, 3), dtype = "f32"))
+    expect_identical(as_array(y + y), array(c(2, 4, 6)))
+  })
+
+  it("round-trips the outputs of a jitted function", {
+    f <- jit(function(x) list(a = x * 2, b = x + 1))
+    out <- f(nv_array(c(1, 2), dtype = "f32"))
+    y <- roundtrip(out)
+    expect_identical(as_array(y$a), as_array(out$a))
+    expect_identical(as_array(y$b), as_array(out$b))
+  })
+
+  it("round-trips a quickr array", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    x <- nv_array(c(1, 2, 3))
+    y <- roundtrip(x)
+    expect_identical(as_array(y), as_array(x))
+    expect_equal(device(y), device(x))
+  })
+})
+
 test_that("nv_scalar", {
   x <- nv_scalar(1L, dtype = "f32", device = "cpu")
   x
@@ -515,6 +562,16 @@ describe("as_anvl_array", {
   it("rejects non-arrayish inputs", {
     expect_error(as_anvl_array("foo"), "Expected arrayish")
     expect_error(as_anvl_array(list()), "Expected arrayish")
+  })
+
+  it("rejects a classed R value rather than reading its storage type", {
+    expect_error(as_anvl_array(structure(1, class = "myclass")), "Expected arrayish")
+    # Inside a trace too: an integer64 is a double underneath, so reading it as
+    # one would silently compute on its bit pattern.
+    i64 <- bit64::as.integer64(2:3)
+    dim(i64) <- 2L
+    f <- jit(function(x) nv_mul(x, i64))
+    expect_error(f(nv_array(1:2, dtype = "i64")), "Expected arrayish")
   })
 
   it("passes traced boxes through unchanged under jit()", {
@@ -1152,9 +1209,8 @@ describe("the default float", {
     expect_dtype(nv_fill(0, 3), "f64")
     expect_dtype(nv_linspace(0, 1, length_out = 3L), "f64")
     expect_dtype(nv_eye(2), "f64")
-    state <- nv_rng_state(1L)
-    expect_dtype(nv_rnorm(3, state)[[2L]], "f64")
-    expect_dtype(nv_runif(3, state)[[2L]], "f64")
+    expect_dtype(nv_rnorm(3), "f64")
+    expect_dtype(nv_runif(3), "f64")
     expect_equal(peek_dtype(1.5), as_dtype("f64"))
     expect_error(dtype(1.5), "no data type of its own")
     # An explicit dtype still wins, and the other categories are untouched.
@@ -1179,9 +1235,8 @@ describe("the default integer", {
     expect_dtype(nv_scalar(1L), "i64")
     expect_dtype(nv_seq(1, 3), "i64")
     expect_dtype(nv_fill(0L, 3), "i64")
-    state <- nv_rng_state(1L)
-    expect_dtype(nv_rbinom(3, state)[[2L]], "i64")
-    expect_dtype(nv_sample_int(3, state, 6L)[[2L]], "i64")
+    expect_dtype(nv_rbinom(3), "i64")
+    expect_dtype(nv_sample_int(3, 6L), "i64")
     expect_equal(peek_dtype(1L), as_dtype("i64"))
     expect_dtype(nv_array(1.5), default_float())
   })

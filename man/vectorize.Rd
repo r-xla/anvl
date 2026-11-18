@@ -57,7 +57,7 @@ A primitive applied to a value that is mapped over needs a \code{vectorize} rule
 Values that are not mapped over can go through any primitive. Without a rule
 so far are \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_chol]{prim_chol()}},
 \code{\link[=prim_triangular_solve]{prim_triangular_solve()}}, control flow (\code{\link[=prim_if]{prim_if()}}, \code{\link[=prim_while]{prim_while()}},
-\code{\link[=prim_scan]{prim_scan()}}), \code{\link[=prim_reduce]{prim_reduce()}}, \code{\link[=prim_rng_bit_generator]{prim_rng_bit_generator()}},
+\code{\link[=prim_scan]{prim_scan()}}), \code{\link[=prim_reduce]{prim_reduce()}},
 \code{\link[=prim_convolution]{prim_convolution()}} and the decompositions \code{\link[=prim_qr]{prim_qr()}}, \code{\link[=prim_lu]{prim_lu()}},
 \code{\link[=prim_svd]{prim_svd()}} and \code{\link[=prim_eigh]{prim_eigh()}}.
 Some operands cannot be mapped over yet: the start indices of

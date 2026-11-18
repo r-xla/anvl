@@ -5,3 +5,8 @@ exclude = ["inst/extra-tests"]
 # mirroring `[` semantics, throughout this file.
 [lint.per-file-ignores]
 "tests/testthat/test-api-subset.R" = ["missing_argument"]
+
+# `<<-` is used deliberately for closure state (memoized jit functions,
+# counters in tests); the other default operators stay banned.
+[lint.undesirable_operator]
+operators = ["->>", ":::"]

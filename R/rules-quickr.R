@@ -1825,6 +1825,26 @@ local({
     }
   )
 
+  # `fn` runs in place; `rule` took part when a gradient was traced, if any.
+  quickr_register_prim_lowerer(
+    prim_custom_gradient,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      if (is.null(ctx)) {
+        cli_abort("Internal error: missing quickr lowering context for primitive {.val custom_gradient}")
+      }
+      lowered <- quickr_lower_inline_graph(params$fn, inputs, ctx)
+      c(lowered$stmts, Map(rlang::call2, rep("<-", length(out_syms)), out_syms, lowered$out_exprs))
+    }
+  )
+
+  # quickr does not fuse operations; lower the barrier to plain assignments.
+  quickr_register_prim_lowerer(
+    prim_optimization_barrier,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      Map(rlang::call2, rep("<-", length(out_syms)), out_syms, inputs)
+    }
+  )
+
   quickr_register_prim_lowerer(
     prim_scatter,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {

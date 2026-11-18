@@ -1099,6 +1099,18 @@ describe("the cumulative ops' axis default", {
   })
 })
 
+describe("nv_cumsum / nv_cumprod / nv_cummax / nv_cummin", {
+  it("returns an empty result for a size-0 axis", {
+    x <- nv_array(double(0), shape = 0L)
+    for (f in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
+      expect_equal(as.numeric(f(x)), numeric(0))
+    }
+    m <- nv_array(double(0), shape = c(2L, 0L))
+    expect_equal(shape(nv_cumsum(m, axis = 2L)), c(2L, 0L))
+    expect_equal(shape(nv_cummax(m, axis = 2L, indices = TRUE)$indices), c(2L, 0L))
+  })
+})
+
 describe("nv_cumsum / nv_cumprod nan_rm", {
   it("propagates NaN forward by default", {
     x <- nv_array(c(1, NaN, 3))
@@ -1117,6 +1129,13 @@ describe("nv_cumsum / nv_cumprod nan_rm", {
     x <- nv_array(c(1L, 2L, 3L))
     expect_equal(as_array(nv_cumsum(x)), as_array(nv_cumsum(x, nan_rm = TRUE)))
     expect_equal(as_array(nv_cumprod(x)), as_array(nv_cumprod(x, nan_rm = TRUE)))
+  })
+  it("reports a bad axis as the primitive's error when nan_rm = TRUE", {
+    x <- nv_array(c(1, NaN, 3))
+    call_of <- function(expr) deparse(conditionCall(tryCatch(expr, error = identity)))
+    expect_identical(call_of(nv_cumsum(x, axis = 2L, nan_rm = TRUE)), "prim_cumsum()")
+    expect_identical(call_of(nv_cumprod(x, axis = 2L, nan_rm = TRUE)), "prim_cumprod()")
+    expect_identical(call_of(nv_cummax(x, axis = 2L, nan_rm = TRUE)), "prim_cummax()")
   })
 })
 
@@ -1527,6 +1546,9 @@ describe("nv_extract_diag", {
       nv_array(c(1, 4), dtype = "f32")
     )
   })
+  it("returns an empty vector for a matrix with a size-0 axis", {
+    expect_equal(as.integer(nv_extract_diag(nv_array(integer(0), shape = c(0L, 3L)))), integer(0))
+  })
 })
 
 describe("nv_trace", {
@@ -1543,6 +1565,9 @@ describe("nv_trace", {
       nv_scalar(4),
       tolerance = 1e-6
     )
+  })
+  it("is 0 for a 0x0 matrix", {
+    expect_equal(as_array(nv_trace(nv_array(double(0), shape = c(0L, 0L)))), 0)
   })
 })
 
@@ -2199,6 +2224,21 @@ describe("nv_median", {
 })
 
 describe("nv_quantile", {
+  it("errors when a reduced axis has size 0", {
+    x <- nv_array(double(0), shape = 0L)
+    expect_error(nv_quantile(x, 0.5), "at least one element")
+    expect_error(nv_quantile(x, array(c(0.25, 0.5))), "at least one element")
+    m <- nv_array(double(0), shape = c(2L, 0L))
+    expect_error(nv_quantile(m, 0.5, axes = 2L), "size 0 along axis 2\\.")
+    expect_error(nv_median(m, axes = 2L, nan_rm = TRUE), "size 0 along axis 2\\.")
+    expect_error(nv_quantile(nv_array(double(0), shape = c(0L, 0L)), 0.5), "size 0 along axes 1 and 2\\.")
+  })
+  it("returns an empty result when a kept axis has size 0", {
+    x <- nv_array(double(0), shape = c(0L, 3L))
+    expect_equal(shape(nv_quantile(x, 0.5, axes = 2L)), 0L)
+    expect_equal(shape(nv_quantile(x, array(c(0.25, 0.5)), axes = 2L)), c(2L, 0L))
+    expect_equal(shape(nv_median(x, axes = 2L, drop = FALSE)), c(0L, 1L))
+  })
   it("matches base R quantile (default linear / type 7) for scalar probs", {
     xr <- c(3, 1, 4, 1, 5, 9, 2, 6)
     x <- nv_array(xr)
@@ -2887,6 +2927,47 @@ describe("nv_mod", {
     expect_equal(
       as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
       lhs %% rhs
+    )
+  })
+})
+
+describe("nv_optimization_barrier", {
+  it("returns a single array as an array", {
+    x <- nv_array(c(1, 2, 3), dtype = "f64")
+    expect_equal(nv_optimization_barrier(x), x)
+    expect_equal(jit(nv_optimization_barrier)(x), x)
+  })
+
+  it("returns a nested tree with its structure", {
+    x <- list(a = nv_array(c(1, 2), dtype = "f32"), b = list(nv_array(1:3, dtype = "i32"), c = nv_scalar(TRUE)))
+    expect_equal(nv_optimization_barrier(x), x)
+    expect_equal(jit(nv_optimization_barrier)(x), x)
+  })
+
+  it("lowers one barrier for all arrays of the tree", {
+    f <- function(x) nv_optimization_barrier(list(a = x, b = list(x * 2)))
+    mlir <- repr(stablehlo(trace_fn(f, list(x = nv_aval("f32", 3L))))[[1L]])
+    expect_length(gregexpr("stablehlo.optimization_barrier", mlir, fixed = TRUE)[[1L]], 1L)
+  })
+
+  it("materializes R values at their default data type", {
+    out <- nv_optimization_barrier(list(a = 1, b = 2L))
+    expect_equal(dtype(out$a), default_float())
+    expect_equal(dtype(out$b), default_int())
+  })
+
+  it("returns a tree without any elements to pass through as it is", {
+    expect_equal(nv_optimization_barrier(list()), list())
+    expect_equal(nv_optimization_barrier(list(a = list())), list(a = list()))
+  })
+
+  it("refuses a random state without pointing at a loop", {
+    x <- list(a = nv_array(1), rng = nv_rng_state(1L))
+    expect_error(nv_optimization_barrier(x), "must not contain a side effect")
+    expect_error(nv_optimization_barrier(x), "pass the arrays drawn from it")
+    expect_no_match(
+      tryCatch(nv_optimization_barrier(x), error = conditionMessage),
+      "loop"
     )
   })
 })

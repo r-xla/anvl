@@ -42,7 +42,7 @@
 #' Values that are not mapped over can go through any primitive. Without a rule
 #' so far are [`prim_gather()`], [`prim_scatter()`], [`prim_chol()`],
 #' [`prim_triangular_solve()`], control flow ([`prim_if()`], [`prim_while()`],
-#' [`prim_scan()`]), [`prim_reduce()`], [`prim_rng_bit_generator()`],
+#' [`prim_scan()`]), [`prim_reduce()`],
 #' [`prim_convolution()`] and the decompositions [`prim_qr()`], [`prim_lu()`],
 #' [`prim_svd()`] and [`prim_eigh()`].
 #' Some operands cannot be mapped over yet: the start indices of
