@@ -58,6 +58,8 @@ axes and batching.
 
 Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}, specified under
 \href{https://openxla.org/stablehlo/spec#dot_general}{dot_general}.
+StableHLO puts the batch dimensions first in its result; anvl's result has
+them last, which is the same array once the lowering reverses every axis.
 }
 
 \examples{

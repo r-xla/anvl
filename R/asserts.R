@@ -317,8 +317,7 @@ assert_some_arrays <- function(..., call = rlang::caller_env()) {
 }
 
 # `batched = TRUE` accepts trailing batch axes and checks only the first two,
-# which is what the operations whose lowering broadcasts over batches take
-# (`prim_chol()`, `prim_triangular_solve()`); the others are strictly 2-D.
+# as `prim_chol()` takes them; the other callers are strictly 2-D.
 assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   s <- shape(x)
   if (batched) {

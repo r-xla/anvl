@@ -4920,13 +4920,16 @@ nv_which_min <- jit(
 }
 
 # Normalize a stride/dilation/padding arg to length n_spatial.
-.nv_conv_vec <- function(x, n, name) {
+.nv_conv_vec <- function(x, n, name, lower = NULL) {
   x <- as.integer(x)
   if (length(x) == 1L) {
     x <- rep(x, n)
   }
   if (length(x) != n) {
     cli_abort("{.arg {name}} must have length 1 or {n}.")
+  }
+  if (!is.null(lower) && any(x < lower)) {
+    cli_abort("{.arg {name}} must be at least {lower} along every spatial axis, not {x}.")
   }
   x
 }
@@ -5095,10 +5098,24 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
       x = "{.arg kernel} has {out_channels} output channel{?s}, and {.arg groups} is {groups}."
     ))
   }
+  stride <- .nv_conv_vec(stride, n, "stride", lower = 1L)
+  pad <- .nv_conv_vec(padding, n, "padding")
+  dilation <- .nv_conv_vec(dilation, n, "dilation", lower = 1L)
+  # Checked in the user's axis order, before the vectors are reversed below.
+  padded <- shape(x)[seq_len(n)] + 2L * pad
+  needed <- (shape(kernel)[seq_len(n)] - 1L) * dilation + 1L
+  short <- which(padded < needed)
+  if (length(short)) {
+    i <- short[[1L]]
+    cli_abort(c(
+      "The padded input must be at least as large as the dilated kernel along every spatial axis.",
+      x = "Along spatial axis {i}, {.arg x} padded is {padded[[i]]} but the dilated kernel spans {needed[[i]]}."
+    ))
+  }
   # Reversed to pair with the spatial axes of `.nv_conv_axis_numbers()`.
-  stride <- rev(.nv_conv_vec(stride, n, "stride"))
-  pad <- rev(.nv_conv_vec(padding, n, "padding"))
-  dilation <- rev(.nv_conv_vec(dilation, n, "dilation"))
+  stride <- rev(stride)
+  pad <- rev(pad)
+  dilation <- rev(dilation)
   do.call(
     prim_convolution,
     c(

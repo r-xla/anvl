@@ -279,6 +279,8 @@ prim_broadcast_in_axes <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("dot_general")`
+#' StableHLO puts the batch dimensions first in its result; anvl's result has
+#' them last, which is the same array once the lowering reverses every axis.
 #' @seealso [nv_matmul()], `%*%`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type

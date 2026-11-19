@@ -1093,6 +1093,22 @@ describe("prim_chol", {
     }
   })
 
+  it("reads only the triangle it factors, as base R chol() does", {
+    withr::local_seed(1L)
+    A <- random_spd(5L)
+    upper <- A
+    upper[lower.tri(upper)] <- 0
+    lower <- A
+    lower[upper.tri(lower)] <- 0
+    U <- as_array(prim_chol(nv_array(upper, dtype = "f64"), lower = FALSE))
+    L <- as_array(prim_chol(nv_array(lower, dtype = "f64"), lower = TRUE))
+    expect_equal(U, chol(A))
+    expect_equal(L, t(chol(A)))
+    # in a batch, each matrix is read the same way
+    Ub <- as_array(prim_chol(nv_array(array(c(upper, upper), c(5L, 5L, 2L)), dtype = "f64"), lower = FALSE))
+    expect_equal(Ub[,, 2L], chol(A))
+  })
+
   it("zeros out the triangle it does not compute", {
     A <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f64")
     expect_equal(as_array(prim_chol(A, lower = TRUE))[1L, 2L], 0)

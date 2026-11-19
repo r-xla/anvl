@@ -3288,6 +3288,16 @@ describe("nv_conv2d", {
   x <- nv_array(x_r, dtype = "f32")
   ones <- nv_fill(1, shape = c(1L, 1L, 1L, 1L), dtype = "f32")
 
+  it("reports invalid per-axis arguments in the order they were given", {
+    k <- nv_fill(1, shape = c(3L, 3L, 1L, 1L), dtype = "f32")
+    expect_error(nv_conv2d(x, k, stride = c(0L, 1L)), "stride.*0 and 1")
+    expect_error(nv_conv2d(x, k, dilation = c(1L, 0L)), "dilation.*1 and 0")
+    expect_error(
+      nv_conv2d(nv_fill(1, shape = c(4L, 6L, 1L, 1L), dtype = "f32"), k, padding = c(-3L, 0L)),
+      "spatial axis 1"
+    )
+  })
+
   it("puts the spatial axes first, then the channels, and the batch last", {
     out <- nv_conv2d(
       nv_fill(1, shape = c(9L, 8L, 3L, 2L), dtype = "f32"),
