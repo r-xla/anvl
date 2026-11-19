@@ -1,5 +1,5 @@
 # Shared settings of the runtime benchmark.
-L <- 10L
+L <- 20L
 n_reps <- 3L
 
 sim_data <- function(n, p, seed = 1L) {

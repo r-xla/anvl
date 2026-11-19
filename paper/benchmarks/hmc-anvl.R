@@ -1,6 +1,6 @@
 # Hamiltonian Monte Carlo for Bayesian logistic regression, written with anvl.
-# The labelled sections are read into the paper via knitr::read_chunk(), so the
-# code shown in the paper is exactly the code that is benchmarked.
+# The benchmarked version of the sampler of the use case in main.tex; the labelled
+# sections correspond to its code chunks.
 
 ## ---- potential
 potential <- function(beta, X, y) {

@@ -1,0 +1,184 @@
+---
+title: "Introducing anvl: compiled, differentiable array programs in R"
+# Alternatives: "Announcing anvl: JAX-style compilation and gradients for R" /
+#               "Introducing anvl: fast samplers and gradients in plain R"
+description: "anvl compiles R array code into fast programs for the CPU and GPU, and computes exact gradients of it."
+author:
+  - Tomasz Kalinowski
+  - Stephane Hess
+  - Daniel Falbel
+  - Sebastian Fischer
+date: "TODO"
+format: html
+execute:
+  eval: false
+---
+
+<!-- STRUCTURE-ONLY DRAFT: headings, terse notes, and placeholder chunks. Prose to be written. -->
+
+<!-- Style of Posit package announcements (ellmer, gander, chores, debrief):
+  - Title "Introducing/Announcing <pkg>: <one-line benefit>"; hex sticker as the header image.
+  - Open with 1-2 plain-language sentences (a pain-point hook) before any heading.
+  - Show installation right after the opening, as a short code block.
+  - About 800-1,300 words; few headings; one motivating example early; code with short prose.
+  - Comparisons with other tools are rare and brief.
+  - End with a call to try the package (and give feedback), links, optional shout-outs. -->
+
+<!-- TODO: hex sticker -->
+
+<!-- Opening (no heading), 2-3 sentences:
+  - Hook: much of statistics means evaluating a likelihood and its gradient many, many times (samplers, optimizers, model fitting), and R is slow at this unless you rewrite it in C++.
+  - What anvl is: write array code in R; jit() compiles it into one fast program, gradient() computes exact gradients, and the same code runs on the CPU or an NVIDIA GPU.
+  - Lineage in one clause: the approach of JAX in Python, compiled with XLA, the compiler behind JAX, but with R's conventions (1-based indexing, column-major arrays). -->
+
+anvl is available from R-universe; `install_anvl()` then downloads the compiled runtime (on Linux machines with an NVIDIA GPU also the CUDA libraries, so a compatible driver is all you need):
+
+```{r}
+install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
+anvl::install_anvl()
+```
+
+<!-- TODO: switch to install.packages("anvl") once anvl is on CRAN -->
+
+## What can you do with anvl?
+
+<!-- Main section of the post. One line per use case on why anvl helps (compilation, exact gradients, GPU). -->
+
+- **MCMC samplers**: Hamiltonian Monte Carlo and other gradient-based samplers, with many chains at once on a GPU (example below).
+- **Model fitting**: likelihoods that are evaluated with their gradient many times; exact gradients for `optim()` instead of finite differences.
+- **Variational inference**: gradient-based optimization of an approximate posterior.
+- **Hidden Markov models**: the forward algorithm as a compiled loop, with gradients for parameter estimation.
+- **Spatial models and Gaussian processes**: dense linear algebra that profits from compilation and GPUs; see the [Gaussian process article](https://r-xla.github.io/anvl/articles/gaussian-process.html).
+- **Deep learning**: possible, but torch is the mature choice (see below).
+- **A foundation for other packages**: e.g., apollo for choice models (see below) and garry, a raster engine for remote sensing.
+
+## A quick tour
+
+<!-- Short; each part one or two sentences plus a chunk. Details in the package articles. -->
+
+- Arrays behave like R arrays: `nv_array()`, about 100 R generics with base R semantics, `as_array()` converts back; random numbers as in base R (`nv_set_seed()`, `nv_rnorm()`).
+
+```{r}
+library(anvl)
+nv_set_seed(1L)
+x <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
+sum(x * 2)
+nv_rnorm(3L)
+as_array(x)
+```
+
+- `jit()` compiles a whole function into one program, on its first call; the function must be pure, and `if` statements or loops that depend on array values use `nv_if()`, `nv_while()`, or `nv_scan()` (see the [JIT Deep Dive](https://r-xla.github.io/anvl/articles/jit.html)).
+
+```{r}
+f <- function(x) sum(x^2)
+f_jit <- jit(f)
+f_jit(x)
+```
+
+- `gradient()` returns a function that computes exact gradients, also of nested lists of parameters, and can be compiled with `jit()`.
+
+```{r}
+g <- function(x, w) sum(w * x^2)
+grad_g <- jit(gradient(g, wrt = "x"))
+grad_g(x, 2)$x
+```
+
+- The same code runs on an NVIDIA GPU when the arrays live there.
+
+```{r}
+x_gpu <- nv_array(1:6, shape = c(2, 3), dtype = "f32", device = "cuda")
+# or for a whole session: options(anvl.default_device = "cuda")
+```
+
+## Example: a Metropolis–Hastings sampler
+
+<!-- Motivating example, adapted from the "Metropolis-Hastings" article on the package website
+     (https://r-xla.github.io/anvl/articles/metropolis-hastings.html, anvl main branch).
+     Prose: random-walk Metropolis-Hastings on the "banana" distribution, whose moments are known,
+     so we can check the result. Short; the point is how little R code it takes. -->
+
+- The log density of the banana distribution (up to a constant), written in plain R:
+
+```{r}
+log_density <- function(theta, b) {
+  -theta[1]^2 / 200 - (theta[2] - b * theta[1]^2 + 100 * b)^2 / 2
+}
+```
+
+- One step: propose a move, compare the log densities, accept or reject with `nv_if()` (an R `if` cannot look at array values inside a compiled function):
+
+```{r}
+mh_step <- function(theta, b, proposal_sd) {
+  proposal <- theta + proposal_sd * nv_rnorm(shape(theta))
+  log_accept <- log_density(proposal, b) - log_density(theta, b)
+  accept <- log(nv_runif(integer())) < log_accept
+  nv_if(accept, \() proposal, \() theta)
+}
+```
+
+- The whole chain as one compiled program: `nv_scan()` runs the steps and stacks the draws; the number of steps is `static`, as it fixes the length of the loop:
+
+```{r}
+mh_chain <- jit(function(theta, b, proposal_sd, n_steps) {
+  nv_scan(theta, steps = n_steps, body = function(theta, x) {
+    theta <- mh_step(theta, b, proposal_sd)
+    list(carry = theta, out = theta)
+  })$out
+}, static = "n_steps")
+```
+
+- Run 50,000 steps and compare with the known moments ($\text{SD}[\theta_1] = 10$, $\text{SD}[\theta_2] = \sqrt{3}$):
+
+```{r}
+draws <- as_array(mh_chain(nv_array(c(0, 0)), b = 0.01, proposal_sd = 3, n_steps = 50000L))
+kept <- draws[-(1:5000), ]
+rbind(mean = colMeans(kept), sd = apply(kept, 2, sd))
+```
+
+<!-- Current output (anvl 0.6.0, nv_set_seed(1L) at the top): mean -0.186 0.051; sd 10.141 1.766.
+     Timing on a laptop CPU: ~0.7 s for the first call (incl. compilation), ~6 ms for 50,000 draws afterwards. TODO: re-check on the final version. -->
+
+<!-- TODO: figure: the draws over the contours of the banana density -->
+
+- A gradient-based sampler (Hamiltonian Monte Carlo) is in the paper and benchmarked below.
+
+- How fast is it? One short paragraph with the headline numbers of the benchmark against Stan, TMB, and torch on CPUs and a GPU.
+
+<!-- TODO: numbers after the benchmark rerun; current paper values for reference only: single chain on one core ~1.7-3x faster than CmdStan; n = 100,000 on the GPU ~150x faster than CmdStan; 4096 chains on the GPU ~380,000 draws/s vs ~2,300 for CmdStan on 16 cores; tracing and compilation < 1 s. Caveat: one model, one benchmark. -->
+
+## anvl and torch
+
+<!-- Brief and fair; torch is mature and the standard for deep learning in R. -->
+
+- torch is the foundation of deep learning in R; anvl does not try to replace it there.
+- torch runs each operation from R as it comes, so the overhead per operation dominates for small and medium arrays; anvl compiles the whole function, including its gradient, into one program.
+- torch's TorchScript is meant for deploying neural networks, is deprecated, and cannot compile gradients.
+- torch follows PyTorch's conventions (e.g., row-major); anvl follows base R.
+
+<!-- TODO: one sentence with the torch numbers from the benchmark (to be updated) -->
+
+## quickr: an experimental second backend
+
+- quickr, developed at Posit by Tomasz Kalinowski, compiles a typed subset of R to Fortran.
+- anvl can translate its programs to quickr instead of XLA: same R code, different compiler.
+- A compiled function can then be reused for inputs of different shapes; experimental, CPU only, fewer data types.
+
+```{r}
+local_backend("quickr")
+```
+
+## How apollo uses anvl
+
+<!-- TODO: to be written with the apollo authors -->
+
+## Try it out
+
+<!-- Closing in the style of other announcements: call to try anvl and share feedback (issues on GitHub), then links. -->
+
+- Package website: <https://r-xla.github.io/anvl/>
+- "JIT Deep Dive": <https://r-xla.github.io/anvl/articles/jit.html>
+- "Random numbers": <https://r-xla.github.io/anvl/articles/random-numbers.html>
+- GitHub: <https://github.com/r-xla/anvl>
+- Paper: <!-- TODO: link to the JSS paper / preprint -->
+
+<!-- TODO: acknowledgments / shout-outs (e.g., contributors, packages building on anvl) -->

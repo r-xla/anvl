@@ -1,0 +1,5 @@
+# Not part of the replication material: notes, drafts, and scripts that need Python
+# (TensorFlow, greta) or the development version of anvl.
+notes/
+jss-template/
+verification/missing_values.R

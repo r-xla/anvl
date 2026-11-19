@@ -9,39 +9,31 @@ options(width = 80)
 
 # 3. Using anvl
 
-# 3.1 Arrays and eager execution
+# 3.2 Array construction and operations
 library(anvl)
+nv_set_seed(1L)
 x <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
 sum(x * 2)
+nv_rnorm(3L)
 
-# 3.2 An R-like array interface
-m <- matrix(1:6, nrow = 2)
-cumsum(m)
-as_array(cumsum(nv_array(m)))
-t <- torch::torch_flatten(torch::torch_tensor(m))
-torch::as_array(torch::torch_cumsum(t, dim = 1))
+as_array(x)
 
-x <- nv_array(matrix(1:6, 2))
-shape(x[1, ])
-shape(x[array(1), ])
+# 3.3 Compilation
+f <- function(x) sum(x^2)
+f_jit <- jit(f)
+f_jit(x)
 
-# 3.3 Compiling and differentiating functions
-f_jit <- jit(function(x, y) {
-  cat("tracing\n")
-  x * y
-})
-y1 <- f_jit(x, x)
-y2 <- f_jit(x, x + 1L)
+# 3.4 Differentiation
+g <- function(x, w) sum(w * x^2)
+grad_g <- jit(gradient(g, wrt = "x"))
+grad_g(x, 2)$x
 
-# 3.5 Choosing the precision
-B <- matrix(c(0.1, 0.2, 0.3, 0.4), 2, 2)
-loss <- function(beta, X, y) mean((X %*% beta - y)^2)
-loss_f64 <- with_dtypes(loss, c(float = "f64"))
-c(dtype(nv_exp(1)), dtype(with_default_dtypes(c(float = "f64"), nv_exp(1))),
-  dtype(loss_f64(nv_array(matrix(0, 2, 2), dtype = "f32"), B, B)))
+# 3.5 Choosing the precision and device
+c(dtype(nv_scalar(pi)), dtype(nv_exp(1)))
+options(anvl.default_dtypes = c(float = "f64", int = "i32"))
+c(dtype(nv_scalar(pi)), dtype(nv_exp(1)), dtype(x * pi))
 
-# 4. Use case: Hamiltonian Monte Carlo
-
+# 3.6 Hamiltonian Monte Carlo
 potential <- function(beta, X, y) {
   eta <- X %*% t(beta)
   y <- nv_broadcast_to(y, shape(eta))
@@ -77,28 +69,28 @@ hmc_step <- function(beta, X, y, eps, L) {
   nv_ifelse(accept, prop$beta, beta)
 }
 
-hmc <- jit(function(beta, X, y, eps, L, n_draws) {
-  out <- nv_scan(beta, steps = n_draws, body = function(beta, x) {
-    beta <- hmc_step(beta, X, y, eps, L)
-    list(carry = beta, out = beta)
-  })
-  list(draws = out$out, beta = out$carry)
-}, static = c("L", "n_draws"))
+hmc_step_jit <- jit(hmc_step, static = "L")
+hmc <- function(beta, X, y, eps, L, n_draws) {
+  draws <- vector("list", n_draws)
+  for (i in seq_len(n_draws)) {
+    beta <- hmc_step_jit(beta, X, y, eps, L)
+    draws[[i]] <- beta
+  }
+  simplify2array(lapply(draws, as_array))
+}
 
-options(anvl.default_dtypes = c(float = "f64", int = "i32"))
-set.seed(1)
-n <- 1000; p <- 5
-X <- matrix(rnorm(n * p), n, p)
-y <- rbinom(n, 1, plogis(X %*% rnorm(p, sd = 0.5)))
-nv_set_seed(42L)
-res <- hmc(nv_array(matrix(0, 4, p)), nv_array(X), nv_array(as.double(y)),
-  eps = 0.5 / sqrt(n), L = 10L, n_draws = 2000L)
-draws <- as_array(res$draws)
-rbind(hmc = colMeans(apply(draws[1001:2000, , ], 3, c)),
-  glm = coef(glm(y ~ X - 1, family = binomial)))
+n <- 1000; p <- 2
+X <- nv_rnorm(c(n, p))
+eta <- X %*% nv_rnorm(c(p, 1L), sd = 0.5)
+y <- nv_ifelse(nv_runif(c(n, 1L)) < nv_plogis(eta), 1, 0)
+draws <- hmc(nv_array(matrix(0, 4, p)), X, y, eps = 0.5 / sqrt(n),
+  L = 20L, n_draws = 2000L)
+fit <- glm(as_array(y) ~ as_array(X) - 1, family = binomial)
+rbind(hmc = apply(draws[, , 1001:2000], 2, mean), glm = unname(coef(fit)))
 
-# 5. Background: The OpenXLA compiler ecosystem
+# 4. How anvl works
 
+# 4.1 The OpenXLA compiler ecosystem
 library(stablehlo)
 func <- local_func("main")
 x <- hlo_input("x", "f32", shape = c(2, 2))
@@ -113,9 +105,7 @@ a <- pjrt_buffer(matrix(1:4, 2), dtype = "f32", device = dev)
 b <- pjrt_buffer(matrix(5:8, 2), dtype = "f32", device = dev)
 pjrt_execute(exec, a, b)
 
-# 6. Design of anvl
-
-# 6.1 Tracing R code into a graph
+# 4.2 Tracing R code into an AnvlGraph
 f <- function(x, y, op) {
   if (op == "add") x + y else x * y
 }
@@ -123,7 +113,31 @@ s <- nv_aval("f32", integer())
 graph <- trace_fn(f, list(x = s, y = s, op = "mul"))
 graph
 
-# 6.5 Type system
+f_jit <- jit(function(x, y) {
+  cat("tracing\n")
+  x * y
+})
+v <- nv_array(1:3)
+y1 <- f_jit(v, v)
+y2 <- f_jit(v, v + 1L)
+
+# 4.3 Higher-order primitives for control flow
+h <- function(x) nv_if(sum(x) > 0, function() x, function() -x)
+trace_fn(h, list(x = nv_aval("f32", 3L)))
+
+# 4.8 An R-like array interface
+m <- matrix(1:6, nrow = 2)
+cumsum(m)
+cumsum(nv_array(m))
+t <- torch::torch_flatten(torch::torch_tensor(m))
+torch::torch_cumsum(t, dim = 1)
+
+x <- nv_array(matrix(1:6, 2))
+shape(x[1, ])
+shape(x[array(1), ])
+
+# 4.9 Type system
+B <- matrix(c(0.1, 0.2, 0.3, 0.4), 2, 2)
 matmul <- jit(function(x, b) x %*% b)
 c(dtype(matmul(nv_array(diag(2), dtype = "f32"), B)),
   dtype(matmul(nv_array(diag(2), dtype = "f64"), B)))
@@ -133,12 +147,12 @@ axpy <- jit(function(a, x, y) {
   args$a * args$x + args$y
 })
 y32 <- nv_array(c(1, 1), dtype = "f32")
-as_array(axpy(2, nv_array(c(1, 2), dtype = "f32"), y32))
+axpy(2, nv_array(c(1, 2), dtype = "f32"), y32)
 #+ error = TRUE
 axpy(2, nv_array(c(1, 2), dtype = "f64"), y32)
 #+
 
-# 7. Extending the package
+# 5. Extending the package
 
 prim_softplus <- new_primitive("softplus", function(x) {
   infer <- function(x) {
@@ -158,7 +172,7 @@ prim_softplus[["reverse"]] <- rule_reverse(
 )
 
 grad_softplus <- jit(gradient(function(z) sum(prim_softplus(z))))
-as_array(grad_softplus(nv_array(c(-1, 0, 1)))$z)
+grad_softplus(nv_array(c(-1, 0, 1)))$z
 
 Sys.time()
 sessionInfo()

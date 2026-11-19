@@ -1,7 +1,6 @@
 # Writes the runtime figures of main.tex (figures/runtime-*.pdf) from benchmarks/results, in the
 # style of the other figures of the paper: Latin Modern, the font of the text, and the colors of
-# benchmarks/plots.R, which follow figures/style.tex. The sizes are those of the figure chunks of
-# paper.Rmd.
+# benchmarks/plots.R, which follow figures/style.tex.
 #
 # Run from the paper directory: `Rscript figures/runtime.R` (or `make figures/runtime-single-chain.pdf`).
 # Needs the Latin Modern Type 1 fonts of TeX Live, found via kpsewhich, and Ghostscript, which

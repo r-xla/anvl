@@ -1,4 +1,4 @@
-# Figures and tables of the runtime evaluation, used by paper.Rmd.
+# Figures and tables of the runtime evaluation, used by figures/runtime.R.
 library(ggplot2)
 
 read_results <- function(files) {

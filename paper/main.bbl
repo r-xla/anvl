@@ -1,4 +1,4 @@
-\begin{thebibliography}{69}
+\begin{thebibliography}{73}
 \newcommand{\enquote}[1]{``#1''}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
@@ -97,6 +97,12 @@ Eddelbuettel D, Fran\c{c}ois R (2011).
 \newblock \emph{Reactant.jl: Optimize Julia Functions with {MLIR} and {XLA}}.
 \newblock \urlprefix\url{https://github.com/EnzymeAD/Reactant.jl}.
 
+\bibitem[{Falbel(2026)}]{ref-safetensors}
+Falbel D (2026).
+\newblock \emph{{safetensors}: Safetensors File Format}.
+\newblock \doi{10.32614/CRAN.package.safetensors}.
+\newblock R package version 0.3.0, \urlprefix\url{https://CRAN.R-project.org/package=safetensors}.
+
 \bibitem[{Falbel and Luraschi(2025{\natexlab{a}})}]{ref-torch-memory}
 Falbel D, Luraschi J (2025{\natexlab{a}}).
 \newblock \enquote{Memory Management.}
@@ -174,6 +180,12 @@ Hess S, Palma D (2019).
 \newblock \emph{Journal of Choice Modelling}, \textbf{32}, 100170.
 \newblock \doi{10.1016/j.jocm.2019.100170}.
 
+\bibitem[{Hoffman and Gelman(2014)}]{ref-nuts}
+Hoffman MD, Gelman A (2014).
+\newblock \enquote{The {No-U-Turn} Sampler: Adaptively Setting Path Lengths in {Hamiltonian} {Monte} {Carlo}.}
+\newblock \emph{Journal of Machine Learning Research}, \textbf{15}(47), 1593--1623.
+\newblock \urlprefix\url{https://jmlr.org/papers/v15/hoffman14a.html}.
+
 \bibitem[{{IREE Team}(2026)}]{ref-iree}
 {IREE Team} (2026).
 \newblock \emph{{IREE}: Intermediate Representation Execution Environment}.
@@ -213,6 +225,12 @@ Kristensen K, Nielsen A, Berg CW, Skaug H, Bell BM (2016).
 \newblock ISSN 1548-7660.
 \newblock \doi{10.18637/jss.v070.i05}.
 \newblock \urlprefix\url{http://dx.doi.org/10.18637/jss.v070.i05}.
+
+\bibitem[{Lattner and Adve(2004)}]{ref-llvm}
+Lattner C, Adve V (2004).
+\newblock \enquote{{LLVM}: A Compilation Framework for Lifelong Program Analysis \& Transformation.}
+\newblock In \emph{Proceedings of the International Symposium on Code Generation and Optimization (CGO 2004)}, pp. 75--86. IEEE.
+\newblock \doi{10.1109/CGO.2004.1281665}.
 
 \bibitem[{Li \emph{et~al.}(2026)Li, Kalinowski, and Falbel}]{ref-cudaml}
 Li Y, Kalinowski T, Falbel D (2026).
@@ -367,6 +385,12 @@ Turcotte A, Goel A, K{\v{r}}ikava F, Vitek J (2020).
 Urbanek S (2026).
 \newblock \emph{{OpenCL}: Interface Allowing {R} to Use {OpenCL}}.
 \newblock R package version 0.2-11, \urlprefix\url{https://CRAN.R-project.org/package=OpenCL}.
+
+\bibitem[{Ushey and Wickham(2025)}]{ref-renv}
+Ushey K, Wickham H (2025).
+\newblock \emph{{renv}: Project Environments}.
+\newblock \doi{10.32614/CRAN.package.renv}.
+\newblock R package version 1.1.5, \urlprefix\url{https://CRAN.R-project.org/package=renv}.
 
 \bibitem[{Wilke \emph{et~al.}(2026)Wilke, Thomason, Reimert, Kosenkov, Barrett, Parry, and Vernon}]{ref-rextendr}
 Wilke CO, Thomason A, Reimert MM, Kosenkov I, Barrett M, Parry J, Vernon K (2026).

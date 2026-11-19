@@ -51,6 +51,10 @@ inst/doc
 README.html
 TODO.md
 .Rprofile
+!paper/.Rprofile
+
+# renv library of the paper (paper/renv.lock)
+paper/renv/library/
 
 # Local coverage snapshots
 covr-*.rds

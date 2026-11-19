@@ -12,8 +12,9 @@
 \usepackage{array}
 \usepackage{orcidlink}
 \usepackage[capitalise,noabbrev]{cleveref}
+\usepackage{placeins}
 
-%% custom commands (from preamble.tex of the R Journal version)
+%% custom commands
 \newcommand{\R}{\mathds{R}}
 \newcommand{\yes}{\checkmark}
 \newcommand{\note}[1]{{\scriptsize(#1)}}
@@ -86,7 +87,7 @@ We illustrate the package's design, demonstrate its capabilities by implementing
 % TODOs:
 %
 % * [x] mention R's vectorize()   (done: Introduction, Vectorize())--> similar functional spirit as {anvl}
-% * [x] stress that {quickr} is experimental and not really useable yet.  (done: intro, abstract, tab:overview)
+% * [x] stress that {quickr} is experimental and not really useable yet.  (done: intro, abstract)
 % * [x] mention interoperability: pjrt can run other {stablehlo} programs  (done: Relation to JAX: pjrt runs programs exported from JAX)
 % * [x] good benchmark comparing HMC from rstan with pure {anvl} implementation (also show GPU use).  (done: Runtime evaluation)
 % * [x] mention which bayesian frameworks are built on top of JAX in Python  (done: intro: NumPyro, BlackJAX, TFP)
@@ -137,7 +138,7 @@ This limits both the research that can be conducted in \proglang{R}, as well as 
 Potential applications in statistics and machine learning include Markov chain Monte Carlo (MCMC) methods, variational inference, hidden Markov models, spatial modeling, and deep learning.
 More generally, \pkg{anvl} can speed up expensive model fitting routines, e.g., those that evaluate a likelihood and its gradient many times.
 Packages that already build on \pkg{anvl} include the choice modelling package \pkg{apollo} \citep{ref-apollo} and the lazy raster engine \pkg{garry} \citep{ref-garry} for remote sensing.
-For \pkg{apollo}, rewriting its computations with \pkg{anvl} has led to speedups of up to a factor of 30, reducing the time to fit some models from an hour to two minutes.
+For \pkg{apollo}, rewriting its computations with \pkg{anvl} has led to speedups of up to a factor of 30, reducing the time to fit some models from an hour to two minutes.\footnote{As reported by the authors of \pkg{apollo}.}
 
 At its core, \pkg{anvl} exposes three types of functions: array constructors, array operations, and code transformations, which includes semantic rewrites and compilation.
 A user can implement a numeric algorithm natively in \proglang{R} against the \pkg{anvl} API and subsequently transform it, e.g. by obtaining the gradient of a function via \code{gradient(f)}.
@@ -155,9 +156,8 @@ Moreover, our goal is to offer an API that is familiar to \proglang{R} users and
 
 The remainder of this article is structured as follows.
 Section~\ref{related-work} compares \pkg{anvl} with related software libraries in \proglang{R} and other languages.
-Section~\ref{usage} shows how to use \pkg{anvl}, and Section~\ref{hmc} applies it to implement a Hamiltonian Monte Carlo sampler.
-Section~\ref{background} introduces the OpenXLA compiler ecosystem and the two packages \pkg{stablehlo} and \pkg{pjrt} that make it accessible from \proglang{R}.
-We then describe the design of\pkg{anvl} in~\Cref{design}.
+Section~\ref{usage} shows how to use \pkg{anvl} and applies it to implement a Hamiltonian Monte Carlo sampler.
+\Cref{design} then describes how \pkg{anvl} works, including the OpenXLA compiler ecosystem and the two packages \pkg{stablehlo} and \pkg{pjrt} that make it accessible from \proglang{R}.
 Section~\ref{extending} shows how to extend \pkg{anvl}, and Section~\ref{runtime} evaluates the runtime of the sampler.
 Section~\ref{limitations} discusses the current limitations of \pkg{anvl}, and Section~\ref{discussion} concludes with an outlook on future work.
 
@@ -204,7 +204,7 @@ Statistical modeling languages form another group.
 On GPUs, it runs only built-in functions with \proglang{OpenCL} implementations, such as various log densities \citep{ref-stan-guide}, while user-defined functions, e.g., a custom likelihood, and the rest of the model run on the CPU.
 \pkg{stanli} \citep{ref-stanli}, a recent interpreter for \proglang{Stan}, instead turns a model into a graph of operations over precompiled \proglang{Stan} Math kernels, so that models are not compiled to \proglang{C++} and need no toolchain; it is also available from \proglang{R}.
 \pkg{nimble} \citep{ref-nimble} generates \proglang{C++} from a \proglang{BUGS}-like language \citep{ref-bugs} and from a subset of \proglang{R}, and \pkg{TMB} \citep{ref-tmb} differentiates \proglang{C++} templates.
-Note that usually here generally works via transpilation to lower level languages such as \proglang{C}, \proglang{C++}, or \proglang{Fortran}.
+Note that these packages generally compile via transpilation to lower-level languages, such as \proglang{C}, \proglang{C++}, or \proglang{Fortran}.
 This prevents domain-specific compilation passes and leaves the optimization to a general-purpose compiler.
 A dedicated compiler for array programs, such as XLA, can perform more optimizations, because it knows the semantics of the array operations (Section~\ref{background}).
 Finally, there are \pkg{dual} \citep{ref-dual}, \pkg{madness} \citep{ref-madness}, \pkg{nabla} \citep{ref-nabla}, and \pkg{salad} \citep{ref-salad}, which implement forward-mode AD via operator overloading in \proglang{R}.
@@ -277,6 +277,7 @@ Although \proglang{R} has no explicit interface for hooking into its interpreter
 
 Other languages have followed similar routes.
 In \proglang{Julia} \citep{ref-bezanson2017julia}, \pkg{Reactant.jl} \citep{ref-reactant} compiles \proglang{Julia} functions to StableHLO and runs them via XLA, \pkg{Nx} \citep{ref-nx} traces numerical definitions in \proglang{Elixir} and compiles them with XLA, and \pkg{GoMLX} \citep{ref-gomlx} does the same for \proglang{Go} via the PJRT wrapper \pkg{gopjrt} \citep{ref-gopjrt}.
+Like \proglang{R}, \proglang{Julia} stores arrays in column-major order, whereas XLA uses row-major order by default, and we studied how \pkg{Reactant.jl} bridges this difference to make \pkg{anvl} efficient.
 \pkg{GX} \citep{ref-gx} goes a step further and defines an embedded, statically typed language for array programs, in which the shapes of arrays are part of their types.
 This demonstrates that the OpenXLA ecosystem we are building on is a widely used base-layer for accelerated array programming.
 
@@ -311,34 +312,31 @@ Dependencies & PJRT plugin, \proglang{CUDA} libraries & \pkg{LibTorch}, \proglan
 
 \section[Using anvl]{Using \pkg{anvl}}\label{usage}
 
-This section shows how to use \pkg{anvl}: how to compute with arrays (\Cref{eager,rapi}), how to compile and differentiate functions (\Cref{ui}), how to draw random numbers (\Cref{rng}), and how to choose the precision of a computation (\Cref{choosing-precision}).
-Table~\ref{tab:overview} summarizes the functionality of \pkg{anvl}, and Section~\ref{design} describes how it works.
+This section shows how to use \pkg{anvl}.
+We show how to install \pkg{anvl}, how to construct and manipulate arrays, how to compile and differentiate functions, how to generate pseudo random numbers, and how to choose the precision and device of a computation, and then apply \pkg{anvl} to implement a Hamiltonian Monte Carlo sampler (\Cref{hmc}).
 
-\begin{table}[tbp]
-\centering
-\small
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.19\textwidth}>{\raggedright\arraybackslash}p{0.77\textwidth}@{}}
-\hline
-Aspect & Functionality in \pkg{anvl} \\
-\hline
-Array constructors & \code{nv\_array()}, \code{nv\_scalar()}, and \code{nv\_matrix()} from \proglang{R} data, at a chosen data type and device; \code{nv\_fill()}, \code{nv\_eye()}, \code{nv\_seq()}, \code{nv\_linspace()}, and \code{nv\_iota()}; samplers for normal, uniform, and binomial variates and sampling, drawing from a global random state that \code{nv\_set\_seed()} seeds; \code{nv\_read()} for files in the safetensors format. Data types: booleans, signed and unsigned integers of 8 to 64 bits, f32, and f64. \\
-Array operations & Methods for about 100 \proglang{R} generics and the corresponding \code{nv\_*()} functions, including arithmetic, math, and comparison operators, reductions, \code{[} and \code{[<-}, \code{\%*\%}, \code{c()}, \code{cbind()}, \code{sort()}, \code{quantile()}, and cumulative functions, 1-based and column-major (Section~\ref{rapi}); \code{solve()}, \code{chol()}, \code{qr()}, LU, SVD, symmetric eigendecomposition, and determinants via LAPACK (CPU) and cuSOLVER (GPU); density, distribution, and quantile functions of five distributions; \code{nv\_if()}, \code{nv\_while()}, and \code{nv\_scan()} for control flow. \proglang{R} values take the data type of the arrays they meet, and each function has a promotion rule (Section~\ref{precision}). \\
-Code transformations & \code{jit()} with caching, static arguments, and buffer donation; \code{gradient()} and \code{value\_and\_gradient()} for reverse-mode AD of scalar functions, which can be nested; \code{with\_dtypes()} and scoped default data types; all of them compose. Programs run asynchronously on the \code{"pjrt"} backend (XLA) on CPUs and NVIDIA GPUs, or on the experimental \code{"quickr"} backend for 55 of the 101 primitives (f64, i32, and booleans). New primitives, rules, and backends can be added from \proglang{R} (Section~\ref{extending}). \\
-\hline
-\end{tabular}
-\caption{Overview of the functionality of \pkg{anvl}, grouped by the three kinds of functions it exposes, complementing the comparison with other packages in Table~\ref{tab:comparison}.}
-\label{tab:overview}
-\end{table}
+\subsection{Installation}\label{installation}
 
-\subsection{Arrays and eager execution}\label{eager}
+\pkg{anvl} and its companion packages can be installed from CRAN or R-universe.
+After loading the package, \code{install_anvl()} downloads the PJRT plugin for the CPU and, on Linux machines with an NVIDIA GPU, the \proglang{CUDA} plugin together with the \proglang{CUDA} libraries (\Cref{background}).
+A compatible NVIDIA driver is then all that is needed to run programs on the GPU; no \proglang{CUDA} toolkit has to be installed.
+
+\subsection{Array construction and operations}\label{eager}
 
 The main data structure is the \code{AnvlArray}, which, compared to an \proglang{R} array, supports more data types, lives on a specific device, such as a CPU or a GPU, and represents scalars as arrays without axes.
-Operations are available through \code{nv_*()} functions and the corresponding \proglang{R} generics, and called on arrays, they are executed immediately, which is called \emph{eager} execution.
-Plain \proglang{R} values take the data type of the array they meet, so the literal \code{2} below becomes an \code{f32} (\Cref{r-values}).
+Note that we generally follow the terminology from \pkg{NumPy}, where an array has a given number of axes. For example, a matrix has two axes and a scalar no axis.
+The extent of each axis is referred to as its axis size, and their collection is referred to as an array's shape.
+We decided for this terminology, as the term dimension is rather ambiguous and used to refer to an axis, its size, as well as the number of axes.
+
+Arrays are created from \proglang{R} data via \code{nv_array()} and \code{nv_scalar()}, or with dedicated functions such as \code{nv_seq()}.
+The supported data types are booleans, (un)signed integers from 8 to 64 bits and single and double precision floating point.
+Operations are available through \code{nv_*()} functions and the corresponding \proglang{R} generics, and called on arrays, they are executed immediately, which is commonly referred to as eager execution.
+Plain \proglang{R} values take the data type of the array they meet, so the literal \code{2} below becomes an \code{f32}.
 
 \begin{CodeChunk}
 \begin{CodeInput}
 R> library(anvl)
+R> nv_set_seed(1L)
 R> x <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
 R> sum(x * 2)
 \end{CodeInput}
@@ -347,146 +345,123 @@ AnvlArray
  42
 [ CPUf32{} ]
 \end{CodeOutput}
+
+As in base \proglang{R}, samplers such as \code{nv_rnorm()} draw from a global random state, which we initialized above via \code{nv_set_seed()}.
+
+
+\begin{CodeInput}
+R> nv_rnorm(3L)
+\end{CodeInput}
+\begin{CodeOutput}
+AnvlArray
+  0.8863
+ -0.2213
+ -1.2806
+[ CPUf32{3} ]
+\end{CodeOutput}
 \end{CodeChunk}
 
-Arrays are created on the CPU by default, and, e.g., \code{nv_array(x, device = "cuda")} creates them on an NVIDIA GPU.
-\code{install_anvl()} downloads the PJRT plugins and, on a machine with an NVIDIA GPU, installs the \proglang{CUDA} libraries as the \proglang{R} package \pkg{pjrt.cuda}, so a compatible NVIDIA driver is all that is needed.
-On the CPU, XLA parallelizes operations over all cores without any configuration.
-Arrays can be saved with \code{saveRDS()} and passed to parallel workers like any other \proglang{R} object, and \code{nv_save()} and \code{nv_read()} write and read files in the safetensors format.
-Computations run asynchronously: \proglang{R} continues while the device computes, and functions that need the values, such as \code{as_array()}, wait for them (\Cref{memory}).
-Eager execution is convenient for interactive work, but each operation is compiled and dispatched on its own; for performance, the whole function should be compiled (\Cref{ui}).
+See~\Cref{rng-design} for more information about the random number generation or the ``Random numbers'' article on the package website\footnote{\url{https://r-xla.github.io/anvl/articles/random-numbers.html}}.
 
-\subsection[An R-like array interface]{An \proglang{R}-like array interface}\label{rapi}
+Arrays have methods for about 100 \proglang{R} generics, such as arithmetic operators, \code{sum()}, \code{\%*\%}, and \code{[}, whose semantics and naming mostly follow  base \proglang{R}, including column-major semantics.
+Where a function deviates from base R, their documentation specifies the differences.
+Further functions include common linear algebra routines, distribution and random number generation (RNG) functions, and higher order primitives.
+For a full overview of the available array operations, see the package documentation\footnote{\url{https://r-xla.github.io/anvl/reference/index.html}}.
 
-Array libraries such as \pkg{NumPy}, and with it \pkg{JAX} and \pkg{PyTorch}, follow \proglang{Python}'s conventions: 0-based indexing, row-major memory layout, and broadcasting that aligns shapes from the last axis.
-\pkg{anvl} instead aims to feel familiar to \proglang{R} users, so that numerical code written for base \proglang{R} carries over with few changes.
-Arrays have methods for about 100 \proglang{R} generics (Table~\ref{tab:overview}), whose semantics follow base \proglang{R}: indexing is 1-based, subsetting uses \proglang{R}'s bracket syntax, and arrays are laid out in column-major order, which matters whenever an operation traverses the elements of an array.
-For example, \code{cumsum()} runs over a matrix column by column in both base \proglang{R} and \pkg{anvl}, whereas the same computation in \pkg{torch}, which requires flattening the tensor first, follows row-major order:
+Arrays are created on the CPU by default, and, e.g., \code{nv_array(x, device = "cuda")} creates them on an NVIDIA GPU (\Cref{hardware}).
+Converting a \code{AnvlArray} back to \proglang{R} is possible via \code{as_array()}.
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> m <- matrix(1:6, nrow = 2)
-R> cumsum(m)
+R> as_array(x)
 \end{CodeInput}
 \begin{CodeOutput}
-[1]  1  3  6 10 15 21
-\end{CodeOutput}
-\begin{CodeInput}
-R> as_array(cumsum(nv_array(m)))
-\end{CodeInput}
-\begin{CodeOutput}
-[1]  1  3  6 10 15 21
-\end{CodeOutput}
-\begin{CodeInput}
-R> t <- torch::torch_flatten(torch::torch_tensor(m))
-R> torch::as_array(torch::torch_cumsum(t, dim = 1))
-\end{CodeInput}
-\begin{CodeOutput}
-[1]  1  4  9 11 15 21
+     [,1] [,2] [,3]
+[1,]    1    3    5
+[2,]    2    4    6
 \end{CodeOutput}
 \end{CodeChunk}
 
-The documentation of each function describes where it deviates from its counterpart in base \proglang{R}.
-Where \pkg{anvl} needs functions of its own, their names and arguments follow base \proglang{R}, e.g., \code{nv_pmax()}, \code{nv_which_max()}, \code{nv_ifelse(test, yes, no)}, \code{nv_seq(from, to, by)}, and \code{nv_rnorm(shape, mean, sd)}.
-\proglang{R} has no scalars, and its arrays cannot have zero axes: a number is a vector of length one, \code{array(1, dim = integer(0))} is an error, and a vector, which has no \code{dim}, is a different object from an array with one axis.
-Whether a value is a scalar, a vector, or a matrix is therefore not part of its type, and code has to check it at run time, e.g., via \code{length(x) == 1}.
-The missing distinction also explains why \proglang{R} needs a second subsetting operator for lists: as a single index is a vector of length one, \code{l[i]} cannot tell whether one element or a sublist of length one is requested and always returns a list, so the element itself has to be extracted with \code{l[[i]]}.
-With scalar indices, as in \pkg{anvl}, where \code{x[i]} with a scalar index drops the axis and an array index keeps it, a single operator could express both.
-In \pkg{anvl}, the shape of an array can have any length, including zero, so scalars, vectors, matrices, and arrays of higher rank are instances of one type whose number of axes is known: a reduction over all axes returns an array without axes, and the condition of \code{nv_if()} must be one.
-This distinction matters in practice: in an analysis of a large corpus of \proglang{R} packages, \citet{ref-turcotte2020types} found that a third of all function arguments are scalars, and their proposed type language for \proglang{R} therefore distinguishes scalars from vectors.
-One deliberate departure concerns how \proglang{R} values correspond to arrays.
-A length-one \proglang{R} vector is a scalar, every other value must be an \proglang{R} array, whose \code{dim} becomes the shape, so each \proglang{R} value corresponds to exactly one shape.
-The same principle applies to subsetting: in base \proglang{R}, \code{m[1, ]} drops an axis unless \code{drop = FALSE} is given, so the type of the result changes when the number of selected rows happens to be one.
-In \pkg{anvl}, a scalar index drops the axis and an array index keeps it, whatever its length, which removes a discontinuity that would be particularly harmful in compiled programs, whose shapes are fixed:
+\subsection{Compilation}\label{ui}
+
+Instead of eagerly execution functions one by one, it is possible to combine them together into a single compiled function via \code{jit()}.
+The resulting executable will be more efficient than executing the functions eagerly one by one as the compiler can optimize across the individual function calls. 
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> x <- nv_array(matrix(1:6, 2))
-R> shape(x[1, ])
+R> f <- function(x) sum(x^2)
+R> f_jit <- jit(f)
+R> f_jit(x)
 \end{CodeInput}
 \begin{CodeOutput}
-[1] 3
-\end{CodeOutput}
-\begin{CodeInput}
-R> shape(x[array(1), ])
-\end{CodeInput}
-\begin{CodeOutput}
-[1] 1 3
+AnvlArray
+ 91
+[ CPUf32{} ]
 \end{CodeOutput}
 \end{CodeChunk}
 
-For broadcasting, \pkg{anvl} does not adopt \pkg{NumPy}'s general broadcasting rules, which align shapes from the last axis and silently turn, e.g., the sum of arrays of shape $(n)$ and $(n, 1)$ into an $n \times n$ matrix.
-Base \proglang{R} has no broadcasting between arrays, but recycles vectors over the column-major elements of an array, which agrees with broadcasting only in some cases.
-\pkg{anvl} therefore only broadcasts scalars automatically, as in \code{x * 2}, and general broadcasting is requested explicitly via \code{nv_broadcast_arrays()}, which aligns shapes from the first axis, the column-major counterpart of \pkg{NumPy}'s rule.
-The remaining deviations from base \proglang{R} follow from static shapes and from functional purity.
-Logical masks, as in \code{x[x > 6]}, work in eager execution, but inside \code{jit()} only if the mask is known during tracing, because the number of selected elements, and thus the shape of the result, depends on the values of the mask.
-A mask computed from the inputs of a jitted function is therefore rejected, and the same result can usually be obtained by masking instead of selecting, e.g., \code{sum(nv_ifelse(x > 0, x, 0))} instead of \code{sum(x[x > 0])}.
-Random numbers come from a random state of \pkg{anvl}'s own rather than from \proglang{R}'s \code{.Random.seed}, because a call to base \proglang{R}'s \code{rnorm()} inside a jitted function would be evaluated only once during tracing, and its values would be constants of the compiled program (Section~\ref{rng}).
+Note that the compilation does not actually happen during \code{jit(f)}, but instead when the function is first called.
+Subsequent calls with inputs of the same data types and shapes will reuse the already compiled executable.
+The function \code{f} must be pure, i.e., its result may only depend on its arguments, and it must not have side effects.
+For \code{if} statements and loops that depend on the values of arrays, one needs to use \code{nv_if()}, \code{nv_while()}, or \code{nv_scan()} instead (\Cref{control-flow}); we use \code{nv_scan()} in \Cref{hmc}.
+There are various further things to be aware of when using \code{jit()}, which the article ``JIT Deep Dive'' on the package website\footnote{\url{https://r-xla.github.io/anvl/articles/jit.html}} explains.
 
-\subsection{Compiling and differentiating functions}\label{ui}
+A jitted function called from within another jitted function is compiled together with it into a single executable, and jitted functions take and return nested lists of arrays, such as a named list of model parameters.
 
-\code{jit()}, \code{gradient()}, and \code{value_and_gradient()} transform an \proglang{R} function into a new function.
-\code{jit()} returns a function that compiles its input when it is called, and caches the executable, so that a later call with inputs of the same data types and shapes reuses it.
-To compile a function, \pkg{anvl} first runs it with abstract arrays and records its array operations, which is called \emph{tracing} (\Cref{trace}); below, the side effect shows that the second call does not trace the function again.
+\subsection{Differentiation}\label{differentiation}
+
+\code{gradient()} takes a function with scalar output and returns a function that computes its gradient with respect to the arguments given in \code{wrt}, by default all of them, in the same nested structure as the arguments; \code{value_and_gradient()} also returns the value of the function.
+Gradients can be compiled with \code{jit()} and can be computed within a jitted function, as in the sampler in \Cref{hmc}.
+Below, the gradient of $\sum_{i} w x_i^2$ is computed with respect to \code{x} only.
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> f_jit <- jit(function(x, y) {
-+    cat("tracing\n")
-+    x * y
-+  })
-R> y1 <- f_jit(x, x)
+R> g <- function(x, w) sum(w * x^2)
+R> grad_g <- jit(gradient(g, wrt = "x"))
+R> grad_g(x, 2)$x
 \end{CodeInput}
 \begin{CodeOutput}
-tracing
+AnvlArray
+  4 12 20
+  8 16 24
+[ CPUf32{2,3} ]
 \end{CodeOutput}
-\begin{CodeInput}
-R> y2 <- f_jit(x, x + 1L)
-\end{CodeInput}
 \end{CodeChunk}
 
-Arguments that are not arrays, e.g., a string that selects an operation, must be marked as \code{static}, e.g., \code{jit(f, static = "op")}; their values become part of the cache key, and the function is traced again for every new value.
-A jitted function called from within another jitted function is traced as part of the outer function, so that both are compiled into a single executable.
-\code{gradient()} takes a function with scalar output and returns a function that computes the gradient with respect to the arguments given in \code{wrt}, which can itself be called within a jitted function (Section~\ref{hmc}).
-Transformed functions take and return nested lists of arrays, such as a named list of model parameters, and \code{gradient()} returns the gradient in the same structure.
+\pkg{anvl} currently implements reverse-mode AD, see \Cref{ad} for more information.
 
-\proglang{R}'s control flow can be used within jitted functions, but an \code{if} statement only retains the branch that was taken and a loop is unrolled during tracing.
-For control flow that depends on array values, or for loops that should not be unrolled, \pkg{anvl} provides the higher-order primitives \code{nv_if()}, \code{nv_while()}, and \code{nv_scan()}, which trace the functions passed to them into sub-graphs.
-For example, \code{nv_scan()} runs a loop for a fixed number of steps, threads a state through a body function, and stacks the outputs of all steps; we use it in Section~\ref{hmc}.
+\subsection{Choosing the precision and device}\label{choosing-precision}
 
-The main restriction stems from XLA's requirement that all shapes are known when a program is compiled: each new combination of input shapes triggers a new compilation, and operations whose output shape depends on data, such as \code{unique()}, cannot be expressed directly (Section~\ref{limitations}).
-Moreover, StableHLO programs cannot raise errors at runtime, so \pkg{anvl} performs all checks during tracing.
-
-\subsection{Random numbers}\label{rng}
-
-As in base \proglang{R}, the samplers, such as \code{nv_runif()} or \code{nv_rnorm()}, draw from a global random state, which every draw advances and \code{nv_set_seed()} seeds like \code{set.seed()}.
-Unlike \code{.Random.seed}, this state also reaches compiled programs, so that a jitted function draws the same numbers as the same code run eagerly (\Cref{rng-design}).
-The article on random numbers\footnote{\url{https://r-xla.github.io/anvl/articles/random-numbers.html}} describes the generators and how to seed them for a scope.
-
-\subsection{Choosing the precision}\label{choosing-precision}
-
-The default data types for \proglang{R} doubles and integers are a property of the backend (\code{f32} and \code{i32} for XLA) and can be changed for a scope via \code{with_default_dtypes()} or the option \code{anvl.default_dtypes}.
-\code{with_dtypes()} turns a function into one that runs at the given data types, converting its array arguments and results and setting the defaults for its body.
+The default data types for \proglang{R} doubles and integers are \code{f32} and \code{i32} and can be changed via the option \code{anvl.default_dtypes}.
+The defaults only matter when no array determines the data type of a value (\Cref{r-values,promotion}).
+Below, \code{nv_scalar(pi)} and \code{nv_exp(1)} settle on the default float, which is \code{f32} and, after switching the default, \code{f64}, whereas \code{x * pi} stays \code{f32}, as the array \code{x} determines its data type.
+We keep the default float at \code{f64} for the rest of the article.
 
 \begin{CodeChunk}
-\fitcode
 \begin{CodeInput}
-R> B <- matrix(c(0.1, 0.2, 0.3, 0.4), 2, 2)
-R> loss <- function(beta, X, y) mean((X %*% beta - y)^2)
-R> loss_f64 <- with_dtypes(loss, c(float = "f64"))
-R> c(dtype(nv_exp(1)), dtype(with_default_dtypes(c(float = "f64"), nv_exp(1))),
-+    dtype(loss_f64(nv_array(matrix(0, 2, 2), dtype = "f32"), B, B)))
+R> c(dtype(nv_scalar(pi)), dtype(nv_exp(1)))
 \end{CodeInput}
 \begin{CodeOutput}
-[1] "f32" "f64" "f64"
+[1] "f32" "f32"
+\end{CodeOutput}
+\begin{CodeInput}
+R> options(anvl.default_dtypes = c(float = "f64", int = "i32"))
+R> c(dtype(nv_scalar(pi)), dtype(nv_exp(1)), dtype(x * pi))
+\end{CodeInput}
+\begin{CodeOutput}
+[1] "f64" "f64" "f32"
 \end{CodeOutput}
 \end{CodeChunk}
 
-Compiled programs are cached per default data types, so both variants can be used side by side, and in contrast to \pkg{JAX}'s 64-bit mode, the defaults only decide the data type of \proglang{R} values that meet no array (\Cref{r-values}).
+Similarly, arrays are created and programs run on the CPU by default, and the default device can be changed, e.g., to \code{"cuda"}, via the option \code{anvl.default_device}.
 
-\section{Use case: Hamiltonian Monte Carlo}\label{hmc}
+\subsection{Hamiltonian Monte Carlo}\label{hmc}
 
-Hamiltonian Monte Carlo (HMC) \citep{ref-neal2011mcmc} is an MCMC method that uses the gradient of the log posterior density to propose distant states that are still accepted with high probability, and thus a natural use case for \pkg{anvl}: it needs gradients, its loops are slow in \proglang{R}, and running many chains in parallel is a good fit for GPUs.
+We now put everything together and implement a Hamiltonian Monte Carlo sampler with \pkg{anvl}.
+Hamiltonian Monte Carlo (HMC) \citep{ref-neal2011mcmc} is an MCMC method that uses the gradient of the log posterior density to propose distant states that are still accepted with high probability, and thus a natural use case for \pkg{anvl}.
+Dedicated software, such as \proglang{Stan} \citep{ref-stan}, provides more efficient samplers, such as the No-U-Turn sampler \citep{ref-nuts}, which also tunes the length of the trajectories.
+We picked this example here because it is simple, yet demonstrates some of the key features of \pkg{anvl}.
+
 We consider Bayesian logistic regression with a binary response $y \in \{0, 1\}^n$, features $X \in \R^{n \times p}$, $y_i \sim \text{Bernoulli}(\sigma(x_i^\top \beta))$, and a standard normal prior $\beta \sim \mathcal{N}(0, I_p)$.
 HMC simulates the dynamics of a particle with position $\beta$ and momentum $\rho \sim \mathcal{N}(0, I_p)$ in the potential energy
 \[U(\beta) = -\log p(\beta \mid X, y) = -\sum_{i = 1}^n \left(y_i x_i^\top \beta - \log(1 + e^{x_i^\top \beta})\right) + \frac{1}{2}\lVert \beta \rVert^2 + \text{const}.\]
@@ -514,6 +489,10 @@ R> grad_potential <- gradient(
 +  )
 \end{CodeInput}
 \end{CodeChunk}
+
+To run loops within a compiled program, \pkg{anvl} provides \code{nv_scan(init, xs, body, steps)} (\Cref{control-flow}).
+Starting from the state \code{init}, it calls \code{body(carry, x)} for a fixed number of \code{steps}, where \code{carry} is the current state and \code{x} the current slice of the optional sequence \code{xs}.
+The body returns a list with the new state as \code{carry} and an output of the step as \code{out}, and \code{nv_scan()} returns the final state as \code{carry} and the outputs of all steps, stacked along a new first axis, as \code{out}.
 
 The dynamics are simulated with the leapfrog integrator, which alternates half steps of size $\varepsilon/2$ for the momentum with full steps of size $\varepsilon$ for the position.
 We run $L$ such steps with \code{nv_scan()}, where the gradient at the current position is part of the carry, so that each step evaluates the gradient only once.
@@ -551,49 +530,105 @@ R> hmc_step <- function(beta, X, y, eps, L) {
 \end{CodeInput}
 \end{CodeChunk}
 
-Finally, we collect \code{n_draws} draws with another \code{nv_scan()}, whose outputs are stacked along a new first axis, and compile the whole sampler with \code{jit()}.
-The number of leapfrog steps and draws are static arguments, as they determine the structure of the program.
+Finally, we compile a single transition with \code{jit()} and call it from an \proglang{R} loop, which collects the draws in a $K \times p \times n_{\text{draws}}$ array.
+With \code{static = "L"}, the number of leapfrog steps is treated as a constant of the compiled program, as it sets the number of steps of \code{nv_scan()}; a new value of \code{L} triggers a new compilation (\Cref{trace}).
+As each transition evaluates the gradient $L + 1$ times, the loop in \proglang{R} adds little overhead; the draws are copied to \proglang{R} only at the end.
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> hmc <- jit(function(beta, X, y, eps, L, n_draws) {
-+    out <- nv_scan(beta, steps = n_draws, body = function(beta, x) {
-+      beta <- hmc_step(beta, X, y, eps, L)
-+      list(carry = beta, out = beta)
-+    })
-+    list(draws = out$out, beta = out$carry)
-+  }, static = c("L", "n_draws"))
+R> hmc_step_jit <- jit(hmc_step, static = "L")
+R> hmc <- function(beta, X, y, eps, L, n_draws) {
++    draws <- vector("list", n_draws)
++    for (i in seq_len(n_draws)) {
++      beta <- hmc_step_jit(beta, X, y, eps, L)
++      draws[[i]] <- beta
++    }
++    simplify2array(lapply(draws, as_array))
++  }
 \end{CodeInput}
 \end{CodeChunk}
 
-We apply the sampler to simulated data with $n = 1000$ observations and $p = 5$ features, running four chains in double precision.
-The posterior means, computed from the second half of each chain, agree with the maximum likelihood estimates up to the shrinkage induced by the prior.
+We apply the sampler to data with $n = 1000$ observations and $p = 2$ features, so that the draws can be shown in the plane, which we simulate with the samplers of \pkg{anvl}: a response is one if a uniform variate falls below its success probability.
+We run four chains in double precision, the default float that we set in \Cref{choosing-precision}.
+The posterior means, computed from the second half of each chain, are similar to the maximum likelihood estimates.
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> options(anvl.default_dtypes = c(float = "f64", int = "i32"))
-R> set.seed(1)
-R> n <- 1000; p <- 5
-R> X <- matrix(rnorm(n * p), n, p)
-R> y <- rbinom(n, 1, plogis(X %*% rnorm(p, sd = 0.5)))
-R> nv_set_seed(42L)
-R> res <- hmc(nv_array(matrix(0, 4, p)), nv_array(X), nv_array(as.double(y)),
-+    eps = 0.5 / sqrt(n), L = 10L, n_draws = 2000L)
-R> draws <- as_array(res$draws)
-R> rbind(hmc = colMeans(apply(draws[1001:2000, , ], 3, c)),
-+    glm = coef(glm(y ~ X - 1, family = binomial)))
+R> n <- 1000; p <- 2
+R> X <- nv_rnorm(c(n, p))
+R> eta <- X %*% nv_rnorm(c(p, 1L), sd = 0.5)
+R> y <- nv_ifelse(nv_runif(c(n, 1L)) < nv_plogis(eta), 1, 0)
+R> draws <- hmc(nv_array(matrix(0, 4, p)), X, y, eps = 0.5 / sqrt(n),
++    L = 20L, n_draws = 2000L)
+R> fit <- glm(as_array(y) ~ as_array(X) - 1, family = binomial)
+R> rbind(hmc = apply(draws[, , 1001:2000], 2, mean), glm = unname(coef(fit)))
 \end{CodeInput}
 \begin{CodeOutput}
-            X1        X2         X3        X4        X5
-hmc -0.7721286 0.3413428 -0.8302590 0.6672407 0.5570106
-glm -0.7738017 0.3425455 -0.8321399 0.6701697 0.5599573
+         [,1]      [,2]
+hmc 0.2453013 0.1593219
+glm 0.2455268 0.1596087
 \end{CodeOutput}
 \end{CodeChunk}
 
-The whole sampler, including the $2000 \times 11$ gradient evaluations per chain, runs as a single compiled program without returning to \proglang{R}.
-The same code runs on a GPU when the arrays are allocated there, e.g., via \code{nv_array(X, device = "cuda")}.
+Figure~\ref{fig:hmc} shows the draws of the first chain, which mixes well after a few transitions, together with an example of a leapfrog trajectory; the other chains look alike.
 
-\section{Background: The OpenXLA compiler ecosystem}\label{background}
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\linewidth]{figures/hmc.pdf}
+\caption{Draws of the first chain of the HMC sampler for the logistic regression example. Left: the draws of the second half (points) in the plane of $(\beta_1, \beta_2)$, contours of the posterior density, and a leapfrog trajectory (dashed) that starts at one of the draws (circle) with a random momentum. Middle: trace plots, in which the discarded first half is shaded and the first 20 transitions are cut off at the axis limits. Right: the posterior densities estimated from the second half. The cross and the dashed lines mark the maximum likelihood estimates.}
+\label{fig:hmc}
+\end{figure}
+
+Each of the 2000 transitions, including its $L + 1 = 21$ gradient evaluations for all chains, runs as one compiled program.
+The same code runs on a GPU when the arrays are allocated there, e.g., via \code{nv_array(X, device = "cuda")}.
+In \Cref{runtime}, we benchmark this sampler on CPUs and GPUs against \proglang{Stan}, \pkg{TMB}, and \pkg{torch}.
+
+% Keep the figure of the HMC use case in Section~\ref{usage}.
+\FloatBarrier
+
+\section[How anvl works]{How \pkg{anvl} works}\label{design}
+
+The central idea of \pkg{anvl} is to view compilation and differentiation as code transformations, of which there are three kinds (Figure~\ref{fig:overview}): an \proglang{R} function is traced into an \code{AnvlGraph}, a graph is transformed into another graph, e.g., by reverse-mode AD, and a graph is lowered to an executable by one of the backends.
+
+\begin{figure}[hbp]
+\centering
+\includegraphics[width=\linewidth]{figures/overview.pdf}
+\caption{The three kinds of transformations in \pkg{anvl}. A node's color indicates the package that implements it. Users call \code{jit()}, \code{gradient()}, and \code{value\_and\_gradient()}, which apply these steps once the types of the inputs are known.}
+\label{fig:overview}
+\end{figure}
+
+The functions \code{jit()}, \code{gradient()}, and \code{value_and_gradient()} from \Cref{ui,differentiation} apply these transformations lazily, once the types of the inputs are known.
+Under the hood, there are two layers of functions: \emph{primitives}, named \code{prim_*()}, are the minimal operations that the transformations know about, each defined by a set of rules, and the user-facing \code{nv_*()} functions build on them and add broadcasting of scalars, type promotion, and default arguments.
+The primitives play a similar role as the primitive functions of base \proglang{R}, such as \code{+}, \code{[}, or \code{sum()}, for which \code{is.primitive()} returns \code{TRUE}: these are implemented in \proglang{C} and called directly by the interpreter, while functions written in \proglang{R} are built from them \citep{ref-r}.
+Unlike those, the primitives of \pkg{anvl} are \proglang{R} objects that carry one rule for each transformation, so they can be compiled and differentiated, and new primitives can be added from \proglang{R} (\Cref{extending}).
+Loosely speaking, a primitive resembles an S3 generic in \proglang{R}, and its rules resemble the methods of the generic: instead of on the class of its argument, a primitive dispatches on the transformation that is applied to it, e.g., to its \code{"stablehlo"} rule when a graph is lowered to StableHLO and to its \code{"reverse"} rule when a graph is differentiated.
+Each primitive is itself a jitted function, so eager execution compiles and caches one small program per primitive and input type.
+Table~\ref{tab:classes} lists the main classes of \pkg{anvl}, which the following subsections use.
+Of these subsections, tracing (\Cref{trace}) and control flow (\Cref{control-flow}) are the most relevant for users, as they determine which \proglang{R} code can be compiled, together with the type system (\Cref{precision}), which determines the data types of results, and asynchronous execution (\Cref{hardware}), which matters when measuring runtimes; the others mainly describe internals that are relevant for extending \pkg{anvl} (\Cref{extending}).
+
+\begin{table}[tbp]
+\centering
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.21\textwidth}>{\raggedright\arraybackslash}p{0.75\textwidth}@{}}
+\hline
+Class & Role \\
+\hline
+\code{AnvlArray} & An array on a device, which holds a buffer of the backend together with its data type and shape. \\
+\code{AbstractArray} & The type of an array, i.e., its data type and shape, without its values; subclasses also carry values that are known during tracing, such as a constant (\code{ConcreteArray}) or an \proglang{R} literal (\code{LiteralArray}). \\
+\code{GraphBox} & Stands in for an array while a function is traced and refers to a value in the graph under construction. \\
+\code{GraphDescriptor} & The mutable graph under construction during tracing. \\
+\code{AnvlGraph} & A traced program: its inputs, statements, and outputs. \\
+\code{GraphValue} & A value in a graph, such as an input or the output of a statement, with its type (an \code{AbstractArray}); constants embedded in the graph are \code{GraphLiteral}s. \\
+\code{GraphStatement} & One call of a primitive: the primitive, its inputs, its static parameters, and its outputs. \\
+\code{AnvlPrimitive} & A primitive, callable like a function, whose definition (\code{AnvlPrimitiveDef}) holds one rule per transformation, e.g., \code{"stablehlo"} and \code{"reverse"}. \\
+\code{AnvlBackend} & Defines how arrays are stored and placed on devices and how graphs are compiled: \code{AnvlBackendPjrt} for XLA and \code{AnvlBackendQuickr} for \pkg{quickr}. \\
+\hline
+\end{tabular}
+\caption{Main classes of \pkg{anvl}.}
+\label{tab:classes}
+\end{table}
+
+\subsection{The OpenXLA compiler ecosystem}\label{background}
 
 OpenXLA \citep{ref-openxla} is an open-source compiler ecosystem for accelerated array computing.
 It decouples array computing frameworks (the frontends) from hardware-specific compilers and runtimes (the backends) through two standardized interfaces: StableHLO \citep{ref-stablehlo} and PJRT \citep{ref-pjrt}.
@@ -601,8 +636,13 @@ The former is a portable intermediate representation for array programs, and the
 A framework that emits StableHLO and executes it via PJRT can run on any hardware for which a PJRT plugin exists.
 Such a plugin essentially bundles a compiler for one kind of hardware with a runtime that allocates data on the device and executes the compiled programs; plugins exist, e.g., for CPUs and NVIDIA GPUs.
 
-One compiler for StableHLO is XLA, which is part of the OpenXLA project itself, which includes compilers for CPU, NVIDIA GPUs, and Google TPUs.
-One of its limitations is that every shape in a program must be fully specified ahead of time.
+One compiler for StableHLO is XLA \citep{ref-xla}, which is part of the OpenXLA project itself and compiles programs for CPUs, NVIDIA GPUs, and Google TPUs.
+As it knows the semantics of every operation, it optimizes the program as a whole, before it generates machine code via LLVM \citep{ref-llvm}.
+Among other optimizations, it simplifies algebraic expressions, eliminates common subexpressions and unused computations, and \emph{fuses} chains of elementwise operations, often together with the reductions that consume them, into a single kernel, so that intermediate arrays are never written to memory.
+It also chooses the memory layout of each array, plans the memory of the whole program in advance, reusing the buffers of values that are no longer needed, and hands operations such as matrix products to optimized libraries, e.g., cuBLAS on NVIDIA GPUs.
+On GPUs, it additionally \emph{autotunes} the program: during compilation, it benchmarks several implementations of, e.g., matrix products and fused kernels, and keeps the fastest.
+A compiler that translates \proglang{R} code to \proglang{C++} or \proglang{Fortran}, in contrast, leaves the optimization to a general-purpose compiler, which only sees loops over memory rather than array operations (\Cref{in-r}).
+One of the limitations of XLA is that every shape in a program must be fully specified ahead of time.
 IREE \citep{ref-iree} is an alternative compiler and runtime that also accepts StableHLO.
 One of its core advantages is that it supports dynamic shapes, so the same program can be run with input arrays of different sizes.
 
@@ -654,22 +694,7 @@ As compiling a PJRT plugin itself is rather expensive, \pkg{pjrt} downloads preb
 The \proglang{CUDA} plugin additionally requires NVIDIA libraries, which the companion package \pkg{pjrt.cuda} downloads as NVIDIA's official redistributable binaries.
 The only thing it requires on a user machine is a compatible \proglang{CUDA} driver.
 
-\section[Design of anvl]{Design of \pkg{anvl}}\label{design}
-
-The central idea of \pkg{anvl} is to view compilation and differentiation as code transformations, of which there are three kinds (Figure~\ref{fig:overview}): an \proglang{R} function is traced into an \code{AnvlGraph}, a graph is transformed into another graph, e.g., by reverse-mode AD, and a graph is lowered to an executable by one of the backends.
-
-\begin{figure}[tbp]
-\centering
-\includegraphics[width=\linewidth]{figures/overview.pdf}
-\caption{The three kinds of transformations in \pkg{anvl}. A node's color indicates the package that implements it. Users call \code{jit()}, \code{gradient()}, and \code{value\_and\_gradient()}, which apply these steps once the types of the inputs are known.}
-\label{fig:overview}
-\end{figure}
-
-The functions \code{jit()}, \code{gradient()}, and \code{value_and_gradient()} from \Cref{ui} apply these transformations lazily, once the types of the inputs are known.
-Under the hood, there are two layers of functions: \emph{primitives}, named \code{prim_*()}, are the minimal operations that the transformations know about, each defined by a set of rules, and the user-facing \code{nv_*()} functions build on them and add broadcasting of scalars, type promotion, and default arguments.
-Each primitive is itself a jitted function, so eager execution compiles and caches one small program per primitive and input type.
-
-\subsection[Tracing R code into a graph]{Tracing \proglang{R} code into a graph}\label{trace}
+\subsection[Tracing R code into an AnvlGraph]{Tracing \proglang{R} code into an \code{AnvlGraph}}\label{trace}
 
 Instead of statically analyzing the source code of a function, as \pkg{quickr} does, \pkg{anvl} \emph{traces} it: \code{trace_fn()} evaluates an \proglang{R} function with \code{GraphBox} objects in place of arrays, which carry only a data type and a shape.
 Below, we trace a function that adds or multiplies two \code{f32} scalars, created by \code{nv_aval()}, depending on an argument \code{op}.
@@ -692,16 +717,10 @@ R> graph
 \end{CodeChunk}
 
 Every call to a primitive appends a \code{GraphStatement}, consisting of the primitive, its inputs, its static parameters, and its outputs, to the graph, while all other \proglang{R} code is simply evaluated; here, only the branch of the \code{if} statement that was taken becomes part of the \code{AnvlGraph}.
-Figure~\ref{fig:tracing} follows these steps for a slightly larger function.
+Arguments that are not arrays, such as \code{op}, are not replaced by placeholders but stay ordinary \proglang{R} values during tracing, so the graph can depend on their values, as on \code{op} above.
+\code{jit()} therefore requires them to be declared as \code{static}, e.g., \code{jit(f, static = "op")}, and includes their values in the key of its cache, so that it traces and compiles the function anew for every new value.
 Inputs and outputs are \emph{RTrees}, an \proglang{R} analog of \pkg{JAX}'s pytrees \citep{ref-jax}: arbitrarily nested lists, whose leaves are arrays or \proglang{R} values.
 Before tracing, a tree is flattened into its leaves and its nesting structure is stored separately, and after execution, the outputs are restored into their tree.
-
-\begin{figure}[tbp]
-\centering
-\includegraphics[width=\linewidth]{figures/tracing.pdf}
-\caption{How \code{trace\_fn()} records a function: the function, its variables while it is traced, and the graph it records, with numbers that link them to the notes below. The inputs and the output of the graph are teal; the branch that is never evaluated is gray.}
-\label{fig:tracing}
-\end{figure}
 
 Compared to static analysis, tracing allows arbitrary \proglang{R} code to construct a program and only needs to know the semantics of the array operations, not those of the \proglang{R} language as a whole.
 A compiler based on static analysis can only translate the functions it knows, so it accepts only a subset of \proglang{R}, often with type annotations.
@@ -709,6 +728,59 @@ Tracing, in contrast, simply runs every other function while the program is reco
 Most packages that compile \proglang{R} code use static analysis (Section~\ref{in-r}); exceptions are \pkg{RTMB} and the tracing JIT compilers of \pkg{torch} and \pkg{tensorflow}.
 The downside is that tracing only works for functions that can be intercepted: \code{sum()} is a generic with a method for \pkg{anvl}'s arrays, whereas \code{rowSums()} is not generic and cannot be traced.
 Furthermore, programs must be pure: side effects, such as printing, only happen once during tracing, and \proglang{R} control flow can only depend on values that are known during tracing, such as static arguments and shapes.
+Moreover, StableHLO programs cannot raise errors at runtime, so \pkg{anvl} performs all checks during tracing.
+As \code{jit()} caches the compiled program, a function is traced only once per combination of input types; below, the side effect shows that the second call does not trace the function again.
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> f_jit <- jit(function(x, y) {
++    cat("tracing\n")
++    x * y
++  })
+R> v <- nv_array(1:3)
+R> y1 <- f_jit(v, v)
+\end{CodeInput}
+\begin{CodeOutput}
+tracing
+\end{CodeOutput}
+\begin{CodeInput}
+R> y2 <- f_jit(v, v + 1L)
+\end{CodeInput}
+\end{CodeChunk}
+
+\subsection{Higher-order primitives for control flow}\label{control-flow}
+
+\proglang{R}'s \code{if} statements and loops run during tracing, so they cannot depend on the values of arrays.
+For such control flow, \pkg{anvl} provides three higher-order primitives, which take functions as arguments: \code{nv_if(pred, true, false)} evaluates one of two branches, \code{nv_while(init, cond, body)} updates a state as long as a condition holds, and \code{nv_scan(init, xs, body, steps)} runs a body for a fixed number of steps and stacks its outputs.
+They trace these functions into sub-graphs of a single statement, and arrays that the functions close over become additional inputs of the statement, its \emph{captures}.
+Below, both branches of \code{nv_if()} are recorded, and \code{x}, which they close over, is passed to the statement as a capture.
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> h <- function(x) nv_if(sum(x) > 0, function() x, function() -x)
+R> trace_fn(h, list(x = nv_aval("f32", 3L)))
+\end{CodeInput}
+\begin{CodeOutput}
+<AnvlGraph> (%x1: f32[3]) {
+  %1: f32[] = sum [axes = 1, drop = TRUE] (%x1)
+  %2: bool[] = gt(%1, 0:f32)
+  %3: f32[3] = if [
+    true = (%x2: f32[3]) {
+      return %x2
+    },
+    false = (%x3: f32[3]) {
+      %4: f32[3] = negate(%x3)
+      return %4
+    },
+    n_captures = 1
+  ] (%2, %x1)
+  return %3
+}
+\end{CodeOutput}
+\end{CodeChunk}
+
+Unlike with \proglang{R}'s \code{if}, both branches must return arrays of the same types, and the state of \code{nv_while()} and \code{nv_scan()} keeps its types across iterations.
+The rules of the higher-order primitives apply the transformations to their sub-graphs: the StableHLO rules lower \code{nv_if()} to StableHLO's \code{if} operation and \code{nv_while()} and \code{nv_scan()} to its \code{while} loop, and the reverse rules differentiate through \code{nv_if()} and \code{nv_scan()}, but not through \code{nv_while()} (\Cref{limitations}).
 
 \subsection{Automatic differentiation}\label{ad}
 
@@ -732,21 +804,19 @@ For the \code{"pjrt"} backend, \code{stablehlo()} translates the graph into a St
 The result is compiled via \pkg{pjrt}.
 The \pkg{quickr} backend instead translates the graph into an \proglang{R} function with type declarations and compiles it with \pkg{quickr}; compared to XLA, a compiled \pkg{quickr} function can be reused for inputs of different shapes, but it only runs on the CPU and supports fewer data types.
 
-\subsection{Asynchronous execution and device memory}\label{memory}
+\subsection{Hardware acceleration and asynchronous execution}\label{hardware}
+
+\pkg{anvl} runs programs on CPUs and NVIDIA GPUs via the PJRT plugins from Section~\ref{background}, and a program runs on the device of its inputs.
+Devices are addressed by identifiers such as \code{"cpu"}, \code{"cuda"}, or \code{"cuda:1"} for the second GPU.
+On the CPU, XLA parallelizes operations over all cores without any configuration, and the environment variable \code{PJRT_CPU_DEVICE_COUNT} splits the CPU into several devices, such as \code{"cpu:1"}.
 
 Execution is asynchronous: calling a compiled program returns as soon as the computation has been scheduled, and its result is only awaited when its values are needed, e.g., by \code{as_array()}, which allows \proglang{R} to prepare the next call while the device is busy.
 This matters because \proglang{R} itself is single-threaded and comparatively slow to dispatch work.
 On a GPU, synchronous calls would leave the device idle while \proglang{R} prepares the next call, whereas with asynchronous execution, \proglang{R} enqueues work ahead of the device and the time spent in \proglang{R} is hidden, as long as each call does enough work.
 On the CPU, the computation runs on XLA's own thread pool, so \proglang{R} can schedule programs on several devices from a single thread, which then run in parallel; the multi-chain benchmark in Section~\ref{runtime} uses this to run groups of chains on separate CPU devices.
 Synchronization only happens where \proglang{R} needs the values, e.g., in \code{as_array()} or \code{await()}, and the latter is also what benchmarks have to call to measure the computation rather than its dispatch.
-Figure~\ref{fig:async} shows this for two calls of a jitted function.
 
-\begin{figure}[tbp]
-\centering
-\includegraphics[width=\linewidth]{figures/async.pdf}
-\caption{Asynchronous execution of two calls of a jitted function, not to scale: each call returns as soon as its computation is scheduled, so \proglang{R} continues while the device computes (teal), and \code{as\_array()} waits for the result (gray) and copies it to the host.}
-\label{fig:async}
-\end{figure}
+\subsection{Device memory}\label{memory}
 
 \proglang{R} reclaims memory with a generational mark-and-sweep garbage collector, which runs when \proglang{R}'s own heap fills up; objects carry reference counts, but these only decide whether an object can be modified in place, and memory is reclaimed by the collector alone.
 In contrast to \proglang{Python}, whose reference counting frees an object as soon as its last reference disappears, an object that goes out of scope in \proglang{R} is only freed the next time the collector runs.
@@ -765,6 +835,84 @@ An \code{AnvlArray} holds a buffer in device memory, which an \proglang{R} packa
 External pointers do not survive serialization, so objects holding them become invalid when they are saved with \code{saveRDS()} or sent to another \proglang{R} process, a common obstacle for \proglang{R} packages that manage foreign memory.
 \pkg{pjrt} therefore wraps buffers in ALTREP objects \citep{ref-altrep}, whose serialization methods copy the data to the host and upload it again when the object is loaded, onto the default device of the loading session.
 Arrays can thus be saved like any other \proglang{R} object and passed to parallel workers, e.g., via \pkg{parallel}, without explicit conversion.
+For exchange with other software, \code{nv_save()} and \code{nv_read()} write and read files in the safetensors format via the \pkg{safetensors} package \citep{ref-safetensors}.
+
+\subsection[An R-like array interface]{An \proglang{R}-like array interface}\label{rapi}
+
+Array libraries such as \pkg{NumPy}, and with it \pkg{JAX} and \pkg{PyTorch}, follow \proglang{Python}'s conventions: 0-based indexing, row-major memory layout, and broadcasting that aligns shapes from the last axis.
+\pkg{anvl} instead aims to feel familiar to \proglang{R} users, so that numerical code written for base \proglang{R} carries over with few changes.
+Arrays have methods for about 100 \proglang{R} generics, whose semantics follow base \proglang{R}: indexing is 1-based, subsetting uses \proglang{R}'s bracket syntax, and arrays are laid out in column-major order, which matters whenever an operation traverses the elements of an array.
+For example, \code{cumsum()} runs over a matrix column by column in both base \proglang{R} and \pkg{anvl}, whereas the same computation in \pkg{torch}, which requires flattening the tensor first, follows row-major order:
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> m <- matrix(1:6, nrow = 2)
+R> cumsum(m)
+\end{CodeInput}
+\begin{CodeOutput}
+[1]  1  3  6 10 15 21
+\end{CodeOutput}
+\begin{CodeInput}
+R> cumsum(nv_array(m))
+\end{CodeInput}
+\begin{CodeOutput}
+AnvlArray
+  1
+  3
+  6
+ 10
+ 15
+ 21
+[ CPUi32{6} ]
+\end{CodeOutput}
+\begin{CodeInput}
+R> t <- torch::torch_flatten(torch::torch_tensor(m))
+R> torch::torch_cumsum(t, dim = 1)
+\end{CodeInput}
+\begin{CodeOutput}
+torch_tensor
+  1
+  4
+  9
+ 11
+ 15
+ 21
+[ CPULongType{6} ]
+\end{CodeOutput}
+\end{CodeChunk}
+
+\proglang{R} has no scalars, and its arrays cannot have zero axes: a number is a vector of length one, \code{array(1, dim = integer(0))} is an error, and a vector, which has no \code{dim}, is a different object from an array with one axis.
+Whether a value is a scalar, a vector, or a matrix is therefore not part of its type, and code has to check it at run time, e.g., via \code{length(x) == 1}.
+The missing distinction also explains why \proglang{R} needs a second subsetting operator for lists: as a single index is a vector of length one, \code{l[i]} cannot tell whether one element or a sublist of length one is requested and always returns a list, so the element itself has to be extracted with \code{l[[i]]}.
+With scalar indices, as in \pkg{anvl}, where \code{x[i]} with a scalar index drops the axis and an array index keeps it, a single operator could express both.
+In \pkg{anvl}, the shape of an array can have any length, including zero, so scalars, vectors, matrices, and arrays of higher rank are instances of one type whose number of axes is known: a reduction over all axes returns an array without axes, and the condition of \code{nv_if()} must be one.
+This distinction matters in practice: in an analysis of a large corpus of \proglang{R} packages, \citet{ref-turcotte2020types} found that a third of all function arguments are scalars, and their proposed type language for \proglang{R} therefore distinguishes scalars from vectors.
+One deliberate departure concerns how \proglang{R} values correspond to arrays.
+A length-one \proglang{R} vector is a scalar, every other value must be an \proglang{R} array, whose \code{dim} becomes the shape, so each \proglang{R} value corresponds to exactly one shape.
+The same principle applies to subsetting: in base \proglang{R}, \code{m[1, ]} drops an axis unless \code{drop = FALSE} is given, so the type of the result changes when the number of selected rows happens to be one.
+In \pkg{anvl}, a scalar index drops the axis and an array index keeps it, whatever its length, which removes a discontinuity that would be particularly harmful in compiled programs, whose shapes are fixed:
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> x <- nv_array(matrix(1:6, 2))
+R> shape(x[1, ])
+\end{CodeInput}
+\begin{CodeOutput}
+[1] 3
+\end{CodeOutput}
+\begin{CodeInput}
+R> shape(x[array(1), ])
+\end{CodeInput}
+\begin{CodeOutput}
+[1] 1 3
+\end{CodeOutput}
+\end{CodeChunk}
+
+For broadcasting, \pkg{anvl} does not adopt \pkg{NumPy}'s general broadcasting rules, which align shapes from the last axis and silently turn, e.g., the sum of arrays of shape $(n)$ and $(n, 1)$ into an $n \times n$ matrix.
+Base \proglang{R} has no broadcasting between arrays, but recycles vectors over the column-major elements of an array, which agrees with broadcasting only in some cases.
+\pkg{anvl} therefore only broadcasts scalars automatically, as in \code{x * 2}, and general broadcasting is requested explicitly via \code{nv_broadcast_arrays()}, which aligns shapes from the first axis, the column-major counterpart of \pkg{NumPy}'s rule.
+The remaining deviations from base \proglang{R} follow from static shapes and from functional purity (\Cref{eager,ui}).
+For example, a logical mask that is computed inside a jitted function cannot select elements, as in \code{x[x > 0]}, because the shape of the result would depend on the data, but masking, e.g., \code{sum(nv_ifelse(x > 0, x, 0))}, gives the same result (Section~\ref{limitations}).
 
 \subsection{Type system}\label{precision}
 
@@ -783,10 +931,11 @@ Transferred to \proglang{R}, where every real-valued vector is stored in double 
 
 \pkg{anvl} therefore extends weak typing to all \proglang{R} values that enter a program, i.e., length-one vectors as well as matrices and arrays.
 An \proglang{R} value has no data type and only \emph{materializes} as an array when it meets one, taking its data type.
-Below, the matrix \code{B} from \Cref{choosing-precision} is multiplied with a single- and a double-precision array.
+Below, the same \proglang{R} matrix \code{B} is multiplied with a single- and a double-precision array.
 
 \begin{CodeChunk}
 \begin{CodeInput}
+R> B <- matrix(c(0.1, 0.2, 0.3, 0.4), 2, 2)
 R> matmul <- jit(function(x, b) x %*% b)
 R> c(dtype(matmul(nv_array(diag(2), dtype = "f32"), B)),
 +    dtype(matmul(nv_array(diag(2), dtype = "f64"), B)))
@@ -798,6 +947,7 @@ R> c(dtype(matmul(nv_array(diag(2), dtype = "f32"), B)),
 
 In the second call, \code{B} enters the program in double precision and the product is exactly \code{B}, whereas a fixed default precision would either have lost precision or turned the first result into \code{f64}.
 Only a value that meets no array, such as the argument of \code{nv_exp(1)}, settles on a default data type.
+Compiled programs are cached per default data types, so variants at different default data types can be used side by side, and in contrast to \pkg{JAX}'s 64-bit mode, the defaults only decide the data type of such values.
 A non-static \proglang{R} argument of a jitted function, such as \code{b} above, enters the trace with a shape but no data type, and each operation that uses it decides at which data type it materializes; if it is used at several data types, it is transferred at the narrowest one that holds all of them.
 
 The same principle guards against silent changes of values elsewhere.
@@ -821,10 +971,13 @@ R> axpy <- jit(function(a, x, y) {
 +    args$a * args$x + args$y
 +  })
 R> y32 <- nv_array(c(1, 1), dtype = "f32")
-R> as_array(axpy(2, nv_array(c(1, 2), dtype = "f32"), y32))
+R> axpy(2, nv_array(c(1, 2), dtype = "f32"), y32)
 \end{CodeInput}
 \begin{CodeOutput}
-[1] 3 5
+AnvlArray
+ 3
+ 5
+[ CPUf32{2} ]
 \end{CodeOutput}
 \begin{CodeInput}
 R> axpy(2, nv_array(c(1, 2), dtype = "f64"), y32)
@@ -841,7 +994,7 @@ Developers of packages built on \pkg{anvl} can thus decide for each function whi
 
 \subsection{Random number generator}\label{rng-design}
 
-Within a compiled program, the random state from \Cref{rng} becomes an implicit input, which \pkg{anvl} advances after each call.
+Within a compiled program, the random state from \Cref{eager} becomes an implicit input, which \pkg{anvl} advances after each call.
 The random state consists of a key and a counter, from which every sampling call derives a fresh key, as in \pkg{JAX}, and the random bits come from the counter-based ThreeFry-2x32 generator \citep{ref-threefry}.
 \code{nv_runif()} turns the bits into uniform variates by placing them in the mantissa of a floating-point number in $[1, 2)$ and subtracting one, and \code{nv_rnorm()} transforms pairs of uniform variates with the Box--Muller method.
 
@@ -886,10 +1039,14 @@ The primitive can now be used eagerly, within jitted functions, and be different
 \begin{CodeChunk}
 \begin{CodeInput}
 R> grad_softplus <- jit(gradient(function(z) sum(prim_softplus(z))))
-R> as_array(grad_softplus(nv_array(c(-1, 0, 1)))$z)
+R> grad_softplus(nv_array(c(-1, 0, 1)))$z
 \end{CodeInput}
 \begin{CodeOutput}
-[1] 0.2689414 0.5000000 0.7310586
+AnvlArray
+ 0.2689
+ 0.5000
+ 0.7311
+[ CPUf64{3} ]
 \end{CodeOutput}
 \end{CodeChunk}
 
@@ -910,7 +1067,7 @@ We compare the runtime of the HMC sampler from Section~\ref{hmc} to \proglang{St
 
 \subsection{Setup}
 
-We run \proglang{Stan}'s static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40 with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 10$ leapfrog steps, the identity metric, and adaptation disabled, so that all samplers perform the same number of gradient evaluations.
+We run \proglang{Stan}'s static HMC sampler (without the No-U-Turn extension) via CmdStan 2.40 with the same step size $\varepsilon = 0.5/\sqrt{n}$, $L = 20$ leapfrog steps, the identity metric, and adaptation disabled, so that all samplers perform the same number of gradient evaluations.
 The \proglang{Stan} model uses \code{bernoulli_logit_glm()}, \proglang{Stan}'s most efficient implementation of the logistic regression likelihood, which can also be evaluated on a GPU via \proglang{OpenCL}; on the GPU, \proglang{Stan}'s chains run as separate processes that share the device, at most 8 at a time.
 \pkg{TMB} evaluates the log posterior and its gradient with \pkg{CppAD} from a \proglang{C++} template, and as it does not provide an HMC sampler, we run the same static HMC loop in \proglang{R} around its compiled objective and gradient, as is common when custom algorithms are implemented with \pkg{TMB}.
 The \pkg{torch} sampler mirrors the \pkg{anvl} code, but runs the leapfrog and sampling loops in \proglang{R}, as \pkg{torch} executes each operation eagerly.
@@ -924,7 +1081,7 @@ Second, we measure strong scaling: we draw 200 samples from a single chain for $
 \pkg{anvl} and \pkg{torch} run the unchanged sampler, which they parallelize within operations, \pkg{TMB} evaluates the likelihood with several OpenMP threads, and \proglang{Stan} needs a modified model, in which \code{reduce_sum()} splits the likelihood into slices that are evaluated by several threads.
 Third, we draw 1000 samples from each of $K$ chains for $n = 10^4$ and $p = 20$.
 CmdStan and \pkg{TMB} run one chain per process, at most one per core, and \pkg{anvl} runs all chains as one batched program, except on 16 cores, where we split them into 16 groups that run on separate PJRT CPU devices.
-All experiments ran on the LRZ AI Systems, on two Intel Xeon Gold 6336Y processors restricted to 16 physical cores and on an NVIDIA A100 80GB GPU, in a \pkg{Docker} image that pins all software versions; the image, the benchmark scripts, and instructions are in the \code{paper/} directory of \url{https://github.com/r-xla/anvl}.
+The hardware and the software of the experiments are described in the section on computational details at the end of the paper.
 
 \subsection{Results}
 
@@ -947,7 +1104,7 @@ Figure~\ref{fig:results-single-scaling} (right) shows how a single chain scales 
 Without any change to the code, \pkg{anvl} becomes 1.7, 2.8, and 4.6 times faster on 2, 4, and 8 cores, and does not improve further on 16 cores, where the individual operations are too small at this problem size to keep all cores busy.
 With \code{reduce_sum()}, \proglang{Stan} scales further (11 times faster on 16 threads), but this requires rewriting the model, which is then slower on a single core (44 versus 50 seconds, compared to 39 seconds for \pkg{anvl}).
 \pkg{TMB} becomes 18 times faster on 16 threads, but starts from 522 seconds, and \pkg{torch} is as fast as \pkg{anvl} on one core, where the operations are large enough to hide its overhead, but becomes only 1.7 times faster on 16 threads.
-% The three numbers below are inline R results in paper.Rmd (medians of the scaling-gpu*.csv results).
+% The three numbers below are the medians of the scaling-gpu*.csv results.
 On the GPU, the same run takes 0.28 seconds with \pkg{anvl}, 7 seconds with \pkg{torch}, and 8.9 seconds with \proglang{Stan}'s \proglang{OpenCL} backend.
 
 \begin{figure}[tbp]
@@ -992,22 +1149,33 @@ Several devices can be used by running separate programs on them, as in the mult
 
 \paragraph{Hardware and data types.}
 Although XLA also targets further accelerators, \pkg{anvl} currently supports only CPUs and NVIDIA GPUs, and the \pkg{quickr} backend is experimental, runs only on the CPU, and supports fewer data types.
-Floating-point computations are supported in single and double precision (Table~\ref{tab:overview}); half-precision types, which are common in deep learning, and complex numbers are not supported.
+Floating-point computations are supported in single and double precision (\Cref{eager}); half-precision types, which are common in deep learning, and complex numbers are not supported.
 
 \section{Conclusion}\label{discussion}
 
 We introduced \pkg{anvl}, which brings composable code transformations for array programs to \proglang{R}: programs are traced into a graph, which can be differentiated in reverse mode and compiled via OpenXLA or \pkg{quickr}, so the same \proglang{R} code runs on CPUs and GPUs, with an \proglang{R}-like array interface and control over numerical precision.
-The HMC use case showed that a whole sampler can be compiled into a single program that is faster than \proglang{Stan} on the CPU and scales to thousands of chains on a GPU.
+The HMC use case showed that a sampler written in \proglang{R} with \pkg{anvl} is faster than \proglang{Stan} on the CPU and scales to thousands of chains on a GPU.
 
 Its main limitations are XLA's static shapes and the restriction of AD to reverse mode (Section~\ref{limitations}).
-Future work will add forward-mode AD, which, combined with reverse mode, yields Jacobians and Hessians efficiently, e.g., for Laplace approximations, and a vectorizing transformation similar to \pkg{JAX}'s \code{vmap()}, which would remove the need to write batched code by hand.
+Future work will add forward-mode AD, which, combined with reverse mode, yields Jacobians and Hessians efficiently.
+Hessians are central to statistical inference: the inverse Hessian of the negative log-likelihood at its minimum estimates the covariance of the maximum likelihood estimator, Newton-type optimizers use it to converge in few iterations, and the Laplace approximation, with which \pkg{TMB} \citep{ref-tmb} integrates out random effects, needs the Hessian with respect to the random effects.
+Forward mode is also the efficient choice for functions with few inputs and many outputs, such as the sensitivities of many predictions to a few parameters.
+We further plan a vectorizing transformation similar to \pkg{JAX}'s \code{vmap()}, which would remove the need to write batched code by hand.
 We also plan to support dynamic shapes, i.e., programs whose shapes are only known at run time, which the \pkg{quickr} backend and a backend based on the IREE compiler \citep{ref-iree} could compile once for all input shapes instead of once per shape.
 Beyond the core, we hope that \pkg{anvl} will serve as a foundation for packages that implement statistical and machine learning algorithms, such as samplers and variational inference, on top of it.
 
+\section*{Computational details}
+
+The results in this paper were obtained using \proglang{R}~4.5.3 \citep{ref-r} with \pkg{anvl}~0.6.0, \pkg{stablehlo}~0.6.0, and \pkg{pjrt}~0.7.0.
+The replication material contains the file \code{renv.lock}, which records the versions of all \proglang{R} packages for \pkg{renv} \citep{ref-renv}, and a \code{Dockerfile}, which installs them on top of NVIDIA's \proglang{CUDA} base image; the resulting \pkg{Docker} image runs on CPUs as well as on NVIDIA GPUs.
+The runtime experiments (\Cref{runtime}) ran on the LRZ AI Systems, on two Intel Xeon Gold 6336Y processors restricted to 16 physical cores and on an NVIDIA A100 80GB GPU, in a \pkg{Docker} image that pins all software versions, including a development version of \pkg{anvl} from before the release of version 0.6.0, \pkg{torch}~0.17.0, and CmdStan~2.40.0.
+The image, the benchmark scripts, and instructions are in the \code{paper/} directory of \url{https://github.com/r-xla/anvl}.
+
 \section*{Acknowledgments}
 
-Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under the National Research Data Infrastructure - NFDI 29/2 - project number 460135501
-We thank the developers of \pkg{JAX}, whose design and documentation, in particular the Autodidax tutorial \citep{ref-autodidax}, inspired many aspects of \pkg{anvl}, as well as the authors of the \proglang{Go} library \pkg{gopjrt} \citep{ref-gopjrt}, which informed the design of \pkg{pjrt}.
+Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under the National Research Data Infrastructure - NFDI 29/2 - project number 460135501.
+We thank Hugh Graham, Troy Hernandez, and Nikolai German for their contributions to \pkg{anvl}.
+We thank Jan Pfeifer, the author of the \proglang{Go} libraries \pkg{GoMLX} \citep{ref-gomlx} and \pkg{gopjrt} \citep{ref-gopjrt}, which informed the design of \pkg{pjrt}, and Thomas Degris for valuable insights in conversations.
 The computations were run using resources provided by the Leibniz Supercomputing Centre (LRZ).
 
 \bibliography{references}
@@ -1021,7 +1189,7 @@ Array libraries and compilers that are not specific to \proglang{R} do not know 
 Table~\ref{tab:missing-values} shows what the packages compared in Table~\ref{tab:comparison} return for \proglang{R}'s missing values after passing them through a minimal program, and whether \code{NA_integer_ + 1L} still yields \code{NA}, as in \proglang{R}.
 The table is generated by the script \code{verification/missing_values.R} in the replication material.
 
-% Rendered from verification/missing_values.csv (chunk missing-values in paper.Rmd).
+% Rendered from verification/missing_values.csv.
 \begin{table}[tbp]
 \centering
 \begin{tabular}{lllll}
