@@ -650,16 +650,27 @@ describe("prim_scan", {
     expect_equal(as.numeric(as_array(res$carry$s)), 10)
   })
 
-  it("batches the carry over the non-scanned axes", {
-    a <- array(as.numeric(1:24), dim = c(4L, 2L, 3L))
+  it("slices xs along the last axis and stacks the outputs along a new last axis", {
+    a <- array(as.numeric(1:24), dim = c(2L, 3L, 4L))
     res <- prim_scan(
       list(s = nv_fill(0, shape = c(2L, 3L), dtype = "f64")),
       list(x = nv_array(a)),
       cumsum_body,
       steps = 4L
     )
-    expect_equal(as_array(res$out), apply(a, c(2, 3), cumsum))
-    expect_equal(as_array(res$carry$s), apply(a, c(2, 3), sum))
+    expect_equal(as_array(res$out), aperm(apply(a, c(1L, 2L), cumsum), c(2L, 3L, 1L)))
+    expect_equal(as_array(res$carry$s), apply(a, c(1L, 2L), sum))
+  })
+
+  it("lowers with the step on XLA's leading dimension, without a transpose", {
+    f <- function(xs) prim_scan(list(s = nv_fill(0, shape = 3L, dtype = "f32")), list(x = xs), cumsum_body, steps = 5L)
+    graph <- trace_fn(f, list(nv_aval("f32", c(3L, 5L))))
+    expect_equal(shape(graph$outputs[[2L]]$aval), c(3L, 5L))
+    mlir <- repr(stablehlo(graph)[[1L]])
+    expect_false(grepl("stablehlo.transpose", mlir, fixed = TRUE))
+    # The step axis, R's last, is XLA dimension 0: a step is a row of the XLA array.
+    expect_match(mlir, "slice_sizes = array<i64: 1, 3>", fixed = TRUE)
+    expect_match(mlir, "(tensor<5x3xf32>, tensor<1x3xf32>, tensor<i32>, tensor<i32>)", fixed = TRUE)
   })
 
   it("reverse reads and writes at the original positions", {
@@ -698,7 +709,7 @@ describe("prim_scan", {
       prim_scan(list(s = nv_scalar(0)), x, function(c, v) list(carry = c$s, out = c$s), steps = 2L),
       "same structure as `init`"
     )
-    expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, steps = 3L), "size 3 along axis 1")
+    expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, steps = 3L), "size 3 along its last axis")
     expect_error(
       prim_scan(list(s = nv_scalar(0)), x, cumsum_body, steps = -1L),
       "not >= 0"
@@ -767,29 +778,29 @@ describe("prim_scan", {
   it("nests inside another scan", {
     # Each `while` region declares its own block arguments; a nested scan
     # must not reuse the ids of the region enclosing it.
-    m <- matrix(as.numeric(1:6), nrow = 2)
-    row_sums <- function(x) {
+    m <- matrix(as.numeric(1:6), nrow = 2L)
+    col_sums <- function(x) {
       prim_scan(
         list(s = nv_scalar(0)),
         list(x = x),
-        function(carry, row) {
+        function(carry, col) {
           inner <- prim_scan(
             list(s = carry$s),
-            list(x = row$x),
+            list(x = col$x),
             function(acc, e) list(carry = list(s = acc$s + e$x), out = NULL),
-            steps = 3L
+            steps = 2L
           )
           list(carry = list(s = inner$carry$s), out = inner$carry$s)
         },
-        steps = 2L
+        steps = 3L
       )
     }
-    res <- row_sums(nv_array(m))
-    expect_equal(as.numeric(res$out), cumsum(rowSums(m)))
+    res <- col_sums(nv_array(m))
+    expect_equal(as.numeric(res$out), cumsum(colSums(m)))
     expect_equal(as.numeric(res$carry$s), sum(m))
 
-    jitted <- jit(function(x) row_sums(x)$out)
-    expect_equal(as.numeric(jitted(nv_array(m))), cumsum(rowSums(m)))
+    jitted <- jit(function(x) col_sums(x)$out)
+    expect_equal(as.numeric(jitted(nv_array(m))), cumsum(colSums(m)))
   })
 
   it("names the carry slot whose type changes", {
@@ -852,14 +863,14 @@ describe("prim_scan", {
     expect_equal(dtype(res$out$flag), as_dtype("bool"))
   })
 
-  it("keeps the trailing axes of a zero-step scan's outputs", {
+  it("keeps the leading axes of a zero-step scan's outputs", {
     res <- prim_scan(
       list(s = nv_fill(0, shape = 3L)),
-      list(x = nv_array(array(numeric(), dim = c(0L, 3L)))),
+      list(x = nv_array(array(numeric(), dim = c(3L, 0L)))),
       cumsum_body,
       steps = 0L
     )
-    expect_equal(shape(res$out), c(0L, 3L))
+    expect_equal(shape(res$out), c(3L, 0L))
     expect_equal(as.numeric(res$carry$s), c(0, 0, 0))
   })
 })

@@ -1861,7 +1861,7 @@ describe("prim_scan", {
     graph <- trace_fn(gradient(f), avals)
     scans <- Filter(\(call) call$primitive$name == "scan", graph$statements)
     out_shapes <- lapply(unlist(lapply(scans, \(call) call$outputs)), \(g) shape(g$aval))
-    expect_false(list(c(3L, 2L, 2L)) %in% out_shapes)
+    expect_false(list(c(2L, 2L, 3L)) %in% out_shapes)
     # Nor does the forward scan carry it, which would cost a copy per step, or
     # compute it again: it reads the copy computed before it.
     fwd <- Filter(\(call) !call$params$reverse, scans)[[1L]]
@@ -1895,7 +1895,7 @@ describe("prim_scan", {
 
     graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
     fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
-    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    stacked <- Filter(\(g) identical(shape(g$aval), c(2L, 3L)), fwd$outputs)
     expect_length(stacked, 2L)
   })
 
@@ -1922,7 +1922,7 @@ describe("prim_scan", {
 
     graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
     fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
-    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    stacked <- Filter(\(g) identical(shape(g$aval), c(2L, 3L)), fwd$outputs)
     expect_length(stacked, 1L)
   })
 
