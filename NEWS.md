@@ -21,6 +21,8 @@
 
 * An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
   differentiates with respect to no argument, rather than all of them.
+* `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
+  recycling it, and keeps the values of a `bit64::integer64`.
 
 # anvl 0.6.0
 
