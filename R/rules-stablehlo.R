@@ -1173,20 +1173,11 @@ prim_gather[["stablehlo"]] <- function(
 # the matrix in R axes 1 and 2 is the block behind them, (column, row) in XLA
 # order: the column-major matrix as XLA's row-major bytes. So potrf factors
 # exactly the matrix the R axes hold and writes the factor the same way.
-#
-# potrf always computes the lower factor: LAPACK's lower variant is about 20%
-# faster than the upper one on small matrices. potrf reads only the triangle it
-# factors, so the upper factor is the transpose of the lower factor of t(x),
-# which reads the upper triangle of x as base R's chol() does.
 prim_chol[["stablehlo"]] <- function(x, lower) {
   op_shape <- shape(x$value_type)
   r <- length(op_shape)
   batch_dims <- seq_len(r - 2L) - 1L
-  swap <- c(batch_dims, r - 1L, r - 2L)
   dt <- dtype(x)
-  if (!lower) {
-    x <- hlo_transpose(x, swap)
-  }
 
   row_major <- rev(seq_len(r) - 1L)
   out <- hlo_custom_call(
@@ -1195,7 +1186,7 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
     api_version = 4L,
     has_side_effect = FALSE,
     backend_config = stablehlo::CustomOpBackendConfig(list(
-      stablehlo::BoolAttr(name = "lower", value = TRUE)
+      stablehlo::BoolAttr(name = "lower", value = lower)
     )),
     output_types = list(vt(dtype = dt, shape = op_shape), vt(dtype = "i32", shape = op_shape[seq_len(r - 2L)])),
     operand_layouts = list(row_major),
@@ -1214,9 +1205,6 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
   )
   ok <- hlo_broadcast_in_dim(ok, batch_dims, op_shape)
   L <- hlo_select(ok, L, hlo_tensor(NaN, dtype = dt, shape = op_shape, func = x$func))
-  if (!lower) {
-    L <- hlo_transpose(L, swap)
-  }
 
   # potrf leaves the input's values in the other triangle: zero it, so
   # downstream code (including reverse rules) never sees them. A block's first

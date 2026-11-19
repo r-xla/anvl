@@ -1156,8 +1156,10 @@ describe("prim_chol", {
   })
 
   it("lowers a batch without transposing it", {
-    g <- trace_fn(function(x) prim_chol(x, lower = TRUE), list(nv_aval("f64", c(4L, 4L, 3L))))
-    expect_no_match(repr(stablehlo(g, platform = "cpu")[[1L]]), "stablehlo.transpose", fixed = TRUE)
+    for (lower in c(TRUE, FALSE)) {
+      g <- trace_fn(function(x) prim_chol(x, lower = lower), list(nv_aval("f64", c(4L, 4L, 3L))))
+      expect_no_match(repr(stablehlo(g, platform = "cpu")[[1L]]), "stablehlo.transpose", fixed = TRUE)
+    }
   })
 })
 
