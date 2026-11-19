@@ -521,8 +521,8 @@ test_that("trace_fn matches args with formals", {
   expect_equal(pjrt::tree_child_names(graph1$in_tree), c("lhs", "rhs"))
 })
 
-test_that("gradient works through graph with primitives that have no reverse rule", {
-  # `prim_fill` has no reverse rule; the call should be skipped during the
+test_that("gradient works through graph with primitives that have no pullback rule", {
+  # `prim_fill` has no pullback rule; the call should be skipped during the
   # backward pass because its inputs (all static params) don't require grad.
   f <- function(x) {
     y <- prim_fill(2, dtype = "f64", shape = c(3L))
@@ -533,7 +533,7 @@ test_that("gradient works through graph with primitives that have no reverse rul
   expect_equal(out[[1L]], nv_array(c(2, 2, 2), dtype = "f64"))
 })
 
-test_that("rule_reverse(forward = ...) emits multiple primitives and captures an intermediate", {
+test_that("rule_pullback(forward = ...) emits multiple primitives and captures an intermediate", {
   infer <- function(x) list(x)
   my_exp <- new_primitive(
     "my_exp_test",
@@ -541,7 +541,7 @@ test_that("rule_reverse(forward = ...) emits multiple primitives and captures an
     register = FALSE
   )
 
-  my_exp[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+  my_exp[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
     x <- inputs[[1L]]
     y <- prim_exp(x)
     neg_y <- prim_negate(y)
@@ -738,12 +738,12 @@ describe("gradients through prim_while", {
   it("refuses one that closes over a value wrt depends on, rather than returning zero", {
     # What the body closes over is an operand of the call, so the backward
     # pass sees that the loop reads `x`.
-    expect_error(jit(gradient(accumulate))(x), "No reverse rule for primitive .*while")
+    expect_error(jit(gradient(accumulate))(x), "No pullback rule for primitive .*while")
   })
 
   it("refuses such a loop inside a branch of prim_if() too", {
     f <- function(p, x) nv_if(p, function() accumulate(x), function() nv_scalar(0, "f64"))
-    expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No reverse rule for primitive .*while")
+    expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No pullback rule for primitive .*while")
   })
 
   it("leaves one alone whose outputs are integers", {

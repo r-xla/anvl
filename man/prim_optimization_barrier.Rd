@@ -34,7 +34,7 @@ with a separate barrier in the backward pass.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

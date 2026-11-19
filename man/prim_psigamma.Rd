@@ -27,7 +27,7 @@ non-negative integer values.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

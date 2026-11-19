@@ -94,11 +94,11 @@ The {anvl} package does not in any way dictate how such an `AnvlGraph` to `AnvlG
 For most interesting transformations, however, we need to store some information for each {anvl} primitive function.
 In the case of the gradient, we need to store the derivative rules.
 For this, the `AnvlPrimitiveDef` metadata object attached to each primitive has a `rules` field that can be populated.
-The derivative rules are stored as functions under the `"reverse"` name.
+The derivative rules are stored as functions under the `"pullback"` name.
 Each primitive is an exported `prim_*` function; `[[` on it reads a rule:
 
 ```{r}
-prim_mul[["reverse"]]
+prim_mul[["pullback"]]
 ```
 
 The `graph_gradient()` function uses these rules to compute the gradient of a function.

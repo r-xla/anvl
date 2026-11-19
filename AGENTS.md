@@ -125,7 +125,7 @@ another backend is an error. Only helpers *about* the backend name one (`install
 Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
-- **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
+- **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
 ## Side Effects
@@ -173,7 +173,7 @@ The trace under way is a `GraphDescriptor` (`current_descriptor()`). A function 
 Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
-- `tests/testthat/test-primitives-reverse.R` -- sources `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-pullback.R` -- sources `inst/extra-tests/test-primitives-pullback-torch.R`
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 

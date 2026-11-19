@@ -2245,7 +2245,7 @@ ppois_differentiable <- function(k, lambda, lower_tail, log_p, is_f32) {
   prim_custom_gradient(
     list(k = k, lambda = lambda),
     fn = function(k, lambda) ppois_raw(k, lambda, lower_tail, log_p, is_f32)$value,
-    rule = rule_reverse(forward = function(inputs, params, required) {
+    rule = rule_pullback(forward = function(inputs, params, required) {
       k <- inputs$k
       lambda <- inputs$lambda
       # Higher derivatives also differentiate this forward pass. Stop gradients
