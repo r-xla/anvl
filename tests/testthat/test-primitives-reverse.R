@@ -2209,10 +2209,10 @@ describe("prim_optimization_barrier", {
 describe("prim_convolution", {
   it("has zero gradients when the result is empty", {
     # a width-3 window does not fit into a width-2 input
-    x <- nv_array(1:4, shape = c(1L, 2L, 2L), dtype = "f32")
-    kernel <- nv_array(1:12, shape = c(2L, 2L, 3L), dtype = "f32")
+    x <- nv_array(1:4, shape = c(2L, 2L, 1L), dtype = "f32")
+    kernel <- nv_array(1:12, shape = c(3L, 2L, 2L), dtype = "f32")
     grads <- jit(gradient(function(x, kernel) nv_sum(nv_conv1d(x, kernel))))(x, kernel)
-    expect_equal(as_array(grads[[1L]]), array(0, c(1L, 2L, 2L)))
-    expect_equal(as_array(grads[[2L]]), array(0, c(2L, 2L, 3L)))
+    expect_equal(as_array(grads[[1L]]), array(0, c(2L, 2L, 1L)))
+    expect_equal(as_array(grads[[2L]]), array(0, c(3L, 2L, 2L)))
   })
 })

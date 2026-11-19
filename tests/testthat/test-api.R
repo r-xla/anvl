@@ -3222,32 +3222,114 @@ test_that("the floating-point nv_* functions refuse a boolean", {
 test_that("nv_conv1d/2d/3d promote their operands", {
   # The `nv_*` layer promotes, as `nv_matmul()` does; `prim_convolution()`
   # underneath still requires operands that already agree.
-  x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
-  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
-  w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
+  x32 <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+  x64 <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f64")
+  w32 <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
+  w64 <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f64")
   expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
   # An integer input meets a float kernel at the float; it used to be refused.
   expect_equal(
-    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
+    dtype(nv_conv1d(nv_array(1:5, shape = c(5, 1, 1)), w32)),
     as_dtype("f32")
   )
   expect_equal(
     dtype(nv_conv2d(
-      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
+      nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32"),
+      nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f64")
     )),
     as_dtype("f64")
   )
   expect_equal(
     dtype(nv_conv3d(
-      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
+      nv_array(1:18, shape = c(3, 3, 2, 1, 1), dtype = "f32"),
+      nv_fill(1, shape = c(2, 2, 1, 1, 1), dtype = "f64")
     )),
     as_dtype("f64")
   )
+})
+
+describe("nv_conv2d", {
+  # A 1x1 kernel of ones copies each input element, so the strides, padding
+  # and dilations below can be read off the result's values.
+  x_r <- array(as.double(seq_len(9L * 8L)), c(9L, 8L, 1L, 1L))
+  x <- nv_array(x_r, dtype = "f32")
+  ones <- nv_fill(1, shape = c(1L, 1L, 1L, 1L), dtype = "f32")
+
+  it("puts the spatial axes first, then the channels, and the batch last", {
+    out <- nv_conv2d(
+      nv_fill(1, shape = c(9L, 8L, 3L, 2L), dtype = "f32"),
+      nv_fill(1, shape = c(3L, 3L, 3L, 4L), dtype = "f32")
+    )
+    expect_shape(out, c(7L, 6L, 4L, 2L))
+    expect_equal(as_array(out), array(27, c(7L, 6L, 4L, 2L)))
+  })
+
+  it("takes the stride in the order (W, H)", {
+    out <- nv_conv2d(x, ones, stride = c(2L, 1L))
+    expect_equal(as_array(out), x_r[c(1L, 3L, 5L, 7L, 9L), , , , drop = FALSE])
+  })
+
+  it("takes the padding in the order (W, H)", {
+    out <- nv_conv2d(x, ones, padding = c(1L, 0L))
+    expect_equal(as_array(out)[,, 1L, 1L], rbind(0, x_r[,, 1L, 1L], 0))
+  })
+
+  it("takes the dilation in the order (W, H)", {
+    # a width-2 kernel spread over three columns of the width
+    kernel <- nv_array(c(1, -1), shape = c(2L, 1L, 1L, 1L), dtype = "f32")
+    out <- nv_conv2d(x, kernel, dilation = c(2L, 1L))
+    expect_equal(as_array(out)[,, 1L, 1L], x_r[1:7, , 1L, 1L] - x_r[3:9, , 1L, 1L])
+  })
+
+  it("splits the second-to-last axis into the channel groups", {
+    # two input channels, each feeding a block of two output channels
+    x_r <- array(as.double(seq_len(4L * 3L * 2L * 2L)), c(4L, 3L, 2L, 2L))
+    kernel <- nv_array(c(1, 2, 3, 4), shape = c(1L, 1L, 1L, 4L), dtype = "f32")
+    out <- as_array(nv_conv2d(nv_array(x_r, dtype = "f32"), kernel, groups = 2L))
+    expect_equal(dim(out), c(4L, 3L, 4L, 2L))
+    expect_equal(out[,, 1L, ], x_r[,, 1L, ])
+    expect_equal(out[,, 2L, ], 2 * x_r[,, 1L, ])
+    expect_equal(out[,, 3L, ], 3 * x_r[,, 2L, ])
+    expect_equal(out[,, 4L, ], 4 * x_r[,, 2L, ])
+  })
+
+  it("checks the channel axes against `groups`", {
+    x4 <- nv_fill(1, shape = c(5L, 5L, 4L, 2L), dtype = "f32")
+    expect_error(
+      nv_conv2d(x4, nv_fill(1, shape = c(3L, 3L, 4L, 6L), dtype = "f32"), groups = 2L),
+      "`kernel`'s second-to-last axis"
+    )
+    expect_error(
+      nv_conv2d(x4, nv_fill(1, shape = c(3L, 3L, 2L, 6L), dtype = "f32"), groups = 3L),
+      "must divide the number of input channels"
+    )
+    expect_error(
+      nv_conv2d(x4, nv_fill(1, shape = c(3L, 3L, 2L, 5L), dtype = "f32"), groups = 2L),
+      "must divide the number of output channels"
+    )
+  })
+
+  it("lowers a batch to a convolution without a transpose", {
+    graph <- trace_fn(
+      nv_conv2d,
+      list(x = nv_aval("f32", c(9L, 8L, 3L, 2L)), kernel = nv_aval("f32", c(3L, 3L, 3L, 4L)))
+    )
+    mlir <- repr(stablehlo(graph)[[1L]])
+    expect_false(grepl("stablehlo.transpose", mlir, fixed = TRUE))
+  })
+})
+
+describe("nv_conv3d", {
+  it("takes the stride in the order (W, H, D)", {
+    out <- nv_conv3d(
+      nv_fill(1, shape = c(7L, 6L, 5L, 1L, 1L), dtype = "f32"),
+      nv_fill(1, shape = c(1L, 1L, 1L, 1L, 1L), dtype = "f32"),
+      stride = c(1L, 2L, 3L)
+    )
+    expect_shape(out, c(7L, 3L, 2L, 1L, 1L))
+  })
 })
 
 test_that("nv_top_k checks `k` before coercing it", {
@@ -3338,16 +3420,16 @@ test_that("the API layer checks what its pages promise", {
   # `nv_conv*` reported `kernel_input_feature_dimension` and `N`, neither of
   # which is an argument of theirs.
   expect_error(
-    nv_conv1d(nv_array(array(1, c(1, 2, 4))), nv_array(array(1, c(1, 3, 2)))),
-    "`kernel`'s second axis"
+    nv_conv1d(nv_array(array(1, c(4, 2, 1))), nv_array(array(1, c(2, 3, 1)))),
+    "`kernel`'s second-to-last axis"
   )
   expect_error(
     nv_conv1d(nv_array(matrix(1, 2, 2)), nv_array(matrix(1, 2, 2))),
     "must have 3 axes for a 1-D convolution"
   )
   expect_equal(
-    shape(nv_conv1d(nv_array(array(1, c(1, 1, 5))), nv_array(array(1, c(1, 1, 3))))),
-    c(1L, 1L, 3L)
+    shape(nv_conv1d(nv_array(array(1, c(5, 1, 1))), nv_array(array(1, c(3, 1, 1))))),
+    c(3L, 1L, 1L)
   )
 })
 

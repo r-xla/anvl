@@ -956,8 +956,8 @@ describe("a result shape a rule computes from the caller's parameters", {
   it("refuses it through the user-facing convolution too", {
     expect_error(
       nv_conv2d(
-        nv_array(array(as.double(1:16), c(1L, 1L, 4L, 4L)), dtype = "f32"),
-        nv_array(array(as.double(1:4), c(1L, 1L, 2L, 2L)), dtype = "f32"),
+        nv_array(array(as.double(1:16), c(4L, 4L, 1L, 1L)), dtype = "f32"),
+        nv_array(array(as.double(1:4), c(2L, 2L, 1L, 1L)), dtype = "f32"),
         padding = -100L
       ),
       "must not remove more than spatial axis",

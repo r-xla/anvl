@@ -1136,20 +1136,28 @@ describe("prim_convolution", {
     expect_equal(as_array(grads[[2L]]), as_array_torch(kernel_torch$grad), tolerance = 1e-8)
   }
 
-  # A 1-D convolution in NCW layout.
-  conv1d_ncw <- function(x, kernel, padding, window_strides = 1L, x_dilation = 1L, kernel_dilation = 1L, ...) {
+  # nv_conv{1,2,3}d's layouts are the full axis reversals of torch's NC(D)HW:
+  # `reversed(conv)` takes and returns arrays in them, and runs the torch
+  # convolution `conv` in between.
+  rev_tensor <- function(x) x$permute(rev(seq_len(x$dim())))
+  reversed <- function(conv) {
+    function(x, kernel) rev_tensor(conv(rev_tensor(x), rev_tensor(kernel)))
+  }
+
+  # A 1-D convolution in nv_conv1d()'s WCN layout.
+  conv1d_wcn <- function(x, kernel, padding, window_strides = 1L, x_dilation = 1L, kernel_dilation = 1L, ...) {
     prim_convolution(
       x,
       kernel,
-      x_batch_axis = 1L,
+      x_spatial_axes = 1L,
       x_feature_axis = 2L,
-      x_spatial_axes = 3L,
-      kernel_output_feature_axis = 1L,
+      x_batch_axis = 3L,
+      kernel_spatial_axes = 1L,
       kernel_input_feature_axis = 2L,
-      kernel_spatial_axes = 3L,
-      output_batch_axis = 1L,
+      kernel_output_feature_axis = 3L,
+      output_spatial_axes = 1L,
       output_feature_axis = 2L,
-      output_spatial_axes = 3L,
+      output_batch_axis = 3L,
       window_strides = window_strides,
       padding = padding,
       x_dilation = x_dilation,
@@ -1161,10 +1169,10 @@ describe("prim_convolution", {
   it("matches nnf_conv1d with stride, padding and dilation", {
     conv <- function(stride, padding, dilation) {
       verify_conv_grad(
-        c(2L, 3L, 10L),
-        c(4L, 3L, 3L),
+        c(10L, 3L, 2L),
+        c(3L, 3L, 4L),
         \(x, k) nv_conv1d(x, k, stride = stride, padding = padding, dilation = dilation),
-        \(x, k) torch::nnf_conv1d(x, k, stride = stride, padding = padding, dilation = dilation)
+        reversed(\(x, k) torch::nnf_conv1d(x, k, stride = stride, padding = padding, dilation = dilation))
       )
     }
     conv(stride = 1L, padding = 0L, dilation = 1L)
@@ -1176,11 +1184,12 @@ describe("prim_convolution", {
   })
 
   it("matches nnf_conv2d with per-axis stride, padding and dilation", {
+    # nv_conv2d() takes them as (W, H), torch as (H, W)
     verify_conv_grad(
-      c(2L, 3L, 7L, 6L),
-      c(4L, 3L, 3L, 2L),
-      \(x, k) nv_conv2d(x, k, stride = c(2L, 1L), padding = c(1L, 0L), dilation = c(1L, 2L)),
-      \(x, k) torch::nnf_conv2d(x, k, stride = c(2L, 1L), padding = c(1L, 0L), dilation = c(1L, 2L))
+      c(6L, 7L, 3L, 2L),
+      c(2L, 3L, 3L, 4L),
+      \(x, k) nv_conv2d(x, k, stride = c(1L, 2L), padding = c(0L, 1L), dilation = c(2L, 1L)),
+      reversed(\(x, k) torch::nnf_conv2d(x, k, stride = c(2L, 1L), padding = c(1L, 0L), dilation = c(1L, 2L)))
     )
   })
 
@@ -1190,34 +1199,34 @@ describe("prim_convolution", {
         x_shape,
         kernel_shape,
         \(x, k) nv_conv2d(x, k, stride = 2L, padding = 1L, groups = groups),
-        \(x, k) torch::nnf_conv2d(x, k, stride = 2L, padding = 1L, groups = groups)
+        reversed(\(x, k) torch::nnf_conv2d(x, k, stride = 2L, padding = 1L, groups = groups))
       )
     }
-    conv(c(2L, 4L, 5L, 5L), c(6L, 2L, 3L, 3L), groups = 2L)
+    conv(c(5L, 5L, 4L, 2L), c(3L, 3L, 2L, 6L), groups = 2L)
     # depthwise, with and without a channel multiplier
-    conv(c(1L, 3L, 5L, 5L), c(3L, 1L, 3L, 3L), groups = 3L)
-    conv(c(1L, 3L, 5L, 5L), c(6L, 1L, 3L, 3L), groups = 3L)
+    conv(c(5L, 5L, 3L, 1L), c(3L, 3L, 1L, 3L), groups = 3L)
+    conv(c(5L, 5L, 3L, 1L), c(3L, 3L, 1L, 6L), groups = 3L)
   })
 
   it("matches nnf_conv3d", {
     verify_conv_grad(
-      c(1L, 2L, 4L, 5L, 4L),
-      c(3L, 2L, 2L, 3L, 2L),
+      c(4L, 5L, 4L, 2L, 1L),
+      c(2L, 3L, 2L, 2L, 3L),
       \(x, k) nv_conv3d(x, k, stride = 2L, padding = 1L),
-      \(x, k) torch::nnf_conv3d(x, k, stride = 2L, padding = 1L)
+      reversed(\(x, k) torch::nnf_conv3d(x, k, stride = 2L, padding = 1L))
     )
   })
 
   it("matches nnf_pad + nnf_conv1d for asymmetric and negative padding", {
     conv <- function(low, high, stride = 1L, dilation = 1L) {
       verify_conv_grad(
-        c(2L, 3L, 9L),
-        c(4L, 3L, 3L),
+        c(9L, 3L, 2L),
+        c(3L, 3L, 4L),
         \(x, k) {
           padding <- matrix(c(low, high), nrow = 1L)
-          conv1d_ncw(x, k, padding = padding, window_strides = stride, kernel_dilation = dilation)
+          conv1d_wcn(x, k, padding = padding, window_strides = stride, kernel_dilation = dilation)
         },
-        \(x, k) torch::nnf_conv1d(torch::nnf_pad(x, c(low, high)), k, stride = stride, dilation = dilation)
+        reversed(\(x, k) torch::nnf_conv1d(torch::nnf_pad(x, c(low, high)), k, stride = stride, dilation = dilation))
       )
     }
     conv(2L, 0L)
@@ -1228,7 +1237,8 @@ describe("prim_convolution", {
   })
 
   it("matches a convolution of the zero-interleaved input for x_dilation", {
-    # `x_dilation = d` puts `d - 1` zeros between neighbouring elements of `x`.
+    # `x_dilation = d` puts `d - 1` zeros between neighbouring elements of `x`,
+    # here an NCW tensor.
     interleave_zeros <- function(x, d) {
       w <- x$shape[3L]
       zeros <- rep(list(torch::torch_zeros_like(x)), d - 1L)
@@ -1237,10 +1247,10 @@ describe("prim_convolution", {
     }
     conv <- function(x_dilation, stride = 1L, dilation = 1L, groups = 1L) {
       verify_conv_grad(
-        c(2L, 4L, 5L),
-        c(6L, 4L %/% groups, 3L),
+        c(5L, 4L, 2L),
+        c(3L, 4L %/% groups, 6L),
         \(x, k) {
-          conv1d_ncw(
+          conv1d_wcn(
             x,
             k,
             padding = matrix(1L, nrow = 1L, ncol = 2L),
@@ -1250,7 +1260,7 @@ describe("prim_convolution", {
             feature_group_count = groups
           )
         },
-        \(x, k) {
+        reversed(\(x, k) {
           torch::nnf_conv1d(
             interleave_zeros(x, x_dilation),
             k,
@@ -1259,7 +1269,7 @@ describe("prim_convolution", {
             dilation = dilation,
             groups = groups
           )
-        }
+        })
       )
     }
     conv(x_dilation = 2L)
@@ -1268,7 +1278,7 @@ describe("prim_convolution", {
 
   # `batch_group_count = n` convolves the `i`-th of `n` blocks of the batch
   # with the `i`-th block of output features, and stacks the results along
-  # the features.
+  # the features. `x` and `kernel` are torch's NC(D)HW tensors.
   batch_grouped_conv <- function(conv, x, kernel, n_groups, ...) {
     xs <- torch::torch_chunk(x, n_groups, dim = 1L)
     kernels <- torch::torch_chunk(kernel, n_groups, dim = 1L)
@@ -1277,10 +1287,10 @@ describe("prim_convolution", {
 
   it("matches per-block convolutions for batch_group_count", {
     verify_conv_grad(
-      c(4L, 3L, 8L),
-      c(6L, 3L, 3L),
-      \(x, k) conv1d_ncw(x, k, padding = matrix(0L, nrow = 1L, ncol = 2L), batch_group_count = 2L),
-      \(x, k) batch_grouped_conv(torch::nnf_conv1d, x, k, 2L)
+      c(8L, 3L, 4L),
+      c(3L, 3L, 6L),
+      \(x, k) conv1d_wcn(x, k, padding = matrix(0L, nrow = 1L, ncol = 2L), batch_group_count = 2L),
+      reversed(\(x, k) batch_grouped_conv(torch::nnf_conv1d, x, k, 2L))
     )
   })
 

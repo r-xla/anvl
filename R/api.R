@@ -4881,18 +4881,25 @@ nv_which_min <- jit(
   prim_reshape(result, flat$keep_shape)
 }
 
-# Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.
+# The axis numbers (1-based) of the layouts of nv_conv*: the spatial axes
+# first, then the channels (the kernel's input channels), and last the batch
+# (the kernel's output channels). The spatial axes go to `prim_convolution()`
+# last to first, which lists them in XLA's dimension order, so the lowering
+# builds the convolution of XLA's NC(D)HW layout. The per-spatial-axis
+# parameters pair with them by position and have to be reversed to match.
 .nv_conv_axis_numbers <- function(n_spatial) {
-  spatial <- 3:(2L + n_spatial)
+  spatial <- rev(seq_len(n_spatial))
+  channel <- n_spatial + 1L
+  last <- n_spatial + 2L
   list(
-    x_batch_axis = 1L,
-    x_feature_axis = 2L,
+    x_batch_axis = last,
+    x_feature_axis = channel,
     x_spatial_axes = spatial,
-    kernel_output_feature_axis = 1L,
-    kernel_input_feature_axis = 2L,
+    kernel_output_feature_axis = last,
+    kernel_input_feature_axis = channel,
     kernel_spatial_axes = spatial,
-    output_batch_axis = 1L,
-    output_feature_axis = 2L,
+    output_batch_axis = last,
+    output_feature_axis = channel,
     output_spatial_axes = spatial
   )
 }
@@ -4911,27 +4918,48 @@ nv_which_min <- jit(
 
 #' @title 1D Convolution
 #' @description
-#' Torch-style 1D convolution in NCW layout: `x` is
-#' `[batch, in_channels, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kW]`, output is
-#' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
+#' 1D convolution in the WCN layout of Julia's Flux: the spatial axis comes
+#' first, then the channels, and the batch axis trails. `x` is zero-padded by
+#' the same amount on both sides.
+#' @details
+#' This is a cross-correlation, as in torch and JAX: the kernel slides over `x`
+#' without being flipped. Flux's `Conv` flips it by default (its `CrossCor`
+#' does not), so a kernel taken from a `Conv` layer needs its spatial axes
+#' reversed first, e.g. with [nv_rev()].
+#'
+#' Where `stride`, `padding` and `dilation` take one value per spatial axis,
+#' they follow the order of the spatial axes of `x`, width first.
+#'
+#' For a padding that differs between the two sides, e.g. a causal padding along
+#' time, call [prim_convolution()] with the axis numbers of this layout.
+#' @section Shapes:
+#' - `x`: `(W, C_in, N)`
+#' - `kernel`: `(kW, C_in / groups, C_out)`
+#' - output: `(W_out, C_out, N)`, where
+#'   `W_out = floor((W + 2 * padding - dilation * (kW - 1) - 1) / stride) + 1`
+#' @param x ([`arrayish`])\cr Input with the shape given under Shapes. Can be
+#'   any data type; `x` and `kernel` are
+#'   [promoted to a common data type][nv_promote_to_common()]. An R value
+#'   assumes the other operand's data type, and materializes at its
 #'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
+#' @param kernel ([`arrayish`])\cr Kernel with the shape given under Shapes.
 #'   Promoted together with `x` -- see `x`.
-#' @param stride,padding,dilation (`integer()`)\cr Length 1.
-#' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
+#' @param stride (`integer(1)`)\cr Step between neighbouring window positions.
+#' @param padding (`integer(1)`)\cr Number of zeros added on each side of the
+#'   spatial axis.
+#' @param dilation (`integer(1)`)\cr Spacing between the kernel's elements.
+#' @param groups (`integer(1)`)\cr Number of groups the channels are split into:
+#'   the `g`-th block of input channels is convolved with the `g`-th block of
+#'   output channels only. It must divide `C_in` and `C_out`, and
+#'   `groups = C_in` is a depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, width 5, convolved with a width-3 kernel
-#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-#' kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' # width 5, one channel, a batch of one, convolved with a width-3 kernel
+#' x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+#' kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
 #' nv_conv1d(x, kernel)
 #'
 #' # `padding = 1` keeps the input width, `stride = 2` visits every other
@@ -4945,34 +4973,37 @@ nv_conv1d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 2D Convolution
 #' @description
-#' Torch-style 2D convolution in NCHW layout: `x` is
-#' `[batch, in_channels, height, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kh, kw]`, output is
-#' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
-#'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
-#'   Promoted together with `x` -- see `x`.
-#' @param stride (`integer()`)\cr Length 1 or 2.
-#' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
-#' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
-#' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
-#' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
+#' 2D convolution in the WHCN layout of Julia's Flux: the spatial axes come
+#' first, width before height, then the channels, and the batch axis trails.
+#' `x` is zero-padded by the same amount on both sides of each spatial axis.
+#' @inherit nv_conv1d details
+#' @section Shapes:
+#' - `x`: `(W, H, C_in, N)`
+#' - `kernel`: `(kW, kH, C_in / groups, C_out)`
+#' - output: `(W_out, H_out, C_out, N)`, with each spatial axis as in
+#'   [nv_conv1d()]
+#' @inheritParams nv_conv1d
+#' @param stride (`integer()`)\cr Step between neighbouring window positions,
+#'   as `(W, H)` or one value for both spatial axes.
+#' @param padding (`integer()`)\cr Number of zeros added on each side of each
+#'   spatial axis, as `(W, H)` or one value for both.
+#' @param dilation (`integer()`)\cr Spacing between the kernel's elements, as
+#'   `(W, H)` or one value for both.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_H, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, 4x4, convolved with a 3x3 kernel
-#' x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
-#' kernel <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+#' # a 4x4 image with one channel, in a batch of one, convolved with a 3x3
+#' # kernel
+#' x <- nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f32")
 #' nv_conv2d(x, kernel)
 #'
-#' # two output channels give a result with two channels
-#' kernel2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
-#' shape(nv_conv2d(x, kernel2))
+#' # a batch of two 6x4 images with three channels, and a kernel with two
+#' # output channels; the stride is 2 along the width and 1 along the height
+#' x <- nv_fill(1, shape = c(6, 4, 3, 2), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(3, 3, 3, 2), dtype = "f32")
+#' shape(nv_conv2d(x, kernel, stride = c(2L, 1L)))
 #' @export
 nv_conv2d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, kernel, 2L, stride, padding, dilation, groups, precision)
@@ -4980,27 +5011,31 @@ nv_conv2d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 3D Convolution
 #' @description
-#' Torch-style 3D convolution in NCDHW layout. `x` is
-#' `[batch, in_channels, depth, height, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
-#' padding (e.g. causal temporal padding) is available via
-#' [prim_convolution()].
-#' @param x ([`arrayish`])\cr `[N, C_in, D, H, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
-#'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kD, kH, kW]`.
-#'   Promoted together with `x` -- see `x`.
-#' @inheritParams nv_conv2d
-#' @param stride,padding,dilation (`integer()`)\cr Length 1 or 3.
+#' 3D convolution in the WHDCN layout of Julia's Flux: the spatial axes come
+#' first, in the order width, height, depth, then the channels, and the batch
+#' axis trails. `x` is zero-padded by the same amount on both sides of each
+#' spatial axis.
+#' @inherit nv_conv1d details
+#' @section Shapes:
+#' - `x`: `(W, H, D, C_in, N)`
+#' - `kernel`: `(kW, kH, kD, C_in / groups, C_out)`
+#' - output: `(W_out, H_out, D_out, C_out, N)`, with each spatial axis as in
+#'   [nv_conv1d()]
+#' @inheritParams nv_conv1d
+#' @param stride (`integer()`)\cr Step between neighbouring window positions,
+#'   as `(W, H, D)` or one value for all three spatial axes.
+#' @param padding (`integer()`)\cr Number of zeros added on each side of each
+#'   spatial axis, as `(W, H, D)` or one value for all three.
+#' @param dilation (`integer()`)\cr Spacing between the kernel's elements, as
+#'   `(W, H, D)` or one value for all three.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_D, out_H, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
-#' x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
-#' kernel <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+#' # a 3x3x2 volume with one channel, in a batch of one, convolved with a
+#' # 2x2x1 kernel
+#' x <- nv_array(1:18, shape = c(3, 3, 2, 1, 1), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(2, 2, 1, 1, 1), dtype = "f32")
 #' shape(nv_conv3d(x, kernel))
 #' @export
 nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
@@ -5025,28 +5060,30 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
       ))
     }
   }
-  in_channels <- shape(x)[2L]
+  in_channels <- shape(x)[n + 1L]
+  out_channels <- shape(kernel)[n + 2L]
   if (in_channels %% groups != 0L) {
     cli_abort(c(
       "{.arg groups} must divide the number of input channels of {.arg x}.",
       x = "{.arg x} has {in_channels} input channel{?s}, and {.arg groups} is {groups}."
     ))
   }
-  if (shape(kernel)[2L] != in_channels / groups) {
+  if (shape(kernel)[n + 1L] != in_channels / groups) {
     cli_abort(c(
-      "{.arg kernel}'s second axis must be {.arg x}'s input channels divided by {.arg groups}.",
+      "{.arg kernel}'s second-to-last axis must be {.arg x}'s input channels divided by {.arg groups}.",
       x = "Expected {in_channels / groups}, but {.arg kernel} is {shape_repr(shape(kernel))}."
     ))
   }
-  if (shape(kernel)[1L] %% groups != 0L) {
+  if (out_channels %% groups != 0L) {
     cli_abort(c(
       "{.arg groups} must divide the number of output channels of {.arg kernel}.",
-      x = "{.arg kernel} has {shape(kernel)[1L]} output channel{?s}, and {.arg groups} is {groups}."
+      x = "{.arg kernel} has {out_channels} output channel{?s}, and {.arg groups} is {groups}."
     ))
   }
-  stride <- .nv_conv_vec(stride, n, "stride")
-  pad <- .nv_conv_vec(padding, n, "padding")
-  dilation <- .nv_conv_vec(dilation, n, "dilation")
+  # Reversed to pair with the spatial axes of `.nv_conv_axis_numbers()`.
+  stride <- rev(.nv_conv_vec(stride, n, "stride"))
+  pad <- rev(.nv_conv_vec(padding, n, "padding"))
+  dilation <- rev(.nv_conv_vec(dilation, n, "dilation"))
   do.call(
     prim_convolution,
     c(

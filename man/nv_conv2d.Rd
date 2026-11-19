@@ -15,45 +15,75 @@ nv_conv2d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}. Can be any data type; \code{x} and
-\code{kernel} are \link[=nv_promote_to_common]{promoted to a common data type}. An
-R value assumes the other operand's data type, and materializes at its
+\item{x}{(\code{\link{arrayish}})\cr Input with the shape given under Shapes. Can be
+any data type; \code{x} and \code{kernel} are
+\link[=nv_promote_to_common]{promoted to a common data type}. An R value
+assumes the other operand's data type, and materializes at its
 \link[=default_dtypes]{default data type} when that has none either.}
 
-\item{kernel}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.
+\item{kernel}{(\code{\link{arrayish}})\cr Kernel with the shape given under Shapes.
 Promoted together with \code{x} -- see \code{x}.}
 
-\item{stride}{(\code{integer()})\cr Length 1 or 2.}
+\item{stride}{(\code{integer()})\cr Step between neighbouring window positions,
+as \verb{(W, H)} or one value for both spatial axes.}
 
-\item{padding}{(\code{integer()})\cr Symmetric padding, length 1 or 2.}
+\item{padding}{(\code{integer()})\cr Number of zeros added on each side of each
+spatial axis, as \verb{(W, H)} or one value for both.}
 
-\item{dilation}{(\code{integer()})\cr Kernel dilation, length 1 or 2.}
+\item{dilation}{(\code{integer()})\cr Spacing between the kernel's elements, as
+\verb{(W, H)} or one value for both.}
 
-\item{groups}{(\code{integer(1)})\cr Grouped/depthwise convolution.}
+\item{groups}{(\code{integer(1)})\cr Number of groups the channels are split into:
+the \code{g}-th block of input channels is convolved with the \code{g}-th block of
+output channels only. It must divide \code{C_in} and \code{C_out}, and
+\code{groups = C_in} is a depthwise convolution.}
 
 \item{precision}{(\code{character(1)})\cr \code{"highest"}, \code{"high"} or \code{"default"}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the operands' common data type, and shape
-\verb{[N, C_out, out_H, out_W]}.
+Has the operands' common data type and the shape given under Shapes.
 }
 \description{
-Torch-style 2D convolution in NCHW layout: \code{x} is
-\verb{[batch, in_channels, height, width]}, \code{kernel} is
-\verb{[out_channels, in_channels / groups, kh, kw]}, output is
-\verb{[batch, out_channels, out_h, out_w]}. Symmetric zero padding.
+2D convolution in the WHCN layout of Julia's Flux: the spatial axes come
+first, width before height, then the channels, and the batch axis trails.
+\code{x} is zero-padded by the same amount on both sides of each spatial axis.
 }
+\details{
+This is a cross-correlation, as in torch and JAX: the kernel slides over \code{x}
+without being flipped. Flux's \code{Conv} flips it by default (its \code{CrossCor}
+does not), so a kernel taken from a \code{Conv} layer needs its spatial axes
+reversed first, e.g. with \code{\link[=nv_rev]{nv_rev()}}.
+
+Where \code{stride}, \code{padding} and \code{dilation} take one value per spatial axis,
+they follow the order of the spatial axes of \code{x}, width first.
+
+For a padding that differs between the two sides, e.g. a causal padding along
+time, call \code{\link[=prim_convolution]{prim_convolution()}} with the axis numbers of this layout.
+}
+\section{Shapes}{
+
+\itemize{
+\item \code{x}: \verb{(W, H, C_in, N)}
+\item \code{kernel}: \verb{(kW, kH, C_in / groups, C_out)}
+\item output: \verb{(W_out, H_out, C_out, N)}, with each spatial axis as in
+\code{\link[=nv_conv1d]{nv_conv1d()}}
+}
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# one batch, one channel, 4x4, convolved with a 3x3 kernel
-x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
-kernel <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+# a 4x4 image with one channel, in a batch of one, convolved with a 3x3
+# kernel
+x <- nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32")
+kernel <- nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f32")
 nv_conv2d(x, kernel)
 
-# two output channels give a result with two channels
-kernel2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
-shape(nv_conv2d(x, kernel2))
+# a batch of two 6x4 images with three channels, and a kernel with two
+# output channels; the stride is 2 along the width and 1 along the height
+x <- nv_fill(1, shape = c(6, 4, 3, 2), dtype = "f32")
+kernel <- nv_fill(1, shape = c(3, 3, 3, 2), dtype = "f32")
+shape(nv_conv2d(x, kernel, stride = c(2L, 1L)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
