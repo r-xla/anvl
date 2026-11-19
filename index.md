@@ -114,8 +114,11 @@ with_default_dtypes(c(float = "f64"), {
 #> [ CPUf64{} ]
 ```
 
-To learn more, see the [Get
-Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
+To learn more, see the [get
+started](https://r-xla.github.io/anvl/articles/anvl.html) article. If
+you want to use {anvl} in your package, see the [depending on
+anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.html)
+article.
 
 ## Platform Support
 
@@ -140,10 +143,6 @@ Projects that build on {anvl}:
 | [![garry logo](reference/figures/logo-garry.png)](https://github.com/belian-earth/garry) | [**garry**](https://github.com/belian-earth/garry) is a lazy, spatial-aware raster engine that JIT-compiles its numeric kernels with {anvl}. |
 | [![Apollo logo](reference/figures/logo-apollo.png)](https://www.apollochoicemodelling.com) | [**Apollo**](https://www.apollochoicemodelling.com) is a flexible package for the estimation and application of choice models. |
 
-If you are building a package on {anvl}, see the [Depending on
-anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.html)
-article for how to test it.
-
 ## Acknowledgments
 
 - This work is supported by [MaRDI](https://www.mardi4nfdi.de).
@@ -151,5 +150,5 @@ article for how to test it.
   [JAX](https://github.com/jax-ml/jax).
 - For JIT compilation, we build on the [OpenXLA](https://openxla.org/)
   project.
-- Most of the compiler binaries are downloaded from
+- Some of the compiler binaries are downloaded from
   [zml](https://github.com/zml/pjrt-artifacts/).
