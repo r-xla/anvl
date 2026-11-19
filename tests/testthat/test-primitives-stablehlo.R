@@ -1435,6 +1435,14 @@ test_that("prim_print", {
   expect_equal(x, out)
 })
 
+describe("prim_print", {
+  it("prints an array with a size-0 axis", {
+    x <- nv_array(array(numeric(), c(2L, 0L, 3L)), dtype = "f32")
+    out <- expect_output(jit(function(x) prim_print(x))(x), "f32\\{2,0,3\\}")
+    expect_equal(shape(out), c(2L, 0L, 3L))
+  })
+})
+
 test_that("prim_print shows the R type where a value has no data type yet", {
   # The snapshot records the data type the footer names, so it is pinned to the
   # registered pair rather than whatever the run configured.

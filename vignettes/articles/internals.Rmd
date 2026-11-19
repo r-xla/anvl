@@ -138,14 +138,15 @@ program <- pjrt::pjrt_program(src = hlo_str, format = "mlir")
 exec <- pjrt::pjrt_compile(program)
 ```
 
-To run the function, we need to extract the underlying buffers from the arrays before passing them to the executable, which will output a `PJRTBuffer` that we can easily convert to an `AnvlArray`.
+To run the function, we need to extract the underlying buffers from the arrays before passing them to the executable, which will output a `PJRTBuffer`.
+It holds the result the way anvl stores every array, with its shape reversed (see [Axis Reversal](#axis-reversal) below), so we read it back with `row_major = TRUE`.
 
 ```{r}
 x <- nv_scalar(3, "f32")
 y <- nv_scalar(4, "f32")
 out <- pjrt::pjrt_execute(exec, x$data, y$data)
 out
-nv_array(out)
+as_array(out, row_major = TRUE)
 ```
 
 ### Axis Reversal
@@ -153,7 +154,7 @@ nv_array(out)
 R arrays are column-major, while XLA's arrays are row-major. The two agree once every axis is reversed: the column-major bytes of an array of shape `(d1, ..., dn)` are exactly the row-major bytes of an array of shape `(dn, ..., d1)`.
 So the lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape `(dn, ..., d1)`, and the pjrt backend stores it that way, which turns every upload and read-back into a plain copy.
 R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R's first axis -- the contiguous one -- is XLA's minor dimension, and trailing R axes are XLA's major ones.
-This is why anvl's batch axes come last: XLA's kernels want the batch outermost in memory.
+XLA's kernels want batch axes outermost in memory, which are the trailing R axes.
 
 Every lowering rule maps the axis numbers of its parameters accordingly, and the StableHLO program shows the reversed shapes.
 An array of shape `(2, 3)` is a `tensor<3x2xf32>`, and a column-major reshape is a single row-major `stablehlo.reshape` of the reversed shapes:

@@ -395,29 +395,23 @@ register_backend("pjrt", AnvlBackendPjrt())
 
 # The AnvlArray of a PJRTBuffer that a user hands to `nv_array()`, which holds
 # its array the way pjrt does: its shape is the array's shape and
-# `as_array(buf)` its values. anvl stores the reversed shape, so the buffer is
-# read back column-major and uploaded again; `shape`, `dtype` and `device`, when
-# given, must agree with the buffer's.
+# `as_array(buf)` its values. `pjrt_buffer()` checks that `dtype`, `shape` and
+# `device`, when given, agree with the buffer's. anvl stores the reversed shape,
+# so a buffer of rank 2 or more is read back column-major and uploaded again; a
+# buffer of rank 0 or 1 is stored as it is.
 pjrt_anvl_array_of_buffer <- function(buf, dtype, shape, device) {
+  buf <- pjrt_buffer(buf, dtype = dtype, device = device, shape = shape)
   buf_shape <- xlamisc::shape(buf)
-  if (!is.null(shape) && !identical(as.integer(shape), buf_shape)) {
-    cli_abort("The buffer has shape {shape_repr(buf_shape)}, not {shape_repr(shape)}.")
-  }
   buf_dtype <- xlamisc::dtype(buf)
-  if (!is.null(dtype) && as_dtype(dtype) != buf_dtype) {
-    cli_abort("The buffer has data type {.val {as.character(buf_dtype)}}, not {.val {as.character(dtype)}}.")
+  if (length(buf_shape) <= 1L) {
+    return(pjrt_anvl_array(buf, dtype = buf_dtype, shape = buf_shape))
   }
-  device <- device %||% xlamisc::device(buf)
-  stored <- if (length(buf_shape) <= 1L) {
-    pjrt::copy_buffer(buf, device = device)
-  } else {
-    pjrt_buffer(
-      xlamisc::as_raw(buf, row_major = FALSE),
-      dtype = as.character(buf_dtype),
-      shape = rev(buf_shape),
-      device = device,
-      row_major = TRUE
-    )
-  }
+  stored <- pjrt_buffer(
+    xlamisc::as_raw(buf, row_major = FALSE),
+    dtype = as.character(buf_dtype),
+    shape = rev(buf_shape),
+    device = xlamisc::device(buf),
+    row_major = TRUE
+  )
   pjrt_anvl_array(stored, dtype = buf_dtype, shape = buf_shape)
 }

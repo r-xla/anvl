@@ -811,8 +811,15 @@ threefry2x32 <- function(key, x) {
 
 # The handler prints its operand as an array of the reversed dimensions, read
 # in row-major order. The operand comes in a column-major layout, which is
-# exactly that: the row-major reading of the R shape.
+# exactly that: the row-major reading of the R shape. XLA's compiler crashes on
+# a column-major layout for an operand with a size-0 axis, so such an operand,
+# which has no elements to order, keeps the default layout.
 prim_print[["stablehlo"]] <- function(x, header, footer) {
+  xla_shape <- shape(x$value_type)
+  layout <- col_major_layout(length(xla_shape))
+  if (any(xla_shape == 0L)) {
+    layout <- rev(layout)
+  }
   backend_config <- stablehlo::CustomOpBackendConfig(list(
     stablehlo::StringAttr(name = "print_header", value = header),
     stablehlo::StringAttr(name = "print_footer", value = footer),
@@ -826,7 +833,7 @@ prim_print[["stablehlo"]] <- function(x, header, footer) {
     api_version = 4L,
     has_side_effect = TRUE,
     backend_config = backend_config,
-    operand_layouts = list(col_major_layout(length(shape(x$value_type)))),
+    operand_layouts = list(layout),
     result_layouts = list()
   )
   # we just return the input
@@ -1465,7 +1472,8 @@ prim_svd[["stablehlo"]] <- function(x) {
   # A^T, so cuSOLVER (with m and n swapped) computes A^T = V S U^T and
   # writes its U / Vt outputs straight into the original Vt / U slots —
   # also bit-identical under the col-major <-> row-major reinterpretation.
-  # No explicit transpose. The CUDA handler always reads a `transposed`
+  # As anvl stores the R matrix column-major, the row-major layouts are a
+  # physical transpose of x and of both outputs. The CUDA handler always reads a `transposed`
   # attribute, so we emit it (with both values) whenever targeting CUDA;
   # other platforms (host LAPACK gesdd handles any shape) take the plain
   # path with no backend_config.
