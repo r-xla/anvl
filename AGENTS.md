@@ -126,7 +126,7 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
-- **`pushforward`** -- Forward-mode rules for `pushforward()` (engine in `R/forward.R`): a
+- **`pushforward`** -- Forward-mode rules for `pushforward()` (engine in `R/pushforward.R`): a
   `function(inputs, outputs, tangents, params)` returning one tangent per output, `NULL` for a
   zero. A `NULL` input tangent is a zero too. An elementwise primitive does not write its
   `reverse` and `pushforward` rules separately: `set_elementwise_derivative()` in
