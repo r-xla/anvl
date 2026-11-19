@@ -4865,20 +4865,29 @@ nv_which_min <- jit(
 # NaN in an integer, so we surface "a NaN was here" by returning the first NaN's
 # index instead.
 .nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
-  flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
-  x <- flat$x
-  axis <- 1L
-  result <- prim_arg(x, axis = axis)
+  axes <- sort(.resolve_reduce_axes(x, axes))
+  # A single axis is reduced where it is; several are merged into one first.
+  if (length(axes) == 1L) {
+    axis <- axes
+    keep_shape <- NULL
+  } else {
+    flat <- .flatten_reduce_axes(x, axes, drop)
+    x <- flat$x
+    axis <- 1L
+    keep_shape <- flat$keep_shape
+    drop <- TRUE
+  }
+  result <- prim_arg(x, axis = axis, drop = drop)
   if (!nan_rm && is_dtype_float(peek_dtype(x))) {
     # argmax on the bool mask returns the index of the first TRUE (tie-break:
     # smallest index) — exactly the first NaN's position — or 1 if no NaN
     # exists. `any_nan` disambiguates those two cases.
     nan_mask <- nv_is_nan(x)
-    any_nan <- prim_any(nan_mask, axes = axis)
-    first_nan_idx <- prim_which_max(nan_mask, axis = axis)
+    any_nan <- prim_any(nan_mask, axes = axis, drop = drop)
+    first_nan_idx <- prim_which_max(nan_mask, axis = axis, drop = drop)
     result <- nv_ifelse(any_nan, first_nan_idx, result)
   }
-  prim_reshape(result, flat$keep_shape)
+  if (is.null(keep_shape)) result else prim_reshape(result, keep_shape)
 }
 
 # The axis numbers (1-based) of the layouts of nv_conv*: the spatial axes
