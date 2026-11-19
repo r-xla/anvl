@@ -9,6 +9,9 @@
   that produce the arrays are not fused with those that use them.
   `nv_optimization_barrier()` does the same for a single array or a tree of
   arrays, returning it with the same structure.
+* Zero gradients are symbolic: what receives no gradient is skipped, so an unused
+  `exp(x)` at large `x` no longer makes a gradient NaN. A reverse rule may return
+  `NULL` for a zero gradient and receives `NULL` for an unused output.
 
 # anvl 0.6.0
 

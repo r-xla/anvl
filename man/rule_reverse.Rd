@@ -27,6 +27,11 @@ covers most use cases. It has the signature
 with one entry per input: that input's gradient, or \code{NULL} where
 \code{required} says it is not needed.
 
+Zero gradients are symbolic: \code{NULL} stands for zeros that nothing computes.
+A call none of whose outputs received a gradient is skipped, so \code{grads}
+holds \code{NULL} only for some of the outputs of a primitive with several, and
+the rule may return \code{NULL} for an input whose gradient is zero.
+
 Pass \code{forward} when a slightly different forward pass enables a more
 efficient backward pass. It has the signature
 \verb{function(inputs, params, required)}, where \code{required} says which inputs

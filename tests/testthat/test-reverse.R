@@ -195,6 +195,52 @@ test_that("wrt cannot be '...'", {
 #  expect_equal(fbwd(x), list(lhs = jit(nv_mul)(x, nv_array(2:11))))
 #})
 
+describe("gradient", {
+  # A value that receives no cotangent has a symbolic zero one: nothing is
+  # computed for it. exp(1000) is Inf in f64, so pushing a zero cotangent
+  # through its derivative instead would give 0 * Inf = NaN.
+  big <- nv_scalar(1000, "f64")
+
+  it("skips a value no output depends on", {
+    f <- function(x) {
+      nv_exp(x)
+      x
+    }
+    expect_equal(as.numeric(jit(gradient(f))(big)$x), 1)
+  })
+
+  it("skips a value that only feeds a comparison", {
+    f <- function(x) nv_if(nv_exp(x) > 0, \() x * 2, \() x)
+    expect_equal(as.numeric(jit(gradient(f))(big)$x), 2)
+  })
+
+  it("skips a value that only feeds a primitive whose derivative is zero", {
+    f <- function(x) nv_floor(nv_exp(x)) + x
+    expect_equal(as.numeric(jit(gradient(f))(big)$x), 1)
+  })
+
+  it("leaves an unused result of nv_if() out of the branches' backward pass", {
+    f <- function(p, x) nv_if(p, \() list(a = nv_exp(x), b = x * 3), \() list(a = x, b = x))$b
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), big)$x), 3)
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(FALSE), big)$x), 1)
+  })
+
+  it("gives an operand of nv_if() that no used result depends on a zero cotangent", {
+    f <- function(p, x, y) nv_if(p, \() list(a = x * 2, b = y * 3), \() list(a = x, b = y))$a
+    grads <- jit(gradient(f, wrt = c("x", "y")))(nv_scalar(TRUE), big, big)
+    expect_equal(as.numeric(grads$x), 2)
+    expect_equal(as.numeric(grads$y), 0)
+  })
+
+  it("leaves an unused stacked result of nv_scan() out of the backward pass", {
+    f <- function(x) {
+      body <- \(carry, unused) list(carry = carry * 2, out = nv_exp(carry * 400))
+      nv_scan(x, body = body, steps = 3L)$carry
+    }
+    expect_equal(as.numeric(jit(gradient(f))(nv_scalar(1, "f64"))$x), 8)
+  })
+})
+
 test_that("gradients are present even if they don't influence the output", {
   g <- jit(gradient(function(x, y) x, wrt = "y"))
   expect_equal(

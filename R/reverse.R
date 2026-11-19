@@ -62,6 +62,11 @@ prepare_gradient_args <- function(args, wrt) {
 #' with one entry per input: that input's gradient, or `NULL` where
 #' `required` says it is not needed.
 #'
+#' Zero gradients are symbolic: `NULL` stands for zeros that nothing computes.
+#' A call none of whose outputs received a gradient is skipped, so `grads`
+#' holds `NULL` only for some of the outputs of a primitive with several, and
+#' the rule may return `NULL` for an input whose gradient is zero.
+#'
 #' Pass `forward` when a slightly different forward pass enables a more
 #' efficient backward pass. It has the signature
 #' `function(inputs, params, required)`, where `required` says which inputs
@@ -171,6 +176,26 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   )
 }
 
+# The cotangents `out_cts`, one per output of `graph` or `NULL` for a zero one,
+# as the hashtab(gval -> box) `run_backward_pass()` starts from. Only an output
+# that requires a gradient is seeded, so that no value the reverse rules leave
+# out gains a cotangent.
+seed_cotangents <- function(graph, required_env, out_cts) {
+  grad_env <- hashtab()
+  for (i in seq_along(graph$outputs)) {
+    out <- graph$outputs[[i]]
+    ct <- out_cts[[i]]
+    if (is.null(ct) || is_graph_literal(out) || !isTRUE(required_env[[out]])) {
+      next
+    }
+    # The same value can be returned more than once, e.g. a branch
+    # `\() list(s, s)`, or a branch returning one of its inputs in two places.
+    # Its cotangents accumulate, as for any other reuse.
+    grad_env[[out]] <- if (is.null(grad_env[[out]])) ct else prim_add(grad_env[[out]], ct)
+  }
+  grad_env
+}
+
 # The tree the gradients of `graph`'s inputs come back in: that of the inputs
 # `wrt` names, or of all of them.
 gradient_out_tree <- function(graph, wrt) {
@@ -265,90 +290,108 @@ compute_requirements <- function(graph, wrt) {
   list(required_env = required_env, requires_grad = requires_grad)
 }
 
-# The backward pass of a sub-graph whose forward `rebuild_forward_into()`
-# replayed: seeds `graph`'s outputs with `out_grads`, runs the reverse rules
-# `backwards` in the current descriptor, and returns the cotangent of each
-# value in `targets` -- a zero where the target did not reach any output.
-pull_back <- function(graph, backwards, required_env, targets, out_grads) {
-  grad_env <- hashtab()
-  for (i in seq_along(graph$outputs)) {
-    out <- graph$outputs[[i]]
-    # Only an output that requires a gradient is seeded, so that no value
-    # the reverse rules leave out gains a cotangent.
-    if (!is_graph_literal(out) && isTRUE(required_env[[out]]) && !is.null(out_grads[[i]])) {
-      # The same value can be returned more than once, e.g. a branch
-      # `\() list(s, s)`, or a branch returning one of its inputs in two
-      # places. Its cotangents accumulate, as for any other reuse.
-      grad_env[[out]] <- if (is.null(grad_env[[out]])) out_grads[[i]] else prim_add(grad_env[[out]], out_grads[[i]])
-    }
-  }
-
-  grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
-  lapply(targets, function(target) {
-    grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
-  })
-}
-
 # Splits the reverse of a sub-graph -- a branch of `prim_if()`, the body of
-# `prim_scan()` -- into two closed graphs, so that its backward pass does not
-# have to rerun the forward one, as JAX's partial evaluation of a `cond` or a
-# `scan` does:
+# `prim_scan()` -- into closed graphs, so that its backward pass does not have
+# to rerun the forward one, as JAX's partial evaluation of a `cond` or a `scan`
+# does:
 #   - fwd: `graph`'s forward pass, taking the same inputs, returning its
 #     outputs and then the residuals -- the values computed by the forward
-#     pass that `bwd` reads.
-#   - bwd: taking a cotangent per output of `graph`, then `graph`'s inputs,
-#     then the residuals, and returning the cotangents of
-#     `graph$inputs[needed]`.
+#     pass that the backward pass reads.
+#   - bwd_for: a function of `seeded`, which says for each output of `graph`
+#     whether it receives a cotangent, returning the backward pass for that
+#     case: `graph`, a graph taking a cotangent per output of `graph` (one that
+#     is not seeded is not read, and can be passed as `NULL`), then `graph`'s
+#     inputs, then the residuals, and returning the cotangents of
+#     `graph$inputs[needed]`; and `zero`, which of those are zeros because no
+#     cotangent reached the input. An output left out of the backward pass
+#     leaves out what only it needed: a zero cotangent is not pushed through
+#     the reverse rules, where it could meet an infinity and turn into a NaN.
 #   - residual_avals: the avals of the residuals.
+# The residuals are those of the backward pass where every output receives a
+# cotangent, which reads what any other case does.
 split_vjp <- function(graph, needed) {
   targets <- graph$inputs[needed]
   required_env <- requirements_from(graph, targets)
 
   desc_fwd <- local_descriptor()
   rebuilt <- rebuild_forward_into(graph, desc_fwd, required_env = required_env)
-  bwd <- pull_back_graph(graph, rebuilt$backwards, required_env, targets)
+  pull <- function(seeded) {
+    pull_back_graph(graph, rebuilt$backwards, required_env, targets, seeded)
+  }
+  all_seeded <- rep(TRUE, length(graph$outputs))
+  full <- pull(all_seeded)
 
   # What the backward pass read of the forward one, it captured. An input of
   # `graph` it reads as an input of its own; the rest are the residuals. An
   # array it closed over stays a constant.
-  map <- hashtab()
-  inputs <- lapply(graph$inputs, function(g) {
-    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
-  })
-  captured <- Filter(\(g) !is_concrete_array(g$aval), bwd$constants)
-  residuals <- Filter(\(g) is.null(map[[g]]), captured)
+  is_input <- hashtab()
+  for (g in graph$inputs) {
+    is_input[[g]] <- TRUE
+  }
+  captured <- Filter(\(g) !is_concrete_array(g$aval), full$graph$constants)
+  residuals <- Filter(\(g) is.null(is_input[[g]]), captured)
   for (g in residuals) {
     # The branch is pure, so what its backward pass reads was computed by its
     # forward pass.
     if (is.null(desc_fwd$gval_to_box[[g]])) {
       cli_abort("Internal error: the backward pass of a sub-graph read a value from outside it.")
     }
-    map[[g]] <- GraphValue(aval = g$aval, label = g$label)
   }
-  substitute_gnodes(bwd, map)
-  bwd$inputs <- c(bwd$inputs, inputs, lapply(residuals, \(g) map[[g]]))
-  bwd$constants <- Filter(\(g) is_concrete_array(g$aval), bwd$constants)
+
+  close_bwd <- function(pulled) {
+    bwd <- pulled$graph
+    map <- hashtab()
+    fresh <- function(g) map[[g]] <- GraphValue(aval = g$aval, label = g$label)
+    inputs <- c(lapply(graph$inputs, fresh), lapply(residuals, fresh))
+    reads_unknown <- vapply(bwd$constants, \(g) !is_concrete_array(g$aval) && is.null(map[[g]]), logical(1L))
+    if (any(reads_unknown)) {
+      cli_abort("Internal error: the backward pass of a sub-graph read a value that is no residual.")
+    }
+    substitute_gnodes(bwd, map)
+    bwd$inputs <- c(bwd$inputs, inputs)
+    bwd$constants <- Filter(\(g) is_concrete_array(g$aval), bwd$constants)
+    list(graph = bwd, zero = pulled$zero)
+  }
+  cache <- new.env(parent = emptyenv())
+  key <- function(seeded) paste(as.integer(seeded), collapse = "")
+  cache[[key(all_seeded)]] <- close_bwd(full)
+  bwd_for <- function(seeded) {
+    cache[[key(seeded)]] %||% (cache[[key(seeded)]] <- close_bwd(pull(seeded)))
+  }
 
   outputs <- lapply(graph$outputs, \(g) if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
   desc_fwd$outputs <- c(outputs, residuals)
   list(
     fwd = descriptor_to_graph(desc_fwd),
-    bwd = bwd,
+    bwd_for = bwd_for,
     residual_avals = lapply(residuals, \(g) g$aval)
   )
 }
 
-# The backward pass of `split_vjp()`, traced into a graph of its own
-# whose inputs are the cotangents of `graph`'s outputs. The values of the
-# forward pass the reverse rules read become its constants.
-pull_back_graph <- function(graph, backwards, required_env, targets) {
+# The backward pass of a sub-graph whose forward `rebuild_forward_into()`
+# replayed, for `split_vjp()`: traced into a graph of its own whose inputs are
+# the cotangents of `graph`'s outputs, of which those `seeded` says are seeded,
+# and whose outputs are the cotangents of `targets` -- zeros where no cotangent
+# reached the target, which `zero` says. The values of the forward pass the
+# reverse rules read become its constants.
+pull_back_graph <- function(graph, backwards, required_env, targets, seeded) {
   desc <- local_descriptor()
-  out_grads <- lapply(graph$outputs, function(out) {
-    register_input(desc, GraphValue(aval = AbstractArray(dtype = out$aval$dtype, shape = out$aval$shape)))
+  out_cts <- Map(
+    function(out, seed) {
+      ct <- register_input(desc, GraphValue(aval = AbstractArray(dtype = out$aval$dtype, shape = out$aval$shape)))
+      if (seed) ct
+    },
+    graph$outputs,
+    seeded
+  )
+  grad_env <- seed_cotangents(graph, required_env, out_cts)
+  grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
+  zero <- vapply(targets, \(target) is.null(grad_env[[target]]), logical(1L))
+  desc$outputs <- lapply(targets, function(target) {
+    ct <- grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
+    maybe_box_arrayish(ct, desc)$gnode
   })
-  cts <- pull_back(graph, backwards, required_env, targets, out_grads)
-  desc$outputs <- lapply(cts, \(ct) maybe_box_arrayish(ct, desc)$gnode)
-  descriptor_to_graph(desc)
+  list(graph = descriptor_to_graph(desc), zero = zero)
 }
 
 # `compute_requirements()` reads the set to differentiate with respect to off
@@ -540,37 +583,32 @@ graph_apply <- function(graph, inputs) {
 }
 
 # Walk statements in reverse, invoking each statement's backward to accumulate
-# gradients keyed by the *original* graph's gvals.
+# cotangents keyed by the *original* graph's gvals, in `grad_env`.
+#
+# The cotangents are symbolic zeros: a value without an entry in `grad_env` has
+# a zero cotangent that nothing computes. A call none of whose outputs has a
+# cotangent contributes none and is skipped -- its output fed no output of the
+# graph, or only something whose derivative is zero, such as a comparison, a
+# loop that only counts, or `prim_floor()`. Differentiating it anyway would
+# multiply zeros into its derivative, which is a NaN wherever that derivative
+# is infinite, e.g. that of `exp()` at 1000. A rule receives `NULL` for an
+# output without a cotangent -- only a call with more than one output can have
+# one -- and can return `NULL` for an input whose cotangent is zero.
 run_backward_pass <- function(graph, backwards, required_env, grad_env) {
-  add_or_init <- function(grad1, grad2) {
-    if (is.null(grad1)) {
-      return(grad2)
-    }
-    if (is.null(grad2)) {
-      cli_abort("Internal error: a reverse rule returned no gradient for an input that requires one.")
-    }
-    prim_add(grad1, grad2)
-  }
-
   for (i in rev(seq_along(graph$statements))) {
     call <- graph$statements[[i]]
+    output_grads <- lapply(call$outputs, \(output) grad_env[[output]])
+    if (all(vapply(output_grads, is.null, logical(1L)))) {
+      next
+    }
     input_required <- vapply(
       call$inputs,
       function(x) required_env[[x]] %||% FALSE,
       logical(1L)
     )
-    # A call none of whose outputs requires a gradient contributes none, even
-    # where an operand requires one -- e.g. a loop that only counts.
-    output_required <- vapply(call$outputs, \(x) isTRUE(required_env[[x]]), logical(1L))
-    if (!any(input_required) || !any(output_required)) {
+    if (!any(input_required)) {
       next
     }
-
-    output_grads <- lapply(call$outputs, \(output) {
-      # Output grad may be NULL if there is dead code.
-      grad_env[[output]] %||%
-        zeros(dtype(output), shape(output))
-    })
 
     bwd <- backwards[[i]]
     if (is.null(bwd)) {
@@ -581,11 +619,15 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     }
 
     # An input that requires no gradient gets none: the rule returns `NULL`
-    # for it, and nothing is accumulated.
+    # for it, as for one whose cotangent is zero, and nothing is accumulated.
     input_grads <- bwd$fn(bwd$inputs, bwd$outputs, output_grads, bwd$params, input_required)
     for (j in which(input_required)) {
+      ct <- input_grads[[j]]
+      if (is.null(ct)) {
+        next
+      }
       input_gval <- call$inputs[[j]]
-      grad_env[[input_gval]] <- add_or_init(grad_env[[input_gval]], input_grads[[j]])
+      grad_env[[input_gval]] <- if (is.null(grad_env[[input_gval]])) ct else prim_add(grad_env[[input_gval]], ct)
     }
   }
 
