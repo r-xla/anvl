@@ -20,7 +20,7 @@ array. For \code{is_symbolic_zero()}, the object to test.}
 a \code{logical(1)}.
 }
 \description{
-The zero gradient of a value in a reverse rule (see \code{\link[=rule_reverse]{rule_reverse()}}): it
+The zero gradient of a value in a pullback rule (see \code{\link[=rule_pullback]{rule_pullback()}}): it
 stands for an array of zeros that nothing computes. A value whose gradient
 is a symbolic zero adds nothing to the backward pass, so, unlike an array of
 zeros, it cannot become a \code{NaN} where it meets an infinite derivative, such

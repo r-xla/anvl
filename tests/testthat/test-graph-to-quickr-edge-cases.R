@@ -89,7 +89,7 @@ test_that("graph_to_quickr_function errors on unsupported ranks", {
 test_that("graph_to_quickr_function rejects unsupported dtypes", {
   skip_if_no_quickr()
 
-  graph <- trace_fn(function(x) x + x, list(x = nv_aval("i64", c())))
+  graph <- trace_fn(function(x) x + x, list(x = nv_aval("i64", shp())))
   testthat::expect_error(graph_to_quickr_function(graph), "Unsupported dtype.*i64", fixed = FALSE)
 })
 

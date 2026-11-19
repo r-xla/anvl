@@ -37,7 +37,7 @@ NULL
 #' graph <- trace_fn(function(x) {
 #'     print(x)
 #'     list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))
-#'   }, list(x = nv_aval("double", c()))
+#'   }, list(x = nv_aval("double", shp()))
 #' )
 #' print(graph)
 #' # the actual inputs to the compiled program

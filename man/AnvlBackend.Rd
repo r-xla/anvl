@@ -22,7 +22,8 @@ AnvlBackend(
 }
 \arguments{
 \item{new_data}{(\verb{function(data, dtype, shape, device, row_major = FALSE)})\cr
-Constructs an AnvlArray from R data. Must return
+Constructs an AnvlArray of the given \code{dtype} and \code{shape} (an \code{integer()}
+vector, which \code{\link[=nv_array]{nv_array()}} has already worked out) from R data. Must return
 \verb{structure(list(data = , backend = <name>, ...), class = "AnvlArray")}, where
 \code{data} holds the underlying data (a \code{PJRTBuffer} for the \code{"pjrt"} backend, an
 R \code{array()} for the \code{"quickr"} backend) and \code{backend} is the name the
