@@ -2,7 +2,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
   for (arg in args_flat[is_wrt_flat]) {
     if (!is_arrayish(arg)) {
       cli_abort(c(
-        "Cannot differentiate with respect to a non-array argument.",
+        "Cannot compute gradient with respect to non-array argument.",
         x = "Got {.cls {class(arg)}}"
       ))
     }
@@ -12,7 +12,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       # `repr()` on a data type gives stablehlo's spelling (`i1` for a
       # boolean); the pages speak anvl's, which `as.character()` gives.
       cli_abort(c(
-        "Can only differentiate with respect to float arrays.",
+        "Can only compute gradient with respect to float arrays.",
         x = "Got {.val {as.character(dt)}}."
       ))
     }
@@ -24,9 +24,9 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
     # Materializing it here would only hide that behind the default.
     if (has_no_dtype(arg)) {
       cli_abort(c(
-        "Cannot differentiate with respect to a value that has no data type.",
+        "Cannot compute gradient with respect to a value that has no data type.",
         x = "It is an R {peek_r_type(arg)}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-        i = "Give it one first, e.g. {.code nv_array(x, dtype = \"f32\")} or an explicit {.code nv_array(x, dtype = \"f64\")}, so the derivative's data type is the caller's choice." # nolint
+        i = "Give it one first, e.g. {.code nv_array(x, dtype = \"f32\")} or an explicit {.code nv_array(x, dtype = \"f64\")}, so the gradient's data type is the caller's choice." # nolint
       ))
     }
   }
@@ -48,7 +48,7 @@ prepare_gradient_args <- function(args, wrt) {
     rep(TRUE, length(args_flat))
   }
   check_wrt_arrayish(args_flat, is_wrt_flat)
-  list(args_flat = args_flat, in_tree = in_tree)
+  list(args_flat = args_flat, in_tree = in_tree, is_wrt_flat = is_wrt_flat)
 }
 
 #' @title Reverse Rule
@@ -140,8 +140,10 @@ graph_gradient <- function(graph, wrt) {
     value <- lapply(x$value, function(box) register_gval(desc, box$gnode))
     SideEffectView(x$effect, value, n = x$n, inputs = x$inputs)
   })
-  res <- graph_value_and_grad(graph, wrt)
-  desc$outputs <- lapply(res$grad, \(box) box$gnode)
+  out <- validate_gradient_output(graph$outputs)
+  seed <- get_box_or_register_const(desc, nv_scalar(1L, dtype = out$aval$dtype))
+  grad <- graph_pullback(graph, compute_requirements(graph, wrt))$pullback(list(seed))
+  desc$outputs <- lapply(grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
   desc$is_static_flat <- graph$is_static_flat
   desc$static_args_flat <- graph$static_args_flat
@@ -149,32 +151,32 @@ graph_gradient <- function(graph, wrt) {
   descriptor_to_graph(desc)
 }
 
-# Here we compute the gradients of a graph and write it into the current descriptor
-# This can either be a call to the gradient (inputs are provided)
-# Or just the gradient itself, i.e. then the inputs are NULL (used for graph_gradient).
-graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
+# Replays the forward pass of `graph` into the current descriptor, as a
+# function of `inputs` -- the boxes its inputs are bound to -- or, where
+# `inputs` is `NULL`, of inputs of the descriptor's own (`graph_gradient()`).
+# `reqs` says which values require a gradient, as `compute_requirements()`
+# returns it. Returns the boxes of its outputs as `value`, and its `pullback`:
+# a function that takes a cotangent per output, `NULL` for a zero one, records
+# the backward pass into the descriptor current when it is called, and returns
+# the cotangents of the inputs `reqs$requires_grad` selects. It can be called
+# more than once.
+graph_pullback <- function(graph, reqs, inputs = NULL) {
   desc <- current_descriptor()
-  out <- validate_gradient_output(graph$outputs)
-  reqs <- compute_requirements(graph, wrt)
-
   rebuilt <- rebuild_forward_into(graph, desc, inputs, reqs$required_env)
-
-  grad_env <- hashtab()
-  grad_env[[out]] <- get_box_or_register_const(desc, nv_scalar(1L, dtype = out$aval$dtype))
-  grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
 
   box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
   replayed <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
+  targets <- graph$inputs[reqs$requires_grad]
   list(
     value = lapply(graph$outputs, replayed),
-    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
+    pullback = function(out_cts) pull_back(graph, rebuilt$backwards, reqs$required_env, targets, out_cts)
   )
 }
 
 # The tree the gradients of `graph`'s inputs come back in: that of the inputs
-# `wrt` names, or of all of them.
+# `wrt` names, or of all of them where `wrt` is `NULL`.
 gradient_out_tree <- function(graph, wrt) {
-  if (length(wrt)) {
+  if (!is.null(wrt)) {
     pjrt::tree_filter_by_names(graph$in_tree, wrt)
   } else {
     graph$in_tree
@@ -225,7 +227,7 @@ validate_gradient_output <- function(out_gvals) {
 #   - requires_grad: logical vector aligned with `graph$inputs`, used by
 #     phase 3 to pick which inputs to emit gradients for.
 compute_requirements <- function(graph, wrt) {
-  requires_grad_all <- if (is.null(wrt) || length(wrt) == 0L) {
+  requires_grad_all <- if (is.null(wrt)) {
     rep(TRUE, tree_size(graph$in_tree))
   } else {
     pjrt::tree_leaf_mask(graph$in_tree, wrt)
@@ -388,8 +390,8 @@ propagate_requirements <- function(graph, required_env) {
 # Replays `graph`'s forward pass into `desc`, call by call. `split_vjp()` uses
 # it to rebuild a sub-graph -- a branch of `prim_if()`, the body of
 # `prim_scan()` -- `graph_apply()` to rerun a closed graph,
-# `graph_value_and_grad()` to replay what `gradient()` traced into the
-# descriptor it is called in.
+# `graph_pullback()` to replay what `pullback()` traced into the descriptor
+# it is called in.
 #
 # Returns:
 #   - trans: hashtab(original gval -> new gval) for every replaced output,
@@ -592,24 +594,6 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
   grad_env
 }
 
-# For each input the user asked to differentiate w.r.t., return the
-# accumulated gradient gnode -- or a zero of matching shape if the input
-# never reached the loss.
-collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
-  lapply(graph$inputs[requires_grad], function(input) {
-    x <- grad_env[[input]] %||%
-      {
-        const <- get_box_or_register_const(
-          desc,
-          nv_scalar(0L, dtype = input$aval$dtype)
-        )
-        nv_broadcast_to(const, shape(input$aval))
-      }
-    x$gnode
-  })
-}
-
-
 #' @title Gradients
 #' @description
 #' Return a new function that computes the gradient of `f` via reverse-mode
@@ -700,23 +684,10 @@ resolve_wrt <- function(f, wrt, call = rlang::caller_env()) {
 }
 
 # gradient() / value_and_gradient() (named by `fn`) at the call's arguments:
-# `f` traced into a graph whose value and gradient are replayed into the
-# enclosing trace.
+# the pullback of `f` with respect to the arguments `wrt` names, applied to a 1
+# for its value.
 trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
   prep <- prepare_gradient_args(args, wrt)
-  assert_inside_jit(fn, call)
-  traced <- trace_and_replay(f, prep, function(graph, operands) {
-    graph_value_and_grad(graph, wrt, operands)
-  })
-  list(
-    value = unflatten(traced$graph$out_tree, traced$res$value),
-    grad = unflatten(gradient_out_tree(traced$graph, wrt), traced$res$grad)
-  )
-}
-
-# Errors, naming `call`, unless a trace is under way for the function `fn` --
-# one of the transformations -- to write into.
-assert_inside_jit <- function(fn, call) {
   if (is.null(current_descriptor(silent = TRUE))) {
     cli_abort(
       c(
@@ -726,18 +697,242 @@ assert_inside_jit <- function(fn, call) {
       call = call
     )
   }
+  out <- trace_pullback(f, prep, fn)
+  value <- validate_gradient_output(lapply(flatten(out$value), \(box) box$gnode))
+  seed <- get_box_or_register_const(current_descriptor(), nv_scalar(1L, dtype = value$aval$dtype))
+  grad <- out$pullback(unflatten(build_tree(out$value), list(seed)))
+  list(value = out$value, grad = if (is.null(wrt)) grad else grad[names(grad) %in% wrt])
 }
 
-# `f` traced at the arguments `prep` holds (see prepare_gradient_args()) into a
-# graph of its own, which `replay(graph, operands)` writes into the enclosing
-# trace as a function of the boxes `operands` there. A side effect `f` uses
-# closes over the enclosing trace's value, and its uses continue the enclosing
-# trace's. Returns `list(graph = , res = )`, `res` what `replay` returned.
-trace_and_replay <- function(f, prep, replay) {
-  enclosing <- current_descriptor()
+#' @title Pullbacks
+#' @description
+#' Evaluate `.f` at the arguments `...` and return its pullback: the function
+#' that takes a cotangent of the result and returns the corresponding cotangent
+#' back to the arguments, by reverse-mode automatic differentiation. That is
+#' the cotangent times the Jacobian of `.f`, the vector-Jacobian product.
+#' Where [`gradient()`] differentiates a function that returns a single float
+#' scalar, a pullback differentiates one with any result: it gives the
+#' gradient of the sum of the result's elements, each weighted by its
+#' cotangent.
+#'
+#' * `pullback()` returns only the pullback.
+#' * `value_and_pullback()` returns both the result of `.f` and its pullback.
+#'
+#' `.f` runs once, when `pullback()` is called. The pullback can be called more
+#' than once, e.g. with every unit vector to build a Jacobian row by row.
+#' @param .f (`function`)\cr
+#'   Function to differentiate. It can return any (nested) list of arrays.
+#' @param ... (any)\cr
+#'   The arguments to evaluate `.f` at, matched to its formals as in a call of
+#'   `.f`.
+#' @return
+#'   For `pullback()`, the pullback (`function`); for `value_and_pullback()`,
+#'   `list(value = , pullback = )`: the return value of `.f`, and its pullback.
+#'
+#'   The pullback takes one argument, `cotangent`, structured like the value
+#'   of `.f`, with an array of the same shape and data type for each float
+#'   array of it; an R value takes the data type of its array. `NULL` in place
+#'   of an array -- or of a whole part of the value -- stands for zeros. An
+#'   array of the value that is not a float has no cotangent, and gets `NULL`.
+#'
+#'   The pullback returns a named `list` with the cotangent of each argument,
+#'   structured like that argument, as [`gradient()`] does. An argument `.f`
+#'   takes through its `...` keeps the name it was passed under: name it in
+#'   the call to read its cotangent by name. One that is not a float array --
+#'   an integer or boolean array, an R value such as `3`, a random state -- is
+#'   held fixed, and gets `NULL` in place of a cotangent, as does each such
+#'   part of a list.
+#'
+#'   Like [`gradient()`], `pullback()` must be called inside [`jit()`]. The
+#'   pullback must be called in the same function, or in a function traced
+#'   inside it, such as a branch of [`nv_if()`].
+#' @seealso `r roxy_article("autodiff")`, [`gradient()`]
+#' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' f <- function(x, y) x * y
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(4, 5, 6))
+#' # cotangent * y and cotangent * x
+#' g <- jit(function(x, y, ct) pullback(f, x, y)(ct))
+#' g(x, y, nv_array(c(1, 0, 1)))
+#'
+#' # the value of `f` together with its pullback
+#' h <- jit(function(x, y, ct) {
+#'   out <- value_and_pullback(f, x, y)
+#'   list(value = out$value, x = out$pullback(ct)$x)
+#' })
+#' h(x, y, nv_array(c(1, 0, 1)))
+#'
+#' # a result with several parts: `NULL` is the cotangent of one that does not
+#' # matter
+#' stats <- function(x) list(total = sum(x), squares = x^2L)
+#' dtotal <- jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))
+#' dtotal(x)
+pullback <- function(.f, ...) {
+  assert_function(.f)
+  trace_pullback(.f, pullback_args(.f, list(...)), "pullback")$pullback
+}
+
+#' @rdname pullback
+#' @export
+value_and_pullback <- function(.f, ...) {
+  assert_function(.f)
+  trace_pullback(.f, pullback_args(.f, list(...)), "value_and_pullback")
+}
+
+# The arguments `args` of `pullback()`, matched to the formals of `f`, as
+# `prepare_gradient_args()` returns them: every float array among them is
+# differentiated.
+pullback_args <- function(f, args) {
+  args <- match_args_to_formals(f, args)
+  args_flat <- flatten(args, is_leaf = is_rng_state)
+  list(
+    args_flat = args_flat,
+    in_tree = build_tree(args, is_leaf = is_rng_state),
+    is_wrt_flat = vapply(args_flat, is_float_array, logical(1L))
+  )
+}
+
+# The pullback of `f` for `pullback()`, `value_and_pullback()` or
+# `gradient()`, named by `fn`, at the arguments `prep` holds (see
+# `prepare_gradient_args()`): `f` traced into a graph whose forward pass is
+# replayed into the enclosing trace, and the function that records its
+# backward pass there. It differentiates the leaves `prep$is_wrt_flat`
+# selects, and returns `NULL` for the others.
+trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
+  enclosing <- current_descriptor(silent = TRUE)
+  if (is.null(enclosing)) {
+    cli_abort(
+      c(
+        "{.fn {fn}} can only be called inside a {.fn jit}-compiled function.",
+        i = "Call it in the function you pass to {.fn jit}."
+      ),
+      call = call
+    )
+  }
+  # The arguments are expressions of the enclosing trace, which must be
+  # recorded there before `f`'s trace opens.
+  force(prep)
+  # A side effect `f` uses closes over the enclosing trace's value, and its
+  # uses continue the enclosing trace's.
   desc <- local_descriptor(side_effects_mode = "capture")
   graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
-  res <- replay(graph, gradient_operands(graph, prep$args_flat))
+  # A leaf that is no array is static, and no input of the graph.
+  requires_grad <- prep$is_wrt_flat[!graph$is_static_flat]
+  reqs <- list(
+    required_env = requirements_from(graph, graph$inputs[requires_grad]),
+    requires_grad = requires_grad
+  )
+  res <- graph_pullback(graph, reqs, gradient_operands(graph, prep$args_flat))
   desc_end_capture(enclosing, list(graph))
-  list(graph = graph, res = res)
+
+  value <- unflatten(graph$out_tree, res$value)
+  pull <- function(cotangent) {
+    if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
+      cli_abort(c(
+        "A pullback can only be called in the function {.fn {fn}} was called in.",
+        i = "Or in a function traced inside it, such as a branch of {.fn nv_if}."
+      ))
+    }
+    cts <- flatten_cotangent(value, cotangent, graph$out_tree, call = rlang::current_env())
+    pulled <- vector("list", length(prep$args_flat))
+    pulled[prep$is_wrt_flat] <- res$pullback(cts)
+    unflatten(prep$in_tree, pulled)
+  }
+  list(value = value, pullback = pull)
+}
+
+# Whether `x`, a leaf of the arguments of `pullback()`, is a float array with a
+# data type of its own. An R value takes its data type from the way the body
+# uses it, so the data type of its cotangent would not be the caller's choice.
+is_float_array <- function(x) {
+  is_arrayish(x) && !has_no_dtype(x) && is_dtype_float(dtype(x))
+}
+
+# Whether `desc` is `ancestor` or a trace opened inside it.
+descriptor_within <- function(desc, ancestor) {
+  while (!is.null(desc)) {
+    if (identical(desc, ancestor)) {
+      return(TRUE)
+    }
+    desc <- desc$parent
+  }
+  FALSE
+}
+
+# The cotangent `cotangent` of `value`, the result of the function
+# `pullback()` differentiates, whose structure `out_tree` is, as a list with an
+# entry per array of `value`: a box of the current trace at the array's data
+# type and shape, or `NULL` for a zero one. Errors name `call`.
+flatten_cotangent <- function(value, cotangent, out_tree, call) {
+  Map(
+    function(x, ct, i) {
+      if (is.null(ct)) {
+        return(NULL)
+      }
+      path <- pjrt::tree_path(out_tree, i)
+      at <- if (nzchar(path)) " at {.code {path}}" else ""
+      dt <- dtype(x)
+      if (!is_dtype_float(dt)) {
+        cli_abort(
+          c(
+            paste0("The value of {.arg .f} has no cotangent", at, "."),
+            x = "It is {.val {as.character(dt)}}, not a float.",
+            i = "Pass {.code NULL} there."
+          ),
+          call = call
+        )
+      }
+      if (has_no_dtype(ct)) {
+        ct <- materialize_at(ct, dt)
+      } else if (!is_arrayish(ct)) {
+        cli_abort(
+          c(
+            paste0("The cotangent", at, " must be an array."),
+            x = "Got {.cls {class(ct)}}."
+          ),
+          call = call
+        )
+      }
+      ct <- maybe_box_arrayish(ct)
+      if (dtype(ct) != dt || !identical(shape(ct), shape(x))) {
+        cli_abort(
+          c(
+            paste0("The cotangent", at, " must have the data type and shape of the value."),
+            x = "The value is {.val {format_aval_short(to_abstract(x))}}, the cotangent {.val {format_aval_short(to_abstract(ct))}}." # nolint
+          ),
+          call = call
+        )
+      }
+      ct
+    },
+    flatten(value),
+    cotangent_leaves(value, cotangent, call),
+    seq_len(tree_size(out_tree))
+  )
+}
+
+# The leaves of `cotangent` aligned with those of `value`, `NULL` for each leaf
+# of a part of `value` whose cotangent is `NULL`. Errors name `call`.
+cotangent_leaves <- function(value, cotangent, call) {
+  if (is.null(cotangent)) {
+    return(vector("list", length(flatten(value))))
+  }
+  if (build_tree(cotangent) == build_tree(value)) {
+    return(flatten(cotangent))
+  }
+  same_node <- rlang::is_bare_list(value) &&
+    rlang::is_bare_list(cotangent) &&
+    length(cotangent) == length(value) &&
+    identical(names(cotangent), names(value))
+  if (!same_node) {
+    cli_abort(
+      c(
+        "{.arg cotangent} must be structured like the value of {.arg .f}.",
+        i = "{.code NULL} can stand in for any part of it."
+      ),
+      call = call
+    )
+  }
+  do.call(c, unname(Map(cotangent_leaves, value, cotangent, list(call)))) %||% list()
 }
