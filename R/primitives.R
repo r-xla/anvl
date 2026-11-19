@@ -271,9 +271,10 @@ prim_broadcast_in_axes <- new_primitive(
 #'   operation. One of `"highest"` (default), `"high"` or `"default"`.
 #'   Only the StableHLO backend honors this; it is ignored by the quickr backend.
 #' @return ([`arrayish`])\cr
-#'   Has the data type the operands agreed on. The output shape is the batch
-#'   axes followed by the remaining
-#'   (non-contracted, non-batched) axes of `lhs`, then `rhs`.
+#'   Has the data type the operands agreed on. The output shape is the remaining
+#'   (non-contracted, non-batched) axes of `lhs`, then those of `rhs`, each in
+#'   ascending order, and last the batch axes, in the order `batching_axes`
+#'   names them.
 #' @templateVar primitive_id dot_general
 #' @template section_rules
 #' @section StableHLO:
@@ -286,6 +287,13 @@ prim_broadcast_in_axes <- new_primitive(
 #' prim_dot_general(x, y,
 #'   contracting_axes = list(2L, 1L),
 #'   batching_axes = list(integer(0), integer(0))
+#' )
+#' # two such products at once: the batch axis trails, in the result as well
+#' x <- nv_array(1:12, shape = c(2, 3, 2))
+#' y <- nv_array(1:12, shape = c(3, 2, 2))
+#' prim_dot_general(x, y,
+#'   contracting_axes = list(2L, 1L),
+#'   batching_axes = list(3L, 3L)
 #' )
 #' @export
 prim_dot_general <- new_primitive(

@@ -36,9 +36,10 @@ Only the StableHLO backend honors this; it is ignored by the quickr backend.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the data type the operands agreed on. The output shape is the batch
-axes followed by the remaining
-(non-contracted, non-batched) axes of \code{lhs}, then \code{rhs}.
+Has the data type the operands agreed on. The output shape is the remaining
+(non-contracted, non-batched) axes of \code{lhs}, then those of \code{rhs}, each in
+ascending order, and last the batch axes, in the order \code{batching_axes}
+names them.
 }
 \description{
 General dot product of two arrays, supporting contraction over arbitrary
@@ -67,6 +68,13 @@ y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,
   contracting_axes = list(2L, 1L),
   batching_axes = list(integer(0), integer(0))
+)
+# two such products at once: the batch axis trails, in the result as well
+x <- nv_array(1:12, shape = c(2, 3, 2))
+y <- nv_array(1:12, shape = c(3, 2, 2))
+prim_dot_general(x, y,
+  contracting_axes = list(2L, 1L),
+  batching_axes = list(3L, 3L)
 )
 \dontshow{\}) # examplesIf}
 }

@@ -986,8 +986,10 @@ quickr_emit_dot_general <- function(
     ))
   }
 
-  nbatch <- length(bd_lhs)
+  # The output axes are the free axes of lhs, then those of rhs, then the batch
+  # axes.
   nfree_lhs <- length(free_lhs)
+  nfree <- nfree_lhs + length(free_rhs)
 
   out_idxs <- lapply(seq_len(out_rank), function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
   k_idxs <- lapply(seq_along(cd_lhs), function(i) as.name(paste0("k_", as.character(out_sym), "_", i)))
@@ -996,9 +998,9 @@ quickr_emit_dot_general <- function(
   lhs_idxs <- vector("list", lhs_rank)
   for (d in seq_len(lhs_rank)) {
     if (d %in% bd_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[match(d, bd_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_lhs)]]
     } else if (d %in% free_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[nbatch + match(d, free_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[match(d, free_lhs)]]
     } else {
       lhs_idxs[[d]] <- k_idxs[[match(d, cd_lhs)]]
     }
@@ -1007,9 +1009,9 @@ quickr_emit_dot_general <- function(
   rhs_idxs <- vector("list", rhs_rank)
   for (d in seq_len(rhs_rank)) {
     if (d %in% bd_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[match(d, bd_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_rhs)]]
     } else if (d %in% free_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[nbatch + nfree_lhs + match(d, free_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree_lhs + match(d, free_rhs)]]
     } else {
       rhs_idxs[[d]] <- k_idxs[[match(d, cd_rhs)]]
     }

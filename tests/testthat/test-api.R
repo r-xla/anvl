@@ -1697,6 +1697,37 @@ describe("nv_triu with quickr backend", {
   })
 })
 
+describe("nv_matmul", {
+  it("multiplies the matrices along the trailing batch axes", {
+    withr::local_seed(1L)
+    x <- array(rnorm(72L), c(2L, 3L, 4L, 3L))
+    y <- array(rnorm(120L), c(3L, 5L, 4L, 3L))
+    out <- as_array(nv_array(x, dtype = "f64") %*% nv_array(y, dtype = "f64"))
+    expect_equal(dim(out), c(2L, 5L, 4L, 3L))
+    for (i in seq_len(4L)) {
+      for (j in seq_len(3L)) {
+        expect_equal(out[,, i, j], x[,, i, j] %*% y[,, i, j])
+      }
+    }
+  })
+
+  it("reports a non-conformable pair in terms of axis 2 of x and axis 1 of y", {
+    x <- nv_array(array(1, c(2L, 3L, 2L)))
+    expect_error(
+      nv_matmul(x, nv_array(array(1, c(2L, 3L, 2L)))),
+      "Axis 2 of `x` has size 3, but axis 1 of `y` has size 2"
+    )
+  })
+
+  it("lowers without a transpose", {
+    matmul <- function(x, y) x %*% y
+    batched <- trace_fn(matmul, list(nv_aval("f32", c(3L, 4L, 2L)), nv_aval("f32", c(4L, 5L, 2L))))
+    expect_no_match(repr(stablehlo(batched)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+    plain <- trace_fn(matmul, list(nv_aval("f32", c(3L, 4L)), nv_aval("f32", c(4L, 5L))))
+    expect_no_match(repr(stablehlo(plain)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+  })
+})
+
 describe("nv_crossprod", {
   it("computes t(x) %*% y", {
     expect_equal(
@@ -1730,11 +1761,11 @@ describe("nv_crossprod", {
     )
   })
   it("transposes only the matrix axes of a batched array", {
-    a <- array(as.numeric(1:12), c(2, 3, 2))
+    a <- array(as.numeric(1:12), c(3, 2, 2))
     out <- as_array(nv_crossprod(nv_array(a, dtype = "f64")))
     expect_equal(dim(out), c(2L, 2L, 2L))
-    expect_equal(out[1, , ], crossprod(a[1, , ]))
-    expect_equal(out[2, , ], crossprod(a[2, , ]))
+    expect_equal(out[,, 1L], crossprod(a[,, 1L]))
+    expect_equal(out[,, 2L], crossprod(a[,, 2L]))
   })
 })
 
@@ -1771,11 +1802,11 @@ describe("nv_tcrossprod", {
     )
   })
   it("transposes only the matrix axes of a batched array", {
-    a <- array(as.numeric(1:12), c(2, 3, 2))
+    a <- array(as.numeric(1:12), c(3, 2, 2))
     out <- as_array(nv_tcrossprod(nv_array(a, dtype = "f64")))
-    expect_equal(dim(out), c(2L, 3L, 3L))
-    expect_equal(out[1, , ], tcrossprod(a[1, , ]))
-    expect_equal(out[2, , ], tcrossprod(a[2, , ]))
+    expect_equal(dim(out), c(3L, 3L, 2L))
+    expect_equal(out[,, 1L], tcrossprod(a[,, 1L]))
+    expect_equal(out[,, 2L], tcrossprod(a[,, 2L]))
   })
 })
 
@@ -3232,7 +3263,7 @@ test_that("the API layer checks what its pages promise", {
     "same number of axes"
   )
   expect_error(
-    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(array(1, c(3, 2, 2)))),
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(array(1, c(2, 2, 3)))),
     "must have the same batch axes"
   )
   expect_equal(shape(nv_matmul(f23, nv_array(matrix(1:6, 3, 2) + 0))), c(2L, 2L))

@@ -1000,11 +1000,11 @@ infer_dot_general <- function(
     ))
   }
 
-  # (C12)
+  # (C12), with the batch axes last
   result_shape <- c(
-    size_batch_lhs,
     without(shape_lhs, c(lhs_contracting, lhs_batching)),
-    without(shape_rhs, c(rhs_contracting, rhs_batching))
+    without(shape_rhs, c(rhs_contracting, rhs_batching)),
+    size_batch_lhs
   )
 
   list(AbstractArray(dtype = dtype(lhs), shape = Shape(result_shape)))

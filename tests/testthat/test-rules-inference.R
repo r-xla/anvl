@@ -226,18 +226,33 @@ describe("infer_optimization_barrier()", {
 })
 
 describe("infer_dot_general()", {
-  it("puts the batch axes first, then the free axes of lhs and rhs", {
-    lhs <- nv_aval("f32", c(5L, 2L, 3L))
-    rhs <- nv_aval("f32", c(5L, 3L, 7L))
+  it("puts the free axes of lhs and rhs first, then the batch axes", {
+    lhs <- nv_aval("f32", c(2L, 3L, 5L))
+    rhs <- nv_aval("f32", c(3L, 7L, 5L))
     expect_equal(
       infer_dot_general(
         lhs,
         rhs,
-        contracting_axes = list(3L, 2L),
-        batching_axes = list(1L, 1L),
+        contracting_axes = list(2L, 1L),
+        batching_axes = list(3L, 3L),
         precision = "highest"
       ),
-      list(nv_aval("f32", c(5L, 2L, 7L)))
+      list(nv_aval("f32", c(2L, 7L, 5L)))
+    )
+  })
+
+  it("moves leading batch axes to the end, in the order lhs names them", {
+    lhs <- nv_aval("f32", c(5L, 4L, 2L, 3L))
+    rhs <- nv_aval("f32", c(3L, 4L, 5L, 7L))
+    expect_equal(
+      infer_dot_general(
+        lhs,
+        rhs,
+        contracting_axes = list(4L, 1L),
+        batching_axes = list(c(2L, 1L), c(2L, 3L)),
+        precision = "highest"
+      ),
+      list(nv_aval("f32", c(2L, 7L, 4L, 5L)))
     )
   })
 

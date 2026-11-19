@@ -382,17 +382,24 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   rd_lhs <- without(axes(lhs), c(bd_lhs, cd_lhs))
   rd_rhs <- without(axes(rhs), c(bd_rhs, cd_rhs))
 
-  # output axes: the batching axes, then the remaining axes of lhs, then those of rhs
-  bd_out <- seq_along(bd_lhs)
-  d_lhs_out <- length(bd_lhs) + seq_along(rd_lhs)
-  d_rhs_out <- length(bd_lhs) + length(rd_lhs) + seq_along(rd_rhs)
+  # output axes: the remaining axes of lhs, then those of rhs, then the batching axes
+  d_lhs_out <- seq_along(rd_lhs)
+  d_rhs_out <- length(rd_lhs) + seq_along(rd_rhs)
+  bd_out <- length(rd_lhs) + length(rd_rhs) + seq_along(bd_lhs)
 
-  # `order()` of a permutation is its inverse.
-  cd_lhs2 <- cd_lhs[order(cd_rhs)]
-  perm_lhs <- order(c(bd_lhs, rd_lhs, cd_lhs2))
-
-  cd_rhs2 <- cd_rhs[order(cd_lhs)]
-  perm_rhs <- order(c(bd_rhs, rd_rhs, cd_rhs2))
+  # `grad_lhs` contracts `grad` with `rhs` over the remaining axes of rhs. As
+  # axes of lhs, its axes are the remaining ones (from `grad`), then the
+  # contracting ones in the ascending order of their partners in rhs, then the
+  # batching ones. `grad_rhs` contracts `lhs` with `grad`, so as axes of rhs its
+  # axes are the contracting ones in the ascending order of their partners in
+  # lhs, then the remaining ones, then the batching ones. `order()` of such an
+  # axis list is the permutation back into the input's axis order; for a matrix
+  # product it is the identity.
+  perm_lhs <- order(c(rd_lhs, cd_lhs[order(cd_rhs)], bd_lhs))
+  perm_rhs <- order(c(cd_rhs[order(cd_lhs)], rd_rhs, bd_rhs))
+  transpose_unless_identity <- function(x, perm) {
+    if (identical(perm, seq_along(perm))) x else prim_transpose(x, perm)
+  }
 
   list(
     if (required[[1L]]) {
@@ -403,17 +410,17 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
         batching_axes = list(bd_out, bd_rhs),
         precision = precision
       )
-      prim_transpose(grad_lhs, perm_lhs)
+      transpose_unless_identity(grad_lhs, perm_lhs)
     },
     if (required[[2L]]) {
       grad_rhs <- prim_dot_general(
-        grad,
         lhs,
-        contracting_axes = list(d_lhs_out, rd_lhs),
-        batching_axes = list(bd_out, bd_lhs),
+        grad,
+        contracting_axes = list(rd_lhs, d_lhs_out),
+        batching_axes = list(bd_lhs, bd_out),
         precision = precision
       )
-      prim_transpose(grad_rhs, perm_rhs)
+      transpose_unless_identity(grad_rhs, perm_rhs)
     }
   )
 })
