@@ -1739,31 +1739,39 @@ test_that("prim_sort", {
   expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
 })
 
-test_that("prim_top_k", {
-  for (indices in c(TRUE, FALSE)) {
-    withr::local_seed(42)
-    x_arr <- matrix(rnorm(4 * 6), nrow = 4)
+describe("prim_top_k reverse", {
+  it("scatters the gradient back along axis 1, with any number of batch axes", {
     k <- 3L
-    w_arr <- matrix(as.double(seq_len(4 * k)), nrow = 4)
+    for (x_shape in list(6L, c(6L, 4L), c(5L, 2L, 3L))) {
+      for (indices in c(TRUE, FALSE)) {
+        withr::local_seed(42)
+        x_arr <- array(rnorm(prod(x_shape)), x_shape)
+        out_shape <- replace(x_shape, 1L, k)
+        w_arr <- array(as.double(seq_len(prod(out_shape))), out_shape)
 
-    x_nv <- nv_array(x_arr)
-    w_nv <- nv_array(w_arr)
+        x_nv <- nv_array(x_arr)
+        w_nv <- nv_array(w_arr)
 
-    f_nv <- function(x) {
-      top <- prim_top_k(x, k = k, indices = indices)[[1L]]
-      nv_sum(top * w_nv, axes = c(1L, 2L))
+        f_nv <- function(x) {
+          top <- prim_top_k(x, k = k, indices = indices)[[1L]]
+          nv_sum(top * w_nv)
+        }
+        grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
+
+        # Scatter w along the top-k indices of each column, with the batch
+        # axes flattened into the columns.
+        x_mat <- matrix(x_arr, nrow = x_shape[[1L]])
+        w_mat <- matrix(w_arr, nrow = k)
+        expected_grad <- matrix(0, nrow = nrow(x_mat), ncol = ncol(x_mat))
+        for (j in seq_len(ncol(x_mat))) {
+          top_idx <- order(x_mat[, j], decreasing = TRUE)[seq_len(k)]
+          expected_grad[top_idx, j] <- w_mat[, j]
+        }
+
+        expect_equal(as_array(grad_nv), array(expected_grad, x_shape), tolerance = 1e-5)
+      }
     }
-    grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
-
-    # Scatter w along the top-k indices for each row.
-    expected_grad <- matrix(0, nrow = nrow(x_arr), ncol = ncol(x_arr))
-    for (i in seq_len(nrow(x_arr))) {
-      top_idx <- order(x_arr[i, ], decreasing = TRUE)[seq_len(k)]
-      expected_grad[i, top_idx] <- w_arr[i, ]
-    }
-
-    expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
-  }
+  })
 })
 
 test_that("prim_prod: gradient is safe at zeros", {

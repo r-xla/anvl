@@ -1337,7 +1337,7 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
 # zero buffer of the input shape. Using the actual forward indices (rather
 # than recomputing a permutation) is correct by construction even when
 # `x` has duplicate values — top-k indices are pairwise unique along
-# the last axis.
+# axis 1.
 # The forward always runs with indices, even when the call asked for the values
 # only, so the backward has them without a second top_k.
 prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
@@ -1354,7 +1354,7 @@ prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params, requi
       grad_values <- grads[[1L]]
       full_shape <- shape(x)
       rank <- length(full_shape)
-      batching <- seq_len(rank - 1L)
+      batching <- seq_len(rank - 1L) + 1L
 
       zero_input <- prim_fill(
         0L,
@@ -1363,17 +1363,17 @@ prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params, requi
       )
 
       # All axes are iteration axes and we have a single index vector axis that
-      # indicates the position to write to (in the last axis of the input)
+      # indicates the position to write to (in axis 1 of the input)
       list(prim_scatter(
         x = zero_input,
-        # index vectors selecting positions along the last axis of `x`
+        # index vectors selecting positions along axis 1 of `x`
         scatter_indices = indices,
         update = grad_values,
         update_window_axes = integer(0L),
-        inserted_window_axes = rank,
+        inserted_window_axes = 1L,
         x_batching_axes = batching,
         scatter_indices_batching_axes = batching,
-        scatter_axes_to_x_axes = rank,
+        scatter_axes_to_x_axes = 1L,
         # we sort along a single axis -> all axes are iteration axes
         index_vector_axis = rank + 1L,
         unique_indices = TRUE

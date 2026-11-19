@@ -3112,28 +3112,27 @@ prim_sort <- new_primitive(
 
 #' @title Primitive Top-K
 #' @description
-#' Returns the `k` largest values along the last axis, sorted in
-#' decreasing order, and with `indices = TRUE` their indices into that
-#' axis as well.
+#' Returns the `k` largest values along axis 1, sorted in decreasing order,
+#' and with `indices = TRUE` their indices into that axis as well. The
+#' trailing axes are batch axes.
 #'
-#' For other axes, transpose so the target axis is last, call
+#' For other axes, transpose so the target axis is first, call
 #' `prim_top_k()`, then transpose back. [nv_top_k()] does this.
 #' @templateVar dtypes any numeric data type
 #' @templateVar shapes with at least 1 axis
 #' @template param_unary_x
 #' @param k (`integer(1)`)\cr
-#'   Number of top elements. Must satisfy
-#'   `1 <= k <= shape(x)[naxes(x)]`.
+#'   Number of top elements. Must satisfy `1 <= k <= shape(x)[1]`.
 #' @param indices (`logical(1)`)\cr
 #'   Whether to also return the indices of the top elements. Without them
 #'   the order among tied values is unspecified, which lets the lowering
 #'   pick the cheapest selection for the platform.
 #' @return (named `list` of one or two [`arrayish`])\cr
 #'   Element `values`, the top-`k` values at the input's data type, and, when
-#'   `indices` is `TRUE`, `indices`, their indices along the last axis at
-#'   the default integer data type (see [`default_dtypes()`]). Both have the
-#'   input's shape with the last axis replaced by `k`. With indices, ties are
-#'   broken by lower index first.
+#'   `indices` is `TRUE`, `indices`, their indices along axis 1 at the
+#'   default integer data type (see [`default_dtypes()`]). Both have the
+#'   input's shape with axis 1 replaced by `k`. With indices, ties are broken
+#'   by lower index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
@@ -3148,6 +3147,10 @@ prim_sort <- new_primitive(
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' prim_top_k(x, k = 3L, indices = FALSE)
 #' prim_top_k(x, k = 3L, indices = TRUE)
+#'
+#' # the top 2 of each column
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 3)
+#' prim_top_k(m, k = 2L, indices = TRUE)
 #' @export
 prim_top_k <- new_primitive(
   "top_k",

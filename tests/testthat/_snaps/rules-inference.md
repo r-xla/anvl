@@ -110,13 +110,13 @@
       x `x` has shape (3); axis 1 would end up at -3.
       i Got `edge_padding_low` = -3, `edge_padding_high` = -3, `interior_padding` = 0.
 
-# infer_top_k() / refuses a k larger than the last axis
+# infer_top_k() / refuses a k larger than axis 1
 
     Code
-      infer_top_k(nv_aval("f32", c(2L, 3L)), k = 4L, indices = TRUE)
+      infer_top_k(nv_aval("f32", c(3L, 5L)), k = 4L, indices = TRUE)
     Condition
       Error in `infer_top_k()`:
-      ! `k` must not exceed the size of the last axis of `x` (3).
+      ! `k` must not exceed the size of axis 1 of `x` (3).
       x Got 4.
 
 # the inference rules as the primitives reach them / reports an axis the primitive itself does not catch in 1-based terms

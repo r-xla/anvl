@@ -1041,36 +1041,26 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
 # negative NaN ranks below `-Inf` on both, as `?nv_top_k` documents.
 .hlo_top_k_values <- function(x, k) {
   if (!identical(current_platform(), "cuda")) {
-    return(top_k_on_dim0(x, k)[[1L]])
+    return(hlo_top_k(x, k = k)[[1L]])
   }
   shp <- shape(x$value_type)
   n_axes <- length(shp)
   sorted <- hlo_sort(
     x,
-    dimension = 0L,
+    dimension = n_axes - 1L,
     is_stable = FALSE,
     comparator = .build_sort_comparator(list(x), decreasing = TRUE, canonicalize = FALSE)
   )
-  hlo_slice(sorted[[1L]], rep(0L, n_axes), replace(shp, 1L, k), rep(1L, n_axes))
+  hlo_slice(sorted[[1L]], rep(0L, n_axes), replace(shp, n_axes, k), rep(1L, n_axes))
 }
 
-# `hlo_top_k()` along XLA dimension 0, the last R axis, where `prim_top_k()`
-# works: the operand's dimension 0 is moved last for it and back after.
-top_k_on_dim0 <- function(x, k) {
-  n <- length(shape(x$value_type))
-  if (n <= 1L) {
-    return(hlo_top_k(x, k = k))
-  }
-  to_last <- c(seq_len(n - 1L), 0L)
-  back <- c(n - 1L, seq_len(n - 1L) - 1L)
-  lapply(hlo_top_k(hlo_transpose(x, to_last), k = k), hlo_transpose, back)
-}
-
+# R axis 1, along which `prim_top_k()` works, is XLA's last dimension, the one
+# `hlo_top_k()` works along, so neither lowering moves an axis.
 prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
   if (!indices) {
     return(list(.hlo_top_k_values(x, k)))
   }
-  out <- top_k_on_dim0(x, k)
+  out <- hlo_top_k(x, k = k)
   values <- out[[1L]]
   indices <- out[[2L]]
 
