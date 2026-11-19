@@ -16,7 +16,8 @@ nv_qbinom(p, size, prob, lower_tail = TRUE, log_p = FALSE)
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
-function (\code{q}). These are counts, given as integers or floats.}
+function (\code{q}). These are counts, given as integers or floats; see
+Non-Integer Values for values that are not whole numbers.}
 
 \item{size}{(\code{\link{arrayish}})\cr
 Number of trials, zero or more. Either a scalar, or an array of exactly
@@ -56,7 +57,9 @@ probability mass function:
 and zero elsewhere.
 
 Invalid arguments give \code{NaN}, as in base R, but without a warning (that is
-\code{prob} outside \eqn{[0, 1]}, or a negative \code{size}).
+\code{prob} outside \eqn{[0, 1]}, or a \code{size} that is negative or not a whole
+number). \code{size} is taken as a whole number with the same tolerance as \code{x}
+(see Non-Integer Values).
 
 \code{nv_dbinom} uses the saddle point expansion of
 Loader (2000), as base R does. \code{nv_pbinom} uses the
@@ -65,8 +68,31 @@ that base R's \code{\link[stats:pbeta]{stats::pbeta()}} uses: a continued fracti
 expansion for large \code{size} near the mean. If the continued fraction has not
 converged after 1000 iterations, the result is \code{NaN}. \code{nv_qbinom} finds the
 smallest \eqn{x} with \eqn{P(X \le x) \ge p}, starting from a Cornish-Fisher
-approximation as base R does.
+approximation as base R does. Above \code{2^24} in \code{f32} and \code{2^53} in \code{f64} not
+every whole number is a float, and \code{nv_qbinom} then returns the smallest float
+\eqn{x} with \eqn{P(X \le x) \ge p}.
 }
+\section{Non-Integer Values}{
+
+\code{x} and \code{q} are counts, but any value is accepted, and one that is not a
+whole number is treated as in base R, without its warnings:
+\itemize{
+\item \code{nv_dbinom()} takes an \code{x} within a relative \code{1e-9} of a whole
+number, that is with
+\eqn{|x - \mathrm{round}(x)| \le 10^{-9} \max(|x|, 1)}{|x - round(x)| <= 1e-9 * max(|x|, 1)},
+as that whole number. Any other \code{x} has probability zero.
+\item \code{nv_pbinom()} rounds \code{q} down, except that a \code{q} within \code{1e-7} below
+a whole number counts as that number.
+\item A negative \code{x} or \code{q} is below the support even where it is within the
+tolerance of zero: such an \code{x} has probability zero, and such a \code{q} has
+\eqn{P(X \le q) = 0}.
+}
+
+Finite quantiles from \code{nv_qbinom()} are always whole numbers. Since
+\code{x} and \code{q} are used only as whole numbers, their gradient is zero wherever
+a gradient can be taken.
+}
+
 \section{Gradients}{
 
 \code{nv_dbinom} can be differentiated with respect to \code{prob}, including at
@@ -74,8 +100,9 @@ approximation as base R does.
 \code{x > 0}, the log-density is \code{-Inf} and has no derivative: it diverges. With
 \code{log = TRUE} the gradient returned there is zero, which is a convention of
 this implementation, not the mathematical derivative.
-\code{nv_pbinom} and \code{nv_qbinom} iterate until convergence in a
-\code{\link[=nv_while]{nv_while()}} loop, so \code{\link[=gradient]{gradient()}} cannot differentiate them.
+\code{nv_pbinom} iterates until convergence in a \code{\link[=nv_while]{nv_while()}} loop, so
+\code{\link[=gradient]{gradient()}} cannot differentiate it. \code{nv_qbinom} is a step function, and
+autodiff returns a zero gradient for all of its arguments.
 }
 
 \section{Data Types}{

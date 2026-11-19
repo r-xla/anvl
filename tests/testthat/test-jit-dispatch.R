@@ -185,6 +185,35 @@ test_that("a jitted function with no array inputs keys on the default device", {
   expect_equal(jit_cache_size(f), 1L)
 })
 
+describe("jit() without array inputs", {
+  it("recompiles when the default device changes", {
+    skip_if_no_jit()
+    skip_if(length(pjrt::devices(pjrt::pjrt_client("cpu"))) < 2L, "needs a second cpu device")
+    f <- jit(function(n) n + 1)
+    local_default_device("cpu:0")
+    expect_identical(xlamisc::device(f(1)), pjrt::pjrt_device("cpu:0"))
+    local_default_device("cpu:1")
+    expect_identical(xlamisc::device(f(1)), pjrt::pjrt_device("cpu:1"))
+    expect_equal(jit_cache_size(f), 2L)
+  })
+
+  it("serves a program pinned by a closed-over array under any default device", {
+    skip_if_no_jit()
+    skip_if(length(pjrt::devices(pjrt::pjrt_client("cpu"))) < 2L, "needs a second cpu device")
+    y <- nv_array(c(10, 20), dtype = "f32", device = "cpu:1")
+    f <- jit(function(n) y + n)
+    local_default_device("cpu:0")
+    r1 <- f(1)
+    local_default_device("cpu:1")
+    r2 <- f(1)
+    expect_equal(arr_of(r1), c(11, 21))
+    expect_equal(arr_of(r2), c(11, 21))
+    expect_identical(xlamisc::device(r1), pjrt::pjrt_device("cpu:1"))
+    expect_identical(xlamisc::device(r2), pjrt::pjrt_device("cpu:1"))
+    expect_equal(jit_cache_size(f), 1L)
+  })
+})
+
 test_that("the quickr backend dispatches through the closure engine", {
   skip_if_no_quickr()
   with_backend("quickr", {

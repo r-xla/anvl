@@ -16,7 +16,7 @@ prim_scatter(
   index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
-  update_fn = NULL
+  update_fn = "replace"
 )
 }
 \arguments{
@@ -74,10 +74,17 @@ Whether indices are guaranteed to be unique (no duplicates).
 Setting to \code{TRUE} may improve performance but produces undefined
 behavior if the indices are not actually unique. Default \code{FALSE}.}
 
-\item{update_fn}{(\code{function})\cr
-Binary function \code{f(old, new)} that combines the existing value in
-\code{x} with the value from \code{update}. The default (\code{NULL}) uses
-\code{function(old, new) new}, which replaces the old value.}
+\item{update_fn}{(\code{character(1)} | \code{function})\cr
+How an update combines with the value in \code{x} it lands on. One of
+\itemize{
+\item \code{"replace"} (the default): the update replaces the value,
+\item \code{"add"}, \code{"sub"}, \code{"mul"}: the value plus, minus or times the update,
+\item \code{"max"}, \code{"min"}: the larger or the smaller of the two,
+}
+
+or a binary function \code{f(old, new)} of two scalars at \code{x}'s data type,
+which returns one. Only a named \code{update_fn} can be differentiated, see
+section Gradients.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -103,8 +110,27 @@ update for that index is silently ignored.
 \section{Update Order}{
 
 When multiple indices in \code{scatter_indices} map to the same element
-of \code{x}, the order in which \code{update_fn} is applied is
-implementation-defined and may vary between plugins ("cpu", "cuda").
+of \code{x}, \code{update_fn} combines each of their updates with it in turn, so
+\code{"add"} adds them all up. The order is implementation-defined and may vary
+between plugins ("cpu", "cuda"), which matters for \code{"replace"}, where one
+of them is the one that ends up written.
+}
+
+\section{Gradients}{
+
+\code{\link[=gradient]{gradient()}} differentiates a scatter whose \code{update_fn} is one of the names,
+but not a function, even one that computes the same.
+\itemize{
+\item With \code{"replace"}, an update gets the gradient only where it is the one
+that was written.
+\item With \code{"mul"}, the gradient with respect to \code{update} needs
+\code{unique_indices = TRUE}.
+\item With \code{"max"} and \code{"min"}, \code{x} and the updates that tie for the result
+share its gradient equally.
+}
+
+An update that falls outside of \code{x}, and is therefore ignored, gets a
+gradient of zero.
 }
 
 \section{Implemented Rules}{

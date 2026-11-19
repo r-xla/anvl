@@ -7,7 +7,7 @@
 \usage{
 \method{[}{AnvlArray}(x, ...) <- value
 
-nv_subset_assign(x, ..., value, inplace = FALSE)
+nv_subset_assign(x, ..., value, update_fn = "replace", inplace = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -30,13 +30,31 @@ from the function's inputs does not.
 See the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
-Replacement values. Scalars are broadcast to the subset shape and non-scalar
+Replacement values, or with another \code{update_fn} the values to combine the
+subset with. Scalars are broadcast to the subset shape and non-scalar
 values must match it.
 It is brought to \code{x}'s data type: an R value is built at it when its
 category can reach it (\code{0L} serves an integer and a float \code{x} alike, while
 \code{1.5} into an \code{i32} \code{x} is an error), and an array is converted unless that
 would narrow it or leave its category (an \code{f64} value for an \code{f32} \code{x} is
 an error).}
+
+\item{update_fn}{(\code{character(1)} | \code{function})\cr
+How \code{value} combines with the subset of \code{x}:
+\itemize{
+\item \code{"replace"} (the default): \code{value} replaces it,
+\item \code{"add"}, \code{"sub"}, \code{"mul"}: it becomes the subset plus, minus or times
+\code{value},
+\item \code{"max"}, \code{"min"}: it becomes the larger or the smaller of the two,
+}
+
+or a binary function \code{f(old, new)} of two scalars, see \code{\link[=prim_scatter]{prim_scatter()}}.
+Unlike \code{x[i] <- x[i] + value} in R, a position that \code{i} selects more than
+once gets every one of its values: with \code{"add"}, \code{x[array(c(1L, 1L))]} adds
+both to \code{x[1]}. \code{\link[=gradient]{gradient()}} differentiates the names, but not a function;
+with \code{"mul"}, not with respect to \code{value} where \code{i} selects several
+positions of an axis by an index array or a mask, since those may repeat.
+With \verb{[<-}, pass it among the subscripts, e.g. \code{x[1, update_fn = "add"] <- 1}.}
 
 \item{inplace}{(\code{logical(1)})\cr
 Whether to write into the memory of \code{x} instead of allocating a new array.
@@ -52,7 +70,8 @@ Default is \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{x}'s data type and shape, with the subset replaced.
+Has \code{x}'s data type and shape, with the subset replaced (or combined with
+\code{value} as \code{update_fn} says).
 }
 \description{
 Updates elements of an array at specified positions, returning a new array.
@@ -69,6 +88,9 @@ x
 # Zero out every element greater than 6 (not in `jit()`, see `nv_subset()`)
 x[x > 6] <- 0L
 x
+
+# add to the subset instead of replacing it; a repeated index adds twice
+nv_subset_assign(x, array(c(1L, 1L)), 1, value = nv_scalar(10L), update_fn = "add")
 
 # write into the memory of `x` instead of copying it
 x[2, inplace = TRUE] <- nv_scalar(1L)

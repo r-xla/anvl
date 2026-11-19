@@ -35,6 +35,14 @@
 #'     arguments whose buffers the compiled program may reuse for its outputs.
 #'     A donated array must not be used again after the call; this can save
 #'     memory and copies for large inputs. Must not overlap with `static`.
+#'   * `xla_options` (named `list()`, default `list()`), `"pjrt"` only: XLA
+#'     options for compiling this function, passed to [`pjrt::pjrt_compile()`],
+#'     which describes the names and values it takes. They apply to this
+#'     function's compiles only, unlike `XLA_FLAGS`, which applies to every
+#'     compile of the R session. A jitted function called inside another
+#'     one's trace is traced into the outer program, so only the options of
+#'     the outermost `jit()` take effect: pass them as
+#'     `jit(value_and_gradient(f), xla_options = ...)`, not to a jitted `f`.
 #'   * `unwrap` (`logical(1)`, default `FALSE`), `"quickr"` only: if `TRUE`,
 #'     the compiled function returns plain R arrays instead of
 #'     [`AnvlArray`]s, which is useful when the output is consumed by non-anvl
@@ -43,6 +51,12 @@
 #'   An option no backend takes is rejected here; one that only another
 #'   backend takes is rejected when the function is called on a backend that
 #'   does not, since the backend is not known until then.
+#'
+#'
+#' @section Stochastic Functions:
+#' A function that draws random numbers also reads and advances the global
+#' random state.
+#' See the `r roxy_article("random-numbers")` for more details.
 #'
 #' @section Backend and device:
 #' A jitted function runs on the active backend *when it is called*
@@ -157,9 +171,19 @@ jit <- function(
     .jit_env <- environment()
     .jit_given <- intersect(.jit_names, as.character(names(match.call())))
 
+    # The supplied arguments are evaluated before `f` runs, in the order of its
+    # formals and then `...` -- inside a trace too, so that what they draw from
+    # a random state is drawn in the same order as in an eager call.
+    .jit_args <- mget(.jit_given, envir = .jit_env)
+    if (.jit_dots) {
+      # `list(...)` goes through a quoted call because the wrapper's formals are
+      # `f`'s: written literally, the body of a wrapper for an `f` without `...`
+      # would use a `...` that its function does not have.
+      .jit_args <- c(.jit_args, eval(quote(list(...)), .jit_env))
+    }
+
     # Inside tracing: pass through to unwrapped function. The arguments are
-    # forwarded as the names they are bound to here, so `f` gets a promise per
-    # argument and one it never uses is never evaluated.
+    # forwarded as the names they are bound to here.
     if (currently_tracing()) {
       .jit_fwd <- lapply(.jit_given, as.name)
       names(.jit_fwd) <- .jit_given
@@ -167,13 +191,6 @@ jit <- function(
         .jit_fwd <- c(.jit_fwd, list(quote(...)))
       }
       return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
-    }
-    .jit_args <- mget(.jit_given, envir = .jit_env)
-    if (.jit_dots) {
-      # `list(...)` goes through a quoted call because the wrapper's formals are
-      # `f`'s: written literally, the body of a wrapper for an `f` without `...`
-      # would use a `...` that its function does not have.
-      .jit_args <- c(.jit_args, eval(quote(list(...)), .jit_env))
     }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]

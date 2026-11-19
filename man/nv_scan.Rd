@@ -9,7 +9,7 @@ nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
 \arguments{
 \item{init}{(\code{\link{arrayish}} | \code{list()})\cr
 Initial carry: a single array or a (possibly nested) named list.
-Every slot must keep a fixed shape and dtype across steps.}
+Every slot must keep a fixed shape and dtype across steps}
 
 \item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
 Per-step inputs, sliced along axis 1. All leaves must agree on
@@ -60,6 +60,14 @@ for (t in order) \{
 list(carry = carry, out = out)
 }\if{html}{\out{</div>}}
 }
+\section{Gradients}{
+
+Unlike \code{\link[=nv_while]{nv_while()}}, a scan is differentiable with \code{\link[=gradient]{gradient()}}, with
+respect to \code{init}, \code{xs} and the arrays \code{body} closes over. The forward pass
+keeps what the backward pass needs of each step, so the memory a gradient
+takes grows linearly with \code{steps}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # cumulative sum along axis 1
@@ -69,6 +77,12 @@ nv_scan(
   xs = x,
   body = function(carry, x) list(carry = carry + x, out = carry + x)
 )$out
+
+# a scan is differentiable: the gradient of a cumulative product
+f <- function(x) {
+  nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+}
+jit(gradient(f))(nv_array(c(1, 2, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

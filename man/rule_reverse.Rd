@@ -33,6 +33,9 @@ efficient backward pass. It has the signature
 need a gradient, and returns \code{list(outputs = , backward = )}: the forward
 results and a closure with the signature of \code{backward} above, which can use
 intermediate values of the forward pass via lexical scoping.
+
+A rule with a \code{forward} pass can also be the \code{rule} of
+\code{\link[=prim_custom_gradient]{prim_custom_gradient()}}.
 }
 \examples{
 # the rule of prim_negate()

@@ -112,8 +112,13 @@ ones_like <- function(x) {
   ones(dtype(x), shape(x))
 }
 
+# An R value anvl accepts as data is a bare numeric or logical: one carrying a
+# class (`bit64::integer64`, a user's own) is rejected rather than read through
+# its storage type, which would silently ignore what the class means. This also
+# agrees with pjrt's dispatcher, which rejects any classed input.
 is_valid_r_lit <- function(x) {
-  length(x) == 1L &&
+  !is.object(x) &&
+    length(x) == 1L &&
     is.null(dim(x)) &&
     (is.numeric(x) || is.logical(x)) &&
     # Accept NaN/Inf but reject NA (NA has no obvious dtype).
@@ -121,11 +126,11 @@ is_valid_r_lit <- function(x) {
 }
 
 is_valid_r_array <- function(x) {
-  is.array(x) && (is.numeric(x) || is.logical(x))
+  !is.object(x) && is.array(x) && (is.numeric(x) || is.logical(x))
 }
 
 is_valid_r <- function(x) {
-  (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
+  !is.object(x) && (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.

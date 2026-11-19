@@ -59,8 +59,10 @@ errors on batched operands (operands with more than 2 axes).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}, specified under
-\href{https://openxla.org/stablehlo/spec#triangular_solve}{triangular_solve}.
+On CPU, an \code{f32} or \code{f64} solve lowers to a \code{"trsm"} \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}}
+(backed by BLAS). Otherwise it lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}, specified
+under \href{https://openxla.org/stablehlo/spec#triangular_solve}{triangular_solve},
+which XLA runs through cuBLAS on CUDA.
 }
 
 \examples{

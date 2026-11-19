@@ -117,3 +117,22 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
   testthat::expect_equal(grads[[1L]], expected1)
   testthat::expect_equal(grads[[2L]], expected2)
 }
+
+# The four 32-bit words of the random state `rng_state`, by default the
+# global one: its key's words, then its counter's low and high word (see
+# `rng_state_of_words()`).
+state_words <- function(rng_state = nv_get_rng_state()) {
+  rng_state_words(rng_state)
+}
+
+# The graph of `f` traced with the random states `rng_states` as its
+# arguments, the way jit() traces it: of each, the dispatcher's avals of the
+# words of its key and counter, which a call passes as bare R data. trace_fn()
+# takes the words themselves for static values.
+trace_with_rng_states <- function(f, rng_states) {
+  trace_fn(
+    f,
+    args_flat = rep(list(nv_aval("double", 2L)), 2L * length(rng_states)),
+    in_tree = build_tree(rng_states)
+  )
+}

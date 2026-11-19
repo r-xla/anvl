@@ -85,3 +85,30 @@ describe("CPU output donation", {
     expect_length(out[[3L]], 0L)
   })
 })
+
+describe("jit(xla_options = )", {
+  it("passes the options to the compiles of that function only", {
+    dir <- withr::local_tempdir()
+    f <- jit(function(x) x + 1, xla_options = list(xla_dump_to = dir))
+    expect_equal(as.numeric(as_array(f(nv_array(1)))), 2)
+    n_dumped <- length(list.files(dir))
+    expect_gt(n_dumped, 0L)
+
+    g <- jit(function(x) x * 2)
+    expect_equal(as.numeric(as_array(g(nv_array(1)))), 2)
+    expect_identical(length(list.files(dir)), n_dumped)
+  })
+
+  it("takes a map-valued option on the CPU", {
+    skip_if_not(is_cpu())
+    f <- jit(
+      function(x) nv_sum(nv_exp(x)),
+      xla_options = list(xla_backend_extra_options = "xla_cpu_use_multi_output_fusion")
+    )
+    expect_equal(as.numeric(as_array(f(nv_array(c(0, 1))))), 1 + exp(1), tolerance = 1e-6)
+  })
+
+  it("must be a list", {
+    expect_error(jit(identity, xla_options = "xla_dump_to")(nv_array(1)), "xla_options")
+  })
+})

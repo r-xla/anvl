@@ -79,6 +79,9 @@ make the array intent explicit.
 
 A quantile generally falls between two elements, so a non-float \code{x} is
 computed (and returned) at the default float data type.
+
+Reducing over an axis of size 0 is an error: there is no element to take a
+quantile of.
 }
 \section{Interpolation modes}{
 

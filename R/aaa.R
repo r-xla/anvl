@@ -58,7 +58,7 @@ NULL
 #' @import checkmate
 #' @import xlamisc
 #' @importFrom pjrt pjrt_buffer pjrt_scalar pjrt_execute pjrt_compile pjrt_program elt_type
-#' @importFrom utils hashtab
+#' @importFrom utils hashtab maphash
 #' @importFrom utils head tail getFromNamespace install.packages
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%
@@ -73,4 +73,6 @@ globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
 globals[["descriptor_stash"]] <- list()
 globals[["current_descriptor"]] <- NULL
 globals[["lowering_platform"]] <- NULL
+globals[["lowering_funcs"]] <- NULL
+globals$rng_state <- NULL
 utils::globalVariables(c("globals", "self"))
