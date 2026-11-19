@@ -274,11 +274,11 @@ The quickr rule is only required if you want the primitive to run under `local_b
 ### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives.
-An example is `prim_add` vs `nv_add`, where the latter calls into the former after optionally broadcasting (scalar) inputs:
+An example is `prim_add` vs `nv_add`, where the latter promotes its operands to a common data type before calling into the former:
 
 ```{r, error = TRUE}
-nv_add(1L, nv_array(2:3))
-prim_add(1L, nv_array(2:3))
+nv_add(0.5, nv_array(2:3))
+prim_add(0.5, nv_array(2:3))
 ```
 
 In our case, no such convenience is needed and the functionality is not too low-level (for it to be generally useful), so we can just reassign the `prim_*` function to an `nv_*` function:

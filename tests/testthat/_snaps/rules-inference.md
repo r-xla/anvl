@@ -25,14 +25,31 @@
       ! `initial_state` must have 1 axis.
       x Got (2x3).
 
-# the element-wise rules / refuse operands whose types disagree
+# the element-wise rules / refuse operands whose data types disagree
+
+    Code
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i64", integer()))
+    Condition
+      Error in `assert_same_dtype()`:
+      ! `lhs` and `rhs` must have the same data type.
+      x Got "i32" and "i64".
+
+# the element-wise rules / refuse operands whose shapes disagree, naming the two that do
 
     Code
       infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
     Condition
-      Error in `assert_same_type()`:
-      ! `lhs` and `rhs` must have the same array type.
+      Error in `infer_elementwise_shape()`:
+      ! `lhs` and `rhs` must have the same shape, unless one of them is a scalar.
       x Got i32[4] and i32[6].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
+    Code
+      infer_select(nv_aval("bool", 4L), nv_aval("f32", integer()), nv_aval("f32", 6L))
+    Condition
+      Error in `infer_elementwise_shape()`:
+      ! `test` and `no` must have the same shape, unless one of them is a scalar.
+      x Got bool[4] and f32[6].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
 
 # infer_transpose() / reports the permutation it expected in 1-based axes
 
