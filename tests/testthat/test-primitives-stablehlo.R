@@ -1852,6 +1852,65 @@ describe("prim_reduce", {
   })
 })
 
+describe("prim_dot_general", {
+  batched_matmul <- function(x, y) {
+    prim_dot_general(x, y, contracting_axes = list(2L, 1L), batching_axes = list(3L, 3L))
+  }
+
+  it("puts the trailing batch axes after the free axes", {
+    withr::local_seed(1L)
+    x <- array(rnorm(24L), c(2L, 3L, 4L))
+    y <- array(rnorm(60L), c(3L, 5L, 4L))
+    out <- as_array(jit(batched_matmul)(nv_array(x, dtype = "f64"), nv_array(y, dtype = "f64")))
+    expect_equal(dim(out), c(2L, 5L, 4L))
+    for (b in seq_len(4L)) {
+      expect_equal(out[,, b], x[,, b] %*% y[,, b])
+    }
+  })
+
+  it("moves leading batch axes to the end", {
+    withr::local_seed(2L)
+    x <- array(rnorm(24L), c(4L, 2L, 3L))
+    y <- array(rnorm(60L), c(4L, 3L, 5L))
+    f <- jit(function(x, y) {
+      prim_dot_general(x, y, contracting_axes = list(3L, 2L), batching_axes = list(1L, 1L))
+    })
+    out <- as_array(f(nv_array(x, dtype = "f64"), nv_array(y, dtype = "f64")))
+    expect_equal(dim(out), c(2L, 5L, 4L))
+    for (b in seq_len(4L)) {
+      expect_equal(out[,, b], x[b, , ] %*% y[b, , ])
+    }
+  })
+
+  it("orders the batch axes as `batching_axes` names them", {
+    withr::local_seed(3L)
+    x <- array(rnorm(144L), c(2L, 3L, 4L, 6L))
+    y <- array(rnorm(360L), c(3L, 5L, 6L, 4L))
+    f <- jit(function(x, y) {
+      prim_dot_general(x, y, contracting_axes = list(2L, 1L), batching_axes = list(c(4L, 3L), c(3L, 4L)))
+    })
+    out <- as_array(f(nv_array(x, dtype = "f64"), nv_array(y, dtype = "f64")))
+    expect_equal(dim(out), c(2L, 5L, 6L, 4L))
+    for (j in seq_len(6L)) {
+      for (k in seq_len(4L)) {
+        expect_equal(out[,, j, k], x[,, k, j] %*% y[,, j, k])
+      }
+    }
+  })
+
+  it("lowers a product with trailing batch axes without a transpose", {
+    batched <- trace_fn(batched_matmul, list(nv_aval("f32", c(3L, 4L, 2L)), nv_aval("f32", c(4L, 5L, 2L))))
+    expect_no_match(repr(stablehlo(batched)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+    plain <- trace_fn(
+      function(x, y) {
+        prim_dot_general(x, y, contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
+      },
+      list(nv_aval("f32", c(3L, 4L)), nv_aval("f32", c(4L, 5L)))
+    )
+    expect_no_match(repr(stablehlo(plain)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+  })
+})
+
 test_that("prim_dot_general precision", {
   A <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, ncol = 3, dtype = "f32")
   B <- nv_matrix(c(6, 5, 4, 3, 2, 1), nrow = 3, ncol = 2, dtype = "f32")

@@ -83,33 +83,27 @@ prim_broadcast_in_axes[["stablehlo"]] <- function(x, shape, broadcast_axes, outp
   list(hlo_broadcast_in_dim(x, dims, xla_shape(shape), output_types = output_types))
 }
 
-# The result of `prim_dot_general()` in R order is the batch axes (in the
-# order `batching_axes` names them), then the free axes of `lhs`, then those of
-# `rhs`; its XLA order is the reverse. XLA's `dot_general` puts its batch
-# dimensions first and then each operand's free dimensions in XLA order, so
-# with the operands swapped and the batch dimensions named in reverse it
-# produces the free dimensions in exactly the order the result needs, and only
-# the batch dimensions have to move to the end.
+# The result of `prim_dot_general()` in R order is the free axes of `lhs`, then
+# those of `rhs`, then the batch axes (in the order `batching_axes` names
+# them); its XLA order is the reverse: the batch dimensions in reverse, then the
+# free dimensions of `rhs`, then those of `lhs`, each in XLA order. XLA's
+# `dot_general` puts its batch dimensions first, in the order they are named,
+# and then each operand's free dimensions in XLA order, so with the operands
+# swapped and the batch dimensions named in reverse it produces exactly the
+# result.
 prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching_axes, precision, output_types) {
   n_lhs <- length(shape(lhs$value_type))
   n_rhs <- length(shape(rhs$value_type))
-  n_batch <- length(batching_axes[[1L]])
   contracting <- list(xla_dims(contracting_axes[[2L]], n_rhs), xla_dims(contracting_axes[[1L]], n_lhs))
   batching <- list(xla_dims(rev(batching_axes[[2L]]), n_rhs), xla_dims(rev(batching_axes[[1L]]), n_lhs))
-  if (n_batch == 0L) {
-    return(list(hlo_dot_general(
-      rhs,
-      lhs,
-      contracting,
-      batching,
-      precision_config = toupper(precision),
-      output_types = output_types
-    )))
-  }
-  out <- hlo_dot_general(rhs, lhs, contracting, batching, precision_config = toupper(precision))
-  n_out <- length(shape(out$value_type))
-  perm <- c(seq_len(n_out - n_batch) + n_batch - 1L, seq_len(n_batch) - 1L)
-  list(hlo_transpose(out, perm, output_types = output_types))
+  list(hlo_dot_general(
+    rhs,
+    lhs,
+    contracting,
+    batching,
+    precision_config = toupper(precision),
+    output_types = output_types
+  ))
 }
 
 prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {

@@ -938,7 +938,7 @@ test_that("quickr pipeline matches PJRT: gather can return a scalar", {
 test_that("quickr pipeline matches PJRT: dot_general variants", {
   skip_if_no_quickr_or_pjrt()
 
-  dot_ops <- function(a, b, a1, b1, a_dot, b_dot, a_mv, b_mv, lhs, rhs, lhs_b, rhs_b) {
+  dot_ops <- function(a, b, a1, b1, a_dot, b_dot, a_mv, b_mv, lhs, rhs, lhs_b, rhs_b, lhs_lb, rhs_lb) {
     s <- prim_dot_general(
       a,
       b,
@@ -954,9 +954,11 @@ test_that("quickr pipeline matches PJRT: dot_general variants", {
     dot <- prim_dot_general(a_dot, b_dot, contracting_axes = list(1L, 1L), batching_axes = list(integer(), integer()))
     mv <- prim_dot_general(a_mv, b_mv, contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
     mm <- prim_dot_general(lhs, rhs, contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
-    batch <- prim_dot_general(lhs_b, rhs_b, contracting_axes = list(3L, 2L), batching_axes = list(1L, 1L))
+    batch <- prim_dot_general(lhs_b, rhs_b, contracting_axes = list(2L, 1L), batching_axes = list(3L, 3L))
+    # leading batch axes in the operands still trail in the result
+    batch_lead <- prim_dot_general(lhs_lb, rhs_lb, contracting_axes = list(3L, 2L), batching_axes = list(1L, 1L))
 
-    list(scalar = s, outer = outer, dot = dot, mv = mv, mm = mm, batch = batch)
+    list(scalar = s, outer = outer, dot = dot, mv = mv, mm = mm, batch = batch, batch_lead = batch_lead)
   }
 
   templates <- list(
@@ -970,8 +972,10 @@ test_that("quickr pipeline matches PJRT: dot_general variants", {
     b_mv = nv_array(rep(0L, 3L), shape = 3L, dtype = "i32"),
     lhs = nv_matrix(0, nrow = 2L, ncol = 3L, dtype = "f64"),
     rhs = nv_matrix(0, nrow = 3L, ncol = 4L, dtype = "f64"),
-    lhs_b = nv_array(rep(0, prod(c(2L, 3L, 4L))), shape = c(2L, 3L, 4L), dtype = "f64"),
-    rhs_b = nv_array(rep(0, prod(c(2L, 4L, 5L))), shape = c(2L, 4L, 5L), dtype = "f64")
+    lhs_b = nv_array(rep(0, prod(c(3L, 4L, 2L))), shape = c(3L, 4L, 2L), dtype = "f64"),
+    rhs_b = nv_array(rep(0, prod(c(4L, 5L, 2L))), shape = c(4L, 5L, 2L), dtype = "f64"),
+    lhs_lb = nv_array(rep(0, prod(c(2L, 3L, 4L))), shape = c(2L, 3L, 4L), dtype = "f64"),
+    rhs_lb = nv_array(rep(0, prod(c(2L, 4L, 5L))), shape = c(2L, 4L, 5L), dtype = "f64")
   )
 
   run <- list(
@@ -986,8 +990,10 @@ test_that("quickr pipeline matches PJRT: dot_general variants", {
       b_mv = 1:3,
       lhs = matrix(c(0.2, -0.1, 0.3, 0.4, 0.5, -0.2), nrow = 2, byrow = TRUE),
       rhs = matrix(c(0.1, 0.2, 0.3, 0.4, -0.5, 0.6, -0.7, 0.8, 0.9, -1.0, 1.1, -1.2), nrow = 3, byrow = TRUE),
-      lhs_b = array(0.1 * (1:24), dim = c(2L, 3L, 4L)),
-      rhs_b = array(0.05 * (1:40), dim = c(2L, 4L, 5L))
+      lhs_b = array(0.1 * (1:24), dim = c(3L, 4L, 2L)),
+      rhs_b = array(0.05 * (1:40), dim = c(4L, 5L, 2L)),
+      lhs_lb = array(0.1 * (1:24), dim = c(2L, 3L, 4L)),
+      rhs_lb = array(0.05 * (1:40), dim = c(2L, 4L, 5L))
     ),
     info = "run"
   )

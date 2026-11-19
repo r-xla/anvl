@@ -2294,11 +2294,13 @@ nv_round <- function(x, method = "nearest_even") {
 #' @title Matrix Multiplication
 #' @description
 #' Matrix multiplication of two arrays. You can also use the `%*%` operator.
-#' Supports batched matrix multiplication when inputs have more than 2 axes.
+#' Supports batched matrix multiplication: above rank 2, the first two axes
+#' are the matrix and the trailing ones are batch axes, which both operands
+#' must share.
 #' @section Shapes:
-#' - `x`: `(b1, ..., bk, m, n)`
-#' - `y`: `(b1, ..., bk, n, p)`
-#' - output: `(b1, ..., bk, m, p)`
+#' - `x`: `(m, n, b1, ..., bk)`
+#' - `y`: `(n, p, b1, ..., bk)`
+#' - output: `(m, p, b1, ..., bk)`
 #' @param x,y ([`arrayish`])\cr
 #'   Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
 #'   [promoted to a common data type][nv_promote_to_common()]. An R value
@@ -2316,6 +2318,10 @@ nv_round <- function(x, method = "nearest_even") {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
 #' nv_matmul(x, y)
+#' x %*% y
+#' # a batch of three such products along the trailing axis
+#' x <- nv_array(1:18, shape = c(2, 3, 3))
+#' y <- nv_array(1:18, shape = c(3, 2, 3))
 #' x %*% y
 #' @export
 nv_matmul <- jit(
@@ -2338,28 +2344,28 @@ nv_matmul <- jit(
         x = "{.arg x} is {shape_repr(shape(x))} and {.arg y} is {shape_repr(shape(y))}." # nolint
       ))
     }
-    inner_x <- shape(x)[naxes(x)]
-    inner_y <- shape(y)[naxes(y) - 1L]
+    inner_x <- shape(x)[2L]
+    inner_y <- shape(y)[1L]
     if (inner_x != inner_y) {
       cli_abort(c(
         "{.arg x} and {.arg y} are not conformable.",
-        x = "The last axis of {.arg x} has size {inner_x}, but the second-to-last axis of {.arg y} has size {inner_y}." # nolint
+        x = "Axis 2 of {.arg x} has size {inner_x}, but axis 1 of {.arg y} has size {inner_y}."
       ))
     }
-    nbatch <- naxes(x) - 2L
-    batch_x <- shape(x)[seq_len(nbatch)]
-    batch_y <- shape(y)[seq_len(nbatch)]
+    batch_axes <- seq_len(naxes(x) - 2L) + 2L
+    batch_x <- shape(x)[batch_axes]
+    batch_y <- shape(y)[batch_axes]
     if (!identical(batch_x, batch_y)) {
       cli_abort(c(
-        "{.arg x} and {.arg y} must have the same batch axes -- the axes before the last two.",
+        "{.arg x} and {.arg y} must have the same batch axes -- the axes after the first two.",
         x = "{.arg x} has {shape_repr(batch_x)} and {.arg y} has {shape_repr(batch_y)}." # nolint
       ))
     }
     prim_dot_general(
       x,
       y,
-      contracting_axes = list(naxes(x), naxes(y) - 1L),
-      batching_axes = list(seq_len(nbatch), seq_len(nbatch)),
+      contracting_axes = list(2L, 1L),
+      batching_axes = list(batch_axes, batch_axes),
       precision = precision
     )
   },
@@ -4131,8 +4137,8 @@ nv_triu <- jit(
 #' @title Cross Product (Matrix)
 #' @description
 #' Computes `t(x) %*% y`. If `y` is missing, computes `t(x) %*% x`.
-#' Above rank 2 the last two axes are the matrix and the leading ones are batch
-#' axes, as in [nv_matmul()]: only the matrix is transposed.
+#' Above rank 2 the first two axes are the matrix and the trailing ones are
+#' batch axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param x ([`arrayish`])\cr
 #'   An array with at least 2 axes, as for [base::crossprod()]. Can be any numeric
 #'   data type; `x` and `y` are
@@ -4155,8 +4161,8 @@ nv_crossprod <- jit(function(x, y = NULL) {
 #' @title Transpose Cross Product (Matrix)
 #' @description
 #' Computes `x %*% t(y)`. If `y` is missing, computes `x %*% t(x)`.
-#' Above rank 2 the last two axes are the matrix and the leading ones are batch
-#' axes, as in [nv_matmul()]: only the matrix is transposed.
+#' Above rank 2 the first two axes are the matrix and the trailing ones are
+#' batch axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param x ([`arrayish`])\cr
 #'   An array with at least 2 axes, as for [base::tcrossprod()]. Can be any numeric
 #'   data type; `x` and `y` are

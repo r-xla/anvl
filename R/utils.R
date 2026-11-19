@@ -219,15 +219,15 @@ col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
 }
 
-# Transpose the matrix an array's last two axes form, leaving any leading batch
-# axes in place -- what `t()` means for the batched operands `nv_matmul()`
-# takes. `nv_aperm()` reverses *every* axis, which would put a batch axis
-# into the contraction slot. An array with fewer than two axes is handed on
-# unchanged, for `nv_matmul()` to report.
+# Transpose the matrix an array's first two axes form, leaving any trailing
+# batch axes in place -- what `t()` means for the batched operands
+# `nv_matmul()` takes. `nv_aperm()` reverses *every* axis, which would put a
+# batch axis into the contraction slot. An array with fewer than two axes is
+# handed on unchanged, for `nv_matmul()` to report.
 transpose_matrix_axes <- function(x) {
   n <- naxes(x)
   if (n < 2L) {
     return(x)
   }
-  nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
+  nv_aperm(x, c(2L, 1L, seq_len(n - 2L) + 2L))
 }

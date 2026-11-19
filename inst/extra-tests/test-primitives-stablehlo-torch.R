@@ -239,15 +239,15 @@ test_that("prim_dot_general", {
   tv <- torch::torch_tensor(as_array(v))
   expect_equal(as_array(out2), as_array_torch(tA$matmul(tv)), tolerance = 1e-5)
 
-  # batched matmul
-  X <- nv_array(rnorm(2 * 3 * 4), shape = c(2, 3, 4), dtype = "f32")
-  Y <- nv_array(rnorm(2 * 4 * 5), shape = c(2, 4, 5), dtype = "f32")
+  # batched matmul: the batch axis trails in anvl and leads in torch
+  X <- nv_array(rnorm(3 * 4 * 2), shape = c(3, 4, 2), dtype = "f32")
+  Y <- nv_array(rnorm(4 * 5 * 2), shape = c(4, 5, 2), dtype = "f32")
   out3 <- jit(function(a, b) {
-    prim_dot_general(a, b, contracting_axes = list(3L, 2L), batching_axes = list(1L, 1L))
+    prim_dot_general(a, b, contracting_axes = list(2L, 1L), batching_axes = list(3L, 3L))
   })(X, Y)
-  tX <- torch::torch_tensor(as_array(X))
-  tY <- torch::torch_tensor(as_array(Y))
-  expect_equal(as_array(out3), as_array_torch(tX$matmul(tY)), tolerance = 1e-5)
+  tX <- torch::torch_tensor(aperm(as_array(X), c(3L, 1L, 2L)))
+  tY <- torch::torch_tensor(aperm(as_array(Y), c(3L, 1L, 2L)))
+  expect_equal(aperm(as_array(out3), c(3L, 1L, 2L)), as_array_torch(tX$matmul(tY)), tolerance = 1e-5)
 })
 
 test_that("prim_cbrt", {

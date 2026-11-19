@@ -219,7 +219,7 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     batching_axes = list(c(4L, 5L), c(1L, 2L))
   )
 
-  # lhs has no free axes, so the free axes of rhs come right after the batching axes
+  # lhs has no free axes, so the free axes of rhs come first, then the batching axes
   # A[b,k] • B[b,k,n] with batching b and contracting k
   A6 <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
   B6 <- nv_array(1:24, shape = c(2, 3, 4), dtype = "f32")
@@ -229,6 +229,25 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     contracting_axes = list(2L, 2L),
     batching_axes = list(1L, 1L)
   )
+
+  # the layout of `nv_matmul()`: trailing batching axes
+  # A[m,k,b1,b2] • B[k,n,b1,b2] with batching (b1,b2) and contracting k
+  A7 <- nv_array(1:(2 * 3 * 2 * 4), shape = c(2, 3, 2, 4), dtype = "f32")
+  B7 <- nv_array(1:(3 * 5 * 2 * 4), shape = c(3, 5, 2, 4), dtype = "f32")
+  check_case(
+    A7,
+    B7,
+    contracting_axes = list(2L, 1L),
+    batching_axes = list(c(3L, 4L), c(3L, 4L))
+  )
+})
+
+test_that("prim_dot_general: the gradient of a batched matrix product needs no transpose", {
+  f <- function(A, B) {
+    sum(prim_dot_general(A, B, contracting_axes = list(2L, 1L), batching_axes = list(3L, 3L)))
+  }
+  graph <- trace_fn(gradient(f), list(nv_aval("f32", c(3L, 4L, 2L)), nv_aval("f32", c(4L, 5L, 2L))))
+  expect_no_match(repr(stablehlo(graph)[[1L]]), "stablehlo.transpose", fixed = TRUE)
 })
 
 test_that("broadcasting", {
