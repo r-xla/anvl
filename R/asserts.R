@@ -341,7 +341,7 @@ assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   }
   if (square && s[[1L]] != s[[2L]]) {
     cli_abort(c(
-      "{.arg {arg}} must be square in its first two axes.",
+      if (batched) "{.arg {arg}} must be square in its first two axes." else "{.arg {arg}} must be square.",
       "x" = "Got shape {shape_repr(s)}."
     ))
   }
