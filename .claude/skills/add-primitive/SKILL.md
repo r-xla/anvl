@@ -70,6 +70,8 @@ prim_<name> <- new_primitive("<name>", make_binary_op(infer_generic_biv))
 
 The shared rules are `infer_{generic,numeric,float,integer,integerish}_{uni,biv}()`; the prefix names the dtype group the op accepts (see `?dtypes`).
 
+An elementwise primitive with more than one operand broadcasts a scalar operand to the shape of the others: its inference rule takes the output shape from `infer_elementwise_shape()`, its StableHLO rule broadcasts while lowering (`elementwise_rule()`, or `hlo_broadcast_scalar()` for a single operand), and its reverse rule sums the gradient of a scalar operand back down with `unbroadcast()`.
+
 ## Inference Rule
 
 Every primitive has an inference rule `infer_<name>()` in `R/rules-inference.R`, passed to `graph_desc_add(..., infer_fn = infer_<name>)`. It maps the incoming `AbstractArray`s plus the static params to the outgoing `AbstractArray`s, and it is **the** place where the primitive's arguments are checked. Read the header comment of `R/rules-inference.R` before writing one; the rules below summarize it.
@@ -123,7 +125,8 @@ Reach for the shared helpers at the top of `R/rules-inference.R` before writing 
 | --- | --- |
 | `assert_array()` / `assert_arrays()` | operand is an `AbstractArray` |
 | `assert_array_dtype(x, "float", "int", shape =, naxes =)` | dtype category, shape, rank |
-| `assert_same_type()` / `assert_same_dtype()` | two operands agree |
+| `assert_same_dtype()` | two operands share a data type |
+| `infer_elementwise_shape(avals)` | the shapes of an elementwise primitive's operands agree, scalars aside; returns that shape |
 | `assert_int_param(x, arg, len =, min_len =)` | whole-number param, no `NA`, length |
 | `assert_size_param()` | as above, plus non-negative |
 | `assert_flag_param()` | `TRUE` / `FALSE` |

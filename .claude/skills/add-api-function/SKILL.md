@@ -39,7 +39,7 @@ API functions shipped with {anvl} must work with **both** the pjrt and quickr ba
 The exact convenience a wrapper should add varies by operation. **Propose a wrapper to the user but ask them to confirm** the semantic differences before implementing. Common patterns include:
 
 - **Type promotion:** bring the inputs to one dtype with a rule, `as_anvl_arrays(..., .promote = promotion_common())`
-- **Broadcasting:** broadcast scalars to match array shapes via `nv_broadcast_scalars()`
+- **Broadcasting:** an elementwise primitive broadcasts a scalar operand itself; for general broadcasting between arrays, use `nv_broadcast_arrays()`
 - **Default arguments:** infer `dtype` from the input when not provided
 - **Idempotency:** skip no-op cases (return the input unchanged if already correct dtype/shape)
 - **Input coercion:** bring auxiliary arguments to the input's dtype with `promotion_like("x")`
@@ -105,7 +105,7 @@ written with `0L` / `1L` returns the sample at the default *integer*.
 
 ### Binary element-wise ops
 
-For element-wise binary primitives, use the `make_do_binary()` factory -- it already composes `nv_promote_to_common()` + `nv_broadcast_scalars()` before calling the primitive:
+For element-wise binary primitives, use the `make_do_binary()` factory -- it promotes the operands with `nv_promote_to_common()` before calling the primitive, which broadcasts a scalar operand itself:
 
 ```r
 nv_<name> <- make_do_binary(prim_<name>)
@@ -232,7 +232,7 @@ devtools::test()
 - [ ] R generic / S3 method added if applicable (in `R/api-generics.R`)
 - [ ] `nv_<name>` implemented with roxygen docs and `@export`
 - [ ] Array inputs normalized at the top via `as_anvl_array()` / `as_anvl_arrays()`
-- [ ] Binary element-wise ops built with `make_do_binary()` (or equivalent `nv_promote_to_common()` + `nv_broadcast_scalars()` pipeline)
+- [ ] Binary element-wise ops built with `make_do_binary()` (or `nv_promote_to_common()` before the primitive)
 - [ ] Auxiliary arguments converted to the input dtype via `nv_convert()` where the primitive requires it
 - [ ] No-op shortcuts return the input unchanged (e.g. identity reshape / convert / broadcast)
 - [ ] Constants created inside the function use `nv_<op>_like()` so they live on the right backend/device
