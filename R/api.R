@@ -3525,21 +3525,23 @@ nv_while <- prim_while
 #' stacking each step's output into preallocated buffers.
 #'
 #' At step `t`, `body` receives the current carry and the step's slice of
-#' `xs` (taken along axis 1, with that unit axis dropped; a 1-D leaf
+#' `xs` (taken along the last axis, with that axis dropped; a 1-D leaf
 #' yields a scalar), and must return
 #' `list(carry = <same structure as init>, out = <arrays to stack>)`.
-#' The stacked `out` buffers gain a new leading axis of size `steps`.
+#' The stacked `out` buffers gain a new trailing axis of size `steps`. Like a
+#' batch axis, the step axis trails, so each step is a contiguous block of
+#' memory.
 #'
 #' The whole loop, written out in R:
 #'
 #' ```r
 #' carry <- init
-#' out <- <empty, `steps` rows>
+#' out <- <empty, of size `steps` along a new last axis>
 #' order <- if (reverse) rev(seq_len(steps)) else seq_len(steps)
 #' for (t in order) {
-#'   step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+#'   step <- body(carry, xs[..., t])  # `x` is NULL when `xs` is empty
 #'   carry <- step$carry
-#'   out[t, ...] <- step$out          # position t, not the loop's position
+#'   out[..., t] <- step$out          # position t, not the loop's position
 #' }
 #' list(carry = carry, out = out)
 #' ```
@@ -3548,9 +3550,9 @@ nv_while <- prim_while
 #'   Initial carry: a single array or a (possibly nested) named list.
 #'   Every slot must keep a fixed shape and dtype across steps
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
-#'   Per-step inputs, sliced along axis 1. All leaves must agree on
-#'   the size of axis 1. `NULL` or a list with no leaves runs a counted
-#'   loop over `steps` steps instead.
+#'   Per-step inputs, sliced along their last axis. All leaves must agree
+#'   on the size of the last axis. `NULL` or a list with no leaves runs a
+#'   counted loop over `steps` steps instead.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning
 #'   `list(carry = , out = )`. `out` may be a single array, a (nested)
@@ -3558,15 +3560,15 @@ nv_while <- prim_while
 #'   must be identical at every step. `x` is `NULL` when `xs` is empty.
 #' @param steps (`integer(1)` | `NULL`)\cr
 #'   Static trip count. Required when `xs` is empty; otherwise inferred
-#'   from (and checked against) axis 1 of `xs`. A trip count of `0` runs
-#'   no step.
+#'   from (and checked against) the last axis of `xs`. A trip count of `0`
+#'   runs no step.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run `t = steps, ..., 1`; each step still reads
 #'   `xs` at position `t` and writes its output at position `t`, so a
 #'   reverse scan consumes and produces arrays in the original order.
 #' @return `list(carry = , out = )`: the final carry (same structure as
 #'   `init`) and the stacked outputs (structure of `body`'s `out`, each
-#'   leaf gaining a leading axis of size `steps`).
+#'   leaf gaining a trailing axis of size `steps`).
 #' @section Gradients:
 #' Unlike [nv_while()], a scan is differentiable with [gradient()], with
 #' respect to `init`, `xs` and the arrays `body` closes over. The forward pass
@@ -3574,11 +3576,19 @@ nv_while <- prim_while
 #' takes grows linearly with `steps`.
 #' @seealso [prim_scan()], [nv_while()], [nv_cumsum()] for fixed associative scans.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # cumulative sum along axis 1
+#' # cumulative sum
 #' x <- nv_array(c(1, 2, 3, 4))
 #' nv_scan(
 #'   init = nv_scalar(0),
 #'   xs = x,
+#'   body = function(carry, x) list(carry = carry + x, out = carry + x)
+#' )$out
+#'
+#' # running sums of the columns of a matrix: each step reads a column
+#' m <- nv_array(matrix(c(1, 2, 3, 4, 5, 6), nrow = 2L))
+#' nv_scan(
+#'   init = nv_array(c(0, 0)),
+#'   xs = m,
 #'   body = function(carry, x) list(carry = carry + x, out = carry + x)
 #' )$out
 #'
@@ -3604,13 +3614,13 @@ nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
     if (!length(xs_flat)) {
       cli_abort("{.arg steps} is required when {.arg xs} is empty")
     }
-    # Reading axis 1 needs there to be one; the other leaves are checked
-    # against the count that comes out of this one.
+    # Reading the last axis needs there to be one; the other leaves are
+    # checked against the count that comes out of this one.
     s <- shape(xs_flat[[1L]])
     if (!length(s)) {
       cli_abort("every array in {.arg xs} must have at least one axis.")
     }
-    steps <- as.integer(s[[1L]])
+    steps <- as.integer(s[[length(s)]])
   }
 
   prim_scan(init, xs, body, steps = steps, reverse = reverse)

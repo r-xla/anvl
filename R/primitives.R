@@ -2657,30 +2657,30 @@ prim_while <- new_primitive(
 #' @title Primitive Scan
 #' @description
 #' Runs `body` a fixed number of times, threading a carry through the steps
-#' and stacking each step's outputs along a new leading axis. Step `t`
+#' and stacking each step's outputs along a new trailing axis. Step `t`
 #' receives the carry and, for every array in `xs`, its slice at position `t`
-#' along axis 1 with that axis dropped.
+#' along its last axis with that axis dropped.
 #' @param init (`list()`)\cr
 #'   Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
 #'   shape and data type across steps. It must not contain a random state: to
 #'   draw from one in `body`, make it the default before the loop with
 #'   [local_nv_rng_state()].
 #' @param xs (`list()`)\cr
-#'   Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-#'   all of size `steps` along it. An empty list runs a counted loop. It must
-#'   not contain a random state.
+#'   Per-step inputs: a (possibly nested) list of arrays sliced along their
+#'   last axis, all of size `steps` along it. An empty list runs a counted
+#'   loop. It must not contain a random state.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning `list(carry = , out = )`,
 #'   where `carry` has the structure of `init` and `out` is a (possibly
 #'   nested) list of arrays or `NULL`. `x` is `NULL` when `xs` is empty.
 #' @param steps (`integer(1)`)\cr
-#'   Static trip count; the size of axis 1 of every array in `xs`. `0` runs
-#'   no step and returns `init` with zero-length stacked outputs.
+#'   Static trip count; the size of the last axis of every array in `xs`.
+#'   `0` runs no step and returns `init` with zero-length stacked outputs.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run from `steps` down to `1`; each step still reads
 #'   `xs` at its own position and writes its output there.
 #' @return `list(carry = , out = )`: the final carry and the stacked
-#'   outputs, each leaf of `out` gaining a leading axis of size `steps`.
+#'   outputs, each leaf of `out` gaining a trailing axis of size `steps`.
 #' @templateVar primitive_id scan
 #' @template section_rules
 #' @section StableHLO:
@@ -2724,7 +2724,7 @@ prim_scan <- new_primitive(
       cli_abort("{.arg init} must contain at least one array.")
     }
 
-    # The body is traced once, seeing each `xs` leaf with its leading axis
+    # The body is traced once, seeing each `xs` leaf with its last axis
     # dropped; the lowering slices the real arrays inside the loop. This is
     # why `trace_fn()` alone is not enough, unlike in `prim_while()`, which
     # traces against the very values it was handed: we have to build the
@@ -2744,10 +2744,11 @@ prim_scan <- new_primitive(
       if (!length(shp)) {
         cli_abort("every array in {.arg xs} must have at least one axis.")
       }
-      if (shp[[1L]] != steps) {
-        cli_abort("every array in {.arg xs} must have size {steps} along axis 1, not {shp[[1L]]}.")
+      last <- length(shp)
+      if (shp[[last]] != steps) {
+        cli_abort("every array in {.arg xs} must have size {steps} along its last axis, not {shp[[last]]}.")
       }
-      AbstractArray(dtype = aval$dtype, shape = shp[-1L])
+      AbstractArray(dtype = aval$dtype, shape = shp[-last])
     })
     x_slices <- if (n_xs) unflatten(build_tree(xs), x_slices) else list()
 
@@ -2803,7 +2804,7 @@ prim_scan <- new_primitive(
         }
       }
       stacked <- lapply(outs_body[-seq_len(n_carry)], function(aval) {
-        AbstractArray(dtype = aval$dtype, shape = c(steps, shape(aval)))
+        AbstractArray(dtype = aval$dtype, shape = c(shape(aval), steps))
       })
       c(carry_out, stacked)
     }

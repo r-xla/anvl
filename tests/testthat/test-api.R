@@ -2988,6 +2988,13 @@ describe("nv_scan", {
     expect_equal(as.numeric(res$carry), sum(x))
   })
 
+  it("reads the trip count off the last axis of xs and stacks along a new last axis", {
+    m <- matrix(c(1, 2, 3, 4, 5, 6, 7, 8), nrow = 2L)
+    res <- nv_scan(nv_array(c(0, 0)), nv_array(m), cumsum_body)
+    expect_equal(as_array(res$out), t(apply(m, 1L, cumsum)))
+    expect_equal(as.numeric(res$carry), rowSums(m))
+  })
+
   it("runs fori-style with xs = NULL and an explicit trip count", {
     res <- nv_scan(
       init = nv_scalar(1L),
@@ -3033,7 +3040,7 @@ describe("nv_scan", {
     expect_error(nv_scan(nv_scalar(0), body = cumsum_body, steps = -1L), "not >= 0")
     expect_error(
       nv_scan(nv_scalar(0), x, cumsum_body, steps = 9L),
-      "size 9 along axis 1, not 4"
+      "size 9 along its last axis, not 4"
     )
   })
 })

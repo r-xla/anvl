@@ -862,7 +862,8 @@ prim_while[["stablehlo"]] <- function(..., cond, body, n_captures) {
 # A while loop over the state (i, carry..., out buffers..., xs...). Each
 # iteration slices step i of every xs leaf, runs the traced body inline, and
 # writes its outputs into the buffers at step i; xs ride along unchanged. The
-# step axis is R axis 1, the last XLA dimension.
+# step axis is the last R axis, XLA dimension 0, so a step is a contiguous
+# block of every buffer and every xs leaf.
 prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
   args <- list(...)
   outer <- args[[1L]]$func
@@ -880,14 +881,14 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
     hlo_tensor(
       0L,
       dtype = aval$dtype,
-      shape = xla_shape(c(n, shape(aval))),
+      shape = xla_shape(c(shape(aval), n)),
       func = outer
     )
   })
   # A zero-step scan is the buffers as allocated and the carry untouched. We
   # cannot emit the loop and let the condition stop it immediately: the body
   # slices one step off `xs`, which does not type-check against an `xs` whose
-  # axis 1 is empty, and MLIR verifies a region it never runs.
+  # last axis is empty, and MLIR verifies a region it never runs.
   if (n == 0L) {
     return(c(carry0, bufs0))
   }
@@ -925,12 +926,13 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   one_i <- hlo_scalar(1L, dtype = "i32")
   idx <- if (reverse) hlo_subtract(hlo_scalar(n - 1L, dtype = "i32"), i) else i
 
+  # The starts are per XLA dimension, the step's first.
   slices <- lapply(xs_in, function(x) {
-    shp <- shape(x$value_type)
+    shp <- r_shape(x)
     last <- length(shp)
-    starts <- c(rep(list(zero_i), last - 1L), list(idx))
-    sl <- rlang::exec(hlo_dynamic_slice, x, !!!starts, slice_sizes = as.integer(c(shp[-last], 1L)))
-    hlo_reshape(sl, as.integer(shp[-last]))
+    starts <- c(list(idx), rep(list(zero_i), last - 1L))
+    sl <- rlang::exec(hlo_dynamic_slice, x, !!!starts, slice_sizes = xla_shape(c(shp[-last], 1L)))
+    hlo_reshape(sl, xla_shape(shp[-last]))
   })
 
   env <- HloEnv()
@@ -942,9 +944,9 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   carry_new <- outs[seq_len(n_carry)]
   bufs_new <- Map(
     function(buf, out) {
-      shp <- shape(out$value_type)
-      upd <- hlo_reshape(out, as.integer(c(shp, 1L)))
-      starts <- c(rep(list(zero_i), length(shp)), list(idx))
+      shp <- r_shape(out)
+      upd <- hlo_reshape(out, xla_shape(c(shp, 1L)))
+      starts <- c(list(idx), rep(list(zero_i), length(shp)))
       rlang::exec(hlo_dynamic_update_slice, buf, upd, !!!starts)
     },
     bufs_in,

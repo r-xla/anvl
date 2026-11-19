@@ -1085,7 +1085,7 @@ describe("prim_scan", {
     grads <- jit(gradient(f_anvl))(
       nv_array(W_r, dtype = "f64"),
       nv_array(h0_r, dtype = "f64", shape = c(n, 1L)),
-      nv_array(xs_r, dtype = "f64", shape = c(steps, n, 1L))
+      nv_array(aperm(xs_r), dtype = "f64", shape = c(n, 1L, steps))
     )
 
     W <- torch::torch_tensor(W_r, dtype = torch::torch_float64(), requires_grad = TRUE)
@@ -1103,8 +1103,8 @@ describe("prim_scan", {
     expect_equal(as_array(grads$W), as_array_torch(W$grad), tolerance = 1e-10)
     expect_equal(as.numeric(as_array(grads$h0)), as.numeric(as_array_torch(h0$grad)), tolerance = 1e-10)
     expect_equal(
-      array(as_array(grads$xs), c(steps, n)),
-      as_array_torch(xs$grad),
+      array(as_array(grads$xs), c(n, steps)),
+      aperm(as_array_torch(xs$grad)),
       tolerance = 1e-10
     )
   }
