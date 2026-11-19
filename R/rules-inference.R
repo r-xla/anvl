@@ -1860,15 +1860,15 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   }
 
   # (C3)
-  if (shape_a[[n_axes]] != shape_a[[n_axes - 1L]]) {
+  if (shape_a[[1L]] != shape_a[[2L]]) {
     cli_abort(c(
-      "{.arg a} must be square in its last two axes.",
+      "{.arg a} must be square in its first two axes.",
       x = "Got {shape_repr(shape_a)}."
     ))
   }
 
-  batch_a <- shape_a[seq_len(n_axes - 2L)]
-  batch_b <- shape_b[seq_len(n_axes - 2L)]
+  batch_a <- shape_a[-(1:2)]
+  batch_b <- shape_b[-(1:2)]
   if (!identical(batch_a, batch_b)) {
     cli_abort(c(
       "The batch axes of {.arg a} and {.arg b} must match.",
@@ -1877,8 +1877,8 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   }
 
   # (C3)
-  side <- if (left_side) shape_b[[n_axes - 1L]] else shape_b[[n_axes]]
-  if (shape_a[[n_axes]] != side) {
+  side <- if (left_side) shape_b[[1L]] else shape_b[[2L]]
+  if (shape_a[[1L]] != side) {
     cli_abort(c(
       "{.arg a} and {.arg b} must agree on the axis the solve contracts over.",
       x = "Got {shape_repr(shape_a)} and {shape_repr(shape_b)}."

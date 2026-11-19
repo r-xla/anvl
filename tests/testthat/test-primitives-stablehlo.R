@@ -1100,26 +1100,35 @@ describe("prim_chol", {
     }
   })
 
-  it("factors every matrix of a batch, and only the failing one to NaN", {
+  it("factors every matrix of a batch along the trailing axes, and only the failing one to NaN", {
     withr::local_seed(2L)
     n <- 5L
-    a <- array(0, c(2L, 3L, n, n))
+    a <- array(0, c(n, n, 2L, 3L))
     for (i in 1:2) {
       for (j in 1:3) {
-        a[i, j, , ] <- random_spd(n)
+        a[,, i, j] <- random_spd(n)
       }
     }
-    a[1L, 2L, , ] <- -diag(n)
-    out <- as_array(prim_chol(nv_array(a, dtype = "f64"), lower = TRUE))
-    for (i in 1:2) {
-      for (j in 1:3) {
-        if (i == 1L && j == 2L) {
-          expect_true(all(is.nan(out[i, j, , ][lower.tri(diag(n), diag = TRUE)])))
-        } else {
-          expect_equal(out[i, j, , ], t(chol(a[i, j, , ])), tolerance = 1e-10)
+    a[,, 1L, 2L] <- -diag(n)
+    for (lower in c(TRUE, FALSE)) {
+      out <- as_array(prim_chol(nv_array(a, dtype = "f64"), lower = lower))
+      tri <- if (lower) lower.tri(diag(n), diag = TRUE) else upper.tri(diag(n), diag = TRUE)
+      for (i in 1:2) {
+        for (j in 1:3) {
+          if (i == 1L && j == 2L) {
+            expect_true(all(is.nan(out[,, i, j][tri])))
+          } else {
+            expected <- chol(a[,, i, j])
+            expect_equal(out[,, i, j], if (lower) t(expected) else expected, tolerance = 1e-10)
+          }
         }
       }
     }
+  })
+
+  it("lowers a batch without transposing it", {
+    g <- trace_fn(function(x) prim_chol(x, lower = TRUE), list(nv_aval("f64", c(4L, 4L, 3L))))
+    expect_no_match(repr(stablehlo(g, platform = "cpu")[[1L]]), "stablehlo.transpose", fixed = TRUE)
   })
 })
 
@@ -1152,25 +1161,42 @@ describe("prim_triangular_solve", {
     expect_equal(c(x2), c(7 / 6, 2.5), tolerance = 1e-5)
   })
 
-  it("solves a batch of right-side, transposed systems through trsm on CPU", {
+  it("solves a batch along the trailing axes, through trsm and through triangular_solve", {
+    # The CPU takes the `trsm` custom call for f32 and f64, every other platform
+    # `stablehlo.triangular_solve`; lowering for CUDA runs the latter on the CPU.
+    skip_if_not(is_cpu())
     withr::local_seed(1L)
-    a <- array(rnorm(18L), c(2L, 3L, 3L))
-    b <- array(rnorm(24L), c(2L, 4L, 3L))
+    a <- array(rnorm(54L), c(3L, 3L, 2L, 3L))
     for (i in 1:2) {
-      diag(a[i, , ]) <- 3
+      for (j in 1:3) {
+        diag(a[,, i, j]) <- 3
+      }
     }
-    x <- as_array(prim_triangular_solve(
-      nv_array(a, dtype = "f64"),
-      nv_array(b, dtype = "f64"),
-      left_side = FALSE,
-      lower = TRUE,
-      unit_diagonal = FALSE,
-      transpose_a = TRUE
-    ))
-    for (i in 1:2) {
-      l <- a[i, , ]
-      l[upper.tri(l)] <- 0
-      expect_equal(x[i, , ], b[i, , ] %*% solve(t(l)), tolerance = 1e-10)
+    bs <- list(left = array(rnorm(72L), c(3L, 4L, 2L, 3L)), right = array(rnorm(72L), c(4L, 3L, 2L, 3L)))
+    for (side in names(bs)) {
+      b <- bs[[side]]
+      left_side <- side == "left"
+      g <- trace_fn(
+        function(a, b) {
+          prim_triangular_solve(a, b, left_side = left_side, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
+        },
+        list(nv_aval("f64", dim(a)), nv_aval("f64", dim(b)))
+      )
+      for (platform in c("cpu", "cuda")) {
+        info <- paste(side, platform)
+        ir <- repr(stablehlo(g, platform = platform)[[1L]])
+        expect_match(ir, if (platform == "cpu") "trsm" else "stablehlo.triangular_solve", fixed = TRUE, info = info)
+        expect_no_match(ir, "stablehlo.transpose", fixed = TRUE, info = info)
+        x <- with_mocked_bindings(eval_graph_pjrt(g, a, b), current_platform = function() platform)
+        for (i in 1:2) {
+          for (j in 1:3) {
+            l <- a[,, i, j]
+            l[upper.tri(l)] <- 0
+            expected <- if (left_side) solve(t(l), b[,, i, j]) else b[,, i, j] %*% solve(t(l))
+            expect_equal(x[,, i, j], expected, tolerance = 1e-10, info = info)
+          }
+        }
+      }
     }
   })
 })

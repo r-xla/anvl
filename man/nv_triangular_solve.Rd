@@ -15,9 +15,9 @@ nv_triangular_solve(
 }
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
-Triangular coefficient matrix with at least 2 axes. The last two
-axes must be equal; any leading axes are batch axes. Can be any numeric
-data type: \code{a} and \code{b} are
+Triangular coefficient matrix with at least 2 axes. The first two
+axes must be of equal size; any trailing axes are batch axes. Can be any
+numeric data type: \code{a} and \code{b} are
 \link[=nv_promote_to_common]{promoted to a common data type} and that is then
 converted to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where
 it is not a float already, since the solve is a float one. An R value
@@ -26,18 +26,18 @@ assumes the other operand's data type within its
 neither has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
-Right-hand side. For \code{a} of shape \verb{(B..., n, n)}, \code{b} may be either:
+Right-hand side. For \code{a} of shape \verb{(n, n, b1, ..., bk)}, \code{b} may be either:
 \itemize{
-\item full rank — shape \verb{(B..., n, k)} when \code{left = TRUE}, or
-\verb{(B..., k, n)} when \code{left = FALSE};
-\item one rank less, shape \verb{(B..., n)}, meaning a single column
+\item full rank — shape \verb{(n, m, b1, ..., bk)} when \code{left = TRUE}, or
+\verb{(m, n, b1, ..., bk)} when \code{left = FALSE};
+\item one rank less, shape \verb{(n, b1, ..., bk)}, meaning a single column
 (\code{left = TRUE}) or row (\code{left = FALSE}) per batch — it
 is reshaped internally and the reshape is undone on the result so
 the output rank matches \code{b}.
 }
 
-\code{b}'s batch axes (\code{B...}) must match \code{a}'s exactly. It is promoted
-together with \code{a} -- see \code{a}.}
+\code{b}'s trailing batch axes (\verb{b1, ..., bk}) must match \code{a}'s exactly. It is
+promoted together with \code{a} -- see \code{a}.}
 
 \item{left}{(\code{logical(1)})\cr
 If \code{TRUE} (default), solve \code{op(a) \%*\% x = b}; if \code{FALSE},
@@ -67,8 +67,8 @@ depending on \code{transpose}.
 }
 \details{
 As a convenience, \code{b} may have one fewer axis than \code{a} (a single
-right-hand side per batch, shape \verb{(B..., n)} for \code{a} of shape
-\verb{(B..., n, n)}). It is reshaped internally to a column (\code{left = TRUE}) or row (\code{left = FALSE}) and reshaped back on the way out.
+right-hand side per batch, shape \verb{(n, b1, ..., bk)} for \code{a} of shape
+\verb{(n, n, b1, ..., bk)}). It is reshaped internally to a column (\code{left = TRUE}) or row (\code{left = FALSE}) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
 
 Differentiation is only implemented for a single system: a \code{\link[=gradient]{gradient()}} of a

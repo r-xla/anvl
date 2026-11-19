@@ -3698,12 +3698,12 @@ prim_gather <- new_primitive(
 #' @title Primitive Cholesky Decomposition
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-#' Axes before the last two are batch axes.
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @details
 #' Differentiation is only implemented for a single matrix: the `reverse` rule
 #' errors on a batched input (an input with more than 2 axes).
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes
+#' @templateVar shapes with at least 2 axes, the first two of equal size (a square matrix); any trailing axes are batch axes
 #' @template param_unary_x
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
@@ -3743,21 +3743,21 @@ prim_chol <- new_primitive(
 #' Solves a system of linear equations with a triangular coefficient matrix.
 #' When `left_side` is `TRUE`, solves `op(a) %*% x = b` for `x`.
 #' When `left_side` is `FALSE`, solves `x %*% op(a) = b` for `x`.
-#' Axes before the last two are batch axes and must match
-#' between `a` and `b` (no broadcasting).
+#' The first two axes form the matrices, and any trailing axes are batch axes,
+#' which must match between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
 #' @details
 #' Differentiation is only implemented for a single system: the `reverse` rule
 #' errors on batched operands (operands with more than 2 axes).
 #' @param a ([`arrayish`])\cr
-#'   Triangular coefficient matrix with at least 2 axes. The last two axes must
-#'   be equal (square matrix); any leading axes are batch axes. Can be any
-#'   float data type. `r roxy_agree("a", "b")`
+#'   Triangular coefficient matrix with at least 2 axes, of shape
+#'   `(n, n, b1, ..., bk)`: the first two axes are of equal size (a square
+#'   matrix), and any trailing axes are batch axes. Can be any float data type.
+#'   `r roxy_agree("a", "b")`
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side. Same rank as `a` (rank >= 2), with
-#'   matching leading batch axes. The size of `a`'s last two (square)
-#'   axes must equal `b`'s second-to-last axis when
-#'   `left_side = TRUE`, or `b`'s last axis when `left_side = FALSE`.
+#'   Right-hand side, of the same rank as `a` and with matching trailing batch
+#'   axes: of shape `(n, m, b1, ..., bk)` when `left_side = TRUE`, or
+#'   `(m, n, b1, ..., bk)` when `left_side = FALSE`.
 #'   Shares `a`'s data type -- see `a`.
 #' @param left_side (`logical(1)`)\cr
 #'   If `TRUE`, solve `op(a) %*% x = b`. If `FALSE`, solve `x %*% op(a) = b`.
