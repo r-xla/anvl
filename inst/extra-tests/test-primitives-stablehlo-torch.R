@@ -375,13 +375,12 @@ test_that("prim_psigamma", {
   shp <- c(2, 3)
   x <- sampler_unif(0.5, 5)(shp, "f32")
   for (n_val in c(0L, 1L, 2L)) {
-    # a scalar order is broadcast to the shape of `x`
-    out_nv <- jit(prim_psigamma)(
-      nv_array(x, dtype = "f32"),
-      nv_scalar(n_val, dtype = "f32")
-    )
     out_th <- torch::torch_polygamma(n_val, torch::torch_tensor(x, dtype = torch::torch_float32()))
-    expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = 1e-5)
+    # the order as an array of the shape of `x`, and as a scalar broadcast to it
+    for (deriv in list(nv_array(array(n_val, shp), dtype = "f32"), nv_scalar(n_val, dtype = "f32"))) {
+      out_nv <- jit(prim_psigamma)(nv_array(x, dtype = "f32"), deriv)
+      expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = 1e-5)
+    }
   }
 })
 

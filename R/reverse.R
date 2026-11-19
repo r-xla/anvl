@@ -589,10 +589,11 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
       input_gval <- call$inputs[[j]]
       ct <- input_grads[[j]]
       # Elementwise primitives broadcast a scalar operand, so a gradient of the
-      # wrong shape would otherwise be accumulated without complaint.
+      # wrong shape would otherwise be accumulated without complaint. The rule
+      # may be a user's own, so this is not reported as an internal error.
       if (!is.null(ct) && !identical(shape(ct), shape(input_gval))) {
         cli_abort(c(
-          "Internal error: the reverse rule of primitive {.field {call$primitive$name}} returned a gradient of the wrong shape for input {j}.", # nolint
+          "The reverse rule of primitive {.field {call$primitive$name}} returned a gradient of the wrong shape for input {j}.", # nolint
           x = "Expected {shape_repr(shape(input_gval))}, got {shape_repr(shape(ct))}."
         ))
       }

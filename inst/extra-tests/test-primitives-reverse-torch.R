@@ -684,22 +684,23 @@ test_that("prim_psigamma", {
   shp <- c(2, 3)
   for (n_val in c(1L, 2L)) {
     x <- sampler_unif(0.5, 5)(shp, "f32")
-    n_arr <- array(rep(n_val, prod(shp)), shp)
-
-    f_nv <- function(x_t) {
-      out <- prim_psigamma(x_t, as.numeric(n_val))
-      nv_sum(out, axes = seq_along(shape(out)), drop = TRUE)
-    }
-    grad_nv <- jit(gradient(f_nv))(nv_array(x, dtype = "f32"))[[1L]]
-
     x_th <- torch::torch_tensor(x, requires_grad = TRUE, dtype = torch::torch_float32())
     torch::torch_sum(torch::torch_polygamma(n_val, x_th))$backward()
 
-    testthat::expect_equal(
-      xlamisc::as_array(grad_nv),
-      as_array_torch(x_th$grad),
-      tolerance = 1e-4
-    )
+    # the order as an array of the shape of `x`, and as a scalar broadcast to it
+    for (deriv in list(array(as.numeric(n_val), shp), as.numeric(n_val))) {
+      f_nv <- function(x_t) {
+        out <- prim_psigamma(x_t, deriv)
+        nv_sum(out, axes = seq_along(shape(out)), drop = TRUE)
+      }
+      grad_nv <- jit(gradient(f_nv))(nv_array(x, dtype = "f32"))[[1L]]
+
+      testthat::expect_equal(
+        xlamisc::as_array(grad_nv),
+        as_array_torch(x_th$grad),
+        tolerance = 1e-4
+      )
+    }
   }
 })
 

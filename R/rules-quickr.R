@@ -1476,15 +1476,18 @@ quickr_register_elementwise_lowerer <- function(primitive, fun, scalar_inputs = 
       return(empty)
     }
     out_shape <- as.integer(shape(out_avals[[1L]]))
-    broadcast <- list()
-    for (i in setdiff(seq_along(inputs), scalar_inputs)) {
-      if (length(out_shape) && !length(shape(input_nodes[[i]]$aval))) {
-        sym <- ctx$new_tmp_sym()
-        broadcast <- c(broadcast, quickr_emit_full_like(sym, inputs[[i]], out_shape, out_avals[[1L]]))
-        inputs[[i]] <- sym
-      }
-    }
-    c(broadcast, fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx))
+    scalars <- Filter(
+      \(i) length(out_shape) && !length(shape(input_nodes[[i]]$aval)),
+      setdiff(seq_along(inputs), scalar_inputs)
+    )
+    syms <- lapply(scalars, \(i) ctx$new_tmp_sym())
+    broadcast <- Map(
+      \(sym, i) quickr_emit_full_like(sym, inputs[[i]], out_shape, out_avals[[1L]]),
+      syms,
+      scalars
+    )
+    inputs[scalars] <- syms
+    c(unlist(broadcast, recursive = FALSE), fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx))
   }
   quickr_register_prim_lowerer(primitive, guarded)
 }
