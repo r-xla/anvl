@@ -149,26 +149,71 @@ graph_gradient <- function(graph, wrt) {
   descriptor_to_graph(desc)
 }
 
-# Here we compute the gradients of a graph and write it into the current descriptor
-# This can either be a call to the gradient (inputs are provided)
-# Or just the gradient itself, i.e. then the inputs are NULL (used for graph_gradient).
+# The value of `graph`, a function returning a float scalar, and its gradient
+# with respect to the inputs `wrt` names, written into the current descriptor
+# (see `graph_pullback()` for `inputs`).
 graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
-  desc <- current_descriptor()
   out <- validate_gradient_output(graph$outputs)
-  reqs <- compute_requirements(graph, wrt)
+  replayed <- graph_pullback(graph, compute_requirements(graph, wrt), inputs)
+  seed <- get_box_or_register_const(current_descriptor(), nv_scalar(1L, dtype = out$aval$dtype))
+  list(value = replayed$value, grad = replayed$pullback(list(seed)))
+}
 
+# Replays the forward pass of `graph` into the current descriptor, as a
+# function of `inputs` -- the boxes its inputs are bound to, the arguments
+# passed to the differentiated function -- or, where `inputs` is `NULL`, of
+# inputs of the descriptor's own (`graph_gradient()`). `reqs` says which values
+# require a gradient, as `compute_requirements()` returns it. Returns the boxes
+# of its outputs as `value`, and its `pullback`: a function that takes a
+# cotangent per output, `NULL` for a zero one, records the backward pass into
+# the descriptor current when it is called, and returns the cotangents of the
+# inputs `reqs$requires_grad` selects. It can be called more than once.
+graph_pullback <- function(graph, reqs, inputs = NULL) {
+  desc <- current_descriptor()
   rebuilt <- rebuild_forward_into(graph, desc, inputs, reqs$required_env)
 
-  grad_env <- hashtab()
-  grad_env[[out]] <- get_box_or_register_const(desc, nv_scalar(1L, dtype = out$aval$dtype))
-  grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
-
-  box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
-  replayed <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
+  pullback <- function(out_cts) {
+    grad_env <- seed_cotangents(graph, reqs$required_env, out_cts)
+    grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
+    # An input no cotangent reached gets zeros, the cotangent it has.
+    lapply(graph$inputs[reqs$requires_grad], \(input) grad_env[[input]] %||% constant_fill(0L, input$aval))
+  }
   list(
-    value = lapply(graph$outputs, replayed),
-    grad = lapply(collect_input_grads(graph, desc, grad_env, reqs$requires_grad), box_of)
+    value = lapply(graph$outputs, function(g) {
+      g <- rebuilt$translate(g)
+      desc$gval_to_box[[g]] %||% GraphBox(g, desc)
+    }),
+    pullback = pullback
   )
+}
+
+# `value` at the data type and shape of `aval`, broadcast from an array
+# constant. The result or an argument of a differentiated function can be a
+# 16-bit float, at which a `prim_fill()` does not lower: stablehlo formats no
+# 16-bit float literal.
+constant_fill <- function(value, aval) {
+  const <- get_box_or_register_const(current_descriptor(), nv_scalar(value, dtype = aval$dtype))
+  nv_broadcast_to(const, shape(aval))
+}
+
+# The cotangents `out_cts`, one per output of `graph` or `NULL` for a zero one,
+# as the hashtab(gval -> box) `run_backward_pass()` starts from. Only an output
+# that requires a gradient is seeded, so that no value the reverse rules leave
+# out gains a cotangent.
+seed_cotangents <- function(graph, required_env, out_cts) {
+  grad_env <- hashtab()
+  for (i in seq_along(graph$outputs)) {
+    out <- graph$outputs[[i]]
+    ct <- out_cts[[i]]
+    if (is.null(ct) || is_graph_literal(out) || !isTRUE(required_env[[out]])) {
+      next
+    }
+    # The same value can be returned more than once, e.g. a branch
+    # `\() list(s, s)`, or a branch returning one of its inputs in two places.
+    # Its cotangents accumulate, as for any other reuse.
+    grad_env[[out]] <- if (is.null(grad_env[[out]])) ct else prim_add(grad_env[[out]], ct)
+  }
+  grad_env
 }
 
 # The tree the gradients of `graph`'s inputs come back in: that of the inputs
@@ -270,19 +315,7 @@ compute_requirements <- function(graph, wrt) {
 # `backwards` in the current descriptor, and returns the cotangent of each
 # value in `targets` -- a zero where the target did not reach any output.
 pull_back <- function(graph, backwards, required_env, targets, out_grads) {
-  grad_env <- hashtab()
-  for (i in seq_along(graph$outputs)) {
-    out <- graph$outputs[[i]]
-    # Only an output that requires a gradient is seeded, so that no value
-    # the reverse rules leave out gains a cotangent.
-    if (!is_graph_literal(out) && isTRUE(required_env[[out]]) && !is.null(out_grads[[i]])) {
-      # The same value can be returned more than once, e.g. a branch
-      # `\() list(s, s)`, or a branch returning one of its inputs in two
-      # places. Its cotangents accumulate, as for any other reuse.
-      grad_env[[out]] <- if (is.null(grad_env[[out]])) out_grads[[i]] else prim_add(grad_env[[out]], out_grads[[i]])
-    }
-  }
-
+  grad_env <- seed_cotangents(graph, required_env, out_grads)
   grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
   lapply(targets, function(target) {
     grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
@@ -592,24 +625,6 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
   grad_env
 }
 
-# For each input the user asked to differentiate w.r.t., return the
-# accumulated gradient gnode -- or a zero of matching shape if the input
-# never reached the loss.
-collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
-  lapply(graph$inputs[requires_grad], function(input) {
-    x <- grad_env[[input]] %||%
-      {
-        const <- get_box_or_register_const(
-          desc,
-          nv_scalar(0L, dtype = input$aval$dtype)
-        )
-        nv_broadcast_to(const, shape(input$aval))
-      }
-    x$gnode
-  })
-}
-
-
 #' @title Gradients
 #' @description
 #' Return a new function that computes the gradient of `f` via reverse-mode
@@ -713,15 +728,251 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
       call = call
     )
   }
+  traced <- trace_replayed(f, prep, \(graph, operands) graph_value_and_grad(graph, wrt, operands))
+  list(
+    value = unflatten(traced$graph$out_tree, traced$res$value),
+    grad = unflatten(gradient_out_tree(traced$graph, wrt), traced$res$grad)
+  )
+}
+
+# Traces `f` at the arguments `prep` holds (see `prepare_gradient_args()`)
+# into a graph of its own, and replays it into the enclosing trace by
+# `replay(graph, operands)`, where `operands` are the boxes its inputs are
+# bound to. Returns the graph and what `replay` returned.
+trace_replayed <- function(f, prep, replay) {
   # A side effect `f` uses closes over the enclosing trace's value, and its
   # uses continue the enclosing trace's.
   enclosing <- current_descriptor()
   desc <- local_descriptor(side_effects_mode = "capture")
   graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
-  res <- graph_value_and_grad(graph, wrt, gradient_operands(graph, prep$args_flat))
+  res <- replay(graph, gradient_operands(graph, prep$args_flat))
   desc_end_capture(enclosing, list(graph))
-  list(
-    value = unflatten(graph$out_tree, res$value),
-    grad = unflatten(gradient_out_tree(graph, wrt), res$grad)
+  list(graph = graph, res = res)
+}
+
+#' @title Pullbacks
+#' @description
+#' Evaluate `f` at the arguments `...` and return its pullback: the function
+#' that takes a cotangent of the result -- a weight for each of its elements --
+#' back to the arguments, by reverse-mode automatic differentiation. That is
+#' the cotangent times the Jacobian of `f`, the vector-Jacobian product.
+#' Where [`gradient()`] differentiates a function that returns a single float
+#' scalar, a pullback differentiates one with any result: it gives the
+#' gradient of the sum of the result's elements, each weighted by its
+#' cotangent.
+#'
+#' * `pullback()` returns only the pullback.
+#' * `value_and_pullback()` returns both the result of `f` and its pullback.
+#'
+#' `f` runs once, when `pullback()` is called. The pullback can be called more
+#' than once, e.g. with every unit vector to build a Jacobian row by row.
+#' @param f (`function`)\cr
+#'   Function to differentiate. It can return any (nested) list of arrays.
+#' @param ... (any)\cr
+#'   The arguments to evaluate `f` at, matched to its formals as in a call of
+#'   `f`.
+#' @return
+#'   For `pullback()`, the pullback (`function`); for `value_and_pullback()`,
+#'   `list(value = , pullback = )`: the return value of `f`, and its pullback.
+#'
+#'   The pullback takes one argument, `cotangent`, structured like the value
+#'   of `f`, with an array of the same shape and data type for each float
+#'   array of it; an R value takes the data type of its array. `NULL` in place
+#'   of an array -- or of a whole part of the value -- stands for zeros. An
+#'   array of the value that is not a float has no cotangent, and gets `NULL`.
+#'
+#'   The pullback returns a named `list` with the cotangent of each argument,
+#'   structured like that argument, as [`gradient()`] does. An argument that
+#'   is not a float array -- an integer or boolean array, an R value such as
+#'   `3`, a random state -- is held fixed, and gets `NULL` in place of a
+#'   cotangent, as does each such part of a list.
+#'
+#'   Like [`gradient()`], `pullback()` must be called inside [`jit()`]. The
+#'   pullback must be called in the same function, or in a function traced
+#'   inside it, such as a branch of [`nv_if()`].
+#' @seealso `r roxy_article("autodiff")`, [`gradient()`]
+#' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' f <- function(x, y) x * y
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(4, 5, 6))
+#' # cotangent * y and cotangent * x
+#' g <- jit(function(x, y, ct) pullback(f, x, y)(ct))
+#' g(x, y, nv_array(c(1, 0, 1)))
+#'
+#' # the value of `f` together with its pullback
+#' h <- jit(function(x, y, ct) {
+#'   out <- value_and_pullback(f, x, y)
+#'   list(value = out$value, x = out$pullback(ct)$x)
+#' })
+#' h(x, y, nv_array(c(1, 0, 1)))
+#'
+#' # a result with several parts: `NULL` is the cotangent of one that does not
+#' # matter
+#' stats <- function(x) list(total = sum(x), squares = x^2L)
+#' dtotal <- jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))
+#' dtotal(x)
+#'
+#' # the Jacobian of x * sum(x), one row per call of the pullback
+#' jacobian <- jit(function(x) {
+#'   pull <- pullback(\(x) x * sum(x), x)
+#'   eye <- nv_eye(3L, dtype = dtype(x))
+#'   rows <- lapply(1:3, \(i) nv_reshape(pull(eye[i, ])$x, c(1L, 3L)))
+#'   do.call(nv_concatenate, c(rows, list(axis = 1L)))
+#' })
+#' jacobian(x)
+pullback <- function(f, ...) {
+  assert_function(f)
+  trace_pullback(f, list(...), "pullback")$pullback
+}
+
+#' @rdname pullback
+#' @export
+value_and_pullback <- function(f, ...) {
+  assert_function(f)
+  trace_pullback(f, list(...), "value_and_pullback")
+}
+
+# pullback() / value_and_pullback() (named by `fn`) of `f` at `args`: `f`
+# traced into a graph whose forward pass is replayed into the enclosing trace,
+# and the function that records its backward pass there. Every float array
+# among the arguments is differentiated; the rest are held fixed.
+trace_pullback <- function(f, args, fn, call = rlang::caller_env()) {
+  enclosing <- current_descriptor(silent = TRUE)
+  if (is.null(enclosing)) {
+    cli_abort(
+      c(
+        "{.fn {fn}} can only be called inside a {.fn jit}-compiled function.",
+        i = "Call it in the function you pass to {.fn jit}."
+      ),
+      call = call
+    )
+  }
+  args <- match_args_to_formals(f, args)
+  # A random state among the arguments is a leaf, as for `gradient()`.
+  prep <- list(
+    args_flat = flatten(args, is_leaf = is_rng_state),
+    in_tree = build_tree(args, is_leaf = is_rng_state)
   )
+  differentiated <- vapply(prep$args_flat, is_float_array, logical(1L))
+
+  traced <- trace_replayed(f, prep, function(graph, operands) {
+    # A leaf that is no array is static, and no input of the graph.
+    requires_grad <- differentiated[!graph$is_static_flat]
+    reqs <- list(
+      required_env = requirements_from(graph, graph$inputs[requires_grad]),
+      requires_grad = requires_grad
+    )
+    graph_pullback(graph, reqs, operands)
+  })
+  graph <- traced$graph
+  value <- unflatten(graph$out_tree, traced$res$value)
+  pull <- function(cotangent) {
+    if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
+      cli_abort(c(
+        "A pullback can only be called in the function {.fn {fn}} was called in.",
+        i = "Or in a function traced inside it, such as a branch of {.fn nv_if}."
+      ))
+    }
+    cts <- flatten_cotangent(value, cotangent, graph$out_tree, call = rlang::current_env())
+    pulled <- vector("list", length(prep$args_flat))
+    pulled[differentiated] <- traced$res$pullback(cts)
+    unflatten(prep$in_tree, pulled)
+  }
+  list(value = value, pullback = pull)
+}
+
+# Whether `x`, a leaf of the arguments of `pullback()`, is a float array with a
+# data type of its own. An R value takes its data type from the way the body
+# uses it, so the data type of its cotangent would not be the caller's choice.
+is_float_array <- function(x) {
+  is_arrayish(x) && !has_no_dtype(x) && is_dtype_float(dtype(x))
+}
+
+# Whether `desc` is `ancestor` or a trace opened inside it.
+descriptor_within <- function(desc, ancestor) {
+  while (!is.null(desc)) {
+    if (identical(desc, ancestor)) {
+      return(TRUE)
+    }
+    desc <- desc$parent
+  }
+  FALSE
+}
+
+# The cotangent `cotangent` of `value`, the result of the function
+# `pullback()` differentiates, whose structure `out_tree` is, as a list with an
+# entry per array of `value`: a box of the current trace at the array's data
+# type and shape, or `NULL` for a zero one. Errors name `call`.
+flatten_cotangent <- function(value, cotangent, out_tree, call) {
+  Map(
+    function(x, ct, i) {
+      if (is.null(ct)) {
+        return(NULL)
+      }
+      path <- pjrt::tree_path(out_tree, i)
+      at <- if (nzchar(path)) paste0(" at {.code ", path, "}") else ""
+      dt <- dtype(x)
+      if (!is_dtype_float(dt)) {
+        cli_abort(
+          c(
+            paste0("The value of {.arg f} has no cotangent", at, "."),
+            x = "It is {.val {as.character(dt)}}, not a float.",
+            i = "Pass {.code NULL} there."
+          ),
+          call = call
+        )
+      }
+      if (has_no_dtype(ct)) {
+        ct <- materialize_at(ct, dt)
+      } else if (!is_arrayish(ct)) {
+        cli_abort(
+          c(
+            paste0("The cotangent", at, " must be an array."),
+            x = "Got {.cls {class(ct)}}."
+          ),
+          call = call
+        )
+      }
+      ct <- maybe_box_arrayish(ct)
+      if (dtype(ct) != dt || !identical(shape(ct), shape(x))) {
+        cli_abort(
+          c(
+            paste0("The cotangent", at, " must have the data type and shape of the value."),
+            x = "The value is {.val {format_aval_short(to_abstract(x))}}, the cotangent {.val {format_aval_short(to_abstract(ct))}}." # nolint
+          ),
+          call = call
+        )
+      }
+      ct
+    },
+    flatten(value),
+    cotangent_leaves(value, cotangent, call),
+    seq_len(tree_size(out_tree))
+  )
+}
+
+# The leaves of `cotangent` aligned with those of `value`, `NULL` for each leaf
+# of a part of `value` whose cotangent is `NULL`. Errors name `call`.
+cotangent_leaves <- function(value, cotangent, call) {
+  if (is.null(cotangent)) {
+    return(vector("list", length(flatten(value))))
+  }
+  if (build_tree(cotangent) == build_tree(value)) {
+    return(flatten(cotangent))
+  }
+  same_node <- rlang::is_bare_list(value) &&
+    rlang::is_bare_list(cotangent) &&
+    length(cotangent) == length(value) &&
+    identical(names(cotangent), names(value))
+  if (!same_node) {
+    cli_abort(
+      c(
+        "{.arg cotangent} must be structured like the value of {.arg f}.",
+        i = "{.code NULL} can stand in for any part of it."
+      ),
+      call = call
+    )
+  }
+  do.call(c, unname(Map(cotangent_leaves, value, cotangent, list(call)))) %||% list()
 }

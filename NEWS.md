@@ -9,6 +9,9 @@
   that produce the arrays are not fused with those that use them.
   `nv_optimization_barrier()` does the same for a single array or a tree of
   arrays, returning it with the same structure.
+* New `pullback()` and `value_and_pullback()` differentiate a function with any
+  result: they return its pullback, which takes a cotangent of the result back
+  to the arguments.
 
 # anvl 0.6.0
 

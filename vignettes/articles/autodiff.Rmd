@@ -35,7 +35,7 @@ This is because {anvl} computes gradients by transforming the traced program of 
 ## Differentiable Functions
 
 The function that is differentiated must return a single float scalar, such as a loss.
-If you are interested in the derivative of a function that returns an array, reduce it to a scalar first.
+If you are interested in the derivative of a function that returns an array, reduce it to a scalar first, or use `pullback()` (see [below](#pullbacks)).
 For an elementwise function such as `sin()`, the gradient of `sum(sin(x))` is exactly the elementwise derivative `cos(x)`:
 
 ```{r, error = TRUE}
@@ -107,6 +107,43 @@ Instead of calling the function and its gradient separately, `value_and_gradient
 loss_vg <- jit(value_and_gradient(loss, wrt = "params"))
 loss_vg(params, x, y)
 ```
+
+## Pullbacks
+
+For a function with any other result, `pullback()` evaluates it and returns its *pullback*.
+The pullback takes a cotangent -- a weight for each element of the result -- back to the arguments: it returns the gradient of the sum of the result's elements, each weighted by its cotangent.
+`pullback()` takes the arguments as a call of the function would, and the pullback returns the same named list as `gradient()`:
+
+```{r}
+f <- function(x) x^2L
+f_pullback <- jit(function(x, w) pullback(f, x)(w))
+f_pullback(nv_array(c(1, 2, 3)), nv_array(c(1, 0, 1)))
+```
+
+`value_and_pullback()` returns the result of the function as well, as `value_and_gradient()` does.
+The pullback can be called several times, while the function runs only once.
+Called with each unit vector, it gives the rows of the Jacobian:
+
+```{r}
+jacobian <- jit(function(x) {
+  pull <- pullback(\(x) x * sum(x), x)
+  eye <- nv_eye(3L, dtype = dtype(x))
+  rows <- lapply(1:3, \(i) nv_reshape(pull(eye[i, ])$x, c(1L, 3L)))
+  do.call(nv_concatenate, c(rows, list(axis = 1L)))
+})
+jacobian(nv_array(c(1, 2, 3)))
+```
+
+The cotangent is structured like the result.
+`NULL` stands for zeros in place of an array or of a whole part of it:
+
+```{r}
+stats <- function(x) list(total = sum(x), squares = x^2L)
+jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))(nv_array(c(1, 2, 3)))
+```
+
+Every float array among the arguments is differentiated.
+An argument that is not one, such as an integer array or an R value, is held fixed, and the pullback returns `NULL` for it.
 
 ## Composing with `jit()`
 
