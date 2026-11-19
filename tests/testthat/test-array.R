@@ -190,43 +190,65 @@ describe("print.AnvlArray", {
   })
 })
 
-test_that("nv_array(byrow = TRUE) fills row-major from a flat vector", {
-  expect_equal(
-    as_array(nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)),
-    matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
-  )
-})
+describe("nv_array(byrow = TRUE)", {
+  it("fills row-major from a flat vector", {
+    expect_equal(
+      as_array(nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)),
+      matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+    )
+  })
 
-test_that("nv_array(byrow = TRUE) extends to higher-rank shapes", {
-  # data values fill last axis fastest, mirroring row-major storage
-  x <- nv_array(1:24, shape = c(2L, 3L, 4L), byrow = TRUE)
-  expected <- aperm(array(1:24, dim = c(4L, 3L, 2L)), 3:1)
-  expect_equal(as_array(x), expected)
-  expect_shape(x, c(2, 3, 4))
-})
+  it("extends to higher-rank shapes", {
+    # data values fill last axis fastest, mirroring row-major storage
+    x <- nv_array(1:24, shape = c(2L, 3L, 4L), byrow = TRUE)
+    expected <- aperm(array(1:24, dim = c(4L, 3L, 2L)), 3:1)
+    expect_equal(as_array(x), expected)
+    expect_shape(x, c(2, 3, 4))
+  })
 
-test_that("nv_array(byrow = TRUE) is a no-op for shapes with < 2 axes", {
-  expect_equal(
-    as_array(nv_array(1:4, byrow = TRUE)),
-    as_array(nv_array(1:4))
-  )
-  expect_equal(
-    as_array(nv_array(1L, shape = integer(), byrow = TRUE)),
-    as_array(nv_array(1L, shape = integer()))
-  )
-})
+  it("is a no-op for shapes with < 2 axes", {
+    expect_equal(
+      as_array(nv_array(1:4, byrow = TRUE)),
+      as_array(nv_array(1:4))
+    )
+    expect_equal(
+      as_array(nv_array(1L, shape = integer(), byrow = TRUE)),
+      as_array(nv_array(1L, shape = integer()))
+    )
+  })
 
-test_that("nv_array(byrow = TRUE) re-fills a matrix input row-major", {
-  # input is column-major matrix(1:6, 2, 3) but byrow re-interprets values
-  expect_equal(
-    as_array(nv_array(matrix(1:6, nrow = 2L), byrow = TRUE)),
-    matrix(1:6, nrow = 2L, ncol = 3L, byrow = TRUE)
-  )
-})
+  it("re-fills a matrix input row-major", {
+    # input is column-major matrix(1:6, 2, 3) but byrow re-interprets values
+    expect_equal(
+      as_array(nv_array(matrix(1:6, nrow = 2L), byrow = TRUE)),
+      matrix(1:6, nrow = 2L, ncol = 3L, byrow = TRUE)
+    )
+  })
 
-test_that("nv_array(byrow = TRUE) errors when data is an AnvlArray", {
-  x <- nv_array(1:6, shape = c(2L, 3L))
-  expect_error(nv_array(x, byrow = TRUE), "byrow")
+  it("errors when data is an AnvlArray", {
+    x <- nv_array(1:6, shape = c(2L, 3L))
+    expect_error(nv_array(x, byrow = TRUE), "byrow")
+  })
+
+  it("refuses data that does not fill the shape, as without byrow", {
+    expect_error(nv_array(1:4, shape = c(2L, 3L)), "Data has length 4")
+    expect_error(nv_array(1:4, shape = c(2L, 3L), byrow = TRUE), "Data has length 4")
+  })
+
+  it("recycles a single value", {
+    expect_equal(
+      as_array(nv_array(7L, shape = c(2L, 3L), byrow = TRUE)),
+      matrix(7L, nrow = 2L, ncol = 3L)
+    )
+  })
+
+  it("keeps the values of a bit64::integer64", {
+    # Through `array()`, the integer64 lost its class and its bits were read as
+    # doubles.
+    x <- nv_int64(bit64::as.integer64(1:6), shape = c(2L, 3L), byrow = TRUE)
+    expect_shape(x, c(2L, 3L))
+    expect_equal(as.integer(as_array(x)), as.integer(matrix(1:6, nrow = 2L, ncol = 3L, byrow = TRUE)))
+  })
 })
 
 test_that("nv_matrix() infers ncol from nrow and data length", {
