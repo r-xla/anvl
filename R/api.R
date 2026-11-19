@@ -692,14 +692,13 @@ nv_ifelse <- jit(function(test, yes, no) {
     no = no,
     .promote = promotion_common(on = c("yes", "no"))
   )
-  args <- nv_broadcast_scalars(args$test, args$yes, args$no)
-  prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
+  prim_ifelse(args$test, args$yes, args$no)
 })
 
 ## Binary ops ------------------------------------------------------------------
 
-# Jitted here rather than at each `nv_*`, because promotion and broadcasting
-# make this more than one operation -- unlike `make_float_unary()`, which is a
+# Jitted here rather than at each `nv_*`, because promotion makes this more
+# than one operation -- unlike `make_float_unary()`, which is a
 # thin wrapper around a single primitive and stays eager.
 #
 # `operands` names the two arguments, as in `make_binary_op()`.
@@ -708,9 +707,7 @@ make_do_binary <- function(f, operands = c("lhs", "rhs")) {
   jit(rlang::new_function(
     rlang::set_names(rep(list(rlang::missing_arg()), 2L), operands),
     rlang::expr({
-      args <- nv_promote_to_common(!!!rlang::syms(operands))
-      args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
-      do.call(f, args)
+      do.call(f, nv_promote_to_common(!!!rlang::syms(operands)))
     })
   ))
 }
@@ -813,7 +810,6 @@ nv_div <- jit(function(lhs, rhs) {
   if (!is_dtype_float(peek_dtype(args[[1L]]))) {
     args <- lapply(args, nv_convert, dtype = default_float())
   }
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   prim_div(args[[1L]], args[[2L]])
 })
 
@@ -1048,7 +1044,6 @@ nv_remainder <- make_do_binary(prim_remainder, c("x", "y"))
 #' @export
 nv_mod <- jit(function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   rest <- nv_remainder(lhs, rhs)
@@ -1083,7 +1078,6 @@ nv_mod <- jit(function(lhs, rhs) {
 #' @export
 nv_floor_div <- jit(function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   dt <- peek_dtype(lhs)
@@ -1169,9 +1163,7 @@ nv_xor <- make_do_binary(prim_xor, c("x", "y"))
 # brought to `x`'s data type rather than meeting it at a common one.
 make_shift <- function(f) {
   jit(function(x, shift) {
-    args <- as_anvl_arrays(x = x, shift = shift, .promote = promotion_like("x"))
-    args <- nv_broadcast_scalars(args$x, args$shift)
-    do.call(f, args)
+    do.call(f, as_anvl_arrays(x = x, shift = shift, .promote = promotion_like("x")))
   })
 }
 
@@ -1268,8 +1260,7 @@ nv_shift_right_arithmetic <- make_shift(prim_shift_right_arithmetic)
 #' @export
 nv_atan2 <- jit(function(y, x) {
   args <- promote_to_common_float(y = y, x = x)
-  args <- nv_broadcast_scalars(args$y, args$x)
-  prim_atan2(args[[1L]], args[[2L]])
+  prim_atan2(args$y, args$x)
 })
 
 
@@ -1897,9 +1888,7 @@ nv_gamma <- jit(function(x) {
 #' nv_psigamma(x, 1) # trigamma
 #' @export
 nv_psigamma <- jit(function(x, deriv = 0L) {
-  args <- promote_to_common_float(x = x, deriv = deriv)
-  args <- nv_broadcast_scalars(args$x, args$deriv)
-  do.call(prim_psigamma, args)
+  do.call(prim_psigamma, promote_to_common_float(x = x, deriv = deriv))
 })
 
 #' @title Error Function

@@ -8,23 +8,25 @@ prim_ifelse(test, yes, no)
 }
 \arguments{
 \item{test}{(\code{\link{arrayish}})\cr
-Predicate array. Must be a boolean or an R logical, and scalar or the same
-shape as \code{yes}.}
+Predicate array. Must be a boolean or an R logical.}
 
 \item{yes, no}{(\code{\link{arrayish}})\cr
-Values to select from, of the same shape. Can be any data type.
+Values to select from. Can be any data type.
 \code{yes} and \code{no} must have the same data type. An R value among them
 assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
 when none of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the shape of \code{yes} and \code{no}, and the data type they agreed on.
+Has the operands' broadcast shape and the data type \code{yes} and \code{no} agreed
+on.
 }
 \description{
 Element-wise selection based on a boolean predicate, mirroring R's
 \code{\link[=ifelse]{ifelse()}}. For each element, returns the corresponding element from
 \code{yes} where \code{test} is \code{TRUE} and from \code{no} where \code{test} is \code{FALSE}.
+The operands that are not scalars, \code{test} among them, have the same shape,
+and a scalar is broadcast to it.
 
 \code{\link[=prim_if]{prim_if()}} is the other conditional: it mirrors R's \code{if} construct and
 branches between two \emph{functions}, evaluating only the selected one.
@@ -49,6 +51,9 @@ Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}, specified under
 # the result takes the branches' data type; `test` only selects
 test <- nv_array(c(TRUE, FALSE, TRUE))
 prim_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+
+# a scalar branch is broadcast to the shape of `test`
+prim_ifelse(test, nv_array(c(1, 2, 3)), 0)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
