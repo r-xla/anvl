@@ -210,10 +210,11 @@ graph_gradient <- function(graph, wrt) {
 # `inputs` is `NULL`, of inputs of the descriptor's own (`graph_gradient()`).
 # `reqs` says which values require a gradient, as `compute_requirements()`
 # returns it. Returns the boxes of its outputs as `value`, and its `pullback`:
-# a function that takes a cotangent per output, `NULL` for a zero one, records
-# the backward pass into the descriptor current when it is called, and returns
-# the cotangents of the inputs `reqs$requires_grad` selects. It can be called
-# more than once.
+# a function that takes a cotangent per output, a `SymbolicZero` for a zero
+# one, records the backward pass into the descriptor current when it is
+# called, and returns the cotangents of the inputs `reqs$requires_grad`
+# selects -- zeros where no cotangent reached the input. It can be called more
+# than once.
 graph_pullback <- function(graph, reqs, inputs = NULL) {
   desc <- current_descriptor()
   rebuilt <- rebuild_forward_into(graph, desc, inputs, reqs$required_env)
@@ -223,28 +224,11 @@ graph_pullback <- function(graph, reqs, inputs = NULL) {
   targets <- graph$inputs[reqs$requires_grad]
   list(
     value = lapply(graph$outputs, replayed),
-    pullback = function(out_cts) pull_back(graph, rebuilt$backwards, reqs$required_env, targets, out_cts)
-  )
-}
-
-# The cotangents `out_cts`, one per output of `graph`, as the hashtab(gval ->
-# box) `run_backward_pass()` starts from. Only an output that requires a
-# gradient and whose cotangent is no symbolic zero is seeded, so that no value
-# the reverse rules leave out gains a cotangent.
-seed_cotangents <- function(graph, required_env, out_cts) {
-  grad_env <- hashtab()
-  for (i in seq_along(graph$outputs)) {
-    out <- graph$outputs[[i]]
-    ct <- out_cts[[i]]
-    if (is_symbolic_zero(ct) || is_graph_literal(out) || !isTRUE(required_env[[out]])) {
-      next
+    pullback = function(out_cts) {
+      cts <- pull_back(graph, rebuilt$backwards, reqs$required_env, targets, out_cts)
+      lapply(cts, instantiate_cotangent)
     }
-    # The same value can be returned more than once, e.g. a branch
-    # `\() list(s, s)`, or a branch returning one of its inputs in two places.
-    # Its cotangents accumulate, as for any other reuse.
-    grad_env[[out]] <- if (is.null(grad_env[[out]])) ct else prim_add(grad_env[[out]], ct)
-  }
-  grad_env
+  )
 }
 
 # The tree the gradients of `graph`'s inputs come back in: that of the inputs
@@ -339,6 +323,36 @@ compute_requirements <- function(graph, wrt) {
   required_env <- propagate_requirements(graph, required_env)
 
   list(required_env = required_env, requires_grad = requires_grad)
+}
+
+# The backward pass of a sub-graph whose forward `rebuild_forward_into()`
+# replayed: seeds `graph`'s outputs with `out_cts`, runs the reverse rules
+# `backwards` in the current descriptor, and returns the cotangent of each
+# value in `targets` -- a `SymbolicZero` where no cotangent reached the target.
+pull_back <- function(graph, backwards, required_env, targets, out_cts) {
+  grad_env <- seed_cotangents(graph, required_env, out_cts)
+  grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
+  lapply(targets, \(target) grad_env[[target]] %||% SymbolicZero(target$aval))
+}
+
+# The cotangents `out_cts`, one per output of `graph`, as the hashtab(gval ->
+# box) `run_backward_pass()` starts from. Only an output that requires a
+# gradient and whose cotangent is no symbolic zero is seeded, so that no value
+# the reverse rules leave out gains a cotangent.
+seed_cotangents <- function(graph, required_env, out_cts) {
+  grad_env <- hashtab()
+  for (i in seq_along(graph$outputs)) {
+    out <- graph$outputs[[i]]
+    ct <- out_cts[[i]]
+    if (is_symbolic_zero(ct) || is_graph_literal(out) || !isTRUE(required_env[[out]])) {
+      next
+    }
+    # The same value can be returned more than once, e.g. a branch
+    # `\() list(s, s)`, or a branch returning one of its inputs in two places.
+    # Its cotangents accumulate, as for any other reuse.
+    grad_env[[out]] <- if (is.null(grad_env[[out]])) ct else prim_add(grad_env[[out]], ct)
+  }
+  grad_env
 }
 
 # Splits the reverse of a sub-graph -- a branch of `prim_if()`, the body of
@@ -436,14 +450,9 @@ pull_back_graph <- function(graph, backwards, required_env, targets, seeded) {
     graph$outputs,
     seeded
   )
-  grad_env <- seed_cotangents(graph, required_env, out_cts)
-  grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
-  zero <- vapply(targets, \(target) is.null(grad_env[[target]]), logical(1L))
-  desc$outputs <- lapply(targets, function(target) {
-    ct <- grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
-    maybe_box_arrayish(ct, desc)$gnode
-  })
-  list(graph = descriptor_to_graph(desc), zero = zero)
+  cts <- pull_back(graph, backwards, required_env, targets, out_cts)
+  desc$outputs <- lapply(cts, \(ct) maybe_box_arrayish(instantiate_cotangent(ct), desc)$gnode)
+  list(graph = descriptor_to_graph(desc), zero = vapply(cts, is_symbolic_zero, logical(1L)))
 }
 
 # `compute_requirements()` reads the set to differentiate with respect to off
@@ -963,12 +972,13 @@ descriptor_within <- function(desc, ancestor) {
 # The cotangent `cotangent` of `value`, the result of the function
 # `pullback()` differentiates, whose structure `out_tree` is, as a list with an
 # entry per array of `value`: a box of the current trace at the array's data
-# type and shape, or `NULL` for a zero one. Errors name `call`.
+# type and shape, or a `SymbolicZero` where the cotangent is `NULL`. Errors
+# name `call`.
 flatten_cotangent <- function(value, cotangent, out_tree, call) {
   Map(
     function(x, ct, i) {
       if (is.null(ct)) {
-        return(NULL)
+        return(SymbolicZero(x))
       }
       path <- pjrt::tree_path(out_tree, i)
       at <- if (nzchar(path)) " at {.code {path}}" else ""

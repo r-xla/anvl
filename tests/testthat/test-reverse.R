@@ -260,6 +260,13 @@ describe("pullback", {
     expect_equal(as.numeric(g(x, y)), c(0, 0, 0))
   })
 
+  it("leaves a result whose cotangent is NULL out of the backward pass", {
+    # zeros pushed back through exp() at 1000 would be 0 * Inf = NaN
+    f <- function(x) list(a = x * 2, b = nv_exp(x * 1000))
+    g <- jit(function(x) pullback(f, x)(list(a = ct, b = NULL))$x)
+    expect_equal(as.numeric(g(x)), c(2, 0, -4))
+  })
+
   it("holds an argument that is not a float array fixed, and returns NULL for it", {
     f <- function(x, n, s, p) x * nv_convert(n, "f64") * s + p$w * nv_convert(p$k, "f64")
     g <- jit(function(x, n, p) pullback(f, x, n, 2, p)(ct))
