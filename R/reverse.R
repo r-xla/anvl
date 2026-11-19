@@ -48,7 +48,7 @@ prepare_gradient_args <- function(args, wrt) {
     rep(TRUE, length(args_flat))
   }
   check_wrt_arrayish(args_flat, is_wrt_flat)
-  list(args_flat = args_flat, in_tree = in_tree)
+  list(args_flat = args_flat, in_tree = in_tree, is_wrt_flat = is_wrt_flat)
 }
 
 #' @title Reverse Rule
@@ -140,8 +140,10 @@ graph_gradient <- function(graph, wrt) {
     value <- lapply(x$value, function(box) register_gval(desc, box$gnode))
     SideEffectView(x$effect, value, n = x$n, inputs = x$inputs)
   })
-  res <- graph_value_and_grad(graph, wrt)
-  desc$outputs <- lapply(res$grad, \(box) box$gnode)
+  out <- validate_gradient_output(graph$outputs)
+  seed <- get_box_or_register_const(desc, nv_scalar(1L, dtype = out$aval$dtype))
+  grad <- graph_pullback(graph, compute_requirements(graph, wrt))$pullback(list(seed))
+  desc$outputs <- lapply(grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
   desc$is_static_flat <- graph$is_static_flat
   desc$static_args_flat <- graph$static_args_flat
@@ -149,71 +151,26 @@ graph_gradient <- function(graph, wrt) {
   descriptor_to_graph(desc)
 }
 
-# The value of `graph`, a function returning a float scalar, and its gradient
-# with respect to the inputs `wrt` names, written into the current descriptor
-# (see `graph_pullback()` for `inputs`).
-graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
-  out <- validate_gradient_output(graph$outputs)
-  replayed <- graph_pullback(graph, compute_requirements(graph, wrt), inputs)
-  seed <- get_box_or_register_const(current_descriptor(), nv_scalar(1L, dtype = out$aval$dtype))
-  list(value = replayed$value, grad = replayed$pullback(list(seed)))
-}
-
 # Replays the forward pass of `graph` into the current descriptor, as a
-# function of `inputs` -- the boxes its inputs are bound to, the arguments
-# passed to the differentiated function -- or, where `inputs` is `NULL`, of
-# inputs of the descriptor's own (`graph_gradient()`). `reqs` says which values
-# require a gradient, as `compute_requirements()` returns it. Returns the boxes
-# of its outputs as `value`, and its `pullback`: a function that takes a
-# cotangent per output, `NULL` for a zero one, records the backward pass into
-# the descriptor current when it is called, and returns the cotangents of the
-# inputs `reqs$requires_grad` selects. It can be called more than once.
+# function of `inputs` -- the boxes its inputs are bound to -- or, where
+# `inputs` is `NULL`, of inputs of the descriptor's own (`graph_gradient()`).
+# `reqs` says which values require a gradient, as `compute_requirements()`
+# returns it. Returns the boxes of its outputs as `value`, and its `pullback`:
+# a function that takes a cotangent per output, `NULL` for a zero one, records
+# the backward pass into the descriptor current when it is called, and returns
+# the cotangents of the inputs `reqs$requires_grad` selects. It can be called
+# more than once.
 graph_pullback <- function(graph, reqs, inputs = NULL) {
   desc <- current_descriptor()
   rebuilt <- rebuild_forward_into(graph, desc, inputs, reqs$required_env)
 
-  pullback <- function(out_cts) {
-    grad_env <- seed_cotangents(graph, reqs$required_env, out_cts)
-    grad_env <- run_backward_pass(graph, rebuilt$backwards, reqs$required_env, grad_env)
-    # An input no cotangent reached gets zeros, the cotangent it has.
-    lapply(graph$inputs[reqs$requires_grad], \(input) grad_env[[input]] %||% constant_fill(0L, input$aval))
-  }
+  box_of <- function(g) desc$gval_to_box[[g]] %||% GraphBox(g, desc)
+  replayed <- function(g) box_of(if (is_graph_literal(g)) g else rebuilt$trans[[g]] %||% g)
+  targets <- graph$inputs[reqs$requires_grad]
   list(
-    value = lapply(graph$outputs, function(g) {
-      g <- rebuilt$translate(g)
-      desc$gval_to_box[[g]] %||% GraphBox(g, desc)
-    }),
-    pullback = pullback
+    value = lapply(graph$outputs, replayed),
+    pullback = function(out_cts) pull_back(graph, rebuilt$backwards, reqs$required_env, targets, out_cts)
   )
-}
-
-# `value` at the data type and shape of `aval`, broadcast from an array
-# constant. The result or an argument of a differentiated function can be a
-# 16-bit float, at which a `prim_fill()` does not lower: stablehlo formats no
-# 16-bit float literal.
-constant_fill <- function(value, aval) {
-  const <- get_box_or_register_const(current_descriptor(), nv_scalar(value, dtype = aval$dtype))
-  nv_broadcast_to(const, shape(aval))
-}
-
-# The cotangents `out_cts`, one per output of `graph` or `NULL` for a zero one,
-# as the hashtab(gval -> box) `run_backward_pass()` starts from. Only an output
-# that requires a gradient is seeded, so that no value the reverse rules leave
-# out gains a cotangent.
-seed_cotangents <- function(graph, required_env, out_cts) {
-  grad_env <- hashtab()
-  for (i in seq_along(graph$outputs)) {
-    out <- graph$outputs[[i]]
-    ct <- out_cts[[i]]
-    if (is.null(ct) || is_graph_literal(out) || !isTRUE(required_env[[out]])) {
-      next
-    }
-    # The same value can be returned more than once, e.g. a branch
-    # `\() list(s, s)`, or a branch returning one of its inputs in two places.
-    # Its cotangents accumulate, as for any other reuse.
-    grad_env[[out]] <- if (is.null(grad_env[[out]])) ct else prim_add(grad_env[[out]], ct)
-  }
-  grad_env
 }
 
 # The tree the gradients of `graph`'s inputs come back in: that of the inputs
@@ -315,10 +272,27 @@ compute_requirements <- function(graph, wrt) {
 # `backwards` in the current descriptor, and returns the cotangent of each
 # value in `targets` -- a zero where the target did not reach any output.
 pull_back <- function(graph, backwards, required_env, targets, out_grads) {
-  grad_env <- seed_cotangents(graph, required_env, out_grads)
+  grad_env <- hashtab()
+  for (i in seq_along(graph$outputs)) {
+    out <- graph$outputs[[i]]
+    # Only an output that requires a gradient is seeded, so that no value
+    # the reverse rules leave out gains a cotangent.
+    if (!is_graph_literal(out) && isTRUE(required_env[[out]]) && !is.null(out_grads[[i]])) {
+      # The same value can be returned more than once, e.g. a branch
+      # `\() list(s, s)`, or a branch returning one of its inputs in two
+      # places. Its cotangents accumulate, as for any other reuse.
+      grad_env[[out]] <- if (is.null(grad_env[[out]])) out_grads[[i]] else prim_add(grad_env[[out]], out_grads[[i]])
+    }
+  }
+
   grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
+  # A 16-bit float zero is a broadcast constant: stablehlo formats no 16-bit
+  # float literal for `prim_fill()`.
   lapply(targets, function(target) {
-    grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
+    grad_env[[target]] %||% {
+      zero <- get_box_or_register_const(current_descriptor(), nv_scalar(0L, dtype = target$aval$dtype))
+      nv_broadcast_to(zero, shape(target$aval))
+    }
   })
 }
 
@@ -421,8 +395,8 @@ propagate_requirements <- function(graph, required_env) {
 # Replays `graph`'s forward pass into `desc`, call by call. `split_vjp()` uses
 # it to rebuild a sub-graph -- a branch of `prim_if()`, the body of
 # `prim_scan()` -- `graph_apply()` to rerun a closed graph,
-# `graph_value_and_grad()` to replay what `gradient()` traced into the
-# descriptor it is called in.
+# `graph_pullback()` to replay what `pullback()` traced into the descriptor
+# it is called in.
 #
 # Returns:
 #   - trans: hashtab(original gval -> new gval) for every replaced output,
@@ -715,8 +689,8 @@ resolve_wrt <- function(f, wrt, call = rlang::caller_env()) {
 }
 
 # gradient() / value_and_gradient() (named by `fn`) at the call's arguments:
-# `f` traced into a graph whose value and gradient are replayed into the
-# enclosing trace.
+# the pullback of `f` with respect to the arguments `wrt` names, applied to a 1
+# for its value.
 trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
   prep <- prepare_gradient_args(args, wrt)
   if (is.null(current_descriptor(silent = TRUE))) {
@@ -728,26 +702,11 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
       call = call
     )
   }
-  traced <- trace_replayed(f, prep, \(graph, operands) graph_value_and_grad(graph, wrt, operands))
-  list(
-    value = unflatten(traced$graph$out_tree, traced$res$value),
-    grad = unflatten(gradient_out_tree(traced$graph, wrt), traced$res$grad)
-  )
-}
-
-# Traces `f` at the arguments `prep` holds (see `prepare_gradient_args()`)
-# into a graph of its own, and replays it into the enclosing trace by
-# `replay(graph, operands)`, where `operands` are the boxes its inputs are
-# bound to. Returns the graph and what `replay` returned.
-trace_replayed <- function(f, prep, replay) {
-  # A side effect `f` uses closes over the enclosing trace's value, and its
-  # uses continue the enclosing trace's.
-  enclosing <- current_descriptor()
-  desc <- local_descriptor(side_effects_mode = "capture")
-  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
-  res <- replay(graph, gradient_operands(graph, prep$args_flat))
-  desc_end_capture(enclosing, list(graph))
-  list(graph = graph, res = res)
+  out <- trace_pullback(f, prep, fn)
+  value <- validate_gradient_output(lapply(flatten(out$value), \(box) box$gnode))
+  seed <- get_box_or_register_const(current_descriptor(), nv_scalar(1L, dtype = value$aval$dtype))
+  grad <- out$pullback(unflatten(build_tree(out$value), list(seed)))
+  list(value = out$value, grad = if (is.null(wrt)) grad else grad[names(grad) %in% wrt])
 }
 
 #' @title Pullbacks
@@ -823,21 +782,36 @@ trace_replayed <- function(f, prep, replay) {
 #' jacobian(x)
 pullback <- function(f, ...) {
   assert_function(f)
-  trace_pullback(f, list(...), "pullback")$pullback
+  trace_pullback(f, pullback_args(f, list(...)), "pullback")$pullback
 }
 
 #' @rdname pullback
 #' @export
 value_and_pullback <- function(f, ...) {
   assert_function(f)
-  trace_pullback(f, list(...), "value_and_pullback")
+  trace_pullback(f, pullback_args(f, list(...)), "value_and_pullback")
 }
 
-# pullback() / value_and_pullback() (named by `fn`) of `f` at `args`: `f`
-# traced into a graph whose forward pass is replayed into the enclosing trace,
-# and the function that records its backward pass there. Every float array
-# among the arguments is differentiated; the rest are held fixed.
-trace_pullback <- function(f, args, fn, call = rlang::caller_env()) {
+# The arguments `args` of `pullback()`, matched to the formals of `f`, as
+# `prepare_gradient_args()` returns them: every float array among them is
+# differentiated.
+pullback_args <- function(f, args) {
+  args <- match_args_to_formals(f, args)
+  args_flat <- flatten(args, is_leaf = is_rng_state)
+  list(
+    args_flat = args_flat,
+    in_tree = build_tree(args, is_leaf = is_rng_state),
+    is_wrt_flat = vapply(args_flat, is_float_array, logical(1L))
+  )
+}
+
+# The pullback of `f` for `pullback()`, `value_and_pullback()` or
+# `gradient()`, named by `fn`, at the arguments `prep` holds (see
+# `prepare_gradient_args()`): `f` traced into a graph whose forward pass is
+# replayed into the enclosing trace, and the function that records its
+# backward pass there. It differentiates the leaves `prep$is_wrt_flat`
+# selects, and returns `NULL` for the others.
+trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
   enclosing <- current_descriptor(silent = TRUE)
   if (is.null(enclosing)) {
     cli_abort(
@@ -848,25 +822,20 @@ trace_pullback <- function(f, args, fn, call = rlang::caller_env()) {
       call = call
     )
   }
-  args <- match_args_to_formals(f, args)
-  # A random state among the arguments is a leaf, as for `gradient()`.
-  prep <- list(
-    args_flat = flatten(args, is_leaf = is_rng_state),
-    in_tree = build_tree(args, is_leaf = is_rng_state)
+  # A side effect `f` uses closes over the enclosing trace's value, and its
+  # uses continue the enclosing trace's.
+  desc <- local_descriptor(side_effects_mode = "capture")
+  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
+  # A leaf that is no array is static, and no input of the graph.
+  requires_grad <- prep$is_wrt_flat[!graph$is_static_flat]
+  reqs <- list(
+    required_env = requirements_from(graph, graph$inputs[requires_grad]),
+    requires_grad = requires_grad
   )
-  differentiated <- vapply(prep$args_flat, is_float_array, logical(1L))
+  res <- graph_pullback(graph, reqs, gradient_operands(graph, prep$args_flat))
+  desc_end_capture(enclosing, list(graph))
 
-  traced <- trace_replayed(f, prep, function(graph, operands) {
-    # A leaf that is no array is static, and no input of the graph.
-    requires_grad <- differentiated[!graph$is_static_flat]
-    reqs <- list(
-      required_env = requirements_from(graph, graph$inputs[requires_grad]),
-      requires_grad = requires_grad
-    )
-    graph_pullback(graph, reqs, operands)
-  })
-  graph <- traced$graph
-  value <- unflatten(graph$out_tree, traced$res$value)
+  value <- unflatten(graph$out_tree, res$value)
   pull <- function(cotangent) {
     if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
       cli_abort(c(
@@ -876,7 +845,7 @@ trace_pullback <- function(f, args, fn, call = rlang::caller_env()) {
     }
     cts <- flatten_cotangent(value, cotangent, graph$out_tree, call = rlang::current_env())
     pulled <- vector("list", length(prep$args_flat))
-    pulled[differentiated] <- traced$res$pullback(cts)
+    pulled[prep$is_wrt_flat] <- res$pullback(cts)
     unflatten(prep$in_tree, pulled)
   }
   list(value = value, pullback = pull)
