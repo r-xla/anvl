@@ -128,9 +128,11 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 - **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
-  Most are declarations: how each parameter that names axes or sizes changes when the operands gain a
-  leading batch axis (`param_axes()`, `param_axis_map()`, `param_shape()`, `param_per_axis()`), with the
-  generic rule broadcasting operands that are not mapped over. Only primitives that do not fit write a
+  The batch axis is the operands' last axis, so a parameter that names axes keeps its value; most rules
+  are declarations of how the parameters with an entry per axis, or a shape, change (`param_shape()`,
+  `param_axis_map()`, `param_per_axis()`), with the generic rule broadcasting operands that are not
+  mapped over. `vectorize()` maps over, and stacks along, the last axis by default (`in_axes = -1L`,
+  `out_axes = -1L`). Only primitives that do not fit write a
   `fn`. Every rule is checked by `autotest_vectorize()` (`helper-vectorize.R`) in
   `test-primitives-vectorize.R`.
 

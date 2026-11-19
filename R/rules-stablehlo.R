@@ -683,8 +683,8 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 # A random state is a ThreeFry-2x32 key, `ui32[2]` (the words of JAX's key data), and a
 # counter, `ui64`. ?prim_sample_bits says which values a sampling call draws.
 # A sampling call that `vectorize()` batched draws from a batch of random states
-# of a batch shape B, keys `ui32[B, 2]` and counters `ui64[B]`, from each as from
-# one. Each sampling call and each fork is a call of a function built once per
+# of a batch shape B, keys `ui32[2, B]` and counters `ui64[B]`, from each as from
+# one, into draws of shape `c(shape, B)`. Each sampling call and each fork is a call of a function built once per
 # lowering (and batch shape, draw shape and data type), so that many sampling
 # calls lower and compile quickly.
 prim_sample_bits[["stablehlo"]] <- function(key, counter, shape, dtype) {
@@ -718,11 +718,11 @@ rng_state_call <- function(id, key, counter, body) {
   batch <- shape(counter$value_type)
   callee <- lowering_func(id, function(id) {
     func <- local_func(id)
-    key <- stablehlo::hlo_input("key", "ui32", shape = c(batch, 2L), func = func)
+    key <- stablehlo::hlo_input("key", "ui32", shape = c(2L, batch), func = func)
     counter <- stablehlo::hlo_input("counter", "ui64", shape = batch, func = func)
     n_batch <- length(batch)
     key_words <- lapply(0:1, function(i) {
-      word <- hlo_slice(key, c(rep(0L, n_batch), i), c(batch, i + 1L), rep(1L, n_batch + 1L))
+      word <- hlo_slice(key, c(i, rep(0L, n_batch)), c(i + 1L, batch), rep(1L, n_batch + 1L))
       hlo_reshape(word, batch)
     })
     # each word is cleared of the other first, so that the conversion is exact
@@ -760,15 +760,15 @@ threefry_draw <- function(key, shape, dtype) {
     limit <- .Machine$integer.max
     cli_abort(c("Cannot draw more than {limit} values at once.", i = "Draw fewer values at once."))
   }
-  # every draw of the batch flattened along a last axis
-  flat <- c(batch, as.integer(n))
+  # every draw of the batch flattened along a first axis
+  flat <- c(as.integer(n), batch)
   zeros <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = "ui32", func = func), integer(), flat)
-  index <- hlo_iota(iota_dimension = length(batch), dtype = "ui32", shape = flat, func = func)
-  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, seq_along(batch) - 1L, flat), list(zeros, index))
+  index <- hlo_iota(iota_dimension = 0L, dtype = "ui32", shape = flat, func = func)
+  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, seq_along(batch), flat), list(zeros, index))
   if (dtype == "ui64") {
     by32 <- hlo_broadcast_in_dim(hlo_scalar(32L, dtype = "ui64", func = func), integer(), flat)
     high <- hlo_shift_left(hlo_convert(words[[1L]], "ui64"), by32)
-    return(hlo_reshape(hlo_or(high, hlo_convert(words[[2L]], "ui64")), c(batch, shape)))
+    return(hlo_reshape(hlo_or(high, hlo_convert(words[[2L]], "ui64")), c(shape, batch)))
   }
   values <- hlo_xor(words[[1L]], words[[2L]])
   if (dtype != "ui32") {
@@ -780,7 +780,7 @@ threefry_draw <- function(key, shape, dtype) {
     )
     values <- hlo_convert(hlo_and(values, mask), dtype)
   }
-  hlo_reshape(values, c(batch, shape))
+  hlo_reshape(values, c(shape, batch))
 }
 
 # ThreeFry-2x32 with 20 rounds (Salmon et al., 2011), as XLA implements it: the

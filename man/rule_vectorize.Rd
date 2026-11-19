@@ -17,8 +17,8 @@ A rule of its own. If given, the other arguments must be left at their
 defaults.}
 
 \item{params}{(named \code{list()})\cr
-How each parameter that refers to the axes of the operands changes, one
-of the kinds in \code{\link[=param_axes]{param_axes()}}.}
+How each parameter with an entry per axis of the operands, or a shape,
+changes, one of the kinds in \code{\link[=param_shape]{param_shape()}}.}
 
 \item{scalar}{(\code{integer()})\cr
 Positions of the operands that may be scalars while the others are not,
@@ -36,11 +36,12 @@ A rule to assign to \verb{prim_<name>[["vectorize"]]}.
 \description{
 Construct the rule \code{\link[=vectorize]{vectorize()}} uses for a primitive applied to values
 that are mapped over. Inside the rule, such values carry the batch axis as
-their first axis.
+their last axis.
 
 Most primitives do not need code of their own: they work on an extra
-leading axis already, and only the parameters that name axes or sizes
-change. Declaring how each of them changes is enough, via \code{params}. The
+trailing axis already, and a parameter that names an axis still names the
+same one. Only the parameters with an entry per axis, or a shape, change.
+Declaring how each of them changes is enough, via \code{params}. The
 rule then gives every operand the batch axis -- broadcasting the ones that
 are not mapped over -- and applies the primitive with the changed
 parameters, so all of its outputs are batched. A parameter \code{params} does not
@@ -51,7 +52,7 @@ signature \verb{function(inputs, batched, params, size)}: \code{inputs} are the
 operands, \code{batched} says which of them carry the batch axis, \code{params} are
 the parameters of the call, and \code{size} is the size of the batch axis. It
 returns the list of outputs, or a single output as it is, each with the
-batch axis first. An output
+batch axis last. An output
 that does not depend on the values mapped over may be returned without it,
 if the list of outputs says so in its attribute \code{batched}, a logical vector
 with one entry per output (set it last: \code{\link[=c]{c()}} and \code{\link[=lapply]{lapply()}} drop it). Only
@@ -67,5 +68,5 @@ named like the arguments of its function.
 rule_vectorize(params = list(perm = param_axis_map()))
 }
 \seealso{
-\code{\link[=vectorize]{vectorize()}}, \code{\link[=param_axes]{param_axes()}}
+\code{\link[=vectorize]{vectorize()}}, \code{\link[=param_shape]{param_shape()}}
 }

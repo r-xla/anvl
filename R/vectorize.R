@@ -10,7 +10,9 @@
 #' sees one slice of such an argument at a time, with that axis dropped. Every
 #' leaf of a nested argument is mapped over along the same axis. The other
 #' arguments are passed to each application of `f` unchanged. `out_axes` says
-#' along which axis each output of `f` is stacked.
+#' along which axis each output of `f` is stacked. By default, both are the last
+#' axis: the slices of a matrix are its columns, and the results of `f` are
+#' stacked as columns.
 #'
 #' `randomness` says what the random draws of `f` (see [nv_set_seed()]) give
 #' the slices, as PyTorch's `torch.func.vmap()` does. By default, every slice
@@ -22,7 +24,9 @@
 #' @param f (`function`)\cr
 #'   Function to vectorize.
 #' @param in_axes (`integer(1)` | named `list()` | named `integer()`)\cr
-#'   The arguments to map over and their batch axes. A single axis maps over
+#'   The arguments to map over and their batch axes. Negative axes count from
+#'   the end, so the default, `-1L`, is the last axis of every argument mapped
+#'   over. A single axis maps over
 #'   every argument that is an array, along that axis. That includes every
 #'   argument of the enclosing [`jit()`] that is not static, R data among them;
 #'   other values -- such as static arguments, a random state, or an R array
@@ -32,11 +36,13 @@
 #'   unchanged. A nested argument takes one axis for all of its leaves. All
 #'   arguments mapped over must have the same size along their batch axes.
 #' @param out_axes (`integer(1)` | `list()`)\cr
-#'   The axes along which the outputs of `f` are stacked. A single axis applies
+#'   The axes along which the outputs of `f` are stacked, by default the last
+#'   one. A single axis applies
 #'   to every output. A list follows the structure of what `f` returns, down to
 #'   any depth, matching named elements by name: an entry applies to every
 #'   output below it. An output with `n`
-#'   axes per slice can be stacked along axes `1` to `n + 1`. `NULL` returns an
+#'   axes per slice can be stacked along axes `1` to `n + 1`, or `-(n + 1)` to
+#'   `-1` counting from the end. `NULL` returns an
 #'   output as it is, which works for one that does not depend on the
 #'   arguments mapped over.
 #' @param randomness (`character(1)`)\cr
@@ -64,21 +70,22 @@
 #' @examplesIf pjrt::plugins_downloaded()
 #' # f is written for a single vector
 #' f <- function(x, y) sum(x * y)
-#' x <- nv_array(matrix(1:6, nrow = 3L), dtype = "f32")
+#' x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
 #'
-#' # one dot product per row of x, against the same y
-#' jit(vectorize(f, in_axes = list(x = 1L)))(x, nv_array(c(1, 2), dtype = "f32"))
+#' # one dot product per column of x, against the same y
+#' jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
 #'
-#' # map over the columns instead: each column divided by its sum
-#' jit(vectorize(function(x) x / sum(x), in_axes = 2L, out_axes = 2L))(x)
+#' # map over the rows instead: each row divided by its sum
+#' jit(vectorize(function(x) x / sum(x), in_axes = 1L, out_axes = 1L))(x)
 #'
-#' # every row gets noise of its own, the noise a loop over the rows would draw
+#' # every column gets noise of its own, the noise a loop over the columns
+#' # would draw
 #' noisy <- function(x) x + nv_rnorm(shape = 2L)
 #' nv_set_seed(1L)
 #' jit(vectorize(noisy))(x)
-#' # or the same noise for every row
+#' # or the same noise for every column
 #' jit(vectorize(noisy, randomness = "same"))(x)
-vectorize <- function(f, in_axes = 1L, out_axes = 1L, randomness = "different") {
+vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "different") {
   assert_function(f)
   in_axes <- check_in_axes(f, in_axes)
   check_out_axes(out_axes)
@@ -94,7 +101,7 @@ vectorize <- function(f, in_axes = 1L, out_axes = 1L, randomness = "different") 
 check_in_axes <- function(f, in_axes) {
   if (!is.list(in_axes)) {
     if (is.null(names(in_axes))) {
-      return(as.integer(checkmate::assert_int(in_axes, lower = 1L)))
+      return(check_batch_axis(in_axes, "in_axes"))
     }
     in_axes <- as.list(in_axes)
   }
@@ -107,14 +114,16 @@ check_in_axes <- function(f, in_axes) {
     )
   }
   resolve_transformation_args(f, names(in_axes), "in_axes")
-  for (nm in names(in_axes)) {
-    checkmate::assert_int(in_axes[[nm]], lower = 1L, null.ok = TRUE, .var.name = sprintf("in_axes$%s", nm))
-  }
+  in_axes <- Map(
+    function(axis, nm) check_batch_axis(axis, sprintf("in_axes$%s", nm), null_ok = TRUE),
+    in_axes,
+    names(in_axes)
+  )
   in_axes <- Filter(Negate(is.null), in_axes)
   if (!length(in_axes)) {
     cli_abort("{.arg in_axes} must name at least one argument to map over.")
   }
-  lapply(in_axes, as.integer)
+  in_axes
 }
 
 check_out_axes <- function(out_axes) {
@@ -124,13 +133,33 @@ check_out_axes <- function(out_axes) {
   if (is.list(out_axes)) {
     lapply(out_axes, check_out_axes)
   } else {
-    checkmate::assert_int(out_axes, lower = 1L, null.ok = TRUE, .var.name = "out_axes")
+    check_batch_axis(out_axes, "out_axes", null_ok = TRUE)
   }
   invisible(out_axes)
 }
 
+# A batch axis of `in_axes` or `out_axes`, the argument `arg`, as an integer: a
+# whole number other than 0, negative ones counting from the end.
+check_batch_axis <- function(axis, arg, null_ok = FALSE) {
+  checkmate::assert_int(axis, null.ok = null_ok, .var.name = arg)
+  if (is.null(axis)) {
+    return(NULL)
+  }
+  if (axis == 0L) {
+    cli_abort("{.arg {arg}} must not be 0: axes count from 1, or from -1 at the end.")
+  }
+  as.integer(axis)
+}
+
+# The position of the axis `axis` (see `check_batch_axis()`) among `n` axes, or
+# `NA` if there is no such axis.
+batch_axis_position <- function(axis, n) {
+  pos <- if (axis < 0L) n + 1L + axis else axis
+  if (pos < 1L || pos > n) NA_integer_ else pos
+}
+
 # Traces `f` on one slice of the arguments `in_axes` maps over and replays the
-# graph into the current descriptor, batched along a leading axis, which then
+# graph into the current descriptor, batched along a trailing axis, which then
 # moves to where `out_axes` puts it. A random state among the arguments is a
 # leaf, which `f` receives as it is.
 vectorize_call <- function(f, call_args, in_axes, out_axes, randomness) {
@@ -168,13 +197,16 @@ vectorize_call <- function(f, call_args, in_axes, out_axes, randomness) {
     }
     aval <- to_abstract(x)
     x_shape <- shape(aval)
-    if (length(x_shape) < axis) {
+    pos <- batch_axis_position(axis, length(x_shape))
+    if (is.na(pos)) {
       cli_abort(c(
         "Every argument mapped over must have its batch axis.",
         x = "{.arg {leaf_args[[i]]}} has shape {shape_repr(x_shape)}, so it has no axis {.val {axis}}.",
         i = "Name the arguments to map over with {.arg in_axes}; an argument of the enclosing {.fn jit} that is not static is an array here."
       ))
     }
+    axis <- pos
+    leaf_axes[[i]] <- pos
     if (is.null(size)) {
       size <- x_shape[[axis]]
     } else if (x_shape[[axis]] != size) {
@@ -200,7 +232,7 @@ vectorize_call <- function(f, call_args, in_axes, out_axes, randomness) {
   graph <- trace_fn(f, args_flat = trace_args, in_tree = in_tree, desc = desc)
   is_input <- !graph$is_static_flat
   operands <- Map(
-    function(box, axis) if (is.null(axis)) box else move_axis(box, axis, 1L),
+    function(box, axis) if (is.null(axis)) box else move_axis(box, axis, naxes(box)),
     graph_operands(graph, args_flat),
     leaf_axes[is_input]
   )
@@ -226,14 +258,16 @@ vectorize_call <- function(f, call_args, in_axes, out_axes, randomness) {
         return(out)
       }
       out <- batch_operand(out, batched, size)
-      if (naxes(out) < axis) {
+      n <- naxes(out)
+      pos <- batch_axis_position(axis, n)
+      if (is.na(pos)) {
         cli_abort(c(
           "Every output must have room for its batch axis.",
-          x = "{what} has shape {shape_repr(shape(out)[-1L])}, so it can be stacked along axes {.val {1L}} to {.val {naxes(out)}} only, not {.val {axis}}.",
+          x = "{what} has shape {shape_repr(shape(out)[-n])}, so it can be stacked along axes {.val {1L}} to {.val {n}} (or {.val {-n}} to {.val {-1L}}) only, not {.val {axis}}.",
           i = "Stack it along an axis it has room for with {.arg out_axes}."
         ))
       }
-      move_axis(out, from = 1L, to = axis)
+      move_axis(out, from = n, to = pos)
     },
     res$outputs,
     res$batched,
@@ -276,7 +310,7 @@ expand_out_axes <- function(out_axes, out_tree, n) {
 }
 
 # Replays `graph` into the current descriptor as a function of `inputs` (boxes,
-# one per graph input), where those that `batched` flags carry a leading batch
+# one per graph input), where those that `batched` flags carry a trailing batch
 # axis of size `size`. A call none of whose inputs is batched is replayed as it
 # is; every other call goes through its primitive's vectorize rule, and its
 # outputs are batched where the rule says so. Returns
@@ -380,7 +414,7 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size) {
 }
 
 # A vectorize rule must return what the call returned, each with the batch axis
-# in front unless `batched` says otherwise.
+# last unless `batched` says otherwise.
 check_vectorized_outputs <- function(call, outputs, batched, size) {
   name <- paste0("prim_", call$primitive$name)
   if (length(outputs) != length(call$outputs)) {
@@ -390,7 +424,7 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
   }
   for (j in seq_along(outputs)) {
     want <- call$outputs[[j]]$aval
-    want_shape <- if (batched[[j]]) c(size, shape(want)) else shape(want)
+    want_shape <- if (batched[[j]]) c(shape(want), size) else shape(want)
     got <- outputs[[j]]
     if (!identical(as.integer(shape(got)), as.integer(want_shape)) || dtype(got) != dtype(want)) {
       cli_abort(c(
@@ -405,11 +439,12 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
 #' @description
 #' Construct the rule [`vectorize()`] uses for a primitive applied to values
 #' that are mapped over. Inside the rule, such values carry the batch axis as
-#' their first axis.
+#' their last axis.
 #'
 #' Most primitives do not need code of their own: they work on an extra
-#' leading axis already, and only the parameters that name axes or sizes
-#' change. Declaring how each of them changes is enough, via `params`. The
+#' trailing axis already, and a parameter that names an axis still names the
+#' same one. Only the parameters with an entry per axis, or a shape, change.
+#' Declaring how each of them changes is enough, via `params`. The
 #' rule then gives every operand the batch axis -- broadcasting the ones that
 #' are not mapped over -- and applies the primitive with the changed
 #' parameters, so all of its outputs are batched. A parameter `params` does not
@@ -420,7 +455,7 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
 #' operands, `batched` says which of them carry the batch axis, `params` are
 #' the parameters of the call, and `size` is the size of the batch axis. It
 #' returns the list of outputs, or a single output as it is, each with the
-#' batch axis first. An output
+#' batch axis last. An output
 #' that does not depend on the values mapped over may be returned without it,
 #' if the list of outputs says so in its attribute `batched`, a logical vector
 #' with one entry per output (set it last: [c()] and [lapply()] drop it). Only
@@ -434,8 +469,8 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
 #'   A rule of its own. If given, the other arguments must be left at their
 #'   defaults.
 #' @param params (named `list()`)\cr
-#'   How each parameter that refers to the axes of the operands changes, one
-#'   of the kinds in [`param_axes()`].
+#'   How each parameter with an entry per axis of the operands, or a shape,
+#'   changes, one of the kinds in [`param_shape()`].
 #' @param scalar (`integer()`)\cr
 #'   Positions of the operands that may be scalars while the others are not,
 #'   e.g. the bounds of [`prim_clamp()`]. Such an operand stays a scalar when it
@@ -445,7 +480,7 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
 #'   value of [`prim_pad()`]. They are passed on unchanged.
 #' @return (`anvl_rule_vectorize`)\cr
 #'   A rule to assign to `prim_<name>[["vectorize"]]`.
-#' @seealso [`vectorize()`], [`param_axes()`]
+#' @seealso [`vectorize()`], [`param_shape()`]
 #' @export
 #' @examples
 #' # the rule of prim_transpose()
@@ -466,13 +501,15 @@ rule_vectorize <- function(fn = NULL, params = list(), scalar = integer(), unbat
 
 #' @title Parameter Kinds
 #' @description
-#' How a parameter of a primitive changes when its operands gain a leading
-#' batch axis of size `size`, for [`rule_vectorize()`]:
+#' How a parameter of a primitive changes when its operands gain a trailing
+#' batch axis of size `size`, for [`rule_vectorize()`]. A parameter that names
+#' axes needs none of these: the batch axis comes after all of them, so they
+#' keep their positions.
 #'
-#' * `param_axes()`: axis indices, which move one axis further (`axes + 1L`).
-#' * `param_axis_map()`: one axis per axis of an operand, such as a
-#'   permutation; the batch axis maps to the batch axis (`c(1L, axes + 1L)`).
-#' * `param_shape()`: a shape, which gains the batch axis (`c(size, shape)`).
+#' * `param_shape()`: a shape, which gains the batch axis (`c(shape, size)`).
+#' * `param_axis_map()`: one axis per axis of an operand, of an output with as
+#'   many axes, such as a permutation; the batch axis maps to the batch axis
+#'   (`c(axes, length(axes) + 1L)`).
 #' * `param_per_axis()`: one entry per axis of an operand, with `value` for the
 #'   batch axis.
 #' @param value (`integer(1)` | `function`)\cr
@@ -481,47 +518,40 @@ rule_vectorize <- function(fn = NULL, params = list(), scalar = integer(), unbat
 #'   A function of the parameter's value and `size` that returns its new value.
 #' @export
 #' @examples
-#' param_axes()(c(1L, 3L), size = 5L)
-#' param_axis_map()(c(2L, 1L), size = 5L)
 #' param_shape()(c(2L, 3L), size = 5L)
+#' param_axis_map()(c(2L, 1L), size = 5L)
 #' param_per_axis(0L)(c(1L, 2L), size = 5L)
-param_axes <- function() {
-  param_kind(function(x, size) x + 1L)
+param_shape <- function() {
+  param_kind(function(x, size) c(x, size))
 }
 
-#' @rdname param_axes
+#' @rdname param_shape
 #' @export
 param_axis_map <- function() {
-  param_kind(function(x, size) c(1L, x + 1L))
+  param_kind(function(x, size) c(x, length(x) + 1L))
 }
 
-#' @rdname param_axes
-#' @export
-param_shape <- function() {
-  param_kind(function(x, size) c(size, x))
-}
-
-#' @rdname param_axes
+#' @rdname param_shape
 #' @export
 param_per_axis <- function(value) {
   if (!is.function(value)) {
     checkmate::assert_int(value)
   }
-  first <- if (is.function(value)) value else function(size) value
-  param_kind(function(x, size) c(as.integer(first(size)), x))
+  last <- if (is.function(value)) value else function(size) value
+  param_kind(function(x, size) c(x, as.integer(last(size))))
 }
 
 param_kind <- function(fn) {
   structure(fn, class = "anvl_param_kind")
 }
 
-# `x` with a leading batch axis of size `size`: as it is if it already has one,
+# `x` with a trailing batch axis of size `size`: as it is if it already has one,
 # broadcast otherwise.
 batch_operand <- function(x, batched, size) {
   if (batched) {
     return(x)
   }
-  prim_broadcast_in_axes(x, c(size, shape(x)), seq_len(naxes(x)) + 1L)
+  prim_broadcast_in_axes(x, c(shape(x), size), seq_len(naxes(x)))
 }
 
 # The operands of a primitive whose operands share one shape, each given the
@@ -531,7 +561,7 @@ batch_operand <- function(x, batched, size) {
 batch_operands <- function(inputs, batched, size, scalar = integer(), unbatched = integer()) {
   inner_shape <- function(i) {
     s <- shape(inputs[[i]])
-    if (batched[[i]]) s[-1L] else s
+    if (batched[[i]]) s[-length(s)] else s
   }
   main <- setdiff(seq_along(inputs), c(scalar, unbatched))
   full <- if (length(main)) inner_shape(main[[1L]])
@@ -544,7 +574,7 @@ batch_operands <- function(inputs, batched, size, scalar = integer(), unbatched 
       if (!batched[[i]]) {
         return(x)
       }
-      return(prim_broadcast_in_axes(x, c(size, full), 1L))
+      return(prim_broadcast_in_axes(x, c(full, size), length(full) + 1L))
     }
     batch_operand(x, batched[[i]], size)
   })

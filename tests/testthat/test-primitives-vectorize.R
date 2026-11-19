@@ -35,25 +35,25 @@ describe("element-wise unary primitives", {
       prim_is_finite,
       prim_round
     )) {
-      autotest_vectorize(prim, x = rand_array(c(3L, 2L)), extra = FALSE)
+      autotest_vectorize(prim, x = rand_array(c(2L, 3L)), extra = FALSE)
     }
   })
 
   it("vectorizes the ones on a restricted domain", {
     withr::local_seed(1L)
     for (prim in list(prim_sqrt, prim_rsqrt, prim_log, prim_log1p, prim_digamma, prim_lgamma)) {
-      autotest_vectorize(prim, x = rand_array(c(3L, 2L), sample = positive), extra = FALSE)
+      autotest_vectorize(prim, x = rand_array(c(2L, 3L), sample = positive), extra = FALSE)
     }
     for (prim in list(prim_acos, prim_asin, prim_atanh, prim_erf_inv)) {
-      autotest_vectorize(prim, x = rand_array(c(3L, 2L), sample = unit), extra = FALSE)
+      autotest_vectorize(prim, x = rand_array(c(2L, 3L), sample = unit), extra = FALSE)
     }
-    autotest_vectorize(prim_acosh, x = rand_array(c(3L, 2L), sample = \(n) stats::runif(n, 1.5, 3)))
+    autotest_vectorize(prim_acosh, x = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, 1.5, 3)))
   })
 
   it("vectorizes the ones on integers and booleans", {
     withr::local_seed(1L)
-    autotest_vectorize(prim_not, x = rand_array(c(3L, 2L), dtype = "bool", sample = coin))
-    autotest_vectorize(prim_popcnt, x = rand_array(c(3L, 2L), dtype = "i32", sample = small_ints))
+    autotest_vectorize(prim_not, x = rand_array(c(2L, 3L), dtype = "bool", sample = coin))
+    autotest_vectorize(prim_popcnt, x = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints))
   })
 })
 
@@ -61,12 +61,12 @@ describe("element-wise binary primitives", {
   it("vectorizes the arithmetic ones", {
     withr::local_seed(1L)
     for (prim in list(prim_add, prim_mul, prim_sub, prim_pmax, prim_pmin)) {
-      autotest_vectorize(prim, lhs = rand_array(c(3L, 2L)), rhs = rand_array(c(3L, 2L)))
+      autotest_vectorize(prim, lhs = rand_array(c(2L, 3L)), rhs = rand_array(c(2L, 3L)))
     }
-    autotest_vectorize(prim_div, lhs = rand_array(c(3L, 2L)), rhs = rand_array(c(3L, 2L), sample = positive))
-    autotest_vectorize(prim_pow, x = rand_array(c(3L, 2L), sample = positive), y = rand_array(c(3L, 2L)))
-    autotest_vectorize(prim_remainder, x = rand_array(c(3L, 2L)), y = rand_array(c(3L, 2L), sample = positive))
-    autotest_vectorize(prim_atan2, y = rand_array(c(3L, 2L)), x = rand_array(c(3L, 2L)))
+    autotest_vectorize(prim_div, lhs = rand_array(c(2L, 3L)), rhs = rand_array(c(2L, 3L), sample = positive))
+    autotest_vectorize(prim_pow, x = rand_array(c(2L, 3L), sample = positive), y = rand_array(c(2L, 3L)))
+    autotest_vectorize(prim_remainder, x = rand_array(c(2L, 3L)), y = rand_array(c(2L, 3L), sample = positive))
+    autotest_vectorize(prim_atan2, y = rand_array(c(2L, 3L)), x = rand_array(c(2L, 3L)))
   })
 
   it("vectorizes the comparisons", {
@@ -74,8 +74,8 @@ describe("element-wise binary primitives", {
     for (prim in list(prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le)) {
       autotest_vectorize(
         prim,
-        lhs = rand_array(c(3L, 4L), dtype = "i32", sample = small_ints),
-        rhs = rand_array(c(3L, 4L), dtype = "i32", sample = small_ints),
+        lhs = rand_array(c(4L, 3L), dtype = "i32", sample = small_ints),
+        rhs = rand_array(c(4L, 3L), dtype = "i32", sample = small_ints),
         extra = FALSE
       )
     }
@@ -86,21 +86,21 @@ describe("element-wise binary primitives", {
     for (prim in list(prim_and, prim_or)) {
       autotest_vectorize(
         prim,
-        lhs = rand_array(c(3L, 2L), dtype = "bool", sample = coin),
-        rhs = rand_array(c(3L, 2L), dtype = "bool", sample = coin),
+        lhs = rand_array(c(2L, 3L), dtype = "bool", sample = coin),
+        rhs = rand_array(c(2L, 3L), dtype = "bool", sample = coin),
         extra = FALSE
       )
     }
     autotest_vectorize(
       prim_xor,
-      x = rand_array(c(3L, 2L), dtype = "i32", sample = small_ints),
-      y = rand_array(c(3L, 2L), dtype = "i32", sample = small_ints)
+      x = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints),
+      y = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints)
     )
     for (prim in list(prim_shift_left, prim_shift_right_logical, prim_shift_right_arithmetic)) {
       autotest_vectorize(
         prim,
-        x = rand_array(c(3L, 2L), dtype = "i32", sample = small_ints),
-        shift = rand_array(c(3L, 2L), dtype = "i32", sample = small_ints),
+        x = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints),
+        shift = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints),
         extra = FALSE
       )
     }
@@ -112,8 +112,8 @@ describe("prim_psigamma", {
     withr::local_seed(1L)
     autotest_vectorize(
       prim_psigamma,
-      x = rand_array(c(3L, 2L), sample = positive),
-      deriv = rand_array(c(3L, 2L), sample = \(n) sample(0:2, n, replace = TRUE))
+      x = rand_array(c(2L, 3L), sample = positive),
+      deriv = rand_array(c(2L, 3L), sample = \(n) sample(0:2, n, replace = TRUE))
     )
   })
 })
@@ -123,9 +123,9 @@ describe("prim_clamp", {
     withr::local_seed(1L)
     autotest_vectorize(
       prim_clamp,
-      x = rand_array(c(3L, 2L)),
-      min = rand_array(c(3L, 2L), sample = \(n) stats::runif(n, -1, 0)),
-      max = rand_array(c(3L, 2L), sample = \(n) stats::runif(n, 0, 1))
+      x = rand_array(c(2L, 3L)),
+      min = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, -1, 0)),
+      max = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, 0, 1))
     )
   })
 
@@ -133,7 +133,7 @@ describe("prim_clamp", {
     withr::local_seed(1L)
     autotest_vectorize(
       prim_clamp,
-      x = rand_array(c(3L, 2L)),
+      x = rand_array(c(2L, 3L)),
       min = rand_array(3L, sample = \(n) stats::runif(n, -1, 0)),
       max = rand_array(3L, sample = \(n) stats::runif(n, 0, 1))
     )
@@ -145,9 +145,9 @@ describe("prim_ifelse", {
     withr::local_seed(1L)
     autotest_vectorize(
       prim_ifelse,
-      test = rand_array(c(3L, 2L), dtype = "bool", sample = coin),
-      yes = rand_array(c(3L, 2L)),
-      no = rand_array(c(3L, 2L))
+      test = rand_array(c(2L, 3L), dtype = "bool", sample = coin),
+      yes = rand_array(c(2L, 3L)),
+      no = rand_array(c(2L, 3L))
     )
   })
 
@@ -156,8 +156,8 @@ describe("prim_ifelse", {
     autotest_vectorize(
       prim_ifelse,
       test = rand_array(3L, dtype = "bool", sample = coin),
-      yes = rand_array(c(3L, 2L)),
-      no = rand_array(c(3L, 2L))
+      yes = rand_array(c(2L, 3L)),
+      no = rand_array(c(2L, 3L))
     )
   })
 })
@@ -165,19 +165,19 @@ describe("prim_ifelse", {
 describe("prim_convert", {
   it("vectorizes", {
     withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_convert(x, "f64"), x = rand_array(c(3L, 2L)))
+    autotest_vectorize(function(x) prim_convert(x, "f64"), x = rand_array(c(2L, 3L)))
   })
 })
 
 describe("prim_bitcast_convert", {
   it("vectorizes between data types of one width", {
     withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_bitcast_convert(x, "i32"), x = rand_array(c(3L, 2L)))
+    autotest_vectorize(function(x) prim_bitcast_convert(x, "i32"), x = rand_array(c(2L, 3L)))
   })
 
   it("vectorizes to a narrower data type", {
     withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = rand_array(c(3L, 2L)))
+    autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = rand_array(c(2L, 3L)))
     autotest_vectorize(function(x) prim_bitcast_convert(x, "i16"), x = rand_array(3L))
   })
 
@@ -185,7 +185,7 @@ describe("prim_bitcast_convert", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_bitcast_convert(x, "f32"),
-      x = rand_array(c(3L, 4L, 2L), dtype = "ui8", sample = \(n) sample(0:255, n, replace = TRUE))
+      x = rand_array(c(4L, 2L, 3L), dtype = "ui8", sample = \(n) sample(0:255, n, replace = TRUE))
     )
   })
 })
@@ -194,8 +194,8 @@ describe("reductions", {
   it("vectorizes prim_sum, prim_prod, prim_max and prim_min", {
     withr::local_seed(1L)
     for (prim in list(prim_sum, prim_prod, prim_max, prim_min)) {
-      autotest_vectorize(function(x) prim(x, axes = 2L, drop = TRUE), x = rand_array(c(3L, 2L, 4L)))
-      autotest_vectorize(function(x) prim(x, axes = 1:2, drop = FALSE), x = rand_array(c(3L, 2L, 4L)))
+      autotest_vectorize(function(x) prim(x, axes = 2L, drop = TRUE), x = rand_array(c(2L, 4L, 3L)))
+      autotest_vectorize(function(x) prim(x, axes = 1:2, drop = FALSE), x = rand_array(c(2L, 4L, 3L)))
     }
   })
 
@@ -204,7 +204,7 @@ describe("reductions", {
     for (prim in list(prim_any, prim_all)) {
       autotest_vectorize(
         function(x) prim(x, axes = 1L, drop = TRUE),
-        x = rand_array(c(3L, 2L, 4L), dtype = "bool", sample = coin)
+        x = rand_array(c(2L, 4L, 3L), dtype = "bool", sample = coin)
       )
     }
   })
@@ -212,7 +212,7 @@ describe("reductions", {
   it("vectorizes prim_which_max and prim_which_min", {
     withr::local_seed(1L)
     for (prim in list(prim_which_max, prim_which_min)) {
-      autotest_vectorize(function(x) prim(x, axis = 2L), x = rand_array(c(3L, 2L, 4L)))
+      autotest_vectorize(function(x) prim(x, axis = 2L), x = rand_array(c(2L, 4L, 3L)))
     }
   })
 })
@@ -221,7 +221,7 @@ describe("cumulative primitives", {
   it("vectorizes prim_cumsum, prim_cumprod, prim_cummax and prim_cummin", {
     withr::local_seed(1L)
     for (prim in list(prim_cumsum, prim_cumprod, prim_cummax, prim_cummin)) {
-      autotest_vectorize(function(x) prim(x, axis = 2L), x = rand_array(c(3L, 2L, 4L)))
+      autotest_vectorize(function(x) prim(x, axis = 2L), x = rand_array(c(2L, 4L, 3L)))
     }
   })
 })
@@ -229,21 +229,21 @@ describe("cumulative primitives", {
 describe("prim_rev", {
   it("vectorizes", {
     withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_rev(x, axes = 2L), x = rand_array(c(3L, 2L, 4L)))
+    autotest_vectorize(function(x) prim_rev(x, axes = 2L), x = rand_array(c(2L, 4L, 3L)))
   })
 })
 
 describe("prim_transpose", {
   it("vectorizes", {
     withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_transpose(x, perm = c(2L, 1L)), x = rand_array(c(3L, 2L, 4L)))
+    autotest_vectorize(function(x) prim_transpose(x, perm = c(2L, 1L)), x = rand_array(c(2L, 4L, 3L)))
   })
 })
 
 describe("prim_reshape", {
   it("vectorizes", {
     withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_reshape(x, shape = c(4L, 2L)), x = rand_array(c(3L, 2L, 4L)))
+    autotest_vectorize(function(x) prim_reshape(x, shape = c(4L, 2L)), x = rand_array(c(2L, 4L, 3L)))
   })
 })
 
@@ -252,7 +252,7 @@ describe("prim_broadcast_in_axes", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_broadcast_in_axes(x, shape = c(2L, 5L), broadcast_axes = 1L),
-      x = rand_array(c(3L, 2L))
+      x = rand_array(c(2L, 3L))
     )
   })
 })
@@ -262,8 +262,8 @@ describe("prim_concatenate", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x, y) prim_concatenate(x, y, axis = 1L),
-      x = rand_array(c(3L, 2L, 2L)),
-      y = rand_array(c(3L, 1L, 2L))
+      x = rand_array(c(2L, 2L, 3L)),
+      y = rand_array(c(1L, 2L, 3L))
     )
   })
 })
@@ -273,7 +273,7 @@ describe("prim_static_slice", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_static_slice(x, start_indices = c(1L, 2L), end_indices = c(2L, 4L), strides = c(1L, 2L)),
-      x = rand_array(c(3L, 2L, 4L))
+      x = rand_array(c(2L, 4L, 3L))
     )
   })
 })
@@ -283,7 +283,7 @@ describe("prim_pad", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_pad(x, 0, c(1L, 0L), c(0L, 1L), c(1L, 0L)),
-      x = rand_array(c(3L, 2L, 4L))
+      x = rand_array(c(2L, 4L, 3L))
     )
   })
 
@@ -301,7 +301,7 @@ describe("prim_dynamic_slice", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x) prim_dynamic_slice(x, 2L, nv_scalar(1L, dtype = "i32"), slice_sizes = c(1L, 2L)),
-      x = rand_array(c(3L, 2L, 4L))
+      x = rand_array(c(2L, 4L, 3L))
     )
   })
 
@@ -319,8 +319,8 @@ describe("prim_dynamic_update_slice", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x, update) prim_dynamic_update_slice(x, update, 1L, 2L),
-      x = rand_array(c(3L, 2L, 4L)),
-      update = rand_array(c(3L, 1L, 2L))
+      x = rand_array(c(2L, 4L, 3L)),
+      update = rand_array(c(1L, 2L, 3L))
     )
   })
 
@@ -338,8 +338,8 @@ describe("prim_sort", {
     withr::local_seed(1L)
     autotest_vectorize(
       function(x, y) prim_sort(list(x, y), axis = 2L),
-      x = rand_array(c(3L, 2L, 4L)),
-      y = rand_array(c(3L, 2L, 4L))
+      x = rand_array(c(2L, 4L, 3L)),
+      y = rand_array(c(2L, 4L, 3L))
     )
   })
 })
@@ -347,7 +347,7 @@ describe("prim_sort", {
 describe("prim_top_k", {
   it("vectorizes", {
     withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_top_k(x, k = 2L, indices = TRUE), x = rand_array(c(3L, 2L, 4L)))
+    autotest_vectorize(function(x) prim_top_k(x, k = 2L, indices = TRUE), x = rand_array(c(2L, 4L, 3L)))
   })
 })
 
@@ -358,8 +358,8 @@ describe("prim_dot_general", {
       function(lhs, rhs) {
         prim_dot_general(lhs, rhs, contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
       },
-      lhs = rand_array(c(3L, 2L, 4L)),
-      rhs = rand_array(c(3L, 4L))
+      lhs = rand_array(c(2L, 4L, 3L)),
+      rhs = rand_array(c(4L, 3L))
     )
   })
 
@@ -369,8 +369,8 @@ describe("prim_dot_general", {
       function(lhs, rhs) {
         prim_dot_general(lhs, rhs, contracting_axes = list(3L, 2L), batching_axes = list(1L, 1L))
       },
-      lhs = rand_array(c(3L, 2L, 4L, 5L)),
-      rhs = rand_array(c(3L, 2L, 5L, 6L))
+      lhs = rand_array(c(2L, 4L, 5L, 3L)),
+      rhs = rand_array(c(2L, 5L, 6L, 3L))
     )
   })
 })
@@ -378,7 +378,7 @@ describe("prim_dot_general", {
 describe("prim_print", {
   it("vectorizes", {
     withr::local_seed(1L)
-    capture.output(autotest_vectorize(prim_print, x = rand_array(c(3L, 2L))))
+    capture.output(autotest_vectorize(prim_print, x = rand_array(c(2L, 3L))))
   })
 })
 
@@ -392,18 +392,18 @@ describe("vectorize rules on operands of more axes", {
       function(lhs, rhs) prim_dot_general(lhs, rhs, contracting_axes = contracting, batching_axes = batching)
     }
     g <- dot_general(list(3L, 1L), list(integer(), integer()))
-    autotest_vectorize(g, lhs = rand_array(c(3L, 2L, 3L, 4L)), rhs = rand_array(c(3L, 4L, 5L)))
+    autotest_vectorize(g, lhs = rand_array(c(2L, 3L, 4L, 3L)), rhs = rand_array(c(4L, 5L, 3L)))
     h <- dot_general(list(c(2L, 4L), c(3L, 1L)), list(1L, 2L))
     autotest_vectorize(
       h,
-      lhs = rand_array(c(3L, 2L, 4L, 5L, 6L)),
-      rhs = rand_array(c(3L, 6L, 2L, 4L, 3L))
+      lhs = rand_array(c(2L, 4L, 5L, 6L, 3L)),
+      rhs = rand_array(c(6L, 2L, 4L, 3L, 3L))
     )
   })
 
   it("vectorizes the reshaping primitives", {
     withr::local_seed(1L)
-    x <- rand_array(c(3L, 2L, 4L))
+    x <- rand_array(c(2L, 4L, 3L))
     autotest_vectorize(
       function(x) prim_broadcast_in_axes(x, shape = c(5L, 2L, 4L), broadcast_axes = c(2L, 3L)),
       x = x
@@ -411,14 +411,14 @@ describe("vectorize rules on operands of more axes", {
     autotest_vectorize(
       function(x, y) prim_concatenate(x, y, axis = 2L),
       x = x,
-      y = rand_array(c(3L, 2L, 1L))
+      y = rand_array(c(2L, 1L, 3L))
     )
   })
 
   it("vectorizes prim_sort and prim_bitcast_convert", {
     withr::local_seed(1L)
-    x <- rand_array(c(3L, 2L, 4L))
-    autotest_vectorize(function(x, y) prim_sort(list(x, y), axis = 1L), x = x, y = rand_array(c(3L, 2L, 4L)))
+    x <- rand_array(c(2L, 4L, 3L))
+    autotest_vectorize(function(x, y) prim_sort(list(x, y), axis = 1L), x = x, y = rand_array(c(2L, 4L, 3L)))
     autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = x)
   })
 })
@@ -427,7 +427,7 @@ describe("prim_sample_bits", {
   it("vectorizes into a draw for every slice", {
     withr::local_seed(1L)
     local_nv_seed(1L)
-    x <- rand_array(c(3L, 2L))
+    x <- rand_array(c(2L, 3L))
     for (dtype in c("ui8", "ui32", "ui64")) {
       autotest_vectorize(function(x) list(x, prim_sample_bits(c(2L, 3L), dtype)), x = x)
     }

@@ -49,7 +49,7 @@ NULL
 #'   iterations is not known when it is traced.
 #' - `side_effect_stack()`: the values `size` applications of a function that
 #'   uses it `n` times start from when they run one after the other from
-#'   `value`, the i-th `(i - 1) * n` uses after it, stacked along a new first
+#'   `value`, the i-th `(i - 1) * n` uses after it, stacked along a new last
 #'   axis of every box, for [vectorize()] with `randomness = "different"`.
 #' - `side_effect_advance()`: `NULL`; after a run, advances `object` by `n`
 #'   uses.

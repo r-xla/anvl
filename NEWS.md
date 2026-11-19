@@ -91,8 +91,9 @@
 * nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
   summed at the default float.
 * New `vectorize()` maps a function over axes of its arguments (`in_axes`,
-  `out_axes`), like `base::Vectorize()` but as one traced program; it composes
-  with `gradient()`. New `rule_vectorize()` gives a primitive its rule.
+  `out_axes`, by default the last axis), like `base::Vectorize()` but as one
+  traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
+  primitive its rule.
 * An array that a branch of `nv_if()`, the body of `nv_while()` or a function
   differentiated by `gradient()` closes over now counts toward the device
   `jit()` detects, as it already did for the jitted function itself.

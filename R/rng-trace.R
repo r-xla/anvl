@@ -192,10 +192,7 @@ side_effect_stack.AnvlRngStateHandle <- function(effect, value, n, size) {
   if (n >= 2^31) {
     offsets <- offsets + nv_shift_left(steps * as.integer(n %/% 2^31), 31L)
   }
-  rng_state_value(
-    prim_broadcast_in_axes(value$key, c(size, 2L), 2L),
-    value$counter + offsets
-  )
+  rng_state_value(batch_operand(value$key, FALSE, size), value$counter + offsets)
 }
 
 # After a run, R advances the counter by the draws the program made.

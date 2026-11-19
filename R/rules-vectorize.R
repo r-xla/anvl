@@ -2,9 +2,10 @@
 #' @include vectorize.R
 NULL
 
-# Primitives that work on an extra leading axis as they are, and whose
-# parameters do not refer to the axes of their operands: the element-wise ones,
-# and those that only look at their trailing axes.
+# Primitives that work on an extra trailing axis as they are: the element-wise
+# ones, and those whose parameters name axes, which keep their positions in
+# front of the batch axis. anvl's bitcast packs from, or unpacks into, a
+# leading axis, which leaves the batch axis last.
 for (prim in list(
   prim_add,
   prim_mul,
@@ -63,19 +64,14 @@ for (prim in list(
   prim_popcnt,
   prim_round,
   prim_convert,
-  prim_top_k
-)) {
-  prim[["vectorize"]] <- rule_vectorize()
-}
-rm(prim)
-
-prim_clamp[["vectorize"]] <- rule_vectorize(scalar = 2:3)
-prim_ifelse[["vectorize"]] <- rule_vectorize(scalar = 1L)
-
-for (prim in list(prim_sum, prim_prod, prim_max, prim_min, prim_any, prim_all, prim_rev)) {
-  prim[["vectorize"]] <- rule_vectorize(params = list(axes = param_axes()))
-}
-for (prim in list(
+  prim_bitcast_convert,
+  prim_sum,
+  prim_prod,
+  prim_max,
+  prim_min,
+  prim_any,
+  prim_all,
+  prim_rev,
   prim_cumsum,
   prim_cumprod,
   prim_cummax,
@@ -84,15 +80,15 @@ for (prim in list(
   prim_which_min,
   prim_concatenate
 )) {
-  prim[["vectorize"]] <- rule_vectorize(params = list(axis = param_axes()))
+  prim[["vectorize"]] <- rule_vectorize()
 }
 rm(prim)
 
+prim_clamp[["vectorize"]] <- rule_vectorize(scalar = 2:3)
+prim_ifelse[["vectorize"]] <- rule_vectorize(scalar = 1L)
+
 prim_transpose[["vectorize"]] <- rule_vectorize(params = list(perm = param_axis_map()))
 prim_reshape[["vectorize"]] <- rule_vectorize(params = list(shape = param_shape()))
-prim_broadcast_in_axes[["vectorize"]] <- rule_vectorize(
-  params = list(shape = param_shape(), broadcast_axes = param_axis_map())
-)
 prim_static_slice[["vectorize"]] <- rule_vectorize(
   params = list(
     start_indices = param_per_axis(1L),
@@ -109,6 +105,16 @@ prim_pad[["vectorize"]] <- rule_vectorize(
   unbatched = 2L
 )
 
+# The batch axis of the operand becomes the last axis of the output, after the
+# axes of `shape`.
+prim_broadcast_in_axes[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  prim_broadcast_in_axes(
+    inputs[[1L]],
+    shape = c(params$shape, size),
+    broadcast_axes = c(params$broadcast_axes, length(params$shape) + 1L)
+  )
+})
+
 prim_print[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
   list(prim_print(inputs[[1L]]))
 })
@@ -116,10 +122,19 @@ prim_print[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, si
 prim_sort[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
   prim_sort(
     batch_operands(inputs, batched, size),
-    axis = params$axis + 1L,
+    axis = params$axis,
     decreasing = params$decreasing,
     stable = params$stable
   )
+})
+
+# `prim_top_k()` works along the last axis, so the batch axis moves in front for
+# the call, and back to the end of every output after it.
+prim_top_k[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  x <- inputs[[1L]]
+  n <- naxes(x)
+  out <- prim_top_k(move_axis(x, n, 1L), k = params$k, indices = params$indices)
+  lapply(out, move_axis, from = 1L, to = n)
 })
 
 # The start indices are scalars: the slice starts at the beginning of the batch
@@ -130,7 +145,7 @@ prim_dynamic_slice[["vectorize"]] <- rule_vectorize(function(inputs, batched, pa
   }
   list(do.call(
     prim_dynamic_slice,
-    c(inputs[1L], list(1L), inputs[-1L], list(slice_sizes = c(size, params$slice_sizes)))
+    c(inputs, list(1L), list(slice_sizes = c(params$slice_sizes, size)))
   ))
 })
 
@@ -139,30 +154,25 @@ prim_dynamic_update_slice[["vectorize"]] <- rule_vectorize(function(inputs, batc
     cli_abort("{.fn vectorize} cannot map over the start indices of {.fn prim_dynamic_update_slice} yet.")
   }
   operands <- batch_operands(inputs[1:2], batched[1:2], size)
-  list(do.call(prim_dynamic_update_slice, c(operands, list(1L), inputs[-(1:2)])))
+  list(do.call(prim_dynamic_update_slice, c(operands, inputs[-(1:2)], list(1L))))
 })
 
 # The batch axis of a batched operand becomes a batching axis when both are
-# batched, and a free axis otherwise, which `dot_general` places after the
-# batching axes (lhs) or after all axes of lhs (rhs).
+# batched, and a free axis otherwise: the last free axis of `lhs` or of `rhs`.
+# `dot_general` places the batching axes first, then the free axes of `lhs`,
+# then those of `rhs`, so the batch axis is moved to the end unless it is the
+# last free axis of `rhs` already.
 prim_dot_general[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
   lhs <- inputs[[1L]]
   rhs <- inputs[[2L]]
   contracting <- params$contracting_axes
   batching <- params$batching_axes
-  shift <- function(axes, b) if (b) axes + 1L else axes
-  contracting <- Map(shift, contracting, batched)
   n_batching <- length(batching[[1L]])
-  if (all(batched)) {
-    batching <- lapply(batching, \(axes) c(1L, axes + 1L))
-    from <- 1L
-  } else {
-    batching <- Map(shift, batching, batched)
-    from <- if (batched[[1L]]) {
-      n_batching + 1L
-    } else {
-      naxes(lhs) - length(contracting[[1L]]) + 1L
-    }
+  from <- if (all(batched)) {
+    batching <- list(c(batching[[1L]], naxes(lhs)), c(batching[[2L]], naxes(rhs)))
+    n_batching + 1L
+  } else if (batched[[1L]]) {
+    naxes(lhs) - length(contracting[[1L]])
   }
   out <- prim_dot_general(
     lhs,
@@ -171,28 +181,12 @@ prim_dot_general[["vectorize"]] <- rule_vectorize(function(inputs, batched, para
     batching_axes = batching,
     precision = params$precision
   )
-  list(move_axis(out, from, 1L))
-})
-
-# anvl's bitcast unpacks into, or packs from, a leading axis, where the batch
-# axis is. The batch axis is kept in front of it.
-prim_bitcast_convert[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
-  x <- inputs[[1L]]
-  in_width <- dtype_width(dtype(x))
-  out_width <- dtype_width(as_dtype(params$dtype))
-  out <- if (in_width > out_width) {
-    move_axis(prim_bitcast_convert(x, params$dtype), 2L, 1L)
-  } else if (in_width < out_width) {
-    prim_bitcast_convert(move_axis(x, 1L, 2L), params$dtype)
-  } else {
-    prim_bitcast_convert(x, params$dtype)
-  }
-  list(out)
+  if (is.null(from)) list(out) else list(move_axis(out, from, naxes(out)))
 })
 
 # A draw from a batch of random states draws from each of them (see
-# `infer_sample_bits()`): the batch axis leads the key and the counter, and
-# leads the draws.
+# `infer_sample_bits()`): the batch axis trails the key and the counter, and
+# trails the draws.
 prim_sample_bits[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
   operands <- Map(batch_operand, inputs, batched, MoreArgs = list(size = size))
   graph_desc_add(prim_sample_bits, operands, params = params, infer_fn = infer_sample_bits)

@@ -4,14 +4,16 @@
 \alias{vectorize}
 \title{Vectorize a Function}
 \usage{
-vectorize(f, in_axes = 1L, out_axes = 1L, randomness = "different")
+vectorize(f, in_axes = -1L, out_axes = -1L, randomness = "different")
 }
 \arguments{
 \item{f}{(\code{function})\cr
 Function to vectorize.}
 
 \item{in_axes}{(\code{integer(1)} | named \code{list()} | named \code{integer()})\cr
-The arguments to map over and their batch axes. A single axis maps over
+The arguments to map over and their batch axes. Negative axes count from
+the end, so the default, \code{-1L}, is the last axis of every argument mapped
+over. A single axis maps over
 every argument that is an array, along that axis. That includes every
 argument of the enclosing \code{\link[=jit]{jit()}} that is not static, R data among them;
 other values -- such as static arguments, a random state, or an R array
@@ -22,11 +24,13 @@ unchanged. A nested argument takes one axis for all of its leaves. All
 arguments mapped over must have the same size along their batch axes.}
 
 \item{out_axes}{(\code{integer(1)} | \code{list()})\cr
-The axes along which the outputs of \code{f} are stacked. A single axis applies
+The axes along which the outputs of \code{f} are stacked, by default the last
+one. A single axis applies
 to every output. A list follows the structure of what \code{f} returns, down to
 any depth, matching named elements by name: an entry applies to every
 output below it. An output with \code{n}
-axes per slice can be stacked along axes \code{1} to \code{n + 1}. \code{NULL} returns an
+axes per slice can be stacked along axes \code{1} to \code{n + 1}, or \code{-(n + 1)} to
+\code{-1} counting from the end. \code{NULL} returns an
 output as it is, which works for one that does not depend on the
 arguments mapped over.}
 
@@ -52,7 +56,9 @@ single instance and still run as one program over all of them.
 sees one slice of such an argument at a time, with that axis dropped. Every
 leaf of a nested argument is mapped over along the same axis. The other
 arguments are passed to each application of \code{f} unchanged. \code{out_axes} says
-along which axis each output of \code{f} is stacked.
+along which axis each output of \code{f} is stacked. By default, both are the last
+axis: the slices of a matrix are its columns, and the results of \code{f} are
+stacked as columns.
 
 \code{randomness} says what the random draws of \code{f} (see \code{\link[=nv_set_seed]{nv_set_seed()}}) give
 the slices, as PyTorch's \code{torch.func.vmap()} does. By default, every slice
@@ -81,19 +87,20 @@ padding value of \code{\link[=prim_pad]{prim_pad()}}.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # f is written for a single vector
 f <- function(x, y) sum(x * y)
-x <- nv_array(matrix(1:6, nrow = 3L), dtype = "f32")
+x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
 
-# one dot product per row of x, against the same y
-jit(vectorize(f, in_axes = list(x = 1L)))(x, nv_array(c(1, 2), dtype = "f32"))
+# one dot product per column of x, against the same y
+jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
 
-# map over the columns instead: each column divided by its sum
-jit(vectorize(function(x) x / sum(x), in_axes = 2L, out_axes = 2L))(x)
+# map over the rows instead: each row divided by its sum
+jit(vectorize(function(x) x / sum(x), in_axes = 1L, out_axes = 1L))(x)
 
-# every row gets noise of its own, the noise a loop over the rows would draw
+# every column gets noise of its own, the noise a loop over the columns
+# would draw
 noisy <- function(x) x + nv_rnorm(shape = 2L)
 nv_set_seed(1L)
 jit(vectorize(noisy))(x)
-# or the same noise for every row
+# or the same noise for every column
 jit(vectorize(noisy, randomness = "same"))(x)
 \dontshow{\}) # examplesIf}
 }
