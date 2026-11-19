@@ -587,7 +587,16 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     input_grads <- bwd$fn(bwd$inputs, bwd$outputs, output_grads, bwd$params, input_required)
     for (j in which(input_required)) {
       input_gval <- call$inputs[[j]]
-      grad_env[[input_gval]] <- add_or_init(grad_env[[input_gval]], input_grads[[j]])
+      ct <- input_grads[[j]]
+      # Elementwise primitives broadcast a scalar operand, so a gradient of the
+      # wrong shape would otherwise be accumulated without complaint.
+      if (!is.null(ct) && !identical(shape(ct), shape(input_gval))) {
+        cli_abort(c(
+          "Internal error: the reverse rule of primitive {.field {call$primitive$name}} returned a gradient of the wrong shape for input {j}.", # nolint
+          x = "Expected {shape_repr(shape(input_gval))}, got {shape_repr(shape(ct))}."
+        ))
+      }
+      grad_env[[input_gval]] <- add_or_init(grad_env[[input_gval]], ct)
     }
   }
 

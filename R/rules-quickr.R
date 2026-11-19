@@ -1461,16 +1461,28 @@ quickr_register_prim_lowerer <- function(primitive, fun) {
 }
 
 # Registers `fun` for an elementwise primitive: one whose output has the shape
-# of its operands, so an output with a zero-size axis has nothing to compute.
-# Such an output is allocated directly instead -- quickr rejects an elementwise
-# operation with an empty operand (Fortran has no recycling).
-quickr_register_elementwise_lowerer <- function(primitive, fun) {
+# of its operands that are not scalars, so an output with a zero-size axis has
+# nothing to compute. Such an output is allocated directly instead -- quickr
+# rejects an elementwise operation with an empty operand (Fortran has no
+# recycling). `fun` receives a scalar operand broadcast to the output's shape,
+# since the lowerings index their operands element by element, except at the
+# positions `scalar_inputs`, which it takes as they are.
+quickr_register_elementwise_lowerer <- function(primitive, fun, scalar_inputs = integer()) {
   guarded <- function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
     empty <- quickr_emit_known_empty(out_syms[[1L]], out_avals[[1L]])
     if (!is.null(empty)) {
       return(empty)
     }
-    fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx)
+    out_shape <- as.integer(shape(out_avals[[1L]]))
+    broadcast <- list()
+    for (i in setdiff(seq_along(inputs), scalar_inputs)) {
+      if (length(out_shape) && !length(shape(input_nodes[[i]]$aval))) {
+        sym <- ctx$new_tmp_sym()
+        broadcast <- c(broadcast, quickr_emit_full_like(sym, inputs[[i]], out_shape, out_avals[[1L]]))
+        inputs[[i]] <- sym
+      }
+    }
+    c(broadcast, fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx))
   }
   quickr_register_prim_lowerer(primitive, guarded)
 }
@@ -2085,7 +2097,8 @@ local({
         shape(input_nodes[[1L]]$aval),
         out_avals[[1L]]
       )
-    }
+    },
+    scalar_inputs = 1L
   )
 
   quickr_register_elementwise_lowerer(

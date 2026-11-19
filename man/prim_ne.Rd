@@ -8,7 +8,7 @@ prim_ne(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Two inputs of the same data type and shape. Can be any data type. R
+Two inputs of the same data type and shape, except that a scalar is broadcast to the shape of the other. Can be any data type. R
 values take the other operand's data type when it is in their
 \link[=dtype_categories]{data type category}, and their
 \link[=default_dtypes]{default data type} when neither operand has one. An R
@@ -17,7 +17,7 @@ values of different storage types.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the inputs' shape and boolean data type.
+Has the inputs' broadcast shape and boolean data type.
 }
 \description{
 Element-wise inequality comparison.
