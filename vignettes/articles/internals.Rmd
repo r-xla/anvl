@@ -75,7 +75,7 @@ During this evaluation, we need to distinguish between two cases:
 The evaluation of the `if` statement is an example for the first category.
 Because we set `op = "mul"`, only the second branch is executed.
 Then, we are calling `nv_mul`, which attaches a `GraphStatement` that represents the multiplication of the two arrays to the `$statements` of the `GraphDescriptor`.
-Note that `nv_mul` is itself not a primitive: it performs some type promotion and broadcasting if needed before calling into the primitive `prim_mul`.
+Note that `nv_mul` is itself not a primitive: it promotes its operands to a common data type before calling into the primitive `prim_mul`.
 
 A `GraphStatement` object consists of the following fields:
 

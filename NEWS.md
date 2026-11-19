@@ -26,6 +26,9 @@
 * New `pullback()` and `value_and_pullback()` differentiate a function with any
   result: they return its pullback, which takes a cotangent of the result back
   to the arguments.
+* Elementwise primitives such as `prim_add()`, `prim_eq()`, `prim_ifelse()` and
+  `prim_clamp()` broadcast a scalar operand themselves, so a traced graph has no
+  `broadcast_in_axes` for it.
 
 ## Bug fixes
 

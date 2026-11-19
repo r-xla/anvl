@@ -50,33 +50,45 @@ hlo_reduced_output <- function(out, x, axes, drop) {
   list(hlo_reshape(out, xla_shape(replace(r_shape(x), axes, 1L))))
 }
 
+# An operand of an elementwise rule at the shape of the output: a scalar is
+# broadcast to it, any other operand already has it.
+hlo_broadcast_scalar <- function(x, output_types) {
+  out_shape <- shape(output_types[[1L]])
+  if (length(shape(x)) || !length(out_shape)) {
+    return(x)
+  }
+  hlo_broadcast_in_dim(x, integer(), out_shape)
+}
+
+# The rule of an elementwise primitive, whose operands are scalars or have the
+# shape of the output. `hlo_fn` receives the operands, each broadcast to that
+# shape, and `output_types`. It stays unevaluated until the rule first runs:
+# `elementwise_rule(hlo_add)` names an import of stablehlo, and
+# `devtools::document()` loads the package before it writes the imports.
+elementwise_rule <- function(hlo_fn) {
+  function(..., output_types) {
+    operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
+    list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
+  }
+}
+
 prim_fill[["stablehlo"]] <- function(value, shape, dtype) {
   list(hlo_tensor(value, shape = xla_shape(shape), dtype = dtype))
 }
 
-prim_add[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_add(lhs, rhs, output_types = output_types))
-}
+prim_add[["stablehlo"]] <- elementwise_rule(hlo_add)
 
-prim_mul[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_multiply(lhs, rhs, output_types = output_types))
-}
+prim_mul[["stablehlo"]] <- elementwise_rule(hlo_multiply)
 
-prim_sub[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_subtract(lhs, rhs, output_types = output_types))
-}
+prim_sub[["stablehlo"]] <- elementwise_rule(hlo_subtract)
 
 prim_negate[["stablehlo"]] <- function(x, output_types) {
   list(hlo_negate(x, output_types = output_types))
 }
 
-prim_div[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_divide(lhs, rhs, output_types = output_types))
-}
+prim_div[["stablehlo"]] <- elementwise_rule(hlo_divide)
 
-prim_pow[["stablehlo"]] <- function(x, y, output_types) {
-  list(hlo_power(x, y, output_types = output_types))
-}
+prim_pow[["stablehlo"]] <- elementwise_rule(hlo_power)
 
 prim_broadcast_in_axes[["stablehlo"]] <- function(x, shape, broadcast_axes, output_types) {
   dims <- xla_broadcast_dims(broadcast_axes, length(shape))
@@ -429,16 +441,15 @@ prim_which_min[["stablehlo"]] <- function(x, axis, drop, output_types) {
 }
 
 .stablehlo_compare_bin <- function(direction) {
-  function(lhs, rhs, output_types) {
-    ct <- .compare_type_for(lhs)
-    list(hlo_compare(
+  elementwise_rule(function(lhs, rhs, output_types) {
+    hlo_compare(
       lhs,
       rhs,
       comparison_direction = direction,
-      compare_type = ct,
+      compare_type = .compare_type_for(lhs),
       output_types = output_types
-    ))
-  }
+    )
+  })
 }
 
 prim_eq[["stablehlo"]] <- .stablehlo_compare_bin("EQ")
@@ -451,49 +462,29 @@ prim_le[["stablehlo"]] <- .stablehlo_compare_bin("LE")
 
 # binary simple math jit rules ---------------------------------------------------
 
-prim_pmax[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_maximum(lhs, rhs, output_types = output_types))
-}
+prim_pmax[["stablehlo"]] <- elementwise_rule(hlo_maximum)
 
-prim_pmin[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_minimum(lhs, rhs, output_types = output_types))
-}
+prim_pmin[["stablehlo"]] <- elementwise_rule(hlo_minimum)
 
-prim_remainder[["stablehlo"]] <- function(x, y, output_types) {
-  list(hlo_remainder(x, y, output_types = output_types))
-}
+prim_remainder[["stablehlo"]] <- elementwise_rule(hlo_remainder)
 
-prim_and[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_and(lhs, rhs, output_types = output_types))
-}
+prim_and[["stablehlo"]] <- elementwise_rule(hlo_and)
 
 prim_not[["stablehlo"]] <- function(x, output_types) {
   list(hlo_not(x, output_types = output_types))
 }
 
-prim_or[["stablehlo"]] <- function(lhs, rhs, output_types) {
-  list(hlo_or(lhs, rhs, output_types = output_types))
-}
+prim_or[["stablehlo"]] <- elementwise_rule(hlo_or)
 
-prim_xor[["stablehlo"]] <- function(x, y, output_types) {
-  list(hlo_xor(x, y, output_types = output_types))
-}
+prim_xor[["stablehlo"]] <- elementwise_rule(hlo_xor)
 
-prim_shift_left[["stablehlo"]] <- function(x, shift, output_types) {
-  list(hlo_shift_left(x, shift, output_types = output_types))
-}
+prim_shift_left[["stablehlo"]] <- elementwise_rule(hlo_shift_left)
 
-prim_shift_right_logical[["stablehlo"]] <- function(x, shift, output_types) {
-  list(hlo_shift_right_logical(x, shift, output_types = output_types))
-}
+prim_shift_right_logical[["stablehlo"]] <- elementwise_rule(hlo_shift_right_logical)
 
-prim_shift_right_arithmetic[["stablehlo"]] <- function(x, shift, output_types) {
-  list(hlo_shift_right_arithmetic(x, shift, output_types = output_types))
-}
+prim_shift_right_arithmetic[["stablehlo"]] <- elementwise_rule(hlo_shift_right_arithmetic)
 
-prim_atan2[["stablehlo"]] <- function(y, x, output_types) {
-  list(hlo_atan2(y, x, output_types = output_types))
-}
+prim_atan2[["stablehlo"]] <- elementwise_rule(hlo_atan2)
 
 # anvl's leading lane axis is XLA's trailing dimension, the one stablehlo's
 # bitcast_convert consumes or produces.
@@ -607,9 +598,9 @@ prim_lgamma[["stablehlo"]] <- function(x, output_types) {
   list(hlo_lgamma(x, output_types = output_types))
 }
 
-prim_psigamma[["stablehlo"]] <- function(x, deriv, output_types) {
-  list(hlo_polygamma(deriv, x, output_types = output_types))
-}
+prim_psigamma[["stablehlo"]] <- elementwise_rule(function(x, deriv, output_types) {
+  hlo_polygamma(deriv, x, output_types = output_types)
+})
 
 prim_erf[["stablehlo"]] <- function(x, output_types) {
   list(hlo_erf(x, output_types = output_types))
@@ -631,8 +622,10 @@ prim_popcnt[["stablehlo"]] <- function(x, output_types) {
   list(hlo_popcnt(x, output_types = output_types))
 }
 
+# stablehlo's clamp takes scalar bounds as they are, but not a scalar operand
+# between bounds that are arrays.
 prim_clamp[["stablehlo"]] <- function(x, min, max, output_types) {
-  list(hlo_clamp(min, x, max, output_types = output_types))
+  list(hlo_clamp(min, hlo_broadcast_scalar(x, output_types), max, output_types = output_types))
 }
 
 prim_rev[["stablehlo"]] <- function(x, axes, output_types) {
@@ -684,7 +677,11 @@ prim_convert[["stablehlo"]] <- function(x, dtype, output_types) {
 }
 
 
+# stablehlo's select takes a scalar `test` as it is, but not scalar branches
+# for a `test` that is an array.
 prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
+  yes <- hlo_broadcast_scalar(yes, output_types)
+  no <- hlo_broadcast_scalar(no, output_types)
   list(hlo_select(test, yes, no, output_types = output_types))
 }
 
