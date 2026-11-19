@@ -693,14 +693,13 @@ nv_ifelse <- jit(function(test, yes, no) {
     no = no,
     .promote = promotion_common(on = c("yes", "no"))
   )
-  args <- nv_broadcast_scalars(args$test, args$yes, args$no)
-  prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
+  prim_ifelse(args$test, args$yes, args$no)
 })
 
 ## Binary ops ------------------------------------------------------------------
 
-# Jitted here rather than at each `nv_*`, because promotion and broadcasting
-# make this more than one operation -- unlike `make_float_unary()`, which is a
+# Jitted here rather than at each `nv_*`, because promotion makes this more
+# than one operation -- unlike `make_float_unary()`, which is a
 # thin wrapper around a single primitive and stays eager.
 #
 # `operands` names the two arguments, as in `make_binary_op()`.
@@ -709,9 +708,7 @@ make_do_binary <- function(f, operands = c("lhs", "rhs")) {
   jit(rlang::new_function(
     rlang::set_names(rep(list(rlang::missing_arg()), 2L), operands),
     rlang::expr({
-      args <- nv_promote_to_common(!!!rlang::syms(operands))
-      args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
-      do.call(f, args)
+      do.call(f, nv_promote_to_common(!!!rlang::syms(operands)))
     })
   ))
 }
@@ -814,7 +811,6 @@ nv_div <- jit(function(lhs, rhs) {
   if (!is_dtype_float(peek_dtype(args[[1L]]))) {
     args <- lapply(args, nv_convert, dtype = default_float())
   }
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   prim_div(args[[1L]], args[[2L]])
 })
 
@@ -1049,7 +1045,6 @@ nv_remainder <- make_do_binary(prim_remainder, c("x", "y"))
 #' @export
 nv_mod <- jit(function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   rest <- nv_remainder(lhs, rhs)
@@ -1084,7 +1079,6 @@ nv_mod <- jit(function(lhs, rhs) {
 #' @export
 nv_floor_div <- jit(function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   dt <- peek_dtype(lhs)
@@ -1170,9 +1164,7 @@ nv_xor <- make_do_binary(prim_xor, c("x", "y"))
 # brought to `x`'s data type rather than meeting it at a common one.
 make_shift <- function(f) {
   jit(function(x, shift) {
-    args <- as_anvl_arrays(x = x, shift = shift, .promote = promotion_like("x"))
-    args <- nv_broadcast_scalars(args$x, args$shift)
-    do.call(f, args)
+    do.call(f, as_anvl_arrays(x = x, shift = shift, .promote = promotion_like("x")))
   })
 }
 
@@ -1269,8 +1261,7 @@ nv_shift_right_arithmetic <- make_shift(prim_shift_right_arithmetic)
 #' @export
 nv_atan2 <- jit(function(y, x) {
   args <- promote_to_common_float(y = y, x = x)
-  args <- nv_broadcast_scalars(args$y, args$x)
-  prim_atan2(args[[1L]], args[[2L]])
+  prim_atan2(args$y, args$x)
 })
 
 
@@ -1898,9 +1889,7 @@ nv_gamma <- jit(function(x) {
 #' nv_psigamma(x, 1) # trigamma
 #' @export
 nv_psigamma <- jit(function(x, deriv = 0L) {
-  args <- promote_to_common_float(x = x, deriv = deriv)
-  args <- nv_broadcast_scalars(args$x, args$deriv)
-  do.call(prim_psigamma, args)
+  do.call(prim_psigamma, promote_to_common_float(x = x, deriv = deriv))
 })
 
 #' @title Error Function
@@ -1999,7 +1988,8 @@ nv_popcnt <- prim_popcnt
 #' @description
 #' Element-wise clamp: `min(max(min, x), max)`.
 #' @param min,max ([`arrayish`])\cr
-#'   Lower and upper bound, each scalar or the same shape as `x`. They are
+#'   Lower and upper bound. The operands that are not scalars, `x` among them,
+#'   have the same shape, and a scalar is broadcast to it. The bounds are
 #'   brought to `x`'s data type: an R value is built at it when its category can
 #'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
 #'   one), and a value that already has a data type is converted unless that
@@ -2008,7 +1998,7 @@ nv_popcnt <- prim_popcnt
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   Has `x`'s shape and data type.
+#'   Has the operands' broadcast shape and `x`'s data type.
 #' @seealso [prim_clamp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the bounds are brought to `x`'s data type
@@ -2267,7 +2257,7 @@ nv_linspace <- jit(
 nv_pad <- function(x, value, low, high, interior = NULL) {
   # `promotion_like("x")` rather than the primitive's own rule: crossing a
   # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
-  # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
+  # way `nv_clamp(x_f32, 0L, 1L)` does, while `prim_pad()` stays strict.
   args <- as_anvl_arrays(x = x, value = value, .promote = promotion_like("x"))
   interior <- interior %||% rep(0L, naxes(args$x))
   prim_pad(args$x, args$value, low, high, interior)

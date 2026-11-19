@@ -41,7 +41,7 @@ config above. anvl-specific:
 
 When adding new functionality, decide which layer it belongs to. Most new operations need both: a `prim_*` primitive with rules, and an `nv_*` wrapper with R-idiomatic semantics.
 
-Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
+Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets, and an elementwise primitive broadcasts it, like any scalar operand, to the shape of the others: `prim_mul(grad, 0.5)`. A primitive's operands only take a data type of their own category, though, so a literal that meets a float operand there is a double even when it is whole: `prim_sub(1, y)`, `prim_ifelse(mask, x, 0)`.
 
 The two spellings of a whole number are not symmetric here. An R integer widens into whatever
 category it meets, while a plain `1` is an R *double* and pulls an integer array into the float
@@ -152,7 +152,9 @@ Wrap every function whose body issues **more than one operation**.
 
 ## Broadcasting
 
-Anvl's elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises `nv_broadcast_scalars()` errors like *"All non-scalar arrays must have the same shape, ... Use `nv_broadcast_arrays()` for general broadcasting."*
+Anvl's elementwise operations (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …, and the elementwise primitives beneath them) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises errors like *"`lhs` and `rhs` must have the same shape, unless one of them is a scalar. ... Use `nv_broadcast_arrays()` for general broadcasting."*
+
+The scalar broadcast belongs to the elementwise primitives themselves: the trace records `mul(%x, 2:f32)`, not a `broadcast_in_axes` first. Their inference rules take the shape of the operands that are not scalars (`infer_elementwise_shape()`), their StableHLO rules broadcast a scalar operand while lowering (`elementwise_rule()`, `hlo_broadcast_scalar()`), and their reverse rules sum the gradient of a scalar operand back down (`unbroadcast()`).
 
 When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
 

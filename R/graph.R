@@ -997,7 +997,7 @@ graph_desc_add <- function(
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["infer_primitive"]] <- NULL
   # An output is computed, whatever its inputs were: an inference rule that
-  # hands an input's aval back (`infer_generic_biv()` returns `lhs`) must not
+  # hands an input's aval back (`infer_float_uni()` returns `x`) must not
   # make `sin(y)` of a closed-over `y` look like `y` itself. Only a constant's
   # node carries a `ConcreteArray`.
   gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))

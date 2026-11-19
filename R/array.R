@@ -199,9 +199,7 @@ nv_array <- function(
   }
   shape <- resolve_auto_shape(shape, auto = infer_data_shape(data))
   if (byrow && !is_raw_payload && length(shape) >= 2L) {
-    # Fill column-major into the reversed shape, then permute axes back —
-    # this is equivalent to placing `data` row-major into `shape`.
-    data <- aperm(array(data, dim = rev(shape)), rev(seq_along(shape)))
+    data <- reorder_byrow(data, shape)
   }
   # Data that names no dtype materializes at the defaults -- inside a trace, the
   # ones the trace is pinned to.
@@ -250,6 +248,23 @@ infer_data_shape <- function(data, call = rlang::caller_env()) {
     )
   }
   length(data)
+}
+
+# `data` in row-major order, as `nv_array(byrow = TRUE)` reads it, reordered to
+# the column-major order the backends fill `shape` in. Positions are permuted
+# rather than `data` passed through `array()`, which recycles data that does not
+# fill `shape` and drops the class of a `bit64::integer64`, reinterpreting its
+# bits as doubles. Data that does not fill `shape` is left as it is: the backend
+# recycles a single value and refuses any other length.
+reorder_byrow <- function(data, shape) {
+  n <- prod(shape)
+  if (length(data) != n) {
+    return(data)
+  }
+  # Filling the reversed shape column-major and permuting the axes back places
+  # the positions row-major into `shape`.
+  positions <- aperm(array(seq_len(n), dim = rev(shape)), rev(seq_along(shape)))
+  data[as.vector(positions)]
 }
 
 #' @title Convert to AnvlArray

@@ -1,4 +1,4 @@
-#' <% .shapes <- if (exists("shapes", inherits = FALSE)) shapes else "and shape" %>
+#' <% .shapes <- if (exists("shapes", inherits = FALSE)) shapes else "and shape, except that a scalar is broadcast to the shape of the other" %>
 #' @param lhs,rhs ([`arrayish`])\cr
 #'   Two inputs of the same data type <%= .shapes %>. Can be <%= dtypes %>. R
 #'   values take the other operand's data type when it is in their

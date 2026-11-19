@@ -12,7 +12,8 @@ One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
 \item{min, max}{(\code{\link{arrayish}})\cr
-Lower and upper bound, each scalar or the same shape as \code{x}. They are
+Lower and upper bound. The operands that are not scalars, \code{x} among them,
+have the same shape, and a scalar is broadcast to it. The bounds are
 brought to \code{x}'s data type: an R value is built at it when its category can
 reach it (\code{0L} serves an integer and a float \code{x} alike, \code{0} only a float
 one), and a value that already has a data type is converted unless that
@@ -21,7 +22,7 @@ a silent narrowing.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{x}'s shape and data type.
+Has the operands' broadcast shape and \code{x}'s data type.
 }
 \description{
 Element-wise clamp: \code{min(max(min, x), max)}.

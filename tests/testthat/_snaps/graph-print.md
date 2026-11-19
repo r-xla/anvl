@@ -117,9 +117,8 @@
     Output
       (%x1: f32[], %x2: i32[3]) {
         %1: f32[3] = convert [dtype = f32] (%x2)
-        %2: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)
-        %3: f32[3] = add(%2, %1)
-        return %3
+        %2: f32[3] = add(%x1, %1)
+        return %2
       }
 
 # format_param() / names an unknown object by its class instead of deparsing it
@@ -278,15 +277,9 @@
       graph
     Output
       <AnvlGraph> (%x1: f32[2]) {
-        %1: f32[2] = broadcast_in_axes [
-          shape = 2, broadcast_axes = integer(0)
-        ] (1:f32)
-        %2: f32[2] = add(%x1, %1)
-        %3: f32[2] = broadcast_in_axes [
-          shape = 2, broadcast_axes = integer(0)
-        ] (2:f32)
-        %4: f32[2] = mul(%x1, %3)
-        return (%2, %4)
+        %1: f32[2] = add(%x1, 1:f32)
+        %2: f32[2] = mul(%x1, 2:f32)
+        return (%1, %2)
       }
 
 # format.AnvlGraph() / prints a constant an optimization pass inlined as its value
@@ -307,9 +300,8 @@
       <AnvlGraph> (%x1: f64[], %x2: f64[] <- double, %x3: i32[2] <- integer) {
         %1: f64[] = add(%x1, %x2)
         %2: f64[2] = convert [dtype = f64] (%x3)
-        %3: f64[2] = broadcast_in_axes [shape = 2, broadcast_axes = integer(0)] (%1)
-        %4: f64[2] = add(%3, %2)
-        return %4
+        %3: f64[2] = add(%1, %2)
+        return %3
       }
 
 # format.AnvlGraph() / breaks a call line too long for the width into filled param rows

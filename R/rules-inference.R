@@ -280,23 +280,6 @@ assert_array_dtype <- function(
   invisible(NULL)
 }
 
-assert_same_type <- function(
-  x,
-  y,
-  arg_x = rlang::as_label(substitute(x)),
-  arg_y = rlang::as_label(substitute(y))
-) {
-  assert_array(x, arg = arg_x)
-  assert_array(y, arg = arg_y)
-  if (!eq_type(x, y)) {
-    cli_abort(c(
-      "{.arg {arg_x}} and {.arg {arg_y}} must have the same array type.",
-      x = "Got {repr(x)} and {repr(y)}."
-    ))
-  }
-  invisible(NULL)
-}
-
 assert_same_dtype <- function(
   x,
   y,
@@ -446,38 +429,63 @@ dtype_names <- function(xs) {
 # Element-wise rules
 # ---------------------------------------------------------------------------
 
+# The shape of an elementwise primitive's output, given its operands `avals`
+# (named for the messages): the shape of the operands that are not scalars,
+# which must agree. A scalar operand stands for an array of that shape, which
+# the lowering rules broadcast it to.
+infer_elementwise_shape <- function(avals) {
+  arrays <- Filter(\(aval) length(shape(aval)) > 0L, avals)
+  if (!length(arrays)) {
+    return(integer())
+  }
+  bad <- first_mismatch(lapply(arrays, shape))
+  if (!is.null(bad)) {
+    args <- names(arrays)
+    cli_abort(c(
+      "{.arg {args[[1L]]}} and {.arg {args[[bad]]}} must have the same shape, unless one of them is a scalar.",
+      x = "Got {repr(arrays[[1L]])} and {repr(arrays[[bad]])}.",
+      i = "Use {.fn nv_broadcast_arrays} for general broadcasting."
+    ))
+  }
+  shape(arrays[[1L]])
+}
+
+# The output of a binary elementwise primitive: the operands' data type, at
+# their broadcast shape.
+infer_biv <- function(lhs, rhs, arg_lhs, arg_rhs) {
+  assert_same_dtype(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
+  avals <- rlang::set_names(list(lhs, rhs), c(arg_lhs, arg_rhs))
+  list(AbstractArray(dtype = dtype(lhs), shape = infer_elementwise_shape(avals)))
+}
+
 # `arg_lhs` / `arg_rhs` are the primitive's names for its operands, passed by
 # `make_binary_op()`: `x` / `y` for `prim_pow()`, `x` / `shift` for the shifts.
 infer_generic_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
-  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
-  list(lhs)
+  infer_biv(lhs, rhs, arg_lhs, arg_rhs)
 }
 
 infer_numeric_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
   assert_array_dtype(lhs, "float", "int", "uint", arg = arg_lhs)
-  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
-  list(lhs)
+  infer_biv(lhs, rhs, arg_lhs, arg_rhs)
 }
 
 infer_float_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
-  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
+  out <- infer_biv(lhs, rhs, arg_lhs, arg_rhs)
   assert_array_dtype(lhs, "float", arg = arg_lhs)
-  list(lhs)
+  out
 }
 
 infer_integerish_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
   assert_array_dtype(lhs, "bool", "int", "uint", arg = arg_lhs)
   assert_array_dtype(rhs, "bool", "int", "uint", arg = arg_rhs)
-  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
-  list(lhs)
+  infer_biv(lhs, rhs, arg_lhs, arg_rhs)
 }
 
 # The bit shifts, which unlike `and` / `or` / `xor` exclude `bool`.
 infer_integer_biv <- function(lhs, rhs, arg_lhs = "lhs", arg_rhs = "rhs") {
   assert_array_dtype(lhs, "int", "uint", arg = arg_lhs)
   assert_array_dtype(rhs, "int", "uint", arg = arg_rhs)
-  assert_same_type(lhs, rhs, arg_x = arg_lhs, arg_y = arg_rhs)
-  list(lhs)
+  infer_biv(lhs, rhs, arg_lhs, arg_rhs)
 }
 
 infer_generic_uni <- function(x) {
@@ -519,8 +527,7 @@ infer_is_finite <- function(x) {
 infer_polygamma <- function(x, deriv) {
   assert_array_dtype(x, "float")
   assert_array_dtype(deriv, "float")
-  assert_same_type(x, deriv)
-  list(AbstractArray(dtype = dtype(x), shape = x$shape))
+  infer_biv(x, deriv, "x", "deriv")
 }
 
 infer_round <- function(x, method) {
@@ -533,8 +540,8 @@ infer_round <- function(x, method) {
 # ---------------------------------------------------------------------------
 
 infer_compare <- function(lhs, rhs) {
-  assert_same_type(lhs, rhs)
-  list(AbstractArray(dtype = "bool", shape = lhs$shape))
+  out <- infer_biv(lhs, rhs, "lhs", "rhs")[[1L]]
+  list(AbstractArray(dtype = "bool", shape = shape(out)))
 }
 
 infer_convert <- function(x, dtype) {
@@ -833,48 +840,18 @@ infer_pad <- function(
 }
 
 infer_select <- function(test, yes, no) {
-  # (C2)
-  assert_same_type(yes, no)
+  assert_same_dtype(yes, no)
   assert_array_dtype(test, "bool")
-
-  # (C1) `test` is either element-wise or a single scalar switch.
-  if (length(shape(test)) != 0L && !identical(shape(test), shape(yes))) {
-    if (length(shape(yes)) == 0L) {
-      cli_abort(c(
-        "{.arg yes} and {.arg no} must have {.arg test}'s shape when {.arg test} is not a scalar.",
-        x = "{.arg test} is {shape_repr(shape(test))} but the branches are scalars."
-      ))
-    }
-    cli_abort(c(
-      "{.arg test} must be a scalar or have the same shape as {.arg yes}.",
-      x = "Got {shape_repr(shape(test))} and {shape_repr(shape(yes))}."
-    ))
-  }
-
-  list(AbstractArray(dtype = dtype(yes), shape = yes$shape))
+  shape <- infer_elementwise_shape(list(test = test, yes = yes, no = no))
+  list(AbstractArray(dtype = dtype(yes), shape = shape))
 }
 
 infer_clamp <- function(x, min, max) {
   assert_arrays(x = x, min = min, max = max)
-
-  # (C3)
   assert_same_dtype(x, max)
   assert_same_dtype(min, x)
-
-  # (C1)
-  bounds <- list(min = min, max = max)
-  for (nm in names(bounds)) {
-    bound_shape <- shape(bounds[[nm]])
-    if (length(bound_shape) != 0L && !identical(bound_shape, shape(x))) {
-      cli_abort(c(
-        "{.arg {nm}} must be a scalar or have the same shape as {.arg x}.",
-        x = "Got {shape_repr(bound_shape)} and {shape_repr(shape(x))}."
-      ))
-    }
-  }
-
-  # (C4)
-  list(x)
+  shape <- infer_elementwise_shape(list(x = x, min = min, max = max))
+  list(AbstractArray(dtype = dtype(x), shape = shape))
 }
 
 infer_iota <- function(axis, dtype, shape, start) {

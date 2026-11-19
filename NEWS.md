@@ -21,11 +21,16 @@
 * New `pullback()` and `value_and_pullback()` differentiate a function with any
   result: they return its pullback, which takes a cotangent of the result back
   to the arguments.
+* Elementwise primitives such as `prim_add()`, `prim_eq()`, `prim_ifelse()` and
+  `prim_clamp()` broadcast a scalar operand themselves, so a traced graph has no
+  `broadcast_in_axes` for it.
 
 ## Bug fixes
 
 * An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
   differentiates with respect to no argument, rather than all of them.
+* `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
+  recycling it, and keeps the values of a `bit64::integer64`.
 
 # anvl 0.6.0
 

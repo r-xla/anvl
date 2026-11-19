@@ -1,13 +1,19 @@
 test_that("prim_add", {
   expect_jit_torch_binary(prim_add, torch::torch_add, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_add, torch::torch_add, c(2, 3), integer())
+  expect_jit_torch_binary(prim_add, torch::torch_add, integer(), c(2, 3))
 })
 
 test_that("prim_sub", {
   expect_jit_torch_binary(prim_sub, torch::torch_sub, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_sub, torch::torch_sub, c(2, 3), integer())
+  expect_jit_torch_binary(prim_sub, torch::torch_sub, integer(), c(2, 3))
 })
 
 test_that("prim_mul", {
   expect_jit_torch_binary(prim_mul, torch::torch_mul, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_mul, torch::torch_mul, c(2, 3), integer())
+  expect_jit_torch_binary(prim_mul, torch::torch_mul, integer(), c(2, 3))
 })
 
 test_that("prim_negate", {
@@ -16,16 +22,20 @@ test_that("prim_negate", {
 
 test_that("prim_div", {
   expect_jit_torch_binary(prim_div, torch::torch_div, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_div, torch::torch_div, c(2, 3), integer())
+  expect_jit_torch_binary(prim_div, torch::torch_div, integer(), c(2, 3))
 })
 
 test_that("prim_pow", {
-  expect_jit_torch_binary(
-    prim_pow,
-    torch::torch_pow,
-    c(2, 3),
-    c(2, 3),
-    non_negative = list(TRUE, FALSE)
-  )
+  for (shapes in list(list(c(2, 3), c(2, 3)), list(c(2, 3), integer()), list(integer(), c(2, 3)))) {
+    expect_jit_torch_binary(
+      prim_pow,
+      torch::torch_pow,
+      shapes[[1L]],
+      shapes[[2L]],
+      non_negative = list(TRUE, FALSE)
+    )
+  }
 })
 
 
@@ -33,34 +43,50 @@ test_that("prim_pow", {
 
 test_that("prim_eq", {
   expect_jit_torch_binary(prim_eq, torch::torch_eq, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_eq, torch::torch_eq, c(2, 3), integer())
+  expect_jit_torch_binary(prim_eq, torch::torch_eq, integer(), c(2, 3))
 })
 
 test_that("prim_ne", {
   expect_jit_torch_binary(prim_ne, torch::torch_ne, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_ne, torch::torch_ne, c(2, 3), integer())
+  expect_jit_torch_binary(prim_ne, torch::torch_ne, integer(), c(2, 3))
 })
 
 test_that("prim_gt", {
   expect_jit_torch_binary(prim_gt, torch::torch_gt, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_gt, torch::torch_gt, c(2, 3), integer())
+  expect_jit_torch_binary(prim_gt, torch::torch_gt, integer(), c(2, 3))
 })
 
 test_that("prim_ge", {
   expect_jit_torch_binary(prim_ge, torch::torch_ge, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_ge, torch::torch_ge, c(2, 3), integer())
+  expect_jit_torch_binary(prim_ge, torch::torch_ge, integer(), c(2, 3))
 })
 
 test_that("prim_lt", {
   expect_jit_torch_binary(prim_lt, torch::torch_lt, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_lt, torch::torch_lt, c(2, 3), integer())
+  expect_jit_torch_binary(prim_lt, torch::torch_lt, integer(), c(2, 3))
 })
 
 test_that("prim_le", {
   expect_jit_torch_binary(prim_le, torch::torch_le, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_le, torch::torch_le, c(2, 3), integer())
+  expect_jit_torch_binary(prim_le, torch::torch_le, integer(), c(2, 3))
 })
 
 test_that("prim_pmax", {
   expect_jit_torch_binary(prim_pmax, torch::torch_maximum, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_pmax, torch::torch_maximum, c(2, 3), integer())
+  expect_jit_torch_binary(prim_pmax, torch::torch_maximum, integer(), c(2, 3))
 })
 
 test_that("prim_pmin", {
   expect_jit_torch_binary(prim_pmin, torch::torch_minimum, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_pmin, torch::torch_minimum, c(2, 3), integer())
+  expect_jit_torch_binary(prim_pmin, torch::torch_minimum, integer(), c(2, 3))
 })
 
 test_that("prim_remainder", {
@@ -104,6 +130,8 @@ test_that("prim_remainder", {
 
 test_that("prim_and", {
   expect_jit_torch_binary(prim_and, torch::torch_logical_and, c(2, 3), c(2, 3), dtype = "bool")
+  expect_jit_torch_binary(prim_and, torch::torch_logical_and, c(2, 3), integer(), dtype = "bool")
+  expect_jit_torch_binary(prim_and, torch::torch_logical_and, integer(), c(2, 3), dtype = "bool")
 })
 
 test_that("prim_not", {
@@ -112,15 +140,21 @@ test_that("prim_not", {
 
 test_that("prim_or", {
   expect_jit_torch_binary(prim_or, torch::torch_logical_or, c(2, 3), c(2, 3), dtype = "bool")
+  expect_jit_torch_binary(prim_or, torch::torch_logical_or, c(2, 3), integer(), dtype = "bool")
+  expect_jit_torch_binary(prim_or, torch::torch_logical_or, integer(), c(2, 3), dtype = "bool")
 })
 
 test_that("prim_xor", {
   expect_jit_torch_binary(prim_xor, torch::torch_logical_xor, c(2, 3), c(2, 3), dtype = "bool")
+  expect_jit_torch_binary(prim_xor, torch::torch_logical_xor, c(2, 3), integer(), dtype = "bool")
+  expect_jit_torch_binary(prim_xor, torch::torch_logical_xor, integer(), c(2, 3), dtype = "bool")
 })
 
 
 test_that("prim_atan2", {
   expect_jit_torch_binary(prim_atan2, torch::torch_atan2, c(2, 3), c(2, 3))
+  expect_jit_torch_binary(prim_atan2, torch::torch_atan2, c(2, 3), integer())
+  expect_jit_torch_binary(prim_atan2, torch::torch_atan2, integer(), c(2, 3))
 })
 
 # Unary math
@@ -216,6 +250,11 @@ test_that("prim_ifelse", {
   at <- torch::torch_tensor(as_array(a), dtype = torch::torch_int32())
   bt <- torch::torch_tensor(as_array(b), dtype = torch::torch_int32())
   expect_equal(as_array(out), as_array_torch(torch::torch_where(pt, at, bt)))
+
+  # scalar branches are broadcast to the shape of `test`
+  out <- jit(prim_ifelse)(p, a, nv_scalar(0L, dtype = "i32"))
+  zero <- torch::torch_scalar_tensor(0L, dtype = torch::torch_int32())
+  expect_equal(as_array(out), as_array_torch(torch::torch_where(pt, at, zero)))
 })
 
 test_that("prim_dot_general", {
@@ -336,13 +375,12 @@ test_that("prim_psigamma", {
   shp <- c(2, 3)
   x <- sampler_unif(0.5, 5)(shp, "f32")
   for (n_val in c(0L, 1L, 2L)) {
-    n_arr <- array(rep(n_val, prod(shp)), shp)
-    out_nv <- jit(prim_psigamma)(
-      nv_array(x, dtype = "f32"),
-      nv_array(n_arr, dtype = "f32")
-    )
     out_th <- torch::torch_polygamma(n_val, torch::torch_tensor(x, dtype = torch::torch_float32()))
-    expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = 1e-5)
+    # the order as an array of the shape of `x`, and as a scalar broadcast to it
+    for (deriv in list(nv_array(array(n_val, shp), dtype = "f32"), nv_scalar(n_val, dtype = "f32"))) {
+      out_nv <- jit(prim_psigamma)(nv_array(x, dtype = "f32"), deriv)
+      expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = 1e-5)
+    }
   }
 })
 
