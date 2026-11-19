@@ -508,6 +508,40 @@ describe("infer_triangular_solve()", {
       )
     }
   })
+
+  it("takes the matrices from the first two axes and the batch axes from the trailing ones", {
+    a <- nv_aval("f32", c(3L, 3L, 2L))
+    left <- infer_triangular_solve(a, nv_aval("f32", c(3L, 5L, 2L)), TRUE, TRUE, FALSE, FALSE)
+    expect_shape(left[[1L]], c(3L, 5L, 2L))
+    right <- infer_triangular_solve(a, nv_aval("f32", c(5L, 3L, 2L)), FALSE, TRUE, FALSE, FALSE)
+    expect_shape(right[[1L]], c(5L, 3L, 2L))
+    expect_error(
+      infer_triangular_solve(nv_aval("f32", c(2L, 3L, 3L)), nv_aval("f32", c(2L, 3L, 3L)), TRUE, TRUE, FALSE, FALSE),
+      "must be square in its first two axes",
+      fixed = TRUE
+    )
+    expect_error(
+      infer_triangular_solve(a, nv_aval("f32", c(3L, 5L, 4L)), TRUE, TRUE, FALSE, FALSE),
+      "The batch axes of `a` and `b` must match",
+      fixed = TRUE
+    )
+    expect_error(
+      infer_triangular_solve(a, nv_aval("f32", c(3L, 5L, 2L)), FALSE, TRUE, FALSE, FALSE),
+      "must agree on the axis the solve contracts over",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("infer_cholesky()", {
+  it("takes the matrix from the first two axes and keeps the trailing batch axes", {
+    expect_shape(infer_cholesky(nv_aval("f32", c(3L, 3L, 4L, 2L)), TRUE)[[1L]], c(3L, 3L, 4L, 2L))
+    expect_error(
+      infer_cholesky(nv_aval("f32", c(2L, 3L, 3L)), TRUE),
+      "must be square in its first two axes",
+      fixed = TRUE
+    )
+  })
 })
 
 describe("infer_convolution()", {

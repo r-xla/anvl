@@ -2632,6 +2632,64 @@ describe("nv_triangular_solve", {
       tolerance = 1e-5
     )
   })
+
+  lower_triangular_batch <- function() {
+    withr::local_seed(1L)
+    a <- array(rnorm(18L), c(3L, 3L, 2L))
+    for (i in 1:2) {
+      diag(a[,, i]) <- 3
+      a[,, i][upper.tri(a[,, i])] <- 0
+    }
+    a
+  }
+
+  it("solves a batch of systems along the trailing axes, on either side", {
+    withr::local_seed(2L)
+    a <- lower_triangular_batch()
+    b_left <- array(rnorm(30L), c(3L, 5L, 2L))
+    b_right <- array(rnorm(30L), c(5L, 3L, 2L))
+    x_left <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b_left, dtype = "f64"))
+    x_right <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b_right, dtype = "f64"), left = FALSE)
+    expect_shape(x_left, c(3L, 5L, 2L))
+    expect_shape(x_right, c(5L, 3L, 2L))
+    for (i in 1:2) {
+      expect_equal(as_array(x_left)[,, i], solve(a[,, i], b_left[,, i]), tolerance = 1e-10)
+      expect_equal(as_array(x_right)[,, i], b_right[,, i] %*% solve(a[,, i]), tolerance = 1e-10)
+    }
+  })
+
+  it("takes a vector per batch as a column on the left and a row on the right", {
+    withr::local_seed(2L)
+    a <- lower_triangular_batch()
+    b <- array(rnorm(6L), c(3L, 2L))
+    x_left <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b, dtype = "f64"))
+    x_right <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b, dtype = "f64"), left = FALSE)
+    expect_shape(x_left, c(3L, 2L))
+    expect_shape(x_right, c(3L, 2L))
+    for (i in 1:2) {
+      expect_equal(as_array(x_left)[, i], solve(a[,, i], b[, i]), tolerance = 1e-10)
+      expect_equal(as_array(x_right)[, i], drop(b[, i] %*% solve(a[,, i])), tolerance = 1e-10)
+    }
+  })
+
+  it("requires the batch axes to trail and to match", {
+    a <- nv_array(lower_triangular_batch(), dtype = "f64")
+    expect_error(nv_triangular_solve(a, nv_fill(0, c(3L, 5L, 3L), dtype = "f64")), "batch axes")
+    expect_error(nv_triangular_solve(a, nv_fill(0, c(2L, 3L, 2L), dtype = "f64")), "must agree on the axis")
+    expect_error(nv_triangular_solve(a, nv_fill(0, c(2L, 3L), dtype = "f64")), "size 3 in its first axis")
+  })
+
+  it("lowers a batch without transposing it", {
+    for (platform in c("cpu", "cuda")) {
+      for (b_shape in list(c(3L, 5L, 2L), c(3L, 2L))) {
+        g <- trace_fn(
+          function(a, b) nv_triangular_solve(a, b),
+          list(nv_aval("f64", c(3L, 3L, 2L)), nv_aval("f64", b_shape))
+        )
+        expect_no_match(repr(stablehlo(g, platform = platform)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+      }
+    }
+  })
 })
 
 describe("nv_lu", {
@@ -2703,6 +2761,22 @@ describe("nv_chol", {
     # `lower = TRUE` should give the corresponding lower-triangular factor.
     L <- as_array(nv_chol(nv_array(A_mat, dtype = "f64"), lower = TRUE))
     expect_equal(L %*% t(L), A_mat, tolerance = 1e-5)
+  })
+
+  it("factors every matrix of a batch along the trailing axes", {
+    spd <- matrix(c(4, 1, 1, 1, 4, 1, 1, 1, 4), nrow = 3)
+    out <- nv_chol(nv_array(array(c(spd, spd * 2), c(3L, 3L, 2L)), dtype = "f64"))
+    expect_shape(out, c(3L, 3L, 2L))
+    got <- as_array(out)
+    expect_equal(got[,, 1L], chol(spd), tolerance = 1e-8)
+    expect_equal(got[,, 2L], chol(spd * 2), tolerance = 1e-8)
+  })
+
+  it("takes the matrix from the first two axes", {
+    expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its first two axes")
+    expect_error(nv_chol(nv_array(array(1:18 / 1, c(2L, 3L, 3L)), dtype = "f32")), "square in its first two axes")
+    expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
+    expect_error(nv_chol(nv_array(matrix(TRUE, 2, 2))), "must be a numeric data type")
   })
 })
 
@@ -3296,28 +3370,6 @@ test_that("a constructor that fills internally works at every data type", {
   b <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
   expect_equal(as.vector(nv_tril(b)), c(TRUE, TRUE, FALSE, TRUE))
   expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
-})
-
-test_that("prim_chol and nv_chol accept batched inputs", {
-  # The lowering broadcasts its triangle mask over the batch axes, and both
-  # pages promise batch support.
-  spd <- matrix(c(4, 1, 1, 1, 4, 1, 1, 1, 4), nrow = 3)
-  bx <- array(NA_real_, dim = c(2L, 3L, 3L))
-  bx[1L, , ] <- spd
-  bx[2L, , ] <- spd * 2
-  out <- nv_chol(nv_array(bx, dtype = "f64"))
-  expect_equal(shape(out), c(2L, 3L, 3L))
-  got <- as_array(out)
-  expect_equal(got[1L, , ], chol(spd), tolerance = 1e-8)
-  expect_equal(got[2L, , ], chol(spd * 2), tolerance = 1e-8)
-
-  # A single matrix still works, and the constraints still fire, on the last
-  # two axes.
-  expect_equal(shape(nv_chol(nv_array(spd, dtype = "f32"))), c(3L, 3L))
-  expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its last two axes")
-  expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
-  expect_error(nv_chol(nv_array(spd)), NA)
-  expect_error(nv_chol(nv_array(matrix(TRUE, 2, 2))), "must be a numeric data type")
 })
 
 describe("the linear algebra functions", {

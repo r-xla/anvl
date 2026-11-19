@@ -1171,20 +1171,19 @@ prim_gather[["stablehlo"]] <- function(
 # pjrt's `potrf` custom call (LAPACK on the host, cuSOLVER on CUDA) factors
 # column-major matrices, batched over its leading dimensions, and returns
 # potrf's `info` per matrix, which is non-zero for a matrix that is not
-# positive definite. With the batch dimensions moved first, each block is the
-# column-major matrix as XLA's row-major bytes, so potrf factors exactly the
-# matrix the R axes hold and writes the factor the same way.
+# positive definite. The trailing batch axes are XLA's leading dimensions, and
+# the matrix in R axes 1 and 2 is the block behind them, (column, row) in XLA
+# order: the column-major matrix as XLA's row-major bytes. So potrf factors
+# exactly the matrix the R axes hold and writes the factor the same way.
 prim_chol[["stablehlo"]] <- function(x, lower) {
-  r <- length(shape(x$value_type))
-  moved <- xla_matrix_last(x, r - 1L, r)
-  xm <- moved$value
-  op_shape <- shape(xm$value_type)
+  op_shape <- shape(x$value_type)
+  r <- length(op_shape)
   batch_dims <- seq_len(r - 2L) - 1L
   dt <- dtype(x)
 
   row_major <- rev(seq_len(r) - 1L)
   out <- hlo_custom_call(
-    xm,
+    x,
     call_target_name = "potrf",
     api_version = 4L,
     has_side_effect = FALSE,
@@ -1221,11 +1220,7 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
     mask <- hlo_broadcast_in_dim(mask, c(r - 2L, r - 1L), op_shape)
   }
   zero <- hlo_tensor(0L, dtype = dt, shape = op_shape, func = x$func)
-  out <- hlo_select(mask, L, zero)
-  if (!is.null(moved$back)) {
-    out <- hlo_transpose(out, moved$back)
-  }
-  list(out)
+  list(hlo_select(mask, L, zero))
 }
 
 # XLA lowers `stablehlo.triangular_solve` to cuBLAS trsm on CUDA, but on the
@@ -1234,20 +1229,17 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
 # BLAS has. It stands in for the op: same attributes and semantics, on XLA's
 # default row-major layout.
 #
-# Both take their batch dimensions first and solve on the blocks behind them,
-# which hold the transposes of the R matrices. op(a) x = b is
+# Both take their batch dimensions first and solve on the blocks behind them.
+# The trailing batch axes are XLA's leading dimensions, and each block holds the
+# matrix in R axes 1 and 2 transposed, as (column, row). op(a) x = b is
 # t(x) op(t(a)) = t(b), so they solve for t(x) with the side and the triangle
 # swapped.
 prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a, output_types) {
-  r <- length(shape(b$value_type))
-  am <- xla_matrix_last(a, r - 1L, r)
-  bm <- xla_matrix_last(b, r - 1L, r)
-  out_types <- if (is.null(bm$back)) output_types
   if (identical(current_platform(), "cpu") && as.character(dtype(a)) %in% c("f32", "f64")) {
-    row_major <- rev(seq_len(r) - 1L)
+    row_major <- rev(seq_along(shape(b$value_type)) - 1L)
     x <- hlo_custom_call(
-      am$value,
-      bm$value,
+      a,
+      b,
       call_target_name = "trsm",
       api_version = 4L,
       has_side_effect = FALSE,
@@ -1257,23 +1249,20 @@ prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_di
         stablehlo::BoolAttr(name = "transpose_a", value = transpose_a),
         stablehlo::BoolAttr(name = "unit_diagonal", value = unit_diagonal)
       )),
-      output_types = out_types %||% list(bm$value$value_type),
+      output_types = output_types,
       operand_layouts = list(row_major, row_major),
       result_layouts = list(row_major)
     )
   } else {
     x <- hlo_triangular_solve(
-      am$value,
-      bm$value,
+      a,
+      b,
       left_side = !left_side,
       lower = !lower,
       unit_diagonal = unit_diagonal,
       transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE",
-      output_types = out_types
+      output_types = output_types
     )
-  }
-  if (!is.null(bm$back)) {
-    x <- hlo_transpose(x, bm$back, output_types = output_types)
   }
   list(x)
 }

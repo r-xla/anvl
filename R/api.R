@@ -2369,11 +2369,12 @@ nv_matmul <- jit(
 #' @title Cholesky Decomposition
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-#' Supports batched inputs: axes before the last two are batch axes.
+#' Supports batched inputs: the first two axes form the square matrix and any
+#' trailing ones are batch axes.
 #' @details
 #' Differentiation is only implemented for a single matrix: a [gradient()] of a
 #' batched decomposition errors.
-#' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the last two forming the square matrix and any leading ones batch axes
+#' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the first two forming the square matrix and any trailing ones batch axes
 #' @template param_unary_x_tofloat
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
@@ -2484,17 +2485,17 @@ nv_solve <- jit(function(a, b) {
 #' depending on `transpose`.
 #' @details
 #' As a convenience, `b` may have one fewer axis than `a` (a single
-#' right-hand side per batch, shape `(B..., n)` for `a` of shape
-#' `(B..., n, n)`). It is reshaped internally to a column (`left =
+#' right-hand side per batch, shape `(n, b1, ..., bk)` for `a` of shape
+#' `(n, n, b1, ..., bk)`). It is reshaped internally to a column (`left =
 #' TRUE`) or row (`left = FALSE`) and reshaped back on the way out.
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
 #'
 #' Differentiation is only implemented for a single system: a [gradient()] of a
 #' batched solve errors.
 #' @param a ([`arrayish`])\cr
-#'   Triangular coefficient matrix with at least 2 axes. The last two
-#'   axes must be equal; any leading axes are batch axes. Can be any numeric
-#'   data type: `a` and `b` are
+#'   Triangular coefficient matrix with at least 2 axes. The first two
+#'   axes must be of equal size; any trailing axes are batch axes. Can be any
+#'   numeric data type: `a` and `b` are
 #'   [promoted to a common data type][nv_promote_to_common()] and that is then
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, since the solve is a float one. An R value
@@ -2502,16 +2503,16 @@ nv_solve <- jit(function(a, b) {
 #'   [data type category][dtype_categories], and settles on the default float when
 #'   neither has one.
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
-#'   * full rank — shape `(B..., n, k)` when `left = TRUE`, or
-#'     `(B..., k, n)` when `left = FALSE`;
-#'   * one rank less, shape `(B..., n)`, meaning a single column
+#'   Right-hand side. For `a` of shape `(n, n, b1, ..., bk)`, `b` may be either:
+#'   * full rank — shape `(n, m, b1, ..., bk)` when `left = TRUE`, or
+#'     `(m, n, b1, ..., bk)` when `left = FALSE`;
+#'   * one rank less, shape `(n, b1, ..., bk)`, meaning a single column
 #'     (`left = TRUE`) or row (`left = FALSE`) per batch — it
 #'     is reshaped internally and the reshape is undone on the result so
 #'     the output rank matches `b`.
 #'
-#'   `b`'s batch axes (`B...`) must match `a`'s exactly. It is promoted
-#'   together with `a` -- see `a`.
+#'   `b`'s trailing batch axes (`b1, ..., bk`) must match `a`'s exactly. It is
+#'   promoted together with `a` -- see `a`.
 #' @param left (`logical(1)`)\cr
 #'   If `TRUE` (default), solve `op(a) %*% x = b`; if `FALSE`,
 #'   solve `x %*% op(a) = b`.
@@ -2560,22 +2561,18 @@ nv_triangular_solve <- jit(
     }
 
     # Convenience: accept a `b` whose rank is one less than `a`'s. The
-    # primitive requires rank(b) == rank(a); for left = TRUE we append
-    # a trailing 1 (column vector per batch), for left = FALSE we
-    # insert a 1 before the last axis (row vector per batch). The shape is
-    # restored on the way out. Nothing is ambiguous about the broadcast since
-    # we require exact shape match for the batch axes.
+    # primitive requires rank(b) == rank(a); for left = TRUE we insert a 1
+    # after the first axis (a column per batch), for left = FALSE we prepend
+    # a 1 (a row per batch). The shape is restored on the way out. Nothing is
+    # ambiguous about the broadcast since we require exact shape match for the
+    # batch axes.
     b_is_vector <- rank_b == rank_a - 1L
     if (b_is_vector) {
-      n <- if (left) a_shape[rank_a - 1L] else a_shape[rank_a]
-      if (b_shape[length(b_shape)] != n) {
-        cli_abort("{.arg b} must have size {n} in its last axis to match {.arg a}")
+      n <- a_shape[[if (left) 1L else 2L]]
+      if (b_shape[[1L]] != n) {
+        cli_abort("{.arg b} must have size {n} in its first axis to match {.arg a}")
       }
-      b <- if (left) {
-        prim_reshape(b, shape = c(b_shape, 1L))
-      } else {
-        prim_reshape(b, shape = c(b_shape[-length(b_shape)], 1L, n))
-      }
+      b <- prim_reshape(b, shape = if (left) c(n, 1L, b_shape[-1L]) else c(1L, b_shape))
     }
 
     x <- prim_triangular_solve(

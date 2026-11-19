@@ -8,7 +8,7 @@ prim_chol(x, lower = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes. Can be any float data type. An R value materializes at its
+One input, with at least 2 axes, the first two of equal size (a square matrix); any trailing axes are batch axes. Can be any float data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
 \item{lower}{(\code{logical(1)})\cr
@@ -25,7 +25,7 @@ A matrix that is not positive definite factors to \code{NaN}.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Axes before the last two are batch axes.
+The first two axes form the matrix, and any trailing axes are batch axes.
 }
 \details{
 Differentiation is only implemented for a single matrix: the \code{reverse} rule

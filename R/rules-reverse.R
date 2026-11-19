@@ -1894,7 +1894,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
 
   L <- outputs[[1L]]
   grad <- grads[[1L]]
-  n <- shape(L)[length(shape(L))]
+  n <- shape(L)[[1L]]
 
   # Phi: keep lower triangle, halve diagonal, zero upper triangle
   phi <- function(x) {
@@ -1974,7 +1974,7 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
   # i.e. we also zero out those.
   grad_a <- if (required[[1L]]) {
     raw <- prim_negate(if (left_side) nv_matmul(grad_b, t(x)) else nv_matmul(t(x), grad_b))
-    n <- shape(a)[length(shape(a))]
+    n <- shape(a)[[1L]]
     mask <- triangular_mask(n, lower, unit_diagonal)
     if (transpose_a) {
       raw <- t(raw)
