@@ -1591,7 +1591,7 @@ describe("prim_sort", {
 })
 
 describe("prim_top_k", {
-  it("returns values and indices along the last axis", {
+  it("returns values and indices along axis 1", {
     out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L, indices = TRUE)
     expect_length(out, 2L)
     expect_named(out, c("values", "indices"))
@@ -1600,11 +1600,37 @@ describe("prim_top_k", {
     expect_dtype(out$indices, default_int())
   })
 
-  it("operates per-row on a matrix", {
-    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+  it("operates per column on a matrix", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 3)
     out <- prim_top_k(m, k = 2L, indices = TRUE)
-    expect_equal(as_array(out[[1L]]), matrix(c(5, 3, 4, 2), nrow = 2, byrow = TRUE))
-    expect_equal(as_array(out[[2L]]), matrix(c(3L, 1L, 2L, 1L), nrow = 2, byrow = TRUE))
+    expect_equal(as_array(out[[1L]]), matrix(c(5, 3, 4, 2), nrow = 2))
+    expect_equal(as_array(out[[2L]]), matrix(c(3L, 1L, 2L, 1L), nrow = 2))
+  })
+
+  it("treats the trailing axes as batch axes", {
+    withr::local_seed(1L)
+    x <- array(rnorm(5L * 3L * 2L), c(5L, 3L, 2L))
+    out <- prim_top_k(nv_array(x, dtype = "f64"), k = 2L, indices = TRUE)
+    expect_equal(
+      as_array(out$values),
+      apply(x, c(2L, 3L), function(v) sort(v, decreasing = TRUE)[seq_len(2L)])
+    )
+    expect_equal(
+      as_array(out$indices),
+      apply(x, c(2L, 3L), function(v) order(v, decreasing = TRUE)[seq_len(2L)])
+    )
+  })
+
+  it("lowers along axis 1 without a transpose", {
+    for (indices in c(TRUE, FALSE)) {
+      g <- trace_fn(
+        function(x) prim_top_k(x, k = 2L, indices = indices),
+        list(nv_aval("f32", shape = c(7L, 3L)))
+      )
+      for (platform in c("cpu", "cuda")) {
+        expect_no_match(repr(stablehlo(g, platform = platform)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+      }
+    }
   })
 
   it("breaks ties with the smaller index", {
@@ -1642,8 +1668,9 @@ describe("prim_top_k", {
     expect_no_match(cpu, "stablehlo.sort", fixed = TRUE)
   })
 
-  it("rejects k larger than the last axis", {
+  it("rejects k larger than axis 1", {
     expect_error(prim_top_k(nv_array(c(1, 2, 3)), k = 5L, indices = FALSE))
+    expect_error(prim_top_k(nv_array(1:6, shape = c(2L, 3L)), k = 3L, indices = FALSE), "axis 1")
   })
 })
 

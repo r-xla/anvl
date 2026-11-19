@@ -1118,16 +1118,15 @@ infer_top_k <- function(x, k, indices) {
       x = "Got {.val {k}}."
     ))
   }
-  last <- in_shape[[n_axes]]
-  if (k > last) {
+  axis_size <- in_shape[[1L]]
+  if (k > axis_size) {
     cli_abort(c(
-      "{.arg k} must not exceed the size of the last axis of {.arg x} ({last}).",
+      "{.arg k} must not exceed the size of axis 1 of {.arg x} ({axis_size}).",
       x = "Got {.val {k}}."
     ))
   }
 
-  result_shape <- in_shape
-  result_shape[[n_axes]] <- k
+  result_shape <- replace(in_shape, 1L, k)
 
   values <- AbstractArray(dtype = dtype(x), shape = Shape(result_shape))
   if (!indices) {

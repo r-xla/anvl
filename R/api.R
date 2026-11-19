@@ -2971,22 +2971,23 @@ nv_eye <- jit(
   if (nan_rm && is_dtype_float(peek_dtype(x))) nv_ifelse(nv_is_nan(x), value, x) else x
 }
 
-# Gather `axes` into a single trailing axis, so an operation that only ever
-# handles one axis -- a sort, an arg-reduction -- can reduce several at once by
-# ranking their elements together. `axes` must already be resolved and sorted.
-# The reshape is column-major, so a position along the merged axis is the
-# column-major linear index within the block of `axes`, like `which.max()`
-# reports for a whole array. Returns the reshaped array along with the shape
-# its kept axes take afterwards, which `drop = FALSE` restores the reduced axes
-# into at size 1.
+# Gather `axes` into a single leading axis, so an operation that only ever
+# handles one axis -- a top-k, a sort, an arg-reduction -- can reduce several at
+# once by ranking their elements together. Axis 1 is the contiguous axis, the
+# one `prim_top_k()` works along, so reducing leading axes moves nothing.
+# `axes` must already be resolved and sorted. The reshape is column-major, so a
+# position along the merged axis is the column-major linear index within the
+# block of `axes`, like `which.max()` reports for a whole array. Returns the
+# reshaped array along with the shape its kept axes take afterwards, which
+# `drop = FALSE` restores the reduced axes into at size 1.
 .flatten_reduce_axes <- function(x, axes, drop) {
   x_shape <- shape(x)
   keep <- setdiff(seq_along(x_shape), axes)
-  perm <- c(keep, axes)
+  perm <- c(axes, keep)
   if (!identical(perm, seq_along(x_shape))) {
     x <- prim_transpose(x, perm = perm)
   }
-  flat_shape <- c(x_shape[keep], as.integer(prod(x_shape[axes])))
+  flat_shape <- c(as.integer(prod(x_shape[axes])), x_shape[keep])
   if (!identical(shape(x), flat_shape)) {
     x <- prim_reshape(x, flat_shape)
   }
@@ -4431,17 +4432,17 @@ nv_top_k <- jit(
     }
     k <- as.integer(k)
 
-    # `prim_top_k` reads the last axis only, so several axes are gathered into
-    # one first -- which is what makes the indices index their column-major
-    # flattening -- and the `k` axis is moved back to where the first of them
-    # was.
+    # `prim_top_k` reads axis 1 only, so several axes are gathered into one
+    # leading axis first -- which is what makes the indices index their
+    # column-major flattening -- and the `k` axis is moved back to where the
+    # first of them was.
     flat <- .flatten_reduce_axes(x, axes, drop = TRUE)
     out <- prim_top_k(flat$x, k = k, indices = indices)
     keep <- setdiff(seq_len(rank), axes)
     out_rank <- length(keep) + 1L
     perm <- append(
-      seq_len(out_rank - 1L),
-      out_rank,
+      seq_len(out_rank - 1L) + 1L,
+      1L,
       after = sum(keep < axes[[1L]])
     )
     restore <- function(v) {
@@ -4570,7 +4571,7 @@ nv_quantile <- jit(
     x <- flat$x
 
     rank <- naxes(x)
-    axis <- rank
+    axis <- 1L
     shp <- shape(x)
     K <- length(probs)
     probs <- as.numeric(probs)
@@ -4701,15 +4702,10 @@ nv_quantile <- jit(
     bad <- if (nan_rm) n_valid_kd == 0L else prim_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
 
-    # Unpack the trailing axis the reduced ones were gathered into: dropped, or
-    # restored at size 1 in their original positions. For array `probs`, the K
-    # axis moves from the back, where it is now, to the front.
-    if (is_probs_array) {
-      out <- prim_transpose(out, perm = c(axis, seq_len(rank - 1L)))
-      prim_reshape(out, c(K, flat$keep_shape))
-    } else {
-      prim_reshape(out, flat$keep_shape)
-    }
+    # Unpack the leading axis the reduced ones were gathered into: dropped, or
+    # restored at size 1 in their original positions. For array `probs`, it
+    # holds the K quantiles and stays in front.
+    prim_reshape(out, if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape)
   },
   static = 2:6
 )
@@ -4864,7 +4860,7 @@ nv_which_min <- jit(
 .nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
   flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
   x <- flat$x
-  axis <- naxes(x)
+  axis <- 1L
   result <- prim_arg(x, axis = axis)
   if (!nan_rm && is_dtype_float(peek_dtype(x))) {
     # argmax on the bool mask returns the index of the first TRUE (tie-break:
