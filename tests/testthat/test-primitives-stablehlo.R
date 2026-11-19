@@ -287,6 +287,8 @@ test_that("prim_shift_left", {
   shift <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")
   out <- as.integer(prim_shift_left(x, shift))
   expect_equal(out, as.integer(c(1L, 4L, 12L, 64L)))
+  # a scalar shift is broadcast
+  expect_equal(as.integer(prim_shift_left(x, 1L)), as.integer(c(2L, 4L, 6L, 16L)))
 })
 
 test_that("prim_shift_right_logical", {
@@ -1344,7 +1346,37 @@ test_that("prim_clamp", {
   x <- nv_array(c(-2.0, -0.5, 0.5, 2.0), dtype = "f32")
   lo <- nv_broadcast_to(nv_scalar(-1.0, "f32"), shape(x))
   hi <- nv_broadcast_to(nv_scalar(1.0, "f32"), shape(x))
-  expect_equal(prim_clamp(x, lo, hi), nv_array(c(-1.0, -0.5, 0.5, 1.0), dtype = "f32"))
+  expected <- nv_array(c(-1.0, -0.5, 0.5, 1.0), dtype = "f32")
+  expect_equal(prim_clamp(x, lo, hi), expected)
+  expect_equal(prim_clamp(x, -1, 1), expected)
+  # a scalar `x` is broadcast to the shape of bounds that are arrays
+  expect_equal(
+    prim_clamp(0, nv_array(c(-1, 0.5, 1), dtype = "f32"), 2),
+    nv_array(c(0, 0.5, 1), dtype = "f32")
+  )
+})
+
+describe("the elementwise primitives", {
+  it("record a scalar operand as it is and broadcast it in the lowering", {
+    graph <- trace_fn(
+      \(x, y) prim_add(prim_mul(x, 2), y),
+      list(x = nv_aval("f32", c(2L, 3L)), y = nv_aval("f32", integer()))
+    )
+    expect_equal(vapply(graph$statements, \(call) call$primitive$name, character(1L)), c("mul", "add"))
+    expect_equal(shape(graph$outputs[[1L]]), c(2L, 3L))
+    out <- jit(\(x, y) prim_add(prim_mul(x, 2), y))(
+      nv_array(1:6, shape = c(2L, 3L), dtype = "f32"),
+      nv_scalar(1, "f32")
+    )
+    expect_equal(out, nv_array(seq(3, 13, by = 2), shape = c(2L, 3L), dtype = "f32"))
+  })
+
+  it("refuse two operands that are arrays of different shapes", {
+    expect_error(
+      prim_add(nv_array(1:4), nv_array(1:6)),
+      "must have the same shape, unless one of them is a scalar"
+    )
+  })
 })
 
 test_that("prim_rev", {

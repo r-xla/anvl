@@ -75,7 +75,7 @@ During this evaluation, we need to distinguish between two cases:
 The evaluation of the `if` statement is an example for the first category.
 Because we set `op = "mul"`, only the second branch is executed.
 Then, we are calling `nv_mul`, which attaches a `GraphStatement` that represents the multiplication of the two arrays to the `$statements` of the `GraphDescriptor`.
-Note that `nv_mul` is itself not a primitive: it performs some type promotion and broadcasting if needed before calling into the primitive `prim_mul`.
+Note that `nv_mul` is itself not a primitive: it promotes its operands to a common data type before calling into the primitive `prim_mul`.
 
 A `GraphStatement` object consists of the following fields:
 
@@ -92,9 +92,9 @@ The only difference between the `AnvlGraph` and the `GraphDescriptor` is that th
 Once the `R` function is staged out into a simpler format, it is ready to be transformed.
 The {anvl} package does not in any way dictate how such an `AnvlGraph` to `AnvlGraph` transformation can be implemented.
 For most interesting transformations, however, we need to store some information for each {anvl} primitive function.
-In the case of the gradient, we need to store the derivative rules.
+In the case of the gradient, we need to store the pullback rules.
 For this, the `AnvlPrimitiveDef` metadata object attached to each primitive has a `rules` field that can be populated.
-The derivative rules are stored as functions under the `"pullback"` name.
+They are stored as functions under the `"pullback"` name.
 Each primitive is an exported `prim_*` function; `[[` on it reads a rule:
 
 ```{r}
@@ -102,7 +102,7 @@ prim_mul[["pullback"]]
 ```
 
 The `graph_gradient()` function uses these rules to compute the gradient of a function.
-For this specific transformation, we walk the graph backwards and apply the derivative rules, which appends the "reverse pass" to the graph.
+For this specific transformation, we walk the graph backwards and apply the pullback rules, which appends the "reverse pass" to the graph.
 Besides the forward graph, the transformation takes in the `wrt` argument, which specifies with respect to which arguments to compute the gradient.
 
 ```{r}
