@@ -7,11 +7,9 @@
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Psigamma — prim_psigamma"><meta name="description" content="Element-wise psigamma function: the deriv-th derivative of the digamma
 function, i.e. the (deriv + 1)-th derivative of the log-gamma function.
-Both x and deriv must have the same shape; deriv typically holds
-non-negative integer values."><meta property="og:description" content="Element-wise psigamma function: the deriv-th derivative of the digamma
+deriv typically holds non-negative integer values."><meta property="og:description" content="Element-wise psigamma function: the deriv-th derivative of the digamma
 function, i.e. the (deriv + 1)-th derivative of the log-gamma function.
-Both x and deriv must have the same shape; deriv typically holds
-non-negative integer values."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+deriv typically holds non-negative integer values."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -87,8 +85,7 @@ non-negative integer values."><meta property="og:image" content="https://r-xla.g
     <div class="ref-description section level2">
     <p>Element-wise psigamma function: the <code>deriv</code>-th derivative of the digamma
 function, i.e. the <code>(deriv + 1)</code>-th derivative of the log-gamma function.
-Both <code>x</code> and <code>deriv</code> must have the same shape; <code>deriv</code> typically holds
-non-negative integer values.</p>
+<code>deriv</code> typically holds non-negative integer values.</p>
     </div>
 
     <div class="section level2">
@@ -102,7 +99,8 @@ non-negative integer values.</p>
 
 <dl><dt id="arg-x-deriv">x, deriv<a class="anchor" aria-label="anchor" href="#arg-x-deriv"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Two inputs of the same shape. Can be any float data type.
+Two inputs of the same shape, except that a scalar is broadcast to the
+shape of the other. Can be any float data type.
 <code>x</code> and <code>deriv</code> must have the same data type. An R value among them
 assumes the data type of the others when it is in its <a href="dtype_categories.html">data type category</a>, and its <a href="default_dtypes.html">default data type</a>
 when none of them has one.</p></dd>
@@ -111,7 +109,7 @@ when none of them has one.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Has the inputs' shape and data type.</p>
+Has the inputs' broadcast shape and data type.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>

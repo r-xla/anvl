@@ -24,6 +24,14 @@
   [`value_and_pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
   differentiate a function with any result: they return its pullback,
   which takes a cotangent of the result back to the arguments.
+- Elementwise primitives such as
+  [`prim_add()`](https://r-xla.github.io/anvl/reference/prim_add.md),
+  [`prim_eq()`](https://r-xla.github.io/anvl/reference/prim_eq.md),
+  [`prim_ifelse()`](https://r-xla.github.io/anvl/reference/prim_ifelse.md)
+  and
+  [`prim_clamp()`](https://r-xla.github.io/anvl/reference/prim_clamp.md)
+  broadcast a scalar operand themselves, so a traced graph has no
+  `broadcast_in_axes` for it.
 
 ### Bug fixes
 

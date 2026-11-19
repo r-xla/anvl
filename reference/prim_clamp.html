@@ -101,14 +101,14 @@ when none of them has one.</p></dd>
 
 <dt id="arg-min-max">min, max<a class="anchor" aria-label="anchor" href="#arg-min-max"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Lower and upper bound. Each must be scalar or the same shape as <code>x</code>, and
-shares its data type.</p></dd>
+Lower and upper bound, sharing <code>x</code>'s data type. The operands that are not
+scalars have the same shape, and a scalar is broadcast to it.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Has <code>x</code>'s shape and the data type the operands agreed on.</p>
+Has the operands' broadcast shape and the data type they agreed on.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>

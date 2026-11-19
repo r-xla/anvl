@@ -137,12 +137,9 @@ w <- nv_array(c(1, 2), dtype = "f32")
 graph <- trace_fn(function(x) x + w * 2, list(x = nv_aval("f32", 2)))
 graph
 #> <AnvlGraph> [%c1: f32[2]] (%x1: f32[2]) {
-#>   %1: f32[2] = broadcast_in_axes [
-#>     shape = 2, broadcast_axes = integer(0)
-#>   ] (2:f32)
-#>   %2: f32[2] = mul(%c1, %1)
-#>   %3: f32[2] = add(%x1, %2)
-#>   return %3
+#>   %1: f32[2] = mul(%c1, 2:f32)
+#>   %2: f32[2] = add(%x1, %1)
+#>   return %2
 #> }
 graph$constants
 #> [[1]]

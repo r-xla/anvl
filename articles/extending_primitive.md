@@ -393,20 +393,24 @@ the primitive will still work on the pjrt backend.
 ### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives. An
-example is `prim_add` vs `nv_add`, where the latter calls into the
-former after optionally broadcasting (scalar) inputs:
+example is `prim_add` vs `nv_add`, where the latter promotes its
+operands to a common data type before calling into the former:
 
 ``` r
 
-nv_add(1L, nv_array(2:3))
+nv_add(0.5, nv_array(2:3))
 #> AnvlArray
-#>  3
-#>  4
-#> [ CPUi32{2} ]
-prim_add(1L, nv_array(2:3))
+#>  2.5000
+#>  3.5000
+#> [ CPUf32{2} ]
+prim_add(0.5, nv_array(2:3))
 #> Error in `prim_add()`:
-#> ! `lhs` and `rhs` must have the same array type.
-#> ✖ Got i32[] and i32[2].
+#> ! `lhs` is an R double, which cannot be used at the "i32" data type
+#>   here.
+#> ℹ A literal is only ever built at a data type of its own category: a double
+#>   becomes a float, an integer an integer, a logical a "bool".
+#> ℹ Use an operation that promotes across categories, or convert explicitly with
+#>   `nv_convert()`.
 ```
 
 In our case, no such convenience is needed and the functionality is not

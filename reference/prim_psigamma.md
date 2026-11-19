@@ -2,8 +2,7 @@
 
 Element-wise psigamma function: the `deriv`-th derivative of the digamma
 function, i.e. the `(deriv + 1)`-th derivative of the log-gamma
-function. Both `x` and `deriv` must have the same shape; `deriv`
-typically holds non-negative integer values.
+function. `deriv` typically holds non-negative integer values.
 
 ## Usage
 
@@ -16,9 +15,10 @@ prim_psigamma(x, deriv)
 - x, deriv:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Two inputs of the same shape. Can be any float data type. `x` and
-  `deriv` must have the same data type. An R value among them assumes
-  the data type of the others when it is in its [data type
+  Two inputs of the same shape, except that a scalar is broadcast to the
+  shape of the other. Can be any float data type. `x` and `deriv` must
+  have the same data type. An R value among them assumes the data type
+  of the others when it is in its [data type
   category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
   and its [default data
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
@@ -27,7 +27,7 @@ prim_psigamma(x, deriv)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-Has the inputs' shape and data type.
+Has the inputs' broadcast shape and data type.
 
 ## Implemented Rules
 

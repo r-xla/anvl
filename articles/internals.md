@@ -113,8 +113,8 @@ category. Because we set `op = "mul"`, only the second branch is
 executed. Then, we are calling `nv_mul`, which attaches a
 `GraphStatement` that represents the multiplication of the two arrays to
 the `$statements` of the `GraphDescriptor`. Note that `nv_mul` is itself
-not a primitive: it performs some type promotion and broadcasting if
-needed before calling into the primitive `prim_mul`.
+not a primitive: it promotes its operands to a common data type before
+calling into the primitive `prim_mul`.
 
 A `GraphStatement` object consists of the following fields:
 
@@ -157,8 +157,9 @@ prim_mul[["reverse"]]
     ##     lhs <- inputs[[1L]]
     ##     rhs <- inputs[[2L]]
     ##     grad <- grads[[1L]]
-    ##     list(if (required[[1L]]) prim_mul(grad, rhs), if (required[[2L]]) prim_mul(grad, 
-    ##         lhs))
+    ##     list(if (required[[1L]]) unbroadcast(prim_mul(grad, rhs), 
+    ##         lhs), if (required[[2L]]) unbroadcast(prim_mul(grad, 
+    ##         lhs), rhs))
     ## }
     ## <environment: namespace:anvl>
     ## 
@@ -203,11 +204,12 @@ transformation are attached to each primitive.
 prim_mul[["stablehlo"]]
 ```
 
-    ## function (lhs, rhs, output_types) 
+    ## function (..., output_types) 
     ## {
-    ##     list(hlo_multiply(lhs, rhs, output_types = output_types))
+    ##     operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
+    ##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
     ## }
-    ## <environment: namespace:anvl>
+    ## <environment: 0x6252f0cad4c0>
 
 The [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)
 function creates a
@@ -477,15 +479,9 @@ graph
 ```
 
     ## <AnvlGraph> [%c1: f32[1000000]] (%x1: f32[]) {
-    ##   %1: f32[1000000] = broadcast_in_axes [
-    ##     shape = 1000000, broadcast_axes = integer(0)
-    ##   ] (%x1)
-    ##   %2: f32[1000000] = add(%1, %c1)
-    ##   %3: f32[1000000] = broadcast_in_axes [
-    ##     shape = 1000000, broadcast_axes = integer(0)
-    ##   ] (1:f32)
-    ##   %4: f32[1000000] = add(%2, %3)
-    ##   return %4
+    ##   %1: f32[1000000] = add(%x1, %c1)
+    ##   %2: f32[1000000] = add(%1, 1:f32)
+    ##   return %2
     ## }
 
 Here, `y` is a closed-over constant and it is included in the

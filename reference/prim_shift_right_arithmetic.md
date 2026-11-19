@@ -19,15 +19,16 @@ prim_shift_right_arithmetic(x, shift)
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   By how many bits to shift each element of `x`. Has the same data type
-  and shape as `x`. An R value takes the other operand's data type, and
-  its [default data
+  and shape as `x`, except that a scalar is broadcast to the shape of
+  the other. An R value takes the other operand's data type, and its
+  [default data
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
   neither operand has one.
 
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-Has the inputs' shape and data type.
+Has the inputs' broadcast shape and data type.
 
 ## Implemented Rules
 

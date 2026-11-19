@@ -3,7 +3,8 @@
 Element-wise selection based on a boolean predicate, mirroring R's
 [`ifelse()`](https://rdrr.io/r/base/ifelse.html). For each element,
 returns the corresponding element from `yes` where `test` is `TRUE` and
-from `no` where `test` is `FALSE`.
+from `no` where `test` is `FALSE`. The operands that are not scalars,
+`test` among them, have the same shape, and a scalar is broadcast to it.
 
 [`prim_if()`](https://r-xla.github.io/anvl/reference/prim_if.md) is the
 other conditional: it mirrors R's `if` construct and branches between
@@ -20,15 +21,14 @@ prim_ifelse(test, yes, no)
 - test:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Predicate array. Must be a boolean or an R logical, and scalar or the
-  same shape as `yes`.
+  Predicate array. Must be a boolean or an R logical.
 
 - yes, no:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Values to select from, of the same shape. Can be any data type. `yes`
-  and `no` must have the same data type. An R value among them assumes
-  the data type of the others when it is in its [data type
+  Values to select from. Can be any data type. `yes` and `no` must have
+  the same data type. An R value among them assumes the data type of the
+  others when it is in its [data type
   category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
   and its [default data
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
@@ -37,7 +37,8 @@ prim_ifelse(test, yes, no)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-Has the shape of `yes` and `no`, and the data type they agreed on.
+Has the operands' broadcast shape and the data type `yes` and `no`
+agreed on.
 
 ## Implemented Rules
 
@@ -67,6 +68,14 @@ prim_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 #> AnvlArray
 #>  1
 #>  5
+#>  3
+#> [ CPUf32{3} ] 
+
+# a scalar branch is broadcast to the shape of `test`
+prim_ifelse(test, nv_array(c(1, 2, 3)), 0)
+#> AnvlArray
+#>  1
+#>  0
 #>  3
 #> [ CPUf32{3} ] 
 ```

@@ -93,7 +93,7 @@
 
 <dl><dt id="arg-lhs-rhs">lhs, rhs<a class="anchor" aria-label="anchor" href="#arg-lhs-rhs"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Two inputs of the same data type and shape. Can be any data type. R
+Two inputs of the same data type and shape, except that a scalar is broadcast to the shape of the other. Can be any data type. R
 values take the other operand's data type when it is in their
 <a href="dtype_categories.html">data type category</a>, and their
 <a href="default_dtypes.html">default data type</a> when neither operand has one. An R
@@ -104,7 +104,7 @@ values of different storage types.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Has the inputs' shape and data type.</p>
+Has the inputs' broadcast shape and data type.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -139,6 +139,14 @@ Has the inputs' shape and data type.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf64{} ] </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># a scalar is broadcast to the shape of the other operand</span></span></span>
+<span class="r-in"><span><span class="fu">prim_add</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

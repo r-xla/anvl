@@ -291,11 +291,9 @@ the hood. Below, we trace <code>linear</code> with a length-3 vector for
 <span><span class="co">#&gt; AbstractArray(dtype=f32, shape=3)</span></span>
 <span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">linear</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_vec3</span>, w <span class="op">=</span> <span class="va">f32_scalar</span>, b <span class="op">=</span> <span class="va">f32_scalar</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[3], %x2: f32[], %x3: f32[]) {</span></span>
-<span><span class="co">#&gt;   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x2)</span></span>
-<span><span class="co">#&gt;   %2: f32[3] = mul(%x1, %1)</span></span>
-<span><span class="co">#&gt;   %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x3)</span></span>
-<span><span class="co">#&gt;   %4: f32[3] = add(%2, %3)</span></span>
-<span><span class="co">#&gt;   return %4</span></span>
+<span><span class="co">#&gt;   %1: f32[3] = mul(%x1, %x2)</span></span>
+<span><span class="co">#&gt;   %2: f32[3] = add(%1, %x3)</span></span>
+<span><span class="co">#&gt;   return %2</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>The printed <code>AnvlGraph</code> is like an R function: it has
 inputs, a body and outputs. However, the content is more structured:</p>
@@ -360,25 +358,23 @@ function <code>n</code> times.</p>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">linear_repeated</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_scalar</span>, w <span class="op">=</span> <span class="va">f32_vec3</span>, b <span class="op">=</span> <span class="va">f32_vec3</span>, n <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[3], %x3: f32[3]) {</span></span>
-<span><span class="co">#&gt;   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)</span></span>
-<span><span class="co">#&gt;   %2: f32[3] = mul(%1, %x2)</span></span>
-<span><span class="co">#&gt;   %3: f32[3] = add(%2, %x3)</span></span>
-<span><span class="co">#&gt;   %4: f32[3] = mul(%3, %x2)</span></span>
-<span><span class="co">#&gt;   %5: f32[3] = add(%4, %x3)</span></span>
-<span><span class="co">#&gt;   return %5</span></span>
+<span><span class="co">#&gt;   %1: f32[3] = mul(%x1, %x2)</span></span>
+<span><span class="co">#&gt;   %2: f32[3] = add(%1, %x3)</span></span>
+<span><span class="co">#&gt;   %3: f32[3] = mul(%2, %x2)</span></span>
+<span><span class="co">#&gt;   %4: f32[3] = add(%3, %x3)</span></span>
+<span><span class="co">#&gt;   return %4</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
-<p>The graph contains a single <code>broadcast_in_axes</code> (lifting
-the scalar <code>x</code> to <code>f32[3]</code>) followed by two
-<code>mul</code>/<code>add</code> pairs in sequence – not a loop
-construct. The broadcast happens only once because by the second
-iteration <code>x</code> is already an <code>f32[3]</code> and matches
-<code>w</code> and <code>b</code> directly. The compiled executable will
-contain those five operations laid out one after another. For a
-different value of <code>n</code>, the loop would get unrolled for this
-specific iteration number. Long loops also lead to long compile times
-and large executables. You can instead use <code><a href="../reference/nv_while.html">nv_while()</a></code>,
-which records a single statement in the graph regardless of how many
-iterations the loop runs.</p>
+<p>The graph contains two <code>mul</code>/<code>add</code> pairs in
+sequence – not a loop construct. In the first iteration,
+<code>mul</code> broadcasts the scalar <code>x</code> to the shape of
+<code>w</code>; by the second, <code>x</code> is already an
+<code>f32[3]</code>. The compiled executable will contain those four
+operations laid out one after another. For a different value of
+<code>n</code>, the loop would get unrolled for this specific iteration
+number. Long loops also lead to long compile times and large
+executables. You can instead use <code><a href="../reference/nv_while.html">nv_while()</a></code>, which records
+a single statement in the graph regardless of how many iterations the
+loop runs.</p>
 </div>
 <div class="section level3">
 <h3 id="r-if-statements-pick-one-branch">R <code>if</code> statements pick one branch<a class="anchor" aria-label="anchor" href="#r-if-statements-pick-one-branch"></a>

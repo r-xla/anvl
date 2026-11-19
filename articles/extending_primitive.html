@@ -501,18 +501,22 @@ you skip it, the primitive will still work on the pjrt backend.</p>
 </h3>
 <p>In {anvl}, we also offer convenience wrappers around the primitives.
 An example is <code>prim_add</code> vs <code>nv_add</code>, where the
-latter calls into the former after optionally broadcasting (scalar)
-inputs:</p>
+latter promotes its operands to a common data type before calling into
+the former:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  3</span></span>
-<span><span class="co">#&gt;  4</span></span>
-<span><span class="co">#&gt; [ CPUi32{2} ]</span></span>
-<span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;  2.5000</span></span>
+<span><span class="co">#&gt;  3.5000</span></span>
+<span><span class="co">#&gt; [ CPUf32{2} ]</span></span>
+<span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `prim_add()`:</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> `lhs` and `rhs` must have the same array type.</span></span>
-<span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> Got i32[] and i32[2].</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> `lhs` is an R double, which cannot be used at the <span style="color: #0000BB;">"i32"</span> data type</span></span>
+<span><span class="co">#&gt;   here.</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> A literal is only ever built at a data type of its own category: a double</span></span>
+<span><span class="co">#&gt;   becomes a float, an integer an integer, a logical a <span style="color: #0000BB;">"bool"</span>.</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Use an operation that promotes across categories, or convert explicitly with</span></span>
+<span><span class="co">#&gt;   `nv_convert()`.</span></span></code></pre></div>
 <p>In our case, no such convenience is needed and the functionality is
 not too low-level (for it to be generally useful), so we can just
 reassign the <code>prim_*</code> function to an <code>nv_*</code>

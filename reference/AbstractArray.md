@@ -89,11 +89,8 @@ nv_aval("double", c(2L, 3L))
 graph <- trace_fn(function(x) x + 1L, list(x = nv_aval("i32", 4L)))
 graph
 #> <AnvlGraph> (%x1: i32[4]) {
-#>   %1: i32[4] = broadcast_in_axes [
-#>     shape = 4, broadcast_axes = integer(0)
-#>   ] (1:i32)
-#>   %2: i32[4] = add(%x1, %1)
-#>   return %2
+#>   %1: i32[4] = add(%x1, 1:i32)
+#>   return %1
 #> }
 graph$inputs[[1]]$aval
 #> AbstractArray(dtype=i32, shape=4) 

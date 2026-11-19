@@ -187,11 +187,9 @@ f32_vec3
 #> AbstractArray(dtype=f32, shape=3)
 trace_fn(linear, args = list(x = f32_vec3, w = f32_scalar, b = f32_scalar))
 #> <AnvlGraph> (%x1: f32[3], %x2: f32[], %x3: f32[]) {
-#>   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x2)
-#>   %2: f32[3] = mul(%x1, %1)
-#>   %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x3)
-#>   %4: f32[3] = add(%2, %3)
-#>   return %4
+#>   %1: f32[3] = mul(%x1, %x2)
+#>   %2: f32[3] = add(%1, %x3)
+#>   return %2
 #> }
 ```
 
@@ -265,20 +263,18 @@ linear_repeated <- function(x, w, b, n) {
 }
 trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3, n = 2L))
 #> <AnvlGraph> (%x1: f32[], %x2: f32[3], %x3: f32[3]) {
-#>   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)
-#>   %2: f32[3] = mul(%1, %x2)
-#>   %3: f32[3] = add(%2, %x3)
-#>   %4: f32[3] = mul(%3, %x2)
-#>   %5: f32[3] = add(%4, %x3)
-#>   return %5
+#>   %1: f32[3] = mul(%x1, %x2)
+#>   %2: f32[3] = add(%1, %x3)
+#>   %3: f32[3] = mul(%2, %x2)
+#>   %4: f32[3] = add(%3, %x3)
+#>   return %4
 #> }
 ```
 
-The graph contains a single `broadcast_in_axes` (lifting the scalar `x`
-to `f32[3]`) followed by two `mul`/`add` pairs in sequence – not a loop
-construct. The broadcast happens only once because by the second
-iteration `x` is already an `f32[3]` and matches `w` and `b` directly.
-The compiled executable will contain those five operations laid out one
+The graph contains two `mul`/`add` pairs in sequence – not a loop
+construct. In the first iteration, `mul` broadcasts the scalar `x` to
+the shape of `w`; by the second, `x` is already an `f32[3]`. The
+compiled executable will contain those four operations laid out one
 after another. For a different value of `n`, the loop would get unrolled
 for this specific iteration number. Long loops also lead to long compile
 times and large executables. You can instead use

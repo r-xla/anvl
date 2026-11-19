@@ -18,10 +18,10 @@ prim_atan2(y, x)
 - y, x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Ordinate and abscissa of the point, of the same shape. Can be any
-  float data type. `y` and `x` must have the same data type. An R value
-  among them assumes the data type of the others when it is in its [data
-  type
+  Ordinate and abscissa of the point, of the same shape, except that a
+  scalar is broadcast to the shape of the other. Can be any float data
+  type. `y` and `x` must have the same data type. An R value among them
+  assumes the data type of the others when it is in its [data type
   category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
   and its [default data
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
@@ -30,7 +30,7 @@ prim_atan2(y, x)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-Has the inputs' shape and data type.
+Has the inputs' broadcast shape and data type.
 
 ## Implemented Rules
 
