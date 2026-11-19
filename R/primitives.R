@@ -3979,9 +3979,10 @@ prim_eigh <- new_primitive(
 #' General N-D windowed convolution. The axis arguments say which axis of each
 #' operand plays which role, so any layout can be described.
 #' Most users want [nv_conv1d()] / [nv_conv2d()] / [nv_conv3d()] instead.
-#' @param x ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
+#' @param x ([`arrayish`])\cr Input, e.g. `(*spatial, channels, batch)`.
 #'   Can be any data type. `r roxy_agree("x", "kernel")`
-#' @param kernel ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
+#' @param kernel ([`arrayish`])\cr Kernel, e.g.
+#'   `(*spatial, in_channels / groups, out_channels)`.
 #'   Shares `x`'s data type -- see `x`.
 #' @param x_batch_axis,x_feature_axis (`integer(1)`)\cr
 #'   Batch and feature axis of `x`.
@@ -3993,7 +3994,8 @@ prim_eigh <- new_primitive(
 #'   Batch and feature axis of the output.
 #' @param output_spatial_axes (`integer()`)\cr
 #'   Spatial axes of the output.
-#' @param window_strides (`integer()`)\cr Stride per spatial axis.
+#' @param window_strides (`integer()`)\cr Stride per spatial axis, in the
+#'   order of `x_spatial_axes`, as are all per-spatial-axis parameters.
 #' @param padding (`matrix`)\cr `[n_spatial, 2]` of `(low, high)` padding.
 #' @param x_dilation,kernel_dilation (`integer()`)\cr Input/kernel dilation.
 #' @param feature_group_count,batch_group_count (`integer(1)`)\cr Grouping.
@@ -4011,17 +4013,18 @@ prim_eigh <- new_primitive(
 #' The axis numbers are converted on the way down.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [nv_conv3d()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # a 1-D convolution in NCW layout: one batch, one channel, width 5,
-#' # convolved with a width-3 kernel, giving 3 window positions
-#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-#' kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' # a causal 1-D convolution in the WCN layout of nv_conv1d(): width 5, one
+#' # channel, a batch of one, convolved with a width-3 kernel; padding only the
+#' # start of the width keeps all 5 window positions
+#' x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+#' kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
 #' prim_convolution(
 #'   x, kernel,
-#'   x_batch_axis = 1L, x_feature_axis = 2L, x_spatial_axes = 3L,
-#'   kernel_output_feature_axis = 1L, kernel_input_feature_axis = 2L,
-#'   kernel_spatial_axes = 3L,
-#'   output_batch_axis = 1L, output_feature_axis = 2L, output_spatial_axes = 3L,
-#'   window_strides = 1L, padding = matrix(0L, nrow = 1, ncol = 2),
+#'   x_spatial_axes = 1L, x_feature_axis = 2L, x_batch_axis = 3L,
+#'   kernel_spatial_axes = 1L, kernel_input_feature_axis = 2L,
+#'   kernel_output_feature_axis = 3L,
+#'   output_spatial_axes = 1L, output_feature_axis = 2L, output_batch_axis = 3L,
+#'   window_strides = 1L, padding = matrix(c(2L, 0L), nrow = 1),
 #'   x_dilation = 1L, kernel_dilation = 1L
 #' )
 #' @export

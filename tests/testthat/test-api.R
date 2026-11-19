@@ -3131,29 +3131,29 @@ test_that("the floating-point nv_* functions refuse a boolean", {
 test_that("nv_conv1d/2d/3d promote their operands", {
   # The `nv_*` layer promotes, as `nv_matmul()` does; `prim_convolution()`
   # underneath still requires operands that already agree.
-  x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
-  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
-  w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
+  x32 <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+  x64 <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f64")
+  w32 <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
+  w64 <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f64")
   expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
   # An integer input meets a float kernel at the float; it used to be refused.
   expect_equal(
-    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
+    dtype(nv_conv1d(nv_array(1:5, shape = c(5, 1, 1)), w32)),
     as_dtype("f32")
   )
   expect_equal(
     dtype(nv_conv2d(
-      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
+      nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32"),
+      nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f64")
     )),
     as_dtype("f64")
   )
   expect_equal(
     dtype(nv_conv3d(
-      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
+      nv_array(1:18, shape = c(3, 3, 2, 1, 1), dtype = "f32"),
+      nv_fill(1, shape = c(2, 2, 1, 1, 1), dtype = "f64")
     )),
     as_dtype("f64")
   )
@@ -3247,16 +3247,16 @@ test_that("the API layer checks what its pages promise", {
   # `nv_conv*` reported `kernel_input_feature_dimension` and `N`, neither of
   # which is an argument of theirs.
   expect_error(
-    nv_conv1d(nv_array(array(1, c(1, 2, 4))), nv_array(array(1, c(1, 3, 2)))),
-    "`kernel`'s second axis"
+    nv_conv1d(nv_array(array(1, c(4, 2, 1))), nv_array(array(1, c(2, 3, 1)))),
+    "`kernel`'s second-to-last axis"
   )
   expect_error(
     nv_conv1d(nv_array(matrix(1, 2, 2)), nv_array(matrix(1, 2, 2))),
     "must have 3 axes for a 1-D convolution"
   )
   expect_equal(
-    shape(nv_conv1d(nv_array(array(1, c(1, 1, 5))), nv_array(array(1, c(1, 1, 3))))),
-    c(1L, 1L, 3L)
+    shape(nv_conv1d(nv_array(array(1, c(5, 1, 1))), nv_array(array(1, c(3, 1, 1))))),
+    c(3L, 1L, 1L)
   )
 })
 
