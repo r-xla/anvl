@@ -1056,6 +1056,79 @@ describe("nv_rng_state", {
   })
 })
 
+describe("nv_split_rng_states", {
+  # The words of the random state of the key `key` and the counter 0.
+  key_state_words <- function(key) c(key, 0, 0)
+
+  it("splits off the keys of JAX's spawn(), each with a zero counter", {
+    # Known answers computed with JAX 0.4.38 (`jax_threefry_partitionable`):
+    # the key data of `split(fold_in(key(seed), counter), n)`, the keys that
+    # `stateful_rng(seed).spawn(n)` gives at that counter.
+    local_nv_seed(0L)
+    expected <- list(c(4165894930, 804218099), c(1353695780, 2116000888), c(2839387376, 2467677468))
+    expect_identical(lapply(nv_split_rng_states(3L), state_words), lapply(expected, key_state_words))
+    nv_set_rng_state(rng_state_of_words(c(0, 1, 2, 0)))
+    expected <- list(c(4161243239, 1993177247), c(2071719429, 1109409836))
+    expect_identical(lapply(nv_split_rng_states(2L), state_words), lapply(expected, key_state_words))
+  })
+
+  it("is one sampling call of the random state, however many it splits off", {
+    local_nv_seed(1L)
+    nv_split_rng_states(5L)
+    expect_identical(state_counter(), 1)
+    expect_identical(nv_split_rng_states(0L), list())
+    expect_identical(state_counter(), 2)
+  })
+
+  it("splits off the first random states of a larger split", {
+    few <- with_nv_seed(3L, nv_split_rng_states(2L))
+    many <- with_nv_seed(3L, nv_split_rng_states(4L))
+    expect_identical(lapply(few, state_words), lapply(many[1:2], state_words))
+  })
+
+  it("splits a random state of its own, which it advances, and leaves the global random state alone", {
+    local_nv_seed(1L)
+    rng <- nv_rng_state(7L)
+    states <- nv_split_rng_states(2L, rng)
+    expect_identical(state_words(rng), c(0, 7, 1, 0))
+    expect_identical(state_words(), c(0, 1, 0, 0))
+    expect_identical(lapply(states, state_words), lapply(with_nv_seed(7L, nv_split_rng_states(2L)), state_words))
+    # by default, the random state the samplers draw from
+    rng <- nv_rng_state(7L)
+    expect_identical(lapply(with_nv_rng_state(rng, nv_split_rng_states(2L)), state_words), lapply(states, state_words))
+  })
+
+  it("splits off random states that a jitted function draws from as eager code does", {
+    draw <- function(rng) with_nv_rng_state(rng, nv_runif(3L))
+    eager <- lapply(with_nv_seed(1L, nv_split_rng_states(2L)), function(rng) as_array(draw(rng)))
+    expect_false(identical(eager[[1L]], eager[[2L]]))
+    f <- jit(draw)
+    compiled <- lapply(with_nv_seed(1L, nv_split_rng_states(2L)), function(rng) as_array(f(rng)))
+    expect_identical(compiled, eager)
+  })
+
+  it("rejects a number that is not a count and what is not a random state", {
+    local_nv_seed(1L)
+    expect_error(nv_split_rng_states(-1L), ">= 0")
+    expect_error(nv_split_rng_states(1.5), "integerish")
+    expect_error(nv_split_rng_states(2L, 1L), "must be a random state")
+  })
+
+  it("is refused by a backend that cannot draw", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    expect_error(nv_split_rng_states(2L), "does not support random draws")
+  })
+
+  it("cannot be called in a traced function", {
+    f <- jit(function(rng) {
+      nv_split_rng_states(2L, rng)
+      nv_runif(1L)
+    })
+    expect_error(f(nv_rng_state(1L)), "cannot be split in a function traced")
+  })
+})
+
 describe("local_nv_rng_state", {
   it("makes a random state the default for the scope, advancing it in place", {
     local_nv_seed(5L)

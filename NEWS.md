@@ -2,6 +2,7 @@
 
 ## Features
 
+* New `nv_split_rng_states()` splits `n` random states off a random state.
 * New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
   as on CRAN. The new "Depending on anvl" article explains its use.
 * New `prim_optimization_barrier()` returns its input arrays unchanged and

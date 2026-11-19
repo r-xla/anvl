@@ -131,6 +131,17 @@ nv_get_rng_state()
 A random state of a seed draws what the global random state of the same seed draws, so `nv_rng_state(42L)` above drew what `nv_set_seed(42L)` draws.
 Random states of their own keep apart what should not depend on each other, e.g. one per chain of a simulation, so that adding a draw to one chain does not change the numbers of another.
 
+`nv_split_rng_states()` splits such random states off a random state, the global one by default, so that one seed decides the draws of every chain:
+
+```{r}
+nv_set_seed(1L)
+chains <- nv_split_rng_states(3L)
+lapply(chains, function(rng) with_nv_rng_state(rng, nv_runif(2L)))
+```
+
+The split is one sampling call of the random state it splits, however many random states it splits off, and a larger split starts with the same random states, so a chain draws the same numbers however many chains there are.
+The [splitting keys](#splitting-keys) section describes how it derives their keys.
+
 A compiled function takes a random state as an argument, like any other, and makes it the samplers' random state with `local_nv_rng_state()`:
 
 ```{r}
@@ -219,8 +230,8 @@ A random state therefore gives $2^{64}$ sampling calls before its draws repeat.
 Keys of *different* random states, though, are not guaranteed to be distinct, and two sampling calls with the same key draw identical bits.
 Like any 64-bit keys, they are likely to coincide somewhere once there are about $2^{32}$ of them in total, by the birthday bound: with $n$ sampling calls spread over many random states, some two of them share a key with probability about $n^2 / 2^{65}$, which is $3 \cdot 10^{-4}$ for $10^8$ calls and 3 % for $10^9$.
 
-A *fork* of a random state, which `nv_while()` makes for its loop body, is a new random state whose key is split off the random state's own.
-Forking a fork again and again chains keys, each derived from the one before, and such a chain runs into a cycle after about $2^{32}$ forks, so avoid it.
+A *fork* of a random state, which `nv_while()` makes for its loop body, and each random state that `nv_split_rng_states()` returns, is a new random state whose key is split off the random state's own.
+Splitting such a random state again and again chains keys, each derived from the one before, and such a chain runs into a cycle after about $2^{32}$ splits, so avoid it.
 
 ### Without replacement, almost with replacement
 
@@ -277,6 +288,7 @@ The figure below shows the same program from the side of the keys.
 A key does not step through states: it fixes one sequence of 64-bit blocks, $x^k_0, x^k_1, x^k_2, \ldots$, where $x^k_t = \mathrm{TF}_k(t)$, and the same key always gives the same sequence.
 Splitting takes an entry of a key's sequence as a new key, and generating reads a key's sequence from its start, one entry per value.
 A sampling call does both, to two different keys: it splits the global key and generates from the new key.
+`nv_split_rng_states(n)` splits the global key in the same way, but rather than generating from the new key, it splits that one too: the first $n$ entries of the new key's sequence are the keys of the $n$ random states it returns, each with the counter 0.
 
 ```{r, echo = FALSE, out.width = "100%"}
 knitr::include_graphics("figures/rng-key-sequences.png")
