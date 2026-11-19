@@ -41,10 +41,11 @@ traced program of `f`, which only exists within
 
 The function that is differentiated must return a single float scalar,
 such as a loss. If you are interested in the derivative of a function
-that returns an array, reduce it to a scalar first. For an elementwise
-function such as [`sin()`](https://rdrr.io/r/base/Trig.html), the
-gradient of `sum(sin(x))` is exactly the elementwise derivative
-`cos(x)`:
+that returns an array, reduce it to a scalar first, or use
+[`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md) (see
+[below](#pullbacks)). For an elementwise function such as
+[`sin()`](https://rdrr.io/r/base/Trig.html), the gradient of
+`sum(sin(x))` is exactly the elementwise derivative `cos(x)`:
 
 ``` r
 
@@ -195,6 +196,62 @@ loss_vg(params, x, y)
 #>  -4
 #> [ CPUf32{} ]
 ```
+
+## Pullbacks
+
+For a function with any other result,
+[`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
+evaluates it and returns its *pullback*. The pullback takes a cotangent
+– a weight for each element of the result – back to the arguments. For
+\\f: \mathbb{R}^n \to \mathbb{R}^m\\ evaluated at \\x\\, it maps a
+cotangent \\w \in \mathbb{R}^m\\ to the gradient of the result’s
+elements summed with the weights \\w\\, which is the transposed Jacobian
+of \\f\\ applied to \\w\\:
+
+\\w \mapsto \nabla_x \sum\_{j=1}^m w_j f_j(x) = J_f(x)^\top w\\
+
+[`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md) takes
+the arguments as a call of the function would, and the pullback returns
+the same named list as
+[`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md):
+
+``` r
+
+f <- function(x) x^2L
+f_pullback <- jit(function(x, w) pullback(f, x)(w))
+f_pullback(nv_array(c(1, 2, 3)), nv_array(c(1, 0, 1)))
+#> $x
+#> AnvlArray
+#>  2
+#>  0
+#>  6
+#> [ CPUf32{3} ]
+```
+
+[`value_and_pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
+returns the result of the function as well, as
+[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+does. The pullback can be called several times, while the function runs
+only once.
+
+The cotangent is structured like the result. `NULL` stands for zeros in
+place of an array or of a whole part of it:
+
+``` r
+
+stats <- function(x) list(total = sum(x), squares = x^2L)
+jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))(nv_array(c(1, 2, 3)))
+#> $x
+#> AnvlArray
+#>  1
+#>  1
+#>  1
+#> [ CPUf32{3} ]
+```
+
+Every float array among the arguments is differentiated. An argument
+that is not one, such as an integer array or an R value, is held fixed,
+and the pullback returns `NULL` for it.
 
 ## Composing with `jit()`
 

@@ -19,6 +19,20 @@
   [`nv_optimization_barrier()`](https://r-xla.github.io/anvl/reference/nv_optimization_barrier.md)
   does the same for a single array or a tree of arrays, returning it
   with the same structure.
+- New [`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
+  and
+  [`value_and_pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
+  differentiate a function with any result: they return its pullback,
+  which takes a cotangent of the result back to the arguments.
+
+### Bug fixes
+
+- An empty `wrt` in
+  [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
+  [`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
+  and
+  [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)
+  differentiates with respect to no argument, rather than all of them.
 
 ## anvl 0.6.0
 

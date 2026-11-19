@@ -654,6 +654,9 @@ Code transformations
 - [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
   [`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)
   : Gradients
+- [`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
+  [`value_and_pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
+  : Pullbacks
 
 ## Backend
 

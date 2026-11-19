@@ -9,7 +9,9 @@ provides JIT compilation
 ([`jit()`](https://r-xla.github.io/anvl/reference/jit.md)) and automatic
 differentiation
 ([`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
-[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md)).
+[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
+[`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md),
+[`value_and_pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)).
 
 ## Commands
 

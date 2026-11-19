@@ -84,6 +84,11 @@
 <ul><li>New <code><a href="../reference/nv_split_rng_states.html">nv_split_rng_states()</a></code> splits <code>n</code> random states off a random state.</li>
 <li>New <code><a href="../reference/skip_if_no_plugin.html">skip_if_no_plugin()</a></code> skips a test when no PJRT plugin is available, as on CRAN. The new “Depending on anvl” article explains its use.</li>
 <li>New <code><a href="../reference/prim_optimization_barrier.html">prim_optimization_barrier()</a></code> returns its input arrays unchanged and keeps the compiler from moving computations across it, so the operations that produce the arrays are not fused with those that use them. <code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> does the same for a single array or a tree of arrays, returning it with the same structure.</li>
+<li>New <code><a href="../reference/pullback.html">pullback()</a></code> and <code><a href="../reference/pullback.html">value_and_pullback()</a></code> differentiate a function with any result: they return its pullback, which takes a cotangent of the result back to the arguments.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>An empty <code>wrt</code> in <code><a href="../reference/gradient.html">gradient()</a></code>, <code><a href="../reference/gradient.html">value_and_gradient()</a></code> and <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code> differentiates with respect to no argument, rather than all of them.</li>
 </ul></div>
 </div>
     <div class="section level2">
