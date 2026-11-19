@@ -711,7 +711,7 @@ match_args_to_formals <- function(f, args) {
   g <- function() {
     as.list(match.call()[-1L])
   }
-  formals(g) <- formals(f)
+  formals(g) <- formals2(f)
   do.call(g, args)
 }
 

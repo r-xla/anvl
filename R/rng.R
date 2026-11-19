@@ -284,6 +284,60 @@ nv_rng_state <- function(seed) {
   rng_state_from_seed(assert_int(seed, coerce = TRUE))
 }
 
+#' @title Split Random States Off a Random State
+#' @description
+#' Splits `n` random states of their own off a random state, e.g. one per chain
+#' of a simulation, so that one seed decides the draws of all of them. The
+#' split is one sampling call of `rng_state`, which advances its counter by one
+#' however large `n` is: it derives a fresh key from `rng_state`, and the first
+#' `n` keys split off that fresh key are the keys of the random states, each
+#' with the counter 0. The first `m` random states of a split into `n` are
+#' therefore those of a split into `m`, so a chain draws the same numbers
+#' however many chains there are. A function compiled with [jit()] cannot
+#' split a random state, but it can draw from the random states split off one.
+#'
+#' See `r roxy_article("random-numbers")` for more details.
+#' @param n (`integer(1)`)\cr
+#'   The number of random states to split off.
+#' @param rng_state (`AnvlRngState` | `NULL`)\cr
+#'   The random state to split, which the split advances in place. `NULL`, the
+#'   default, splits the random state the samplers draw from: the global random
+#'   state, or the one that [with_nv_rng_state()] or [local_nv_rng_state()]
+#'   set.
+#' @return (`list` of `AnvlRngState`)\cr
+#'   `n` random states, each of a key of its own and the counter 0.
+#' @family rng
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_set_seed(42L)
+#' chains <- nv_split_rng_states(3L)
+#' chains
+#' # the split was one sampling call of the global random state
+#' nv_get_rng_state()
+#'
+#' # one draw per chain
+#' lapply(chains, function(rng) with_nv_rng_state(rng, nv_runif(2L)))
+#'
+#' # a larger split starts with the same random states
+#' with_nv_seed(42L, nv_split_rng_states(5L))[1:3]
+#' @export
+nv_split_rng_states <- function(n, rng_state = NULL) {
+  if (currently_tracing()) {
+    cli_abort(c(
+      "A random state cannot be split in a function traced by {.fn jit}.",
+      i = "Split it before calling the function, and pass the random states to the function."
+    ))
+  }
+  abort_if_no_rng()
+  n <- assert_int(n, lower = 0L, coerce = TRUE)
+  # the value t of a ui64 draw is the block (0, t) encrypted under the fresh
+  # key, which is the t-th key split off it: its high word is the key's first
+  # word and its low word the second
+  draw <- function() prim_sample_bits(n, "ui64")
+  bits <- if (is.null(rng_state)) draw() else with_nv_rng_state(rng_state, draw())
+  words <- matrix(bytes_words(as_raw(bits)), nrow = 2L)
+  lapply(seq_len(n), function(i) rng_state_of_key(words[2:1, i]))
+}
+
 #' @title Draw From a Random State for a Scope
 #' @description
 #' `local_nv_rng_state()` and `with_nv_rng_state()` make `rng_state` the random
