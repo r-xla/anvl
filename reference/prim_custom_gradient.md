@@ -38,7 +38,7 @@ prim_custom_gradient(args, fn, rule)
 
 - rule:
 
-  (`function` \| `anvl_rule_reverse`)  
+  (`function` \| `anvl_rule_pullback`)  
   Computes the gradient. A function receives the entries of `args` as
   arguments, plus `out`, the result of `fn`, `grad`, the gradient with
   respect to `out`, of the same structure, data types and shapes, and
@@ -52,7 +52,7 @@ prim_custom_gradient(args, fn, rule)
   e.g. an integer, which never is, can be left out or be `NULL`.
 
   Alternatively, a
-  [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
+  [`rule_pullback()`](https://r-xla.github.io/anvl/reference/rule_pullback.md)
   with a `forward` pass, which replaces `fn` where the result is
   differentiated, so that the backward pass can read what the forward
   pass computed. Its passes are those of a primitive's rule, except that
@@ -85,7 +85,7 @@ instead.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 
@@ -142,7 +142,7 @@ pow_fwd <- function(x, n) {
   prim_custom_gradient(
     list(x = x, n = n),
     fn = pow_loop,
-    rule = rule_reverse(forward = function(inputs, params, required) {
+    rule = rule_pullback(forward = function(inputs, params, required) {
       p <- inputs$x^(inputs$n - 1L)
       list(
         outputs = p * inputs$x,

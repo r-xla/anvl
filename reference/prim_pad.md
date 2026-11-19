@@ -61,7 +61,7 @@ every pair of elements; negative edge padding trims (see
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

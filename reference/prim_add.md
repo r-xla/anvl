@@ -33,7 +33,7 @@ Has the inputs' broadcast shape and data type.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

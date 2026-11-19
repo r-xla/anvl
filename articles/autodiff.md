@@ -374,12 +374,12 @@ attaches it.
 - Higher-order derivatives, such as Hessians, are currently not really
   supported.
 - Not every primitive has a derivative yet, so some functions cannot be
-  differentiated. The *Reverse* column of the [Primitives
+  differentiated. The *Pullback* column of the [Primitives
   Reference](https://r-xla.github.io/anvl/articles/primitives.md) shows
   which primitives implement it. If a derivative is missing and you need
-  it, you can add a reverse rule to the primitive yourself, as shown in
-  the [add the reverse
-  rule](https://r-xla.github.io/anvl/articles/extending_primitive.html#step-3-add-the-reverse-rule)
+  it, you can add a pullback rule to the primitive yourself, as shown in
+  the [add the pullback
+  rule](https://r-xla.github.io/anvl/articles/extending_primitive.html#step-3-add-the-pullback-rule)
   step of the Adding a Primitive article.
 
 ## How It Works
@@ -391,4 +391,4 @@ and
 sections of the internals article for how {anvl} computes gradients, and
 the [Adding a
 Primitive](https://r-xla.github.io/anvl/articles/extending_primitive.md)
-article for how to write a reverse rule.
+article for how to write a pullback rule.

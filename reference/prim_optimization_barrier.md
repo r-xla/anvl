@@ -40,7 +40,7 @@ preserved.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

@@ -56,7 +56,7 @@ effective start position may differ from the requested one.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

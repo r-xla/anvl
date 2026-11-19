@@ -34,7 +34,7 @@ from their location in the code.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

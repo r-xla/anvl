@@ -36,14 +36,14 @@ that is not positive definite factors to `NaN`.
 
 ## Details
 
-Differentiation is only implemented for a single matrix: the `reverse`
+Differentiation is only implemented for a single matrix: the `pullback`
 rule errors on a batched input (an input with more than 2 axes).
 
 ## Implemented Rules
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

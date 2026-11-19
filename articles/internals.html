@@ -264,14 +264,14 @@ it is ready to be transformed. The {anvl} package does not in any way
 dictate how such an <code>AnvlGraph</code> to <code>AnvlGraph</code>
 transformation can be implemented. For most interesting transformations,
 however, we need to store some information for each {anvl} primitive
-function. In the case of the gradient, we need to store the derivative
+function. In the case of the gradient, we need to store the pullback
 rules. For this, the <code>AnvlPrimitiveDef</code> metadata object
 attached to each primitive has a <code>rules</code> field that can be
-populated. The derivative rules are stored as functions under the
-<code>"reverse"</code> name. Each primitive is an exported
+populated. They are stored as functions under the
+<code>"pullback"</code> name. Each primitive is an exported
 <code>prim_*</code> function; <code>[[</code> on it reads a rule:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">prim_mul</span><span class="op">[[</span><span class="st">"reverse"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">prim_mul</span><span class="op">[[</span><span class="st">"pullback"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## $forward</span></span>
 <span><span class="co">## NULL</span></span>
 <span><span class="co">## </span></span>
@@ -288,11 +288,11 @@ populated. The derivative rules are stored as functions under the
 <span><span class="co">## &lt;environment: namespace:anvl&gt;</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## attr(,"class")</span></span>
-<span><span class="co">## [1] "anvl_rule_reverse"</span></span></code></pre>
+<span><span class="co">## [1] "anvl_rule_pullback"</span></span></code></pre>
 <p>The <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code> function uses these rules to
 compute the gradient of a function. For this specific transformation, we
-walk the graph backwards and apply the derivative rules, which appends
-the “reverse pass” to the graph. Besides the forward graph, the
+walk the graph backwards and apply the pullback rules, which appends the
+“reverse pass” to the graph. Besides the forward graph, the
 transformation takes in the <code>wrt</code> argument, which specifies
 with respect to which arguments to compute the gradient.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
@@ -323,7 +323,7 @@ transformation are attached to each primitive.</p>
 <span><span class="co">##     operands &lt;- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)</span></span>
 <span><span class="co">##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))</span></span>
 <span><span class="co">## }</span></span>
-<span><span class="co">## &lt;environment: 0x59600e0076c0&gt;</span></span></code></pre>
+<span><span class="co">## &lt;environment: 0x562ae142cce8&gt;</span></span></code></pre>
 <p>The <code><a href="../reference/stablehlo.html">stablehlo()</a></code> function creates a
 <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code> object and sequentially translates the
 <code>GraphStatement</code>s into StableHLO operations.</p>

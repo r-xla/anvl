@@ -84,7 +84,7 @@ Here op is A or A^T depending on transpose_a."><meta property="og:image" content
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Primitive Triangular Solve</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitives.R" class="external-link"><code>R/primitives.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/rules-reverse.R" class="external-link"><code>R/rules-reverse.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitives.R" class="external-link"><code>R/primitives.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/rules-pullback.R" class="external-link"><code>R/rules-pullback.R</code></a></small>
       <div class="d-none name"><code>prim_triangular_solve.Rd</code></div>
     </div>
 
@@ -151,7 +151,7 @@ Has <code>b</code>'s shape and the data type <code>a</code> and <code>b</code> a
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Differentiation is only implemented for a single system: the <code>reverse</code> rule
+    <p>Differentiation is only implemented for a single system: the <code>pullback</code> rule
 errors on batched operands (operands with more than 2 axes).</p>
     </div>
     <div class="section level2">
@@ -159,7 +159,7 @@ errors on batched operands (operands with more than 2 axes).</p>
 
 
 <ul><li><p><code>stablehlo</code></p></li>
-<li><p><code>reverse</code></p></li>
+<li><p><code>pullback</code></p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>

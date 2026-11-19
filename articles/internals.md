@@ -137,15 +137,15 @@ to be transformed. The {anvl} package does not in any way dictate how
 such an `AnvlGraph` to `AnvlGraph` transformation can be implemented.
 For most interesting transformations, however, we need to store some
 information for each {anvl} primitive function. In the case of the
-gradient, we need to store the derivative rules. For this, the
+gradient, we need to store the pullback rules. For this, the
 `AnvlPrimitiveDef` metadata object attached to each primitive has a
-`rules` field that can be populated. The derivative rules are stored as
-functions under the `"reverse"` name. Each primitive is an exported
-`prim_*` function; `[[` on it reads a rule:
+`rules` field that can be populated. They are stored as functions under
+the `"pullback"` name. Each primitive is an exported `prim_*` function;
+`[[` on it reads a rule:
 
 ``` r
 
-prim_mul[["reverse"]]
+prim_mul[["pullback"]]
 ```
 
     ## $forward
@@ -164,13 +164,13 @@ prim_mul[["reverse"]]
     ## <environment: namespace:anvl>
     ## 
     ## attr(,"class")
-    ## [1] "anvl_rule_reverse"
+    ## [1] "anvl_rule_pullback"
 
 The
 [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)
 function uses these rules to compute the gradient of a function. For
 this specific transformation, we walk the graph backwards and apply the
-derivative rules, which appends the “reverse pass” to the graph. Besides
+pullback rules, which appends the “reverse pass” to the graph. Besides
 the forward graph, the transformation takes in the `wrt` argument, which
 specifies with respect to which arguments to compute the gradient.
 
@@ -209,7 +209,7 @@ prim_mul[["stablehlo"]]
     ##     operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
     ##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
     ## }
-    ## <environment: 0x59600e0076c0>
+    ## <environment: 0x562ae142cce8>
 
 The [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)
 function creates a

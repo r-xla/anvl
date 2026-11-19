@@ -797,8 +797,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Definition
 - [`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md)
   : Add a Statement to a Graph Descriptor
-- [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
-  : Reverse Rule
+- [`rule_pullback()`](https://r-xla.github.io/anvl/reference/rule_pullback.md)
+  : Pullback Rule
 
 ### Implemented Primitives
 

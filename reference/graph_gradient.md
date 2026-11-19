@@ -33,11 +33,11 @@ Its outputs are the requested gradients.
 
 To support alternative forward passes for more efficient backward
 passes, we replay and possibly rewrite the graph into a new descriptor.
-Afterwards, we traverse it backwards and call the gradient rules where
+Afterwards, we traverse it backwards and call the pullback rules where
 necessary.
 
 See
-[`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
+[`rule_pullback()`](https://r-xla.github.io/anvl/reference/rule_pullback.md)
 for more information.
 
 [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md) and
@@ -50,7 +50,7 @@ graphs directly.
 
 [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
 [`value_and_gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
-[`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
+[`rule_pullback()`](https://r-xla.github.io/anvl/reference/rule_pullback.md)
 
 ## Examples
 

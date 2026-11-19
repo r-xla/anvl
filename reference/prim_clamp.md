@@ -36,7 +36,7 @@ Has the operands' broadcast shape and the data type they agreed on.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

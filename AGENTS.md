@@ -263,8 +263,14 @@ only `side_effect_fork()` calls). Interpretation rules are accessed via
 - **`stablehlo`** – JIT lowering rules in `R/rules-stablehlo.R`. These
   convert traced operations into StableHLO IR. Since stablehlo uses
   0-based indexing, convert indices by subtracting 1.
-- **`reverse`** – Autodiff rules in `R/rules-reverse.R`, built with
-  [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md).
+- **`pullback`** – Reverse-mode autodiff rules in `R/rules-pullback.R`,
+  built with
+  [`rule_pullback()`](https://r-xla.github.io/anvl/reference/rule_pullback.md).
+  A rule type that serves a transformation is named after it:
+  [`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
+  (and
+  [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
+  which builds on it) uses the `pullback` rule.
 - **`quickr`** – R-native lowering rules in `R/rules-quickr.R` for the
   quickr backend.
 
@@ -312,8 +318,8 @@ the trace records `mul(%x, 2:f32)`, not a `broadcast_in_axes` first.
 Their inference rules take the shape of the operands that are not
 scalars (`infer_elementwise_shape()`), their StableHLO rules broadcast a
 scalar operand while lowering (`elementwise_rule()`,
-`hlo_broadcast_scalar()`), and their reverse rules sum the gradient of a
-scalar operand back down (`unbroadcast()`).
+`hlo_broadcast_scalar()`), and their pullback rules sum the gradient of
+a scalar operand back down (`unbroadcast()`).
 
 When two non-scalar arrays need to be combined and only differ by size-1
 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via
@@ -355,8 +361,8 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` – sources
   `inst/extra-tests/test-primitives-stablehlo-torch.R`
-- `tests/testthat/test-primitives-reverse.R` – sources
-  `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-pullback.R` – sources
+  `inst/extra-tests/test-primitives-pullback-torch.R`
 
 Prefer testing by comparing with the corresponding torch function. If
 the test is trivial or the functionality is not covered by torch, test

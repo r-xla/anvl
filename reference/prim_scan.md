@@ -57,7 +57,7 @@ leaf of `out` gaining a leading axis of size `steps`.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

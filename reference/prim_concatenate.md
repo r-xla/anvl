@@ -41,7 +41,7 @@ along that axis.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

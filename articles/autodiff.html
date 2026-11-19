@@ -436,10 +436,10 @@ supported.</li>
 <li>Higher-order derivatives, such as Hessians, are currently not really
 supported.</li>
 <li>Not every primitive has a derivative yet, so some functions cannot
-be differentiated. The <em>Reverse</em> column of the <a href="primitives.html">Primitives Reference</a> shows which primitives
+be differentiated. The <em>Pullback</em> column of the <a href="primitives.html">Primitives Reference</a> shows which primitives
 implement it. If a derivative is missing and you need it, you can add a
-reverse rule to the primitive yourself, as shown in the <a href="extending_primitive.html#step-3-add-the-reverse-rule">add the
-reverse rule</a> step of the Adding a Primitive article.</li>
+pullback rule to the primitive yourself, as shown in the <a href="extending_primitive.html#step-3-add-the-pullback-rule">add the
+pullback rule</a> step of the Adding a Primitive article.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -448,7 +448,7 @@ reverse rule</a> step of the Adding a Primitive article.</li>
 <p>See the <a href="internals.html#transforming-graphs-into-other-graphs">transforming
 graphs into other graphs</a> and <a href="internals.html#gradient"><code>gradient()</code></a> sections of
 the internals article for how {anvl} computes gradients, and the <a href="extending_primitive.html">Adding a Primitive</a> article for how
-to write a reverse rule.</p>
+to write a pullback rule.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

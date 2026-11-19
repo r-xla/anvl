@@ -120,7 +120,7 @@ arguments. Returns an array, or a tree of them.</p></dd>
 
 
 <dt id="arg-rule">rule<a class="anchor" aria-label="anchor" href="#arg-rule"></a></dt>
-<dd><p>(<code>function</code> | <code>anvl_rule_reverse</code>)<br>
+<dd><p>(<code>function</code> | <code>anvl_rule_pullback</code>)<br>
 Computes the gradient. A function receives the entries of <code>args</code> as arguments, plus
 <code>out</code>, the result of <code>fn</code>, <code>grad</code>, the gradient with respect to <code>out</code>, of
 the same structure, data types and shapes, and <code>required</code>, a named
@@ -131,7 +131,7 @@ to each required entry – for an array <code>x</code>, the sum over the element
 <code>out</code> of their <code>grad</code> times their derivative with respect to <code>x</code> – of
 <code>x</code>'s structure, data types and shapes. An entry that is not required,
 e.g. an integer, which never is, can be left out or be <code>NULL</code>.</p>
-<p>Alternatively, a <code><a href="rule_reverse.html">rule_reverse()</a></code> with a <code>forward</code> pass, which replaces
+<p>Alternatively, a <code><a href="rule_pullback.html">rule_pullback()</a></code> with a <code>forward</code> pass, which replaces
 <code>fn</code> where the result is differentiated, so that the backward pass can
 read what the forward pass computed. Its passes are those of a
 primitive's rule, except that <code>inputs</code> are the entries of <code>args</code> by name
@@ -162,7 +162,7 @@ with respect to those, as <code>rule</code> only gives the gradient with respect
 
 <ul><li><p><code>stablehlo</code></p></li>
 <li><p><code>quickr</code></p></li>
-<li><p><code>reverse</code></p></li>
+<li><p><code>pullback</code></p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
@@ -221,7 +221,7 @@ is traced, as anvl operations, before the program is lowered.</p>
 <span class="r-in"><span>  <span class="fu">prim_custom_gradient</span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, n <span class="op">=</span> <span class="va">n</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    fn <span class="op">=</span> <span class="va">pow_loop</span>,</span></span>
-<span class="r-in"><span>    rule <span class="op">=</span> <span class="fu"><a href="rule_reverse.html">rule_reverse</a></span><span class="op">(</span>forward <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">params</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    rule <span class="op">=</span> <span class="fu"><a href="rule_pullback.html">rule_pullback</a></span><span class="op">(</span>forward <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">params</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="va">p</span> <span class="op">&lt;-</span> <span class="va">inputs</span><span class="op">$</span><span class="va">x</span><span class="op">^</span><span class="op">(</span><span class="va">inputs</span><span class="op">$</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>        outputs <span class="op">=</span> <span class="va">p</span> <span class="op">*</span> <span class="va">inputs</span><span class="op">$</span><span class="va">x</span>,</span></span>

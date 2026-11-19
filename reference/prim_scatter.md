@@ -169,7 +169,7 @@ gradient of zero.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

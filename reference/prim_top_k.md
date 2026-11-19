@@ -50,7 +50,7 @@ indices, ties are broken by lower index first.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

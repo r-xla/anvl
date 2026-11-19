@@ -36,7 +36,7 @@ Has the inputs' broadcast shape and data type.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

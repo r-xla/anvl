@@ -41,7 +41,7 @@ Has the given `dtype`, and the shape described under `dtype`.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

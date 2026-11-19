@@ -36,7 +36,7 @@ Has the input's data type and shape `shape(x)[perm]`.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

@@ -46,7 +46,7 @@ agreed on.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

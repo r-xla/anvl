@@ -63,7 +63,7 @@ axes followed by the remaining (non-contracted, non-batched) axes of
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 
