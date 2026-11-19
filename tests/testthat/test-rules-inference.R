@@ -995,7 +995,7 @@ describe("a result shape a rule computes from the caller's parameters", {
         nv_array(array(as.double(1:4), c(2L, 2L, 1L, 1L)), dtype = "f32"),
         padding = -100L
       ),
-      "must be at least as large as the dilated kernel",
+      "must not remove more than spatial axis",
       fixed = TRUE
     )
   })

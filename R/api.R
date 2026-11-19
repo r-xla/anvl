@@ -5090,15 +5090,15 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
   stride <- .nv_conv_vec(stride, n, "stride", lower = 1L)
   pad <- .nv_conv_vec(padding, n, "padding")
   dilation <- .nv_conv_vec(dilation, n, "dilation", lower = 1L)
-  # Checked in the user's axis order, before the vectors are reversed below.
+  # Checked here, in the user's axis order, as the inference rule sees the
+  # vectors reversed below.
   padded <- shape(x)[seq_len(n)] + 2L * pad
-  needed <- (shape(kernel)[seq_len(n)] - 1L) * dilation + 1L
-  short <- which(padded < needed)
-  if (length(short)) {
-    i <- short[[1L]]
+  emptied <- which(padded < 0L)
+  if (length(emptied)) {
+    i <- emptied[[1L]]
     cli_abort(c(
-      "The padded input must be at least as large as the dilated kernel along every spatial axis.",
-      x = "Along spatial axis {i}, {.arg x} padded is {padded[[i]]} but the dilated kernel spans {needed[[i]]}."
+      "Negative {.arg padding} must not remove more than spatial axis {i} of {.arg x} holds.",
+      x = "Axis {i} of {.arg x} has size {shape(x)[[i]]}, and padding {pad[[i]]} on both sides leaves {padded[[i]]}."
     ))
   }
   # Reversed to pair with the spatial axes of `.nv_conv_axis_numbers()`.
