@@ -272,12 +272,13 @@ trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3
 ```
 
 The graph contains two `mul`/`add` pairs in sequence – not a loop
-construct. In the first iteration, `mul` broadcasts the scalar `x` to
-the shape of `w`; by the second, `x` is already an `f32[3]`. The
-compiled executable will contain those four operations laid out one
-after another. For a different value of `n`, the loop would get unrolled
-for this specific iteration number. Long loops also lead to long compile
-times and large executables. You can instead use
+construct. In the first iteration, `mul` takes the scalar `x` as it is,
+and broadcasts it to the shape of `w` when it is lowered to StableHLO;
+by the second, `x` is already an `f32[3]`. The compiled executable will
+contain these operations laid out one after another. For a different
+value of `n`, the loop would get unrolled for this specific iteration
+number. Long loops also lead to long compile times and large
+executables. You can instead use
 [`nv_while()`](https://r-xla.github.io/anvl/reference/nv_while.md),
 which records a single statement in the graph regardless of how many
 iterations the loop runs.

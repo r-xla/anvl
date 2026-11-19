@@ -99,7 +99,8 @@ One input. Can be any data type. An R value materializes at its
 
 <dt id="arg-min-max">min, max<a class="anchor" aria-label="anchor" href="#arg-min-max"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Lower and upper bound, each scalar or the same shape as <code>x</code>. They are
+Lower and upper bound. The operands that are not scalars, <code>x</code> among them,
+have the same shape, and a scalar is broadcast to it. The bounds are
 brought to <code>x</code>'s data type: an R value is built at it when its category can
 reach it (<code>0L</code> serves an integer and a float <code>x</code> alike, <code>0</code> only a float
 one), and a value that already has a data type is converted unless that
@@ -110,7 +111,7 @@ a silent narrowing.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Has <code>x</code>'s shape and data type.</p>
+Has the operands' broadcast shape and <code>x</code>'s data type.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

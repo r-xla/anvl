@@ -366,9 +366,10 @@ function <code>n</code> times.</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>The graph contains two <code>mul</code>/<code>add</code> pairs in
 sequence – not a loop construct. In the first iteration,
-<code>mul</code> broadcasts the scalar <code>x</code> to the shape of
-<code>w</code>; by the second, <code>x</code> is already an
-<code>f32[3]</code>. The compiled executable will contain those four
+<code>mul</code> takes the scalar <code>x</code> as it is, and
+broadcasts it to the shape of <code>w</code> when it is lowered to
+StableHLO; by the second, <code>x</code> is already an
+<code>f32[3]</code>. The compiled executable will contain these
 operations laid out one after another. For a different value of
 <code>n</code>, the loop would get unrolled for this specific iteration
 number. Long loops also lead to long compile times and large
