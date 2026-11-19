@@ -120,7 +120,8 @@
     
 <p>This article collects what makes {anvl} programs fast or slow, from
 compiling with <code><a href="../reference/jit.html">jit()</a></code> and running on a GPU to data types,
-compilation cost, asynchronous execution, and memory.</p>
+XLA compiler options, compilation cost, asynchronous execution, and
+memory.</p>
 <div class="section level2">
 <h2 id="eager-vs-jit">Eager vs. JIT<a class="anchor" aria-label="anchor" href="#eager-vs-jit"></a>
 </h2>
@@ -236,6 +237,50 @@ alternatives such as OpenBLAS, Intel MKL, or Apple’s Accelerate
 framework. The CUDA backend is unaffected.</p>
 </div>
 <div class="section level2">
+<h2 id="xla-compiler-options">XLA compiler options<a class="anchor" aria-label="anchor" href="#xla-compiler-options"></a>
+</h2>
+<p>XLA has many options that control how it compiles a program: which
+optimizations run, how operations are fused into kernels, whether
+floating-point arithmetic may be reordered, and so on. The defaults work
+well in general, but for some programs changing them gives a significant
+speed-up. <code><a href="../reference/jit.html">jit()</a></code> passes such options to XLA through its
+<code>xla_options</code> argument (pjrt backend only), and they apply to
+the compiles of that function only. For example, the following allows
+XLA on the CPU to use fast-math optimizations, which trade some
+floating-point accuracy for speed:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span></span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_sum.html">nv_sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">x</span> <span class="op">*</span> <span class="va">x</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  xla_options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>xla_cpu_enable_fast_math <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The names of the options are the fields of the
+<code>DebugOptions</code> message in XLA’s <a href="https://github.com/openxla/xla/blob/main/xla/xla.proto" class="external-link"><code>xla.proto</code></a>,
+where each one comes with a short description. The <a href="https://openxla.org/xla/flags_guidance" class="external-link">XLA flags guidance</a>
+discusses the options most commonly tuned for performance. The type of a
+value decides how XLA reads it, so an integer option takes
+<code>3L</code> and not <code>3</code>; see
+<code><a href="https://r-xla.github.io/pjrt/reference/pjrt_compile.html" class="external-link">pjrt::pjrt_compile()</a></code> for the details.</p>
+<p>Some things to keep in mind:</p>
+<ul>
+<li>
+<strong>Only the outermost <code><a href="../reference/jit.html">jit()</a></code> counts.</strong> A
+jitted function called inside another one’s trace becomes part of the
+outer program, so pass the options to the function you call from R,
+e.g. <code>jit(value_and_gradient(f), xla_options = ...)</code>.</li>
+<li>
+<strong>Measure.</strong> Whether an option helps depends on the
+program and the hardware, and some options make things slower or change
+the results. See the <a href="faq.html#why-does-timing-my-function-show-suspiciously-fast-results">FAQ</a>
+on how to time {anvl} functions correctly.</li>
+<li>
+<strong>Session-wide options.</strong> To apply options to every
+compile of the R session instead, set the <code>XLA_FLAGS</code>
+environment variable before anything is compiled,
+e.g. <code>XLA_FLAGS="--xla_cpu_enable_fast_math=true"</code> in your
+<code>.Renviron</code>.</li>
+</ul>
+</div>
+<div class="section level2">
 <h2 id="compilation-cost">Compilation cost<a class="anchor" aria-label="anchor" href="#compilation-cost"></a>
 </h2>
 <p>Compiling an {anvl} function can take anywhere from milliseconds to
@@ -257,7 +302,7 @@ compiled function, at the cost of doing some wasted work on the padded
 positions.</p>
 <p>For example, suppose we want to sum a vector whose length varies
 between calls:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sum_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compiling for length "</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"\n"</span>, sep <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/nv_sum.html">nv_sum</a></span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
@@ -273,7 +318,7 @@ between calls:</p>
 <p>Each new length triggers a recompile. By padding each input up to the
 next multiple of 32 with zeros, all four calls share one compiled
 function:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pad_to_multiple</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">m</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">ceiling</a></span><span class="op">(</span><span class="va">n</span> <span class="op">/</span> <span class="va">m</span><span class="op">)</span> <span class="op">*</span> <span class="va">m</span> <span class="op">-</span> <span class="va">n</span><span class="op">)</span><span class="op">)</span></span>
@@ -327,14 +372,14 @@ scheduled to run on the GPU. Note that the GPU computation from the
 previous <code><a href="https://rdrr.io/r/stats/step.html" class="external-link">step()</a></code> call might not yet be done at this point.
 This is exactly the situation we want to be in, as we don’t want the GPU
 to idle.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n_steps</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">batch</span>   <span class="op">&lt;-</span> <span class="fu">prepare_batch</span><span class="op">(</span><span class="va">i</span><span class="op">)</span>                <span class="co"># CPU-work</span></span>
 <span>  <span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/step.html" class="external-link">step</a></span><span class="op">(</span><span class="va">batch</span><span class="op">$</span><span class="va">X</span>, <span class="va">weights</span>, <span class="va">batch</span><span class="op">$</span><span class="va">y</span><span class="op">)</span> <span class="co"># GPU-work</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>One way to make this slower is to always print the result after each
 <code><a href="https://rdrr.io/r/stats/step.html" class="external-link">step()</a></code>:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Bad: blocks every step to print the loss.</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n_steps</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">batch</span> <span class="op">&lt;-</span> <span class="fu">prepare_batch</span><span class="op">(</span><span class="va">i</span><span class="op">)</span>                <span class="co"># CPU-work</span></span>
@@ -379,7 +424,7 @@ still needs the input arrays, so by default it has to leave them intact.
 If you know a particular input will not be used after the call, you can
 pass its name to <code>donate</code> so XLA is free to reuse its memory
 for the output:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">update</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">delta</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="va">delta</span>, donate <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
@@ -396,7 +441,7 @@ for the parameters and leave the previous one for the garbage
 collector.</p>
 <p>The donated input is consumed by the call, so it must not be used
 afterwards, otherwise an error is thrown:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x_old</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
 <span><span class="va">x_new</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">x_old</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="fl">0.1</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">x_old</span></span>
