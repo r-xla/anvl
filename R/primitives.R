@@ -77,8 +77,6 @@ prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
     assert_fill_value(value, dtype)
-    # `shape = c()` is how a caller asks for a scalar.
-    shape <- shape %||% integer()
     shape <- assert_shapevec(shape)
     graph_desc_add(
       self,

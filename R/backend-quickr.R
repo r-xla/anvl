@@ -175,15 +175,6 @@ AnvlBackendQuickr <- function() {
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
-      if (is.null(shape)) {
-        shape <- if (!is.null(dim(data))) {
-          as.integer(dim(data))
-        } else if (length(data) == 1L) {
-          1L
-        } else {
-          as.integer(length(data))
-        }
-      }
       # Errors for a data type quickr cannot represent, so an array is never
       # labelled with one it does not actually hold.
       data <- quickr_dtype_info(dtype)$scalar_cast(data)

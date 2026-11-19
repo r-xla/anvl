@@ -515,8 +515,8 @@ test_that("Can propagate float32 through integer/bool functions", {
 })
 
 test_that("trace_fn matches args with formals", {
-  graph1 <- trace_fn(prim_add, list(nv_aval("f32", c()), nv_aval("f32", c())))
-  graph2 <- trace_fn(prim_add, list(lhs = nv_aval("f32", c()), rhs = nv_aval("f32", c())))
+  graph1 <- trace_fn(prim_add, list(nv_aval("f32", shp()), nv_aval("f32", shp())))
+  graph2 <- trace_fn(prim_add, list(lhs = nv_aval("f32", shp()), rhs = nv_aval("f32", shp())))
   expect_true(pjrt::tree_equal(graph1$in_tree, graph2$in_tree))
   expect_equal(pjrt::tree_child_names(graph1$in_tree), c("lhs", "rhs"))
 })
