@@ -41,6 +41,9 @@
   and
   [`graph_gradient()`](https://r-xla.github.io/anvl/reference/graph_gradient.md)
   differentiates with respect to no argument, rather than all of them.
+- `nv_array(byrow = TRUE)` refuses data that does not fill `shape`
+  instead of recycling it, and keeps the values of a
+  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
 
 ## anvl 0.6.0
 

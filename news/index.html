@@ -90,6 +90,8 @@
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
 <ul><li>An empty <code>wrt</code> in <code><a href="../reference/gradient.html">gradient()</a></code>, <code><a href="../reference/gradient.html">value_and_gradient()</a></code> and <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code> differentiates with respect to no argument, rather than all of them.</li>
+<li>
+<code>nv_array(byrow = TRUE)</code> refuses data that does not fill <code>shape</code> instead of recycling it, and keeps the values of a <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>.</li>
 </ul></div>
 </div>
     <div class="section level2">

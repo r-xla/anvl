@@ -209,7 +209,7 @@ prim_mul[["stablehlo"]]
     ##     operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
     ##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
     ## }
-    ## <environment: 0x5ca16596a108>
+    ## <environment: 0x59600e0076c0>
 
 The [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)
 function creates a
