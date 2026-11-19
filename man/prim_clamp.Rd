@@ -14,12 +14,12 @@ assumes the data type of the others when it is in its \link[=dtype_categories]{d
 when none of them has one.}
 
 \item{min, max}{(\code{\link{arrayish}})\cr
-Lower and upper bound. Each must be scalar or the same shape as \code{x}, and
-shares its data type.}
+Lower and upper bound, sharing \code{x}'s data type. The operands that are not
+scalars have the same shape, and a scalar is broadcast to it.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{x}'s shape and the data type the operands agreed on.
+Has the operands' broadcast shape and the data type they agreed on.
 }
 \description{
 Clamps every element of \code{x} to the range \verb{[min, max]}.

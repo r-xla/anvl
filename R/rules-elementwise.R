@@ -14,6 +14,10 @@
 # that derivative is zero. The functions receive a cotangent of the output in
 # the reverse rule and a tangent of their input in the pushforward rule; anything
 # they share is computed in the body of `partials`.
+#
+# A scalar operand is broadcast to the shape of the others, so its cotangent is
+# the sum over the output's, and a tangent that only scalar operands carry is
+# broadcast to the output's shape.
 set_elementwise_derivative <- function(prim, partials) {
   def <- primitive_def(prim)
   def[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
@@ -25,7 +29,7 @@ set_elementwise_derivative <- function(prim, partials) {
         } else if (is.null(map)) {
           zeros_like(x)
         } else {
-          map(grads[[1L]])
+          unbroadcast(map(grads[[1L]]), x)
         }
       },
       inputs,
@@ -37,9 +41,27 @@ set_elementwise_derivative <- function(prim, partials) {
     maps <- partials(inputs, outputs, params)
     terms <- Map(function(map, tangent) if (!is.null(map) && !is.null(tangent)) map(tangent), maps, tangents)
     terms <- Filter(Negate(is.null), terms)
-    list(if (length(terms)) Reduce(prim_add, terms))
+    if (!length(terms)) {
+      return(list(NULL))
+    }
+    tangent <- Reduce(prim_add, terms)
+    out_shape <- shape(outputs[[1L]])
+    if (!identical(shape(tangent), out_shape)) {
+      tangent <- prim_broadcast_in_axes(tangent, out_shape, integer())
+    }
+    list(tangent)
   }
   invisible(prim)
+}
+
+# The gradient of an elementwise primitive's operand `x`, from `grad`, a
+# cotangent at the shape of the output. A scalar operand was broadcast to that
+# shape, so its gradient is the sum over it.
+unbroadcast <- function(grad, x) {
+  if (length(shape(x)) || !length(shape(grad))) {
+    return(grad)
+  }
+  prim_sum(grad, axes = seq_along(shape(grad)), drop = TRUE)
 }
 
 # The derivative of a step function -- or of one whose output has none, such as
@@ -107,11 +129,11 @@ set_elementwise_derivative(prim_pow, function(inputs, outputs, params) {
   # log(0) at base 0: x^0 is constant in x, and 0^y is constant in y.
   list(
     \(v) {
-      dx <- prim_mul(y, prim_pow(x, prim_sub(y, ones_like(y))))
-      prim_mul(v, prim_ifelse(prim_eq(y, zeros_like(y)), zeros_like(dx), dx))
+      dx <- prim_mul(y, prim_pow(x, prim_sub(y, 1)))
+      prim_mul(v, prim_ifelse(prim_eq(y, 0), 0, dx))
     },
     \(v) {
-      safe_x <- prim_ifelse(prim_eq(x, zeros_like(x)), ones_like(x), x)
+      safe_x <- prim_ifelse(prim_eq(x, 0), 1, x)
       prim_mul(v, prim_mul(prim_log(safe_x), out))
     }
   )
@@ -158,8 +180,8 @@ set_elementwise_derivative(prim_ifelse, function(inputs, outputs, params) {
   # The predicate is boolean and has no derivative, as in JAX's `select`.
   list(
     NULL,
-    \(v) prim_ifelse(test, v, zeros_like(v)),
-    \(v) prim_ifelse(test, zeros_like(v), v)
+    \(v) prim_ifelse(test, v, 0),
+    \(v) prim_ifelse(test, 0, v)
   )
 })
 
@@ -184,13 +206,13 @@ set_elementwise_derivative(prim_log, function(inputs, outputs, params) {
 set_elementwise_derivative(prim_log1p, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx log(1 + x) = 1 / (1 + x)
-  list(\(v) prim_div(v, prim_add(ones_like(x), x)))
+  list(\(v) prim_div(v, prim_add(1, x)))
 })
 
 set_elementwise_derivative(prim_plogis, function(inputs, outputs, params) {
   y <- outputs[[1L]]
   # d/dx sigmoid(x) = sigmoid(x) * (1 - sigmoid(x))
-  list(\(v) prim_mul(v, prim_mul(y, prim_sub(ones_like(y), y))))
+  list(\(v) prim_mul(v, prim_mul(y, prim_sub(1, y))))
 })
 
 # roots ------------------------------------------------------------------------
@@ -198,28 +220,19 @@ set_elementwise_derivative(prim_plogis, function(inputs, outputs, params) {
 set_elementwise_derivative(prim_sqrt, function(inputs, outputs, params) {
   y <- outputs[[1L]]
   # d/dx sqrt(x) = 1 / (2 * sqrt(x))
-  list(\(v) {
-    half <- prim_fill(0.5, dtype = dtype(y), shape = shape(y))
-    prim_div(prim_mul(v, half), y)
-  })
+  list(\(v) prim_div(prim_mul(v, 0.5), y))
 })
 
 set_elementwise_derivative(prim_rsqrt, function(inputs, outputs, params) {
   y <- outputs[[1L]]
   # d/dx 1/sqrt(x) = -0.5 * x^(-3/2) = -0.5 * rsqrt(x)^3
-  list(\(v) {
-    neg_half <- prim_fill(-0.5, dtype = dtype(y), shape = shape(y))
-    prim_mul(prim_mul(v, neg_half), prim_mul(y, prim_mul(y, y)))
-  })
+  list(\(v) prim_mul(prim_mul(v, -0.5), prim_mul(y, prim_mul(y, y))))
 })
 
 set_elementwise_derivative(prim_cbrt, function(inputs, outputs, params) {
   y <- outputs[[1L]]
   # d/dx cbrt(x) = 1 / (3 * cbrt(x)^2)
-  list(\(v) {
-    three <- prim_fill(3L, dtype = dtype(y), shape = shape(y))
-    prim_div(v, prim_mul(prim_mul(y, y), three))
-  })
+  list(\(v) prim_div(v, prim_mul(prim_mul(y, y), 3)))
 })
 
 # trigonometric and hyperbolic -------------------------------------------------
@@ -239,25 +252,25 @@ set_elementwise_derivative(prim_cos, function(inputs, outputs, params) {
 set_elementwise_derivative(prim_tan, function(inputs, outputs, params) {
   y <- outputs[[1L]]
   # d/dx tan(x) = 1 + tan(x)^2
-  list(\(v) prim_mul(v, prim_add(ones_like(y), prim_mul(y, y))))
+  list(\(v) prim_mul(v, prim_add(1, prim_mul(y, y))))
 })
 
 set_elementwise_derivative(prim_acos, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx acos(x) = -1 / sqrt(1 - x^2)
-  list(\(v) prim_negate(prim_div(v, prim_sqrt(prim_sub(ones_like(x), prim_mul(x, x))))))
+  list(\(v) prim_negate(prim_div(v, prim_sqrt(prim_sub(1, prim_mul(x, x))))))
 })
 
 set_elementwise_derivative(prim_asin, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx asin(x) = 1 / sqrt(1 - x^2)
-  list(\(v) prim_div(v, prim_sqrt(prim_sub(ones_like(x), prim_mul(x, x)))))
+  list(\(v) prim_div(v, prim_sqrt(prim_sub(1, prim_mul(x, x)))))
 })
 
 set_elementwise_derivative(prim_atan, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx atan(x) = 1 / (1 + x^2)
-  list(\(v) prim_div(v, prim_add(ones_like(x), prim_mul(x, x))))
+  list(\(v) prim_div(v, prim_add(1, prim_mul(x, x))))
 })
 
 set_elementwise_derivative(prim_atan2, function(inputs, outputs, params) {
@@ -285,25 +298,25 @@ set_elementwise_derivative(prim_cosh, function(inputs, outputs, params) {
 set_elementwise_derivative(prim_tanh, function(inputs, outputs, params) {
   y <- outputs[[1L]]
   # d/dx tanh(x) = 1 - tanh(x)^2
-  list(\(v) prim_mul(v, prim_sub(ones_like(y), prim_mul(y, y))))
+  list(\(v) prim_mul(v, prim_sub(1, prim_mul(y, y))))
 })
 
 set_elementwise_derivative(prim_asinh, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx asinh(x) = 1 / sqrt(1 + x^2)
-  list(\(v) prim_div(v, prim_sqrt(prim_add(ones_like(x), prim_mul(x, x)))))
+  list(\(v) prim_div(v, prim_sqrt(prim_add(1, prim_mul(x, x)))))
 })
 
 set_elementwise_derivative(prim_acosh, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx acosh(x) = 1 / sqrt(x^2 - 1)
-  list(\(v) prim_div(v, prim_sqrt(prim_sub(prim_mul(x, x), ones_like(x)))))
+  list(\(v) prim_div(v, prim_sqrt(prim_sub(prim_mul(x, x), 1))))
 })
 
 set_elementwise_derivative(prim_atanh, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx atanh(x) = 1 / (1 - x^2)
-  list(\(v) prim_div(v, prim_sub(ones_like(x), prim_mul(x, x))))
+  list(\(v) prim_div(v, prim_sub(1, prim_mul(x, x))))
 })
 
 # special functions ------------------------------------------------------------
@@ -317,7 +330,7 @@ set_elementwise_derivative(prim_lgamma, function(inputs, outputs, params) {
 set_elementwise_derivative(prim_digamma, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx digamma(x) = trigamma(x) = polygamma(1, x)
-  list(\(v) prim_mul(v, prim_psigamma(x, ones_like(x))))
+  list(\(v) prim_mul(v, prim_psigamma(x, 1)))
 })
 
 set_elementwise_derivative(prim_psigamma, function(inputs, outputs, params) {
@@ -325,7 +338,7 @@ set_elementwise_derivative(prim_psigamma, function(inputs, outputs, params) {
   deriv <- inputs[[2L]]
   list(
     # d/dx psigamma(x, deriv) = psigamma(x, deriv + 1)
-    \(v) prim_mul(v, prim_psigamma(x, prim_add(deriv, ones_like(deriv)))),
+    \(v) prim_mul(v, prim_psigamma(x, prim_add(deriv, 1))),
     # psigamma is typically called with an integer order, which is not
     # differentiable; follow torch and refuse.
     \(v) cli_abort("The derivative with respect to {.arg deriv} of {.fn prim_psigamma} is not implemented.")
@@ -335,28 +348,19 @@ set_elementwise_derivative(prim_psigamma, function(inputs, outputs, params) {
 set_elementwise_derivative(prim_erf, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx erf(x) = (2 / sqrt(pi)) * exp(-x^2)
-  list(\(v) {
-    coef <- prim_fill(2 / sqrt(pi), dtype = dtype(x), shape = shape(x))
-    prim_mul(v, prim_mul(coef, prim_exp(prim_negate(prim_mul(x, x)))))
-  })
+  list(\(v) prim_mul(v, prim_mul(2 / sqrt(pi), prim_exp(prim_negate(prim_mul(x, x))))))
 })
 
 set_elementwise_derivative(prim_erfc, function(inputs, outputs, params) {
   x <- inputs[[1L]]
   # d/dx erfc(x) = -(2 / sqrt(pi)) * exp(-x^2)
-  list(\(v) {
-    coef <- prim_fill(-2 / sqrt(pi), dtype = dtype(x), shape = shape(x))
-    prim_mul(v, prim_mul(coef, prim_exp(prim_negate(prim_mul(x, x)))))
-  })
+  list(\(v) prim_mul(v, prim_mul(-2 / sqrt(pi), prim_exp(prim_negate(prim_mul(x, x))))))
 })
 
 set_elementwise_derivative(prim_erf_inv, function(inputs, outputs, params) {
   y <- outputs[[1L]]
   # d/dx erf_inv(x) = sqrt(pi)/2 * exp(erf_inv(x)^2)
-  list(\(v) {
-    coef <- prim_fill(sqrt(pi) / 2, dtype = dtype(y), shape = shape(y))
-    prim_mul(v, prim_mul(coef, prim_exp(prim_mul(y, y))))
-  })
+  list(\(v) prim_mul(v, prim_mul(sqrt(pi) / 2, prim_exp(prim_mul(y, y)))))
 })
 
 # step functions and predicates ------------------------------------------------

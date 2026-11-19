@@ -5,26 +5,36 @@
 # compare with.
 
 # Samplers for the values a case calls its primitive with, as a
-# `function(shape)` returning an R array.
+# `function(shape)` returning an R array, or a number for the scalar shape.
 unif <- function(lower, upper) {
-  function(shape) array(runif(prod(shape), lower, upper), shape)
+  function(shape) shaped(runif(prod(shape), lower, upper), shape)
 }
 # Away from the integers and the half-integers, where a step function jumps.
 off_step <- function(lower, upper) {
-  function(shape) array(sample(lower:upper, prod(shape), replace = TRUE) + runif(prod(shape), 0.1, 0.4), shape)
+  function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE) + runif(prod(shape), 0.1, 0.4), shape)
 }
 coin <- function() {
-  function(shape) array(runif(prod(shape)) < 0.5, shape)
+  function(shape) shaped(runif(prod(shape)) < 0.5, shape)
 }
 fixed <- function(value) {
-  function(shape) array(value, shape)
+  function(shape) shaped(rep(value, prod(shape)), shape)
+}
+shaped <- function(values, shape) {
+  if (length(shape)) array(values, shape) else values
+}
+
+# `x`, an R array or number, as an array of data type `dtype`.
+anvl_array <- function(x, dtype) {
+  if (is.null(dim(x))) nv_scalar(x, dtype = dtype) else nv_array(x, dtype = dtype)
 }
 
 # A call of a primitive: its arguments, as samplers -- a float sampler gives an
 # array of the data type under test, a logical one a boolean array -- the
-# arguments to differentiate with respect to, and static parameters.
-pushforward_case <- function(args, wrt = names(args), params = list()) {
-  list(args = args, wrt = wrt, params = params)
+# arguments to differentiate with respect to, the arguments that are scalars,
+# which the primitive broadcasts to the shape of the others, and static
+# parameters.
+pushforward_case <- function(args, wrt = names(args), scalar = character(), params = list()) {
+  list(args = args, wrt = wrt, scalar = scalar, params = params)
 }
 
 binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
@@ -84,6 +94,28 @@ pushforward_cases <- list(
   is_finite = pushforward_case(list(x = unif(-2, 2)))
 )
 
+# Calls with a scalar operand, named `<primitive>/<scalar operands>`. The
+# primitive broadcasts it, so its cotangent is summed and its tangent
+# broadcast.
+pushforward_scalar_cases <- list(
+  "add/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "rhs"),
+  "sub/lhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "lhs"),
+  "mul/lhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "lhs"),
+  "div/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(0.5, 2)), scalar = "rhs"),
+  "pow/y" = pushforward_case(list(x = unif(0.5, 2), y = unif(-2, 2)), scalar = "y"),
+  "remainder/y" = pushforward_case(list(x = unif(-5, 5), y = unif(0.5, 2)), scalar = "y"),
+  "pmax/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "rhs"),
+  "atan2/x" = pushforward_case(list(y = unif(-2, 2), x = unif(-2, 2)), scalar = "x"),
+  "psigamma/deriv" = pushforward_case(list(x = unif(0.5, 3), deriv = fixed(1)), wrt = "x", scalar = "deriv"),
+  "clamp/x" = pushforward_case(list(x = unif(-2, 2), min = fixed(-1), max = fixed(1)), wrt = "x", scalar = "x"),
+  "ifelse/no" = pushforward_case(
+    list(test = coin(), yes = unif(-2, 2), no = unif(-2, 2)),
+    wrt = c("yes", "no"),
+    scalar = "no"
+  ),
+  "eq/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "rhs")
+)
+
 # `body(args)`, for `args` a named list, as a function with one formal per name.
 with_formals <- function(arg_names, body) {
   f <- function() body(mget(arg_names, envir = environment()))
@@ -115,22 +147,23 @@ central_difference <- function(fn, x, t, h) {
 #   - the tangent against the pullback: <u, J t> must equal <J^T u, t>;
 #   - forward-over-reverse: the tangent of the gradient against a central
 #     difference of the gradient, which needs a pushforward rule for whatever
-#     the reverse rule computes with;
+#     the reverse rule computes with -- not yet with a scalar operand, whose
+#     cotangent the reverse rule sums with `prim_sum()`;
 #   - at f32, that the tangent keeps the data type.
 # An output that is not a float has no derivative, and so no tangent.
 check_pushforward_rule <- function(name, case) {
   prim <- getFromNamespace(paste0("prim_", name), "anvl")
   shape <- c(2L, 3L)
-  args <- lapply(case$args, \(sample) sample(shape))
+  args <- Map(\(sample, nm) sample(if (nm %in% case$scalar) integer() else shape), case$args, names(case$args))
   arrays_at <- function(dtype) {
-    lapply(args, \(a) nv_array(a, dtype = if (is.logical(a)) "bool" else dtype))
+    lapply(args, \(a) anvl_array(a, dtype = if (is.logical(a)) "bool" else dtype))
   }
-  directions <- lapply(case$wrt, \(nm) array(rnorm(prod(shape)), shape))
+  directions <- lapply(case$wrt, \(nm) shaped(rnorm(length(args[[nm]])), dim(args[[nm]])))
   names(directions) <- case$wrt
 
   f <- with_formals(names(args), \(a) do.call(prim, c(a, case$params)))
   x <- arrays_at("f64")
-  t <- lapply(directions, nv_array, dtype = "f64")
+  t <- lapply(directions, anvl_array, dtype = "f64")
   out_dtype <- dtype(trace_fn(f, x)$outputs[[1L]])
 
   if (!is_dtype_float(out_dtype)) {
@@ -155,13 +188,16 @@ check_pushforward_rule <- function(name, case) {
     })
     jt <- tangent_along(f, x, t)
     jtu <- do.call(pullback, c(list(f_wrt), x[names(t)]))(u)
-    list(
-      tangent = lapply(along, \(d) tangent_along(f, x, d)),
-      fd = lapply(along, \(d) central_difference(f, x, d, h)),
-      u_jt = sum(u * jt),
-      jtu_t = Reduce(`+`, Map(\(nm) sum(jtu[[nm]] * t[[nm]]), names(t))),
-      hvp = tangent_along(grad, x, t),
-      hvp_fd = central_difference(grad, x, t, h)
+    c(
+      list(
+        tangent = lapply(along, \(d) tangent_along(f, x, d)),
+        fd = lapply(along, \(d) central_difference(f, x, d, h)),
+        u_jt = sum(u * jt),
+        jtu_t = Reduce(`+`, Map(\(nm) sum(jtu[[nm]] * t[[nm]]), names(t)))
+      ),
+      if (!length(case$scalar)) {
+        list(hvp = tangent_along(grad, x, t), hvp_fd = central_difference(grad, x, t, h))
+      }
     )
   })
   res <- run(x, t, u)
@@ -172,11 +208,11 @@ check_pushforward_rule <- function(name, case) {
     expect_equal(as_array(res$tangent[[i]]), as_array(res$fd[[i]]), tolerance = 1e-6, label = labels[[i]])
   }
   expect_equal(as_array(res$u_jt), as_array(res$jtu_t), tolerance = 1e-10)
-  for (nm in names(t)) {
+  for (nm in names(res$hvp)) {
     expect_equal(as_array(res$hvp[[nm]]), as_array(res$hvp_fd[[nm]]), tolerance = 1e-5, label = paste("hvp", nm))
   }
 
-  tangent32 <- jit(\(x, t) tangent_along(f, x, t))(arrays_at("f32"), lapply(directions, nv_array, dtype = "f32"))
+  tangent32 <- jit(\(x, t) tangent_along(f, x, t))(arrays_at("f32"), lapply(directions, anvl_array, dtype = "f32"))
   expect_equal(dtype(tangent32), as_dtype("f32"))
   expect_equal(as_array(tangent32), as_array(res$tangent[[length(res$tangent)]]), tolerance = 1e-4)
 }
@@ -193,6 +229,15 @@ describe("pushforward rules", {
     it(sprintf("of prim_%s agree with finite differences and the pullback", name), {
       withr::local_seed(1L)
       check_pushforward_rule(name, pushforward_cases[[name]])
+    })
+  }
+
+  for (name in names(pushforward_scalar_cases)) {
+    prim_name <- sub("/.*", "", name)
+    scalar <- sub(".*/", "", name)
+    it(sprintf("of prim_%s agree with finite differences and the pullback for a scalar %s", prim_name, scalar), {
+      withr::local_seed(1L)
+      check_pushforward_rule(prim_name, pushforward_scalar_cases[[name]])
     })
   }
 })

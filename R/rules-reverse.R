@@ -1285,7 +1285,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
     )
   }
   in_bounds_only <- function(update_grad) {
-    prim_ifelse(update_in_bounds(), update_grad, zeros_like(update_grad))
+    prim_ifelse(update_in_bounds(), update_grad, 0)
   }
 
   grad_x <- NULL
@@ -1385,7 +1385,7 @@ scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes,
   # d) Gather gradient and mask: only winning updates get gradient
   grad_at_positions <- gather_at(grad, FALSE)
   mask <- prim_eq(update_ids, gathered_ids)
-  prim_ifelse(mask, grad_at_positions, zeros_like(grad_at_positions))
+  prim_ifelse(mask, grad_at_positions, 0)
 }
 
 diag_mask <- function(n) {
@@ -1396,7 +1396,7 @@ diag_mask <- function(n) {
 triangular_mask <- function(n, lower, unit_diagonal) {
   mask <- tri_mask(c(n, n), 0L, lower = lower)
   if (unit_diagonal) {
-    prim_ifelse(diag_mask(n), prim_fill(FALSE, dtype = "bool", shape = c(n, n)), mask)
+    prim_ifelse(diag_mask(n), FALSE, mask)
   } else {
     mask
   }
@@ -1432,9 +1432,8 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   # Phi: keep lower triangle, halve diagonal, zero upper triangle
   phi <- function(x) {
     eye <- prim_convert(diag_mask(n), dtype = dtype(x))
-    one <- ones_like(x)
-    x <- prim_div(x, prim_add(one, eye))
-    prim_ifelse(tri_mask(c(n, n), 0L, lower = TRUE), x, zeros_like(x))
+    x <- prim_div(x, prim_add(1, eye))
+    prim_ifelse(tri_mask(c(n, n), 0L, lower = TRUE), x, 0)
   }
 
   # The stablehlo lowering already zeros out the non-triangular part of L,
@@ -1449,8 +1448,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   # We almost use Murray (2016) equation 10, but use M / 2 instead of phi(M) which are both
   # equivalent for symmetric perturbations
   P <- phi(nv_matmul(t(L), grad))
-  half <- prim_fill(0.5, dtype = dtype(P), shape = shape(P))
-  S <- prim_mul(prim_add(P, t(P)), half)
+  S <- prim_mul(prim_add(P, t(P)), 0.5)
   S <- prim_triangular_solve(L, S, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
   grad_A <- prim_triangular_solve(
     L,
@@ -1512,7 +1510,7 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
     if (transpose_a) {
       raw <- t(raw)
     }
-    prim_ifelse(mask, raw, zeros_like(raw))
+    prim_ifelse(mask, raw, 0)
   }
 
   list(grad_a, if (required[[2L]]) grad_b)
