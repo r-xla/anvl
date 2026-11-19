@@ -156,6 +156,18 @@ Anvl's elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …
 
 When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
 
+## Axis Reversal
+
+The StableHLO lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape
+`(dn, ..., d1)`, and the pjrt backend stores it that way: R's column-major bytes are XLA's row-major
+bytes of the reversed shape, so transfers copy them as they are. A pjrt `AnvlArray` holds a buffer
+whose dims are `rev(x$shape)`; `x$shape` stays the R shape. R axis `i` of an `n`-axis array is XLA
+dimension `n - i`, so R axis 1 is the contiguous (minor) one and the trailing R axes are XLA's major
+dimensions -- which is why batch axes go last. Every lowering rule maps its axis numbers, shapes and
+per-axis vectors with the helpers in `R/lowering-axes.R`; `at2vt()` reverses every type, so
+`shape()` of a `FuncValue` is the XLA shape. Dumped HLO and XLA's error messages show the reversed
+shapes.
+
 ## Graph Tracing
 
 When a function is JIT-compiled, anvl traces it by executing with `GraphBox` objects instead of real data. Operations record themselves into an `AnvlGraph` (see `R/graph.R`). The graph is then lowered to StableHLO IR or quickr code for compilation.

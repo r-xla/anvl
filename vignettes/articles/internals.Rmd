@@ -148,6 +148,21 @@ out
 nv_array(out)
 ```
 
+### Axis Reversal
+
+R arrays are column-major, while XLA's arrays are row-major. The two agree once every axis is reversed: the column-major bytes of an array of shape `(d1, ..., dn)` are exactly the row-major bytes of an array of shape `(dn, ..., d1)`.
+So the lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape `(dn, ..., d1)`, and the pjrt backend stores it that way, which turns every upload and read-back into a plain copy.
+R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R's first axis -- the contiguous one -- is XLA's minor dimension, and trailing R axes are XLA's major ones.
+This is why anvl's batch axes come last: XLA's kernels want the batch outermost in memory.
+
+Every lowering rule maps the axis numbers of its parameters accordingly, and the StableHLO program shows the reversed shapes.
+An array of shape `(2, 3)` is a `tensor<3x2xf32>`, and a column-major reshape is a single row-major `stablehlo.reshape` of the reversed shapes:
+
+```{r}
+graph <- trace_fn(function(x) nv_reshape(x, c(3L, 2L)), list(x = nv_aval("f32", c(2L, 3L))))
+stablehlo(graph)[[1L]]
+```
+
 ## The User Interface
 
 In the [previous section](#transforming-code), we have shown how the transformations are implemented under the hood.
