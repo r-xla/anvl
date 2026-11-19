@@ -13,6 +13,11 @@
   result: they return its pullback, which takes a cotangent of the result back
   to the arguments.
 
+## Bug fixes
+
+* An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
+  differentiates with respect to no argument, rather than all of them.
+
 # anvl 0.6.0
 
 ## Breaking changes

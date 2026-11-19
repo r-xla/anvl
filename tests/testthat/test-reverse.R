@@ -161,6 +161,13 @@ describe("value_and_gradient", {
   it("rejects an f that is not a function", {
     expect_error(value_and_gradient(1), "function")
   })
+
+  it("differentiates with respect to no argument for an empty wrt", {
+    vg <- jit(value_and_gradient(function(x, y) nv_sum(x * y), wrt = character(0)))
+    res <- vg(nv_array(c(1, 2)), nv_array(c(3, 4)))
+    expect_equal(as.numeric(res$value), 11)
+    expect_length(res$grad, 0L)
+  })
 })
 
 test_that("wrt cannot be '...'", {
@@ -201,6 +208,28 @@ describe("pullback", {
     res <- g(x, y, ct)
     expect_named(res, c("x", "y"))
     expect_equal(as.numeric(res$x), c(1, 0, -2) / c(4, 5, 6))
+  })
+
+  it("takes an argument of f named f by name", {
+    g <- jit(function(x, y, ct) pullback(function(f, y) f * y, f = x, y = y)(ct))
+    expect_equal(as.numeric(g(x, y, ct)$f), c(4, 0, -12))
+  })
+
+  it("names the cotangent of an argument f takes through its ... as it was passed", {
+    g <- jit(function(x, y, ct) pullback(function(x, ...) x * ..1, x, b = y)(ct))
+    res <- g(x, y, ct)
+    expect_named(res, c("x", "b"))
+    expect_equal(as.numeric(res$b), c(1, 0, -6))
+  })
+
+  it("evaluates its arguments in the trace it is called in", {
+    g <- jit(function(x, ct) pullback(\(z) z * z, x * 2)(ct))
+    expect_equal(as.numeric(g(x, ct)$z), c(4, 0, -24))
+  })
+
+  it("differentiates a base R function", {
+    g <- jit(function(x, ct) pullback(sin, x)(ct))
+    expect_equal(as.numeric(g(x, ct)$x), cos(c(1, 2, 3)) * c(1, 0, -2))
   })
 
   it("agrees with gradient() for a scalar result", {
@@ -295,6 +324,12 @@ describe("pullback", {
     expect_error(
       jit(function(x) pullback(f, x)(list(a = x, n = 1L))$x)(x),
       "no cotangent at `n`"
+    )
+    f <- function(x) list(`a{b}` = nv_convert(x, "i32"))
+    expect_error(
+      jit(function(x) pullback(f, x)(list(`a{b}` = 1L))$x)(x),
+      "no cotangent at `a{b}`",
+      fixed = TRUE
     )
   })
 
@@ -761,6 +796,11 @@ describe("graph_apply", {
 })
 
 describe("graph_gradient", {
+  it("differentiates with respect to no input for an empty wrt", {
+    graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
+    expect_length(graph_gradient(graph, character(0))$outputs, 0L)
+  })
+
   it("keeps the side effects of the graph it differentiates", {
     graph <- trace_fn(function(x) x * nv_runif(integer()), list(x = nv_aval("f32", integer())))
     grad <- graph_gradient(graph, "x")
