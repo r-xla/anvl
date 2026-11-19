@@ -521,6 +521,18 @@ describe("the global random state in sub-graphs", {
     })
   })
 
+  it("is threaded through a function differentiated by jvp()", {
+    f <- jit(function(x) {
+      tangent <- jvp(function(x) x * nv_runif(2L))(x, tangents = list(x = nv_array(c(1, 1))))
+      list(tangent = tangent, after = nv_runif(1L))
+    })
+    out <- with_nv_seed(1L, f(nv_array(c(1, 1))))
+    with_nv_seed(1L, {
+      expect_identical(as_array(out$tangent), as_array(nv_runif(2L)))
+      expect_identical(as_array(out$after), as_array(nv_runif(1L)))
+    })
+  })
+
   it("is used by prim_sample_bits() called in a function differentiated by gradient()", {
     f <- jit(function(x) {
       grad <- gradient(function(x) nv_sum(x * nv_convert(prim_sample_bits(3L, "ui8"), dtype = "f32")))(x)
@@ -928,6 +940,15 @@ describe("nv_rng_state", {
     expect_identical(state_words(rng)[[3L]], 1)
     rng <- nv_rng_state(1L)
     g <- jit(function(x, rng) gradient(f, wrt = "x")(x, rng)$x)
+    expect_equal(as_array(g(nv_array(c(1, 2)), rng)), u)
+    expect_identical(state_words(rng)[[3L]], 1)
+  })
+
+  it("is taken by a function jvp() differentiates", {
+    f <- function(x, rng) with_nv_rng_state(rng, x * nv_runif(2L))
+    u <- with_nv_rng_state(nv_rng_state(1L), as_array(nv_runif(2L)))
+    rng <- nv_rng_state(1L)
+    g <- jit(function(x, rng) jvp(f, wrt = "x")(x, rng, tangents = list(x = nv_array(c(1, 1)))))
     expect_equal(as_array(g(nv_array(c(1, 2)), rng)), u)
     expect_identical(state_words(rng)[[3L]], 1)
   })

@@ -174,11 +174,34 @@ Its number of iterations is only known when the program runs, so there is no fix
 Where the number of iterations is known, use `nv_scan()` instead.
 Where the derivative of what a loop computes has a formula of its own, `prim_custom_gradient()` attaches it.
 
+## Forward Mode
+
+`gradient()` differentiates in *reverse mode*: it gives the derivative of a single scalar with respect to all inputs at once, which is efficient for functions with many inputs and one output, such as losses.
+`jvp()` differentiates in *forward mode* instead: it gives the derivative of all outputs along a single direction of the inputs, the product of the Jacobian with a vector.
+It takes the function, a list with the arguments to evaluate it at (the *primals*), and a list with the direction to differentiate in (the *tangents*), and returns the value of the function together with its *tangent*.
+Like `gradient()`, it must be called inside `jit()`.
+For $f(x) = x \sin(x)$, the tangent along $v$ is $(\sin(x) + x \cos(x)) v$:
+
+```{r}
+f <- function(x) x * sin(x)
+f_jvp <- jit(function(x, v) jvp(f, list(x = x), list(x = v)))
+f_jvp(nv_array(c(0, 1, 2)), nv_array(c(1, 1, 1)))
+```
+
+An argument without a tangent is held fixed.
+The two modes combine: differentiating the gradient along $v$ in forward mode gives the product of the Hessian with $v$:
+
+```{r}
+f_grad <- function(x) gradient(function(x) sum(x * sin(x)))(x)$x
+hvp <- jit(function(x, v) jvp(f_grad, list(x = x), list(x = v))$tangent)
+hvp(nv_array(c(0, 1, 2)), nv_array(c(1, 0, 0)))
+```
+
 ## Limitations
 
-- {anvl} only implements *reverse-mode* differentiation, which is efficient for functions with many inputs and a single scalar output, such as losses.
-  Forward mode differentiation is currently not supported.
-- Higher-order derivatives, such as Hessians, are currently not really supported.
+- Forward mode does not cover every primitive yet: so far, only the elementwise ones have a forward rule.
+  The *Forward* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
+- There is no function computing a whole Hessian.
 - Not every primitive has a derivative yet, so some functions cannot be differentiated.
   The *Reverse* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
   If a derivative is missing and you need it, you can add a reverse rule to the primitive yourself, as shown in the [add the reverse rule](extending_primitive.html#step-3-add-the-reverse-rule) step of the Adding a Primitive article.

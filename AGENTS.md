@@ -126,6 +126,12 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
+- **`forward`** -- Forward-mode rules for `jvp()` (engine in `R/forward.R`): a
+  `function(inputs, outputs, tangents, params)` returning one tangent per output, `NULL` for a
+  zero. A `NULL` input tangent is a zero too. An elementwise primitive does not write its
+  `reverse` and `forward` rules separately: `set_elementwise_derivative()` in
+  `R/rules-elementwise.R` derives both from one function per input that multiplies by the
+  partial derivative, which is valid because that derivative is diagonal.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
 ## Side Effects
@@ -174,6 +180,11 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
 - `tests/testthat/test-primitives-reverse.R` -- sources `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-forward.R` -- an autotest: every primitive with a forward rule
+  needs an entry in `forward_cases` (inputs from its domain, the arguments to differentiate), and
+  each entry is checked against central differences, against the reverse rule
+  (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of the
+  gradient. torch has no forward mode to compare with.
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 

@@ -2,6 +2,9 @@
 
 ## Features
 
+* New `jvp()` differentiates in forward mode: it evaluates a function
+  together with the derivative of its outputs along a direction of its inputs.
+  So far it covers the elementwise primitives.
 * New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
   as on CRAN. The new "Depending on anvl" article explains its use.
 * New `prim_optimization_barrier()` returns its input arrays unchanged and

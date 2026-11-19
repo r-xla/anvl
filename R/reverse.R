@@ -2,7 +2,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
   for (arg in args_flat[is_wrt_flat]) {
     if (!is_arrayish(arg)) {
       cli_abort(c(
-        "Cannot compute gradient with respect to non-array argument.",
+        "Cannot differentiate with respect to a non-array argument.",
         x = "Got {.cls {class(arg)}}"
       ))
     }
@@ -12,7 +12,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       # `repr()` on a data type gives stablehlo's spelling (`i1` for a
       # boolean); the pages speak anvl's, which `as.character()` gives.
       cli_abort(c(
-        "Can only compute gradient with respect to float arrays.",
+        "Can only differentiate with respect to float arrays.",
         x = "Got {.val {as.character(dt)}}."
       ))
     }
@@ -24,9 +24,9 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
     # Materializing it here would only hide that behind the default.
     if (has_no_dtype(arg)) {
       cli_abort(c(
-        "Cannot compute gradient with respect to a value that has no data type.",
+        "Cannot differentiate with respect to a value that has no data type.",
         x = "It is an R {peek_r_type(arg)}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-        i = "Give it one first, e.g. {.code nv_array(x, dtype = \"f32\")} or an explicit {.code nv_array(x, dtype = \"f64\")}, so the gradient's data type is the caller's choice." # nolint
+        i = "Give it one first, e.g. {.code nv_array(x, dtype = \"f32\")} or an explicit {.code nv_array(x, dtype = \"f64\")}, so the derivative's data type is the caller's choice." # nolint
       ))
     }
   }
@@ -704,6 +704,19 @@ resolve_wrt <- function(f, wrt, call = rlang::caller_env()) {
 # enclosing trace.
 trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
   prep <- prepare_gradient_args(args, wrt)
+  assert_inside_jit(fn, call)
+  traced <- trace_and_replay(f, prep, function(graph, operands) {
+    graph_value_and_grad(graph, wrt, operands)
+  })
+  list(
+    value = unflatten(traced$graph$out_tree, traced$res$value),
+    grad = unflatten(gradient_out_tree(traced$graph, wrt), traced$res$grad)
+  )
+}
+
+# Errors, naming `call`, unless a trace is under way for the function `fn` --
+# one of the transformations -- to write into.
+assert_inside_jit <- function(fn, call) {
   if (is.null(current_descriptor(silent = TRUE))) {
     cli_abort(
       c(
@@ -713,15 +726,18 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
       call = call
     )
   }
-  # A side effect `f` uses closes over the enclosing trace's value, and its
-  # uses continue the enclosing trace's.
+}
+
+# `f` traced at the arguments `prep` holds (see prepare_gradient_args()) into a
+# graph of its own, which `replay(graph, operands)` writes into the enclosing
+# trace as a function of the boxes `operands` there. A side effect `f` uses
+# closes over the enclosing trace's value, and its uses continue the enclosing
+# trace's. Returns `list(graph = , res = )`, `res` what `replay` returned.
+trace_and_replay <- function(f, prep, replay) {
   enclosing <- current_descriptor()
   desc <- local_descriptor(side_effects_mode = "capture")
   graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
-  res <- graph_value_and_grad(graph, wrt, gradient_operands(graph, prep$args_flat))
+  res <- replay(graph, gradient_operands(graph, prep$args_flat))
   desc_end_capture(enclosing, list(graph))
-  list(
-    value = unflatten(graph$out_tree, res$value),
-    grad = unflatten(gradient_out_tree(graph, wrt), res$grad)
-  )
+  list(graph = graph, res = res)
 }
