@@ -533,6 +533,18 @@ describe("the global random state in sub-graphs", {
     })
   })
 
+  it("is threaded through a function differentiated by pushforward()", {
+    f <- jit(function(x) {
+      tangent <- pushforward(function(x) x * nv_runif(2L), x)(nv_array(c(1, 1)))
+      list(tangent = tangent, after = nv_runif(1L))
+    })
+    out <- with_nv_seed(1L, f(nv_array(c(1, 1))))
+    with_nv_seed(1L, {
+      expect_identical(as_array(out$tangent), as_array(nv_runif(2L)))
+      expect_identical(as_array(out$after), as_array(nv_runif(1L)))
+    })
+  })
+
   it("is drawn from by an argument of pullback() in the trace pullback() is called in", {
     f <- jit(function(x) {
       ct <- pullback(function(x, u) x * u, x, nv_runif(2L))(nv_array(c(1, 1)))
@@ -968,6 +980,15 @@ describe("nv_rng_state", {
     })
     expect_equal(as_array(g(nv_array(c(1, 2)), rng)), u)
     expect_null(rng_ct)
+    expect_identical(state_words(rng)[[3L]], 1)
+  })
+
+  it("is taken by a function pushforward() differentiates, which holds it fixed", {
+    f <- function(x, rng) with_nv_rng_state(rng, x * nv_runif(2L))
+    u <- with_nv_rng_state(nv_rng_state(1L), as_array(nv_runif(2L)))
+    rng <- nv_rng_state(1L)
+    g <- jit(function(x, rng) pushforward(f, x, rng)(nv_array(c(1, 1))))
+    expect_equal(as_array(g(nv_array(c(1, 2)), rng)), u)
     expect_identical(state_words(rng)[[3L]], 1)
   })
 

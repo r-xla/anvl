@@ -24,7 +24,7 @@ Negates an array element-wise.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
-\item \code{forward}
+\item \code{pushforward}
 }
 }
 

@@ -24,7 +24,7 @@ Element-wise log(1 + x), more accurate for small x.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
-\item \code{forward}
+\item \code{pushforward}
 }
 }
 

@@ -28,7 +28,7 @@ Element-wise greater than or equal comparison.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
-\item \code{forward}
+\item \code{pushforward}
 }
 }
 

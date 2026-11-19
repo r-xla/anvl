@@ -2,9 +2,10 @@
 
 ## Features
 
-* New `jvp()` differentiates in forward mode: it evaluates a function
-  together with the derivative of its outputs along a direction of its inputs.
-  So far it covers the elementwise primitives.
+* New `pushforward()` and `value_and_pushforward()` differentiate in forward
+  mode: they return the pushforward of a function, which takes a tangent of
+  the arguments to that of the result. So far they cover the elementwise
+  primitives.
 * New `nv_split_rng_states()` splits `n` random states off a random state.
 * New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
   as on CRAN. The new "Depending on anvl" article explains its use.

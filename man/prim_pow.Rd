@@ -28,7 +28,7 @@ Raises \code{x} to the power of \code{y} element-wise.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{reverse}
-\item \code{forward}
+\item \code{pushforward}
 }
 }
 

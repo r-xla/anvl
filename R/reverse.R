@@ -780,9 +780,9 @@ value_and_pullback <- function(.f, ...) {
   trace_pullback(.f, pullback_args(.f, list(...)), "value_and_pullback")
 }
 
-# The arguments `args` of `pullback()`, matched to the formals of `f`, as
-# `prepare_gradient_args()` returns them: every float array among them is
-# differentiated.
+# The arguments `args` of `pullback()` or `pushforward()`, matched to the
+# formals of `f`, as `prepare_gradient_args()` returns them: every float array
+# among them is differentiated.
 pullback_args <- function(f, args) {
   args <- match_args_to_formals(f, args)
   args_flat <- flatten(args, is_leaf = is_rng_state)
@@ -800,6 +800,33 @@ pullback_args <- function(f, args) {
 # backward pass there. It differentiates the leaves `prep$is_wrt_flat`
 # selects, and returns `NULL` for the others.
 trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
+  traced <- trace_replayed(f, prep, fn, call = call, replay = function(graph, operands) {
+    # A leaf that is no array is static, and no input of the graph.
+    requires_grad <- prep$is_wrt_flat[!graph$is_static_flat]
+    reqs <- list(
+      required_env = requirements_from(graph, graph$inputs[requires_grad]),
+      requires_grad = requires_grad
+    )
+    graph_pullback(graph, reqs, operands)
+  })
+  graph <- traced$graph
+  value <- unflatten(graph$out_tree, traced$res$value)
+  pull <- function(cotangent) {
+    assert_called_within(traced$enclosing, "pullback", fn)
+    cts <- flatten_cotangent(value, cotangent, graph$out_tree, call = rlang::current_env())
+    pulled <- vector("list", length(prep$args_flat))
+    pulled[prep$is_wrt_flat] <- traced$res$pullback(cts)
+    unflatten(prep$in_tree, pulled)
+  }
+  list(value = value, pullback = pull)
+}
+
+# `f` traced for `fn`, one of the transformations, at the arguments `prep`
+# holds into a graph of its own, which `replay(graph, operands)` replays into
+# the enclosing trace as a function of `operands`, the boxes its inputs are
+# bound to there. Returns the graph, what `replay` returned, and the
+# descriptor of the enclosing trace. Errors name `call`.
+trace_replayed <- function(f, prep, fn, replay, call) {
   enclosing <- current_descriptor(silent = TRUE)
   if (is.null(enclosing)) {
     cli_abort(
@@ -817,29 +844,20 @@ trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
   # uses continue the enclosing trace's.
   desc <- local_descriptor(side_effects_mode = "capture")
   graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
-  # A leaf that is no array is static, and no input of the graph.
-  requires_grad <- prep$is_wrt_flat[!graph$is_static_flat]
-  reqs <- list(
-    required_env = requirements_from(graph, graph$inputs[requires_grad]),
-    requires_grad = requires_grad
-  )
-  res <- graph_pullback(graph, reqs, gradient_operands(graph, prep$args_flat))
+  res <- replay(graph, gradient_operands(graph, prep$args_flat))
   desc_end_capture(enclosing, list(graph))
+  list(graph = graph, res = res, enclosing = enclosing)
+}
 
-  value <- unflatten(graph$out_tree, res$value)
-  pull <- function(cotangent) {
-    if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
-      cli_abort(c(
-        "A pullback can only be called in the function {.fn {fn}} was called in.",
-        i = "Or in a function traced inside it, such as a branch of {.fn nv_if}."
-      ))
-    }
-    cts <- flatten_cotangent(value, cotangent, graph$out_tree, call = rlang::current_env())
-    pulled <- vector("list", length(prep$args_flat))
-    pulled[prep$is_wrt_flat] <- res$pullback(cts)
-    unflatten(prep$in_tree, pulled)
+# Refuses to call a pullback or a pushforward (`what`) that `fn` made in the
+# trace `enclosing` outside that trace and the traces opened inside it.
+assert_called_within <- function(enclosing, what, fn) {
+  if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
+    cli_abort(c(
+      "A {what} can only be called in the function {.fn {fn}} was called in.",
+      i = "Or in a function traced inside it, such as a branch of {.fn nv_if}."
+    ))
   }
-  list(value = value, pullback = pull)
 }
 
 # Whether `x`, a leaf of the arguments of `pullback()`, is a float array with a
@@ -913,13 +931,20 @@ flatten_cotangent <- function(value, cotangent, out_tree, call) {
 }
 
 # The leaves of `cotangent` aligned with those of `value`, `NULL` for each leaf
-# of a part of `value` whose cotangent is `NULL`. Errors name `call`.
-cotangent_leaves <- function(value, cotangent, call) {
+# of a part of `value` whose cotangent is `NULL`. Errors name `call`, with the
+# headline `mismatch` for a cotangent structured unlike `value`.
+cotangent_leaves <- function(
+  value,
+  cotangent,
+  call,
+  mismatch = "{.arg cotangent} must be structured like the value of {.arg .f}."
+) {
+  # A random state is a leaf, as among the arguments of `pushforward()`.
   if (is.null(cotangent)) {
-    return(vector("list", length(flatten(value))))
+    return(vector("list", length(flatten(value, is_leaf = is_rng_state))))
   }
-  if (build_tree(cotangent) == build_tree(value)) {
-    return(flatten(cotangent))
+  if (build_tree(cotangent, is_leaf = is_rng_state) == build_tree(value, is_leaf = is_rng_state)) {
+    return(flatten(cotangent, is_leaf = is_rng_state))
   }
   same_node <- rlang::is_bare_list(value) &&
     rlang::is_bare_list(cotangent) &&
@@ -927,12 +952,9 @@ cotangent_leaves <- function(value, cotangent, call) {
     identical(names(cotangent), names(value))
   if (!same_node) {
     cli_abort(
-      c(
-        "{.arg cotangent} must be structured like the value of {.arg .f}.",
-        i = "{.code NULL} can stand in for any part of it."
-      ),
+      c(mismatch, i = "{.code NULL} can stand in for any part of it."),
       call = call
     )
   }
-  do.call(c, unname(Map(cotangent_leaves, value, cotangent, list(call)))) %||% list()
+  do.call(c, unname(Map(cotangent_leaves, value, cotangent, list(call), mismatch))) %||% list()
 }

@@ -23,7 +23,7 @@ Element-wise inverse hyperbolic tangent.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
-\item \code{forward}
+\item \code{pushforward}
 }
 }
 

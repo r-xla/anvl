@@ -27,7 +27,7 @@ Rounds the elements of an array to the nearest integer.
 \itemize{
 \item \code{stablehlo}
 \item \code{reverse}
-\item \code{forward}
+\item \code{pushforward}
 }
 }
 

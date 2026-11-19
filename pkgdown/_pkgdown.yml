@@ -387,6 +387,7 @@ reference:
       - jit
       - gradient
       - pullback
+      - pushforward
 
   - title: Backend
     desc: Backend-related functionality and implementations

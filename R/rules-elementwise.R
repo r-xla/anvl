@@ -4,15 +4,15 @@
 # at the same position of its inputs, so its derivative with respect to each
 # input is diagonal: multiplying by it is the same operation in both
 # directions. One definition therefore gives a primitive both its reverse rule,
-# which multiplies the cotangent of the output by it, and its forward rule,
-# which multiplies the tangent of each input by it and adds them up.
+# which multiplies the cotangent of the output by it, and its pushforward
+# rule, which multiplies the tangent of each input by it and adds them up.
 
-# Sets the reverse and forward rule of the elementwise primitive `prim` from
+# Sets the reverse and pushforward rule of the elementwise primitive `prim` from
 # `partials`, a `function(inputs, outputs, params)` returning one entry per
 # input: the function that multiplies an array of the output's shape by the
 # partial derivative of the output with respect to that input, or `NULL` where
 # that derivative is zero. The functions receive a cotangent of the output in
-# the reverse rule and a tangent of their input in the forward rule; anything
+# the reverse rule and a tangent of their input in the pushforward rule; anything
 # they share is computed in the body of `partials`.
 set_elementwise_derivative <- function(prim, partials) {
   def <- primitive_def(prim)
@@ -33,7 +33,7 @@ set_elementwise_derivative <- function(prim, partials) {
       required
     )
   })
-  def[["forward"]] <- function(inputs, outputs, tangents, params) {
+  def[["pushforward"]] <- function(inputs, outputs, tangents, params) {
     maps <- partials(inputs, outputs, params)
     terms <- Map(function(map, tangent) if (!is.null(map) && !is.null(tangent)) map(tangent), maps, tangents)
     terms <- Filter(Negate(is.null), terms)
