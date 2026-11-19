@@ -475,6 +475,7 @@ reference:
       - AnvlPrimitiveDef
       - graph_desc_add
       - rule_reverse
+      - SymbolicZero
 
   - subtitle: Implemented Primitives
     contents:

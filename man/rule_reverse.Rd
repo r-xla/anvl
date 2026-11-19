@@ -24,8 +24,13 @@ of \code{backward} and \code{forward}.
 Pass \code{backward} when the primitive's forward statement can run unmodified, which
 covers most use cases. It has the signature
 \verb{function(inputs, outputs, grads, params, required)} and returns a \code{list}
-with one entry per input: that input's gradient, or \code{NULL} where
-\code{required} says it is not needed.
+with one entry per input: that input's gradient, a \code{\link[=SymbolicZero]{SymbolicZero()}} where
+that gradient is zero, or \code{NULL} where \code{required} says it is not needed.
+
+Zero gradients are symbolic: a \code{\link[=SymbolicZero]{SymbolicZero()}} stands for zeros that
+nothing computes. A call none of whose outputs received a gradient is
+skipped, so \code{grads} holds a \code{SymbolicZero} only for some of the outputs of a
+primitive with several.
 
 Pass \code{forward} when a slightly different forward pass enables a more
 efficient backward pass. It has the signature
@@ -41,6 +46,11 @@ A rule with a \code{forward} pass can also be the \code{rule} of
 # the rule of prim_negate()
 rule_reverse(function(inputs, outputs, grads, params, required) {
   list(if (required[[1L]]) prim_negate(grads[[1L]]))
+})
+
+# the rule of prim_floor(), whose derivative is zero
+rule_reverse(function(inputs, outputs, grads, params, required) {
+  list(SymbolicZero(inputs[[1L]]))
 })
 }
 \seealso{
