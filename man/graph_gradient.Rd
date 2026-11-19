@@ -27,9 +27,9 @@ to the inputs specified by \code{wrt}.
 \details{
 To support alternative forward passes for more efficient backward passes, we
 replay and possibly rewrite the graph into a new descriptor.
-Afterwards, we traverse it backwards and call the gradient rules where necessary.
+Afterwards, we traverse it backwards and call the pullback rules where necessary.
 
-See \code{\link[=rule_reverse]{rule_reverse()}} for more information.
+See \code{\link[=rule_pullback]{rule_pullback()}} for more information.
 
 \code{\link[=gradient]{gradient()}} and \code{\link[=value_and_gradient]{value_and_gradient()}} differentiate the same way, but
 into the trace they are called in rather than into a graph of its own;
@@ -41,5 +41,5 @@ graph
 graph_gradient(graph, "lhs")
 }
 \seealso{
-\code{\link[=gradient]{gradient()}}, \code{\link[=value_and_gradient]{value_and_gradient()}}, \code{\link[=rule_reverse]{rule_reverse()}}
+\code{\link[=gradient]{gradient()}}, \code{\link[=value_and_gradient]{value_and_gradient()}}, \code{\link[=rule_pullback]{rule_pullback()}}
 }

@@ -271,7 +271,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   .stablehlo_apply_cum(hlo_multiply, x, init, axis)
 }
 
-# Here we also return the indices to simplify reverse rule
+# Here we also return the indices to simplify pullback rule
 .stablehlo_apply_cum_extreme <- function(x, axis, is_max, index_dtype) {
   v_dtype <- as.character(x$value_type$type$dtype)
   i_dtype <- as.character(index_dtype)
@@ -1180,7 +1180,7 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
   L <- hlo_select(ok, L, hlo_tensor(NaN, dtype = dt, shape = op_shape, func = x$func))
 
   # potrf leaves the input's values in the other triangle: zero it, so
-  # downstream code (including reverse rules) never sees them.
+  # downstream code (including pullback rules) never sees them.
   n <- op_shape[r]
   mat_shape <- c(n, n)
   rows <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = mat_shape, func = x$func)

@@ -36,7 +36,7 @@ branches between two \emph{functions}, evaluating only the selected one.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

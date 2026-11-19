@@ -5,6 +5,9 @@
 * `NULL` (and so `c()`) is no longer a shape; constructors that infer one default
   to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
 * `Shape()` is no longer exported; use `shp()`.
+* The `"reverse"` rule of a primitive is renamed to `"pullback"`: write
+  `prim_x[["pullback"]]` and `rule_pullback()` instead of
+  `prim_x[["reverse"]]` and `rule_reverse()`.
 
 ## Features
 
