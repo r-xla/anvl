@@ -18,15 +18,17 @@
     outputs along a new last axis.
   * `prim_top_k()` ranks along axis 1.
 * Random draws fill a shape in column-major order, so `nv_runif(c(2, 3))`
-  is a draw of 6 filled into `c(2, 3)`. Draws of rank 2 or higher give new
-  values for the same seed; 1-D draws are unchanged and still match JAX.
+  is a draw of 6 filled into `c(2, 3)`. Draws such as `nv_runif()` and
+  `nv_rnorm()` of rank 2 or higher give new values for the same seed; 1-D draws
+  are unchanged and still match JAX.
 
 ## Features
 
 * The pjrt backend stores an array of shape `(d1, ..., dn)` as an XLA array of
   shape `(dn, ..., d1)`, so uploads and read-backs no longer reorder the data,
-  `nv_reshape()` lowers to a single reshape, and an `(n, 1)` column runs as
-  fast as a vector of length `n`.
+  `nv_reshape()` lowers to a single reshape. R axis 1 is now XLA's contiguous
+  axis, so an `(n, 1)` column runs as fast as a vector of length `n`, and a
+  `(1, n)` row no longer does.
 
 * New `nv_split_rng_states()` splits `n` random states off a random state.
 * New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
@@ -39,6 +41,9 @@
 * New `pullback()` and `value_and_pullback()` differentiate a function with any
   result: they return its pullback, which takes a cotangent of the result back
   to the arguments.
+* Elementwise primitives such as `prim_add()`, `prim_eq()`, `prim_ifelse()` and
+  `prim_clamp()` broadcast a scalar operand themselves, so a traced graph has no
+  `broadcast_in_axes` for it.
 
 ## Bug fixes
 

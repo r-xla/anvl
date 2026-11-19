@@ -108,6 +108,9 @@ prim_fill <- new_primitive(
 #'
 #' # the R value is built at the array's data type instead
 #' prim_add(1, nv_scalar(2, "f64"))
+#'
+#' # a scalar is broadcast to the shape of the other operand
+#' prim_add(nv_array(c(1, 2, 3)), 1)
 #' @export
 prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
 
@@ -1431,8 +1434,8 @@ prim_shift_right_arithmetic <- new_primitive(
 #' The operands are named `y` and `x`, in that order, after
 #' [`base::atan2()`], rather than `lhs` / `rhs`.
 #' @param y,x ([`arrayish`])\cr
-#'   Ordinate and abscissa of the point, of the same shape. Can be any float
-#'   data type.
+#'   Ordinate and abscissa of the point, of the same shape, except that a
+#'   scalar is broadcast to the shape of the other. Can be any float data type.
 #'   `r roxy_agree("y", "x")`
 #' @template return_prim_binary
 #' @templateVar primitive_id atan2
@@ -2044,10 +2047,10 @@ prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni))
 #' @description
 #' Element-wise psigamma function: the `deriv`-th derivative of the digamma
 #' function, i.e. the `(deriv + 1)`-th derivative of the log-gamma function.
-#' Both `x` and `deriv` must have the same shape; `deriv` typically holds
-#' non-negative integer values.
+#' `deriv` typically holds non-negative integer values.
 #' @param x,deriv ([`arrayish`])\cr
-#'   Two inputs of the same shape. Can be any float data type.
+#'   Two inputs of the same shape, except that a scalar is broadcast to the
+#'   shape of the other. Can be any float data type.
 #'   `r roxy_agree("x", "deriv")`
 #' @template return_prim_binary
 #' @templateVar primitive_id psigamma
@@ -2189,10 +2192,10 @@ prim_popcnt <- new_primitive(
 #'   The array to clamp. Can be any data type.
 #'   `r roxy_agree("x", "min", "max")`
 #' @param min,max ([`arrayish`])\cr
-#'   Lower and upper bound. Each must be scalar or the same shape as `x`, and
-#'   shares its data type.
+#'   Lower and upper bound, sharing `x`'s data type. The operands that are not
+#'   scalars have the same shape, and a scalar is broadcast to it.
 #' @return ([`arrayish`])\cr
-#'   Has `x`'s shape and the data type the operands agreed on.
+#'   Has the operands' broadcast shape and the data type they agreed on.
 #' @templateVar primitive_id clamp
 #' @template section_rules
 #' @section StableHLO:
@@ -2439,17 +2442,19 @@ prim_convert <- new_primitive(
 #' Element-wise selection based on a boolean predicate, mirroring R's
 #' [`ifelse()`]. For each element, returns the corresponding element from
 #' `yes` where `test` is `TRUE` and from `no` where `test` is `FALSE`.
+#' The operands that are not scalars, `test` among them, have the same shape,
+#' and a scalar is broadcast to it.
 #'
 #' [`prim_if()`] is the other conditional: it mirrors R's `if` construct and
 #' branches between two *functions*, evaluating only the selected one.
 #' @param test ([`arrayish`])\cr
-#'   Predicate array. Must be a boolean or an R logical, and scalar or the same
-#'   shape as `yes`.
+#'   Predicate array. Must be a boolean or an R logical.
 #' @param yes,no ([`arrayish`])\cr
-#'   Values to select from, of the same shape. Can be any data type.
+#'   Values to select from. Can be any data type.
 #'   `r roxy_agree("yes", "no")`
 #' @return ([`arrayish`])\cr
-#'   Has the shape of `yes` and `no`, and the data type they agreed on.
+#'   Has the operands' broadcast shape and the data type `yes` and `no` agreed
+#'   on.
 #' @templateVar primitive_id ifelse
 #' @template section_rules
 #' @section StableHLO:
@@ -2459,6 +2464,9 @@ prim_convert <- new_primitive(
 #' # the result takes the branches' data type; `test` only selects
 #' test <- nv_array(c(TRUE, FALSE, TRUE))
 #' prim_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+#'
+#' # a scalar branch is broadcast to the shape of `test`
+#' prim_ifelse(test, nv_array(c(1, 2, 3)), 0)
 #' @export
 prim_ifelse <- new_primitive(
   "ifelse",

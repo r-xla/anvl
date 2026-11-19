@@ -30,8 +30,9 @@
       jit(prim_add)(nv_array(1:4), nv_array(1:6))
     Condition
       Error in `prim_add()`:
-      ! `lhs` and `rhs` must have the same array type.
+      ! `lhs` and `rhs` must have the same shape, unless one of them is a scalar.
       x Got i32[4] and i32[6].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
 
 # can print GraphLiteral if it holds scalar array
 
@@ -46,13 +47,10 @@
       graph
     Output
       <AnvlGraph> [%c1: f32[2,2]] (%x1: f32[2,2]) {
-        %1: f32[2,2] = broadcast_in_axes [
-          shape = c(2, 2), broadcast_axes = integer(0)
-        ] (2:f32)
-        %2: f32[2,2] = mul(%x1, %1)
-        %3: f32[2,2] = add(%x1, %c1)
-        %4: f32[2,2] = add(%2, %3)
-        return %4
+        %1: f32[2,2] = mul(%x1, 2:f32)
+        %2: f32[2,2] = add(%x1, %c1)
+        %3: f32[2,2] = add(%1, %2)
+        return %3
       }
 
 # how an R value is built into a graph / builds a closed-over R array used twice as one constant

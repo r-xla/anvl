@@ -289,6 +289,67 @@ verify_grad_biv_array <- function(
   )
 }
 
+# One operand is a scalar, which the primitive broadcasts to the shape of the
+# other, so its gradient sums over that shape. Both orders are checked.
+verify_grad_biv_broadcast <- function(
+  .f,
+  .g,
+  naxes = sample(1:3, 1L),
+  dtypes = "f32",
+  tol = 1e-5,
+  non_negative = list(FALSE, FALSE),
+  gen_lhs = NULL,
+  gen_rhs = NULL
+) {
+  shp <- sample(2:3, naxes, replace = TRUE)
+  dtype <- sample(dtypes, 1L)
+  if (length(non_negative) < 2L) {
+    non_negative <- rep(non_negative, 2L)
+  }
+  gens <- list(gen_lhs, gen_rhs)
+
+  for (scalar in 1:2) {
+    shapes <- list(shp, shp)
+    shapes[[scalar]] <- integer()
+    vals <- lapply(1:2, function(i) {
+      vals <- if (is.null(gens[[i]])) {
+        generate_test_data(shapes[[i]], dtype = dtype, non_negative = non_negative[[i]])
+      } else {
+        gens[[i]](shapes[[i]], dtype)
+      }
+      if (length(shapes[[i]])) array(vals, shapes[[i]]) else vals
+    })
+    args_anvl <- Map(\(v, s) if (length(s)) nv_array(v, dtype = dtype) else nv_scalar(v, dtype = dtype), vals, shapes)
+    torch_dtype <- str_to_torch_dtype(dtype)
+    args_torch <- Map(
+      \(v, s) {
+        if (length(s)) {
+          torch::torch_tensor(v, requires_grad = TRUE, dtype = torch_dtype)
+        } else {
+          torch::torch_scalar_tensor(v, dtype = torch_dtype)$requires_grad_(TRUE)
+        }
+      },
+      vals,
+      shapes
+    )
+
+    grads_anvl <- jit(gradient(function(lhs, rhs) {
+      out <- .f(lhs, rhs)
+      nv_sum(out, axes = seq_along(shape(out)), drop = TRUE)
+    }))(args_anvl[[1L]], args_anvl[[2L]])
+    torch::torch_sum(.g(args_torch[[1L]], args_torch[[2L]]))$backward()
+
+    for (i in 1:2) {
+      expect_equal(shape(grads_anvl[[i]]), shapes[[i]])
+      expect_equal(
+        xlamisc::as_array(grads_anvl[[i]]),
+        as_array_torch(args_torch[[i]]$grad),
+        tolerance = tol
+      )
+    }
+  }
+}
+
 verify_grad_biv <- function(
   f,
   g,
@@ -322,6 +383,18 @@ verify_grad_biv <- function(
     gen_lhs = gen_lhs,
     gen_rhs = gen_rhs
   )
+  if (is.null(args_f)) {
+    verify_grad_biv_broadcast(
+      f,
+      g,
+      naxes = max(naxes, 1L),
+      dtypes = dtypes,
+      tol = tol,
+      non_negative = non_negative,
+      gen_lhs = gen_lhs,
+      gen_rhs = gen_rhs
+    )
+  }
 }
 
 verify_grad_uni <- function(
@@ -495,6 +568,14 @@ test_that("prim_ifelse", {
 
   expect_equal(xlamisc::as_array(grads[[1L]]), as_array_torch(a_torch$grad), tolerance = 1e-6)
   expect_equal(xlamisc::as_array(grads[[2L]]), as_array_torch(b_torch$grad), tolerance = 1e-6)
+
+  # a scalar branch is broadcast, so its gradient sums where it is selected
+  b_scalar <- generate_test_data(integer(), dtype = "f32")
+  grads <- jit(gradient(f_anvl))(a_anvl, nv_scalar(b_scalar, dtype = "f32"))
+  b_torch <- torch::torch_scalar_tensor(b_scalar, dtype = torch::torch_float32())$requires_grad_(TRUE)
+  torch::torch_sum(torch::torch_where(x_torch, a_torch, b_torch))$backward()
+  expect_equal(shape(grads[[2L]]), integer())
+  expect_equal(xlamisc::as_array(grads[[2L]]), as_array_torch(b_torch$grad), tolerance = 1e-6)
 })
 
 test_that("prim_reshape", {
@@ -606,8 +687,7 @@ test_that("prim_psigamma", {
     n_arr <- array(rep(n_val, prod(shp)), shp)
 
     f_nv <- function(x_t) {
-      n_t <- prim_fill(as.numeric(n_val), dtype = dtype(x_t), shape = shape(x_t))
-      out <- prim_psigamma(x_t, n_t)
+      out <- prim_psigamma(x_t, as.numeric(n_val))
       nv_sum(out, axes = seq_along(shape(out)), drop = TRUE)
     }
     grad_nv <- jit(gradient(f_nv))(nv_array(x, dtype = "f32"))[[1L]]
@@ -715,6 +795,19 @@ test_that("prim_clamp", {
     as_array_torch(x_th$grad),
     tolerance = 1e-5
   )
+
+  # a scalar `x` between bounds that are arrays is broadcast to their shape
+  lower <- array(c(-1, -0.5, 0, 0.1, 0.2, 0.3), shp)
+  f_nv <- function(x) {
+    y <- prim_clamp(x, nv_array(lower, dtype = dtype), nv_array(lower + 0.25, dtype = dtype))
+    nv_sum(y, axes = seq_len(naxes(y)), drop = TRUE)
+  }
+  grad_nv <- jit(gradient(f_nv))(nv_scalar(0.1, dtype = dtype))[[1L]]
+  x_th <- torch::torch_scalar_tensor(0.1, dtype = torch::torch_float32())$requires_grad_(TRUE)
+  bounds_th <- lapply(list(lower, lower + 0.25), torch::torch_tensor, dtype = torch::torch_float32())
+  torch::torch_sum(torch::torch_clamp(x_th, min = bounds_th[[1L]], max = bounds_th[[2L]]))$backward()
+  expect_equal(shape(grad_nv), integer())
+  expect_equal(xlamisc::as_array(grad_nv), as_array_torch(x_th$grad), tolerance = 1e-5)
 })
 
 test_that("prim_rev", {
