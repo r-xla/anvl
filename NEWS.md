@@ -10,8 +10,8 @@
 ## Features
 
 * The pjrt backend stores an array of shape `(d1, ..., dn)` as an XLA array of
-  shape `(dn, ..., d1)`, so uploads and read-backs no longer reorder the data,
-  `nv_reshape()` lowers to a single reshape. R axis 1 is now XLA's contiguous
+  shape `(dn, ..., d1)`, so uploads and read-backs no longer reorder the data
+  and `nv_reshape()` lowers to a single reshape. R axis 1 is now XLA's contiguous
   axis, so an `(n, 1)` column runs as fast as a vector of length `n`, and a
   `(1, n)` row no longer does.
 
