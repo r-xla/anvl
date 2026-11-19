@@ -2,6 +2,21 @@
 
 ## Breaking changes
 
+* Batch axes now come last, as in Julia's NNlib (#662):
+  * `nv_matmul()` and `%*%` multiply `(m, n, b...)` by `(n, p, b...)` into
+    `(m, p, b...)`; `prim_dot_general()` returns the free axes of `lhs`, then
+    those of `rhs`, then the batch axes. `nv_crossprod()` and
+    `nv_tcrossprod()` transpose axes 1 and 2.
+  * `nv_chol()`, `prim_chol()`, `nv_triangular_solve()` and
+    `prim_triangular_solve()` take the matrix on axes 1 and 2 and batch axes
+    after them.
+  * `nv_conv1d()`, `nv_conv2d()` and `nv_conv3d()` take Flux's `(W, C, N)`,
+    `(W, H, C, N)` and `(W, H, D, C, N)` layouts with kernels
+    `(kW, ..., C_in / groups, C_out)`; `stride`, `padding` and `dilation` follow
+    the axis order `(W, H, D)`.
+  * `nv_scan()` and `prim_scan()` slice `xs` along their last axis and stack the
+    outputs along a new last axis.
+  * `prim_top_k()` ranks along axis 1.
 * Random draws fill a shape in column-major order, so `nv_runif(c(2, 3))`
   is a draw of 6 filled into `c(2, 3)`. Draws of rank 2 or higher give new
   values for the same seed; 1-D draws are unchanged and still match JAX.
