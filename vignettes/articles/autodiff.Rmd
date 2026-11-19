@@ -111,7 +111,11 @@ loss_vg(params, x, y)
 ## Pullbacks
 
 For a function with any other result, `pullback()` evaluates it and returns its *pullback*.
-The pullback takes a cotangent -- a weight for each element of the result -- back to the arguments: it returns the gradient of the sum of the result's elements, each weighted by its cotangent.
+The pullback takes a cotangent -- a weight for each element of the result -- back to the arguments.
+For $f: \mathbb{R}^n \to \mathbb{R}^m$ evaluated at $x$, it maps a cotangent $w \in \mathbb{R}^m$ to the gradient of the result's elements summed with the weights $w$, which is the transposed Jacobian of $f$ applied to $w$:
+
+$$w \mapsto \nabla_x \sum_{j=1}^m w_j f_j(x) = J_f(x)^\top w$$
+
 `pullback()` takes the arguments as a call of the function would, and the pullback returns the same named list as `gradient()`:
 
 ```{r}
@@ -122,17 +126,6 @@ f_pullback(nv_array(c(1, 2, 3)), nv_array(c(1, 0, 1)))
 
 `value_and_pullback()` returns the result of the function as well, as `value_and_gradient()` does.
 The pullback can be called several times, while the function runs only once.
-Called with each unit vector, it gives the rows of the Jacobian:
-
-```{r}
-jacobian <- jit(function(x) {
-  pull <- pullback(\(x) x * sum(x), x)
-  eye <- nv_eye(3L, dtype = dtype(x))
-  rows <- lapply(1:3, \(i) nv_reshape(pull(eye[i, ])$x, c(1L, 3L)))
-  do.call(nv_concatenate, c(rows, list(axis = 1L)))
-})
-jacobian(nv_array(c(1, 2, 3)))
-```
 
 The cotangent is structured like the result.
 `NULL` stands for zeros in place of an array or of a whole part of it:

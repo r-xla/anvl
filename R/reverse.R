@@ -289,10 +289,11 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
   # A 16-bit float zero is a broadcast constant: stablehlo formats no 16-bit
   # float literal for `prim_fill()`.
   lapply(targets, function(target) {
-    grad_env[[target]] %||% {
-      zero <- get_box_or_register_const(current_descriptor(), nv_scalar(0L, dtype = target$aval$dtype))
-      nv_broadcast_to(zero, shape(target$aval))
-    }
+    grad_env[[target]] %||%
+      {
+        zero <- get_box_or_register_const(current_descriptor(), nv_scalar(0L, dtype = target$aval$dtype))
+        nv_broadcast_to(zero, shape(target$aval))
+      }
   })
 }
 
@@ -712,7 +713,7 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 #' @title Pullbacks
 #' @description
 #' Evaluate `f` at the arguments `...` and return its pullback: the function
-#' that takes a cotangent of the result -- a weight for each of its elements --
+#' that takes a cotangent of the result and returns the corresponding cotangent
 #' back to the arguments, by reverse-mode automatic differentiation. That is
 #' the cotangent times the Jacobian of `f`, the vector-Jacobian product.
 #' Where [`gradient()`] differentiates a function that returns a single float
@@ -771,15 +772,6 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 #' stats <- function(x) list(total = sum(x), squares = x^2L)
 #' dtotal <- jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))
 #' dtotal(x)
-#'
-#' # the Jacobian of x * sum(x), one row per call of the pullback
-#' jacobian <- jit(function(x) {
-#'   pull <- pullback(\(x) x * sum(x), x)
-#'   eye <- nv_eye(3L, dtype = dtype(x))
-#'   rows <- lapply(1:3, \(i) nv_reshape(pull(eye[i, ])$x, c(1L, 3L)))
-#'   do.call(nv_concatenate, c(rows, list(axis = 1L)))
-#' })
-#' jacobian(x)
 pullback <- function(f, ...) {
   assert_function(f)
   trace_pullback(f, pullback_args(f, list(...)), "pullback")$pullback
