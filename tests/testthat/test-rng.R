@@ -533,6 +533,18 @@ describe("the global random state in sub-graphs", {
     })
   })
 
+  it("is drawn from by an argument of pullback() in the trace pullback() is called in", {
+    f <- jit(function(x) {
+      ct <- pullback(function(x, u) x * u, x, nv_runif(2L))(nv_array(c(1, 1)))
+      list(ct = ct$x, after = nv_runif(1L))
+    })
+    out <- with_nv_seed(1L, f(nv_array(c(1, 1))))
+    with_nv_seed(1L, {
+      expect_identical(as_array(out$ct), as_array(nv_runif(2L)))
+      expect_identical(as_array(out$after), as_array(nv_runif(1L)))
+    })
+  })
+
   it("is used by prim_sample_bits() called in a function differentiated by gradient()", {
     f <- jit(function(x) {
       grad <- gradient(function(x) nv_sum(x * nv_convert(prim_sample_bits(3L, "ui8"), dtype = "f32")))(x)

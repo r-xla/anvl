@@ -5,53 +5,55 @@
 \alias{value_and_pullback}
 \title{Pullbacks}
 \usage{
-pullback(f, ...)
+pullback(.f, ...)
 
-value_and_pullback(f, ...)
+value_and_pullback(.f, ...)
 }
 \arguments{
-\item{f}{(\code{function})\cr
+\item{.f}{(\code{function})\cr
 Function to differentiate. It can return any (nested) list of arrays.}
 
 \item{...}{(any)\cr
-The arguments to evaluate \code{f} at, matched to its formals as in a call of
-\code{f}.}
+The arguments to evaluate \code{.f} at, matched to its formals as in a call of
+\code{.f}.}
 }
 \value{
 For \code{pullback()}, the pullback (\code{function}); for \code{value_and_pullback()},
-\code{list(value = , pullback = )}: the return value of \code{f}, and its pullback.
+\code{list(value = , pullback = )}: the return value of \code{.f}, and its pullback.
 
 The pullback takes one argument, \code{cotangent}, structured like the value
-of \code{f}, with an array of the same shape and data type for each float
+of \code{.f}, with an array of the same shape and data type for each float
 array of it; an R value takes the data type of its array. \code{NULL} in place
 of an array -- or of a whole part of the value -- stands for zeros. An
 array of the value that is not a float has no cotangent, and gets \code{NULL}.
 
 The pullback returns a named \code{list} with the cotangent of each argument,
-structured like that argument, as \code{\link[=gradient]{gradient()}} does. An argument that
-is not a float array -- an integer or boolean array, an R value such as
-\code{3}, a random state -- is held fixed, and gets \code{NULL} in place of a
-cotangent, as does each such part of a list.
+structured like that argument, as \code{\link[=gradient]{gradient()}} does. An argument \code{.f}
+takes through its \code{...} keeps the name it was passed under: name it in
+the call to read its cotangent by name. One that is not a float array --
+an integer or boolean array, an R value such as \code{3}, a random state -- is
+held fixed, and gets \code{NULL} in place of a cotangent, as does each such
+part of a list.
 
 Like \code{\link[=gradient]{gradient()}}, \code{pullback()} must be called inside \code{\link[=jit]{jit()}}. The
 pullback must be called in the same function, or in a function traced
 inside it, such as a branch of \code{\link[=nv_if]{nv_if()}}.
 }
 \description{
-Evaluate \code{f} at the arguments \code{...} and return its pullback: the function
-that takes a cotangent of the result -- a weight for each of its elements --
+Evaluate \code{.f} at the arguments \code{...} and return its pullback: the function
+that takes a cotangent of the result and returns the corresponding cotangent
 back to the arguments, by reverse-mode automatic differentiation. That is
-the cotangent times the Jacobian of \code{f}, the vector-Jacobian product.
+the cotangent times the Jacobian of \code{.f}, the vector-Jacobian product.
 Where \code{\link[=gradient]{gradient()}} differentiates a function that returns a single float
 scalar, a pullback differentiates one with any result: it gives the
 gradient of the sum of the result's elements, each weighted by its
 cotangent.
 \itemize{
 \item \code{pullback()} returns only the pullback.
-\item \code{value_and_pullback()} returns both the result of \code{f} and its pullback.
+\item \code{value_and_pullback()} returns both the result of \code{.f} and its pullback.
 }
 
-\code{f} runs once, when \code{pullback()} is called. The pullback can be called more
+\code{.f} runs once, when \code{pullback()} is called. The pullback can be called more
 than once, e.g. with every unit vector to build a Jacobian row by row.
 }
 \examples{
@@ -75,15 +77,6 @@ h(x, y, nv_array(c(1, 0, 1)))
 stats <- function(x) list(total = sum(x), squares = x^2L)
 dtotal <- jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))
 dtotal(x)
-
-# the Jacobian of x * sum(x), one row per call of the pullback
-jacobian <- jit(function(x) {
-  pull <- pullback(\(x) x * sum(x), x)
-  eye <- nv_eye(3L, dtype = dtype(x))
-  rows <- lapply(1:3, \(i) nv_reshape(pull(eye[i, ])$x, c(1L, 3L)))
-  do.call(nv_concatenate, c(rows, list(axis = 1L)))
-})
-jacobian(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

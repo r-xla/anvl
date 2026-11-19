@@ -174,9 +174,9 @@ graph_pullback <- function(graph, reqs, inputs = NULL) {
 }
 
 # The tree the gradients of `graph`'s inputs come back in: that of the inputs
-# `wrt` names, or of all of them.
+# `wrt` names, or of all of them where `wrt` is `NULL`.
 gradient_out_tree <- function(graph, wrt) {
-  if (length(wrt)) {
+  if (!is.null(wrt)) {
     pjrt::tree_filter_by_names(graph$in_tree, wrt)
   } else {
     graph$in_tree
@@ -227,7 +227,7 @@ validate_gradient_output <- function(out_gvals) {
 #   - requires_grad: logical vector aligned with `graph$inputs`, used by
 #     phase 3 to pick which inputs to emit gradients for.
 compute_requirements <- function(graph, wrt) {
-  requires_grad_all <- if (is.null(wrt) || length(wrt) == 0L) {
+  requires_grad_all <- if (is.null(wrt)) {
     rep(TRUE, tree_size(graph$in_tree))
   } else {
     pjrt::tree_leaf_mask(graph$in_tree, wrt)
@@ -286,14 +286,8 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
   }
 
   grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
-  # A 16-bit float zero is a broadcast constant: stablehlo formats no 16-bit
-  # float literal for `prim_fill()`.
   lapply(targets, function(target) {
-    grad_env[[target]] %||%
-      {
-        zero <- get_box_or_register_const(current_descriptor(), nv_scalar(0L, dtype = target$aval$dtype))
-        nv_broadcast_to(zero, shape(target$aval))
-      }
+    grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
   })
 }
 
@@ -712,40 +706,42 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 
 #' @title Pullbacks
 #' @description
-#' Evaluate `f` at the arguments `...` and return its pullback: the function
+#' Evaluate `.f` at the arguments `...` and return its pullback: the function
 #' that takes a cotangent of the result and returns the corresponding cotangent
 #' back to the arguments, by reverse-mode automatic differentiation. That is
-#' the cotangent times the Jacobian of `f`, the vector-Jacobian product.
+#' the cotangent times the Jacobian of `.f`, the vector-Jacobian product.
 #' Where [`gradient()`] differentiates a function that returns a single float
 #' scalar, a pullback differentiates one with any result: it gives the
 #' gradient of the sum of the result's elements, each weighted by its
 #' cotangent.
 #'
 #' * `pullback()` returns only the pullback.
-#' * `value_and_pullback()` returns both the result of `f` and its pullback.
+#' * `value_and_pullback()` returns both the result of `.f` and its pullback.
 #'
-#' `f` runs once, when `pullback()` is called. The pullback can be called more
+#' `.f` runs once, when `pullback()` is called. The pullback can be called more
 #' than once, e.g. with every unit vector to build a Jacobian row by row.
-#' @param f (`function`)\cr
+#' @param .f (`function`)\cr
 #'   Function to differentiate. It can return any (nested) list of arrays.
 #' @param ... (any)\cr
-#'   The arguments to evaluate `f` at, matched to its formals as in a call of
-#'   `f`.
+#'   The arguments to evaluate `.f` at, matched to its formals as in a call of
+#'   `.f`.
 #' @return
 #'   For `pullback()`, the pullback (`function`); for `value_and_pullback()`,
-#'   `list(value = , pullback = )`: the return value of `f`, and its pullback.
+#'   `list(value = , pullback = )`: the return value of `.f`, and its pullback.
 #'
 #'   The pullback takes one argument, `cotangent`, structured like the value
-#'   of `f`, with an array of the same shape and data type for each float
+#'   of `.f`, with an array of the same shape and data type for each float
 #'   array of it; an R value takes the data type of its array. `NULL` in place
 #'   of an array -- or of a whole part of the value -- stands for zeros. An
 #'   array of the value that is not a float has no cotangent, and gets `NULL`.
 #'
 #'   The pullback returns a named `list` with the cotangent of each argument,
-#'   structured like that argument, as [`gradient()`] does. An argument that
-#'   is not a float array -- an integer or boolean array, an R value such as
-#'   `3`, a random state -- is held fixed, and gets `NULL` in place of a
-#'   cotangent, as does each such part of a list.
+#'   structured like that argument, as [`gradient()`] does. An argument `.f`
+#'   takes through its `...` keeps the name it was passed under: name it in
+#'   the call to read its cotangent by name. One that is not a float array --
+#'   an integer or boolean array, an R value such as `3`, a random state -- is
+#'   held fixed, and gets `NULL` in place of a cotangent, as does each such
+#'   part of a list.
 #'
 #'   Like [`gradient()`], `pullback()` must be called inside [`jit()`]. The
 #'   pullback must be called in the same function, or in a function traced
@@ -772,16 +768,16 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 #' stats <- function(x) list(total = sum(x), squares = x^2L)
 #' dtotal <- jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))
 #' dtotal(x)
-pullback <- function(f, ...) {
-  assert_function(f)
-  trace_pullback(f, pullback_args(f, list(...)), "pullback")$pullback
+pullback <- function(.f, ...) {
+  assert_function(.f)
+  trace_pullback(.f, pullback_args(.f, list(...)), "pullback")$pullback
 }
 
 #' @rdname pullback
 #' @export
-value_and_pullback <- function(f, ...) {
-  assert_function(f)
-  trace_pullback(f, pullback_args(f, list(...)), "value_and_pullback")
+value_and_pullback <- function(.f, ...) {
+  assert_function(.f)
+  trace_pullback(.f, pullback_args(.f, list(...)), "value_and_pullback")
 }
 
 # The arguments `args` of `pullback()`, matched to the formals of `f`, as
@@ -814,6 +810,9 @@ trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
       call = call
     )
   }
+  # The arguments are expressions of the enclosing trace, which must be
+  # recorded there before `f`'s trace opens.
+  force(prep)
   # A side effect `f` uses closes over the enclosing trace's value, and its
   # uses continue the enclosing trace's.
   desc <- local_descriptor(side_effects_mode = "capture")
@@ -872,12 +871,12 @@ flatten_cotangent <- function(value, cotangent, out_tree, call) {
         return(NULL)
       }
       path <- pjrt::tree_path(out_tree, i)
-      at <- if (nzchar(path)) paste0(" at {.code ", path, "}") else ""
+      at <- if (nzchar(path)) " at {.code {path}}" else ""
       dt <- dtype(x)
       if (!is_dtype_float(dt)) {
         cli_abort(
           c(
-            paste0("The value of {.arg f} has no cotangent", at, "."),
+            paste0("The value of {.arg .f} has no cotangent", at, "."),
             x = "It is {.val {as.character(dt)}}, not a float.",
             i = "Pass {.code NULL} there."
           ),
@@ -929,7 +928,7 @@ cotangent_leaves <- function(value, cotangent, call) {
   if (!same_node) {
     cli_abort(
       c(
-        "{.arg cotangent} must be structured like the value of {.arg f}.",
+        "{.arg cotangent} must be structured like the value of {.arg .f}.",
         i = "{.code NULL} can stand in for any part of it."
       ),
       call = call
