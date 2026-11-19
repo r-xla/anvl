@@ -484,6 +484,33 @@ describe("prim_custom_gradient", {
     expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(10, 10, 10))
   })
 
+  it("passes zeros to rule for a result that received no cotangent", {
+    split <- function(x) list(a = x * 2, b = x * 3)
+    f <- function(x) {
+      out <- prim_custom_gradient(
+        list(x = x),
+        fn = split,
+        rule = function(x, out, grad, required) list(x = grad$a * 2 + grad$b * 3)
+      )
+      nv_sum(out$a)
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(2, 2, 2))
+    g <- function(x) {
+      out <- prim_custom_gradient(
+        list(x = x),
+        fn = split,
+        rule = rule_pullback(forward = function(inputs, params, required) {
+          list(
+            outputs = split(inputs$x),
+            backward = function(inputs, outputs, grads, params, required) list(x = grads$a * 2 + grads$b * 3)
+          )
+        })
+      )
+      nv_sum(out$b)
+    }
+    expect_equal(as.numeric(jit(gradient(g))(x)[[1L]]), c(3, 3, 3))
+  })
+
   it("gives a gradient where fn has none", {
     f <- function(x, n) nv_sum(pow(x, n))
     expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(x, 3L)$x), 3 * c(1, 2, 3)^2)
@@ -1712,6 +1739,19 @@ describe("prim_cummin", {
 # torch's autograd raised a spurious "saved tensor modified inplace" version
 # mismatch on the indices tensor returned by torch_sort/torch_topk, so we do
 # not compare against torch here.
+describe("prim_sort", {
+  it("gives no cotangent to an operand whose sorted result received none", {
+    # exp(1000) is Inf, so a zero cotangent pushed through it would be NaN.
+    w <- nv_array(c(1, 2, 3), dtype = "f64")
+    f <- function(k, v) nv_sum(prim_sort(list(k, nv_exp(v)), axis = 1L)[[1L]] * w)
+    k <- nv_array(c(3, 1, 2), dtype = "f64")
+    v <- nv_array(c(1000, 1, 2), dtype = "f64")
+    grads <- jit(gradient(f))(k, v)
+    expect_equal(as.numeric(grads$k), c(3, 1, 2))
+    expect_equal(as.numeric(grads$v), c(0, 0, 0))
+  })
+})
+
 test_that("prim_sort", {
   withr::local_seed(42)
   # 2D descending sort along axis != 1. Distinct values so the result is
@@ -2188,6 +2228,14 @@ describe("prim_optimization_barrier", {
     }
     grad <- jit(gradient(f, wrt = "x"))(x, i)
     expect_equal(as.numeric(grad$x), c(2, 8, 18))
+  })
+
+  it("gives no cotangent to an operand whose result received none", {
+    # exp(1000) is Inf, so a zero cotangent pushed through it would be NaN.
+    f <- function(x, y) nv_sum(prim_optimization_barrier(list(nv_exp(x), y))[[2L]])
+    grads <- jit(gradient(f))(nv_scalar(1000, "f64"), y)
+    expect_equal(as.numeric(grads$x), 0)
+    expect_equal(as.numeric(grads$y), c(1, 1))
   })
 
   it("puts the cotangents behind a barrier of their own", {

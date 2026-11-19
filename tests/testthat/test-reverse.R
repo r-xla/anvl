@@ -260,6 +260,13 @@ describe("pullback", {
     expect_equal(as.numeric(g(x, y)), c(0, 0, 0))
   })
 
+  it("leaves a result whose cotangent is NULL out of the backward pass", {
+    # zeros pushed back through exp() at 1000 would be 0 * Inf = NaN
+    f <- function(x) list(a = x * 2, b = nv_exp(x * 1000))
+    g <- jit(function(x) pullback(f, x)(list(a = ct, b = NULL))$x)
+    expect_equal(as.numeric(g(x)), c(2, 0, -4))
+  })
+
   it("holds an argument that is not a float array fixed, and returns NULL for it", {
     f <- function(x, n, s, p) x * nv_convert(n, "f64") * s + p$w * nv_convert(p$k, "f64")
     g <- jit(function(x, n, p) pullback(f, x, n, 2, p)(ct))
@@ -351,6 +358,85 @@ describe("value_and_pullback", {
     res <- g(x)
     expect_equal(res$value, list(sq = x * x, total = nv_scalar(6, "f64")))
     expect_equal(as.numeric(res$x), c(2, 2, 2))
+  })
+})
+
+describe("gradient", {
+  # A value that receives no cotangent has a symbolic zero one: nothing is
+  # computed for it. exp(1000) is Inf in f64, so pushing a zero cotangent
+  # through its derivative instead would give 0 * Inf = NaN.
+  big <- nv_scalar(1000, "f64")
+
+  it("skips a value no output depends on", {
+    f <- function(x) {
+      nv_exp(x)
+      x
+    }
+    expect_equal(as.numeric(jit(gradient(f))(big)$x), 1)
+  })
+
+  it("skips a value that only feeds a comparison", {
+    f <- function(x) nv_if(nv_exp(x) > 0, \() x * 2, \() x)
+    expect_equal(as.numeric(jit(gradient(f))(big)$x), 2)
+  })
+
+  it("skips a value that only feeds a primitive whose derivative is zero", {
+    f <- function(x) nv_floor(nv_exp(x)) + x
+    expect_equal(as.numeric(jit(gradient(f))(big)$x), 1)
+  })
+
+  it("leaves an unused result of nv_if() out of the branches' backward pass", {
+    f <- function(p, x) nv_if(p, \() list(a = nv_exp(x), b = x * 3), \() list(a = x, b = x))$b
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), big)$x), 3)
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(FALSE), big)$x), 1)
+  })
+
+  it("gives an operand of nv_if() that no used result depends on a zero cotangent", {
+    f <- function(p, x, y) nv_if(p, \() list(a = x * 2, b = y * 3), \() list(a = x, b = y))$a
+    grads <- jit(gradient(f, wrt = c("x", "y")))(nv_scalar(TRUE), big, big)
+    expect_equal(as.numeric(grads$x), 2)
+    expect_equal(as.numeric(grads$y), 0)
+  })
+
+  it("leaves an unused stacked result of nv_scan() out of the backward pass", {
+    f <- function(x) {
+      body <- \(carry, unused) list(carry = carry * 2, out = nv_exp(carry * 400))
+      nv_scan(x, body = body, steps = 3L)$carry
+    }
+    expect_equal(as.numeric(jit(gradient(f))(nv_scalar(1, "f64"))$x), 8)
+  })
+
+  it("refuses a pullback rule that returns NULL for an input that requires a gradient", {
+    prim_twice <- new_primitive(
+      "twice_test",
+      function(x) graph_desc_add(self, list(x = x), infer_fn = function(x) list(x))[[1L]],
+      register = FALSE
+    )
+    prim_twice[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+      list(NULL)
+    })
+    f <- function(x) prim_twice(x)
+    expect_error(
+      jit(gradient(f))(nv_scalar(1, "f64")),
+      "returned `NULL` for input 1, which requires a gradient"
+    )
+  })
+})
+
+describe("SymbolicZero", {
+  it("holds the abstract array of the value it stands for", {
+    expect_equal(SymbolicZero(nv_aval("f32", c(2L, 3L)))$aval, AbstractArray("f32", c(2L, 3L)))
+    expect_equal(SymbolicZero(nv_array(1:3, dtype = "i32"))$aval, AbstractArray("i32", 3L))
+    expect_equal(
+      format(SymbolicZero(nv_aval("f32", c(2L, 3L)))),
+      "SymbolicZero(AbstractArray(dtype=f32, shape=2x3))"
+    )
+  })
+
+  it("is told apart from an array by is_symbolic_zero()", {
+    expect_true(is_symbolic_zero(SymbolicZero(nv_aval("f32", 2L))))
+    expect_false(is_symbolic_zero(nv_array(c(0, 0), dtype = "f32")))
+    expect_false(is_symbolic_zero(NULL))
   })
 })
 
