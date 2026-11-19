@@ -3406,117 +3406,86 @@ describe("nv_dpois(), nv_ppois() and nv_qpois() at the ends of the range", {
   })
 })
 
-describe("eager/jit equivalence", {
-  it("agrees for nv_dnorm(), nv_pnorm() and nv_qnorm()", {
-    f64 <- function() nv_array(c(0.25, 0.75), dtype = "f64")
-    expect_eager_jit_equal_grid(list(
-      dnorm = function(x, v) nv_dnorm(f64(), mean = v),
-      pnorm = function(x, v) nv_pnorm(f64(), sd = v),
-      qnorm = function(x, v) nv_qnorm(f64(), mean = v)
-    ))
+describe("promote_distribution_args", {
+  # Every distribution function brings its operand and parameters to their data
+  # type with it, before anything else reads them, so its rules are tested here
+  # once rather than through each function.
+
+  it("brings the parameters to the data type of a float operand", {
+    args <- promote_distribution_args(
+      x = nv_array(c(0, 1), dtype = "f32"),
+      mean = sqrt(2),
+      sd = nv_scalar(2, dtype = "f32")
+    )
+    expect_dtype(args$x, "f32")
+    expect_dtype(args$mean, "f32")
+    expect_dtype(args$sd, "f32")
+    args <- promote_distribution_args(x = nv_array(c(0, 1), dtype = "f64"), mean = nv_array(c(0, 1), dtype = "f32"))
+    expect_dtype(args$mean, "f64")
   })
 
-  it("agrees for nv_dexp(), nv_pexp() and nv_qexp()", {
-    f64 <- function() nv_array(c(0.25, 0.75), dtype = "f64")
-    expect_eager_jit_equal_grid(list(
-      dexp = function(x, v) nv_dexp(f64(), rate = v),
-      pexp = function(x, v) nv_pexp(f64(), rate = v),
-      qexp = function(x, v) nv_qexp(f64(), rate = v)
-    ))
+  it("refuses a parameter array wider than a float operand", {
+    expect_error(
+      promote_distribution_args(x = nv_array(c(0, 1), dtype = "f32"), mean = nv_array(c(0, 1), dtype = "f64")),
+      "Cannot bring `mean` to data type"
+    )
   })
 
-  it("agrees for nv_dbinom(), nv_pbinom() and nv_qbinom()", {
-    f64 <- function() nv_array(c(0.25, 0.75), dtype = "f64")
-    expect_eager_jit_equal_grid(list(
-      dbinom = function(x, v) nv_dbinom(f64(), size = 3, prob = v),
-      pbinom = function(x, v) nv_pbinom(f64(), size = v, prob = 0.5),
-      qbinom = function(x, v) nv_qbinom(f64(), size = 3, prob = v)
-    ))
-  })
-})
-
-describe("an integer operand", {
-  # Each function as a function of its operand and one parameter, which may be
-  # an R value or an array.
-  families <- list(
-    dnorm = function(x, v) nv_dnorm(x, mean = v),
-    pnorm = function(x, v) nv_pnorm(x, mean = v),
-    qnorm = function(x, v) nv_qnorm(x, mean = v),
-    dunif = function(x, v) nv_dunif(x, min = v, max = 4),
-    punif = function(x, v) nv_punif(x, min = v, max = 4),
-    qunif = function(x, v) nv_qunif(x, min = v, max = 4),
-    dexp = function(x, v) nv_dexp(x, rate = v),
-    pexp = function(x, v) nv_pexp(x, rate = v),
-    qexp = function(x, v) nv_qexp(x, rate = v),
-    dbinom = function(x, v) nv_dbinom(x, size = v, prob = 0.5),
-    pbinom = function(x, v) nv_pbinom(x, size = v, prob = 0.5),
-    qbinom = function(x, v) nv_qbinom(x, size = v, prob = 0.5),
-    dpois = function(x, v) nv_dpois(x, lambda = v),
-    ppois = function(x, v) nv_ppois(x, lambda = v),
-    qpois = function(x, v) nv_qpois(x, lambda = v)
-  )
-
-  it("computes at the default float when the parameters are R values", {
-    for (name in names(families)) {
-      expected <- as.vector(families[[name]](nv_array(c(0, 1), dtype = default_float()), 1))
-      for (int_dtype in c("i8", "i32", "i64", "ui32")) {
-        out <- families[[name]](nv_array(c(0L, 1L), dtype = int_dtype), 1)
-        expect_dtype(out, default_float(), info = paste(name, int_dtype))
-        expect_equal(as.vector(out), expected, info = paste(name, int_dtype))
-      }
+  it("converts an integer operand to the default float when the parameters are R values", {
+    for (int_dtype in c("i8", "i32", "i64", "ui32")) {
+      args <- promote_distribution_args(x = nv_array(c(0L, 1L), dtype = int_dtype), mean = 1)
+      expect_dtype(args$x, default_float(), info = int_dtype)
+      expect_dtype(args$mean, default_float(), info = int_dtype)
+      expect_equal(as.vector(args$x), c(0, 1), info = int_dtype)
     }
+    expect_dtype(promote_distribution_args(x = 1L, mean = 0)$x, default_float())
   })
 
   it("follows the default float", {
     for (float_dtype in c("f32", "f64")) {
       with_default_dtypes(c(float = float_dtype), {
-        expect_dtype(nv_dbinom(nv_array(c(0L, 1L)), 3, 0.5), float_dtype)
+        expect_dtype(promote_distribution_args(x = nv_array(c(0L, 1L)), mean = 1)$x, float_dtype)
       })
     }
   })
 
-  it("computes at the widest float among the parameter arrays", {
-    for (name in names(families)) {
-      for (float_dtype in c("f32", "f64")) {
-        out <- families[[name]](nv_array(c(0L, 1L)), nv_array(c(1, 1), dtype = float_dtype))
-        expect_dtype(out, float_dtype, info = paste(name, float_dtype))
-      }
-    }
-    out <- nv_dnorm(
-      nv_array(c(0L, 1L)),
-      mean = nv_array(c(0, 0), dtype = "f32"),
-      sd = nv_scalar(1, dtype = "f64")
+  it("converts an integer operand to the widest float among the parameter arrays", {
+    args <- promote_distribution_args(x = nv_array(c(0L, 1L), dtype = "i64"), a = nv_array(c(1, 2), dtype = "f32"))
+    expect_dtype(args$x, "f32")
+    args <- promote_distribution_args(
+      x = nv_array(c(0L, 1L)),
+      a = nv_array(c(1, 2), dtype = "f32"),
+      b = nv_scalar(1, dtype = "f64")
     )
-    expect_dtype(out, "f64")
+    expect_dtype(args$x, "f64")
   })
 
   it("ignores integer parameter arrays when choosing the float", {
-    out <- nv_dbinom(
-      nv_array(c(0L, 1L), dtype = "i64"),
+    args <- promote_distribution_args(
+      x = nv_array(c(0L, 1L), dtype = "i64"),
       size = nv_scalar(3L, dtype = "ui64"),
       prob = 0.5
     )
-    expect_dtype(out, default_float())
+    expect_dtype(args$x, default_float())
   })
 
-  it("accepts an R integer", {
-    expect_dtype(nv_dnorm(1L), default_float())
-    expect_equal(as.vector(nv_dbinom(1L, 3, 0.5)), dbinom(1, 3, 0.5), tolerance = 1e-6)
+  it("converts an integer operand directly to f64, not through the default float", {
+    # 2^30 + 1, which is not an f32
+    args <- promote_distribution_args(x = nv_array(1073741825L), size = nv_scalar(2^31, dtype = "f64"))
+    expect_identical(as.vector(args$x), 1073741825)
   })
 
-  it("is converted directly to f64, not through the default float", {
-    # 2^30 + 1, which is not an f32. Rounding it through f32 moves the result
-    # by about 1e-10 relative, so the tolerance has to be tighter than that.
-    x <- 1073741825L
-    expect_equal(
-      as.vector(nv_dbinom(nv_array(x), size = nv_scalar(2^31, dtype = "f64"), prob = 0.5, log = TRUE)),
-      dbinom(x, 2^31, 0.5, log = TRUE),
-      tolerance = 1e-14
-    )
+  it("refuses a boolean operand, naming it", {
+    expect_error(promote_distribution_args(p = nv_array(TRUE), lambda = 1), "`p` must be a numeric data type")
   })
 
   it("agrees between eager and jit", {
-    expect_eager_jit_equal_grid(families)
+    expect_eager_jit_equal_grid(list(
+      "R value parameters" = function(x, v) promote_distribution_args(x = x, mean = v, sd = 2),
+      "an R value and a parameter array" = function(x, v) {
+        promote_distribution_args(x = x, size = v, prob = nv_array(c(0.5, 0.5), dtype = "f32"))
+      }
+    ))
   })
 })
 

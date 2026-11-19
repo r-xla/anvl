@@ -2,11 +2,22 @@
 
 ## Features
 
+* New `nv_split_rng_states()` splits `n` random states off a random state.
+* New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
+  as on CRAN. The new "Depending on anvl" article explains its use.
 * New `prim_optimization_barrier()` returns its input arrays unchanged and
   keeps the compiler from moving computations across it, so the operations
   that produce the arrays are not fused with those that use them.
   `nv_optimization_barrier()` does the same for a single array or a tree of
   arrays, returning it with the same structure.
+* New `pullback()` and `value_and_pullback()` differentiate a function with any
+  result: they return its pullback, which takes a cotangent of the result back
+  to the arguments.
+
+## Bug fixes
+
+* An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
+  differentiates with respect to no argument, rather than all of them.
 
 # anvl 0.6.0
 
