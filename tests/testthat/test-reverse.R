@@ -559,6 +559,24 @@ test_that("rule_reverse(forward = ...) emits multiple primitives and captures an
   expect_equal(out[[1L]], nv_array(c(exp(0), exp(1)), dtype = "f64"))
 })
 
+test_that("a reverse rule that returns a gradient of the wrong shape is refused", {
+  infer <- function(x) list(AbstractArray(dtype = dtype(x), shape = integer()))
+  my_sum <- new_primitive(
+    "my_sum_test",
+    function(x) graph_desc_add(self, list(x = x), infer_fn = infer)[[1L]],
+    register = FALSE
+  )
+  # The cotangent of the scalar sum is handed back without broadcasting it to
+  # the shape of `x`.
+  my_sum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+    list(if (required[[1L]]) grads[[1L]])
+  })
+  expect_error(
+    jit(gradient(\(x) my_sum(x)))(nv_array(c(1, 2, 3), dtype = "f32")),
+    "reverse rule of primitive .*my_sum_test.* returned a gradient of the wrong shape for input 1"
+  )
+})
+
 describe("rdata", {
   # A value with no data type of its own cannot be differentiated with respect
   # to: the gradient would come back at whatever data type the forward pass

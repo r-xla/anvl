@@ -1987,7 +1987,8 @@ nv_popcnt <- prim_popcnt
 #' @description
 #' Element-wise clamp: `min(max(min, x), max)`.
 #' @param min,max ([`arrayish`])\cr
-#'   Lower and upper bound, each scalar or the same shape as `x`. They are
+#'   Lower and upper bound. The operands that are not scalars, `x` among them,
+#'   have the same shape, and a scalar is broadcast to it. The bounds are
 #'   brought to `x`'s data type: an R value is built at it when its category can
 #'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
 #'   one), and a value that already has a data type is converted unless that
@@ -1996,7 +1997,7 @@ nv_popcnt <- prim_popcnt
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   Has `x`'s shape and data type.
+#'   Has the operands' broadcast shape and `x`'s data type.
 #' @seealso [prim_clamp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the bounds are brought to `x`'s data type
@@ -2253,7 +2254,7 @@ nv_linspace <- jit(
 nv_pad <- function(x, value, low, high, interior = NULL) {
   # `promotion_like("x")` rather than the primitive's own rule: crossing a
   # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
-  # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
+  # way `nv_clamp(x_f32, 0L, 1L)` does, while `prim_pad()` stays strict.
   args <- as_anvl_arrays(x = x, value = value, .promote = promotion_like("x"))
   interior <- interior %||% rep(0L, naxes(args$x))
   prim_pad(args$x, args$value, low, high, interior)

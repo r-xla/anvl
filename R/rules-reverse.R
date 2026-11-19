@@ -1089,12 +1089,9 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 # need not match the input's: the rules return zeros.
 
 reverse_zero_bin <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  x <- inputs[[1L]]
-  grad_in <- zeros_like(x)
-
   list(
-    if (required[[1L]]) grad_in,
-    if (required[[2L]]) grad_in
+    if (required[[1L]]) zeros_like(inputs[[1L]]),
+    if (required[[2L]]) zeros_like(inputs[[2L]])
   )
 })
 
