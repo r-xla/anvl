@@ -81,11 +81,16 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
-<ul><li>The <code>"reverse"</code> rule of a primitive is renamed to <code>"pullback"</code>: write <code>prim_x[["pullback"]]</code> and <code><a href="../reference/rule_pullback.html">rule_pullback()</a></code> instead of <code>prim_x[["reverse"]]</code> and <code>rule_reverse()</code>.</li>
+<ul><li>
+<code>NULL</code> (and so <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code>) is no longer a shape; constructors that infer one default to <code>shape = "auto"</code>. Write the shape of a scalar as <code><a href="../reference/shp.html">shp()</a></code> (<a href="https://github.com/r-xla/anvl/issues/552" class="external-link">#552</a>).</li>
+<li>
+<code>Shape()</code> is no longer exported; use <code><a href="../reference/shp.html">shp()</a></code>.</li>
+<li>The <code>"reverse"</code> rule of a primitive is renamed to <code>"pullback"</code>: write <code>prim_x[["pullback"]]</code> and <code><a href="../reference/rule_pullback.html">rule_pullback()</a></code> instead of <code>prim_x[["reverse"]]</code> and <code>rule_reverse()</code>.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
 <ul><li>New <code><a href="../reference/nv_split_rng_states.html">nv_split_rng_states()</a></code> splits <code>n</code> random states off a random state.</li>
+<li>New <code><a href="../reference/shp.html">shp()</a></code> creates a shape from its axis sizes: <code>shp(2, 3)</code>, or <code><a href="../reference/shp.html">shp()</a></code> for a scalar.</li>
 <li>New <code><a href="../reference/skip_if_no_plugin.html">skip_if_no_plugin()</a></code> skips a test when no PJRT plugin is available, as on CRAN. The new “Depending on anvl” article explains its use.</li>
 <li>New <code><a href="../reference/prim_optimization_barrier.html">prim_optimization_barrier()</a></code> returns its input arrays unchanged and keeps the compiler from moving computations across it, so the operations that produce the arrays are not fused with those that use them. <code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> does the same for a single array or a tree of arrays, returning it with the same structure.</li>
 <li>New <code><a href="../reference/pullback.html">pullback()</a></code> and <code><a href="../reference/pullback.html">value_and_pullback()</a></code> differentiate a function with any result: they return its pullback, which takes a cotangent of the result back to the arguments.</li>

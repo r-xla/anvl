@@ -183,6 +183,8 @@ Functions for creating and initializing arrays
   [`nv_float32()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
   [`nv_float64()`](https://r-xla.github.io/anvl/reference/nv_dtype_constructors.md)
   : Create an Array of a Given Data Type
+- [`shp()`](https://r-xla.github.io/anvl/reference/shp.md) : Create a
+  Shape
 - [`nv_fill()`](https://r-xla.github.io/anvl/reference/nv_fill.md)
   [`nv_fill_like()`](https://r-xla.github.io/anvl/reference/nv_fill.md)
   : Fill Constant
@@ -937,8 +939,6 @@ Utilities for working with nested structures
   : Get Active Backend
 - [`jit_cache_size()`](https://r-xla.github.io/anvl/reference/jit_cache_size.md)
   : Number of Cached Programs of a Jitted Function
-- [`Shape()`](https://r-xla.github.io/anvl/reference/Shape-constructor.md)
-  : Create a Shape Object
 
 ## Primitives
 

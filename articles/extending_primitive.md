@@ -97,7 +97,7 @@ prim_repeat_along <- new_primitive(
       new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
         dtype = dtype(x),
-        shape = Shape(new_shape)
+        shape = new_shape
       ))
     }
 

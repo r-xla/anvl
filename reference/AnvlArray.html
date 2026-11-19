@@ -90,7 +90,7 @@ be a CPU or a GPU.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_array</span><span class="op">(</span><span class="va">data</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, byrow <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_array</span><span class="op">(</span><span class="va">data</span>, shape <span class="op">=</span> <span class="st">"auto"</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, byrow <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_scalar</span><span class="op">(</span><span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
@@ -105,11 +105,11 @@ be a CPU or a GPU.</p>
 <span></span>
 <span><span class="fu">nv_empty</span><span class="op">(</span><span class="va">shape</span>, <span class="va">dtype</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_array_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">data</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">nv_array_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">data</span>, shape <span class="op">=</span> <span class="st">"auto"</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_scalar_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_empty_like</span><span class="op">(</span><span class="va">like</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_empty_like</span><span class="op">(</span><span class="va">like</span>, shape <span class="op">=</span> <span class="st">"auto"</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -128,13 +128,17 @@ otherwise.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
-<dd><p>(<code>NULL</code> | <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-The output shape of the array.
-The default (<code>NULL</code>) is to infer it from the data if possible.
-Note that <code>nv_array</code> interprets length 1 vectors as having shape <code>(1)</code>.
-Empty data has no shape to infer – <code>0</code>, <code>c(2, 0)</code> and <code>c(0, 3)</code> all hold
-no elements – so <code>shape</code> is required there.
-To create a "scalar" with no axes (shape <code>()</code>), use <code>nv_scalar</code> or explicitly specify <code>shape = integer()</code>.</p></dd>
+<dd><p>(<code>"auto"</code> | <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
+The shape of the array, e.g. <code>shp(2, 3)</code> or <code>c(2, 3)</code>.
+<code>nv_empty()</code> requires it. Elsewhere it defaults to <code>"auto"</code>, which
+<code>nv_array_like()</code> and <code>nv_empty_like()</code> read as <code>shape(like)</code> and
+<code>nv_array()</code> infers from <code>data</code>: its <code><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim()</a></code>, or its length for a vector,
+so a length-1 vector has shape <code>(1)</code>.
+<code>nv_array()</code> cannot infer it from a raw payload or from empty data –
+<code>0</code>, <code>c(2, 0)</code> and <code>c(0, 3)</code> all hold no elements – so <code>shape</code> is
+required there.
+To create a "scalar" with no axes (shape <code>()</code>), use <code>nv_scalar()</code> or
+<code>shape = shp()</code>. <code>NULL</code>, which <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> returns, is not a shape; see <code><a href="shp.html">shp()</a></code>.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
@@ -181,9 +185,9 @@ Defaults to <code>1</code> when <code>data</code> is a scalar.</p></dd>
 
 <dt id="arg-like">like<a class="anchor" aria-label="anchor" href="#arg-like"></a></dt>
 <dd><p>(<code>AnvlArray</code> | <code><a href="GraphBox.html">GraphBox</a></code>)<br>
-An existing array; an R value is an error. Any of <code>shape</code> (which
-<code>nv_scalar_like()</code> does not take), <code>dtype</code> and <code>device</code> that are <code>NULL</code>
-(the default) are taken from <code>like</code>.</p></dd>
+An existing array; an R value is an error. A <code>shape</code> left at <code>"auto"</code>
+(which <code>nv_scalar_like()</code> does not take) and a <code>dtype</code> or <code>device</code> left at
+<code>NULL</code> (the defaults) are taken from <code>like</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -312,8 +316,8 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span>shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -2.7652e-38  3.5115e-41 -2.7603e-38</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3.5115e-41 -2.7651e-38  3.5115e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

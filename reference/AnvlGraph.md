@@ -147,7 +147,7 @@ graph$constants
 #> 
 
 # several outputs are returned together; `out_tree` records their structure
-graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", c())))
+graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", shp())))
 graph
 #> <AnvlGraph> (%x1: f32[]) {
 #>   %1: f32[] = exp(%x1)

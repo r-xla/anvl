@@ -74,8 +74,7 @@ There are a few things to note in the code below:
 1.  the accept/reject decision uses
     [`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md) and not
     a native R conditional.
-2.  we sample a scalar uniform random number by setting
-    `shape = integer()`
+2.  we sample a scalar uniform random number by setting `shape = shp()`
 
 ``` r
 
@@ -86,7 +85,7 @@ mh_step <- function(theta, b, proposal_sd) {
   log_proposed <- log_density(proposal, b)
   log_accept <- log_proposed - log_current
 
-  u <- nv_runif(integer(), dtype = "f64")
+  u <- nv_runif(shp(), dtype = "f64")
 
   accept <- log(u) < log_accept
   new_theta <- nv_if(accept, \() proposal, \() theta)

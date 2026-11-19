@@ -107,7 +107,8 @@
 
 <dl><dt id="arg-new-data">new_data<a class="anchor" aria-label="anchor" href="#arg-new-data"></a></dt>
 <dd><p>(<code>function(data, dtype, shape, device, row_major = FALSE)</code>)<br>
-Constructs an AnvlArray from R data. Must return
+Constructs an AnvlArray of the given <code>dtype</code> and <code>shape</code> (an <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>
+vector, which <code><a href="AnvlArray.html">nv_array()</a></code> has already worked out) from R data. Must return
 <code>structure(list(data = , backend = &lt;name&gt;, ...), class = "AnvlArray")</code>, where
 <code>data</code> holds the underlying data (a <code>PJRTBuffer</code> for the <code>"pjrt"</code> backend, an
 R <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code> for the <code>"quickr"</code> backend) and <code>backend</code> is the name the

@@ -27,7 +27,10 @@ AnvlBackend(
 - new_data:
 
   (`function(data, dtype, shape, device, row_major = FALSE)`)  
-  Constructs an AnvlArray from R data. Must return
+  Constructs an AnvlArray of the given `dtype` and `shape` (an
+  [`integer()`](https://rdrr.io/r/base/integer.html) vector, which
+  [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  has already worked out) from R data. Must return
   `structure(list(data = , backend = <name>, ...), class = "AnvlArray")`,
   where `data` holds the underlying data (a `PJRTBuffer` for the
   `"pjrt"` backend, an R [`array()`](https://rdrr.io/r/base/array.html)

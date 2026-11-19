@@ -11,7 +11,14 @@ default to those of `like`.
 ``` r
 nv_iota(axis, shape, dtype, start = 1L, device = NULL)
 
-nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
+nv_iota_like(
+  like,
+  axis,
+  shape = "auto",
+  dtype = NULL,
+  start = 1L,
+  device = NULL
+)
 ```
 
 ## Arguments
@@ -24,8 +31,9 @@ nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 
 - shape:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape of the result.
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `"auto"`)  
+  Shape of the result. For `nv_iota_like()`, `"auto"` (the default) uses
+  `shape(like)`.
 
 - dtype:
 

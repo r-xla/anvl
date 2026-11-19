@@ -62,7 +62,7 @@ nv_aval("double", c(2, 3))
 graph <- trace_fn(function(x) {
     print(x)
     list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))
-  }, list(x = nv_aval("double", c()))
+  }, list(x = nv_aval("double", shp()))
 )
 #> GraphBox(GraphValue(RData(double, ()))) 
 print(graph)

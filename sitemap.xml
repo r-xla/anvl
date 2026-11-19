@@ -44,7 +44,6 @@
 <url><loc>https://r-xla.github.io/anvl/reference/IotaArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/LiteralArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/RData.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/reference/Shape-constructor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/active_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/anvl-package.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/apply_promotion.html</loc></url>
@@ -359,6 +358,7 @@
 <url><loc>https://r-xla.github.io/anvl/reference/reexports.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/rule_pullback.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/shape.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/reference/shp.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/skip_if_no_plugin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/stablehlo.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/reference/subgraphs.html</loc></url>

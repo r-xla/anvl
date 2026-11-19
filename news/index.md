@@ -4,6 +4,13 @@
 
 ### Breaking changes
 
+- `NULL` (and so [`c()`](https://rdrr.io/r/base/c.html)) is no longer a
+  shape; constructors that infer one default to `shape = "auto"`. Write
+  the shape of a scalar as
+  [`shp()`](https://r-xla.github.io/anvl/reference/shp.md)
+  ([\#552](https://github.com/r-xla/anvl/issues/552)).
+- `Shape()` is no longer exported; use
+  [`shp()`](https://r-xla.github.io/anvl/reference/shp.md).
 - The `"reverse"` rule of a primitive is renamed to `"pullback"`: write
   `prim_x[["pullback"]]` and
   [`rule_pullback()`](https://r-xla.github.io/anvl/reference/rule_pullback.md)
@@ -14,6 +21,9 @@
 - New
   [`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md)
   splits `n` random states off a random state.
+- New [`shp()`](https://r-xla.github.io/anvl/reference/shp.md) creates a
+  shape from its axis sizes: `shp(2, 3)`, or
+  [`shp()`](https://r-xla.github.io/anvl/reference/shp.md) for a scalar.
 - New
   [`skip_if_no_plugin()`](https://r-xla.github.io/anvl/reference/skip_if_no_plugin.md)
   skips a test when no PJRT plugin is available, as on CRAN. The new

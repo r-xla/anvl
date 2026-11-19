@@ -63,7 +63,7 @@ specify the input types.
 
 ``` r
 
-aval <- nv_aval("f32", c())
+aval <- nv_aval("f32", shp())
 aval
 ```
 
@@ -209,7 +209,7 @@ prim_mul[["stablehlo"]]
     ##     operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
     ##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
     ## }
-    ## <environment: 0x562ae142cce8>
+    ## <environment: 0x5eff43cc6bc8>
 
 The [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)
 function creates a
@@ -569,7 +569,7 @@ trace_fn(function(x) {
   print(shape(x))
   print(dtype(x))
   x
-}, list(RData(c(), "integer")))
+}, list(RData(shp(), "integer")))
 ```
 
     ## GraphBox(GraphValue(RData(integer, ()))) 
@@ -614,16 +614,17 @@ Generally, there are two situations:
 
 In the first case, the `RData` object takes the concrete data type
 ([`promotion_rdata_common()`](https://r-xla.github.io/anvl/reference/promotion_rule.md)).
-Below, `nv_aval("integer", c())` is equivalent to
-`RData(c(), "integer")`. In the resulting graph, the `%x1` input has the
-data type it took, and the `<- integer` records that the caller supplies
-it as an R integer, which the runtime uploads at that data type.
+Below, `nv_aval("integer", shp())` is equivalent to
+`RData(shp(), "integer")`. In the resulting graph, the `%x1` input has
+the data type it took, and the `<- integer` records that the caller
+supplies it as an R integer, which the runtime uploads at that data
+type.
 
 ``` r
 
 trace_fn(\(x) {
   prim_add(x, nv_scalar(1L, "i64"))
-}, list(nv_aval("integer", c())))
+}, list(nv_aval("integer", shp())))
 ```
 
     ## <AnvlGraph> [%c1: i64[]] (%x1: i64[] <- integer) {
@@ -641,7 +642,7 @@ In the second case, it settles on its default data type:
 
 trace_fn(\(x) {
   prim_exp(x)
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
     ## <AnvlGraph> (%x1: f32[] <- double) {
@@ -660,7 +661,7 @@ trace_fn(\(x) {
   prim_add(x, nv_scalar(1L, "i8"))
   prim_add(x, nv_scalar(1L, "i16"))
   prim_add(x, nv_scalar(1L, "i64"))
-}, list(nv_aval("integer", c())))
+}, list(nv_aval("integer", shp())))
 ```
 
     ## <AnvlGraph> [%c1: i8[], %c2: i16[], %c3: i64[]] (%x1: i64[] <- integer) {
@@ -689,7 +690,7 @@ a program that wants double precision throughout can ask for it.
 
 trace_fn(\(x) {
   prim_add(x, nv_scalar(1, "f64"))
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
     ## <AnvlGraph> [%c1: f64[]] (%x1: f64[] <- double) {
@@ -705,7 +706,7 @@ the other side – settles on the default float:
 
 trace_fn(\(x) {
   prim_add(x, 1)
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
     ## <AnvlGraph> (%x1: f32[] <- double) {
@@ -734,7 +735,7 @@ materializes its input at its natural representation.
 
 trace_fn(\(x) {
   prim_convert(x, "i32")
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
     ## <AnvlGraph> (%x1: f64[] <- double) {

@@ -6,7 +6,7 @@ and lives on a device, which can be a CPU or a GPU.
 ## Usage
 
 ``` r
-nv_array(data, shape = NULL, dtype = NULL, device = NULL, byrow = FALSE)
+nv_array(data, shape = "auto", dtype = NULL, device = NULL, byrow = FALSE)
 
 nv_scalar(data, dtype = NULL, device = NULL)
 
@@ -21,11 +21,11 @@ nv_matrix(
 
 nv_empty(shape, dtype, device = NULL)
 
-nv_array_like(like, data, shape = NULL, dtype = NULL, device = NULL)
+nv_array_like(like, data, shape = "auto", dtype = NULL, device = NULL)
 
 nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
-nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
+nv_empty_like(like, shape = "auto", dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -46,13 +46,19 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
 
 - shape:
 
-  (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
-  The output shape of the array. The default (`NULL`) is to infer it
-  from the data if possible. Note that `nv_array` interprets length 1
-  vectors as having shape `(1)`. Empty data has no shape to infer – `0`,
-  `c(2, 0)` and `c(0, 3)` all hold no elements – so `shape` is required
-  there. To create a "scalar" with no axes (shape `()`), use `nv_scalar`
-  or explicitly specify `shape = integer()`.
+  (`"auto"` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
+  The shape of the array, e.g. `shp(2, 3)` or `c(2, 3)`. `nv_empty()`
+  requires it. Elsewhere it defaults to `"auto"`, which
+  `nv_array_like()` and `nv_empty_like()` read as `shape(like)` and
+  `nv_array()` infers from `data`: its
+  [`dim()`](https://rdrr.io/r/base/dim.html), or its length for a
+  vector, so a length-1 vector has shape `(1)`. `nv_array()` cannot
+  infer it from a raw payload or from empty data – `0`, `c(2, 0)` and
+  `c(0, 3)` all hold no elements – so `shape` is required there. To
+  create a "scalar" with no axes (shape `()`), use `nv_scalar()` or
+  `shape = shp()`. `NULL`, which [`c()`](https://rdrr.io/r/base/c.html)
+  returns, is not a shape; see
+  [`shp()`](https://r-xla.github.io/anvl/reference/shp.md).
 
 - dtype:
 
@@ -113,9 +119,9 @@ nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
 
   (`AnvlArray` \|
   [`GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md))  
-  An existing array; an R value is an error. Any of `shape` (which
-  `nv_scalar_like()` does not take), `dtype` and `device` that are
-  `NULL` (the default) are taken from `like`.
+  An existing array; an R value is an error. A `shape` left at `"auto"`
+  (which `nv_scalar_like()` does not take) and a `dtype` or `device`
+  left at `NULL` (the defaults) are taken from `like`.
 
 ## Value
 
@@ -272,8 +278,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  -2.7652e-38  3.5115e-41 -2.7603e-38
-#>   3.5115e-41 -2.7651e-38  3.5115e-41
+#>  0 0 0
+#>  0 0 0
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

@@ -23,27 +23,27 @@ the data type fixed by the function name: `nv_float32(data)` is
 ## Usage
 
 ``` r
-nv_bool(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_bool(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int8(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int8(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int16(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int16(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int32(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int32(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int64(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int64(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint8(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint8(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint16(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint16(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint32(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint32(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint64(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint64(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_float32(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_float32(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_float64(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_float64(data, shape = "auto", device = NULL, byrow = FALSE)
 ```
 
 ## Arguments
@@ -66,16 +66,25 @@ nv_float64(data, shape = NULL, device = NULL, byrow = FALSE)
 
 - shape:
 
-  (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
-  The output shape of the array. The default (`NULL`) is to infer it
-  from the data if possible. Note that
-  [`nv_array`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
-  interprets length 1 vectors as having shape `(1)`. Empty data has no
-  shape to infer – `0`, `c(2, 0)` and `c(0, 3)` all hold no elements –
-  so `shape` is required there. To create a "scalar" with no axes (shape
-  `()`), use
-  [`nv_scalar`](https://r-xla.github.io/anvl/reference/AnvlArray.md) or
-  explicitly specify `shape = integer()`.
+  (`"auto"` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
+  The shape of the array, e.g. `shp(2, 3)` or `c(2, 3)`.
+  [`nv_empty()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  requires it. Elsewhere it defaults to `"auto"`, which
+  [`nv_array_like()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  and
+  [`nv_empty_like()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  read as `shape(like)` and
+  [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  infers from `data`: its [`dim()`](https://rdrr.io/r/base/dim.html), or
+  its length for a vector, so a length-1 vector has shape `(1)`.
+  [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  cannot infer it from a raw payload or from empty data – `0`, `c(2, 0)`
+  and `c(0, 3)` all hold no elements – so `shape` is required there. To
+  create a "scalar" with no axes (shape `()`), use
+  [`nv_scalar()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  or `shape = shp()`. `NULL`, which
+  [`c()`](https://rdrr.io/r/base/c.html) returns, is not a shape; see
+  [`shp()`](https://r-xla.github.io/anvl/reference/shp.md).
 
 - device:
 
