@@ -2058,6 +2058,16 @@ describe("nv_top_k", {
     expect_equal(nv_top_k(m, k = 2L, axes = -1L), nv_top_k(m, k = 2L, axes = 2L))
     expect_equal(nv_top_k(m, k = 2L, axes = -2L), nv_top_k(m, k = 2L, axes = 1L))
   })
+
+  it("ranks the leading axes without a transpose", {
+    avals <- list(nv_aval("f32", c(7L, 3L, 2L)))
+    for (axes in list(1L, c(1L, 2L), NULL)) {
+      for (indices in c(TRUE, FALSE)) {
+        g <- trace_fn(function(x) nv_top_k(x, k = 2L, axes = axes, indices = indices), avals)
+        expect_no_match(repr(stablehlo(g)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+      }
+    }
+  })
 })
 
 describe("nv_median / nv_quantile NaN handling", {
