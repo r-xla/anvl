@@ -164,15 +164,15 @@ Version 0.11.2, <a href="http://github.com/jax-ml/jax" class="external-link">htt
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlRngState&gt; key 0x000000000000002a, counter 0x0000000000000003</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlRngState&gt; key 0x000000000000002a, counter 0x0000000000000002</span>
 <span class="r-in"><span><span class="fu">prim_sample_bits</span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.6708e+09</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.6823e+08</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2.8658e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0988e+09</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUui32{2} ] </span>
 <span class="r-in"><span><span class="co"># The counter is incremented by 1</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlRngState&gt; key 0x000000000000002a, counter 0x0000000000000004</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlRngState&gt; key 0x000000000000002a, counter 0x0000000000000003</span>
 <span class="r-in"><span><span class="co"># A random state of its own is drawn from within with_nv_rng_state():</span></span></span>
 <span class="r-in"><span><span class="va">custom_rng</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">custom_rng</span></span></span>
@@ -187,7 +187,7 @@ Version 0.11.2, <a href="http://github.com/jax-ml/jax" class="external-link">htt
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlRngState&gt; key 0x0000000000000001, counter 0x0000000000000001</span>
 <span class="r-in"><span><span class="co"># And does not affect the global RNG</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlRngState&gt; key 0x000000000000002a, counter 0x0000000000000004</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlRngState&gt; key 0x000000000000002a, counter 0x0000000000000003</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -81,7 +81,8 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
-<ul><li>New <code><a href="../reference/skip_if_no_plugin.html">skip_if_no_plugin()</a></code> skips a test when no PJRT plugin is available, as on CRAN. The new “Depending on anvl” article explains its use.</li>
+<ul><li>New <code><a href="../reference/nv_split_rng_states.html">nv_split_rng_states()</a></code> splits <code>n</code> random states off a random state.</li>
+<li>New <code><a href="../reference/skip_if_no_plugin.html">skip_if_no_plugin()</a></code> skips a test when no PJRT plugin is available, as on CRAN. The new “Depending on anvl” article explains its use.</li>
 <li>New <code><a href="../reference/prim_optimization_barrier.html">prim_optimization_barrier()</a></code> returns its input arrays unchanged and keeps the compiler from moving computations across it, so the operations that produce the arrays are not fused with those that use them. <code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> does the same for a single array or a tree of arrays, returning it with the same structure.</li>
 </ul></div>
 </div>

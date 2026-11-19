@@ -82,15 +82,15 @@ Version 0.11.2, <http://github.com/jax-ml/jax>.
 
 ``` r
 nv_get_rng_state()
-#> <AnvlRngState> key 0x000000000000002a, counter 0x0000000000000003
+#> <AnvlRngState> key 0x000000000000002a, counter 0x0000000000000002
 prim_sample_bits(2L, "ui32")
 #> AnvlArray
-#>  1.6708e+09
-#>  3.6823e+08
+#>  2.8658e+09
+#>  3.0988e+09
 #> [ CPUui32{2} ] 
 # The counter is incremented by 1
 nv_get_rng_state()
-#> <AnvlRngState> key 0x000000000000002a, counter 0x0000000000000004
+#> <AnvlRngState> key 0x000000000000002a, counter 0x0000000000000003
 # A random state of its own is drawn from within with_nv_rng_state():
 custom_rng <- nv_rng_state(1L)
 custom_rng
@@ -105,5 +105,5 @@ custom_rng
 #> <AnvlRngState> key 0x0000000000000001, counter 0x0000000000000001
 # And does not affect the global RNG
 nv_get_rng_state()
-#> <AnvlRngState> key 0x000000000000002a, counter 0x0000000000000004
+#> <AnvlRngState> key 0x000000000000002a, counter 0x0000000000000003
 ```

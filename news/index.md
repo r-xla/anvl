@@ -5,6 +5,9 @@
 ### Features
 
 - New
+  [`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md)
+  splits `n` random states off a random state.
+- New
   [`skip_if_no_plugin()`](https://r-xla.github.io/anvl/reference/skip_if_no_plugin.md)
   skips a test when no PJRT plugin is available, as on CRAN. The new
   “Depending on anvl” article explains its use.

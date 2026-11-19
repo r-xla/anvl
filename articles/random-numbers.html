@@ -333,10 +333,22 @@ same seed draws, so <code>nv_rng_state(42L)</code> above drew what
 apart what should not depend on each other, e.g. one per chain of a
 simulation, so that adding a draw to one chain does not change the
 numbers of another.</p>
+<p>You can also generate multiple random states via
+<code><a href="../reference/nv_split_rng_states.html">nv_split_rng_states()</a></code>, which simply generates random values
+and converts them into random states:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">chains</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_split_rng_states.html">nv_split_rng_states</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="va">chains</span></span>
+<span><span class="co">#&gt; [[1]]</span></span>
+<span><span class="co">#&gt; &lt;AnvlRngState&gt; key 0xdcd56e666f0bf614, counter 0x0000000000000000</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; [[2]]</span></span>
+<span><span class="co">#&gt; &lt;AnvlRngState&gt; key 0xa1495f6e9d577f1c, counter 0x0000000000000000</span></span></code></pre></div>
 <p>A compiled function takes a random state as an argument, like any
 other, and makes it the samplers’ random state with
 <code><a href="../reference/local_nv_rng_state.html">local_nv_rng_state()</a></code>:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">rng</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/local_nv_rng_state.html">local_nv_rng_state</a></span><span class="op">(</span><span class="va">rng</span><span class="op">)</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span></span>
@@ -365,7 +377,7 @@ change what the function draws from: only the samplers in the scope of
 draw from it, and every other sampler draws from the global random state
 as usual. A random state the function takes but never draws from is left
 as it is:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">rng</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">rng</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">3L</span><span class="op">)</span></span>
@@ -404,7 +416,7 @@ defect.</p>
 <p>A compiled function draws the same numbers as the same code run
 eagerly, and leaves the global random state where the eager code would
 leave it:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>, <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="op">)</span></span>
@@ -434,7 +446,7 @@ leave it:</p>
 <span><span class="co">#&gt; [ CPUf32{2} ]</span></span></code></pre></div>
 <p>Every sampling call starts from a fresh key, so the size of a draw
 does not change what later draws give:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">3L</span><span class="op">)</span></span>
@@ -453,7 +465,7 @@ does not change what later draws give:</p>
 <span><span class="co">#&gt; [ CPUf32{3} ]</span></span></code></pre></div>
 <p>For the same reason, two draws of one value do not give the values of
 one draw of two values:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 0.7026153 0.4036463</span></span>
@@ -465,7 +477,7 @@ one draw of two values:</p>
 <span><span class="co">#&gt; [ CPUf32{2} ]</span></span></code></pre></div>
 <p>Within one draw, though, a value depends only on its position, so a
 smaller draw is the start of a larger one:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">with_nv_seed</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  0.7026</span></span>
@@ -497,11 +509,11 @@ there are about <span class="math inline">\(2^{32}\)</span> of them in
 total, by the birthday bound: with <span class="math inline">\(n\)</span> sampling calls spread over many random
 states, some two of them share a key with probability about <span class="math inline">\(n^2 / 2^{65}\)</span>, which is <span class="math inline">\(3 \cdot 10^{-4}\)</span> for <span class="math inline">\(10^8\)</span> calls and 3 % for <span class="math inline">\(10^9\)</span>.</p>
 <p>A <em>fork</em> of a random state, which <code><a href="../reference/nv_while.html">nv_while()</a></code>
-makes for its loop body, is a new random state whose key is split off
-the random state’s own. Forking a fork again and again chains keys, each
-derived from the one before, and such a chain runs into a cycle after
-about <span class="math inline">\(2^{32}\)</span> forks, so avoid
-it.</p>
+makes for its loop body, and each random state that
+<code><a href="../reference/nv_split_rng_states.html">nv_split_rng_states()</a></code> returns, is a new random state whose
+key is split off the random state’s own. Splitting such a random state
+again and again chains keys, each derived from the one before, and such
+a chain runs into a cycle after about <span class="math inline">\(2^{32}\)</span> splits, so avoid it.</p>
 </div>
 <div class="section level3">
 <h3 id="without-replacement-almost-with-replacement">Without replacement, almost with replacement<a class="anchor" aria-label="anchor" href="#without-replacement-almost-with-replacement"></a>
@@ -562,7 +574,7 @@ next split, the counter: every sampling call splits the key at the
 counter and increments the counter.</p>
 <p>The figure below shows the keys that the global random state derives
 for this short program:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">3L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span></span>
@@ -581,7 +593,11 @@ blocks, <span class="math inline">\(x^k_0, x^k_1, x^k_2,
 sequence. Splitting takes an entry of a key’s sequence as a new key, and
 generating reads a key’s sequence from its start, one entry per value. A
 sampling call does both, to two different keys: it splits the global key
-and generates from the new key.</p>
+and generates from the new key. <code>nv_split_rng_states(n)</code>
+splits the global key in the same way, but rather than generating from
+the new key, it splits that one too: the first <span class="math inline">\(n\)</span> entries of the new key’s sequence are
+the keys of the <span class="math inline">\(n\)</span> random states it
+returns, each with the counter 0.</p>
 <p><img src="figures/rng-key-sequences.png" class="r-plt" alt="" width="100%"></p>
 <p>For a fixed key, <span class="math inline">\(\mathrm{TF}_k\)</span>
 is a permutation, so the entries of a key’s sequence are distinct: the

@@ -739,6 +739,8 @@ from
   : Set the Global Random State
 - [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
   : Create a Random State
+- [`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md)
+  : Split Random States Off a Random State
 - [`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
   [`with_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md)
   : Draw From a Random State for a Scope

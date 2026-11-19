@@ -270,6 +270,23 @@ draws. Random states of their own keep apart what should not depend on
 each other, e.g. one per chain of a simulation, so that adding a draw to
 one chain does not change the numbers of another.
 
+You can also generate multiple random states via
+[`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md),
+which simply generates random values and converts them into random
+states:
+
+``` r
+
+nv_set_seed(1L)
+chains <- nv_split_rng_states(2L)
+chains
+#> [[1]]
+#> <AnvlRngState> key 0xdcd56e666f0bf614, counter 0x0000000000000000
+#> 
+#> [[2]]
+#> <AnvlRngState> key 0xa1495f6e9d577f1c, counter 0x0000000000000000
+```
+
 A compiled function takes a random state as an argument, like any other,
 and makes it the samplers’ random state with
 [`local_nv_rng_state()`](https://r-xla.github.io/anvl/reference/local_nv_rng_state.md):
@@ -463,10 +480,12 @@ key with probability about \\n^2 / 2^{65}\\, which is \\3 \cdot
 
 A *fork* of a random state, which
 [`nv_while()`](https://r-xla.github.io/anvl/reference/nv_while.md) makes
-for its loop body, is a new random state whose key is split off the
-random state’s own. Forking a fork again and again chains keys, each
+for its loop body, and each random state that
+[`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md)
+returns, is a new random state whose key is split off the random state’s
+own. Splitting such a random state again and again chains keys, each
 derived from the one before, and such a chain runs into a cycle after
-about \\2^{32}\\ forks, so avoid it.
+about \\2^{32}\\ splits, so avoid it.
 
 ### Without replacement, almost with replacement
 
@@ -550,7 +569,10 @@ and the same key always gives the same sequence. Splitting takes an
 entry of a key’s sequence as a new key, and generating reads a key’s
 sequence from its start, one entry per value. A sampling call does both,
 to two different keys: it splits the global key and generates from the
-new key.
+new key. `nv_split_rng_states(n)` splits the global key in the same way,
+but rather than generating from the new key, it splits that one too: the
+first \\n\\ entries of the new key’s sequence are the keys of the \\n\\
+random states it returns, each with the counter 0.
 
 ![](figures/rng-key-sequences.png)
 

@@ -57,6 +57,7 @@ Other rng:
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
 [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
 [`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md),
+[`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md),
 [`nv_uniform`](https://r-xla.github.io/anvl/reference/nv_uniform.md)
 
 ## Examples

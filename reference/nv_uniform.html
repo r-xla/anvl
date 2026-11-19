@@ -213,7 +213,8 @@ random state is advanced regardless.</p>
 <code><a href="nv_rng_state.html">nv_rng_state()</a></code>,
 <code><a href="nv_sample.html">nv_sample()</a></code>,
 <code><a href="nv_sample_int.html">nv_sample_int()</a></code>,
-<code><a href="nv_set_seed.html">nv_set_seed()</a></code></p></div>
+<code><a href="nv_set_seed.html">nv_set_seed()</a></code>,
+<code><a href="nv_split_rng_states.html">nv_split_rng_states()</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -326,8 +327,8 @@ random state is advanced regardless.</p>
 <span class="r-in"><span><span class="va">lower</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span>, <span class="fl">50</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_runif</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, min <span class="op">=</span> <span class="va">lower</span>, max <span class="op">=</span> <span class="va">lower</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   0.6672 20.7215 40.1268</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  10.3543 30.4211 50.0421</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   0.7277 20.7879 40.1817</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  10.2626 30.1107 50.2026</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 </code></pre></div>
     </div>

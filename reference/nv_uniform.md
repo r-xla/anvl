@@ -143,7 +143,8 @@ Other rng:
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
 [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md),
 [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
-[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md)
+[`nv_set_seed()`](https://r-xla.github.io/anvl/reference/nv_set_seed.md),
+[`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md)
 
 ## Examples
 
@@ -256,7 +257,7 @@ with_nv_seed(42L, nv_runif(c(2, 3)))
 lower <- nv_array(matrix(c(0, 10, 20, 30, 40, 50), nrow = 2))
 nv_runif(c(2, 3), min = lower, max = lower + 1)
 #> AnvlArray
-#>   0.6672 20.7215 40.1268
-#>  10.3543 30.4211 50.0421
+#>   0.7277 20.7879 40.1817
+#>  10.2626 30.1107 50.2026
 #> [ CPUf32{2,3} ] 
 ```
