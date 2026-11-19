@@ -227,6 +227,19 @@ graph_pullback <- function(graph, reqs, inputs = NULL) {
   )
 }
 
+# The backward pass of `graph`, whose forward `rebuild_forward_into()` replayed
+# into the current descriptor, for `graph_pullback()`: takes a cotangent per
+# output of `graph`, `NULL` for a zero one, and returns the cotangents of
+# `targets`.
+pull_back <- function(graph, backwards, required_env, targets, out_cts) {
+  out_cts <- Map(\(ct, out) ct %||% SymbolicZero(out$aval), out_cts, graph$outputs)
+  grad_env <- seed_cotangents(graph, required_env, out_cts)
+  grad_env <- run_backward_pass(graph, backwards, required_env, grad_env)
+  lapply(targets, function(target) {
+    grad_env[[target]] %||% zeros(target$aval$dtype, shape(target$aval))
+  })
+}
+
 # The cotangents `out_cts`, one per output of `graph`, as the hashtab(gval ->
 # box) `run_backward_pass()` starts from. Only an output that requires a
 # gradient and whose cotangent is no symbolic zero is seeded, so that no value
