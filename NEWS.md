@@ -1,5 +1,11 @@
 # anvl (development version)
 
+## Breaking changes
+
+* The `"reverse"` rule of a primitive is renamed to `"pullback"`: write
+  `prim_x[["pullback"]]` and `rule_pullback()` instead of
+  `prim_x[["reverse"]]` and `rule_reverse()`.
+
 ## Features
 
 * New `nv_split_rng_states()` splits `n` random states off a random state.

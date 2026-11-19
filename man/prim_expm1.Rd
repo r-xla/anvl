@@ -23,7 +23,7 @@ Element-wise exp(x) - 1, more accurate for small x.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 
