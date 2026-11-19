@@ -231,11 +231,7 @@ The wrapped backward receives:
 
 It returns a list with one gradient per input (or `NULL` if not required).
 
-Note that the reverse rule will only be called if at least one input gradient is required, and if at least one output received a gradient, so both can be assumed.
-
-Zero gradients are symbolic: a `SymbolicZero()` stands for zeros that are never computed.
-A rule returns `SymbolicZero(x)` for an input `x` whose gradient is zero, e.g. one whose derivative is zero wherever it exists, like that of `floor()`; returning `NULL` for an input that requires a gradient is an error.
-A primitive with several outputs receives a `SymbolicZero` in `grads` for an output that received no gradient (`is_symbolic_zero()` tells), and leaves it out rather than computing with zeros: a zero times an infinite derivative would be `NaN`.
+Note that the reverse rule will only be called if at least one input gradient is required, so this can be assumed.
 
 #### Optional: alternative-forward rule
 
