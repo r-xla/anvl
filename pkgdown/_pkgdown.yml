@@ -386,6 +386,7 @@ reference:
     contents:
       - jit
       - gradient
+      - pullback
 
   - title: Backend
     desc: Backend-related functionality and implementations
