@@ -3,7 +3,7 @@
     Code
       assert_shapevec(c(1L, NA_integer_), var_name = "shape")
     Condition
-      Error in `assert_int_param()`:
+      Error in `assert_shapevec()`:
       ! `shape` must not contain missing values.
       x Got c(1, NA).
 
@@ -12,7 +12,7 @@
     Code
       assert_shapevec(Inf, var_name = "shape")
     Condition
-      Error in `assert_int_param()`:
+      Error in `assert_shapevec()`:
       ! `shape` must contain whole numbers in the integer range.
       x Got Inf.
 
@@ -21,7 +21,7 @@
     Code
       assert_shapevec(integer(), min_len = 1L, var_name = "shape")
     Condition
-      Error in `assert_int_param()`:
+      Error in `assert_shapevec()`:
       ! `shape` must have at least 1 entry.
       x Got integer(0).
 
@@ -48,9 +48,20 @@
     Code
       assert_shapevec(NULL, var_name = "shape")
     Condition
-      Error in `assert_shape_not_null()`:
+      Error in `assert_shapevec()`:
       ! `shape` must be a whole number vector.
       x Got NULL.
+      i Use `shp()` for the shape of a scalar.
+
+# resolve_auto_shape() / refuses NULL, pointing at "auto" and `shp()`
+
+    Code
+      resolve_auto_shape(shape, auto = 3L)
+    Condition
+      Error:
+      ! `shape` must be "auto" or a whole number vector.
+      x Got NULL.
+      i Leave it at "auto" to infer it, or use `shp()` for the shape of a scalar.
 
 # assert_fill_value() / reports a NaN as the value it is
 

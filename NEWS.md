@@ -1,8 +1,16 @@
 # anvl (development version)
 
+## Breaking changes
+
+* `NULL` (and so `c()`) is no longer a shape; constructors that infer one default
+  to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
+* `Shape()` is no longer exported; use `shp()`.
+
 ## Features
 
 * New `nv_split_rng_states()` splits `n` random states off a random state.
+* New `shp()` creates a shape from its axis sizes: `shp(2, 3)`, or `shp()` for
+  a scalar.
 * New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
   as on CRAN. The new "Depending on anvl" article explains its use.
 * New `prim_optimization_barrier()` returns its input arrays unchanged and

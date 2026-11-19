@@ -48,7 +48,7 @@ f <- function(x, y, op) {
 To do this, we use `trace_fn()`, which takes in an `R` function and a list of `AbstractArray` inputs that specify the input types.
 
 ```{r}
-aval <- nv_aval("f32", c())
+aval <- nv_aval("f32", shp())
 aval
 graph <- trace_fn(f, list(x = aval, y = aval, op = "mul"))
 graph
@@ -307,7 +307,7 @@ trace_fn(function(x) {
   print(shape(x))
   print(dtype(x))
   x
-}, list(RData(c(), "integer")))
+}, list(RData(shp(), "integer")))
 ```
 
 ```{r, error = TRUE}
@@ -326,13 +326,13 @@ Generally, there are two situations:
 2. None of the inputs to a primitive has a concrete data type.
 
 In the first case, the `RData` object takes the concrete data type (`promotion_rdata_common()`).
-Below, `nv_aval("integer", c())` is equivalent to `RData(c(), "integer")`.
+Below, `nv_aval("integer", shp())` is equivalent to `RData(shp(), "integer")`.
 In the resulting graph, the `%x1` input has the data type it took, and the `<- integer` records that the caller supplies it as an R integer, which the runtime uploads at that data type.
 
 ```{r}
 trace_fn(\(x) {
   prim_add(x, nv_scalar(1L, "i64"))
-}, list(nv_aval("integer", c())))
+}, list(nv_aval("integer", shp())))
 ```
 
 Taking a data type stays within the value's own category, so an R integer meeting an `f32` is an error rather than a promotion -- crossing a category is the job of the `nv_*` layer.
@@ -342,7 +342,7 @@ In the second case, it settles on its default data type:
 ```{r}
 trace_fn(\(x) {
   prim_exp(x)
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
 When the same `RData` input is used at several data types, it is supplied at the narrowest one that holds them all, and each use site converts down from it.
@@ -353,7 +353,7 @@ trace_fn(\(x) {
   prim_add(x, nv_scalar(1L, "i8"))
   prim_add(x, nv_scalar(1L, "i16"))
   prim_add(x, nv_scalar(1L, "i64"))
-}, list(nv_aval("integer", c())))
+}, list(nv_aval("integer", shp())))
 ```
 
 This design tries to balance correctness with hardware compatibility.
@@ -370,7 +370,7 @@ this data type -- which is why `f32` is the default float on pjrt, and why that 
 ```{r}
 trace_fn(\(x) {
   prim_add(x, nv_scalar(1, "f64"))
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
 Otherwise the input is fed at whatever data type its use sites ask for, and a
@@ -380,7 +380,7 @@ side -- settles on the default float:
 ```{r}
 trace_fn(\(x) {
   prim_add(x, 1)
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
 
@@ -391,7 +391,7 @@ In order to prevent this, `prim_convert()` materializes its input at its natural
 ```{r}
 trace_fn(\(x) {
   prim_convert(x, "i32")
-}, list(nv_aval("double", c())))
+}, list(nv_aval("double", shp())))
 ```
 
 This brings an `f64` into a program that never asked for one, which a backend without `f64` support cannot run.
