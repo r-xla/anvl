@@ -359,9 +359,9 @@ prim_transpose <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("reshape")`
-#' The lowering wraps it in two [hlo_transpose()] calls that reverse every
-#' axis, which is what turns stablehlo's row-major reshape into a column-major
-#' one; each is skipped where that side has at most one axis.
+#' The lowering represents an array by the reversed shape, so stablehlo's
+#' row-major reshape of the reversed shapes is exactly a column-major reshape
+#' of the R shapes.
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the elements keep their column-major order; the data type is untouched
@@ -1460,9 +1460,8 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv, c("y", "x")
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("bitcast_convert")`
-#' StableHLO puts the lane axis last, so a width-changing conversion is
-#' lowered with one [hlo_transpose()] that rotates it to the front, or off the
-#' front, depending on the direction.
+#' StableHLO puts the lane axis last; the lowering represents an array by the
+#' reversed shape, so that is the leading R axis.
 #' @seealso [nv_bitcast_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # same width: the bits are reread, the shape stays
@@ -3314,8 +3313,8 @@ prim_optimization_barrier <- new_primitive(
 #'   truncated to its low bits, as JAX's `jax.random.bits()` does by default.
 #'   The value at a position thus does not depend on the number of values
 #'   drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
-#'   `shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` is not a
-#'   draw of `6` filled into `c(2, 3)` in R's column-major order.
+#'   `shape` in column-major order, so a draw of `c(2, 3)` is a draw of `6`
+#'   filled into `c(2, 3)`. JAX fills a shape in row-major order instead.
 #' @references
 #' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
 #' @templateVar primitive_id sample_bits

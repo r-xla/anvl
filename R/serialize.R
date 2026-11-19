@@ -93,11 +93,19 @@ nv_serialize <- function(arrays, con = NULL) {
   }
   checkmate::assert_list(arrays, names = "unique", types = "AnvlArray")
 
-  # TODO(hack): do this properly
+  # A safetensors file holds each tensor's shape and its row-major bytes,
+  # which is how pjrt holds a buffer of the array's own shape. anvl's buffers
+  # hold the reversed shape (see R/lowering-axes.R), so they are rebuilt.
   arrays_unwrapped <- lapply(arrays, function(x) {
     buf <- unwrap_if_array(x)
     if (inherits(buf, "PJRTBuffer")) {
-      return(buf)
+      return(pjrt_buffer(
+        as_raw(x, row_major = TRUE),
+        dtype = as.character(dtype(x)),
+        shape = shape(x),
+        device = xlamisc::device(buf),
+        row_major = TRUE
+      ))
     }
     pjrt_buffer(buf, dtype = as.character(dtype(x)), shape = shape(x))
   })
