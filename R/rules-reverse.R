@@ -581,17 +581,20 @@ prim_if[["reverse"]] <- rule_reverse(forward = function(inputs, params, required
     outputs = fwd$out,
     backward = function(inputs, outputs, grads, params, required) {
       # An output without a cotangent is left out of each branch's backward
-      # pass, and an operand that neither branch gives a cotangent gets none.
-      seeded <- !vapply(grads, is.null, logical(1L))
+      # pass, which does not read its slot, and an operand that neither branch
+      # gives a cotangent gets a symbolic zero.
+      seeded <- !vapply(grads, is_symbolic_zero, logical(1L))
       bwds <- lapply(vjps, \(vjp) vjp$bwd_for(seeded))
       given <- !(bwds[[1L]]$zero & bwds[[2L]]$zero)
-      grads_in <- vector("list", length(inputs))
+      grads_in <- lapply(inputs, SymbolicZero)
       if (!any(given)) {
         return(grads_in)
       }
+      cts <- grads
+      cts[!seeded] <- list(NULL)
       branch_backward <- function(k) {
         bwd <- prune_graph(bwds[[k]]$graph, bwds[[k]]$graph$outputs[given])
-        function() graph_apply(bwd, c(grads, operands, fwd$res[[k]]))
+        function() graph_apply(bwd, c(cts, operands, fwd$res[[k]]))
       }
       grads_in[needed[given] + 1L] <- prim_if(pred, branch_backward(1L), branch_backward(2L))
       grads_in
@@ -710,15 +713,14 @@ prim_scan[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
       # A stacked output without a cotangent is left out of the backward pass
       # of every step. The carry's cotangent changes from step to step, so a
       # final carry without one starts from zeros.
-      out_given <- out_read[!vapply(grads[n_carry + out_read], is.null, logical(1L))]
+      out_given <- out_read[!vapply(grads[n_carry + out_read], is_symbolic_zero, logical(1L))]
       seeded <- rep(TRUE, length(body$outputs))
       seeded[n_carry + setdiff(out_read, out_given)] <- FALSE
       bwd <- vjp$bwd_for(seeded)$graph
-      carry_grads <- Map(\(ct, out) ct %||% zeros_like(out), grads[carry_needed], outputs[carry_needed])
 
       pulled <- prim_scan(
         init = list(
-          carry = carry_grads,
+          carry = lapply(grads[carry_needed], instantiate_cotangent),
           caps = lapply(inputs[cap_needed], zeros_like),
           placeholder = placeholder
         ),
@@ -824,7 +826,9 @@ prim_custom_gradient[["reverse"]] <- rule_reverse(forward = function(inputs, par
   }
   outputs <- graph_desc_add(prim_custom_gradient, args = inputs, params = params, infer_fn = infer_custom_gradient)
   backward <- function(inputs, outputs, grads, params, required) {
-    grads <- instantiate_cotangents(grads, outputs)
+    # `rule` receives a cotangent for every result, as a `custom_vjp()` of JAX
+    # does by default.
+    grads <- lapply(grads, instantiate_cotangent)
     traced <- trace_custom_gradient_rule(
       params$rule,
       args = args,
@@ -953,7 +957,8 @@ custom_forward_pass <- function(forward, args, fn, required, n_inputs) {
 
   backward <- function(inputs, outputs, grads, params, required_inputs) {
     desc <- current_descriptor()
-    grads <- instantiate_cotangents(grads, outputs)
+    # The backward pass receives a cotangent for every result, as `rule` does.
+    grads <- lapply(grads, instantiate_cotangent)
     for (grad in grads) {
       if (is_graph_box(grad)) {
         known[[grad$gnode]] <- TRUE
@@ -985,13 +990,6 @@ custom_forward_pass <- function(forward, args, fn, required, n_inputs) {
     cts
   }
   list(outputs = outputs, backward = backward)
-}
-
-# The cotangents `grads` of the call whose results are `outputs`, with zeros
-# for those without one: a `rule` of `prim_custom_gradient()` receives a
-# cotangent for every result, as JAX's `custom_vjp()` does by default.
-instantiate_cotangents <- function(grads, outputs) {
-  Map(\(ct, out) ct %||% zeros_like(out), grads, outputs)
 }
 
 # Refuses a pass `what` of a `rule` of `prim_custom_gradient()` that read a
@@ -1114,15 +1112,14 @@ prim_print[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
 })
 
 # The derivative is the identity. Apply a barrier to the required cotangents
-# to prevent fusion across this point in the backward pass. An operand whose
-# result received no cotangent gets none.
+# to prevent fusion across this point in the backward pass. A symbolic zero
+# passes through.
 prim_optimization_barrier[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  out <- vector("list", length(inputs))
-  given <- required & !vapply(grads, is.null, logical(1L))
+  given <- required & !vapply(grads, is_symbolic_zero, logical(1L))
   if (any(given)) {
-    out[given] <- prim_optimization_barrier(grads[given])
+    grads[given] <- prim_optimization_barrier(grads[given])
   }
-  out
+  grads
 })
 
 # convert reverse -----------------
@@ -1133,23 +1130,22 @@ prim_optimization_barrier[["reverse"]] <- rule_reverse(function(inputs, outputs,
 # gradient to give back either. Passing the cotangent through regardless would
 # report a gradient of 1 across `nv_convert(nv_convert(x, "i32"), "f64")`,
 # where `prim_floor()` -- the same function on the reals -- correctly reports 0.
-# Otherwise the input gets a zero cotangent, which is left symbolic.
+# Otherwise the input gets a symbolic zero.
 prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   differentiable <- is_dtype_float(dtype(x)) && is_dtype_float(dtype(outputs[[1L]]))
   list(
-    if (required[[1L]] && differentiable) prim_convert(grads[[1L]], dtype(x))
+    if (differentiable) prim_convert(grads[[1L]], dtype(x)) else SymbolicZero(x)
   )
 })
 
 # zero gradients --------------------------
 # A primitive whose derivative is zero wherever it exists (ignoring the points
-# where it does not), or whose output is not a float, gives every input a zero
-# cotangent, which is left symbolic: nothing computes it, and a value that only
-# feeds such a primitive receives no cotangent from it (see
-# `run_backward_pass()`).
+# where it does not), or whose output is not a float, gives every input a
+# symbolic zero: nothing computes it, and a value that only feeds such a
+# primitive receives no cotangent from it (see `run_backward_pass()`).
 reverse_zero <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  vector("list", length(inputs))
+  lapply(inputs, SymbolicZero)
 })
 
 prim_eq[["reverse"]] <- reverse_zero
@@ -1325,9 +1321,9 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params, requir
       # (perm, grad_1, ..., grad_K) ascending. Each carried output is then
       # `grad_j` permuted by argsort(perm) = sigma, which is exactly the
       # gradient for the j-th input. An input whose sorted output received no
-      # cotangent gets none.
-      given <- which(required & !vapply(grads, is.null, logical(1L)))
-      out <- vector("list", length(inputs))
+      # cotangent gets a symbolic zero.
+      given <- which(required & !vapply(grads, is_symbolic_zero, logical(1L)))
+      out <- lapply(inputs, SymbolicZero)
       if (!length(given)) {
         return(out)
       }
@@ -2025,7 +2021,7 @@ prim_convolution[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   # An empty cotangent carries no gradient and would only form degenerate
   # convolutions.
   if (any(shape(grad) == 0L)) {
-    return(list(NULL, NULL))
+    return(list(SymbolicZero(x), SymbolicZero(kernel)))
   }
 
   x_extent <- dilate_shape(shape(x)[params$x_spatial_axes], params$x_dilation)

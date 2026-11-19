@@ -126,8 +126,9 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`. Zero cotangents
-  are symbolic: a rule returns `NULL` for an input whose cotangent is zero rather than a
-  `zeros_like()`, and a primitive with several outputs receives `NULL` for one that got no cotangent.
+  are symbolic: a rule returns `SymbolicZero(x)` for an input whose cotangent is zero rather than a
+  `zeros_like()`, and a primitive with several outputs receives a `SymbolicZero` for one that got no
+  cotangent. `NULL` is only for an input that requires no gradient; for one that does, it is an error.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
 ## Side Effects

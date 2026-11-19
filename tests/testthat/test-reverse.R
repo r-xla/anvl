@@ -239,6 +239,39 @@ describe("gradient", {
     }
     expect_equal(as.numeric(jit(gradient(f))(nv_scalar(1, "f64"))$x), 8)
   })
+
+  it("refuses a reverse rule that returns NULL for an input that requires a gradient", {
+    prim_twice <- new_primitive(
+      "twice_test",
+      function(x) graph_desc_add(self, list(x = x), infer_fn = function(x) list(x))[[1L]],
+      register = FALSE
+    )
+    prim_twice[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+      list(NULL)
+    })
+    f <- function(x) prim_twice(x)
+    expect_error(
+      jit(gradient(f))(nv_scalar(1, "f64")),
+      "returned `NULL` for input 1, which requires a gradient"
+    )
+  })
+})
+
+describe("SymbolicZero", {
+  it("holds the abstract array of the value it stands for", {
+    expect_equal(SymbolicZero(nv_aval("f32", c(2L, 3L)))$aval, AbstractArray("f32", c(2L, 3L)))
+    expect_equal(SymbolicZero(nv_array(1:3, dtype = "i32"))$aval, AbstractArray("i32", 3L))
+    expect_equal(
+      format(SymbolicZero(nv_aval("f32", c(2L, 3L)))),
+      "SymbolicZero(AbstractArray(dtype=f32, shape=2x3))"
+    )
+  })
+
+  it("is told apart from an array by is_symbolic_zero()", {
+    expect_true(is_symbolic_zero(SymbolicZero(nv_aval("f32", 2L))))
+    expect_false(is_symbolic_zero(nv_array(c(0, 0), dtype = "f32")))
+    expect_false(is_symbolic_zero(NULL))
+  })
 })
 
 test_that("gradients are present even if they don't influence the output", {

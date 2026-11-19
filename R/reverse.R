@@ -59,13 +59,13 @@ prepare_gradient_args <- function(args, wrt) {
 #' Pass `backward` when the primitive's forward statement can run unmodified, which
 #' covers most use cases. It has the signature
 #' `function(inputs, outputs, grads, params, required)` and returns a `list`
-#' with one entry per input: that input's gradient, or `NULL` where
-#' `required` says it is not needed.
+#' with one entry per input: that input's gradient, a [`SymbolicZero()`] where
+#' that gradient is zero, or `NULL` where `required` says it is not needed.
 #'
-#' Zero gradients are symbolic: `NULL` stands for zeros that nothing computes.
-#' A call none of whose outputs received a gradient is skipped, so `grads`
-#' holds `NULL` only for some of the outputs of a primitive with several, and
-#' the rule may return `NULL` for an input whose gradient is zero.
+#' Zero gradients are symbolic: a [`SymbolicZero()`] stands for zeros that
+#' nothing computes. A call none of whose outputs received a gradient is
+#' skipped, so `grads` holds a `SymbolicZero` only for some of the outputs of a
+#' primitive with several.
 #'
 #' Pass `forward` when a slightly different forward pass enables a more
 #' efficient backward pass. It has the signature
@@ -88,6 +88,11 @@ prepare_gradient_args <- function(args, wrt) {
 #' rule_reverse(function(inputs, outputs, grads, params, required) {
 #'   list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #' })
+#'
+#' # the rule of prim_floor(), whose derivative is zero
+#' rule_reverse(function(inputs, outputs, grads, params, required) {
+#'   list(SymbolicZero(inputs[[1L]]))
+#' })
 #' @seealso [`graph_gradient()`]
 #' @export
 rule_reverse <- function(backward = NULL, forward = NULL) {
@@ -103,6 +108,50 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
     list(forward = forward, backward = backward),
     class = "anvl_rule_reverse"
   )
+}
+
+#' @title Symbolic Zero
+#' @description
+#' The zero gradient of a value in a reverse rule (see [`rule_reverse()`]): it
+#' stands for an array of zeros that nothing computes. A value whose gradient
+#' is a symbolic zero adds nothing to the backward pass, so, unlike an array of
+#' zeros, it cannot become a `NaN` where it meets an infinite derivative, such
+#' as that of `exp()` at 1000.
+#' @param x (arrayish | [`AbstractArray`] | `any`)\cr
+#'   For `SymbolicZero()`, the value whose gradient is zero, or its abstract
+#'   array. For `is_symbolic_zero()`, the object to test.
+#' @return `SymbolicZero()` returns a `SymbolicZero`: a list holding `aval`, the
+#'   [`AbstractArray`] of the zeros it stands for. `is_symbolic_zero()` returns
+#'   a `logical(1)`.
+#' @examples
+#' z <- SymbolicZero(nv_aval("f32", c(2L, 3L)))
+#' z
+#' is_symbolic_zero(z)
+#' @export
+SymbolicZero <- function(x) {
+  structure(list(aval = to_abstract(x, pure = TRUE)), class = "SymbolicZero")
+}
+
+#' @rdname SymbolicZero
+#' @export
+is_symbolic_zero <- function(x) {
+  inherits(x, "SymbolicZero")
+}
+
+#' @export
+format.SymbolicZero <- function(x, ...) {
+  sprintf("SymbolicZero(%s)", format(x$aval))
+}
+
+#' @export
+print.SymbolicZero <- function(x, ...) {
+  cat(format(x), "\n")
+  invisible(x)
+}
+
+# The array of zeros `ct` stands for if it is a symbolic zero, else `ct`.
+instantiate_cotangent <- function(ct) {
+  if (is_symbolic_zero(ct)) zeros(ct$aval$dtype, shape(ct$aval)) else ct
 }
 
 #' @title Transform a Graph to Its Gradient
@@ -176,16 +225,16 @@ graph_value_and_grad <- function(graph, wrt, inputs = NULL) {
   )
 }
 
-# The cotangents `out_cts`, one per output of `graph` or `NULL` for a zero one,
-# as the hashtab(gval -> box) `run_backward_pass()` starts from. Only an output
-# that requires a gradient is seeded, so that no value the reverse rules leave
-# out gains a cotangent.
+# The cotangents `out_cts`, one per output of `graph`, as the hashtab(gval ->
+# box) `run_backward_pass()` starts from. Only an output that requires a
+# gradient and whose cotangent is no symbolic zero is seeded, so that no value
+# the reverse rules leave out gains a cotangent.
 seed_cotangents <- function(graph, required_env, out_cts) {
   grad_env <- hashtab()
   for (i in seq_along(graph$outputs)) {
     out <- graph$outputs[[i]]
     ct <- out_cts[[i]]
-    if (is.null(ct) || is_graph_literal(out) || !isTRUE(required_env[[out]])) {
+    if (is_symbolic_zero(ct) || is_graph_literal(out) || !isTRUE(required_env[[out]])) {
       next
     }
     # The same value can be returned more than once, e.g. a branch
@@ -378,8 +427,9 @@ pull_back_graph <- function(graph, backwards, required_env, targets, seeded) {
   desc <- local_descriptor()
   out_cts <- Map(
     function(out, seed) {
-      ct <- register_input(desc, GraphValue(aval = AbstractArray(dtype = out$aval$dtype, shape = out$aval$shape)))
-      if (seed) ct
+      aval <- AbstractArray(dtype = out$aval$dtype, shape = out$aval$shape)
+      ct <- register_input(desc, GraphValue(aval = aval))
+      if (seed) ct else SymbolicZero(aval)
     },
     graph$outputs,
     seeded
@@ -591,16 +641,18 @@ graph_apply <- function(graph, inputs) {
 # graph, or only something whose derivative is zero, such as a comparison, a
 # loop that only counts, or `prim_floor()`. Differentiating it anyway would
 # multiply zeros into its derivative, which is a NaN wherever that derivative
-# is infinite, e.g. that of `exp()` at 1000. A rule receives `NULL` for an
-# output without a cotangent -- only a call with more than one output can have
-# one -- and can return `NULL` for an input whose cotangent is zero.
+# is infinite, e.g. that of `exp()` at 1000. A rule receives a `SymbolicZero`
+# for an output without a cotangent -- only a call with more than one output
+# can have one -- and returns one for an input whose cotangent is zero.
 run_backward_pass <- function(graph, backwards, required_env, grad_env) {
   for (i in rev(seq_along(graph$statements))) {
     call <- graph$statements[[i]]
     output_grads <- lapply(call$outputs, \(output) grad_env[[output]])
-    if (all(vapply(output_grads, is.null, logical(1L)))) {
+    received <- !vapply(output_grads, is.null, logical(1L))
+    if (!any(received)) {
       next
     }
+    output_grads[!received] <- lapply(call$outputs[!received], \(output) SymbolicZero(output$aval))
     input_required <- vapply(
       call$inputs,
       function(x) required_env[[x]] %||% FALSE,
@@ -619,11 +671,17 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     }
 
     # An input that requires no gradient gets none: the rule returns `NULL`
-    # for it, as for one whose cotangent is zero, and nothing is accumulated.
+    # for it, and nothing is accumulated, as for a symbolic zero.
     input_grads <- bwd$fn(bwd$inputs, bwd$outputs, output_grads, bwd$params, input_required)
     for (j in which(input_required)) {
       ct <- input_grads[[j]]
       if (is.null(ct)) {
+        cli_abort(c(
+          "The reverse rule of primitive {.field {call$primitive$name}} returned `NULL` for input {j}, which requires a gradient.", # nolint
+          i = "Return {.code SymbolicZero(x)} for a gradient that is zero."
+        ))
+      }
+      if (is_symbolic_zero(ct)) {
         next
       }
       input_gval <- call$inputs[[j]]
