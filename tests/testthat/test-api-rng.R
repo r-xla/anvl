@@ -327,4 +327,9 @@ describe("box_muller", {
       expect_equal(z, c(0, 0, 0, sqrt(-2 * log(0.5))), tolerance = 1e-6)
     }
   })
+
+  it("keeps the random bits apart from the sine and cosine", {
+    mlir <- repr(stablehlo(trace_fn(function() nv_rnorm(4L), list()))[[1L]])
+    expect_length(gregexpr("stablehlo.optimization_barrier", mlir, fixed = TRUE)[[1L]], 1L)
+  })
 })
