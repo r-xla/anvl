@@ -23,7 +23,7 @@ Element-wise cosine.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 \item \code{pushforward}
 }
 }

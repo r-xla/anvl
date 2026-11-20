@@ -13,16 +13,19 @@
 #'   The name of the primitive, without the `prim_` prefix.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
+#' @template param_elementwise
 #' @return (`AnvlPrimitiveDef`)
 #' @export
-AnvlPrimitiveDef <- function(name, subgraphs = character()) {
+AnvlPrimitiveDef <- function(name, subgraphs = character(), elementwise = FALSE) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
+  checkmate::assert_flag(elementwise)
 
   env <- new.env(parent = emptyenv())
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
+  env$elementwise <- elementwise
 
   structure(env, class = "AnvlPrimitiveDef")
 }
@@ -105,6 +108,7 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #'   it has a `quickr` rule. The other backends only read the rules of the
 #'   primitive itself. This does not bind the result to a `prim_<name>`
 #'   variable; assign it yourself.
+#' @template param_elementwise
 #' @return (`AnvlPrimitive`)\cr
 #'   The function the primitive is called through, of class
 #'   `c("AnvlPrimitive", "JitFunction")`. Its [`AnvlPrimitiveDef`] is
@@ -117,14 +121,15 @@ new_primitive <- function(
   fn,
   subgraphs = character(),
   static = character(),
-  register = TRUE
+  register = TRUE,
+  elementwise = FALSE
 ) {
   checkmate::assert_string(name)
   checkmate::assert_function(fn)
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
-  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs)
+  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs, elementwise = elementwise)
 
   # Bind `self` (the AnvlPrimitiveDef) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —

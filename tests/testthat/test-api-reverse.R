@@ -11,7 +11,7 @@ test_that("nv_mean", {
 
 describe("the default integer", {
   it("does not disturb a gradient that scatters through those indices", {
-    # `prim_top_k` and `prim_cummax` route their reverse rule through
+    # `prim_top_k` and `prim_cummax` route their pullback rule through
     # `prim_scatter` with the forward indices, so a wider index data type has
     # to survive the scatter.
     x <- nv_array(c(3, 1, 4, 1, 5, 9))

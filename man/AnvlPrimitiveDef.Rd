@@ -4,7 +4,7 @@
 \alias{AnvlPrimitiveDef}
 \title{Primitive Definition}
 \usage{
-AnvlPrimitiveDef(name, subgraphs = character())
+AnvlPrimitiveDef(name, subgraphs = character(), elementwise = FALSE)
 }
 \arguments{
 \item{name}{(\code{character(1)})\cr
@@ -12,6 +12,13 @@ The name of the primitive, without the \code{prim_} prefix.}
 
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs.}
+
+\item{elementwise}{(\code{logical(1)})\cr
+Whether the primitive is elementwise: each element of its single result is
+computed from the elements at the same position of its operands alone,
+where a scalar operand is broadcast, at the operands' data type or as a
+boolean. Its derivative is then diagonal, and its \code{pushforward} rule is
+derived from its \code{pullback} rule.}
 }
 \value{
 (\code{AnvlPrimitiveDef})

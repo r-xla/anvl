@@ -50,13 +50,7 @@ nv_extremal_value <- function(dtype, which, float_value, bool_value, device) {
   if (dtype == "bool") {
     return(nv_scalar(bool_value, dtype = "bool", device = device))
   }
-  nv_scalar(pjrt_buffer(
-    globals$ranges_raw[[dtype]][[which]],
-    dtype = dtype,
-    device = device,
-    row_major = TRUE,
-    shape = integer()
-  ))
+  nv_scalar(globals$ranges_raw[[dtype]][[which]], dtype = dtype, device = device)
 }
 
 without <- function(x, indices) {
@@ -211,6 +205,10 @@ col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
 }
 
+row_major_layouts <- function(...) {
+  lapply(list(...), \(naxes) rev(col_major_layout(naxes)))
+}
+
 # Transpose the matrix an array's last two axes form, leaving any leading batch
 # axes in place -- what `t()` means for the batched operands `nv_matmul()`
 # takes. `nv_aperm()` reverses *every* axis, which would put a batch axis
@@ -222,19 +220,4 @@ transpose_matrix_axes <- function(x) {
     return(x)
   }
   nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
-}
-
-# Where `prim_bitcast_convert()` puts the axis holding an element's pieces when
-# the two data types differ in width. StableHLO puts it last, where the pieces
-# of one element sit next to each other under its row-major reading; anvl is
-# column-major, so the axis belongs first instead. Returns the number of pieces
-# and which way the conversion goes, so the shape rule and the lowering agree.
-bitcast_lane <- function(dtype_in, dtype_out) {
-  width_in <- dtype_width(as_dtype(dtype_in))
-  width_out <- dtype_width(as_dtype(dtype_out))
-  list(
-    pieces = as.integer(max(width_in, width_out) / min(width_in, width_out)),
-    splits = width_in > width_out,
-    joins = width_in < width_out
-  )
 }

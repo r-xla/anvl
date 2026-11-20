@@ -1,14 +1,50 @@
 # `assert_int_param()` reads `NULL` as the empty set of axes, which is how a
 # caller spells `c()`. A shape is not that, so the helpers that resolve one say
-# so first.
-assert_shape_not_null <- function(x, arg) {
+# so first. `hint` is an extra line for the message.
+assert_shape_not_null <- function(x, arg, hint = NULL, call = rlang::current_env()) {
   if (is.null(x)) {
-    cli_abort(c(
-      "{.arg {arg}} must be a whole number vector.",
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        "{.arg {arg}} must be a whole number vector.",
+        x = "Got {value_repr(x)}.",
+        hint
+      ),
+      call = call
+    )
   }
   invisible(NULL)
+}
+
+shape_null_hint <- c(i = "Use {.code shp()} for the shape of a scalar.")
+
+# A `shape` argument of a constructor that can also work the shape out itself:
+# `"auto"` asks it to, and `auto` is that shape. It is only evaluated then, and
+# in the caller's frame, so an error it raises names the constructor. Anything
+# else is the shape, which `NULL` is not -- `c()` evaluates to `NULL`, so
+# reading it as the empty shape would turn an accidental `NULL` (the `dim()` of
+# a vector) into a scalar.
+resolve_auto_shape <- function(
+  shape,
+  auto,
+  min_len = 0L,
+  arg = rlang::caller_arg(shape),
+  call = rlang::caller_env()
+) {
+  force(arg)
+  if (identical(shape, "auto")) {
+    return(auto)
+  }
+  if (is.null(shape)) {
+    cli_abort(
+      c(
+        "{.arg {arg}} must be {.val auto} or a whole number vector.",
+        x = "Got {value_repr(shape)}.",
+        i = "Leave it at {.val auto} to infer it, or use {.code shp()} for the shape of a scalar."
+      ),
+      call = call
+    )
+  }
+  assert_shapevec(shape, min_len = min_len, var_name = arg, call = call)
 }
 
 #' @title Assert Shape Vector
@@ -20,10 +56,12 @@ assert_shape_not_null <- function(x, arg) {
 #'   Minimum number of axes. Default is 0.
 #' @param var_name (`character(1)`)\cr
 #'   Name of the variable to use in error messages.
+#' @param call (`environment`)\cr
+#'   The frame an error is reported for.
 #' @return (`integer()`)\cr
 #'   `x` as an integer vector.
 #' @keywords internal
-assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
+assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x), call = rlang::current_env()) {
   # Before `x` is rebound below: `caller_arg()` deparses whatever `x` holds
   # when it is first forced, so an unforced default would name the value
   # (`-2L`) rather than the argument (`shape`).
@@ -31,22 +69,32 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   # `NULL` is refused rather than read as the empty shape `assert_int_param()`
   # takes it for: a shape is not a set of axes a caller spells with `c()`, and
   # silently building a scalar out of a forgotten argument hides the mistake.
-  assert_shape_not_null(x, var_name)
-  x <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL)
+  assert_shape_not_null(x, var_name, shape_null_hint, call = call)
+  # A `Shape` is its integer vector with a class attached.
+  if (is_shape(x)) {
+    x <- unclass(x)
+  }
+  x <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL, call = call)
   if (any(x < 0L)) {
-    cli_abort(c(
-      "{.arg {var_name}} must not contain a negative axis size.",
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        "{.arg {var_name}} must not contain a negative axis size.",
+        x = "Got {value_repr(x)}."
+      ),
+      call = call
+    )
   }
   # XLA counts an array's elements in an int64. A shape past that -- easy to
   # type, `1:1000` is one -- is otherwise refused at compile time with a raw
   # "overflow in static extent product" listing every axis size.
   if (prod(as.double(x)) >= 2^63) {
-    cli_abort(c(
-      "{.arg {var_name}} must describe an array with fewer than 2^63 elements.",
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        "{.arg {var_name}} must describe an array with fewer than 2^63 elements.",
+        x = "Got {value_repr(x)}."
+      ),
+      call = call
+    )
   }
   as.integer(x)
 }
@@ -106,7 +154,7 @@ resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
 # Returns the resolved shape as an integer vector.
 resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
   force(arg)
-  assert_shape_not_null(shape, arg)
+  assert_shape_not_null(shape, arg, shape_null_hint)
   shape <- assert_int_param(shape, arg)
   invalid <- shape < -1L
   if (any(invalid)) {

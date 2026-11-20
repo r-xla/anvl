@@ -27,7 +27,7 @@ Element-wise maximum of two arrays, like \code{\link[base:pmax]{base::pmax()}}.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 \item \code{pushforward}
 }
 }

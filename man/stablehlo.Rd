@@ -78,6 +78,14 @@ XLA executable with \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}}.
 
 The rule for translating a primitive to stablehlo is \verb{prim_<name>[["stablehlo"]]}.
 
+The function works on every array with its axes reversed: an array of R
+shape \verb{(d1, ..., dn)} is an XLA array of shape \verb{(dn, ..., d1)}, whose
+row-major bytes are the array's column-major ones. So the types in the
+program show the reversed shapes (an array of shape \code{c(2, 3)} is a
+\verb{tensor<3x2xf32>}), and an op addresses R axis \code{i} of an \code{n}-axis array as
+XLA dimension \code{n - i} (see the axis reversal section of
+the \href{https://r-xla.github.io/anvl/articles/internals.html}{Internals} article).
+
 The arguments of the resulting function are, in this order: the graph's
 constants, the graph's inputs, the inputs of the graph's side effects (such
 as the key and the counter of the global random state, see \code{\link[=nv_set_seed]{nv_set_seed()}}),

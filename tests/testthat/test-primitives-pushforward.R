@@ -13,6 +13,9 @@ unif <- function(lower, upper) {
 off_step <- function(lower, upper) {
   function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE) + runif(prod(shape), 0.1, 0.4), shape)
 }
+ints <- function(lower, upper) {
+  function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE), shape)
+}
 coin <- function() {
   function(shape) shaped(runif(prod(shape)) < 0.5, shape)
 }
@@ -91,7 +94,16 @@ pushforward_cases <- list(
   ge = binary_case(),
   lt = binary_case(),
   le = binary_case(),
-  is_finite = pushforward_case(list(x = unif(-2, 2)))
+  is_finite = pushforward_case(list(x = unif(-2, 2))),
+  # integer and boolean operations, whose result has no tangent
+  and = pushforward_case(list(lhs = coin(), rhs = coin()), wrt = character()),
+  or = pushforward_case(list(lhs = coin(), rhs = coin()), wrt = character()),
+  xor = pushforward_case(list(x = coin(), y = coin()), wrt = character()),
+  not = pushforward_case(list(x = coin()), wrt = character()),
+  shift_left = pushforward_case(list(x = ints(0L, 7L), shift = ints(0L, 3L)), wrt = character()),
+  shift_right_logical = pushforward_case(list(x = ints(0L, 7L), shift = ints(0L, 3L)), wrt = character()),
+  shift_right_arithmetic = pushforward_case(list(x = ints(0L, 7L), shift = ints(0L, 3L)), wrt = character()),
+  popcnt = pushforward_case(list(x = ints(0L, 100L)), wrt = character())
 )
 
 # Calls with a scalar operand, named `<primitive>/<scalar operands>`. The
@@ -148,7 +160,7 @@ central_difference <- function(fn, x, t, h) {
 #   - forward-over-reverse: the tangent of the gradient against a central
 #     difference of the gradient, which needs a pushforward rule for whatever
 #     the reverse rule computes with -- not yet with a scalar operand, whose
-#     cotangent the reverse rule sums with `prim_sum()`;
+#     cotangent the pullback rule sums with `prim_sum()`;
 #   - at f32, that the tangent keeps the data type.
 # An output that is not a float has no derivative, and so no tangent.
 check_pushforward_rule <- function(name, case) {
@@ -156,7 +168,18 @@ check_pushforward_rule <- function(name, case) {
   shape <- c(2L, 3L)
   args <- Map(\(sample, nm) sample(if (nm %in% case$scalar) integer() else shape), case$args, names(case$args))
   arrays_at <- function(dtype) {
-    lapply(args, \(a) anvl_array(a, dtype = if (is.logical(a)) "bool" else dtype))
+    lapply(args, \(a) {
+      anvl_array(
+        a,
+        dtype = if (is.logical(a)) {
+          "bool"
+        } else if (is.integer(a)) {
+          "i32"
+        } else {
+          dtype
+        }
+      )
+    })
   }
   directions <- lapply(case$wrt, \(nm) shaped(rnorm(length(args[[nm]])), dim(args[[nm]])))
   names(directions) <- case$wrt

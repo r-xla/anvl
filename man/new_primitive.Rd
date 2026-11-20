@@ -10,7 +10,8 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
-  register = TRUE
+  register = TRUE,
+  elementwise = FALSE
 )
 }
 \arguments{
@@ -37,6 +38,13 @@ primitive created with \code{register = FALSE} is rejected on quickr even if
 it has a \code{quickr} rule. The other backends only read the rules of the
 primitive itself. This does not bind the result to a \verb{prim_<name>}
 variable; assign it yourself.}
+
+\item{elementwise}{(\code{logical(1)})\cr
+Whether the primitive is elementwise: each element of its single result is
+computed from the elements at the same position of its operands alone,
+where a scalar operand is broadcast, at the operands' data type or as a
+boolean. Its derivative is then diagonal, and its \code{pushforward} rule is
+derived from its \code{pullback} rule.}
 }
 \value{
 (\code{AnvlPrimitive})\cr

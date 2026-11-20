@@ -22,7 +22,8 @@ Element-wise population count (number of set bits).
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{pushforward}
 }
 }
 

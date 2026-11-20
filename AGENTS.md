@@ -31,8 +31,8 @@ config above. anvl-specific:
     the `default-dtypes` workflow runs it so that anything hardcoding `f32` / `i32` where it should
     read `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the override.
-- anvl tracks the **dev** versions of its r-xla dependencies:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))`.
+- anvl tracks the **dev** versions of its r-xla dependencies, pjrt from its `develop` branch:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))`.
 
 ## Two-Layer API
 
@@ -125,13 +125,13 @@ another backend is an error. Only helpers *about* the backend name one (`install
 Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
-- **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
+- **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
 - **`pushforward`** -- Forward-mode rules for `pushforward()` (engine in `R/pushforward.R`): a
   `function(inputs, outputs, tangents, params)` returning one tangent per output, `NULL` for a
-  zero. A `NULL` input tangent is a zero too. An elementwise primitive does not write its
-  `reverse` and `pushforward` rules separately: `set_elementwise_derivative()` in
-  `R/rules-elementwise.R` derives both from one function per input that multiplies by the
-  partial derivative, which is valid because that derivative is diagonal.
+  zero. A `NULL` input tangent is a zero too. A primitive created with
+  `new_primitive(elementwise = TRUE)` gets its pushforward rule from its pullback rule in
+  `R/rules-pushforward.R`: its derivative is diagonal, so the pullback rule applied to a tangent
+  gives that tangent's pushforward.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
 ## Side Effects
@@ -160,9 +160,21 @@ Wrap every function whose body issues **more than one operation**.
 
 Anvl's elementwise operations (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …, and the elementwise primitives beneath them) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises errors like *"`lhs` and `rhs` must have the same shape, unless one of them is a scalar. ... Use `nv_broadcast_arrays()` for general broadcasting."*
 
-The scalar broadcast belongs to the elementwise primitives themselves: the trace records `mul(%x, 2:f32)`, not a `broadcast_in_axes` first. Their inference rules take the shape of the operands that are not scalars (`infer_elementwise_shape()`), their StableHLO rules broadcast a scalar operand while lowering (`elementwise_rule()`, `hlo_broadcast_scalar()`), and their reverse rules sum the gradient of a scalar operand back down (`unbroadcast()`).
+The scalar broadcast belongs to the elementwise primitives themselves: the trace records `mul(%x, 2:f32)`, not a `broadcast_in_axes` first. Their inference rules take the shape of the operands that are not scalars (`infer_elementwise_shape()`), their StableHLO rules broadcast a scalar operand while lowering (`elementwise_rule()`, `hlo_broadcast_scalar()`), and their pullback rules sum the gradient of a scalar operand back down (`unbroadcast()`).
 
 When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
+
+## Axis Reversal
+
+The StableHLO lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape
+`(dn, ..., d1)`, and the pjrt backend stores it that way: R's column-major bytes are XLA's row-major
+bytes of the reversed shape, so transfers copy them as they are. A pjrt `AnvlArray` holds a buffer
+whose dims are `rev(x$shape)`; `x$shape` stays the R shape. R axis `i` of an `n`-axis array is XLA
+dimension `n - i`, so R axis 1 is the contiguous (minor) one and the trailing R axes are XLA's major
+dimensions, where XLA's kernels want batch axes. Every lowering rule maps its axis numbers, shapes and
+per-axis vectors with the helpers in `R/lowering-axes.R`; `at2vt()` reverses every type, so
+`shape()` of a `FuncValue` is the XLA shape. Dumped HLO and XLA's error messages show the reversed
+shapes.
 
 ## Graph Tracing
 
@@ -181,7 +193,7 @@ The trace under way is a `GraphDescriptor` (`current_descriptor()`). A function 
 Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
-- `tests/testthat/test-primitives-reverse.R` -- sources `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-pullback.R` -- sources `inst/extra-tests/test-primitives-pullback-torch.R`
 - `tests/testthat/test-primitives-pushforward.R` -- an autotest: every primitive with a
   pushforward rule needs an entry in `pushforward_cases` (inputs from its domain, the arguments to
   differentiate), and each entry is checked against central differences, against the pullback

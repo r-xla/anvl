@@ -896,7 +896,7 @@ sub_exact_prod <- function(c, a, b) {
 #
 # Used where the derivative along this path should be zero (e.g. for a step
 # function) and to keep a gradient from reaching a `nv_while()` loop, which has
-# no gradient rule. The round trip through an integer type suffices for both
+# no pullback rule. The round trip through an integer type suffices for both
 # cases.
 stop_gradient <- function(x) {
   float_dtype <- dtype(x)
@@ -954,7 +954,7 @@ skip_unless <- function(pending, init, compute) {
 # sum all entries of `g` to combine their contributions to the scalar input.
 # Otherwise, `g` already has the right shape and is simply returned unchanged.
 sum_like <- function(g, like) {
-  if (length(shape(like)) == length(shape(g))) g else nv_sum(g)
+  if (naxes(like) == naxes(g)) g else nv_sum(g)
 }
 
 # Computes log(x / y) for positive normal x and y, rescaling y by a power
@@ -1938,7 +1938,7 @@ dpois_log_raw <- function(x, lambda) {
 # current term as term / den, and divided out once at the end. Power-of-two
 # scaling keeps them in range without rounding from the scaling itself.
 #
-# Inputs must not carry gradients: `nv_while()` has no gradient rule.
+# Inputs must not carry gradients: `nv_while()` has no pullback rule.
 poisson_series <- function(k, lambda, upper, is_f32) {
   tol <- if (is_f32) 2^-24 else 2^-53
   # Tuned on the CPU backend for lambda from 1 to 150 (a trip costs about as
@@ -2245,11 +2245,11 @@ ppois_differentiable <- function(k, lambda, lower_tail, log_p, is_f32) {
   prim_custom_gradient(
     list(k = k, lambda = lambda),
     fn = function(k, lambda) ppois_raw(k, lambda, lower_tail, log_p, is_f32)$value,
-    rule = rule_reverse(forward = function(inputs, params, required) {
+    rule = rule_pullback(forward = function(inputs, params, required) {
       k <- inputs$k
       lambda <- inputs$lambda
       # Higher derivatives also differentiate this forward pass. Stop gradients
-      # through lambda here because the loops have no gradient rule;
+      # through lambda here because the loops have no pullback rule;
       # `ppois_slope()` supplies the higher derivatives.
       raw <- ppois_raw(k, stop_gradient(lambda), lower_tail, log_p, is_f32, grad = required[["lambda"]])
       backward <- function(inputs, outputs, grads, params, required_inputs) {

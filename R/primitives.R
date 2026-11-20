@@ -77,8 +77,6 @@ prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
     assert_fill_value(value, dtype)
-    # `shape = c()` is how a caller asks for a scalar.
-    shape <- shape %||% integer()
     shape <- assert_shapevec(shape)
     graph_desc_add(
       self,
@@ -112,7 +110,7 @@ prim_fill <- new_primitive(
 #' # a scalar is broadcast to the shape of the other operand
 #' prim_add(nv_array(c(1, 2, 3)), 1)
 #' @export
-prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
+prim_add <- new_primitive("add", make_binary_op(infer_generic_biv), elementwise = TRUE)
 
 #' @title Primitive Multiplication
 #' @description
@@ -132,7 +130,7 @@ prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
 #' # the R value is built at the array's data type instead
 #' prim_mul(2, nv_scalar(3, "f64"))
 #' @export
-prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv))
+prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv), elementwise = TRUE)
 
 #' @title Primitive Subtraction
 #' @description
@@ -152,7 +150,7 @@ prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv))
 #' # the R value is built at the array's data type instead
 #' prim_sub(5, nv_scalar(3, "f64"))
 #' @export
-prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv))
+prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv), elementwise = TRUE)
 
 #' @title Primitive Negation
 #' @description
@@ -173,7 +171,7 @@ prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv))
 #' # an R value materializes at its default data type
 #' prim_negate(1)
 #' @export
-prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
+prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni), elementwise = TRUE)
 
 #' @title Primitive Division
 #' @description
@@ -193,7 +191,7 @@ prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 #' # the R value is built at the array's data type instead
 #' prim_div(10, nv_scalar(4, "f64"))
 #' @export
-prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
+prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv), elementwise = TRUE)
 
 #' @title Primitive Power
 #' @description
@@ -213,7 +211,7 @@ prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
 #' # the R value is built at the array's data type instead
 #' prim_pow(2, nv_scalar(3, "f64"))
 #' @export
-prim_pow <- new_primitive("pow", make_binary_op(infer_numeric_biv, c("x", "y")))
+prim_pow <- new_primitive("pow", make_binary_op(infer_numeric_biv, c("x", "y")), elementwise = TRUE)
 
 #' @title Primitive Broadcast
 #' @description
@@ -362,9 +360,9 @@ prim_transpose <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("reshape")`
-#' The lowering wraps it in two [hlo_transpose()] calls that reverse every
-#' axis, which is what turns stablehlo's row-major reshape into a column-major
-#' one; each is skipped where that side has at most one axis.
+#' The lowering represents an array by the reversed shape, so stablehlo's
+#' row-major reshape of the reversed shapes is exactly a column-major reshape
+#' of the R shapes.
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the elements keep their column-major order; the data type is untouched
@@ -1091,7 +1089,7 @@ compare_op <- function(lhs, rhs) {
 #' # the R value is built at the array's data type instead
 #' prim_eq(1, nv_scalar(1, "f64"))
 #' @export
-prim_eq <- new_primitive("eq", compare_op)
+prim_eq <- new_primitive("eq", compare_op, elementwise = TRUE)
 
 #' @title Primitive Not Equal
 #' @description
@@ -1112,7 +1110,7 @@ prim_eq <- new_primitive("eq", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_ne(1, nv_scalar(2, "f64"))
 #' @export
-prim_ne <- new_primitive("ne", compare_op)
+prim_ne <- new_primitive("ne", compare_op, elementwise = TRUE)
 
 #' @title Primitive Greater Than
 #' @description
@@ -1133,7 +1131,7 @@ prim_ne <- new_primitive("ne", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_gt(2, nv_scalar(1, "f64"))
 #' @export
-prim_gt <- new_primitive("gt", compare_op)
+prim_gt <- new_primitive("gt", compare_op, elementwise = TRUE)
 
 #' @title Primitive Greater Than or Equal
 #' @description
@@ -1154,7 +1152,7 @@ prim_gt <- new_primitive("gt", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_ge(2, nv_scalar(1, "f64"))
 #' @export
-prim_ge <- new_primitive("ge", compare_op)
+prim_ge <- new_primitive("ge", compare_op, elementwise = TRUE)
 
 #' @title Primitive Less Than
 #' @description
@@ -1175,7 +1173,7 @@ prim_ge <- new_primitive("ge", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_lt(1, nv_scalar(2, "f64"))
 #' @export
-prim_lt <- new_primitive("lt", compare_op)
+prim_lt <- new_primitive("lt", compare_op, elementwise = TRUE)
 
 #' @title Primitive Less Than or Equal
 #' @description
@@ -1196,7 +1194,7 @@ prim_lt <- new_primitive("lt", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_le(1, nv_scalar(2, "f64"))
 #' @export
-prim_le <- new_primitive("le", compare_op)
+prim_le <- new_primitive("le", compare_op, elementwise = TRUE)
 
 # additional simple binary primitives -----------------------------------------
 
@@ -1218,7 +1216,7 @@ prim_le <- new_primitive("le", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_pmax(1, nv_scalar(5, "f64"))
 #' @export
-prim_pmax <- new_primitive("pmax", make_binary_op(infer_generic_biv))
+prim_pmax <- new_primitive("pmax", make_binary_op(infer_generic_biv), elementwise = TRUE)
 
 #' @title Primitive Parallel Minimum
 #' @description
@@ -1238,7 +1236,7 @@ prim_pmax <- new_primitive("pmax", make_binary_op(infer_generic_biv))
 #' # the R value is built at the array's data type instead
 #' prim_pmin(1, nv_scalar(5, "f64"))
 #' @export
-prim_pmin <- new_primitive("pmin", make_binary_op(infer_generic_biv))
+prim_pmin <- new_primitive("pmin", make_binary_op(infer_generic_biv), elementwise = TRUE)
 
 #' @title Primitive Remainder
 #' @description
@@ -1265,7 +1263,8 @@ prim_pmin <- new_primitive("pmin", make_binary_op(infer_generic_biv))
 #' @export
 prim_remainder <- new_primitive(
   "remainder",
-  make_binary_op(infer_numeric_biv, c("x", "y"))
+  make_binary_op(infer_numeric_biv, c("x", "y")),
+  elementwise = TRUE
 )
 
 #' @title Primitive Bitwise And
@@ -1287,7 +1286,7 @@ prim_remainder <- new_primitive(
 #' # the R value is built at the array's data type instead
 #' prim_and(12L, nv_scalar(10L, "i64"))
 #' @export
-prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv))
+prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv), elementwise = TRUE)
 
 #' @title Primitive Bitwise Not
 #' @description
@@ -1309,7 +1308,7 @@ prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv))
 #' # on an integer it complements every bit, so `12L` becomes `-13`
 #' prim_not(nv_array(12L))
 #' @export
-prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni))
+prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni), elementwise = TRUE)
 
 #' @title Primitive Bitwise Or
 #' @description
@@ -1330,7 +1329,7 @@ prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni))
 #' # the R value is built at the array's data type instead
 #' prim_or(12L, nv_scalar(10L, "i64"))
 #' @export
-prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv))
+prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv), elementwise = TRUE)
 
 #' @title Primitive Bitwise Xor
 #' @description
@@ -1351,7 +1350,7 @@ prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv))
 #' # the R value is built at the array's data type instead
 #' prim_xor(12L, nv_scalar(10L, "i64"))
 #' @export
-prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv, c("x", "y")))
+prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv, c("x", "y")), elementwise = TRUE)
 
 #' @title Primitive Shift Left
 #' @description
@@ -1370,7 +1369,7 @@ prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv, c("x", "y"
 #' # the R value is built at the array's data type instead
 #' prim_shift_left(8L, nv_scalar(2L, "i64"))
 #' @export
-prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integer_biv, c("x", "shift")))
+prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integer_biv, c("x", "shift")), elementwise = TRUE)
 
 #' @title Primitive Logical Shift Right
 #' @description
@@ -1391,7 +1390,8 @@ prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integer_biv,
 #' @export
 prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
-  make_binary_op(infer_integer_biv, c("x", "shift"))
+  make_binary_op(infer_integer_biv, c("x", "shift")),
+  elementwise = TRUE
 )
 
 #' @title Primitive Arithmetic Shift Right
@@ -1413,7 +1413,8 @@ prim_shift_right_logical <- new_primitive(
 #' @export
 prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
-  make_binary_op(infer_integer_biv, c("x", "shift"))
+  make_binary_op(infer_integer_biv, c("x", "shift")),
+  elementwise = TRUE
 )
 
 #' @title Primitive Arctangent 2
@@ -1440,7 +1441,7 @@ prim_shift_right_arithmetic <- new_primitive(
 #' # the R value is built at the array's data type instead
 #' prim_atan2(1, nv_scalar(1, "f64"))
 #' @export
-prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv, c("y", "x")))
+prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv, c("y", "x")), elementwise = TRUE)
 
 #' @title Primitive Bitcast Conversion
 #' @description
@@ -1463,9 +1464,8 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv, c("y", "x")
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("bitcast_convert")`
-#' StableHLO puts the lane axis last, so a width-changing conversion is
-#' lowered with one [hlo_transpose()] that rotates it to the front, or off the
-#' front, depending on the direction.
+#' StableHLO puts the lane axis last; the lowering represents an array by the
+#' reversed shape, so that is the leading R axis.
 #' @seealso [nv_bitcast_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # same width: the bits are reread, the shape stays
@@ -1506,7 +1506,7 @@ prim_bitcast_convert <- new_primitive(
 #' # an R value materializes at its default data type
 #' prim_abs(-1)
 #' @export
-prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni))
+prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni), elementwise = TRUE)
 
 #' @title Primitive Square Root
 #' @description
@@ -1527,7 +1527,7 @@ prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni))
 #' # an R value materializes at its default data type
 #' prim_sqrt(4)
 #' @export
-prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni))
+prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Reciprocal Square Root
 #' @description
@@ -1548,7 +1548,7 @@ prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_rsqrt(4)
 #' @export
-prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni))
+prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Logarithm
 #' @description
@@ -1569,7 +1569,7 @@ prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_log(2)
 #' @export
-prim_log <- new_primitive("log", make_unary_op(infer_float_uni))
+prim_log <- new_primitive("log", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Hyperbolic Tangent
 #' @description
@@ -1590,7 +1590,7 @@ prim_log <- new_primitive("log", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_tanh(1)
 #' @export
-prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni))
+prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Tangent
 #' @description
@@ -1611,7 +1611,7 @@ prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_tan(0.5)
 #' @export
-prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
+prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Sine
 #' @description
@@ -1632,7 +1632,7 @@ prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sin(0)
 #' @export
-prim_sin <- new_primitive("sin", make_unary_op(infer_float_uni))
+prim_sin <- new_primitive("sin", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Cosine
 #' @description
@@ -1653,7 +1653,7 @@ prim_sin <- new_primitive("sin", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_cos(0)
 #' @export
-prim_cos <- new_primitive("cos", make_unary_op(infer_float_uni))
+prim_cos <- new_primitive("cos", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Floor
 #' @description
@@ -1674,7 +1674,7 @@ prim_cos <- new_primitive("cos", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_floor(1.2)
 #' @export
-prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni))
+prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Ceiling
 #' @description
@@ -1695,7 +1695,7 @@ prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_ceiling(1.2)
 #' @export
-prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni))
+prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Sign
 #' @description
@@ -1716,7 +1716,7 @@ prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sign(-3)
 #' @export
-prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni))
+prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni), elementwise = TRUE)
 
 #' @title Primitive Exponential
 #' @description
@@ -1737,7 +1737,7 @@ prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni))
 #' # an R value materializes at its default data type
 #' prim_exp(1)
 #' @export
-prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni))
+prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Exponential Minus One
 #' @description
@@ -1758,7 +1758,7 @@ prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_expm1(0.001)
 #' @export
-prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni))
+prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Log Plus One
 #' @description
@@ -1779,7 +1779,7 @@ prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_log1p(0.001)
 #' @export
-prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni))
+prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Cube Root
 #' @description
@@ -1800,7 +1800,7 @@ prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_cbrt(8)
 #' @export
-prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni))
+prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Logistic (Sigmoid)
 #' @description
@@ -1822,7 +1822,7 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_plogis(2)
 #' @export
-prim_plogis <- new_primitive("plogis", make_unary_op(infer_float_uni))
+prim_plogis <- new_primitive("plogis", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Arc Cosine
 #' @description
@@ -1843,7 +1843,7 @@ prim_plogis <- new_primitive("plogis", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_acos(0.5)
 #' @export
-prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni))
+prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Inverse Hyperbolic Cosine
 #' @description
@@ -1864,7 +1864,7 @@ prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_acosh(2)
 #' @export
-prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni))
+prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Arc Sine
 #' @description
@@ -1885,7 +1885,7 @@ prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_asin(0.5)
 #' @export
-prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni))
+prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Inverse Hyperbolic Sine
 #' @description
@@ -1906,7 +1906,7 @@ prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_asinh(1)
 #' @export
-prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni))
+prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Arc Tangent
 #' @description
@@ -1927,7 +1927,7 @@ prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_atan(1)
 #' @export
-prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni))
+prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Inverse Hyperbolic Tangent
 #' @description
@@ -1948,7 +1948,7 @@ prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_atanh(0.5)
 #' @export
-prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni))
+prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Hyperbolic Cosine
 #' @description
@@ -1969,7 +1969,7 @@ prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_cosh(1)
 #' @export
-prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni))
+prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Hyperbolic Sine
 #' @description
@@ -1990,7 +1990,7 @@ prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sinh(1)
 #' @export
-prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni))
+prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Digamma
 #' @description
@@ -2011,7 +2011,7 @@ prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_digamma(2)
 #' @export
-prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni))
+prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Log-Gamma
 #' @description
@@ -2032,7 +2032,7 @@ prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_lgamma(2)
 #' @export
-prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni))
+prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Psigamma
 #' @description
@@ -2060,7 +2060,8 @@ prim_psigamma <- new_primitive(
   function(x, deriv) {
     operands <- apply_promotion(list(x = x, deriv = deriv), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_polygamma)[[1L]]
-  }
+  },
+  elementwise = TRUE
 )
 
 #' @title Primitive Error Function
@@ -2082,7 +2083,7 @@ prim_psigamma <- new_primitive(
 #' # an R value materializes at its default data type
 #' prim_erf(1)
 #' @export
-prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni))
+prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Inverse Error Function
 #' @description
@@ -2103,7 +2104,7 @@ prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_erf_inv(0.5)
 #' @export
-prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni))
+prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Complementary Error Function
 #' @description
@@ -2124,7 +2125,7 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_erfc(1)
 #' @export
-prim_erfc <- new_primitive("erfc", make_unary_op(infer_float_uni))
+prim_erfc <- new_primitive("erfc", make_unary_op(infer_float_uni), elementwise = TRUE)
 
 #' @title Primitive Is Finite
 #' @description
@@ -2150,7 +2151,8 @@ prim_is_finite <- new_primitive(
   "is_finite",
   function(x) {
     graph_desc_add(self, list(x = x), list(), infer_fn = infer_is_finite)[[1L]]
-  }
+  },
+  elementwise = TRUE
 )
 
 #' @title Primitive Population Count
@@ -2173,7 +2175,8 @@ prim_popcnt <- new_primitive(
   "popcnt",
   function(x) {
     graph_desc_add(self, list(x = x), list(), infer_fn = infer_integer_uni)[[1L]]
-  }
+  },
+  elementwise = TRUE
 )
 
 #' @title Primitive Clamp
@@ -2213,7 +2216,8 @@ prim_clamp <- new_primitive(
       list(),
       infer_fn = infer_clamp
     )[[1L]]
-  }
+  },
+  elementwise = TRUE
 )
 
 #' @title Primitive Reverse
@@ -2375,7 +2379,8 @@ prim_round <- new_primitive(
   function(x, method = "nearest_even") {
     graph_desc_add(self, list(x = x), list(method = method), infer_fn = infer_round)[[1L]]
   },
-  static = 2L
+  static = 2L,
+  elementwise = TRUE
 )
 
 # dtype conversion ----------------------------------------------------------------
@@ -2469,7 +2474,8 @@ prim_ifelse <- new_primitive(
       c(list(test = test), operands),
       infer_fn = infer_select
     )[[1L]]
-  }
+  },
+  elementwise = TRUE
 )
 
 # Higher order primitives -------------------------------------------------------
@@ -2855,7 +2861,7 @@ prim_scan <- new_primitive(
 #' @param fn (`function`)\cr
 #'   Computes the result from the entries of `args`, which it receives as
 #'   arguments. Returns an array, or a tree of them.
-#' @param rule (`function` | `anvl_rule_reverse`)\cr
+#' @param rule (`function` | `anvl_rule_pullback`)\cr
 #'   Computes the gradient. A function receives the entries of `args` as arguments, plus
 #'   `out`, the result of `fn`, `grad`, the gradient with respect to `out`, of
 #'   the same structure, data types and shapes, and `required`, a named
@@ -2867,7 +2873,7 @@ prim_scan <- new_primitive(
 #'   `x`'s structure, data types and shapes. An entry that is not required,
 #'   e.g. an integer, which never is, can be left out or be `NULL`.
 #'
-#'   Alternatively, a [rule_reverse()] with a `forward` pass, which replaces
+#'   Alternatively, a [rule_pullback()] with a `forward` pass, which replaces
 #'   `fn` where the result is differentiated, so that the backward pass can
 #'   read what the forward pass computed. Its passes are those of a
 #'   primitive's rule, except that `inputs` are the entries of `args` by name
@@ -2921,7 +2927,7 @@ prim_scan <- new_primitive(
 #'   prim_custom_gradient(
 #'     list(x = x, n = n),
 #'     fn = pow_loop,
-#'     rule = rule_reverse(forward = function(inputs, params, required) {
+#'     rule = rule_pullback(forward = function(inputs, params, required) {
 #'       p <- inputs$x^(inputs$n - 1L)
 #'       list(
 #'         outputs = p * inputs$x,
@@ -2944,16 +2950,16 @@ prim_custom_gradient <- new_primitive(
         x = "Got {value_repr(fn)}."
       ))
     }
-    if (inherits(rule, "anvl_rule_reverse") && is.null(rule$forward)) {
+    if (inherits(rule, "anvl_rule_pullback") && is.null(rule$forward)) {
       cli_abort(c(
-        "{.arg rule} must have a forward pass where it is a {.fn rule_reverse}.",
-        x = "Got a reverse rule with only a backward pass.",
+        "{.arg rule} must have a forward pass where it is a {.fn rule_pullback}.",
+        x = "Got a pullback rule with only a backward pass.",
         i = "Pass a function as {.arg rule} instead: it receives the arguments, the result and its gradient by name."
       ))
     }
-    if (!is.function(rule) && !inherits(rule, "anvl_rule_reverse")) {
+    if (!is.function(rule) && !inherits(rule, "anvl_rule_pullback")) {
       cli_abort(c(
-        "{.arg rule} must be a function, or a {.fn rule_reverse} with a forward pass.",
+        "{.arg rule} must be a function, or a {.fn rule_pullback} with a forward pass.",
         x = "Got {value_repr(rule)}."
       ))
     }
@@ -3025,7 +3031,7 @@ prim_custom_gradient <- new_primitive(
 
     # `fn`'s graph takes what it closes over after the arguments; the call's
     # operands are the arguments, then the same captures. `rule` stays an R
-    # function: the reverse rule traces it once it knows which gradients are
+    # function: the pullback rule traces it once it knows which gradients are
     # required.
     captures <- purify_subgraphs(current_desc, list(fn_graph))
 
@@ -3104,7 +3110,7 @@ prim_sort <- new_primitive(
         call = print_call_repr(self)
       )
     }
-    axis <- resolve_axis(axis, length(shape(xs[[1L]])))
+    axis <- resolve_axis(axis, naxes(xs[[1L]]))
 
     graph_desc_add(
       self,
@@ -3322,8 +3328,8 @@ prim_optimization_barrier <- new_primitive(
 #'   truncated to its low bits, as JAX's `jax.random.bits()` does by default.
 #'   The value at a position thus does not depend on the number of values
 #'   drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
-#'   `shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` is not a
-#'   draw of `6` filled into `c(2, 3)` in R's column-major order.
+#'   `shape` in column-major order, so a draw of `c(2, 3)` is a draw of `6`
+#'   filled into `c(2, 3)`.
 #' @references
 #' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
 #' @templateVar primitive_id sample_bits
@@ -3553,7 +3559,7 @@ prim_scatter <- new_primitive(
 )
 
 # The update functions `prim_scatter()` knows by name. A scatter keeps the name
-# in its `update_op` parameter, and the reverse rule differentiates these and
+# in its `update_op` parameter, and the pullback rule differentiates these and
 # nothing else.
 scatter_update_fns <- list(
   replace = function(old, new) new,
@@ -3709,7 +3715,7 @@ prim_gather <- new_primitive(
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' Axes before the last two are batch axes.
 #' @details
-#' Differentiation is only implemented for a single matrix: the `reverse` rule
+#' Differentiation is only implemented for a single matrix: the `pullback` rule
 #' errors on a batched input (an input with more than 2 axes).
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes
@@ -3756,7 +3762,7 @@ prim_chol <- new_primitive(
 #' between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
 #' @details
-#' Differentiation is only implemented for a single system: the `reverse` rule
+#' Differentiation is only implemented for a single system: the `pullback` rule
 #' errors on batched operands (operands with more than 2 axes).
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The last two axes must

@@ -2303,6 +2303,14 @@ pois_grid <- function() {
   )
 }
 
+# Relative tolerance for an f32 probability at count k and mean lambda. Its log
+# sums terms of magnitude ~|k - lambda| that largely cancel, so a few f32 ulps
+# of those terms -- what the backends' f32 log() and exp() may differ by --
+# become a relative error of that size once exp() is taken.
+pois_f32_tolerance <- function(k, lambda) {
+  pmax(2e-5, 8 * 2^-23 * (abs(k - lambda) + 1))
+}
+
 # Element-by-element relative comparison, with NaN and infinities matched
 # exactly. `expect_equal()` measures the mean relative difference over the whole
 # vector, which tiny elements barely move, and compares absolutely when the
@@ -2357,7 +2365,11 @@ describe("nv_dpois", {
     lambda <- as.vector(nv_array(g$lambda[near], dtype = "f32"))
     for (lg in c(FALSE, TRUE)) {
       got <- as.vector(nv_dpois(nv_array(k, dtype = "f32"), nv_array(lambda, dtype = "f32"), log = lg))
-      expect_equal_elementwise(got, dpois(k, lambda, log = lg), tolerance = if (lg) 1e-5 else 2e-5)
+      expect_equal_elementwise(
+        got,
+        dpois(k, lambda, log = lg),
+        tolerance = if (lg) 1e-5 else pois_f32_tolerance(k, lambda)
+      )
     }
   })
 
@@ -2596,7 +2608,7 @@ describe("nv_ppois", {
       want <- ppois(k, lambda, lower.tail = lt, log.p = lp)
       # leave out what f32 holds only as a subnormal, which XLA flushes to zero
       keep <- abs(want) >= 2^-126
-      expect_equal_elementwise(got[keep], want[keep], tolerance = 2e-5)
+      expect_equal_elementwise(got[keep], want[keep], tolerance = pois_f32_tolerance(k, lambda)[keep])
     }
   })
 
@@ -2920,18 +2932,23 @@ describe("nv_qpois", {
     # rounds differently from base R, by more than base R's own allowance,
     # so the comparison allows for its error too.
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
-    for (lambda in c(3, 25.4, 100, 1000, 1234.56789)) {
-      k <- unique(floor(seq(0, lambda + 12 * sqrt(lambda) + 20, length.out = 200)))
-      for (i in seq_len(nrow(flags))) {
-        lt <- flags$lower_tail[i]
-        lp <- flags$log_p[i]
-        p <- ppois(k, lambda, lower.tail = lt, log.p = lp)
-        # leave out the ends and what f64 holds only as a subnormal, which XLA
-        # flushes to zero
-        keep <- if (lp) p < 0 & p > -Inf & abs(p) >= 2^-1022 else p > 2^-1022 & p < 1
-        got <- as.vector(nv_qpois(as_f64(p[keep]), lambda, lower_tail = lt, log_p = lp))
-        expect_equal(got, qpois(p[keep], lambda, lower.tail = lt, log.p = lp), tolerance = 0)
-      }
+    # all means in one call, so each tail/scale combination compiles once
+    grid <- do.call(
+      rbind,
+      lapply(c(3, 25.4, 100, 1000, 1234.56789), function(lambda) {
+        data.frame(k = unique(floor(seq(0, lambda + 12 * sqrt(lambda) + 20, length.out = 200))), lambda = lambda)
+      })
+    )
+    for (i in seq_len(nrow(flags))) {
+      lt <- flags$lower_tail[i]
+      lp <- flags$log_p[i]
+      p <- ppois(grid$k, grid$lambda, lower.tail = lt, log.p = lp)
+      # leave out the ends and what f64 holds only as a subnormal, which XLA
+      # flushes to zero
+      keep <- if (lp) p < 0 & p > -Inf & abs(p) >= 2^-1022 else p > 2^-1022 & p < 1
+      lambda <- grid$lambda[keep]
+      got <- as.vector(nv_qpois(as_f64(p[keep]), as_f64(lambda), lower_tail = lt, log_p = lp))
+      expect_equal(got, qpois(p[keep], lambda, lower.tail = lt, log.p = lp), tolerance = 0)
     }
   })
 
@@ -2944,33 +2961,39 @@ describe("nv_qpois", {
     # (under ~1e-11 at these means).
     delta <- 1e-10
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
-    for (lambda in c(3, 25.4, 100, 1234.56789, 1e4, 1e8, 1e12)) {
-      k <- unique(floor(c(1:10, lambda + sqrt(lambda) * seq(-8, 8, length.out = 33))))
-      k <- k[k >= 1]
-      lower <- ppois(k, lambda)
-      upper <- ppois(k, lambda, lower.tail = FALSE)
-      small <- pmin(lower, upper)
-      for (i in seq_len(nrow(flags))) {
-        lt <- flags$lower_tail[i]
-        lp <- flags$log_p[i]
-        tail_is_small <- if (lt) lower <= upper else upper < lower
-        at_jump <- if (lt) lower else upper
-        for (above in c(FALSE, TRUE)) {
-          # the requested tail grows above the jump for the lower tail, and
-          # below it for the upper tail
-          tail_up <- if (lt) above else !above
-          moved <- small * (1 + ifelse(tail_is_small == tail_up, delta, -delta))
-          p <- ifelse(tail_is_small, moved, 1 - moved)
-          if (lp) {
-            p <- ifelse(tail_is_small, log(moved), log1p(-moved))
-          }
-          # on the plain scale near one a move of the smaller tail can be below
-          # an ulp, or within base R's fuzz of 8 ulp
-          keep <- delta * small > 64 * .Machine$double.eps * at_jump
-          got <- as.vector(nv_qpois(as_f64(p[keep]), lambda, lower_tail = lt, log_p = lp))
-          expect_equal(got, (if (above) k + 1 else k)[keep], tolerance = 0)
-        }
-      }
+    # all means and both sides of the jumps in one call, so each tail/scale
+    # combination compiles once
+    grid <- do.call(
+      rbind,
+      lapply(c(3, 25.4, 100, 1234.56789, 1e4, 1e8, 1e12), function(lambda) {
+        k <- unique(floor(c(1:10, lambda + sqrt(lambda) * seq(-8, 8, length.out = 33))))
+        data.frame(k = k[k >= 1], lambda = lambda)
+      })
+    )
+    k <- grid$k
+    lambda <- grid$lambda
+    lower <- ppois(k, lambda)
+    upper <- ppois(k, lambda, lower.tail = FALSE)
+    small <- pmin(lower, upper)
+    for (i in seq_len(nrow(flags))) {
+      lt <- flags$lower_tail[i]
+      lp <- flags$log_p[i]
+      tail_is_small <- if (lt) lower <= upper else upper < lower
+      at_jump <- if (lt) lower else upper
+      # on the plain scale near one a move of the smaller tail can be below
+      # an ulp, or within base R's fuzz of 8 ulp
+      keep <- delta * small > 64 * .Machine$double.eps * at_jump
+      probes <- lapply(c(FALSE, TRUE), function(above) {
+        # the requested tail grows above the jump for the lower tail, and
+        # below it for the upper tail
+        tail_up <- if (lt) above else !above
+        moved <- small * (1 + ifelse(tail_is_small == tail_up, delta, -delta))
+        p <- if (lp) ifelse(tail_is_small, log(moved), log1p(-moved)) else ifelse(tail_is_small, moved, 1 - moved)
+        data.frame(p = p, lambda = lambda, want = if (above) k + 1 else k)[keep, ]
+      })
+      probes <- do.call(rbind, probes)
+      got <- as.vector(nv_qpois(as_f64(probes$p), as_f64(probes$lambda), lower_tail = lt, log_p = lp))
+      expect_equal(got, probes$want, tolerance = 0)
     }
   })
 

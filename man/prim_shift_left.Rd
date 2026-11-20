@@ -27,7 +27,8 @@ Element-wise left bit shift.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{pushforward}
 }
 }
 

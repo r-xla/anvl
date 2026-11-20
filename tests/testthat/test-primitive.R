@@ -89,6 +89,15 @@ describe("subgraphs", {
 })
 
 describe("new_primitive", {
+  it("records whether the primitive is elementwise", {
+    expect_true(primitive_def(prim_sin)$elementwise)
+    expect_true(primitive_def(prim_add)$elementwise)
+    expect_false(primitive_def(prim_sum)$elementwise)
+    np <- new_primitive("np_elementwise", function(x) x, register = FALSE, elementwise = TRUE)
+    expect_true(primitive_def(np)$elementwise)
+    expect_false(primitive_def(new_primitive("np_other", function(x) x, register = FALSE))$elementwise)
+  })
+
   it("works for a body defined outside the anvl namespace", {
     fn <- function(x) {
       graph_desc_add(self, list(x), infer_fn = function(x) list(x))[[1L]]

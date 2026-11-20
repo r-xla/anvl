@@ -11,7 +11,7 @@
 \alias{nv_empty_like}
 \title{AnvlArray}
 \usage{
-nv_array(data, shape = NULL, dtype = NULL, device = NULL, byrow = FALSE)
+nv_array(data, shape = "auto", dtype = NULL, device = NULL, byrow = FALSE)
 
 nv_scalar(data, dtype = NULL, device = NULL)
 
@@ -26,11 +26,11 @@ nv_matrix(
 
 nv_empty(shape, dtype, device = NULL)
 
-nv_array_like(like, data, shape = NULL, dtype = NULL, device = NULL)
+nv_array_like(like, data, shape = "auto", dtype = NULL, device = NULL)
 
 nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
-nv_empty_like(like, shape = NULL, dtype = NULL, device = NULL)
+nv_empty_like(like, shape = "auto", dtype = NULL, device = NULL)
 }
 \arguments{
 \item{data}{(any)\cr
@@ -43,13 +43,17 @@ with \code{byrow = TRUE}. An existing \code{\link{AnvlArray}} is returned unchan
 the \code{shape}, \code{dtype} and \code{device} given agree with it, and is an error
 otherwise.}
 
-\item{shape}{(\code{NULL} | \code{integer()})\cr
-The output shape of the array.
-The default (\code{NULL}) is to infer it from the data if possible.
-Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
-no elements -- so \code{shape} is required there.
-To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = integer()}.}
+\item{shape}{(\code{"auto"} | \code{integer()})\cr
+The shape of the array, e.g. \code{shp(2, 3)} or \code{c(2, 3)}.
+\code{\link[=nv_empty]{nv_empty()}} requires it. Elsewhere it defaults to \code{"auto"}, which
+\code{nv_array_like()} and \code{nv_empty_like()} read as \code{shape(like)} and
+\code{nv_array()} infers from \code{data}: its \code{dim()}, or its length for a vector,
+so a length-1 vector has shape \code{(1)}.
+\code{nv_array()} cannot infer it from a raw payload or from empty data --
+\code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold no elements -- so \code{shape} is
+required there.
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link[=nv_scalar]{nv_scalar()}} or
+\code{shape = shp()}. \code{NULL}, which \code{c()} returns, is not a shape; see \code{\link[=shp]{shp()}}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 The data type at which to create the array: a \code{\link[xlamisc:DataType]{xlamisc::DataType}} or one
@@ -88,9 +92,9 @@ Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
 
 \item{like}{(\code{\link{AnvlArray}} | \code{\link{GraphBox}})\cr
-An existing array; an R value is an error. Any of \code{shape} (which
-\code{nv_scalar_like()} does not take), \code{dtype} and \code{device} that are \code{NULL}
-(the default) are taken from \code{like}.}
+An existing array; an R value is an error. A \code{shape} left at \code{"auto"}
+(which \code{nv_scalar_like()} does not take) and a \code{dtype} or \code{device} left at
+\code{NULL} (the defaults) are taken from \code{like}.}
 }
 \value{
 (\code{\link{AnvlArray}})
