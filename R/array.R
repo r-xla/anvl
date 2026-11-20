@@ -54,13 +54,17 @@
 #'   with `byrow = TRUE`. An existing [`AnvlArray`] is returned unchanged if
 #'   the `shape`, `dtype` and `device` given agree with it, and is an error
 #'   otherwise.
-#' @param shape (`NULL` | `integer()`)\cr
-#'   The output shape of the array.
-#'   The default (`NULL`) is to infer it from the data if possible.
-#'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
-#'   Empty data has no shape to infer -- `0`, `c(2, 0)` and `c(0, 3)` all hold
-#'   no elements -- so `shape` is required there.
-#'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = integer()`.
+#' @param shape (`"auto"` | `integer()`)\cr
+#'   The shape of the array, e.g. `shp(2, 3)` or `c(2, 3)`.
+#'   [`nv_empty()`] requires it. Elsewhere it defaults to `"auto"`, which
+#'   `nv_array_like()` and `nv_empty_like()` read as `shape(like)` and
+#'   `nv_array()` infers from `data`: its `dim()`, or its length for a vector,
+#'   so a length-1 vector has shape `(1)`.
+#'   `nv_array()` cannot infer it from a raw payload or from empty data --
+#'   `0`, `c(2, 0)` and `c(0, 3)` all hold no elements -- so `shape` is
+#'   required there.
+#'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar()`] or
+#'   `shape = shp()`. `NULL`, which `c()` returns, is not a shape; see [`shp()`].
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   The data type at which to create the array: a [`xlamisc::DataType`] or one
 #'   of `r roxy_dtypes()`.
@@ -142,7 +146,7 @@ NULL
 #' @export
 nv_array <- function(
   data,
-  shape = NULL,
+  shape = "auto",
   dtype = NULL,
   device = NULL,
   byrow = FALSE
@@ -158,7 +162,8 @@ nv_array <- function(
     if (!is.null(device) && !eq_device(device(data), nv_device(device))) {
       cli_abort("Cannot change device of existing AnvlArray from {.val {device(data)}} to {.val {device}}")
     }
-    if (!is.null(shape) && !identical(shape(data), as.integer(shape))) {
+    shape <- resolve_auto_shape(shape, auto = shape(data))
+    if (!identical(shape(data), shape)) {
       cli_abort(c(
         "Cannot change the shape of existing AnvlArray",
         x = "Input array has shape {shape_repr(shape(data))} but requested shape {shape_repr(shape)},",
@@ -185,32 +190,16 @@ nv_array <- function(
   if (!is.null(dtype)) {
     dtype <- as_dtype(dtype)
   }
-  if (!is.null(shape)) {
-    shape <- as.integer(shape)
+  if (byrow && inherits(data, "PJRTBuffer")) {
+    cli_abort("{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.")
   }
   is_raw_payload <- is.raw(data)
-  if (is_raw_payload) {
-    if (is.null(dtype)) {
-      cli_abort("{.arg dtype} must be provided when {.arg data} is a raw vector.")
-    }
-    if (is.null(shape)) {
-      cli_abort("{.arg shape} must be provided when {.arg data} is a raw vector.")
-    }
-  } else if (is.null(shape) && is.null(dim(data)) && length(data) == 0L) {
-    # A zero-length vector does not say which axis is empty, so there is
-    # nothing to infer: `0`, `c(2, 0)` and `c(0, 3)` all hold no elements.
-    cli_abort(c(
-      "{.arg shape} must be provided when {.arg data} is empty.",
-      i = "A zero-length vector does not say which axis is empty, e.g. {.code shape = 0L} or {.code shape = c(2L, 0L)}."
-    ))
+  if (is_raw_payload && is.null(dtype)) {
+    cli_abort("{.arg dtype} must be provided when {.arg data} is a raw vector.")
   }
-  if (byrow && !is_raw_payload) {
-    fill_shape <- shape %||% r_data_shape(data)
-    if (length(fill_shape) >= 2L) {
-      # Fill column-major into the reversed shape, then permute axes back —
-      # this is equivalent to placing `data` row-major into `fill_shape`.
-      data <- aperm(array(data, dim = rev(fill_shape)), rev(seq_along(fill_shape)))
-    }
+  shape <- resolve_auto_shape(shape, auto = infer_data_shape(data))
+  if (byrow && !is_raw_payload && length(shape) >= 2L) {
+    data <- reorder_byrow(data, shape)
   }
   # Data that names no dtype materializes at the defaults -- inside a trace, the
   # ones the trace is pinned to.
@@ -234,10 +223,48 @@ creation_backend <- function(device) {
   backend
 }
 
-# The shape of R data that does not name one: its `dim()`, or its length for a
-# vector (so a length-1 vector has shape `(1)`, as in `nv_array()`).
-r_data_shape <- function(data) {
-  if (is.null(dim(data))) length(data) else as.integer(dim(data))
+# The shape `nv_array()` reads off its data when `shape = "auto"`: the `dim()`
+# of R data, or its length for a vector (so a length-1 vector has shape `(1)`).
+# A raw payload and a zero-length vector have none to read.
+infer_data_shape <- function(data, call = rlang::caller_env()) {
+  if (inherits(data, "PJRTBuffer")) {
+    return(shape(data))
+  }
+  if (is.raw(data)) {
+    cli_abort("{.arg shape} must be provided when {.arg data} is a raw vector.", call = call)
+  }
+  if (!is.null(dim(data))) {
+    return(as.integer(dim(data)))
+  }
+  if (length(data) == 0L) {
+    # A zero-length vector does not say which axis is empty, so there is
+    # nothing to infer: `0`, `c(2, 0)` and `c(0, 3)` all hold no elements.
+    cli_abort(
+      c(
+        "{.arg shape} must be provided when {.arg data} is empty.",
+        i = "A zero-length vector does not say which axis is empty, e.g. {.code shape = 0L} or {.code shape = c(2L, 0L)}."
+      ),
+      call = call
+    )
+  }
+  length(data)
+}
+
+# `data` in row-major order, as `nv_array(byrow = TRUE)` reads it, reordered to
+# the column-major order the backends fill `shape` in. Positions are permuted
+# rather than `data` passed through `array()`, which recycles data that does not
+# fill `shape` and drops the class of a `bit64::integer64`, reinterpreting its
+# bits as doubles. Data that does not fill `shape` is left as it is: the backend
+# recycles a single value and refuses any other length.
+reorder_byrow <- function(data, shape) {
+  n <- prod(shape)
+  if (length(data) != n) {
+    return(data)
+  }
+  # Filling the reversed shape column-major and permuting the axes back places
+  # the positions row-major into `shape`.
+  positions <- aperm(array(seq_len(n), dim = rev(shape)), rev(seq_along(shape)))
+  data[as.vector(positions)]
 }
 
 #' @title Convert to AnvlArray
@@ -505,7 +532,7 @@ nv_matrix <- function(
 nv_empty <- function(shape, dtype, device = NULL) {
   globals$backends[[creation_backend(device)]]$new_empty(
     dtype = dtype,
-    shape = as.integer(shape),
+    shape = assert_shapevec(shape, call = rlang::current_env()),
     device = device
   )
 }
@@ -543,67 +570,67 @@ NULL
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_bool <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_bool <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "bool", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_int8 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_int8 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "i8", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_int16 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_int16 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "i16", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_int32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_int32 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "i32", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_int64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_int64 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "i64", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_uint8 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_uint8 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "ui8", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_uint16 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_uint16 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "ui16", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_uint32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_uint32 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "ui32", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_uint64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_uint64 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "ui64", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_float32 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_float32 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "f32", device = device, byrow = byrow)
 }
 
 #' @rdname nv_dtype_constructors
 #' @export
-nv_float64 <- function(data, shape = NULL, device = NULL, byrow = FALSE) {
+nv_float64 <- function(data, shape = "auto", device = NULL, byrow = FALSE) {
   nv_array(data, shape = shape, dtype = "f64", device = device, byrow = byrow)
 }
 
@@ -1283,10 +1310,12 @@ as_shape <- function(x) {
     x
   } else if (test_integerish(x, any.missing = FALSE, lower = 0L)) {
     Shape(as.integer(x))
-  } else if (is.null(x)) {
-    Shape(integer())
   } else {
-    cli_abort("x must be an integer vector or a stablehlo::Shape")
+    cli_abort(c(
+      "{.arg shape} must be a vector of non-negative whole numbers or a {.cls Shape}.",
+      x = "Got {value_repr(x)}.",
+      if (is.null(x)) shape_null_hint
+    ))
   }
 }
 
@@ -1348,27 +1377,75 @@ is_arrayish <- function(x, convert_ok = TRUE) {
 #'   spliced in and the result takes the common R type of all values, and fill
 #'   the array in column-major order. A single value is recycled to fill all
 #'   of `shape`.
-#' @param shape (`NULL` | `integer()`)\cr
-#'   Shape of new array. If `NULL` (default), uses length of elements to create a 1D array.
+#' @param shape (`"auto"` | `integer()`)\cr
+#'   Shape of the new array, with at least one axis. The default `"auto"`
+#'   creates a 1-D array holding all values.
 #' @return (`array`)
+#' @seealso [shp()] to create a shape.
 #' @export
 #' @examples
 #' arr(1, 2, 3)
-#' arr(1, 2, 3, 4, shape = c(2, 2))
+#' arr(1, 2, 3, 4, shape = shp(2, 2))
 #' # vectors are spliced in
 #' arr(1:3, 4L)
 #' # a single value fills the whole shape
-#' arr(0, shape = c(2, 3))
-arr <- function(..., shape = NULL) {
+#' arr(0, shape = shp(2, 3))
+arr <- function(..., shape = "auto") {
   vals <- c(...)
   if (is.null(vals)) {
     cli_abort("Invalid input values")
   }
-  assert_integerish(shape, null.ok = TRUE)
   assert_vector(vals, min.len = 1L)
   nvals <- length(vals)
-  if (!is.null(shape) && (nvals != 1L) && (prod(shape) != nvals)) {
+  # An R array has at least one axis.
+  shape <- resolve_auto_shape(shape, auto = nvals, min_len = 1L)
+  if ((nvals != 1L) && (prod(shape) != nvals)) {
     cli_abort("Number of elements is {nvals}, but {.arg shape} is {shape_repr(shape)}.")
   }
-  array(vals, dim = shape %||% length(vals))
+  array(vals, dim = shape)
+}
+
+#' @title Create a Shape
+#' @description
+#' Creates the shape of an array from its axis sizes: `shp(2, 3)` is the shape
+#' of a 2x3 matrix, and `shp()` is the shape of a scalar, which has no axes.
+#'
+#' The result is the integer vector that [`shape()`][xlamisc::shape] returns,
+#' so it can be passed to any `shape` argument and compared with
+#' `identical(shape(x), shp(2, 3))`.
+#' Unlike `c()`, which returns `NULL` when called without arguments, `shp()`
+#' always returns an integer vector. A `shape` argument refuses `NULL`, so a
+#' `NULL` that slips in by accident -- such as the `dim()` of a vector -- is an
+#' error rather than the shape of a scalar.
+#' @param ... (`numeric()`)\cr
+#'   The axis sizes: non-negative whole numbers. Vectors are spliced in, so
+#'   `shp(shape(x), 3)` appends an axis of size 3 to the shape of `x`.
+#'   `NULL`, a logical and a factor are refused.
+#' @return (`integer()`)\cr
+#'   The axis sizes.
+#' @seealso [shape()][xlamisc::shape] for the shape of an array, [nv_array()].
+#' @export
+#' @examples
+#' shp(2, 3)
+#' # the shape of a scalar
+#' shp()
+#' # vectors are spliced in
+#' shp(c(2, 3), 4)
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_array(1:6, shape = shp(2, 3))
+#' nv_array(1L, shape = shp())
+shp <- function(...) {
+  sizes <- lapply(list(...), function(x) if (is_shape(x)) unclass(x) else x)
+  # Checked one by one, before `unlist()` turns a logical into 0 / 1 and a
+  # factor into its level codes.
+  is_number <- vapply(sizes, function(x) is.numeric(x) && !is.object(x), logical(1L))
+  if (!all(is_number)) {
+    i <- which(!is_number)[1L]
+    cli_abort(c(
+      "Axis sizes must be whole numbers.",
+      x = "Argument {i} is {value_repr(sizes[[i]])}.",
+      if (is.null(sizes[[i]])) c(i = "Call {.code shp()} without arguments for the shape of a scalar.")
+    ))
+  }
+  assert_shapevec(unlist(sizes) %||% integer(), var_name = "...", call = rlang::current_env())
 }

@@ -210,9 +210,9 @@ Where the derivative of what a loop computes has a formula of its own, `prim_cus
   Forward mode differentiation is currently not supported.
 - Higher-order derivatives, such as Hessians, are currently not really supported.
 - Not every primitive has a derivative yet, so some functions cannot be differentiated.
-  The *Reverse* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
-  If a derivative is missing and you need it, you can add a reverse rule to the primitive yourself, as shown in the [add the reverse rule](extending_primitive.html#step-3-add-the-reverse-rule) step of the Adding a Primitive article.
+  The *Pullback* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
+  If a derivative is missing and you need it, you can add a pullback rule to the primitive yourself, as shown in the [add the pullback rule](extending_primitive.html#step-3-add-the-pullback-rule) step of the Adding a Primitive article.
 
 ## How It Works
 
-See the [transforming graphs into other graphs](internals.html#transforming-graphs-into-other-graphs) and [`gradient()`](internals.html#gradient) sections of the internals article for how {anvl} computes gradients, and the [Adding a Primitive](extending_primitive.html) article for how to write a reverse rule.
+See the [transforming graphs into other graphs](internals.html#transforming-graphs-into-other-graphs) and [`gradient()`](internals.html#gradient) sections of the internals article for how {anvl} computes gradients, and the [Adding a Primitive](extending_primitive.html) article for how to write a pullback rule.

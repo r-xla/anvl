@@ -233,28 +233,6 @@ NULL
 #' @export
 xlamisc::as_dtype
 
-#' @title Create a Shape Object
-#'
-#' @description
-#' Constructs a `Shape`, the axis sizes of an array. A `Shape` *is* its integer
-#' vector, with a class attached, so `length()` is the number of axes and
-#' `shape[i]` is the size of axis `i`.
-#'
-#' @param dims An `integer()` vector of axis sizes (>= 0). `NA` marks an axis
-#'   whose size is only known at run time.
-#' @returns (`Shape`)
-#' @seealso [shape()], [stablehlo::Shape()]
-#' @name Shape
-#' @rdname Shape-constructor
-#' @examples
-#' Shape(c(2L, 3L))
-NULL
-
-#' @rdname Shape-constructor
-#' @importFrom stablehlo Shape
-#' @export
-stablehlo::Shape
-
 #' @title Get the Platform Name of an Array or Buffer
 #'
 #' @description

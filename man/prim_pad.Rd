@@ -45,7 +45,7 @@ Pads an array with a given padding value.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

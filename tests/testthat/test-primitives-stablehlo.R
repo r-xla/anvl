@@ -267,13 +267,11 @@ test_that("prim_fill", {
 
   # scalars
   expect_equal(
-    nv_fill(1L, shape = c(), dtype = "f32"),
+    nv_fill(1L, shape = shp(), dtype = "f32"),
     nv_scalar(1, dtype = "f32")
   )
-  expect_equal(
-    nv_fill(1L, shape = integer(), dtype = "f32"),
-    nv_scalar(1, dtype = "f32")
-  )
+  # `c()` is `NULL`, which is not the shape of a scalar
+  expect_error(nv_fill(1L, shape = c(), dtype = "f32"), "Use `shp\\(\\)` for the shape of a scalar")
   expect_equal(
     nv_fill(1L, shape = 1L, dtype = "f32"),
     nv_array(1, shape = 1L, dtype = "f32")
@@ -2023,7 +2021,8 @@ describe("prim_any / prim_all input data type", {
 
 test_that("prim_fill names `shape` in its own error", {
   expect_error(prim_fill(0, shape = -1L, dtype = "f32"), "negative axis size")
-  expect_equal(shape(prim_fill(0, shape = c(), dtype = "f32")), integer())
+  expect_error(prim_fill(0, shape = NULL, dtype = "f32"), "`shape` must be a whole number vector")
+  expect_equal(shape(prim_fill(0, shape = shp(), dtype = "f32")), integer())
   expect_equal(shape(prim_fill(0, shape = 0L, dtype = "f32")), 0L)
 })
 

@@ -51,10 +51,11 @@ prepare_gradient_args <- function(args, wrt) {
   list(args_flat = args_flat, in_tree = in_tree, is_wrt_flat = is_wrt_flat)
 }
 
-#' @title Reverse Rule
+#' @title Pullback Rule
 #' @description
-#' Construct a reverse-mode autodiff rule for a primitive. Provide exactly one
-#' of `backward` and `forward`.
+#' Construct a pullback rule for a primitive, the rule that reverse-mode
+#' automatic differentiation uses. Provide exactly one of `backward` and
+#' `forward`.
 #'
 #' Pass `backward` when the primitive's forward statement can run unmodified, which
 #' covers most use cases. It has the signature
@@ -77,15 +78,15 @@ prepare_gradient_args <- function(args, wrt) {
 #' @param forward (`NULL` | `function`)\cr
 #'   Alternative forward hook that returns both the outputs and a backward
 #'   closure.
-#' @return (`anvl_rule_reverse`)
+#' @return (`anvl_rule_pullback`)
 #' @examples
 #' # the rule of prim_negate()
-#' rule_reverse(function(inputs, outputs, grads, params, required) {
+#' rule_pullback(function(inputs, outputs, grads, params, required) {
 #'   list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #' })
 #' @seealso [`graph_gradient()`]
 #' @export
-rule_reverse <- function(backward = NULL, forward = NULL) {
+rule_pullback <- function(backward = NULL, forward = NULL) {
   if (is.null(backward) == is.null(forward)) {
     cli_abort("Provide exactly one of {.arg backward} or {.arg forward}.")
   }
@@ -96,7 +97,7 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
   }
   structure(
     list(forward = forward, backward = backward),
-    class = "anvl_rule_reverse"
+    class = "anvl_rule_pullback"
   )
 }
 
@@ -110,9 +111,9 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #' @details
 #' To support alternative forward passes for more efficient backward passes, we
 #' replay and possibly rewrite the graph into a new descriptor.
-#' Afterwards, we traverse it backwards and call the gradient rules where necessary.
+#' Afterwards, we traverse it backwards and call the pullback rules where necessary.
 #'
-#' See [`rule_reverse()`] for more information.
+#' See [`rule_pullback()`] for more information.
 #'
 #' [`gradient()`] and [`value_and_gradient()`] differentiate the same way, but
 #' into the trace they are called in rather than into a graph of its own;
@@ -124,7 +125,7 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #'   to all inputs.
 #' @return ([`AnvlGraph`])\cr
 #'   Its outputs are the requested gradients.
-#' @seealso [`gradient()`], [`value_and_gradient()`], [`rule_reverse()`]
+#' @seealso [`gradient()`], [`value_and_gradient()`], [`rule_pullback()`]
 #' @export
 #' @examples
 #' graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
@@ -268,7 +269,7 @@ compute_requirements <- function(graph, wrt) {
 }
 
 # The backward pass of a sub-graph whose forward `rebuild_forward_into()`
-# replayed: seeds `graph`'s outputs with `out_grads`, runs the reverse rules
+# replayed: seeds `graph`'s outputs with `out_grads`, runs the pullback rules
 # `backwards` in the current descriptor, and returns the cotangent of each
 # value in `targets` -- a zero where the target did not reach any output.
 pull_back <- function(graph, backwards, required_env, targets, out_grads) {
@@ -276,7 +277,7 @@ pull_back <- function(graph, backwards, required_env, targets, out_grads) {
   for (i in seq_along(graph$outputs)) {
     out <- graph$outputs[[i]]
     # Only an output that requires a gradient is seeded, so that no value
-    # the reverse rules leave out gains a cotangent.
+    # the pullback rules leave out gains a cotangent.
     if (!is_graph_literal(out) && isTRUE(required_env[[out]]) && !is.null(out_grads[[i]])) {
       # The same value can be returned more than once, e.g. a branch
       # `\() list(s, s)`, or a branch returning one of its inputs in two
@@ -342,7 +343,7 @@ split_vjp <- function(graph, needed) {
 
 # The backward pass of `split_vjp()`, traced into a graph of its own
 # whose inputs are the cotangents of `graph`'s outputs. The values of the
-# forward pass the reverse rules read become its constants.
+# forward pass the pullback rules read become its constants.
 pull_back_graph <- function(graph, backwards, required_env, targets) {
   desc <- local_descriptor()
   out_grads <- lapply(graph$outputs, function(out) {
@@ -370,7 +371,7 @@ requirements_from <- function(graph, targets) {
 # Forward propagation over `graph`'s calls, starting from the seeded
 # `required_env`: a call's float outputs require a gradient exactly when one of
 # its operands does. An integer or boolean output never does -- it has no
-# derivative, and the reverse rules give such values a zero -- so a random state
+# derivative, and the pullback rules give such values a zero -- so a random state
 # or a loop counter computed alongside a float does not drag the calls it feeds
 # into the backward pass. Literals are inlined constants and never do either.
 propagate_requirements <- function(graph, required_env) {
@@ -462,7 +463,7 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
 
   for (i in seq_along(graph$statements)) {
     call <- graph$statements[[i]]
-    rule <- call$primitive[["reverse"]]
+    rule <- call$primitive[["pullback"]]
 
     needs_grad <- is.null(required_env) ||
       any(vapply(call$inputs, \(x) !is_graph_literal(x) && isTRUE(required_env[[x]]), logical(1L)))
@@ -486,10 +487,10 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
       desc$statements$add(new_call)
       register_gvals(desc, new_outputs)
 
-      # Without a backward rule `backwards[[i]]` stays NULL. `run_backward_pass`
+      # Without a pullback rule `backwards[[i]]` stays NULL. `run_backward_pass`
       # treats that as "skip if no input requires grad, otherwise abort":
       # primitives like `prim_fill` whose inputs are all static parameters
-      # never reach the abort branch, so they don't need a reverse rule, and
+      # never reach the abort branch, so they don't need a pullback rule, and
       # neither does a skipped call whose rule only has a replacement forward.
       if (!is.null(rule$backward)) {
         backwards[[i]] <- list(
@@ -549,7 +550,7 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
       return(grad2)
     }
     if (is.null(grad2)) {
-      cli_abort("Internal error: a reverse rule returned no gradient for an input that requires one.")
+      cli_abort("Internal error: a pullback rule returned no gradient for an input that requires one.")
     }
     prim_add(grad1, grad2)
   }
@@ -577,7 +578,7 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
     bwd <- backwards[[i]]
     if (is.null(bwd)) {
       cli_abort(c(
-        "No reverse rule for primitive {.field {call$primitive$name}}.",
+        "No pullback rule for primitive {.field {call$primitive$name}}.",
         i = "Cannot compute gradient through this primitive."
       ))
     }
@@ -589,10 +590,11 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
       input_gval <- call$inputs[[j]]
       ct <- input_grads[[j]]
       # Elementwise primitives broadcast a scalar operand, so a gradient of the
-      # wrong shape would otherwise be accumulated without complaint.
+      # wrong shape would otherwise be accumulated without complaint. The rule
+      # may be a user's own, so this is not reported as an internal error.
       if (!is.null(ct) && !identical(shape(ct), shape(input_gval))) {
         cli_abort(c(
-          "Internal error: the reverse rule of primitive {.field {call$primitive$name}} returned a gradient of the wrong shape for input {j}.", # nolint
+          "The pullback rule of primitive {.field {call$primitive$name}} returned a gradient of the wrong shape for input {j}.", # nolint
           x = "Expected {shape_repr(shape(input_gval))}, got {shape_repr(shape(ct))}."
         ))
       }

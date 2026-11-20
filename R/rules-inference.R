@@ -93,7 +93,13 @@ params_repr <- function(parts) {
 # A whole-number param, returned as an integer vector. `NULL` (how `c()` spells
 # no axes) reads as `integer()`. Rules run this before indexing or comparing
 # with a param, so that an `NA` never reaches an `if ()`.
-assert_int_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL, min_len = NULL) {
+assert_int_param <- function(
+  x,
+  arg = rlang::as_label(substitute(x)),
+  len = NULL,
+  min_len = NULL,
+  call = rlang::current_env()
+) {
   force(arg)
   x <- x %||% integer()
   # A param fixed at one entry is spoken of in the singular.
@@ -113,10 +119,13 @@ assert_int_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL
     "have at least {min_len} entr{cli::qty(min_len)}{?y/ies}"
   }
   if (!is.null(problem)) {
-    cli_abort(c(
-      paste0("{.arg {arg}} must ", problem, "."),
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        paste0("{.arg {arg}} must ", problem, "."),
+        x = "Got {value_repr(x)}."
+      ),
+      call = call
+    )
   }
   invisible(as.integer(x))
 }
@@ -2046,7 +2055,7 @@ infer_while <- function(..., cond, body, n_captures) {
 }
 
 # The operands are the arguments of `fn`, then what it closes over, which only
-# the lowering reads. `rule` is checked when the reverse rule traces it.
+# the lowering reads. `rule` is checked when the pullback rule traces it.
 infer_custom_gradient <- function(..., fn, rule, n_captures) {
   graph_output_avals(fn)
 }

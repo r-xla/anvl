@@ -77,8 +77,6 @@ prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
     assert_fill_value(value, dtype)
-    # `shape = c()` is how a caller asks for a scalar.
-    shape <- shape %||% integer()
     shape <- assert_shapevec(shape)
     graph_desc_add(
       self,
@@ -2854,7 +2852,7 @@ prim_scan <- new_primitive(
 #' @param fn (`function`)\cr
 #'   Computes the result from the entries of `args`, which it receives as
 #'   arguments. Returns an array, or a tree of them.
-#' @param rule (`function` | `anvl_rule_reverse`)\cr
+#' @param rule (`function` | `anvl_rule_pullback`)\cr
 #'   Computes the gradient. A function receives the entries of `args` as arguments, plus
 #'   `out`, the result of `fn`, `grad`, the gradient with respect to `out`, of
 #'   the same structure, data types and shapes, and `required`, a named
@@ -2866,7 +2864,7 @@ prim_scan <- new_primitive(
 #'   `x`'s structure, data types and shapes. An entry that is not required,
 #'   e.g. an integer, which never is, can be left out or be `NULL`.
 #'
-#'   Alternatively, a [rule_reverse()] with a `forward` pass, which replaces
+#'   Alternatively, a [rule_pullback()] with a `forward` pass, which replaces
 #'   `fn` where the result is differentiated, so that the backward pass can
 #'   read what the forward pass computed. Its passes are those of a
 #'   primitive's rule, except that `inputs` are the entries of `args` by name
@@ -2920,7 +2918,7 @@ prim_scan <- new_primitive(
 #'   prim_custom_gradient(
 #'     list(x = x, n = n),
 #'     fn = pow_loop,
-#'     rule = rule_reverse(forward = function(inputs, params, required) {
+#'     rule = rule_pullback(forward = function(inputs, params, required) {
 #'       p <- inputs$x^(inputs$n - 1L)
 #'       list(
 #'         outputs = p * inputs$x,
@@ -2943,16 +2941,16 @@ prim_custom_gradient <- new_primitive(
         x = "Got {value_repr(fn)}."
       ))
     }
-    if (inherits(rule, "anvl_rule_reverse") && is.null(rule$forward)) {
+    if (inherits(rule, "anvl_rule_pullback") && is.null(rule$forward)) {
       cli_abort(c(
-        "{.arg rule} must have a forward pass where it is a {.fn rule_reverse}.",
-        x = "Got a reverse rule with only a backward pass.",
+        "{.arg rule} must have a forward pass where it is a {.fn rule_pullback}.",
+        x = "Got a pullback rule with only a backward pass.",
         i = "Pass a function as {.arg rule} instead: it receives the arguments, the result and its gradient by name."
       ))
     }
-    if (!is.function(rule) && !inherits(rule, "anvl_rule_reverse")) {
+    if (!is.function(rule) && !inherits(rule, "anvl_rule_pullback")) {
       cli_abort(c(
-        "{.arg rule} must be a function, or a {.fn rule_reverse} with a forward pass.",
+        "{.arg rule} must be a function, or a {.fn rule_pullback} with a forward pass.",
         x = "Got {value_repr(rule)}."
       ))
     }
@@ -3024,7 +3022,7 @@ prim_custom_gradient <- new_primitive(
 
     # `fn`'s graph takes what it closes over after the arguments; the call's
     # operands are the arguments, then the same captures. `rule` stays an R
-    # function: the reverse rule traces it once it knows which gradients are
+    # function: the pullback rule traces it once it knows which gradients are
     # required.
     captures <- purify_subgraphs(current_desc, list(fn_graph))
 
@@ -3552,7 +3550,7 @@ prim_scatter <- new_primitive(
 )
 
 # The update functions `prim_scatter()` knows by name. A scatter keeps the name
-# in its `update_op` parameter, and the reverse rule differentiates these and
+# in its `update_op` parameter, and the pullback rule differentiates these and
 # nothing else.
 scatter_update_fns <- list(
   replace = function(old, new) new,
@@ -3708,7 +3706,7 @@ prim_gather <- new_primitive(
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' Axes before the last two are batch axes.
 #' @details
-#' Differentiation is only implemented for a single matrix: the `reverse` rule
+#' Differentiation is only implemented for a single matrix: the `pullback` rule
 #' errors on a batched input (an input with more than 2 axes).
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes
@@ -3755,7 +3753,7 @@ prim_chol <- new_primitive(
 #' between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
 #' @details
-#' Differentiation is only implemented for a single system: the `reverse` rule
+#' Differentiation is only implemented for a single system: the `pullback` rule
 #' errors on batched operands (operands with more than 2 axes).
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The last two axes must

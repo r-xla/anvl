@@ -18,6 +18,20 @@ describe("assert_shapevec()", {
   })
 })
 
+describe("resolve_auto_shape()", {
+  it("gives the shape to work out at \"auto\", and validates any other", {
+    expect_identical(resolve_auto_shape("auto", auto = 3L), 3L)
+    expect_identical(resolve_auto_shape(c(2, 3), auto = stop("not evaluated")), c(2L, 3L))
+    expect_identical(resolve_auto_shape(integer(), auto = 3L), integer())
+    expect_error(resolve_auto_shape(-1L, auto = 3L), "negative axis size")
+  })
+
+  it("refuses NULL, pointing at \"auto\" and `shp()`", {
+    shape <- NULL
+    expect_snapshot(error = TRUE, resolve_auto_shape(shape, auto = 3L))
+  })
+})
+
 describe("assert_linalg_matrix()", {
   it("gives every linear algebra primitive one wording for one mistake", {
     # `prim_chol()` used to check its operand in the wrapper as well, so the

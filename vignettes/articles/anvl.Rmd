@@ -38,8 +38,10 @@ Below, we create a scalar that holds a 16-bit integer living on the CPU.
 ```{r}
 library(anvl)
 set.seed(42)
-nv_array(1L, dtype = "i16", device = "cpu", shape = integer())
+nv_array(1L, dtype = "i16", device = "cpu", shape = shp())
 ```
+
+A shape is written with `shp()`, which takes the axis sizes: `shp(2, 3)` for a 2x3 matrix, and `shp()` for a scalar, which has none.
 
 For scalars, `nv_scalar()` is a shorthand that does not require specifying the shape.
 The device can also be omitted, in which case the default device is used.

@@ -1031,8 +1031,8 @@ describe("prim_custom_gradient", {
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r"))
   })
 
-  it("refuses a reverse rule without a forward pass", {
-    rule <- rule_reverse(backward = function(inputs, outputs, grads, params, required) list(x = grads))
+  it("refuses a pullback rule without a forward pass", {
+    rule <- rule_pullback(backward = function(inputs, outputs, grads, params, required) list(x = grads))
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule))
   })
 

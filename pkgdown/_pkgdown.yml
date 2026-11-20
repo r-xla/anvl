@@ -86,6 +86,7 @@ reference:
       - nv_scalar
       - nv_empty
       - nv_dtype_constructors
+      - shp
       - nv_fill
       - nv_iota
       - nv_seq
@@ -464,7 +465,6 @@ reference:
       - AnvlBackend
       - active_backend
       - jit_cache_size
-      - Shape
 
   - title: Primitives
     desc: Low-level primitive operations (prim_* functions)
@@ -474,7 +474,7 @@ reference:
       - new_primitive
       - AnvlPrimitiveDef
       - graph_desc_add
-      - rule_reverse
+      - rule_pullback
 
   - subtitle: Implemented Primitives
     contents:

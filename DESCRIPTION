@@ -85,7 +85,7 @@ Collate:
     'rng.R'
     'rng-trace.R'
     'roxygen.R'
-    'rules-reverse.R'
+    'rules-pullback.R'
     'rules-stablehlo.R'
     'serialize.R'
     'stablehlo.R'

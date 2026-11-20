@@ -329,7 +329,6 @@ AnvlBackendPjrt <- function() {
       # Everything but a buffer is placed on the default device when the call
       # names none.
       device <- device %||% default_device("pjrt")
-      shape <- shape %||% r_data_shape(data)
       # R data is column-major, which is the row-major order of the reversed
       # shape, so it is copied as it is. Only a raw payload can come in
       # row-major order (`byrow`), and that is the column-major order of the

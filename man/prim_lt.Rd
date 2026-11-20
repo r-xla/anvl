@@ -27,7 +27,7 @@ Element-wise less than comparison.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 
