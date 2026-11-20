@@ -11,6 +11,13 @@ Each statement of the graph is translated to its corresponding StableHLO op. The
 be serialized to MLIR text via stablehlo::repr() and subsequently compiled to an
 XLA executable with pjrt::pjrt_compile().
 The rule for translating a primitive to stablehlo is prim_&amp;lt;name&amp;gt;[[&quot;stablehlo&quot;]].
+The function works on every array with its axes reversed: an array of R
+shape (d1, ..., dn) is an XLA array of shape (dn, ..., d1), whose
+row-major bytes are the array's column-major ones. So the types in the
+program show the reversed shapes (an array of shape c(2, 3) is a
+tensor&amp;lt;3x2xf32&amp;gt;), and an op addresses R axis i of an n-axis array as
+XLA dimension n - i (see the axis reversal section of
+the Internals article).
 The arguments of the resulting function are, in this order: the graph's
 constants, the graph's inputs, the inputs of the graph's side effects (such
 as the key and the counter of the global random state, see nv_set_seed()),
@@ -26,6 +33,13 @@ Each statement of the graph is translated to its corresponding StableHLO op. The
 be serialized to MLIR text via stablehlo::repr() and subsequently compiled to an
 XLA executable with pjrt::pjrt_compile().
 The rule for translating a primitive to stablehlo is prim_&amp;lt;name&amp;gt;[[&quot;stablehlo&quot;]].
+The function works on every array with its axes reversed: an array of R
+shape (d1, ..., dn) is an XLA array of shape (dn, ..., d1), whose
+row-major bytes are the array's column-major ones. So the types in the
+program show the reversed shapes (an array of shape c(2, 3) is a
+tensor&amp;lt;3x2xf32&amp;gt;), and an op addresses R axis i of an n-axis array as
+XLA dimension n - i (see the axis reversal section of
+the Internals article).
 The arguments of the resulting function are, in this order: the graph's
 constants, the graph's inputs, the inputs of the graph's side effects (such
 as the key and the counter of the global random state, see nv_set_seed()),
@@ -115,6 +129,13 @@ Each statement of the graph is translated to its corresponding StableHLO op. The
 be serialized to MLIR text via <code><a href="https://r-xla.github.io/stablehlo/reference/repr.html" class="external-link">stablehlo::repr()</a></code> and subsequently compiled to an
 XLA executable with <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_compile.html" class="external-link">pjrt::pjrt_compile()</a></code>.</p>
 <p>The rule for translating a primitive to stablehlo is <code>prim_&lt;name&gt;[["stablehlo"]]</code>.</p>
+<p>The function works on every array with its axes reversed: an array of R
+shape <code>(d1, ..., dn)</code> is an XLA array of shape <code>(dn, ..., d1)</code>, whose
+row-major bytes are the array's column-major ones. So the types in the
+program show the reversed shapes (an array of shape <code>c(2, 3)</code> is a
+<code>tensor&lt;3x2xf32&gt;</code>), and an op addresses R axis <code>i</code> of an <code>n</code>-axis array as
+XLA dimension <code>n - i</code> (see the axis reversal section of
+the <a href="https://r-xla.github.io/anvl/articles/internals.html">Internals</a> article).</p>
 <p>The arguments of the resulting function are, in this order: the graph's
 constants, the graph's inputs, the inputs of the graph's side effects (such
 as the key and the counter of the global random state, see <code><a href="nv_set_seed.html">nv_set_seed()</a></code>),

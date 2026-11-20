@@ -444,16 +444,22 @@ x <- nv_array(c(1, 2, 3), shape = c(3, 1))
 # Eager call -- works because prim_repeat_along is itself jit-compiled.
 prim_repeat_along(x, times = 2L, axis = 2L)
 #> AnvlArray
-#>  1 1
-#>  2 2
-#>  3 3
+#>  1
+#>  2
+#>  3
+#>  1
+#>  2
+#>  3
 #> [ CPUf32{3,2} ]
 # Traced into the outer graph when composed with another jit-compiled function.
 jit(function(x) prim_repeat_along(x, times = 2L, axis = 2L))(x)
 #> AnvlArray
-#>  1 1
-#>  2 2
-#>  3 3
+#>  1
+#>  2
+#>  3
+#>  1
+#>  2
+#>  3
 #> [ CPUf32{3,2} ]
 ```
 

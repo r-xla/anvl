@@ -129,9 +129,8 @@ Has the given <code>dtype</code>, and the shape described under <code>dtype</cod
 
 <p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_bitcast_convert.html" class="external-link">hlo_bitcast_convert()</a></code>, specified under
 <a href="https://openxla.org/stablehlo/spec#bitcast_convert" class="external-link">bitcast_convert</a>.
-StableHLO puts the lane axis last, so a width-changing conversion is
-lowered with one <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_transpose.html" class="external-link">hlo_transpose()</a></code> that rotates it to the front, or off the
-front, depending on the direction.</p>
+StableHLO puts the lane axis last; the lowering represents an array by the
+reversed shape, so that is the leading R axis.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

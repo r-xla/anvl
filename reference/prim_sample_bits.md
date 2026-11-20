@@ -38,8 +38,8 @@ block, and a narrower value the xor of the block's two 32-bit words,
 truncated to its low bits, as JAX's `jax.random.bits()` does by default.
 The value at a position thus does not depend on the number of values
 drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
-`shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` is not a
-draw of `6` filled into `c(2, 3)` in R's column-major order.
+`shape` in column-major order, so a draw of `c(2, 3)` is a draw of `6`
+filled into `c(2, 3)`. JAX fills a shape in row-major order instead.
 
 ## Random State
 

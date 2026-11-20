@@ -129,9 +129,9 @@ Has the same data type as the input and the given <code>shape</code>.</p>
 
 <p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reshape.html" class="external-link">hlo_reshape()</a></code>, specified under
 <a href="https://openxla.org/stablehlo/spec#reshape" class="external-link">reshape</a>.
-The lowering wraps it in two <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_transpose.html" class="external-link">hlo_transpose()</a></code> calls that reverse every
-axis, which is what turns stablehlo's row-major reshape into a column-major
-one; each is skipped where that side has at most one axis.</p>
+The lowering represents an array by the reversed shape, so stablehlo's
+row-major reshape of the reversed shapes is exactly a column-major reshape
+of the R shapes.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -323,7 +323,7 @@ transformation are attached to each primitive.</p>
 <span><span class="co">##     operands &lt;- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)</span></span>
 <span><span class="co">##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))</span></span>
 <span><span class="co">## }</span></span>
-<span><span class="co">## &lt;environment: 0x5cb669b40740&gt;</span></span></code></pre>
+<span><span class="co">## &lt;environment: 0x62d8847c8308&gt;</span></span></code></pre>
 <p>The <code><a href="../reference/stablehlo.html">stablehlo()</a></code> function creates a
 <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code> object and sequentially translates the
 <code>GraphStatement</code>s into StableHLO operations.</p>
@@ -341,8 +341,10 @@ transformation are attached to each primitive.</p>
 <span><span class="va">exec</span> <span class="op">&lt;-</span> <span class="fu">pjrt</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/pjrt/reference/pjrt_compile.html" class="external-link">pjrt_compile</a></span><span class="op">(</span><span class="va">program</span><span class="op">)</span></span></code></pre></div>
 <p>To run the function, we need to extract the underlying buffers from
 the arrays before passing them to the executable, which will output a
-<code>PJRTBuffer</code> that we can easily convert to an
-<code>AnvlArray</code>.</p>
+<code>PJRTBuffer</code>. It holds the result the way anvl stores every
+array, with its shape reversed (see <a href="#axis-reversal">Axis
+Reversal</a> below), so we read it back with
+<code>row_major = TRUE</code>.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span>, <span class="st">"f32"</span><span class="op">)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">4</span>, <span class="st">"f32"</span><span class="op">)</span></span>
@@ -352,10 +354,68 @@ the arrays before passing them to the executable, which will output a
 <span><span class="co">##  12</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  12</span></span>
-<span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">out</span>, row_major <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 12</span></span></code></pre>
+</div>
+<div class="section level3">
+<h3 id="axis-reversal">Axis Reversal<a class="anchor" aria-label="anchor" href="#axis-reversal"></a>
+</h3>
+<p>R arrays are column-major, while XLA’s arrays are row-major. The two
+agree once every axis is reversed: the column-major bytes of an array of
+shape <code>(d1, ..., dn)</code> are exactly the row-major bytes of an
+array of shape <code>(dn, ..., d1)</code>. For example, R holds
+<code>A &lt;- matrix(1:6, ncol = 2L)</code> in memory as
+<code>c(1, 2, 3, 4, 5, 6)</code> and
+<code>B &lt;- matrix(7:10, nrow = 2L)</code> as
+<code>c(7, 8, 9, 10)</code>, and read row-major with their shapes
+reversed, these bytes are <code>t(A)</code> and <code>t(B)</code>.</p>
+<p>So the lowering represents an array of R shape
+<code>(d1, ..., dn)</code> as an XLA array of shape
+<code>(dn, ..., d1)</code>, and the pjrt backend stores it that way: an
+upload copies R’s bytes as they are, without a transpose, and so does a
+read-back. Read as an array of its own shape, as
+<code><a href="https://r-xla.github.io/xlamisc/reference/as_array.html" class="external-link">pjrt::as_array()</a></code> does, the buffer of <code>A</code> is
+<code>t(A)</code>:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, ncol <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
+<span><span class="fu">pjrt</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/xlamisc/reference/as_array.html" class="external-link">as_array</a></span><span class="op">(</span><span class="va">a</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##      [,1] [,2] [,3]</span></span>
+<span><span class="co">## [1,]    1    2    3</span></span>
+<span><span class="co">## [2,]    4    5    6</span></span></code></pre>
+<p>The lowering rules compute on these transposes. For
+<code>C &lt;- A %*% B</code>, XLA holds <code>t(A)</code> and
+<code>t(B)</code> and computes <code>t(B) %*% t(A)</code>, which is
+<code>t(C)</code> – and <code>t(C)</code>, with its shape reversed, is
+the <code>AnvlArray</code> <code>C</code>. So the lowering of
+<code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> passes its operands to
+<code>stablehlo.dot_general</code> the other way round:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">nv_matmul</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span>, y <span class="op">=</span> <span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/stablehlo.html">stablehlo</a></span><span class="op">(</span><span class="va">graph</span><span class="op">)</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## func.func @main (%0: tensor&lt;2x3xf32&gt;, %1: tensor&lt;2x2xf32&gt;) -&gt; tensor&lt;2x3xf32&gt; {</span></span>
+<span><span class="co">## %2 = stablehlo.dot_general %1, %0, batching_dims = [] x [], contracting_dims = [1] x [0], precision = [HIGHEST, HIGHEST]: (tensor&lt;2x2xf32&gt;, tensor&lt;2x3xf32&gt;) -&gt; (tensor&lt;2x3xf32&gt;)</span></span>
+<span><span class="co">## return %2 : tensor&lt;2x3xf32&gt;</span></span>
+<span><span class="co">## }</span></span></code></pre>
+<p>R axis <code>i</code> of an <code>n</code>-axis array is XLA
+dimension <code>n - i</code>, so R’s first axis – the contiguous one –
+is XLA’s minor dimension, and trailing R axes are XLA’s major ones.
+XLA’s kernels want batch axes outermost in memory, which are the
+trailing R axes. To XLA, every program anvl builds is a row-major one,
+which is the happy path its kernels and its compiler are optimized
+for.</p>
+<p>Every lowering rule maps the axis numbers of its parameters
+accordingly, and the StableHLO program shows the reversed shapes. An
+array of shape <code>(2, 3)</code> is a
+<code>tensor&lt;3x2xf32&gt;</code>, and a column-major reshape is a
+single row-major <code>stablehlo.reshape</code> of the reversed
+shapes:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_reshape.html">nv_reshape</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/stablehlo.html">stablehlo</a></span><span class="op">(</span><span class="va">graph</span><span class="op">)</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## func.func @main (%0: tensor&lt;3x2xf32&gt;) -&gt; tensor&lt;2x3xf32&gt; {</span></span>
+<span><span class="co">## %1 = "stablehlo.reshape" (%0): (tensor&lt;3x2xf32&gt;) -&gt; (tensor&lt;2x3xf32&gt;)</span></span>
+<span><span class="co">## return %1 : tensor&lt;2x3xf32&gt;</span></span>
+<span><span class="co">## }</span></span></code></pre>
 </div>
 </div>
 <div class="section level2">
@@ -375,7 +435,7 @@ be executed on <code>AnvlArray</code>s. We apply it to our simple
 example function, where we mark the non-array parameter <code>op</code>
 as “static”. This means that the value of this parameter needs to be
 known at compile time.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">f</span>, static <span class="op">=</span> <span class="st">"op"</span><span class="op">)</span></span>
 <span><span class="fu">f_jit</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="st">"add"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -406,38 +466,38 @@ in <code>jit()</code></a>). For example, if we run the function with
 function won’t be recompiled, which we can see with
 <code><a href="../reference/jit_cache_size.html">jit_cache_size()</a></code>, which is already 1, because we have
 called it on <code>x</code> and <code>y</code> above.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 1</span></span></code></pre>
 <p>After calling it with arrays of the same types and identical static
 argument values, the size of the cache remains 1:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">f_jit</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="op">-</span><span class="fl">99</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="st">"add"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  -97</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 1</span></span></code></pre>
 <p>When we execute the function with arrays of different
 <code>dtype</code> or <code>shape</code>, the function will be
 recompiled:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">f_jit</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"i32"</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">"i32"</span><span class="op">)</span>, <span class="st">"add"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  3</span></span>
 <span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 2</span></span></code></pre>
 <p>Also, if we provide different values for static arguments, the
 function will be recompiled:</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">f_jit</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="st">"mul"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 3</span></span></code></pre>
 </div>
@@ -448,11 +508,11 @@ function will be recompiled:</p>
 <p>Just like <code><a href="../reference/jit.html">jit()</a></code>, <code><a href="../reference/gradient.html">gradient()</a></code> also returns a
 function that will lazily create the graph and transform it, once the
 inputs are provided.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gradient.html">gradient</a></span><span class="op">(</span><span class="va">f</span>, wrt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>To actually compute the gradient, we wrap it in
 <code><a href="../reference/jit.html">jit()</a></code>:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">g_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">g</span>, static <span class="op">=</span> <span class="st">"op"</span><span class="op">)</span></span>
 <span><span class="fu">g_jit</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="st">"add"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## $x</span></span>
@@ -465,7 +525,7 @@ inputs are provided.</p>
 <span><span class="co">##  1</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <p>We can also use <code>g</code> inside another function:</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">h</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span></span>
 <span>  <span class="fu">g</span><span class="op">(</span><span class="va">z</span>, <span class="va">x</span>, <span class="st">"mul"</span><span class="op">)</span></span>
@@ -497,7 +557,7 @@ converted into the main <code>AnvlGraph</code>. We can look at this
 graph below, where <code>trace_fn</code> internally converts the
 <code>AnvlArray</code>s <code>x</code> and <code>y</code> into their
 abstract representation.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">h_graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">h</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">h_graph</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span></span>
@@ -519,7 +579,7 @@ compiled.</p>
 </h3>
 <p>Constants are handled specially in {anvl}. Consider the program
 below:</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1000000L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">+</span> <span class="fl">1</span></span>
@@ -533,7 +593,7 @@ below:</p>
 <p>Here, <code>y</code> is a closed-over constant and it is included in
 the <code>$constants</code> field of the graph. The literal
 <code>1</code> is not: it is written straight into the body.</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">graph</span><span class="op">$</span><span class="va">constants</span></span></code></pre></div>
 <pre><code><span><span class="co">## [[1]]</span></span>
 <span><span class="co">## GraphValue(ConcreteArray(f32, (1000000)))</span></span></code></pre>
@@ -547,7 +607,7 @@ for a large one and buys nothing for a small one: the value is already a
 buffer on the device. Note that if we ran <code><a href="../reference/trace_fn.html">trace_fn()</a></code> with
 <code>optimize = TRUE</code>, scalarish constants would also be
 inlined.</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/stablehlo.html">stablehlo</a></span><span class="op">(</span><span class="va">graph</span><span class="op">)</span></span>
 <span><span class="va">out</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## func.func @main (%0: tensor&lt;1000000xf32&gt;, %1: tensor&lt;f32&gt;) -&gt; tensor&lt;1000000xf32&gt; {</span></span>
@@ -568,7 +628,7 @@ inlined.</p>
 constants can become unused when we apply code transformations like
 below, where the gradient of the function w.r.t. <code>x</code> does not
 depend on the captured <code>y</code>:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">y</span></span>
 <span><span class="op">}</span></span>
@@ -595,7 +655,7 @@ the future.</li>
 <p>The <code>RData</code> object can be thought of as the dynamic
 version of an R value within the program and they behave similarly.</p>
 <p>Both have a shape, but no data type.</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
@@ -610,7 +670,7 @@ version of an R value within the program and they behave similarly.</p>
 <span><span class="co">##   only takes a data type when it meets a typed array, or when it materializes</span></span>
 <span><span class="co">##   at the default.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
@@ -640,7 +700,7 @@ data type (<code><a href="../reference/promotion_rule.html">promotion_rdata_comm
 <code>%x1</code> input has the data type it took, and the
 <code>&lt;- integer</code> records that the caller supplies it as an R
 integer, which the runtime uploads at that data type.</p>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"integer"</span>, <span class="fu"><a href="../reference/shp.html">shp</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -652,7 +712,7 @@ integer, which the runtime uploads at that data type.</p>
 integer meeting an <code>f32</code> is an error rather than a promotion
 – crossing a category is the job of the <code>nv_*</code> layer.</p>
 <p>In the second case, it settles on its default data type:</p>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_exp.html">prim_exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="../reference/shp.html">shp</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -665,7 +725,7 @@ it is supplied at the narrowest one that holds them all, and each use
 site converts down from it. Below the input is uploaded as
 <code>i64</code>; the <code>i8</code> and <code>i16</code> uses convert
 down from it.</p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i8"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i16"</span><span class="op">)</span><span class="op">)</span></span>
@@ -693,7 +753,7 @@ with this approach is that:</p>
 which is why <code>f32</code> is the default float on pjrt, and why that
 default is configurable (<code><a href="../reference/default_dtypes.html">default_dtypes()</a></code>): a program that
 wants double precision throughout can ask for it.</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="../reference/shp.html">shp</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -704,7 +764,7 @@ wants double precision throughout can ask for it.</p>
 <p>Otherwise the input is fed at whatever data type its use sites ask
 for, and a use site that asks for nothing in particular – a bare R
 number on the other side – settles on the default float:</p>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="../reference/shp.html">shp</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -723,7 +783,7 @@ first convert the R <code>double</code> to the default float
 would result in a loss of precision. In order to prevent this,
 <code><a href="../reference/prim_convert.html">prim_convert()</a></code> materializes its input at its natural
 representation.</p>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_convert.html">prim_convert</a></span><span class="op">(</span><span class="va">x</span>, <span class="st">"i32"</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="../reference/shp.html">shp</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -761,12 +821,12 @@ without its contents. Unclassed lists are the inner nodes of the tree,
 captures the structure, <code><a href="https://r-xla.github.io/pjrt/reference/flatten.html" class="external-link">pjrt::flatten()</a></code> extracts the leaves
 as a flat list, and <code><a href="https://r-xla.github.io/pjrt/reference/unflatten.html" class="external-link">pjrt::unflatten()</a></code> puts a flat list of
 leaves back into the structure:</p>
-<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>a <span class="op">=</span> <span class="fl">1</span>, b <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>c <span class="op">=</span> <span class="fl">2</span>, d <span class="op">=</span> <span class="cn">NULL</span>, e <span class="op">=</span> <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">tree</span> <span class="op">&lt;-</span> <span class="fu">pjrt</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">build_tree</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="va">tree</span></span></code></pre></div>
 <pre><code><span><span class="co">## list&lt;named&gt;(a = *, b = list&lt;named&gt;(c = *, d = NULL, e = *))</span></span></code></pre>
-<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pjrt</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/pjrt/reference/flatten.html" class="external-link">flatten</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [[1]]</span></span>
 <span><span class="co">## [1] 1</span></span>
@@ -776,7 +836,7 @@ leaves back into the structure:</p>
 <span><span class="co">## </span></span>
 <span><span class="co">## [[3]]</span></span>
 <span><span class="co">## [1] 3</span></span></code></pre>
-<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pjrt</span><span class="fu">::</span><span class="fu"><a href="https://r-xla.github.io/pjrt/reference/unflatten.html" class="external-link">unflatten</a></span><span class="op">(</span><span class="va">tree</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## $a</span></span>
 <span><span class="co">## [1] 10</span></span>
@@ -795,7 +855,7 @@ becomes one input of the <code>AnvlGraph</code>, and the structure of
 the arguments is stored in the graph’s <code>in_tree</code> field.
 Likewise, the outputs are flattened into the graph’s outputs, and their
 structure is stored in <code>out_tree</code>:</p>
-<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span></span>
 <span>  <span class="kw">function</span><span class="op">(</span><span class="va">params</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>pred <span class="op">=</span> <span class="va">params</span><span class="op">$</span><span class="va">w</span> <span class="op">*</span> <span class="va">x</span> <span class="op">+</span> <span class="va">params</span><span class="op">$</span><span class="va">b</span>, w <span class="op">=</span> <span class="va">params</span><span class="op">$</span><span class="va">w</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>w <span class="op">=</span> <span class="va">aval</span>, b <span class="op">=</span> <span class="va">aval</span><span class="op">)</span>, x <span class="op">=</span> <span class="va">aval</span><span class="op">)</span></span>
@@ -806,10 +866,10 @@ structure is stored in <code>out_tree</code>:</p>
 <span><span class="co">##   %2: f32[] = add(%1, %x2)</span></span>
 <span><span class="co">##   return (%2, %x1)</span></span>
 <span><span class="co">## }</span></span></code></pre>
-<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb81"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">graph</span><span class="op">$</span><span class="va">in_tree</span></span></code></pre></div>
 <pre><code><span><span class="co">## list&lt;named&gt;(params = list&lt;named&gt;(w = *, b = *), x = *)</span></span></code></pre>
-<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">graph</span><span class="op">$</span><span class="va">out_tree</span></span></code></pre></div>
 <pre><code><span><span class="co">## list&lt;named&gt;(pred = *, w = *)</span></span></code></pre>
 <p>When the compiled program is called, the arguments are flattened in
@@ -821,26 +881,26 @@ the input tree is also part of the cache key of <code><a href="../reference/jit.
 Passing the same arrays in a list with a different order of elements
 therefore triggers a new compilation, while changing only their values
 does not:</p>
-<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">params</span>, <span class="va">x</span><span class="op">)</span> <span class="va">params</span><span class="op">$</span><span class="va">w</span> <span class="op">*</span> <span class="va">x</span> <span class="op">+</span> <span class="va">params</span><span class="op">$</span><span class="va">b</span><span class="op">)</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>w <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, b <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  7</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb81"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>b <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, w <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  7</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 2</span></span></code></pre>
-<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>w <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, b <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  11</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb93"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 2</span></span></code></pre>
 </div>
@@ -1001,15 +1061,15 @@ hand back what it did</td>
 field, apart from its <code>inputs</code> and <code>outputs</code>, so
 that <code>in_tree</code> and <code>out_tree</code> keep describing what
 the user passes and gets back:</p>
-<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb95"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"ui32"</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">view</span> <span class="op">&lt;-</span> <span class="va">graph</span><span class="op">$</span><span class="va">side_effects</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">view</span><span class="op">$</span><span class="va">effect</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlRngStateHandle&gt;</span></span></code></pre>
-<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb97"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">view</span><span class="op">$</span><span class="va">n</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 1</span></span></code></pre>
-<div class="sourceCode" id="cb93"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb99"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">view</span><span class="op">$</span><span class="va">inputs</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "key"     "counter"</span></span></code></pre>
 <p>The figure follows a function that draws three times from the global
@@ -1165,7 +1225,7 @@ third draw take counters computed from <code>%counter1</code>, and the
 <code>then</code> block after the graph says what happens after the run:
 the counter advances by the number of draws, here
 <code>%counter1 += 3</code>.</p>
-<div class="sourceCode" id="cb95"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb101"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span></span>
 <span>  <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -1190,18 +1250,18 @@ give it.</p>
 <p>So a compiled function draws exactly what the same calls made one
 after the other without <code><a href="../reference/jit.html">jit()</a></code> would draw, and leaves the
 global random state where they would leave it:</p>
-<div class="sourceCode" id="cb97"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb103"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>, <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="va">eager</span> <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000001, counter 0x0000000000000003</span></span></code></pre>
-<div class="sourceCode" id="cb99"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb105"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_set_seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="va">compiled</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000001, counter 0x0000000000000003</span></span></code></pre>
-<div class="sourceCode" id="cb101"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb107"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">eager</span>, <span class="va">as_array</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">compiled</span>, <span class="va">as_array</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] TRUE</span></span></code></pre>
 <p>A draw is one call of <code>desc_use_side_effect()</code>: it finds
@@ -1213,7 +1273,7 @@ and its counter plus <code>n</code> (<code>view_current()</code>) to the
 call as ordinary operands, and counts the draw. The call returns no
 random state: the next draw computes its own counter from the view
 again.</p>
-<div class="sourceCode" id="cb103"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb109"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_sample_bits</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/new_primitive.html">new_primitive</a></span><span class="op">(</span></span>
 <span>  <span class="st">"sample_bits"</span>,</span>
 <span>  <span class="kw">function</span><span class="op">(</span><span class="va">shape</span>, <span class="va">dtype</span><span class="op">)</span> <span class="op">{</span></span>
@@ -1276,7 +1336,7 @@ the handle’s place among them (<code>rng_state_argument()</code>).</p>
 <p><img src="figures/se-instances.png" class="r-plt" alt="" width="100%"></p>
 <p>So one side effect can appear several times in a graph, once per
 random state:</p>
-<div class="sourceCode" id="cb104"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb110"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span></span>
 <span>  \<span class="op">(</span><span class="va">rng1</span>, <span class="va">rng2</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">rng1</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">rng2</span>, <span class="fu"><a href="../reference/prim_sample_bits.html">prim_sample_bits</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"ui32"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="fu"><a href="../reference/nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
@@ -1292,12 +1352,12 @@ random state:</p>
 <span><span class="co">##   %counter1 += 1</span></span>
 <span><span class="co">##   %counter2 += 1</span></span>
 <span><span class="co">## }</span></span></code></pre>
-<div class="sourceCode" id="cb106"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb112"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">graph</span><span class="op">$</span><span class="va">side_effects</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="st">"n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 1 1</span></span></code></pre>
 <p>and a compiled function advances each random state it is passed by
 its own draws, and the global random state by the rest:</p>
-<div class="sourceCode" id="cb108"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb114"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">rng1</span>, <span class="va">p</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">rng1</span>, <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/local_nv_rng_state.html">with_nv_rng_state</a></span><span class="op">(</span><span class="va">p</span><span class="op">$</span><span class="va">rng2</span>, <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="../reference/nv_uniform.html">nv_runif</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -1307,10 +1367,10 @@ its own draws, and the global random state by the rest:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="va">rng1</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>rng2 <span class="op">=</span> <span class="va">rng2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">rng1</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000001, counter 0x0000000000000002</span></span></code></pre>
-<div class="sourceCode" id="cb110"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb116"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rng2</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000002, counter 0x0000000000000001</span></span></code></pre>
-<div class="sourceCode" id="cb112"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb118"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_set_seed.html">nv_get_rng_state</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;AnvlRngState&gt; key 0x0000000000000003, counter 0x0000000000000001</span></span></code></pre>
 <p>The same random state passed twice cannot work this way, and is an
@@ -1357,7 +1417,7 @@ graph starts from the enclosing trace’s view, and hands its draws to the
 enclosing trace like a branch does
 (<code>desc_end_capture()</code>).</li>
 </ul>
-<div class="sourceCode" id="cb114"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb120"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span></span>
 <span>  <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="../reference/nv_while.html">nv_while</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>i <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span>, \<span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="va">i</span> <span class="op">&lt;</span> <span class="va">n</span>, \<span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
@@ -1483,7 +1543,7 @@ names a device, the program runs on <code><a href="../reference/default_device.h
 <p>The inputs alone are therefore not enough to know the device: the
 body can name one that <code><a href="../reference/jit.html">jit()</a></code> only sees while tracing. The
 function below has no inputs, but it still runs on the GPU:</p>
-<div class="sourceCode" id="cb116"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb122"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>An array the function creates <em>without</em> naming a device, such
@@ -1502,7 +1562,7 @@ to <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>;
 trace, where it counts exactly like the device of an array input. To
 choose the device of such a program from the outside, pass it to the
 constructor through a static argument:</p>
-<div class="sourceCode" id="cb117"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb123"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">dev</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2L</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, device <span class="op">=</span> <span class="va">dev</span><span class="op">)</span>, static <span class="op">=</span> <span class="st">"dev"</span><span class="op">)</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -1530,13 +1590,13 @@ arrays.</li>
 programs.</li>
 </ol>
 <p>With our implementation, the following is possible:</p>
-<div class="sourceCode" id="cb119"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb125"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  3</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb121"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb127"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_mul.html">nv_mul</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -1549,13 +1609,13 @@ programs.</li>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  4</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb123"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb129"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">times_4</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  8</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <p>Otherwise, we would need the following:</p>
-<div class="sourceCode" id="cb125"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb131"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times_2_r</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_mul.html">nv_mul</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>

@@ -249,15 +249,15 @@ nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 
 with_nv_seed(42L, nv_runif(c(2, 3)))
 #> AnvlArray
-#>  0.5303 0.3134 0.9015
-#>  0.6983 0.6181 0.6219
+#>  0.5303 0.9015 0.6181
+#>  0.3134 0.6983 0.6219
 #> [ CPUf32{2,3} ] 
 
 # `min`/`max` may also be arrays of the same shape as the sample
 lower <- nv_array(matrix(c(0, 10, 20, 30, 40, 50), nrow = 2))
 nv_runif(c(2, 3), min = lower, max = lower + 1)
 #> AnvlArray
-#>   0.7277 20.7879 40.1817
-#>  10.2626 30.1107 50.2026
+#>   0.7277 20.1817 40.1107
+#>  10.7879 30.2626 50.2026
 #> [ CPUf32{2,3} ] 
 ```

@@ -122,8 +122,8 @@ block, and a narrower value the xor of the block's two 32-bit words,
 truncated to its low bits, as JAX's <code>jax.random.bits()</code> does by default.
 The value at a position thus does not depend on the number of values
 drawn, so a draw of <code>3</code> is the start of a draw of <code>6</code>. The draws fill
-<code>shape</code> in row-major order, as JAX's do, so a draw of <code>c(2, 3)</code> is not a
-draw of <code>6</code> filled into <code>c(2, 3)</code> in R's column-major order.</p>
+<code>shape</code> in column-major order, so a draw of <code>c(2, 3)</code> is a draw of <code>6</code>
+filled into <code>c(2, 3)</code>. JAX fills a shape in row-major order instead.</p>
     </div>
     <div class="section level2">
     <h2 id="random-state">Random State<a class="anchor" aria-label="anchor" href="#random-state"></a></h2>

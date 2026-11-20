@@ -4,6 +4,7 @@
 
 ### Breaking changes
 
+- Random draws now fill multi-dimensional arrays in a transposed order.
 - `NULL` (and so [`c()`](https://rdrr.io/r/base/c.html)) is no longer a
   shape; constructors that infer one default to `shape = "auto"`. Write
   the shape of a scalar as
@@ -11,10 +12,7 @@
   ([\#552](https://github.com/r-xla/anvl/issues/552)).
 - `Shape()` is no longer exported; use
   [`shp()`](https://r-xla.github.io/anvl/reference/shp.md).
-- The `"reverse"` rule of a primitive is renamed to `"pullback"`: write
-  `prim_x[["pullback"]]` and
-  [`rule_pullback()`](https://r-xla.github.io/anvl/reference/rule_pullback.md)
-  instead of `prim_x[["reverse"]]` and `rule_reverse()`.
+- The `"reverse"` rule of a primitive is renamed to `"pullback"`.
 
 ### Features
 
@@ -22,7 +20,7 @@
   [`nv_split_rng_states()`](https://r-xla.github.io/anvl/reference/nv_split_rng_states.md)
   splits `n` random states off a random state.
 - New [`shp()`](https://r-xla.github.io/anvl/reference/shp.md) creates a
-  shape from its axis sizes: `shp(2, 3)`, or
+  shape vector from its axis sizes: `shp(2, 3)`, or
   [`shp()`](https://r-xla.github.io/anvl/reference/shp.md) for a scalar.
 - New
   [`skip_if_no_plugin()`](https://r-xla.github.io/anvl/reference/skip_if_no_plugin.md)
@@ -30,25 +28,16 @@
   “Depending on anvl” article explains its use.
 - New
   [`prim_optimization_barrier()`](https://r-xla.github.io/anvl/reference/prim_optimization_barrier.md)
-  returns its input arrays unchanged and keeps the compiler from moving
-  computations across it, so the operations that produce the arrays are
-  not fused with those that use them.
+  and
   [`nv_optimization_barrier()`](https://r-xla.github.io/anvl/reference/nv_optimization_barrier.md)
-  does the same for a single array or a tree of arrays, returning it
-  with the same structure.
-- New [`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
-  and
-  [`value_and_pullback()`](https://r-xla.github.io/anvl/reference/pullback.md)
-  differentiate a function with any result: they return its pullback,
-  which takes a cotangent of the result back to the arguments.
+  which allow to prevent optimizations from moving computations across
+  it.
+- Added two new transformations
+  [`pullback()`](https://r-xla.github.io/anvl/reference/pullback.md) and
+  [`value_and_pullback()`](https://r-xla.github.io/anvl/reference/pullback.md).
 - Elementwise primitives such as
-  [`prim_add()`](https://r-xla.github.io/anvl/reference/prim_add.md),
-  [`prim_eq()`](https://r-xla.github.io/anvl/reference/prim_eq.md),
-  [`prim_ifelse()`](https://r-xla.github.io/anvl/reference/prim_ifelse.md)
-  and
-  [`prim_clamp()`](https://r-xla.github.io/anvl/reference/prim_clamp.md)
-  broadcast a scalar operand themselves, so a traced graph has no
-  `broadcast_in_axes` for it.
+  [`prim_add()`](https://r-xla.github.io/anvl/reference/prim_add.md) now
+  broadcast scalars.
 
 ### Bug fixes
 
@@ -61,6 +50,12 @@
 - `nv_array(byrow = TRUE)` refuses data that does not fill `shape`
   instead of recycling it, and keeps the values of a
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
+
+### Performance
+
+- Constructing `AnvlArray`s from R objects is now more efficient.
+- The generated XLA programs are more efficient, especially around
+  flattening operations.
 
 ## anvl 0.6.0
 

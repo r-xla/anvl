@@ -319,16 +319,16 @@ random state is advanced regardless.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="nv_set_seed.html">with_nv_seed</a></span><span class="op">(</span><span class="fl">42L</span>, <span class="fu">nv_runif</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.5303 0.3134 0.9015</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  0.6983 0.6181 0.6219</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.5303 0.9015 0.6181</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.3134 0.6983 0.6219</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># `min`/`max` may also be arrays of the same shape as the sample</span></span></span>
 <span class="r-in"><span><span class="va">lower</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span>, <span class="fl">50</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_runif</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, min <span class="op">=</span> <span class="va">lower</span>, max <span class="op">=</span> <span class="va">lower</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   0.7277 20.7879 40.1817</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  10.2626 30.1107 50.2026</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   0.7277 20.1817 40.1107</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  10.7879 30.2626 50.2026</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 </code></pre></div>
     </div>

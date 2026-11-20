@@ -98,7 +98,7 @@
 <li>
 <code>ANVL_DEFAULT_DTYPES="float=f64,int=i64"</code> runs the suite at another pair of default data types; the <code>default-dtypes</code> workflow runs it so that anything hardcoding <code>f32</code> / <code>i32</code> where it should read <code><a href="reference/default_dtypes.html">default_dtypes()</a></code> fails in CI. A test that asserts the <em>registered</em> pair calls <code>local_registered_default_dtypes()</code> (<code>helper.R</code>) to clear the override.</li>
 </ul></li>
-<li>anvl tracks the <strong>dev</strong> versions of its r-xla dependencies: <code>pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))</code>.</li>
+<li>anvl tracks the <strong>dev</strong> versions of its r-xla dependencies, pjrt from its <code>develop</code> branch: <code>pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))</code>.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="two-layer-api">Two-Layer API<a class="anchor" aria-label="anchor" href="#two-layer-api"></a></h2>
@@ -180,6 +180,10 @@ Don’t reach for a synonym (<em>commit</em>, <em>realize</em>, <em>standardize<
 <p>Anvl’s elementwise operations (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>nv_add</code>, <code>nv_mul</code>, …, and the elementwise primitives beneath them) only <strong>auto-broadcast scalars</strong> — i.e. operands with <code>shape = integer()</code>. They do <strong>not</strong> do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises errors like <em>“<code>lhs</code> and <code>rhs</code> must have the same shape, unless one of them is a scalar. … Use <code><a href="reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> for general broadcasting.”</em></p>
 <p>The scalar broadcast belongs to the elementwise primitives themselves: the trace records <code>mul(%x, 2:f32)</code>, not a <code>broadcast_in_axes</code> first. Their inference rules take the shape of the operands that are not scalars (<code>infer_elementwise_shape()</code>), their StableHLO rules broadcast a scalar operand while lowering (<code>elementwise_rule()</code>, <code>hlo_broadcast_scalar()</code>), and their pullback rules sum the gradient of a scalar operand back down (<code>unbroadcast()</code>).</p>
 <p>When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(x, target_shape)</code> / <code><a href="reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> for a one-sided broadcast).</p>
+</div>
+<div class="section level2">
+<h2 id="axis-reversal">Axis Reversal<a class="anchor" aria-label="anchor" href="#axis-reversal"></a></h2>
+<p>The StableHLO lowering represents an array of R shape <code>(d1, ..., dn)</code> as an XLA array of shape <code>(dn, ..., d1)</code>, and the pjrt backend stores it that way: R’s column-major bytes are XLA’s row-major bytes of the reversed shape, so transfers copy them as they are. A pjrt <code>AnvlArray</code> holds a buffer whose dims are <code>rev(x$shape)</code>; <code>x$shape</code> stays the R shape. R axis <code>i</code> of an <code>n</code>-axis array is XLA dimension <code>n - i</code>, so R axis 1 is the contiguous (minor) one and the trailing R axes are XLA’s major dimensions, where XLA’s kernels want batch axes. Every lowering rule maps its axis numbers, shapes and per-axis vectors with the helpers in <code>R/lowering-axes.R</code>; <code>at2vt()</code> reverses every type, so <code><a href="reference/shape.html">shape()</a></code> of a <code>FuncValue</code> is the XLA shape. Dumped HLO and XLA’s error messages show the reversed shapes.</p>
 </div>
 <div class="section level2">
 <h2 id="graph-tracing">Graph Tracing<a class="anchor" aria-label="anchor" href="#graph-tracing"></a></h2>

@@ -542,16 +542,22 @@ JIT-compiled function:</p>
 <span><span class="co"># Eager call -- works because prim_repeat_along is itself jit-compiled.</span></span>
 <span><span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  1 1</span></span>
-<span><span class="co">#&gt;  2 2</span></span>
-<span><span class="co">#&gt;  3 3</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt;  3</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt;  3</span></span>
 <span><span class="co">#&gt; [ CPUf32{3,2} ]</span></span>
 <span><span class="co"># Traced into the outer graph when composed with another jit-compiled function.</span></span>
 <span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  1 1</span></span>
-<span><span class="co">#&gt;  2 2</span></span>
-<span><span class="co">#&gt;  3 3</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt;  3</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt;  3</span></span>
 <span><span class="co">#&gt; [ CPUf32{3,2} ]</span></span></code></pre></div>
 <p>And compute gradients through it.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
