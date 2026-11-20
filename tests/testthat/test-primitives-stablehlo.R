@@ -1499,8 +1499,7 @@ test_that("prim_print", {
 describe("prim_print", {
   it("prints an array with a size-0 axis", {
     x <- nv_array(array(numeric(), c(2L, 0L, 3L)), dtype = "f32")
-    expect_snapshot
-    out <- expect_snapshot(jit(function(x) prim_print(x))(x))
+    expect_snapshot(out <- jit(function(x) prim_print(x))(x))
     expect_equal(shape(out), c(2L, 0L, 3L))
   })
 })
