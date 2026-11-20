@@ -4,7 +4,8 @@ NULL
 #' Create a Backend
 #'
 #' @param new_data (`function(data, dtype, shape, device, row_major = FALSE)`)\cr
-#'   Constructs an AnvlArray from R data. Must return
+#'   Constructs an AnvlArray of the given `dtype` and `shape` (an `integer()`
+#'   vector, which [`nv_array()`] has already worked out) from R data. Must return
 #'   `structure(list(data = , backend = <name>, ...), class = "AnvlArray")`, where
 #'   `data` holds the underlying data (a `PJRTBuffer` for the `"pjrt"` backend, an
 #'   R `array()` for the `"quickr"` backend) and `backend` is the name the
@@ -169,7 +170,6 @@ register_backend(
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
-      shape <- shape %||% r_data_shape(data)
       # Not `as.vector(data, mode)`: it does not dispatch, so it reinterprets the
       # bits of a `bit64::integer64` instead of converting its values.
       data <- switch(

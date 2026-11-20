@@ -160,20 +160,12 @@ gather_clamp_indices <- function(
   index_dtype <- dtype(start_indices)
   if (index_vector_axis > length(indices_shape)) {
     # Implicit index vector (single coordinate)
-    min_bound <- prim_fill(1L, dtype = index_dtype, shape = integer())
-    max_bound <- prim_fill(max_bounds[1L], dtype = index_dtype, shape = integer())
-    return(prim_clamp(start_indices, min_bound, max_bound))
+    return(prim_clamp(start_indices, 1L, max_bounds[[1L]]))
   }
 
   # Explicit index vector axis - build bounds arrays
   bounds_shape <- rep(1L, length(indices_shape))
   bounds_shape[index_vector_axis] <- n_index_coords
-
-  min_bound <- prim_broadcast_in_axes(
-    prim_fill(1L, dtype = index_dtype, shape = integer()),
-    indices_shape,
-    integer()
-  )
 
   # The max bound is the same for a given slice along the index_vector_axis
   max_bound_vals <- prim_reshape(
@@ -185,7 +177,7 @@ gather_clamp_indices <- function(
   )
   max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-  prim_clamp(start_indices, min_bound, max_bound)
+  prim_clamp(start_indices, 1L, max_bound)
 }
 
 # Compute gather slice_sizes from scatter parameters.

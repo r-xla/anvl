@@ -1,8 +1,19 @@
 # anvl (development version)
 
+## Breaking changes
+
+* `NULL` (and so `c()`) is no longer a shape; constructors that infer one default
+  to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
+* `Shape()` is no longer exported; use `shp()`.
+* The `"reverse"` rule of a primitive is renamed to `"pullback"`: write
+  `prim_x[["pullback"]]` and `rule_pullback()` instead of
+  `prim_x[["reverse"]]` and `rule_reverse()`.
+
 ## Features
 
 * New `nv_split_rng_states()` splits `n` random states off a random state.
+* New `shp()` creates a shape from its axis sizes: `shp(2, 3)`, or `shp()` for
+  a scalar.
 * New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
   as on CRAN. The new "Depending on anvl" article explains its use.
 * New `prim_optimization_barrier()` returns its input arrays unchanged and
@@ -13,11 +24,16 @@
 * New `pullback()` and `value_and_pullback()` differentiate a function with any
   result: they return its pullback, which takes a cotangent of the result back
   to the arguments.
+* Elementwise primitives such as `prim_add()`, `prim_eq()`, `prim_ifelse()` and
+  `prim_clamp()` broadcast a scalar operand themselves, so a traced graph has no
+  `broadcast_in_axes` for it.
 
 ## Bug fixes
 
 * An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
   differentiates with respect to no argument, rather than all of them.
+* `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
+  recycling it, and keeps the values of a `bit64::integer64`.
 
 # anvl 0.6.0
 

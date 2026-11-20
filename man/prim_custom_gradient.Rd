@@ -19,7 +19,7 @@ as in \code{\link[=prim_while]{prim_while()}}.}
 Computes the result from the entries of \code{args}, which it receives as
 arguments. Returns an array, or a tree of them.}
 
-\item{rule}{(\code{function} | \code{anvl_rule_reverse})\cr
+\item{rule}{(\code{function} | \code{anvl_rule_pullback})\cr
 Computes the gradient. A function receives the entries of \code{args} as arguments, plus
 \code{out}, the result of \code{fn}, \code{grad}, the gradient with respect to \code{out}, of
 the same structure, data types and shapes, and \code{required}, a named
@@ -31,7 +31,7 @@ to each required entry -- for an array \code{x}, the sum over the elements of
 \code{x}'s structure, data types and shapes. An entry that is not required,
 e.g. an integer, which never is, can be left out or be \code{NULL}.
 
-Alternatively, a \code{\link[=rule_reverse]{rule_reverse()}} with a \code{forward} pass, which replaces
+Alternatively, a \code{\link[=rule_pullback]{rule_pullback()}} with a \code{forward} pass, which replaces
 \code{fn} where the result is differentiated, so that the backward pass can
 read what the forward pass computed. Its passes are those of a
 primitive's rule, except that \code{inputs} are the entries of \code{args} by name
@@ -66,7 +66,7 @@ with respect to those, as \code{rule} only gives the gradient with respect to
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 
@@ -108,7 +108,7 @@ pow_fwd <- function(x, n) {
   prim_custom_gradient(
     list(x = x, n = n),
     fn = pow_loop,
-    rule = rule_reverse(forward = function(inputs, params, required) {
+    rule = rule_pullback(forward = function(inputs, params, required) {
       p <- inputs$x^(inputs$n - 1L)
       list(
         outputs = p * inputs$x,

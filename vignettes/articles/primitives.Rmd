@@ -22,12 +22,12 @@ primitives_list <- lapply(prims, function(p) {
   p_meta <- attr(p, "definition")
   has_stablehlo <- !is.null(p_meta$rules[["stablehlo"]])
   has_quickr <- !is.null(p_meta$rules[["quickr"]])
-  has_reverse <- !is.null(p_meta$rules[["reverse"]])
+  has_pullback <- !is.null(p_meta$rules[["pullback"]])
 
   data.frame(
     Name = p_meta$name,
     StableHLO = if (has_stablehlo) "\u2713" else "\u2717",
-    Reverse = if (has_reverse) "\u2713" else "\u2717",
+    Pullback = if (has_pullback) "\u2713" else "\u2717",
     Quickr = if (has_quickr) "\u2713" else "\u2717"
   )
 })

@@ -12,12 +12,13 @@ The array whose bits are shifted. Can be any integer data type.}
 
 \item{shift}{(\code{\link{arrayish}})\cr
 By how many bits to shift each element of \code{x}. Has the same data type and
-shape as \code{x}. An R value takes the other operand's data type, and its
+shape as \code{x}, except that a scalar is broadcast to the shape of the other.
+An R value takes the other operand's data type, and its
 \link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the inputs' shape and data type.
+Has the inputs' broadcast shape and data type.
 }
 \description{
 Element-wise arithmetic right bit shift.
@@ -26,7 +27,7 @@ Element-wise arithmetic right bit shift.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

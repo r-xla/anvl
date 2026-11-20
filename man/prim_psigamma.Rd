@@ -8,26 +8,26 @@ prim_psigamma(x, deriv)
 }
 \arguments{
 \item{x, deriv}{(\code{\link{arrayish}})\cr
-Two inputs of the same shape. Can be any float data type.
+Two inputs of the same shape, except that a scalar is broadcast to the
+shape of the other. Can be any float data type.
 \code{x} and \code{deriv} must have the same data type. An R value among them
 assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
 when none of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the inputs' shape and data type.
+Has the inputs' broadcast shape and data type.
 }
 \description{
 Element-wise psigamma function: the \code{deriv}-th derivative of the digamma
 function, i.e. the \code{(deriv + 1)}-th derivative of the log-gamma function.
-Both \code{x} and \code{deriv} must have the same shape; \code{deriv} typically holds
-non-negative integer values.
+\code{deriv} typically holds non-negative integer values.
 }
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

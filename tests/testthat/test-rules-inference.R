@@ -65,11 +65,31 @@ describe("the element-wise rules", {
     expect_equal(infer_generic_biv(x, x), list(x))
   })
 
-  it("refuse operands whose types disagree", {
+  it("broadcast a scalar operand to the shape of the others", {
+    x <- nv_aval("f32", c(2L, 3L))
+    s <- nv_aval("f32", integer())
+    expect_equal(infer_generic_biv(x, s), list(x))
+    expect_equal(infer_generic_biv(s, x), list(x))
+    expect_equal(infer_generic_biv(s, s), list(s))
+    expect_equal(infer_compare(s, x), list(nv_aval("bool", c(2L, 3L))))
+    expect_equal(infer_polygamma(s, x), list(x))
+    expect_equal(infer_select(nv_aval("bool", c(2L, 3L)), s, s), list(x))
+    expect_equal(infer_select(nv_aval("bool", integer()), x, s), list(x))
+    expect_equal(infer_clamp(s, x, s), list(x))
+  })
+
+  it("refuse operands whose data types disagree", {
     expect_snapshot(
       error = TRUE,
-      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i64", integer()))
     )
+  })
+
+  it("refuse operands whose shapes disagree, naming the two that do", {
+    expect_snapshot(error = TRUE, {
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
+      infer_select(nv_aval("bool", 4L), nv_aval("f32", integer()), nv_aval("f32", 6L))
+    })
   })
 
   it("hold the bit shifts to integers, where booleans are not integers", {
@@ -1011,8 +1031,8 @@ describe("prim_custom_gradient", {
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r"))
   })
 
-  it("refuses a reverse rule without a forward pass", {
-    rule <- rule_reverse(backward = function(inputs, outputs, grads, params, required) list(x = grads))
+  it("refuses a pullback rule without a forward pass", {
+    rule <- rule_pullback(backward = function(inputs, outputs, grads, params, required) list(x = grads))
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule))
   })
 
