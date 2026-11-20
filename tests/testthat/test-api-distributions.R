@@ -2933,9 +2933,12 @@ describe("nv_qpois", {
     # so the comparison allows for its error too.
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
     # all means in one call, so each tail/scale combination compiles once
-    grid <- do.call(rbind, lapply(c(3, 25.4, 100, 1000, 1234.56789), function(lambda) {
-      data.frame(k = unique(floor(seq(0, lambda + 12 * sqrt(lambda) + 20, length.out = 200))), lambda = lambda)
-    }))
+    grid <- do.call(
+      rbind,
+      lapply(c(3, 25.4, 100, 1000, 1234.56789), function(lambda) {
+        data.frame(k = unique(floor(seq(0, lambda + 12 * sqrt(lambda) + 20, length.out = 200))), lambda = lambda)
+      })
+    )
     for (i in seq_len(nrow(flags))) {
       lt <- flags$lower_tail[i]
       lp <- flags$log_p[i]
@@ -2960,10 +2963,13 @@ describe("nv_qpois", {
     flags <- expand.grid(lower_tail = c(TRUE, FALSE), log_p = c(FALSE, TRUE))
     # all means and both sides of the jumps in one call, so each tail/scale
     # combination compiles once
-    grid <- do.call(rbind, lapply(c(3, 25.4, 100, 1234.56789, 1e4, 1e8, 1e12), function(lambda) {
-      k <- unique(floor(c(1:10, lambda + sqrt(lambda) * seq(-8, 8, length.out = 33))))
-      data.frame(k = k[k >= 1], lambda = lambda)
-    }))
+    grid <- do.call(
+      rbind,
+      lapply(c(3, 25.4, 100, 1234.56789, 1e4, 1e8, 1e12), function(lambda) {
+        k <- unique(floor(c(1:10, lambda + sqrt(lambda) * seq(-8, 8, length.out = 33))))
+        data.frame(k = k[k >= 1], lambda = lambda)
+      })
+    )
     k <- grid$k
     lambda <- grid$lambda
     lower <- ppois(k, lambda)
