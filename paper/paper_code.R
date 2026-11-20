@@ -90,22 +90,15 @@ rbind(hmc = apply(draws[, , 1001:2000], 2, mean), glm = unname(coef(fit)))
 
 # 4. How anvl works
 
-# 4.1 The OpenXLA compiler ecosystem
-library(stablehlo)
-func <- local_func("main")
-x <- hlo_input("x", "f32", shape = c(2, 2))
-y <- hlo_input("y", "f32", shape = c(2, 2))
-func <- hlo_return(hlo_multiply(x, y))
-func
+f <- function(x, y) x * y
+s <- nv_aval("f32", integer())
+graph <- trace_fn(f, list(x = s, y = s))
+graph
+grad_graph <- graph_gradient(graph, wrt = "x")
+grad_graph
+stablehlo(grad_graph)[[1L]]
 
-dev = "cpu"
-library(pjrt)
-exec <- pjrt_compile(pjrt_program(repr(func)), device = dev)
-a <- pjrt_buffer(matrix(1:4, 2), dtype = "f32", device = dev)
-b <- pjrt_buffer(matrix(5:8, 2), dtype = "f32", device = dev)
-pjrt_execute(exec, a, b)
-
-# 4.2 Tracing R code into an AnvlGraph
+# 4.1 Tracing R code into an AnvlGraph
 f <- function(x, y, op) {
   if (op == "add") x + y else x * y
 }
@@ -121,9 +114,24 @@ v <- nv_array(1:3)
 y1 <- f_jit(v, v)
 y2 <- f_jit(v, v + 1L)
 
-# 4.3 Higher-order primitives for control flow
+# 4.2 Higher-order primitives for control flow
 h <- function(x) nv_if(sum(x) > 0, function() x, function() -x)
 trace_fn(h, list(x = nv_aval("f32", 3L)))
+
+# 4.4 The OpenXLA compiler ecosystem
+library(stablehlo)
+func <- local_func("main")
+x <- hlo_input("x", "f32", shape = c(2, 2))
+y <- hlo_input("y", "f32", shape = c(2, 2))
+func <- hlo_return(hlo_multiply(x, y))
+func
+
+dev = "cpu"
+library(pjrt)
+exec <- pjrt_compile(pjrt_program(repr(func)), device = dev)
+a <- pjrt_buffer(matrix(1:4, 2), dtype = "f32", device = dev)
+b <- pjrt_buffer(matrix(5:8, 2), dtype = "f32", device = dev)
+pjrt_execute(exec, a, b)
 
 # 4.8 An R-like array interface
 m <- matrix(1:6, nrow = 2)
@@ -151,28 +159,6 @@ axpy(2, nv_array(c(1, 2), dtype = "f32"), y32)
 #+ error = TRUE
 axpy(2, nv_array(c(1, 2), dtype = "f64"), y32)
 #+
-
-# 5. Extending the package
-
-prim_softplus <- new_primitive("softplus", function(x) {
-  infer <- function(x) {
-    if (!(dtype(x) %in% c("f32", "f64"))) stop("`x` must be a float.")
-    list(AbstractArray(dtype = dtype(x), shape = shape(x)))
-  }
-  graph_desc_add(self, list(x = x), infer_fn = infer)[[1L]]
-})
-
-prim_softplus[["stablehlo"]] <- function(x) {
-  list(hlo_log_plus_one(hlo_exponential(x)))
-}
-prim_softplus[["reverse"]] <- rule_reverse(
-  function(inputs, outputs, grads, params, required) {
-    list(prim_mul(grads[[1L]], prim_plogis(inputs[[1L]])))
-  }
-)
-
-grad_softplus <- jit(gradient(function(z) sum(prim_softplus(z))))
-grad_softplus(nv_array(c(-1, 0, 1)))$z
 
 Sys.time()
 sessionInfo()

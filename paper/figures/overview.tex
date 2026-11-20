@@ -27,13 +27,13 @@
   \node[obj = 1.9cm, fill = canvl, right = 1.45cm of fn] (graph) {\ttfamily AnvlGraph};
   \draw[oflow] (fn) -- node[lab, above = 2pt] {trace\_fn()} (graph);
   \draw[oflow] ([xshift = -0.45cm] graph.north) to[out = 110, in = 70, looseness = 3.2]
-    node[lab, above = 1pt] {graph\_gradient()} ([xshift = 0.45cm] graph.north);
+    node[above = 1pt, font = \scriptsize, align = center, text = black!70, inner sep = 1pt] {semantic graph transformation\\(e.g., autodiff)} ([xshift = 0.45cm] graph.north);
 
   % (3): the two backends, symmetric around the graph: "pjrt" above, "quickr" below.
   \coordinate (fork) at ($(graph.east) + (0.3, 0)$);
   \node[obj = 2.1cm, fill = cstablehlo, anchor = west] (hlo) at ($(fork) + (1.8, 0.95)$)
     {StableHLO\\[1pt]{\scriptsize\ttfamily Func}};
-  \node[obj = 2.1cm, fill = canvl, anchor = west] (qr) at ($(fork) + (1.8, -0.95)$)
+  \node[obj = 2.1cm, fill = cquickr, anchor = west] (qr) at ($(fork) + (1.8, -0.95)$)
     {R function with\\[1pt]{\scriptsize\ttfamily declare()}};
   \node[obj = 1.7cm, fill = cpjrt, right = 2.1cm of hlo] (exe) {PJRT\\[1pt]executable};
   \node[obj = 1.7cm, fill = cquickr, right = 2.1cm of qr] (fortran) {compiled\\Fortran};
@@ -51,7 +51,7 @@
   \node[dev, fill = cquickr, right = 0.55cm of fortran] (cpu2) {CPU};
   \draw[oflow] (fortran) -- (cpu2);
 
-  \coordinate (stages) at ($(hlo.north) + (0, 0.45)$);
+  \coordinate (stages) at ($(hlo.north) + (0, 0.7)$);
   \node[stage, anchor = south] (s2) at (stages -| graph) {(2) graph $\rightarrow$ graph};
   \node[stage, anchor = south] at (stages -| fn) {(1) R $\rightarrow$ graph};
   \node[stage, anchor = south] at ($(stages -| hlo)!0.5!(stages -| exe)$) {(3) graph $\rightarrow$ executable};

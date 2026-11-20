@@ -385,7 +385,7 @@ R> as_array(x)
 \subsection{Compilation}\label{ui}
 
 Instead of eagerly execution functions one by one, it is possible to combine them together into a single compiled function via \code{jit()}.
-The resulting executable will be more efficient than executing the functions eagerly one by one as the compiler can optimize across the individual function calls. 
+The resulting executable will be more efficient than executing the functions eagerly one by one as the compiler can optimize across the individual function calls.
 
 \begin{CodeChunk}
 \begin{CodeInput}
@@ -597,14 +597,54 @@ The central idea of \pkg{anvl} is to view compilation and differentiation as cod
 \label{fig:overview}
 \end{figure}
 
-The functions \code{jit()}, \code{gradient()}, and \code{value_and_gradient()} from \Cref{ui,differentiation} apply these transformations lazily, once the types of the inputs are known.
-Under the hood, there are two layers of functions: \emph{primitives}, named \code{prim_*()}, are the minimal operations that the transformations know about, each defined by a set of rules, and the user-facing \code{nv_*()} functions build on them and add broadcasting of scalars, type promotion, and default arguments.
-The primitives play a similar role as the primitive functions of base \proglang{R}, such as \code{+}, \code{[}, or \code{sum()}, for which \code{is.primitive()} returns \code{TRUE}: these are implemented in \proglang{C} and called directly by the interpreter, while functions written in \proglang{R} are built from them \citep{ref-r}.
-Unlike those, the primitives of \pkg{anvl} are \proglang{R} objects that carry one rule for each transformation, so they can be compiled and differentiated, and new primitives can be added from \proglang{R} (\Cref{extending}).
-Loosely speaking, a primitive resembles an S3 generic in \proglang{R}, and its rules resemble the methods of the generic: instead of on the class of its argument, a primitive dispatches on the transformation that is applied to it, e.g., to its \code{"stablehlo"} rule when a graph is lowered to StableHLO and to its \code{"reverse"} rule when a graph is differentiated.
-Each primitive is itself a jitted function, so eager execution compiles and caches one small program per primitive and input type.
-Table~\ref{tab:classes} lists the main classes of \pkg{anvl}, which the following subsections use.
-Of these subsections, tracing (\Cref{trace}) and control flow (\Cref{control-flow}) are the most relevant for users, as they determine which \proglang{R} code can be compiled, together with the type system (\Cref{precision}), which determines the data types of results, and asynchronous execution (\Cref{hardware}), which matters when measuring runtimes; the others mainly describe internals that are relevant for extending \pkg{anvl} (\Cref{extending}).
+The following example shows the three steps for the product $x \times y$ of two scalars: \code{trace_fn()} traces it into an \code{AnvlGraph}, \code{graph_gradient()} transforms this graph into one that computes the derivative with respect to $x$, and \code{stablehlo()} lowers the result to a StableHLO function, which \pkg{pjrt} then compiles.
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> f <- function(x, y) x * y
+R> s <- nv_aval("f32", integer())
+R> graph <- trace_fn(f, list(x = s, y = s))
+R> graph
+\end{CodeInput}
+\begin{CodeOutput}
+<AnvlGraph> (%x1: f32[], %x2: f32[]) {
+  %1: f32[] = mul(%x1, %x2)
+  return %1
+}
+\end{CodeOutput}
+\begin{CodeInput}
+R> grad_graph <- graph_gradient(graph, wrt = "x")
+R> grad_graph
+\end{CodeInput}
+\begin{CodeOutput}
+<AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
+  %1: f32[] = mul(%x1, %x2)
+  %2: f32[] = mul(%c1, %x2)
+  return %2
+}
+\end{CodeOutput}
+\begin{CodeInput}
+R> stablehlo(grad_graph)[[1L]]
+\end{CodeInput}
+\begin{CodeOutput}
+func.func @main (%0: tensor<f32>, %1: tensor<f32>, %2: tensor<f32>) -> tensor<f32> {
+%3 = stablehlo.multiply %1, %2 : tensor<f32>
+%4 = stablehlo.multiply %0, %2 : tensor<f32>
+return %4 : tensor<f32>
+}
+\end{CodeOutput}
+\end{CodeChunk}
+
+In terms of the classes of \pkg{anvl} (Table~\ref{tab:classes}), \code{nv_aval()} creates an \code{AbstractArray}, here a scalar of type \code{f32} (\code{f32[]}), and a printed \code{AnvlGraph} lists its inputs, the \code{GraphValue}s \code{\%x1} and \code{\%x2} with their types, followed by one \code{GraphStatement} per operation and the output.
+\code{graph_gradient()} appended the statement \code{\%2}, which multiplies the derivative of the output with respect to itself with $y$; this derivative is the constant \code{\%c1}, a \code{GraphValue} whose type is a \code{ConcreteArray} with the value $1$.
+\code{stablehlo()} then translated each statement into a StableHLO operation; the unused product of the forward pass, \code{\%3}, is removed by the compiler.
+
+Each statement calls a \emph{primitive}, an \code{AnvlPrimitive} such as \code{prim_mul()}.
+Like the primitive functions of base \proglang{R}, such as \code{+} or \code{sum()}, primitives are the building blocks of all other functions; unlike those, they are \proglang{R} objects that carry one rule per transformation: the \code{"reverse"} rule of \code{mul} produced \code{\%2}, and its \code{"stablehlo"} rule produced \code{stablehlo.multiply}.
+Loosely speaking, a primitive thus resembles an S3 generic whose methods are its rules, except that it dispatches on the transformation instead of the class of its argument.
+\code{jit()} and \code{gradient()} (\Cref{ui,differentiation}) apply these steps automatically, once the types of the inputs are known.
+
+In the remainder of this section, we cover the steps in more detail; tracing (\Cref{trace}) and control flow (\Cref{control-flow}) are the most relevant parts for users, together with the type system (\Cref{precision}) and asynchronous execution (\Cref{hardware}), while the others mainly describe internals that matter for extending \pkg{anvl} (\Cref{extending}).
 
 \begin{table}[tbp]
 \centering
@@ -614,85 +654,16 @@ Of these subsections, tracing (\Cref{trace}) and control flow (\Cref{control-flo
 Class & Role \\
 \hline
 \code{AnvlArray} & An array on a device, which holds a buffer of the backend together with its data type and shape. \\
-\code{AbstractArray} & The type of an array, i.e., its data type and shape, without its values; subclasses also carry values that are known during tracing, such as a constant (\code{ConcreteArray}) or an \proglang{R} literal (\code{LiteralArray}). \\
-\code{GraphBox} & Stands in for an array while a function is traced and refers to a value in the graph under construction. \\
-\code{GraphDescriptor} & The mutable graph under construction during tracing. \\
+\code{AbstractArray} & The type of an array, i.e., its data type and shape, without its values, as created by \code{nv_aval()}; a \code{ConcreteArray} also carries known values, such as those of a constant. \\
 \code{AnvlGraph} & A traced program: its inputs, statements, and outputs. \\
-\code{GraphValue} & A value in a graph, such as an input or the output of a statement, with its type (an \code{AbstractArray}); constants embedded in the graph are \code{GraphLiteral}s. \\
-\code{GraphStatement} & One call of a primitive: the primitive, its inputs, its static parameters, and its outputs. \\
-\code{AnvlPrimitive} & A primitive, callable like a function, whose definition (\code{AnvlPrimitiveDef}) holds one rule per transformation, e.g., \code{"stablehlo"} and \code{"reverse"}. \\
-\code{AnvlBackend} & Defines how arrays are stored and placed on devices and how graphs are compiled: \code{AnvlBackendPjrt} for XLA and \code{AnvlBackendQuickr} for \pkg{quickr}. \\
+\code{GraphValue} & A value in a graph, such as an input (\code{\%x1}) or the output of a statement (\code{\%1}), together with its type, an \code{AbstractArray}. \\
+\code{GraphStatement} & One call of a primitive: the primitive, its inputs, its static parameters, and its outputs, e.g., \code{\%1: f32[] = mul(\%x1, \%x2)}. \\
+\code{AnvlPrimitive} & A primitive, e.g., \code{prim_mul()}, whose definition (\code{AnvlPrimitiveDef}) holds one rule per transformation, such as \code{"stablehlo"} and \code{"reverse"}. \\
 \hline
 \end{tabular}
 \caption{Main classes of \pkg{anvl}.}
 \label{tab:classes}
 \end{table}
-
-\subsection{The OpenXLA compiler ecosystem}\label{background}
-
-OpenXLA \citep{ref-openxla} is an open-source compiler ecosystem for accelerated array computing.
-It decouples array computing frameworks (the frontends) from hardware-specific compilers and runtimes (the backends) through two standardized interfaces: StableHLO \citep{ref-stablehlo} and PJRT \citep{ref-pjrt}.
-The former is a portable intermediate representation for array programs, and the latter a runtime interface for compiling and executing such programs on a device.
-A framework that emits StableHLO and executes it via PJRT can run on any hardware for which a PJRT plugin exists.
-Such a plugin essentially bundles a compiler for one kind of hardware with a runtime that allocates data on the device and executes the compiled programs; plugins exist, e.g., for CPUs and NVIDIA GPUs.
-
-One compiler for StableHLO is XLA \citep{ref-xla}, which is part of the OpenXLA project itself and compiles programs for CPUs, NVIDIA GPUs, and Google TPUs.
-As it knows the semantics of every operation, it optimizes the program as a whole, before it generates machine code via LLVM \citep{ref-llvm}.
-Among other optimizations, it simplifies algebraic expressions, eliminates common subexpressions and unused computations, and \emph{fuses} chains of elementwise operations, often together with the reductions that consume them, into a single kernel, so that intermediate arrays are never written to memory.
-It also chooses the memory layout of each array, plans the memory of the whole program in advance, reusing the buffers of values that are no longer needed, and hands operations such as matrix products to optimized libraries, e.g., cuBLAS on NVIDIA GPUs.
-On GPUs, it additionally \emph{autotunes} the program: during compilation, it benchmarks several implementations of, e.g., matrix products and fused kernels, and keeps the fastest.
-A compiler that translates \proglang{R} code to \proglang{C++} or \proglang{Fortran}, in contrast, leaves the optimization to a general-purpose compiler, which only sees loops over memory rather than array operations (\Cref{in-r}).
-One of the limitations of XLA is that every shape in a program must be fully specified ahead of time.
-IREE \citep{ref-iree} is an alternative compiler and runtime that also accepts StableHLO.
-One of its core advantages is that it supports dynamic shapes, so the same program can be run with input arrays of different sizes.
-
-The \pkg{stablehlo} package, which is written in \proglang{R}, provides an S3 representation of the language, type inference for its operations, and a builder API.
-Below, we create a program that multiplies two \code{f32} matrices elementwise; each \code{hlo_*()} call checks that the operation is valid for its inputs and records it in the function.
-
-\begin{CodeChunk}
-\fitcode
-\begin{CodeInput}
-R> library(stablehlo)
-R> func <- local_func("main")
-R> x <- hlo_input("x", "f32", shape = c(2, 2))
-R> y <- hlo_input("y", "f32", shape = c(2, 2))
-R> func <- hlo_return(hlo_multiply(x, y))
-R> func
-\end{CodeInput}
-\begin{CodeOutput}
-func.func @main (%x: tensor<2x2xf32>, %y: tensor<2x2xf32>) -> tensor<2x2xf32> {
-%0 = stablehlo.multiply %x, %y : tensor<2x2xf32>
-return %0 : tensor<2x2xf32>
-}
-\end{CodeOutput}
-\end{CodeChunk}
-
-The \pkg{pjrt} package, written in \proglang{C++} with \pkg{Rcpp} \citep{ref-rcpp}, loads PJRT plugins and wraps their \proglang{C} API.
-Below, \code{pjrt_compile()} compiles the program from above for the CPU, \code{pjrt_buffer()} allocates the two inputs on the same device, and \code{pjrt_execute()} runs the program on them.
-On a machine with an NVIDIA GPU, \code{device = "cuda"} would compile and run the program on the GPU instead.
-
-\begin{CodeChunk}
-\begin{CodeInput}
-R> dev = "cpu"
-R> library(pjrt)
-R> exec <- pjrt_compile(pjrt_program(repr(func)), device = dev)
-R> a <- pjrt_buffer(matrix(1:4, 2), dtype = "f32", device = dev)
-R> b <- pjrt_buffer(matrix(5:8, 2), dtype = "f32", device = dev)
-R> pjrt_execute(exec, a, b)
-\end{CodeInput}
-\begin{CodeOutput}
-PJRTBuffer
-  5 21
- 12 32
-[ CPUf32{2x2} ]
-\end{CodeOutput}
-\end{CodeChunk}
-
-Although these two packages already allow compiling and running programs they are rather low-level and cumbersome to use and the recommended way to use them is to go through the \pkg{anvl} frontend instead.
-
-As compiling a PJRT plugin itself is rather expensive, \pkg{pjrt} downloads prebuilt plugins when they are first needed, after asking for permission.
-The \proglang{CUDA} plugin additionally requires NVIDIA libraries, which the companion package \pkg{pjrt.cuda} downloads as NVIDIA's official redistributable binaries.
-The only thing it requires on a user machine is a compatible \proglang{CUDA} driver.
 
 \subsection[Tracing R code into an AnvlGraph]{Tracing \proglang{R} code into an \code{AnvlGraph}}\label{trace}
 
@@ -788,17 +759,80 @@ AD computes derivatives of a program by applying the chain rule to the elementar
 \emph{Forward mode} propagates derivatives from the inputs to the outputs alongside the evaluation, computing a Jacobian-vector product per pass, and is efficient for functions with few inputs.
 \emph{Reverse mode} propagates the derivatives of the outputs with respect to each intermediate value, the \emph{adjoints}, backwards to the inputs, computing a vector-Jacobian product per pass, and thus yields the gradient of a scalar function with many parameters, such as a log-likelihood, at a small constant multiple of the cost of evaluating it.
 Combining both, e.g., forward over reverse, gives Hessian-vector products and full Hessians efficiently.
-\pkg{anvl} currently implements reverse mode.
-
-\subsection{Transforming and lowering graphs}\label{lowering}
-
-Once a program is represented as an \code{AnvlGraph}, it can be transformed into another graph.
-Currently, the main such transformation is reverse-mode AD, e.g., \code{graph_gradient(graph, wrt = c("x", "y"))}.
+\pkg{anvl} currently implements reverse mode, as a transformation of one \code{AnvlGraph} into another, e.g., \code{graph_gradient(graph, wrt = c("x", "y"))}.
 For this, every primitive stores a \code{"reverse"} rule, which receives the inputs and outputs of the forward call and the adjoints of the outputs, and returns the vector-Jacobian products for the inputs.
 \code{graph_gradient()} walks the graph in reverse order, applies these rules, and accumulates the adjoints of values that are used multiple times.
 Because the reverse rules themselves call primitives, the backward pass is recorded with the same tracing machinery, and the result is again an \code{AnvlGraph}.
 
-A backend then lowers a graph into an executable.
+\subsection{The OpenXLA compiler ecosystem}\label{background}
+
+OpenXLA \citep{ref-openxla} is an open-source compiler ecosystem for accelerated array computing.
+It decouples array computing frameworks (the frontends) from hardware-specific compilers and runtimes (the backends) through two standardized interfaces: StableHLO \citep{ref-stablehlo} and PJRT \citep{ref-pjrt}.
+The former is a portable intermediate representation for array programs, and the latter a runtime interface for compiling and executing such programs on a device.
+A framework that emits StableHLO and executes it via PJRT can run on any hardware for which a PJRT plugin exists.
+Such a plugin essentially bundles a compiler for one kind of hardware with a runtime that allocates data on the device and executes the compiled programs; plugins exist, e.g., for CPUs and NVIDIA GPUs.
+
+One compiler for StableHLO is XLA \citep{ref-xla}, which is part of the OpenXLA project itself and compiles programs for CPUs, NVIDIA GPUs, and Google TPUs.
+As it knows the semantics of every operation, it optimizes the program as a whole, before it generates machine code via LLVM \citep{ref-llvm}.
+Among other optimizations, it simplifies algebraic expressions, eliminates common subexpressions and unused computations, and \emph{fuses} chains of elementwise operations, often together with the reductions that consume them, into a single kernel, so that intermediate arrays are never written to memory.
+It also chooses the memory layout of each array, plans the memory of the whole program in advance, reusing the buffers of values that are no longer needed, and hands operations such as matrix products to optimized libraries, e.g., cuBLAS on NVIDIA GPUs.
+On GPUs, it additionally \emph{autotunes} the program: during compilation, it benchmarks several implementations of, e.g., matrix products and fused kernels, and keeps the fastest.
+A compiler that translates \proglang{R} code to \proglang{C++} or \proglang{Fortran}, in contrast, leaves the optimization to a general-purpose compiler, which only sees loops over memory rather than array operations (\Cref{in-r}).
+One of the limitations of XLA is that every shape in a program must be fully specified ahead of time.
+IREE \citep{ref-iree} is an alternative compiler and runtime that also accepts StableHLO.
+One of its core advantages is that it supports dynamic shapes, so the same program can be run with input arrays of different sizes.
+
+The \pkg{stablehlo} package, which is written in \proglang{R}, provides an S3 representation of the language, type inference for its operations, and a builder API.
+Below, we create a program that multiplies two \code{f32} matrices elementwise; each \code{hlo_*()} call checks that the operation is valid for its inputs and records it in the function.
+
+\begin{CodeChunk}
+\fitcode
+\begin{CodeInput}
+R> library(stablehlo)
+R> func <- local_func("main")
+R> x <- hlo_input("x", "f32", shape = c(2, 2))
+R> y <- hlo_input("y", "f32", shape = c(2, 2))
+R> func <- hlo_return(hlo_multiply(x, y))
+R> func
+\end{CodeInput}
+\begin{CodeOutput}
+func.func @main (%x: tensor<2x2xf32>, %y: tensor<2x2xf32>) -> tensor<2x2xf32> {
+%0 = stablehlo.multiply %x, %y : tensor<2x2xf32>
+return %0 : tensor<2x2xf32>
+}
+\end{CodeOutput}
+\end{CodeChunk}
+
+The \pkg{pjrt} package, written in \proglang{C++} with \pkg{Rcpp} \citep{ref-rcpp}, loads PJRT plugins and wraps their \proglang{C} API.
+Below, \code{pjrt_compile()} compiles the program from above for the CPU, \code{pjrt_buffer()} allocates the two inputs on the same device, and \code{pjrt_execute()} runs the program on them.
+On a machine with an NVIDIA GPU, \code{device = "cuda"} would compile and run the program on the GPU instead.
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> dev = "cpu"
+R> library(pjrt)
+R> exec <- pjrt_compile(pjrt_program(repr(func)), device = dev)
+R> a <- pjrt_buffer(matrix(1:4, 2), dtype = "f32", device = dev)
+R> b <- pjrt_buffer(matrix(5:8, 2), dtype = "f32", device = dev)
+R> pjrt_execute(exec, a, b)
+\end{CodeInput}
+\begin{CodeOutput}
+PJRTBuffer
+  5 21
+ 12 32
+[ CPUf32{2x2} ]
+\end{CodeOutput}
+\end{CodeChunk}
+
+Although these two packages already allow compiling and running programs they are rather low-level and cumbersome to use and the recommended way to use them is to go through the \pkg{anvl} frontend instead.
+
+As compiling a PJRT plugin itself is rather expensive, \pkg{pjrt} downloads prebuilt plugins when they are first needed, after asking for permission.
+The \proglang{CUDA} plugin additionally requires NVIDIA libraries, which the companion package \pkg{pjrt.cuda} downloads as NVIDIA's official redistributable binaries.
+The only thing it requires on a user machine is a compatible \proglang{CUDA} driver.
+
+\subsection{Lowering and compilation}\label{lowering}
+
+A backend lowers a graph into an executable.
 For the \code{"pjrt"} backend, \code{stablehlo()} translates the graph into a StableHLO function by applying each primitive's \code{"stablehlo"} rule, which maps it to one or more \pkg{stablehlo} operations and converts \proglang{R}'s 1-based indices to StableHLO's 0-based ones.
 \proglang{R} literals are embedded into the program as constants, while arrays that the traced function closes over become additional inputs, which avoids copying their data into the program.
 The result is compiled via \pkg{pjrt}.
@@ -1001,59 +1035,14 @@ The random state consists of a key and a counter, from which every sampling call
 \section{Extending the package}\label{extending}
 
 Except for the PJRT runtime, \pkg{anvl} and \pkg{stablehlo} are written in \proglang{R}, so they can be read and extended from \proglang{R}.
-Most operations can be expressed in terms of existing primitives and are best added as \code{nv_*()} functions.
-A new primitive is needed if an operation cannot be expressed otherwise, or if it benefits from a dedicated implementation, e.g., of its derivative.
-Below, we add a primitive for the softplus function $\log(1 + e^x)$, which appears in the logistic regression example in Section~\ref{hmc}.
-A primitive is created via \code{new_primitive()}, whose body records a statement in the graph via \code{graph_desc_add()}, together with an inference function that computes the types of the outputs from those of the inputs and validates them.
-Within the body, \code{self} refers to the primitive being defined.
-
-\begin{CodeChunk}
-\begin{CodeInput}
-R> prim_softplus <- new_primitive("softplus", function(x) {
-+    infer <- function(x) {
-+      if (!(dtype(x) %in% c("f32", "f64"))) stop("`x` must be a float.")
-+      list(AbstractArray(dtype = dtype(x), shape = shape(x)))
-+    }
-+    graph_desc_add(self, list(x = x), infer_fn = infer)[[1L]]
-+  })
-\end{CodeInput}
-\end{CodeChunk}
-
-Next, we attach the StableHLO rule, which receives and returns \pkg{stablehlo} values, and a reverse rule, which uses the derivative $\sigma(x) = 1 / (1 + e^{-x})$.
-
-\begin{CodeChunk}
-\begin{CodeInput}
-R> prim_softplus[["stablehlo"]] <- function(x) {
-+    list(hlo_log_plus_one(hlo_exponential(x)))
-+  }
-R> prim_softplus[["reverse"]] <- rule_reverse(
-+    function(inputs, outputs, grads, params, required) {
-+      list(prim_mul(grads[[1L]], prim_plogis(inputs[[1L]])))
-+    }
-+  )
-\end{CodeInput}
-\end{CodeChunk}
-
-The primitive can now be used eagerly, within jitted functions, and be differentiated.
-
-\begin{CodeChunk}
-\begin{CodeInput}
-R> grad_softplus <- jit(gradient(function(z) sum(prim_softplus(z))))
-R> grad_softplus(nv_array(c(-1, 0, 1)))$z
-\end{CodeInput}
-\begin{CodeOutput}
-AnvlArray
- 0.2689
- 0.5000
- 0.7311
-[ CPUf64{3} ]
-\end{CodeOutput}
-\end{CodeChunk}
-
-Operations that cannot be expressed in StableHLO can use PJRT's custom call mechanism: a handler written in \proglang{C} or \proglang{C++} against XLA's foreign function interface is registered from \proglang{R} via \pkg{pjrt}, with separate implementations per platform, as the linear algebra primitives do to call LAPACK and cuSOLVER.
-
-Since an \code{AnvlGraph} is a simple data structure, new graph-to-graph transformations, such as forward-mode AD, can be implemented in \proglang{R} by iterating over its statements and emitting new ones, guided by a rule stored in each primitive.
-A backend is an \code{AnvlBackend} object, a collection of functions that define how arrays are stored, converted to \proglang{R}, and placed on devices, and how a graph is compiled, together with a lowering rule for each supported primitive; exactly one backend is active at a time.
+\pkg{anvl} can be extended at several levels, and the package website has articles for most of them:
+\begin{itemize}
+\item \emph{Functions}: most operations can be expressed in terms of existing primitives and are best added as \code{nv_*()} functions. The article ``Extending the API''\footnote{\url{https://r-xla.github.io/anvl/articles/extending_api.html}} describes the conventions that they follow.
+\item \emph{Primitives}: an operation that cannot be expressed otherwise, or that benefits from a dedicated implementation, e.g., of its derivative, becomes a primitive, which is created via \code{new_primitive()} together with a StableHLO rule, a reverse rule, and optionally a \pkg{quickr} rule. The article ``Adding a Primitive''\footnote{\url{https://r-xla.github.io/anvl/articles/extending_primitive.html}} walks through an example.
+\item \emph{Custom calls}: operations that cannot be expressed in StableHLO can call handlers written in \proglang{C} or \proglang{C++} against XLA's foreign function interface, which are registered from \proglang{R} via \pkg{pjrt}, as the linear algebra primitives do to call LAPACK and cuSOLVER. The article ``Adding Custom Calls''\footnote{\url{https://r-xla.github.io/pjrt/articles/ffi.html}} of \pkg{pjrt} describes how.
+\item \emph{Transformations}: as an \code{AnvlGraph} is a simple data structure, new graph-to-graph transformations, such as forward-mode AD, can be implemented in \proglang{R} by iterating over its statements, guided by a rule stored in each primitive. The article ``Internals''\footnote{\url{https://r-xla.github.io/anvl/articles/internals.html}} describes the graphs and the existing transformations.
+\item \emph{Backends}: a backend is an \code{AnvlBackend} object, which defines how arrays are stored, converted to \proglang{R}, and placed on devices, and how a graph is compiled, together with a lowering rule for each primitive that it supports (\Cref{lowering}).
+\end{itemize}
 We test every primitive against \pkg{torch} as a reference implementation wherever possible, comparing the outputs and gradients of jitted primitives with those of \pkg{torch} and its autograd engine on random inputs.
 
 Packages that build on \pkg{anvl} cannot run their tests on CRAN.
