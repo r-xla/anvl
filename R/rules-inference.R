@@ -93,7 +93,13 @@ params_repr <- function(parts) {
 # A whole-number param, returned as an integer vector. `NULL` (how `c()` spells
 # no axes) reads as `integer()`. Rules run this before indexing or comparing
 # with a param, so that an `NA` never reaches an `if ()`.
-assert_int_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL, min_len = NULL) {
+assert_int_param <- function(
+  x,
+  arg = rlang::as_label(substitute(x)),
+  len = NULL,
+  min_len = NULL,
+  call = rlang::current_env()
+) {
   force(arg)
   x <- x %||% integer()
   # A param fixed at one entry is spoken of in the singular.
@@ -113,10 +119,13 @@ assert_int_param <- function(x, arg = rlang::as_label(substitute(x)), len = NULL
     "have at least {min_len} entr{cli::qty(min_len)}{?y/ies}"
   }
   if (!is.null(problem)) {
-    cli_abort(c(
-      paste0("{.arg {arg}} must ", problem, "."),
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        paste0("{.arg {arg}} must ", problem, "."),
+        x = "Got {value_repr(x)}."
+      ),
+      call = call
+    )
   }
   invisible(as.integer(x))
 }
@@ -330,7 +339,7 @@ assert_axes_sorted <- function(axes, arg = rlang::as_label(substitute(axes))) {
 # A reduction's `axes`: whole numbers naming distinct axes of `x`.
 assert_reduction_axes <- function(x, axes) {
   axes <- assert_int_param(axes)
-  assert_axes_in_range(axes, length(shape(x)))
+  assert_axes_in_range(axes, naxes(x))
   assert_axes_unique(axes)
   axes
 }
@@ -392,7 +401,7 @@ assert_scalar_fn_output <- function(graph, x, arg = rlang::as_label(substitute(g
       x = "{.arg x} is {.val {as.character(dtype(x))}}, but {.arg {arg}} returns {.val {as.character(dtype(out))}}." # nolint
     ))
   }
-  if (length(shape(out))) {
+  if (naxes(out)) {
     cli_abort(c(
       "{.arg {arg}} must return a scalar.",
       x = "Got shape {shape_repr(shape(out))}."
@@ -425,7 +434,7 @@ dtype_names <- function(xs) {
 # which must agree. A scalar operand stands for an array of that shape, which
 # the lowering rules broadcast it to.
 infer_elementwise_shape <- function(avals) {
-  arrays <- Filter(\(aval) length(shape(aval)) > 0L, avals)
+  arrays <- Filter(\(aval) naxes(aval) > 0L, avals)
   if (!length(arrays)) {
     return(integer())
   }
@@ -716,7 +725,7 @@ infer_reverse <- function(x, axes) {
 
   # (C2), (C3) An empty `axes` is allowed.
   assert_axes_unique(axes)
-  assert_axes_in_range(axes, length(shape(x)))
+  assert_axes_in_range(axes, naxes(x))
 
   list(AbstractArray(dtype = dtype(x), shape = x$shape))
 }
@@ -787,7 +796,7 @@ infer_pad <- function(
   assert_arrays(x = x, padding_value = padding_value)
 
   # (I2)
-  if (length(shape(padding_value)) != 0L) {
+  if (naxes(padding_value) != 0L) {
     cli_abort(c(
       "{.arg padding_value} must be a scalar.",
       x = "Got shape {shape_repr(shape(padding_value))}."
@@ -1003,7 +1012,7 @@ assert_start_indices <- function(start_indices, n_axes) {
     idx <- start_indices[[i]]
     arg <- sprintf("..%d", i)
     assert_array_dtype(idx, "int", "uint", arg = arg)
-    if (length(shape(idx)) != 0L) {
+    if (naxes(idx) != 0L) {
       cli_abort(c(
         "Every start index must be a scalar.",
         x = "{.arg {arg}} has shape {shape_repr(shape(idx))}."
@@ -1056,7 +1065,7 @@ infer_dynamic_update_slice <- function(x, update, ...) {
   assert_same_dtype(x, update)
 
   # (C3)
-  if (length(shape(update)) != n_axes) {
+  if (naxes(update) != n_axes) {
     cli_abort(c(
       "{.arg update} must have as many axes as {.arg x} ({n_axes}).",
       x = "Got {shape_repr(shape(update))}."
@@ -1128,7 +1137,7 @@ reduced_shape <- function(x, axes, drop) {
 infer_reduce <- function(x, init, ..., axes, drop, reducer, n_captures) {
   assert_arrays(x = x, init = init)
 
-  if (length(shape(init)) != 0L) {
+  if (naxes(init) != 0L) {
     cli_abort(c(
       "{.arg init} must be a scalar.",
       x = "Got shape {shape_repr(shape(init))}."
@@ -1177,7 +1186,7 @@ infer_reduce_boolean <- function(x, axes, drop) {
 
 # The axis a scan (`prim_cumsum()` and friends) runs along.
 assert_scan_axis <- function(x, axis) {
-  n_axes <- length(shape(x))
+  n_axes <- naxes(x)
   if (n_axes == 0L) {
     cli_abort(c(
       "{.arg x} must have at least one axis to accumulate along.",
@@ -2045,7 +2054,7 @@ infer_while <- function(..., cond, body, n_captures) {
 }
 
 # The operands are the arguments of `fn`, then what it closes over, which only
-# the lowering reads. `rule` is checked when the reverse rule traces it.
+# the lowering reads. `rule` is checked when the pullback rule traces it.
 infer_custom_gradient <- function(..., fn, rule, n_captures) {
   graph_output_avals(fn)
 }

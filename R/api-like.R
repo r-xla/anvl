@@ -12,7 +12,6 @@ like_defaults <- function(like, ...) {
   args <- list(...)
   getters <- list(
     dtype = dtype,
-    shape = shape,
     # `device` only comes from an array that is placed on one. A traced value
     # is not, and neither is a constant of the trace -- reading the
     # `PlainDeviceCpu()` of one back would allocate the result on the first CPU
@@ -21,21 +20,27 @@ like_defaults <- function(like, ...) {
     # trace as well.
     device = placement_device
   )
-  for (name in names(args)) {
-    if (is.null(args[[name]])) {
+  for (name in names(getters)) {
+    if (name %in% names(args) && is.null(args[[name]])) {
       args[[name]] <- getters[[name]](like)
     }
+  }
+  # `shape` takes `"auto"` rather than `NULL` for "the one of `like`": `c()` is
+  # `NULL`, and a shape of no axes must not turn into the shape of `like`.
+  if ("shape" %in% names(args)) {
+    shape <- args$shape
+    args$shape <- resolve_auto_shape(shape, auto = shape(like), call = rlang::caller_env())
   }
   args
 }
 
 #' @rdname AnvlArray
 #' @param like ([`AnvlArray`] | [`GraphBox`])\cr
-#'   An existing array; an R value is an error. Any of `shape` (which
-#'   `nv_scalar_like()` does not take), `dtype` and `device` that are `NULL`
-#'   (the default) are taken from `like`.
+#'   An existing array; an R value is an error. A `shape` left at `"auto"`
+#'   (which `nv_scalar_like()` does not take) and a `dtype` or `device` left at
+#'   `NULL` (the defaults) are taken from `like`.
 #' @export
-nv_array_like <- function(like, data, shape = NULL, dtype = NULL, device = NULL) {
+nv_array_like <- function(like, data, shape = "auto", dtype = NULL, device = NULL) {
   do.call(
     nv_array,
     c(
@@ -60,7 +65,7 @@ nv_scalar_like <- function(like, data, dtype = NULL, device = NULL) {
 #' @rdname AnvlArray
 #' @export
 nv_empty_like <- jit(
-  function(like, shape = NULL, dtype = NULL, device = NULL) {
+  function(like, shape = "auto", dtype = NULL, device = NULL) {
     do.call(nv_empty, like_defaults(like, shape = shape, dtype = dtype, device = device))
   },
   static = 2:4
@@ -68,7 +73,7 @@ nv_empty_like <- jit(
 
 #' @rdname nv_fill
 #' @export
-nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, device = NULL) {
+nv_fill_like <- function(like, value, shape = "auto", dtype = NULL, device = NULL) {
   do.call(
     nv_fill,
     c(
@@ -80,7 +85,7 @@ nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, device = NULL)
 
 #' @rdname nv_iota
 #' @export
-nv_iota_like <- function(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL) {
+nv_iota_like <- function(like, axis, shape = "auto", dtype = NULL, start = 1L, device = NULL) {
   do.call(
     nv_iota,
     c(
@@ -132,7 +137,7 @@ nv_eye_like <- jit(
 #' @rdname nv_lower_tri
 #' @export
 nv_lower_tri_like <- jit(
-  function(like, shape = NULL, diagonal = -1L, device = NULL) {
+  function(like, shape = "auto", diagonal = -1L, device = NULL) {
     do.call(
       nv_lower_tri,
       c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
@@ -144,7 +149,7 @@ nv_lower_tri_like <- jit(
 #' @rdname nv_upper_tri
 #' @export
 nv_upper_tri_like <- jit(
-  function(like, shape = NULL, diagonal = 1L, device = NULL) {
+  function(like, shape = "auto", diagonal = 1L, device = NULL) {
     do.call(
       nv_upper_tri,
       c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))

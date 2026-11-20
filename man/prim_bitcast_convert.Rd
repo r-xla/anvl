@@ -32,7 +32,7 @@ modifying the underlying data.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

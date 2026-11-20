@@ -835,17 +835,17 @@
       prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r")
     Condition
       Error in `prim_custom_gradient()`:
-      ! `rule` must be a function, or a `rule_reverse()` with a forward pass.
+      ! `rule` must be a function, or a `rule_pullback()` with a forward pass.
       x Got "r".
 
-# prim_custom_gradient / refuses a reverse rule without a forward pass
+# prim_custom_gradient / refuses a pullback rule without a forward pass
 
     Code
       prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule)
     Condition
       Error in `prim_custom_gradient()`:
-      ! `rule` must have a forward pass where it is a `rule_reverse()`.
-      x Got a reverse rule with only a backward pass.
+      ! `rule` must have a forward pass where it is a `rule_pullback()`.
+      x Got a pullback rule with only a backward pass.
       i Pass a function as `rule` instead: it receives the arguments, the result and its gradient by name.
 
 # prim_custom_gradient / refuses args that are not a list with names

@@ -492,7 +492,7 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
 
 quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, axis, out_aval) {
   axis <- as.integer(axis)
-  rank <- length(shape(out_aval))
+  rank <- naxes(out_aval)
   if (!rank || rank > 5L) {
     cli_abort("concatenate: only arrays of rank 1..5 are supported by quickr lowering")
   }
@@ -1477,7 +1477,7 @@ quickr_register_elementwise_lowerer <- function(primitive, fun, scalar_inputs = 
     }
     out_shape <- as.integer(shape(out_avals[[1L]]))
     scalars <- Filter(
-      \(i) length(out_shape) && !length(shape(input_nodes[[i]]$aval)),
+      \(i) length(out_shape) && !naxes(input_nodes[[i]]$aval),
       setdiff(seq_along(inputs), scalar_inputs)
     )
     syms <- lapply(scalars, \(i) ctx$new_tmp_sym())
@@ -2421,7 +2421,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
   if (pjrt::tree_root_kind(graph$out_tree) == "leaf" && length(out_exprs) == 1L) {
     out_node <- graph$outputs[[1L]]
     out_expr <- out_exprs[[1L]]
-    if (is_graph_value(out_node) && length(shape(out_node$aval)) == 1L) {
+    if (is_graph_value(out_node) && naxes(out_node$aval) == 1L) {
       out_expr <- rlang::call2("array", out_expr, dim = as.integer(shape(out_node$aval)))
     }
     stmts <- c(stmts, list(rlang::call2("<-", result_sym, out_expr), result_sym))

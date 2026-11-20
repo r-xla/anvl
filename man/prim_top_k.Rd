@@ -39,7 +39,7 @@ For other axes, transpose so the target axis is first, call
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 }
 }
 

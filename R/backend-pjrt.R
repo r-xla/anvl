@@ -329,7 +329,6 @@ AnvlBackendPjrt <- function() {
       # Everything but a buffer is placed on the default device when the call
       # names none.
       device <- device %||% default_device("pjrt")
-      shape <- shape %||% r_data_shape(data)
       # R data is column-major, which is the row-major order of the reversed
       # shape, so it is copied as it is. Only a raw payload can come in
       # row-major order (`byrow`), and that is the column-major order of the
@@ -393,12 +392,15 @@ pjrt_anvl_array <- function(buf, dtype = xlamisc::dtype(buf), shape = rev(xlamis
 
 register_backend("pjrt", AnvlBackendPjrt())
 
-# The AnvlArray of a PJRTBuffer that a user hands to `nv_array()`, which holds
-# its array the way pjrt does: its shape is the array's shape and
-# `as_array(buf)` its values. `pjrt_buffer()` checks that `dtype`, `shape` and
-# `device`, when given, agree with the buffer's. anvl stores the reversed shape,
-# so a buffer of rank 2 or more is read back column-major and uploaded again; a
-# buffer of rank 0 or 1 is stored as it is.
+# The AnvlArray of a bare PJRTBuffer handed to `nv_array()`. Nothing on a buffer
+# says which layout its bytes are in -- a buffer of shape (3, 2) is pjrt's 3x2
+# array and anvl's 2x3 one -- so a bare buffer is read the way pjrt reads it: its
+# shape is the array's shape and `as_array(buf)` its values. Code that holds a
+# buffer already in anvl's layout wraps it with `pjrt_anvl_array()` instead.
+# `pjrt_buffer()` checks that `dtype`, `shape` and `device`, when given, agree
+# with the buffer's. anvl stores the reversed shape, so a buffer of rank 2 or
+# more is read back column-major and uploaded again; a buffer of rank 0 or 1 is
+# stored as it is.
 pjrt_anvl_array_of_buffer <- function(buf, dtype, shape, device) {
   buf <- pjrt_buffer(buf, dtype = dtype, device = device, shape = shape)
   buf_shape <- xlamisc::shape(buf)

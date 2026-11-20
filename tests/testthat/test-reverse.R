@@ -515,14 +515,14 @@ test_that("Can propagate float32 through integer/bool functions", {
 })
 
 test_that("trace_fn matches args with formals", {
-  graph1 <- trace_fn(prim_add, list(nv_aval("f32", c()), nv_aval("f32", c())))
-  graph2 <- trace_fn(prim_add, list(lhs = nv_aval("f32", c()), rhs = nv_aval("f32", c())))
+  graph1 <- trace_fn(prim_add, list(nv_aval("f32", shp()), nv_aval("f32", shp())))
+  graph2 <- trace_fn(prim_add, list(lhs = nv_aval("f32", shp()), rhs = nv_aval("f32", shp())))
   expect_true(pjrt::tree_equal(graph1$in_tree, graph2$in_tree))
   expect_equal(pjrt::tree_child_names(graph1$in_tree), c("lhs", "rhs"))
 })
 
-test_that("gradient works through graph with primitives that have no reverse rule", {
-  # `prim_fill` has no reverse rule; the call should be skipped during the
+test_that("gradient works through graph with primitives that have no pullback rule", {
+  # `prim_fill` has no pullback rule; the call should be skipped during the
   # backward pass because its inputs (all static params) don't require grad.
   f <- function(x) {
     y <- prim_fill(2, dtype = "f64", shape = c(3L))
@@ -533,7 +533,7 @@ test_that("gradient works through graph with primitives that have no reverse rul
   expect_equal(out[[1L]], nv_array(c(2, 2, 2), dtype = "f64"))
 })
 
-test_that("rule_reverse(forward = ...) emits multiple primitives and captures an intermediate", {
+test_that("rule_pullback(forward = ...) emits multiple primitives and captures an intermediate", {
   infer <- function(x) list(x)
   my_exp <- new_primitive(
     "my_exp_test",
@@ -541,7 +541,7 @@ test_that("rule_reverse(forward = ...) emits multiple primitives and captures an
     register = FALSE
   )
 
-  my_exp[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+  my_exp[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
     x <- inputs[[1L]]
     y <- prim_exp(x)
     neg_y <- prim_negate(y)
@@ -559,7 +559,7 @@ test_that("rule_reverse(forward = ...) emits multiple primitives and captures an
   expect_equal(out[[1L]], nv_array(c(exp(0), exp(1)), dtype = "f64"))
 })
 
-test_that("a reverse rule that returns a gradient of the wrong shape is refused", {
+test_that("a pullback rule that returns a gradient of the wrong shape is refused", {
   infer <- function(x) list(AbstractArray(dtype = dtype(x), shape = integer()))
   my_sum <- new_primitive(
     "my_sum_test",
@@ -568,12 +568,12 @@ test_that("a reverse rule that returns a gradient of the wrong shape is refused"
   )
   # The cotangent of the scalar sum is handed back without broadcasting it to
   # the shape of `x`.
-  my_sum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  my_sum[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
     list(if (required[[1L]]) grads[[1L]])
   })
   expect_error(
     jit(gradient(\(x) my_sum(x)))(nv_array(c(1, 2, 3), dtype = "f32")),
-    "reverse rule of primitive .*my_sum_test.* returned a gradient of the wrong shape for input 1"
+    "pullback rule of primitive .*my_sum_test.* returned a gradient of the wrong shape for input 1"
   )
 })
 
@@ -756,12 +756,12 @@ describe("gradients through prim_while", {
   it("refuses one that closes over a value wrt depends on, rather than returning zero", {
     # What the body closes over is an operand of the call, so the backward
     # pass sees that the loop reads `x`.
-    expect_error(jit(gradient(accumulate))(x), "No reverse rule for primitive .*while")
+    expect_error(jit(gradient(accumulate))(x), "No pullback rule for primitive .*while")
   })
 
   it("refuses such a loop inside a branch of prim_if() too", {
     f <- function(p, x) nv_if(p, function() accumulate(x), function() nv_scalar(0, "f64"))
-    expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No reverse rule for primitive .*while")
+    expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No pullback rule for primitive .*while")
   })
 
   it("leaves one alone whose outputs are integers", {

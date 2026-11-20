@@ -14,8 +14,9 @@
 #'   Scalar value to fill the array with. It has to be something `dtype` can
 #'   hold: a whole number in its range for an integer data type, a non-negative
 #'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
-#' @param shape (`integer()`)\cr
-#'   Shape of the output array.
+#' @param shape (`integer()` | `"auto"`)\cr
+#'   Shape of the output array, e.g. `shp(2, 3)`. For `nv_fill_like()`,
+#'   `"auto"` (the default) uses `shape(like)`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Data type of the result.
 #'   The default (`NULL`) uses the [default data type][default_dtypes] for `nv_fill` and
@@ -108,7 +109,7 @@ nv_broadcast_scalars <- jit(function(...) {
   }
 
   lapply(args, \(x) {
-    if (length(shape(x)) == 0L) {
+    if (naxes(x) == 0L) {
       nv_broadcast_to(x, target_shape)
     } else {
       x
@@ -2058,7 +2059,9 @@ nv_rev <- function(x, axes = NULL) {
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_iota_like()`).
-#' @template param_shape
+#' @param shape (`integer()` | `"auto"`)\cr
+#'   Shape of the result. For `nv_iota_like()`, `"auto"` (the default) uses
+#'   `shape(like)`.
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Data type of the result, required here. Can be any numeric data type.
 #'   For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
@@ -3999,8 +4002,9 @@ assert_tri_args <- function(shape, diagonal) {
 #' Returns a boolean matrix that is `TRUE` on and below the given diagonal,
 #' mirroring base R's `lower.tri()`. Use [nv_tril()] to zero out the other
 #' triangle of an existing array instead.
-#' @param shape (`integer()`)\cr
+#' @param shape (`integer()` | `"auto"`)\cr
 #'   Shape of the result: exactly two axis sizes, since the result is a matrix.
+#'   For `nv_lower_tri_like()`, `"auto"` (the default) uses `shape(like)`.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
 #'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
@@ -4034,8 +4038,9 @@ nv_lower_tri <- jit(
 #' Returns a boolean matrix that is `TRUE` on and above the given diagonal,
 #' mirroring base R's `upper.tri()`. Use [nv_triu()] to zero out the other
 #' triangle of an existing array instead.
-#' @param shape (`integer()`)\cr
+#' @param shape (`integer()` | `"auto"`)\cr
 #'   Shape of the result: exactly two axis sizes, since the result is a matrix.
+#'   For `nv_upper_tri_like()`, `"auto"` (the default) uses `shape(like)`.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
 #'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to

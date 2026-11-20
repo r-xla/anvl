@@ -15,27 +15,27 @@
 \alias{nv_float64}
 \title{Create an Array of a Given Data Type}
 \usage{
-nv_bool(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_bool(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int8(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int8(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int16(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int16(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int32(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int32(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_int64(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_int64(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint8(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint8(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint16(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint16(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint32(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint32(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_uint64(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_uint64(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_float32(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_float32(data, shape = "auto", device = NULL, byrow = FALSE)
 
-nv_float64(data, shape = NULL, device = NULL, byrow = FALSE)
+nv_float64(data, shape = "auto", device = NULL, byrow = FALSE)
 }
 \arguments{
 \item{data}{(any)\cr
@@ -48,13 +48,17 @@ with \code{byrow = TRUE}. An existing \code{\link{AnvlArray}} is returned unchan
 the \code{shape}, \code{dtype} and \code{device} given agree with it, and is an error
 otherwise.}
 
-\item{shape}{(\code{NULL} | \code{integer()})\cr
-The output shape of the array.
-The default (\code{NULL}) is to infer it from the data if possible.
-Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
-no elements -- so \code{shape} is required there.
-To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = integer()}.}
+\item{shape}{(\code{"auto"} | \code{integer()})\cr
+The shape of the array, e.g. \code{shp(2, 3)} or \code{c(2, 3)}.
+\code{\link[=nv_empty]{nv_empty()}} requires it. Elsewhere it defaults to \code{"auto"}, which
+\code{nv_array_like()} and \code{nv_empty_like()} read as \code{shape(like)} and
+\code{nv_array()} infers from \code{data}: its \code{dim()}, or its length for a vector,
+so a length-1 vector has shape \code{(1)}.
+\code{nv_array()} cannot infer it from a raw payload or from empty data --
+\code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold no elements -- so \code{shape} is
+required there.
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link[=nv_scalar]{nv_scalar()}} or
+\code{shape = shp()}. \code{NULL}, which \code{c()} returns, is not a shape; see \code{\link[=shp]{shp()}}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
