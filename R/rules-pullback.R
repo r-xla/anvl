@@ -2,7 +2,7 @@
 # cotangent at the shape of the output. A scalar operand was broadcast to that
 # shape, so its gradient is the sum over it.
 unbroadcast <- function(grad, x) {
-  if (length(shape(x)) || !length(shape(grad))) {
+  if (naxes(x) || !naxes(grad)) {
     return(grad)
   }
   prim_sum(grad, axes = seq_along(shape(grad)), drop = TRUE)
@@ -1448,7 +1448,7 @@ prim_cumsum[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, para
   x <- inputs[[1L]]
   indices <- outputs[[2L]]
   grad <- grads[[1L]]
-  rank <- length(shape(x))
+  rank <- naxes(x)
 
   batching <- seq_len(rank)[-axis]
   list(prim_scatter(
@@ -1833,7 +1833,7 @@ triangular_mask <- function(n, lower, unit_diagonal) {
 #' `r format_bib("murray2016differentiation", "walter2012structured")`
 prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
   lower <- params$lower
-  if (length(shape(outputs[[1L]])) > 2L) {
+  if (naxes(outputs[[1L]]) > 2L) {
     cli_abort(c(
       "The gradient of a batched Cholesky decomposition is not supported yet.",
       i = "Differentiate one matrix at a time."
@@ -1852,7 +1852,7 @@ prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params
 
   L <- outputs[[1L]]
   grad <- grads[[1L]]
-  n <- shape(L)[length(shape(L))]
+  n <- shape(L)[naxes(L)]
 
   # Phi: keep lower triangle, halve diagonal, zero upper triangle
   phi <- function(x) {
@@ -1901,7 +1901,7 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   x <- outputs[[1L]]
   grad <- grads[[1L]]
 
-  if (length(shape(a)) > 2L) {
+  if (naxes(a) > 2L) {
     cli_abort(c(
       "The gradient of a batched triangular solve is not supported yet.",
       i = "Differentiate one system at a time."
@@ -1930,7 +1930,7 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   # i.e. we also zero out those.
   grad_a <- if (required[[1L]]) {
     raw <- prim_negate(if (left_side) nv_matmul(grad_b, t(x)) else nv_matmul(t(x), grad_b))
-    n <- shape(a)[length(shape(a))]
+    n <- shape(a)[naxes(a)]
     mask <- triangular_mask(n, lower, unit_diagonal)
     if (transpose_a) {
       raw <- t(raw)

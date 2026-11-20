@@ -109,7 +109,7 @@ nv_broadcast_scalars <- jit(function(...) {
   }
 
   lapply(args, \(x) {
-    if (length(shape(x)) == 0L) {
+    if (naxes(x) == 0L) {
       nv_broadcast_to(x, target_shape)
     } else {
       x

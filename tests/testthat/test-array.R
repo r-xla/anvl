@@ -1346,7 +1346,7 @@ describe("the default float", {
 
   it("leaves data that is not an R value alone", {
     local_default_dtypes(c(float = "f64", int = "i64"))
-    # A buffer already has its dtype; nv_minval() builds one from raw bytes.
+    # A buffer already has its dtype, and nv_minval() names the dtype of its raw bytes.
     expect_dtype(nv_scalar(pjrt::pjrt_scalar(1L, dtype = "i32")), "i32")
     expect_equal(as.integer(nv_max(nv_array(1:3, dtype = "i32"))), 3L)
     expect_equal(as.integer(jit(function(x) nv_min(x))(nv_array(1:3, dtype = "i32"))), 1L)

@@ -136,3 +136,10 @@ trace_with_rng_states <- function(f, rng_states) {
     in_tree = build_tree(rng_states)
   )
 }
+
+# Expect the StableHLO lowering of `f`, traced at the abstract arrays `avals`,
+# to hold no `stablehlo.transpose`.
+expect_lowers_without_transpose <- function(f, avals) {
+  graph <- trace_fn(f, avals)
+  expect_no_match(repr(stablehlo(graph)[[1L]]), "stablehlo.transpose", fixed = TRUE)
+}

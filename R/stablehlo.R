@@ -52,6 +52,14 @@ env_get <- function(env, gval) {
 #'
 #' The rule for translating a primitive to stablehlo is `prim_<name>[["stablehlo"]]`.
 #'
+#' The function works on every array with its axes reversed: an array of R
+#' shape `(d1, ..., dn)` is an XLA array of shape `(dn, ..., d1)`, whose
+#' row-major bytes are the array's column-major ones. So the types in the
+#' program show the reversed shapes (an array of shape `c(2, 3)` is a
+#' `tensor<3x2xf32>`), and an op addresses R axis `i` of an `n`-axis array as
+#' XLA dimension `n - i` (see the axis reversal section of
+#' `r roxy_article("internals")`).
+#'
 #' The arguments of the resulting function are, in this order: the graph's
 #' constants, the graph's inputs, the inputs of the graph's side effects (such
 #' as the key and the counter of the global random state, see [nv_set_seed()]),

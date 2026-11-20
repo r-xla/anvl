@@ -42,10 +42,8 @@ describe("prim_sample_bits", {
     }
   })
 
-  it("fills a shape in row-major order", {
+  it("fills a shape in column-major order", {
     local_nv_seed(1L)
-    # an R array's elements in row-major order
-    row_major <- function(a) if (length(dim(a)) > 1L) as.vector(aperm(a)) else as.vector(a)
     shapes <- list(integer(), 1L, 0L, 5L, c(4L, 3L), c(3L, 3L), c(2L, 3L, 2L), c(4L, 1L, 3L))
     for (shape in shapes) {
       for (dtype in c("ui8", "ui32", "ui64")) {
@@ -54,7 +52,7 @@ describe("prim_sample_bits", {
         expect_shape(shaped, shape)
         set_state(c(7, 0, 11, 0))
         flat <- prim_sample_bits(prod(shape), dtype)
-        expect_identical(row_major(bits(shaped)), as.vector(bits(flat)))
+        expect_identical(as.vector(bits(shaped)), as.vector(bits(flat)))
       }
     }
   })
@@ -1201,6 +1199,23 @@ describe("prim_qr", {
     expect_equal(R[lower.tri(R)], rep(0, sum(lower.tri(R))))
   })
 
+  it("decomposes a wide matrix", {
+    # With m < n, k = m and R spans all rows of the packed factor.
+    A <- nv_matrix(c(2, 1, -1, 3, 0, 4), nrow = 2L, dtype = "f64")
+    out <- prim_qr(A)
+    Q <- as_array(out$Q)
+    R <- as_array(out$R)
+    expect_equal(dim(Q), c(2L, 2L))
+    expect_equal(dim(R), c(2L, 3L))
+    expect_equal(Q %*% R, as_array(A), tolerance = 1e-5)
+    expect_equal(R[lower.tri(R)], rep(0, sum(lower.tri(R))))
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_qr, list(x = nv_aval("f64", c(4L, 2L))))
+    expect_lowers_without_transpose(prim_qr, list(x = nv_aval("f64", c(2L, 4L))))
+  })
+
   it("rejects invalid inputs", {
     vec <- nv_array(c(1, 2, 3), dtype = "f32")
     expect_error(prim_qr(vec), "must be a 2-D matrix")
@@ -1236,6 +1251,11 @@ describe("prim_lu", {
     U[lower.tri(U)] <- 0
     A_mat <- as_array(A)
     expect_equal(L %*% U, A_mat[permutation, , drop = FALSE], tolerance = 1e-5)
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_lu, list(x = nv_aval("f64", c(4L, 2L))))
+    expect_lowers_without_transpose(prim_lu, list(x = nv_aval("f64", c(2L, 4L))))
   })
 
   it("rejects invalid inputs", {
@@ -1275,11 +1295,16 @@ describe("prim_svd", {
   })
 
   # On CUDA this exercises the layout-flip path in prim_svd[["stablehlo"]]
-  # (transposed = TRUE + row-major x / U / Vt layouts), which the
+  # (transposed = TRUE + column-major x / U / Vt layouts), which the
   # cuSOLVER FFI handler resolves by swapping m / n and the U / Vt slots.
   it("decomposes a wide matrix", {
     A <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 2L, dtype = "f64")
     expect_thin_svd(A)
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_svd, list(x = nv_aval("f64", c(4L, 2L))))
+    expect_lowers_without_transpose(prim_svd, list(x = nv_aval("f64", c(2L, 4L))))
   })
 
   it("rejects invalid inputs", {
@@ -1310,6 +1335,10 @@ describe("prim_eigh", {
     # Documented: values in ascending order; vectors has orthonormal columns.
     expect_equal(values, sort(values))
     expect_equal(t(vectors) %*% vectors, diag(ncol(vectors)), tolerance = 1e-5)
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_eigh, list(x = nv_aval("f64", c(3L, 3L))))
   })
 
   it("rejects invalid inputs", {
@@ -1467,6 +1496,14 @@ test_that("prim_print", {
   expect_equal(x, out)
 })
 
+describe("prim_print", {
+  it("prints an array with a size-0 axis", {
+    x <- nv_array(array(numeric(), c(2L, 0L, 3L)), dtype = "f32")
+    expect_snapshot(out <- jit(function(x) prim_print(x))(x))
+    expect_equal(shape(out), c(2L, 0L, 3L))
+  })
+})
+
 test_that("prim_print shows the R type where a value has no data type yet", {
   # The snapshot records the data type the footer names, so it is pinned to the
   # registered pair rather than whatever the run configured.
@@ -1534,7 +1571,8 @@ describe("prim_optimization_barrier", {
     graph <- trace_fn(f, list(x = nv_aval("f32", 3L), i = nv_aval("i32", c(2L, 3L))))
     mlir <- repr(stablehlo(graph)[[1L]])
     expect_length(gregexpr("stablehlo.optimization_barrier", mlir, fixed = TRUE)[[1L]], 1L)
-    expect_match(mlir, "(tensor<3xf32>, tensor<2x3xi32>) -> (tensor<3xf32>, tensor<2x3xi32>)", fixed = TRUE)
+    # an array of R shape (2, 3) is the XLA tensor 3x2 (see R/lowering-axes.R)
+    expect_match(mlir, "(tensor<3xf32>, tensor<3x2xi32>) -> (tensor<3xf32>, tensor<3x2xi32>)", fixed = TRUE)
   })
 
   it("takes a list of arrays, not an array", {

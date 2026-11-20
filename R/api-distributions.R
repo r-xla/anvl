@@ -954,7 +954,7 @@ skip_unless <- function(pending, init, compute) {
 # sum all entries of `g` to combine their contributions to the scalar input.
 # Otherwise, `g` already has the right shape and is simply returned unchanged.
 sum_like <- function(g, like) {
-  if (length(shape(like)) == length(shape(g))) g else nv_sum(g)
+  if (naxes(like) == naxes(g)) g else nv_sum(g)
 }
 
 # Computes log(x / y) for positive normal x and y, rescaling y by a power

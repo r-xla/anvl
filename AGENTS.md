@@ -31,8 +31,8 @@ config above. anvl-specific:
     the `default-dtypes` workflow runs it so that anything hardcoding `f32` / `i32` where it should
     read `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the override.
-- anvl tracks the **dev** versions of its r-xla dependencies:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))`.
+- anvl tracks the **dev** versions of its r-xla dependencies, pjrt from its `develop` branch:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))`.
 
 ## Two-Layer API
 
@@ -157,6 +157,18 @@ Anvl's elementwise operations (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …, and 
 The scalar broadcast belongs to the elementwise primitives themselves: the trace records `mul(%x, 2:f32)`, not a `broadcast_in_axes` first. Their inference rules take the shape of the operands that are not scalars (`infer_elementwise_shape()`), their StableHLO rules broadcast a scalar operand while lowering (`elementwise_rule()`, `hlo_broadcast_scalar()`), and their pullback rules sum the gradient of a scalar operand back down (`unbroadcast()`).
 
 When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
+
+## Axis Reversal
+
+The StableHLO lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape
+`(dn, ..., d1)`, and the pjrt backend stores it that way: R's column-major bytes are XLA's row-major
+bytes of the reversed shape, so transfers copy them as they are. A pjrt `AnvlArray` holds a buffer
+whose dims are `rev(x$shape)`; `x$shape` stays the R shape. R axis `i` of an `n`-axis array is XLA
+dimension `n - i`, so R axis 1 is the contiguous (minor) one and the trailing R axes are XLA's major
+dimensions, where XLA's kernels want batch axes. Every lowering rule maps its axis numbers, shapes and
+per-axis vectors with the helpers in `R/lowering-axes.R`; `at2vt()` reverses every type, so
+`shape()` of a `FuncValue` is the XLA shape. Dumped HLO and XLA's error messages show the reversed
+shapes.
 
 ## Graph Tracing
 
