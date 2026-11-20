@@ -1228,6 +1228,7 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
 # XLA lowers `stablehlo.triangular_solve` to cuBLAS trsm on CUDA, but on the
 # CPU expands it into blocked HLO that is several times slower than BLAS trsm.
 # So, as JAX does, the CPU takes pjrt's `trsm` custom call for the data types
+# BLAS has.
 #
 # Both take their batch dimensions first and solve on the blocks behind them.
 # The trailing batch axes are XLA's leading dimensions, and each block holds the
