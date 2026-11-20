@@ -26,30 +26,31 @@
 #' - [`platform()`]: Get the platform (e.g. `"cpu"`, `"cuda"`).
 #'
 #' @section Serialization:
-#' Arrays can be serialized to and from the
-#' [safetensors](https://huggingface.co/docs/safetensors/index) format:
-#' - [`nv_save()`] / [`nv_read()`]: Save/load arrays to/from a file.
-#' - [`nv_serialize()`] / [`nv_unserialize()`]:
-#'   Serialize/deserialize arrays to/from raw vectors.
-#'
-#' An array can also be saved like any R object, e.g. with [`saveRDS()`].
+#' An array can be saved like any R object, e.g. with [`saveRDS()`].
 #' Its device is not saved: an array of the pjrt backend loads onto the
 #' [default device][default_device] at the time it is read, so an array saved
 #' on a GPU also loads on a machine without one. anvl arranges this when it
 #' is loaded, so load anvl before reading arrays.
+#'
+#' To exchange arrays with other frameworks, such as PyTorch or JAX, use the
+#' [safetensors](https://huggingface.co/docs/safetensors/index) format:
+#' `safetensors::safe_save_file()` writes a named list of arrays, and
+#' `safetensors::safe_load_file(framework = "anvl")` reads a file into arrays on
+#' the active backend. They load onto the device given by its `device`
+#' argument, by default the [default device][default_device].
 #'
 #' @section Backend:
 #' An `AnvlArray` is backend-dependent: it belongs to exactly one backend
 #' (`"pjrt"` or the experimental `"quickr"`) and lives on a device of that backend.
 #' The supported data types and devices differ between backends.
 #'
-#' @seealso [nv_fill], [nv_iota], [nv_seq], [as_array], [nv_serialize]
+#' @seealso [nv_fill], [nv_iota], [nv_seq], [as_array]
 #'
 #' @param data (any)\cr
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #'   Alternatively a `raw()` vector holding the native little-endian byte
 #'   payload of `prod(shape)` elements of `dtype`; both `dtype` and `shape`
-#'   are then required (only supported on the `"pjrt"` backend).
+#'   are then required.
 #'   Raw payloads are read in column-major element order, or row-major
 #'   with `byrow = TRUE`. An existing [`AnvlArray`] is returned unchanged if
 #'   the `shape`, `dtype` and `device` given agree with it, and is an error

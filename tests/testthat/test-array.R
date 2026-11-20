@@ -1378,15 +1378,17 @@ test_that("nv_array forwards raw payloads to pjrt_buffer()", {
   expect_equal(as_array(x_row), matrix(1:6, 2L, 3L, byrow = TRUE))
 })
 
-test_that("raw payloads require dtype and shape and are pjrt-only", {
-  skip_if(!is_cpu())
-  expect_error(nv_array(as.raw(1:4), shape = 4L, device = "cpu"), "dtype")
-  expect_error(nv_array(as.raw(1:4), dtype = "ui8", device = "cpu"), "shape")
-  f <- jit(function() nv_array(as.raw(1:4), dtype = "ui8", shape = 4L))
-  expect_error(f(), "not supported inside")
-  skip_if_no_quickr()
-  local_backend("quickr")
-  expect_error(nv_array(as.raw(1:4), dtype = "ui8", shape = 4L), "quickr")
+describe("nv_array() of a raw payload", {
+  it("requires dtype and shape", {
+    skip_if(!is_cpu())
+    expect_error(nv_array(as.raw(1:4), shape = 4L, device = "cpu"), "dtype")
+    expect_error(nv_array(as.raw(1:4), dtype = "ui8", device = "cpu"), "shape")
+  })
+
+  it("is refused inside jit()", {
+    f <- jit(function() nv_array(as.raw(1:4), dtype = "ui8", shape = 4L))
+    expect_error(f(), "not supported inside")
+  })
 })
 
 describe("axes", {
