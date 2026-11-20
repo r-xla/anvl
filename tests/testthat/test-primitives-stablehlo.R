@@ -1199,6 +1199,23 @@ describe("prim_qr", {
     expect_equal(R[lower.tri(R)], rep(0, sum(lower.tri(R))))
   })
 
+  it("decomposes a wide matrix", {
+    # With m < n, k = m and R spans all rows of the packed factor.
+    A <- nv_matrix(c(2, 1, -1, 3, 0, 4), nrow = 2L, dtype = "f64")
+    out <- prim_qr(A)
+    Q <- as_array(out$Q)
+    R <- as_array(out$R)
+    expect_equal(dim(Q), c(2L, 2L))
+    expect_equal(dim(R), c(2L, 3L))
+    expect_equal(Q %*% R, as_array(A), tolerance = 1e-5)
+    expect_equal(R[lower.tri(R)], rep(0, sum(lower.tri(R))))
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_qr, list(x = nv_aval("f64", c(4L, 2L))))
+    expect_lowers_without_transpose(prim_qr, list(x = nv_aval("f64", c(2L, 4L))))
+  })
+
   it("rejects invalid inputs", {
     vec <- nv_array(c(1, 2, 3), dtype = "f32")
     expect_error(prim_qr(vec), "must be a 2-D matrix")
@@ -1234,6 +1251,11 @@ describe("prim_lu", {
     U[lower.tri(U)] <- 0
     A_mat <- as_array(A)
     expect_equal(L %*% U, A_mat[permutation, , drop = FALSE], tolerance = 1e-5)
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_lu, list(x = nv_aval("f64", c(4L, 2L))))
+    expect_lowers_without_transpose(prim_lu, list(x = nv_aval("f64", c(2L, 4L))))
   })
 
   it("rejects invalid inputs", {
@@ -1273,11 +1295,16 @@ describe("prim_svd", {
   })
 
   # On CUDA this exercises the layout-flip path in prim_svd[["stablehlo"]]
-  # (transposed = TRUE + row-major x / U / Vt layouts), which the
+  # (transposed = TRUE + column-major x / U / Vt layouts), which the
   # cuSOLVER FFI handler resolves by swapping m / n and the U / Vt slots.
   it("decomposes a wide matrix", {
     A <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 2L, dtype = "f64")
     expect_thin_svd(A)
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_svd, list(x = nv_aval("f64", c(4L, 2L))))
+    expect_lowers_without_transpose(prim_svd, list(x = nv_aval("f64", c(2L, 4L))))
   })
 
   it("rejects invalid inputs", {
@@ -1308,6 +1335,10 @@ describe("prim_eigh", {
     # Documented: values in ascending order; vectors has orthonormal columns.
     expect_equal(values, sort(values))
     expect_equal(t(vectors) %*% vectors, diag(ncol(vectors)), tolerance = 1e-5)
+  })
+
+  it("lowers without a transpose", {
+    expect_lowers_without_transpose(prim_eigh, list(x = nv_aval("f64", c(3L, 3L))))
   })
 
   it("rejects invalid inputs", {
@@ -1468,7 +1499,8 @@ test_that("prim_print", {
 describe("prim_print", {
   it("prints an array with a size-0 axis", {
     x <- nv_array(array(numeric(), c(2L, 0L, 3L)), dtype = "f32")
-    out <- expect_output(jit(function(x) prim_print(x))(x), "f32\\{2,0,3\\}")
+    expect_snapshot
+    out <- expect_snapshot(jit(function(x) prim_print(x))(x))
     expect_equal(shape(out), c(2L, 0L, 3L))
   })
 })

@@ -152,9 +152,28 @@ as_array(out, row_major = TRUE)
 ### Axis Reversal
 
 R arrays are column-major, while XLA's arrays are row-major. The two agree once every axis is reversed: the column-major bytes of an array of shape `(d1, ..., dn)` are exactly the row-major bytes of an array of shape `(dn, ..., d1)`.
-So the lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape `(dn, ..., d1)`, and the pjrt backend stores it that way, which turns every upload and read-back into a plain copy.
+For example, R holds `A <- matrix(1:6, ncol = 2L)` in memory as `c(1, 2, 3, 4, 5, 6)` and `B <- matrix(7:10, nrow = 2L)` as `c(7, 8, 9, 10)`, and read row-major with their shapes reversed, these bytes are `t(A)` and `t(B)`.
+
+So the lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape `(dn, ..., d1)`, and the pjrt backend stores it that way: an upload copies R's bytes as they are, without a transpose, and so does a read-back.
+Read as an array of its own shape, as `pjrt::as_array()` does, the buffer of `A` is `t(A)`:
+
+```{r}
+a <- nv_array(matrix(1:6, ncol = 2L), dtype = "f32")
+pjrt::as_array(a$data)
+```
+
+The lowering rules compute on these transposes.
+For `C <- A %*% B`, XLA holds `t(A)` and `t(B)` and computes `t(B) %*% t(A)`, which is `t(C)` -- and `t(C)`, with its shape reversed, is the `AnvlArray` `C`.
+So the lowering of `nv_matmul()` passes its operands to `stablehlo.dot_general` the other way round:
+
+```{r}
+graph <- trace_fn(nv_matmul, list(x = nv_aval("f32", c(3L, 2L)), y = nv_aval("f32", c(2L, 2L))))
+stablehlo(graph)[[1L]]
+```
+
 R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R's first axis -- the contiguous one -- is XLA's minor dimension, and trailing R axes are XLA's major ones.
 XLA's kernels want batch axes outermost in memory, which are the trailing R axes.
+To XLA, every program anvl builds is a row-major one, which is the happy path its kernels and its compiler are optimized for.
 
 Every lowering rule maps the axis numbers of its parameters accordingly, and the StableHLO program shows the reversed shapes.
 An array of shape `(2, 3)` is a `tensor<3x2xf32>`, and a column-major reshape is a single row-major `stablehlo.reshape` of the reversed shapes:

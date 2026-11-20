@@ -54,7 +54,7 @@ hlo_reduced_output <- function(out, x, axes, drop) {
 # broadcast to it, any other operand already has it.
 hlo_broadcast_scalar <- function(x, output_types) {
   out_shape <- shape(output_types[[1L]])
-  if (length(shape(x)) || !length(out_shape)) {
+  if (naxes(x) || !length(out_shape)) {
     return(x)
   }
   hlo_broadcast_in_dim(x, integer(), out_shape)
@@ -103,8 +103,8 @@ prim_broadcast_in_axes[["stablehlo"]] <- function(x, shape, broadcast_axes, outp
 # produces the free dimensions in exactly the order the result needs, and only
 # the batch dimensions have to move to the end.
 prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching_axes, precision, output_types) {
-  n_lhs <- length(shape(lhs$value_type))
-  n_rhs <- length(shape(rhs$value_type))
+  n_lhs <- naxes(lhs)
+  n_rhs <- naxes(rhs)
   n_batch <- length(batching_axes[[1L]])
   contracting <- list(xla_dims(contracting_axes[[2L]], n_rhs), xla_dims(contracting_axes[[1L]], n_lhs))
   batching <- list(xla_dims(rev(batching_axes[[2L]]), n_rhs), xla_dims(rev(batching_axes[[1L]]), n_lhs))
@@ -119,7 +119,7 @@ prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching
     )))
   }
   out <- hlo_dot_general(rhs, lhs, contracting, batching, precision_config = toupper(precision))
-  n_out <- length(shape(out$value_type))
+  n_out <- naxes(out)
   perm <- c(seq_len(n_out - n_batch) + n_batch - 1L, seq_len(n_batch) - 1L)
   list(hlo_transpose(out, perm, output_types = output_types))
 }
@@ -135,7 +135,7 @@ prim_reshape[["stablehlo"]] <- function(x, shape, output_types) {
 }
 
 prim_concatenate[["stablehlo"]] <- function(..., axis, output_types) {
-  n <- length(shape(..1$value_type))
+  n <- naxes(..1)
   list(hlo_concatenate(..., dimension = xla_dims(axis, n), output_types = output_types))
 }
 
@@ -184,7 +184,7 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(x, update, ..., output_type
     hlo_input("x", dt),
     hlo_input("y", dt)
   ))
-  out <- hlo_reduce(list(x), list(init(x)), sort(xla_dims(axes, length(shape(x$value_type)))), f)
+  out <- hlo_reduce(list(x), list(init(x)), xla_dims(axes, naxes(x)), f)
   hlo_reduced_output(out, x, axes, drop)
 }
 
@@ -290,7 +290,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   v_dtype <- as.character(x$value_type$type$dtype)
   i_dtype <- as.character(index_dtype)
   iota <- hlo_iota(
-    iota_dimension = xla_dims(axis, length(shape(x$value_type))),
+    iota_dimension = xla_dims(axis, naxes(x)),
     dtype = i_dtype,
     shape = shape(x$value_type)
   )
@@ -351,7 +351,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, ..., axes, drop, reducer, n_capt
   out <- hlo_reduce(
     inputs = list(x),
     init_values = list(init),
-    dimensions = sort(xla_dims(axes, length(shape(x$value_type)))),
+    dimensions = xla_dims(axes, naxes(x)),
     body = red_func
   )
   hlo_reduced_output(out, x, axes, drop)
@@ -629,7 +629,7 @@ prim_clamp[["stablehlo"]] <- function(x, min, max, output_types) {
 }
 
 prim_rev[["stablehlo"]] <- function(x, axes, output_types) {
-  list(hlo_reverse(x, sort(xla_dims(axes, length(shape(x$value_type)))), output_types = output_types))
+  list(hlo_reverse(x, xla_dims(axes, naxes(x)), output_types = output_types))
 }
 
 prim_iota[["stablehlo"]] <- function(axis, shape, dtype, start) {
@@ -976,7 +976,7 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
   ops <- list(...)
   hlo_sort(
     ...,
-    dimension = xla_dims(axis, length(shape(ops[[1L]]$value_type))),
+    dimension = xla_dims(axis, naxes(ops[[1L]])),
     is_stable = stable,
     comparator = .build_sort_comparator(ops, decreasing)
   )
@@ -1059,7 +1059,7 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
 # `hlo_top_k()` along XLA dimension 0, the last R axis, where `prim_top_k()`
 # works: the operand's dimension 0 is moved last for it and back after.
 top_k_on_dim0 <- function(x, k) {
-  n <- length(shape(x$value_type))
+  n <- naxes(x)
   if (n <= 1L) {
     return(hlo_top_k(x, k = k))
   }
@@ -1107,12 +1107,14 @@ prim_scatter[["stablehlo"]] <- function(
 ) {
   update_func <- stablehlo(update_fn, id = "", captured = list(...))[[1L]]
 
-  n_x <- length(shape(x$value_type))
-  n_indices <- length(shape(scatter_indices$value_type))
-  n_update <- length(shape(update$value_type))
+  n_x <- naxes(x)
+  n_indices <- naxes(scatter_indices)
+  n_update <- naxes(update)
   batching <- xla_batching_pairs(x_batching_axes, n_x, scatter_indices_batching_axes, n_indices)
   # StableHLO's ScatterDimensionNumbers() follows the spec naming, so the
-  # anvl-side argument names are mapped back here.
+  # anvl-side argument names are mapped back here. `xla_dims()` turns ascending
+  # axes into descending dimensions, and the spec requires `update_window_dims`
+  # and `inserted_window_dims` to be sorted (scatter C7, C10).
   scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
     update_window_dims = sort(xla_dims(update_window_axes, n_update)),
     inserted_window_dims = sort(xla_dims(inserted_window_axes, n_x)),
@@ -1150,14 +1152,16 @@ prim_gather[["stablehlo"]] <- function(
   indices_are_sorted,
   unique_indices
 ) {
-  n_x <- length(shape(x$value_type))
-  n_indices <- length(shape(start_indices$value_type))
+  n_x <- naxes(x)
+  n_indices <- naxes(start_indices)
   # the result has the offset axes and one batch axis per axis of the indices
   # other than the index vector axis
   n_out <- length(offset_axes) + n_indices - (index_vector_axis <= n_indices)
   batching <- xla_batching_pairs(x_batching_axes, n_x, start_indices_batching_axes, n_indices)
   # StableHLO's GatherDimensionNumbers() follows the spec naming, so the
-  # anvl-side `x_batching_axes` is mapped back here.
+  # anvl-side `x_batching_axes` is mapped back here. `xla_dims()` turns
+  # ascending axes into descending dimensions, and the spec requires
+  # `offset_dims` and `collapsed_slice_dims` to be sorted (gather C4, C7).
   gdn <- stablehlo::GatherDimensionNumbers(
     offset_dims = sort(xla_dims(offset_axes, n_out)),
     collapsed_slice_dims = sort(xla_dims(collapsed_slice_axes, n_x)),
@@ -1187,7 +1191,7 @@ prim_gather[["stablehlo"]] <- function(
 # column-major matrix as XLA's row-major bytes, so potrf factors exactly the
 # matrix the R axes hold and writes the factor the same way.
 prim_chol[["stablehlo"]] <- function(x, lower) {
-  r <- length(shape(x$value_type))
+  r <- naxes(x)
   moved <- xla_matrix_last(x, r - 1L, r)
   xm <- moved$value
   op_shape <- shape(xm$value_type)
@@ -1243,15 +1247,13 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
 # XLA lowers `stablehlo.triangular_solve` to cuBLAS trsm on CUDA, but on the
 # CPU expands it into blocked HLO that is several times slower than BLAS trsm.
 # So, as JAX does, the CPU takes pjrt's `trsm` custom call for the data types
-# BLAS has. It stands in for the op: same attributes and semantics, on XLA's
-# default row-major layout.
 #
 # Both take their batch dimensions first and solve on the blocks behind them,
 # which hold the transposes of the R matrices. op(a) x = b is
 # t(x) op(t(a)) = t(b), so they solve for t(x) with the side and the triangle
 # swapped.
 prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a, output_types) {
-  r <- length(shape(b$value_type))
+  r <- naxes(b)
   am <- xla_matrix_last(a, r - 1L, r)
   bm <- xla_matrix_last(b, r - 1L, r)
   out_types <- if (is.null(bm$back)) output_types
@@ -1290,18 +1292,14 @@ prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_di
   list(x)
 }
 
-# The 2-D decompositions run pjrt handlers that take the column-major matrix
-# with its R axes, (m, n). The operand is transposed into that order and the
-# matrices it returns are transposed back; with the column-major layouts the
-# handlers declare, each transpose holds the same bytes on both sides, so XLA
-# turns it into a bitcast.
+# The 2-D decompositions run pjrt handlers that take an m x n matrix as its
+# column-major data, a row-major [n, m] buffer: the XLA shape and layout the
+# matrix has anyway, so the operand and the results pass without a transpose.
+# The shapes below are XLA shapes, the R shapes reversed.
 prim_qr[["stablehlo"]] <- function(x) {
-  x <- to_r_order(x)
-  tt <- x$value_type$type
-  dt <- tt$dtype
-  shp <- shape(tt)
-  m <- shp[1L]
-  n <- shp[2L]
+  dt <- x$value_type$type$dtype
+  n <- shape(x)[1L]
+  m <- shape(x)[2L]
   k <- min(m, n)
 
   # pjrt's QR is split across two custom calls (matching jaxlib + LAPACK):
@@ -1310,53 +1308,50 @@ prim_qr[["stablehlo"]] <- function(x) {
   #     and the Householder reflectors live in the strict lower triangle.
   #   orgqr(packed, tau) -> Q (m, k)
   # We compose them here and reconstruct R from packed via slice + triu.
-  packed_type <- vt(dtype = dt, shape = c(m, n))
-  tau_type <- vt(dtype = dt, shape = k)
-
   geqrf_out <- hlo_custom_call(
     x,
     call_target_name = "geqrf",
     api_version = 4L,
     has_side_effect = FALSE,
-    output_types = list(packed_type, tau_type),
-    operand_layouts = col_major_layouts(2L),
-    result_layouts = col_major_layouts(2L, 1L)
+    output_types = list(vt(dtype = dt, shape = c(n, m)), vt(dtype = dt, shape = k)),
+    operand_layouts = row_major_layouts(2L),
+    result_layouts = row_major_layouts(2L, 1L)
   )
   packed <- geqrf_out[[1L]]
   tau <- geqrf_out[[2L]]
 
-  q_type <- vt(dtype = dt, shape = c(m, k))
   Q <- hlo_custom_call(
     packed,
     tau,
     call_target_name = "orgqr",
     api_version = 4L,
     has_side_effect = FALSE,
-    output_types = list(q_type),
-    operand_layouts = col_major_layouts(2L, 1L),
-    result_layouts = col_major_layouts(2L)
+    output_types = list(vt(dtype = dt, shape = c(k, m))),
+    operand_layouts = row_major_layouts(2L, 1L),
+    result_layouts = row_major_layouts(2L)
   )
 
-  # R is the upper triangle of the first k rows of packed. Slice if m > k
-  # (= m > n); when m <= n, k = m and packed already has the right row count.
+  # R is the upper triangle of the first k rows of packed, which run along XLA
+  # dimension 1. Slice if m > k (= m > n); when m <= n, k = m and packed
+  # already has the right row count.
   packed_top <- if (m > k) {
     hlo_slice(
       packed,
       start_indices = c(0L, 0L),
-      limit_indices = c(k, n),
+      limit_indices = c(n, k),
       strides = c(1L, 1L)
     )
   } else {
     packed
   }
-  top_shape <- c(k, n)
-  rows <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = top_shape, func = x$func)
-  cols <- hlo_iota(iota_dimension = 1L, dtype = "i32", shape = top_shape, func = x$func)
+  top_shape <- c(n, k)
+  cols <- hlo_iota(iota_dimension = 0L, dtype = "i32", shape = top_shape, func = x$func)
+  rows <- hlo_iota(iota_dimension = 1L, dtype = "i32", shape = top_shape, func = x$func)
   triu_mask <- hlo_compare(rows, cols, comparison_direction = "LE", compare_type = "SIGNED")
   zero <- hlo_tensor(0L, dtype = dt, shape = top_shape)
   R <- hlo_select(triu_mask, packed_top, zero)
 
-  list(from_r_order(Q), from_r_order(R))
+  list(Q, R)
 }
 
 # Convert a LAPACK pivot vector (length `k`, 1-based sequential row swaps
@@ -1414,12 +1409,9 @@ pivots_to_permutation <- function(pivots, n) {
 }
 
 prim_lu[["stablehlo"]] <- function(x, output_types) {
-  x <- to_r_order(x)
-  tt <- x$value_type$type
-  dt <- tt$dtype
-  shp <- shape(tt)
-  m <- shp[1L]
-  n <- shp[2L]
+  dt <- x$value_type$type$dtype
+  n <- shape(x)[1L]
+  m <- shape(x)[2L]
   k <- min(m, n)
 
   # LAPACK's `getrf` (and cuSOLVER, which matches it) writes `ipiv` as 32-bit
@@ -1427,17 +1419,14 @@ prim_lu[["stablehlo"]] <- function(x, output_types) {
   # whatever the default integer is; only the two outputs are converted.
   index_dtype <- index_dtype_of(output_types, 2L)
 
-  lu_type <- vt(dtype = dt, shape = c(m, n))
-  piv_type <- vt(dtype = "i32", shape = k)
-
   out <- hlo_custom_call(
     x,
     call_target_name = "lu",
     api_version = 4L,
     has_side_effect = FALSE,
-    output_types = list(lu_type, piv_type),
-    operand_layouts = col_major_layouts(2L),
-    result_layouts = col_major_layouts(2L, 1L)
+    output_types = list(vt(dtype = dt, shape = c(n, m)), vt(dtype = "i32", shape = k)),
+    operand_layouts = row_major_layouts(2L),
+    result_layouts = row_major_layouts(2L, 1L)
   )
   LU <- out[[1L]]
   pivots <- out[[2L]]
@@ -1446,34 +1435,31 @@ prim_lu[["stablehlo"]] <- function(x, output_types) {
     pivots <- hlo_convert(pivots, index_dtype)
     permutation <- hlo_convert(permutation, index_dtype)
   }
-  list(from_r_order(LU), pivots, permutation)
+  list(LU, pivots, permutation)
 }
 
 prim_svd[["stablehlo"]] <- function(x) {
-  x <- to_r_order(x)
-  tt <- x$value_type$type
-  dt <- tt$dtype
-  shp <- shape(tt)
-  m <- shp[1L]
-  n <- shp[2L]
+  dt <- x$value_type$type$dtype
+  n <- shape(x)[1L]
+  m <- shape(x)[2L]
   k <- min(m, n)
 
-  u_type <- vt(dtype = dt, shape = c(m, k))
+  # U is (m, k) and Vt is (k, n).
+  u_type <- vt(dtype = dt, shape = c(k, m))
   s_type <- vt(dtype = dt, shape = k)
-  vt_type <- vt(dtype = dt, shape = c(k, n))
+  vt_type <- vt(dtype = dt, shape = c(n, k))
 
   # cuSOLVER's gesvd requires m >= n. When m < n on CUDA we mirror JAX's
-  # layout-flip trick: declare x / U / Vt as row-major instead of
-  # column-major and tell the FFI handler `transposed = TRUE`. The
-  # col-major (m, n) buffer is bit-identical to a row-major (n, m) view of
-  # A^T, so cuSOLVER (with m and n swapped) computes A^T = V S U^T and
-  # writes its U / Vt outputs straight into the original Vt / U slots —
-  # also bit-identical under the col-major <-> row-major reinterpretation.
-  # As anvl stores the R matrix column-major, the row-major layouts are a
-  # physical transpose of x and of both outputs. The CUDA handler always reads a `transposed`
-  # attribute, so we emit it (with both values) whenever targeting CUDA;
-  # other platforms (host LAPACK gesdd handles any shape) take the plain
-  # path with no backend_config.
+  # layout-flip trick: declare x / U / Vt column-major instead of row-major
+  # and tell the FFI handler `transposed = TRUE`. A column-major [n, m] buffer
+  # holds the column-major data of A^T, so cuSOLVER (with m and n swapped)
+  # computes A^T = V S U^T and writes its U / Vt outputs straight into the
+  # Vt / U slots, whose column-major layouts transpose them back. Unlike the
+  # row-major ones, these layouts are a physical transpose of x and of both
+  # outputs. The CUDA handler always reads a `transposed` attribute, so we
+  # emit it (with both values) whenever targeting CUDA; other platforms (host
+  # LAPACK gesdd handles any shape) take the plain path with no
+  # backend_config.
   on_cuda <- identical(current_platform(), "cuda")
   transposed <- on_cuda && m < n
 
@@ -1482,15 +1468,7 @@ prim_svd[["stablehlo"]] <- function(x) {
       stablehlo::BoolAttr(name = "transposed", value = transposed)
     ))
   }
-  if (transposed) {
-    row_major_2 <- c(1L, 0L)
-    row_major_1 <- 0L
-    operand_layouts <- list(row_major_2)
-    result_layouts <- list(row_major_2, row_major_1, row_major_2)
-  } else {
-    operand_layouts <- col_major_layouts(2L)
-    result_layouts <- col_major_layouts(2L, 1L, 2L)
-  }
+  layouts <- if (transposed) col_major_layouts else row_major_layouts
   out <- hlo_custom_call(
     x,
     call_target_name = "svd",
@@ -1498,20 +1476,15 @@ prim_svd[["stablehlo"]] <- function(x) {
     has_side_effect = FALSE,
     backend_config = backend_config,
     output_types = list(u_type, s_type, vt_type),
-    operand_layouts = operand_layouts,
-    result_layouts = result_layouts
+    operand_layouts = layouts(2L),
+    result_layouts = layouts(2L, 1L, 2L)
   )
-  list(out[[2L]], from_r_order(out[[1L]]), from_r_order(out[[3L]]))
+  list(out[[2L]], out[[1L]], out[[3L]])
 }
 
 prim_eigh[["stablehlo"]] <- function(x) {
-  x <- to_r_order(x)
-  tt <- x$value_type$type
-  dt <- tt$dtype
-  n <- shape(tt)[1L]
-
-  v_type <- vt(dtype = dt, shape = c(n, n))
-  w_type <- vt(dtype = dt, shape = n)
+  dt <- x$value_type$type$dtype
+  n <- shape(x)[1L]
 
   # The "eigh" custom call returns (vectors, values) positionally. We
   # re-bundle to (values, vectors) matching `base::eigen()`.
@@ -1520,11 +1493,11 @@ prim_eigh[["stablehlo"]] <- function(x) {
     call_target_name = "eigh",
     api_version = 4L,
     has_side_effect = FALSE,
-    output_types = list(v_type, w_type),
-    operand_layouts = col_major_layouts(2L),
-    result_layouts = col_major_layouts(2L, 1L)
+    output_types = list(vt(dtype = dt, shape = c(n, n)), vt(dtype = dt, shape = n)),
+    operand_layouts = row_major_layouts(2L),
+    result_layouts = row_major_layouts(2L, 1L)
   )
-  list(out[[2L]], from_r_order(out[[1L]])) # values, vectors
+  list(out[[2L]], out[[1L]]) # values, vectors
 }
 
 prim_convolution[["stablehlo"]] <- function(
@@ -1549,7 +1522,7 @@ prim_convolution[["stablehlo"]] <- function(
 ) {
   # All three arrays have the same number of axes. The spatial lists keep their
   # order: the strides, padding and dilations pair with them by position.
-  n <- length(shape(x$value_type))
+  n <- naxes(x)
   shlo_dn <- stablehlo::ConvDimensionNumbers(
     input_batch_dimension = xla_dims(x_batch_axis, n),
     input_feature_dimension = xla_dims(x_feature_axis, n),

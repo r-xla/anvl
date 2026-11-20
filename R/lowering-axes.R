@@ -49,20 +49,6 @@ xla_per_axis <- function(x) {
   rev(x)
 }
 
-# A full transpose between an array's XLA order and its R order, for the
-# custom calls whose handlers take a matrix in R's axis order. Under a
-# column-major layout the R-ordered value holds the same bytes as the XLA one,
-# so XLA turns the transpose into a bitcast.
-to_r_order <- function(x) {
-  n <- length(shape(x$value_type))
-  if (n <= 1L) {
-    return(x)
-  }
-  hlo_transpose(x, rev(seq_len(n)) - 1L)
-}
-
-from_r_order <- to_r_order
-
 # The batching dimensions of a gather or scatter: R axes `x_axes` of the
 # `n_x`-axis operand paired with R axes `indices_axes` of the `n_indices`-axis
 # indices, as XLA dimensions sorted by the operand's (stablehlo requires them
@@ -89,7 +75,7 @@ xla_index_vector_dim <- function(axis, n_indices) {
 # row-major bytes. `back` is the permutation that restores the XLA order of
 # `x`; both are `NULL` when nothing has to move.
 xla_matrix_last <- function(x, row_axis, col_axis) {
-  n <- length(shape(x$value_type))
+  n <- naxes(x)
   d_row <- xla_dims(row_axis, n)
   d_col <- xla_dims(col_axis, n)
   perm <- c(setdiff(seq_len(n) - 1L, c(d_row, d_col)), d_col, d_row)

@@ -50,13 +50,7 @@ nv_extremal_value <- function(dtype, which, float_value, bool_value, device) {
   if (dtype == "bool") {
     return(nv_scalar(bool_value, dtype = "bool", device = device))
   }
-  nv_scalar(pjrt_buffer(
-    globals$ranges_raw[[dtype]][[which]],
-    dtype = dtype,
-    device = device,
-    row_major = TRUE,
-    shape = integer()
-  ))
+  nv_scalar(globals$ranges_raw[[dtype]][[which]], dtype = dtype, device = device)
 }
 
 without <- function(x, indices) {
@@ -209,6 +203,10 @@ col_major_layout <- function(naxes) {
 
 col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
+}
+
+row_major_layouts <- function(...) {
+  lapply(list(...), \(naxes) rev(col_major_layout(naxes)))
 }
 
 # Transpose the matrix an array's last two axes form, leaving any leading batch

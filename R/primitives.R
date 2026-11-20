@@ -3101,7 +3101,7 @@ prim_sort <- new_primitive(
         call = print_call_repr(self)
       )
     }
-    axis <- resolve_axis(axis, length(shape(xs[[1L]])))
+    axis <- resolve_axis(axis, naxes(xs[[1L]]))
 
     graph_desc_add(
       self,
@@ -3320,7 +3320,7 @@ prim_optimization_barrier <- new_primitive(
 #'   The value at a position thus does not depend on the number of values
 #'   drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
 #'   `shape` in column-major order, so a draw of `c(2, 3)` is a draw of `6`
-#'   filled into `c(2, 3)`. JAX fills a shape in row-major order instead.
+#'   filled into `c(2, 3)`.
 #' @references
 #' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
 #' @templateVar primitive_id sample_bits
