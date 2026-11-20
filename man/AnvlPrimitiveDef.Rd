@@ -4,7 +4,7 @@
 \alias{AnvlPrimitiveDef}
 \title{Primitive Definition}
 \usage{
-AnvlPrimitiveDef(name, subgraphs = character())
+AnvlPrimitiveDef(name, subgraphs = character(), tags = character())
 }
 \arguments{
 \item{name}{(\code{character(1)})\cr
@@ -12,6 +12,9 @@ The name of the primitive, without the \code{prim_} prefix.}
 
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs.}
+
+\item{tags}{(\code{character()})\cr
+The kinds of operation the primitive is, see \code{\link[=new_primitive]{new_primitive()}}.}
 }
 \value{
 (\code{AnvlPrimitiveDef})

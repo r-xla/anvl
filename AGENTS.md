@@ -122,14 +122,15 @@ another backend is an error. Only helpers *about* the backend name one (`install
 
 ## Primitive System
 
-Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. A primitive that is an element-wise operation, a reduction or a cumulative scan says so with `new_primitive(tags = )` (`"elementwise"`, `"reduction"`, `"cumulative"`); a rule shared by every primitive of a kind is assigned from the tag (`primitives_tagged()`), so a new primitive of that kind gets it without being added to a list. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 - **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
-  The batch axis is the operands' last axis, so a parameter that names axes keeps its value; most rules
-  are declarations of how the parameters with an entry per axis, or a shape, change (`param_shape()`,
+  The batch axis is the operands' last axis, so a parameter that names axes keeps its value: the primitives
+  tagged `"elementwise"`, `"reduction"` or `"cumulative"` (`new_primitive(tags = )`) take the plain
+  rule from their tag. Most other rules are declarations of how the parameters with an entry per axis, or a shape, change (`param_shape()`,
   `param_axis_map()`, `param_per_axis()`), with the generic rule broadcasting operands that are not
   mapped over. `vectorize()` maps over, and stacks along, the last axis by default (`in_axes = -1L`,
   `out_axes = -1L`). Only primitives that do not fit write a

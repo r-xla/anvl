@@ -105,6 +105,8 @@
   `out_axes`, by default the last axis), like `base::Vectorize()` but as one
   traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
   primitive its rule.
+* `new_primitive()` takes `tags` naming the kind of operation a primitive is:
+  `"elementwise"`, `"reduction"` or `"cumulative"`.
 * An array that a branch of `nv_if()`, the body of `nv_while()` or a function
   differentiated by `gradient()` closes over now counts toward the device
   `jit()` detects, as it already did for the jitted function itself.

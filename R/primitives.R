@@ -109,7 +109,7 @@ prim_fill <- new_primitive(
 #' # the R value is built at the array's data type instead
 #' prim_add(1, nv_scalar(2, "f64"))
 #' @export
-prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
+prim_add <- new_primitive("add", make_binary_op(infer_generic_biv), tags = "elementwise")
 
 #' @title Primitive Multiplication
 #' @description
@@ -129,7 +129,7 @@ prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
 #' # the R value is built at the array's data type instead
 #' prim_mul(2, nv_scalar(3, "f64"))
 #' @export
-prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv))
+prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv), tags = "elementwise")
 
 #' @title Primitive Subtraction
 #' @description
@@ -149,7 +149,7 @@ prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv))
 #' # the R value is built at the array's data type instead
 #' prim_sub(5, nv_scalar(3, "f64"))
 #' @export
-prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv))
+prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv), tags = "elementwise")
 
 #' @title Primitive Negation
 #' @description
@@ -170,7 +170,7 @@ prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv))
 #' # an R value materializes at its default data type
 #' prim_negate(1)
 #' @export
-prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
+prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni), tags = "elementwise")
 
 #' @title Primitive Division
 #' @description
@@ -190,7 +190,7 @@ prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 #' # the R value is built at the array's data type instead
 #' prim_div(10, nv_scalar(4, "f64"))
 #' @export
-prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
+prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv), tags = "elementwise")
 
 #' @title Primitive Power
 #' @description
@@ -210,7 +210,7 @@ prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
 #' # the R value is built at the array's data type instead
 #' prim_pow(2, nv_scalar(3, "f64"))
 #' @export
-prim_pow <- new_primitive("pow", make_binary_op(infer_numeric_biv, c("x", "y")))
+prim_pow <- new_primitive("pow", make_binary_op(infer_numeric_biv, c("x", "y")), tags = "elementwise")
 
 #' @title Primitive Broadcast
 #' @description
@@ -647,7 +647,7 @@ make_reduce_op <- function(infer_fn = infer_reduce_simple) {
 #' # reducing every axis gives a scalar
 #' prim_sum(x, axes = c(1L, 2L))
 #' @export
-prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3)
+prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3, tags = "reduction")
 
 #' @title Primitive Product Reduction
 #' @description
@@ -677,7 +677,7 @@ prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3)
 #' # reducing every axis gives a scalar
 #' prim_prod(x, axes = c(1L, 2L))
 #' @export
-prim_prod <- new_primitive("prod", make_reduce_op(), static = 2:3)
+prim_prod <- new_primitive("prod", make_reduce_op(), static = 2:3, tags = "reduction")
 
 #' @title Primitive Max Reduction
 #' @description
@@ -704,7 +704,7 @@ prim_prod <- new_primitive("prod", make_reduce_op(), static = 2:3)
 #' # reducing every axis gives a scalar
 #' prim_max(x, axes = c(1L, 2L))
 #' @export
-prim_max <- new_primitive("max", make_reduce_op(), static = 2:3)
+prim_max <- new_primitive("max", make_reduce_op(), static = 2:3, tags = "reduction")
 
 #' @title Primitive Min Reduction
 #' @description
@@ -731,7 +731,7 @@ prim_max <- new_primitive("max", make_reduce_op(), static = 2:3)
 #' # reducing every axis gives a scalar
 #' prim_min(x, axes = c(1L, 2L))
 #' @export
-prim_min <- new_primitive("min", make_reduce_op(), static = 2:3)
+prim_min <- new_primitive("min", make_reduce_op(), static = 2:3, tags = "reduction")
 
 #' @title Primitive Any Reduction
 #' @description
@@ -755,7 +755,7 @@ prim_min <- new_primitive("min", make_reduce_op(), static = 2:3)
 #' # drop = FALSE keeps the reduced axis at size 1 instead
 #' prim_any(x, axes = 1L, drop = FALSE)
 #' @export
-prim_any <- new_primitive("any", make_reduce_op(infer_reduce_boolean), static = 2:3)
+prim_any <- new_primitive("any", make_reduce_op(infer_reduce_boolean), static = 2:3, tags = "reduction")
 
 #' @title Primitive All Reduction
 #' @description
@@ -779,7 +779,7 @@ prim_any <- new_primitive("any", make_reduce_op(infer_reduce_boolean), static = 
 #' # drop = FALSE keeps the reduced axis at size 1 instead
 #' prim_all(x, axes = 1L, drop = FALSE)
 #' @export
-prim_all <- new_primitive("all", make_reduce_op(infer_reduce_boolean), static = 2:3)
+prim_all <- new_primitive("all", make_reduce_op(infer_reduce_boolean), static = 2:3, tags = "reduction")
 
 # cumulative (scan) primitives -------------------------------------------------
 
@@ -815,7 +815,7 @@ cum_extreme_op <- function(x, axis) {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_cumsum(x, axis = 1L)
 #' @export
-prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
+prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L, tags = "cumulative")
 
 #' @title Primitive Cumulative Product
 #' @description
@@ -839,7 +839,7 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_cumprod(x, axis = 1L)
 #' @export
-prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L)
+prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L, tags = "cumulative")
 
 #' @title Primitive Cumulative Maximum
 #' @description
@@ -866,7 +866,7 @@ prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L)
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' prim_cummax(x, axis = 1L)
 #' @export
-prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L)
+prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L, tags = "cumulative")
 
 #' @title Primitive Cumulative Minimum
 #' @description
@@ -893,7 +893,7 @@ prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L)
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' prim_cummin(x, axis = 1L)
 #' @export
-prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
+prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L, tags = "cumulative")
 
 #' @title Primitive Generic Reduce
 #' @description
@@ -1031,7 +1031,7 @@ arg_extreme_op <- function(x, axis, drop = TRUE) {
 #' # the index comes out at the default integer data type
 #' prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_max <- new_primitive("which_max", arg_extreme_op, static = 2:3)
+prim_which_max <- new_primitive("which_max", arg_extreme_op, static = 2:3, tags = "reduction")
 
 #' @title Primitive Index of the Minimum
 #' @description
@@ -1058,7 +1058,7 @@ prim_which_max <- new_primitive("which_max", arg_extreme_op, static = 2:3)
 #' # the index comes out at the default integer data type
 #' prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3)
+prim_which_min <- new_primitive("which_min", arg_extreme_op, static = 2:3, tags = "reduction")
 
 # comparison primitives --------------------------------------------------------
 
@@ -1088,7 +1088,7 @@ compare_op <- function(lhs, rhs) {
 #' # the R value is built at the array's data type instead
 #' prim_eq(1, nv_scalar(1, "f64"))
 #' @export
-prim_eq <- new_primitive("eq", compare_op)
+prim_eq <- new_primitive("eq", compare_op, tags = "elementwise")
 
 #' @title Primitive Not Equal
 #' @description
@@ -1109,7 +1109,7 @@ prim_eq <- new_primitive("eq", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_ne(1, nv_scalar(2, "f64"))
 #' @export
-prim_ne <- new_primitive("ne", compare_op)
+prim_ne <- new_primitive("ne", compare_op, tags = "elementwise")
 
 #' @title Primitive Greater Than
 #' @description
@@ -1130,7 +1130,7 @@ prim_ne <- new_primitive("ne", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_gt(2, nv_scalar(1, "f64"))
 #' @export
-prim_gt <- new_primitive("gt", compare_op)
+prim_gt <- new_primitive("gt", compare_op, tags = "elementwise")
 
 #' @title Primitive Greater Than or Equal
 #' @description
@@ -1151,7 +1151,7 @@ prim_gt <- new_primitive("gt", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_ge(2, nv_scalar(1, "f64"))
 #' @export
-prim_ge <- new_primitive("ge", compare_op)
+prim_ge <- new_primitive("ge", compare_op, tags = "elementwise")
 
 #' @title Primitive Less Than
 #' @description
@@ -1172,7 +1172,7 @@ prim_ge <- new_primitive("ge", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_lt(1, nv_scalar(2, "f64"))
 #' @export
-prim_lt <- new_primitive("lt", compare_op)
+prim_lt <- new_primitive("lt", compare_op, tags = "elementwise")
 
 #' @title Primitive Less Than or Equal
 #' @description
@@ -1193,7 +1193,7 @@ prim_lt <- new_primitive("lt", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_le(1, nv_scalar(2, "f64"))
 #' @export
-prim_le <- new_primitive("le", compare_op)
+prim_le <- new_primitive("le", compare_op, tags = "elementwise")
 
 # additional simple binary primitives -----------------------------------------
 
@@ -1215,7 +1215,7 @@ prim_le <- new_primitive("le", compare_op)
 #' # the R value is built at the array's data type instead
 #' prim_pmax(1, nv_scalar(5, "f64"))
 #' @export
-prim_pmax <- new_primitive("pmax", make_binary_op(infer_generic_biv))
+prim_pmax <- new_primitive("pmax", make_binary_op(infer_generic_biv), tags = "elementwise")
 
 #' @title Primitive Parallel Minimum
 #' @description
@@ -1235,7 +1235,7 @@ prim_pmax <- new_primitive("pmax", make_binary_op(infer_generic_biv))
 #' # the R value is built at the array's data type instead
 #' prim_pmin(1, nv_scalar(5, "f64"))
 #' @export
-prim_pmin <- new_primitive("pmin", make_binary_op(infer_generic_biv))
+prim_pmin <- new_primitive("pmin", make_binary_op(infer_generic_biv), tags = "elementwise")
 
 #' @title Primitive Remainder
 #' @description
@@ -1262,7 +1262,8 @@ prim_pmin <- new_primitive("pmin", make_binary_op(infer_generic_biv))
 #' @export
 prim_remainder <- new_primitive(
   "remainder",
-  make_binary_op(infer_numeric_biv, c("x", "y"))
+  make_binary_op(infer_numeric_biv, c("x", "y")),
+  tags = "elementwise"
 )
 
 #' @title Primitive Bitwise And
@@ -1284,7 +1285,7 @@ prim_remainder <- new_primitive(
 #' # the R value is built at the array's data type instead
 #' prim_and(12L, nv_scalar(10L, "i64"))
 #' @export
-prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv))
+prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv), tags = "elementwise")
 
 #' @title Primitive Bitwise Not
 #' @description
@@ -1306,7 +1307,7 @@ prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv))
 #' # on an integer it complements every bit, so `12L` becomes `-13`
 #' prim_not(nv_array(12L))
 #' @export
-prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni))
+prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni), tags = "elementwise")
 
 #' @title Primitive Bitwise Or
 #' @description
@@ -1327,7 +1328,7 @@ prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni))
 #' # the R value is built at the array's data type instead
 #' prim_or(12L, nv_scalar(10L, "i64"))
 #' @export
-prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv))
+prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv), tags = "elementwise")
 
 #' @title Primitive Bitwise Xor
 #' @description
@@ -1348,7 +1349,7 @@ prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv))
 #' # the R value is built at the array's data type instead
 #' prim_xor(12L, nv_scalar(10L, "i64"))
 #' @export
-prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv, c("x", "y")))
+prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv, c("x", "y")), tags = "elementwise")
 
 #' @title Primitive Shift Left
 #' @description
@@ -1367,7 +1368,7 @@ prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv, c("x", "y"
 #' # the R value is built at the array's data type instead
 #' prim_shift_left(8L, nv_scalar(2L, "i64"))
 #' @export
-prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integer_biv, c("x", "shift")))
+prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integer_biv, c("x", "shift")), tags = "elementwise")
 
 #' @title Primitive Logical Shift Right
 #' @description
@@ -1388,7 +1389,8 @@ prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integer_biv,
 #' @export
 prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
-  make_binary_op(infer_integer_biv, c("x", "shift"))
+  make_binary_op(infer_integer_biv, c("x", "shift")),
+  tags = "elementwise"
 )
 
 #' @title Primitive Arithmetic Shift Right
@@ -1410,7 +1412,8 @@ prim_shift_right_logical <- new_primitive(
 #' @export
 prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
-  make_binary_op(infer_integer_biv, c("x", "shift"))
+  make_binary_op(infer_integer_biv, c("x", "shift")),
+  tags = "elementwise"
 )
 
 #' @title Primitive Arctangent 2
@@ -1437,7 +1440,7 @@ prim_shift_right_arithmetic <- new_primitive(
 #' # the R value is built at the array's data type instead
 #' prim_atan2(1, nv_scalar(1, "f64"))
 #' @export
-prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv, c("y", "x")))
+prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv, c("y", "x")), tags = "elementwise")
 
 #' @title Primitive Bitcast Conversion
 #' @description
@@ -1503,7 +1506,7 @@ prim_bitcast_convert <- new_primitive(
 #' # an R value materializes at its default data type
 #' prim_abs(-1)
 #' @export
-prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni))
+prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni), tags = "elementwise")
 
 #' @title Primitive Square Root
 #' @description
@@ -1524,7 +1527,7 @@ prim_abs <- new_primitive("abs", make_unary_op(infer_signed_uni))
 #' # an R value materializes at its default data type
 #' prim_sqrt(4)
 #' @export
-prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni))
+prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Reciprocal Square Root
 #' @description
@@ -1545,7 +1548,7 @@ prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_rsqrt(4)
 #' @export
-prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni))
+prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Logarithm
 #' @description
@@ -1566,7 +1569,7 @@ prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_log(2)
 #' @export
-prim_log <- new_primitive("log", make_unary_op(infer_float_uni))
+prim_log <- new_primitive("log", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Hyperbolic Tangent
 #' @description
@@ -1587,7 +1590,7 @@ prim_log <- new_primitive("log", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_tanh(1)
 #' @export
-prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni))
+prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Tangent
 #' @description
@@ -1608,7 +1611,7 @@ prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_tan(0.5)
 #' @export
-prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
+prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Sine
 #' @description
@@ -1629,7 +1632,7 @@ prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sin(0)
 #' @export
-prim_sin <- new_primitive("sin", make_unary_op(infer_float_uni))
+prim_sin <- new_primitive("sin", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Cosine
 #' @description
@@ -1650,7 +1653,7 @@ prim_sin <- new_primitive("sin", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_cos(0)
 #' @export
-prim_cos <- new_primitive("cos", make_unary_op(infer_float_uni))
+prim_cos <- new_primitive("cos", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Floor
 #' @description
@@ -1671,7 +1674,7 @@ prim_cos <- new_primitive("cos", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_floor(1.2)
 #' @export
-prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni))
+prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Ceiling
 #' @description
@@ -1692,7 +1695,7 @@ prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_ceiling(1.2)
 #' @export
-prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni))
+prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Sign
 #' @description
@@ -1713,7 +1716,7 @@ prim_ceiling <- new_primitive("ceiling", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sign(-3)
 #' @export
-prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni))
+prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni), tags = "elementwise")
 
 #' @title Primitive Exponential
 #' @description
@@ -1734,7 +1737,7 @@ prim_sign <- new_primitive("sign", make_unary_op(infer_signed_uni))
 #' # an R value materializes at its default data type
 #' prim_exp(1)
 #' @export
-prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni))
+prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Exponential Minus One
 #' @description
@@ -1755,7 +1758,7 @@ prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_expm1(0.001)
 #' @export
-prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni))
+prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Log Plus One
 #' @description
@@ -1776,7 +1779,7 @@ prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_log1p(0.001)
 #' @export
-prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni))
+prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Cube Root
 #' @description
@@ -1797,7 +1800,7 @@ prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_cbrt(8)
 #' @export
-prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni))
+prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Logistic (Sigmoid)
 #' @description
@@ -1819,7 +1822,7 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_plogis(2)
 #' @export
-prim_plogis <- new_primitive("plogis", make_unary_op(infer_float_uni))
+prim_plogis <- new_primitive("plogis", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Arc Cosine
 #' @description
@@ -1840,7 +1843,7 @@ prim_plogis <- new_primitive("plogis", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_acos(0.5)
 #' @export
-prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni))
+prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Inverse Hyperbolic Cosine
 #' @description
@@ -1861,7 +1864,7 @@ prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_acosh(2)
 #' @export
-prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni))
+prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Arc Sine
 #' @description
@@ -1882,7 +1885,7 @@ prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_asin(0.5)
 #' @export
-prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni))
+prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Inverse Hyperbolic Sine
 #' @description
@@ -1903,7 +1906,7 @@ prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_asinh(1)
 #' @export
-prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni))
+prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Arc Tangent
 #' @description
@@ -1924,7 +1927,7 @@ prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_atan(1)
 #' @export
-prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni))
+prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Inverse Hyperbolic Tangent
 #' @description
@@ -1945,7 +1948,7 @@ prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_atanh(0.5)
 #' @export
-prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni))
+prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Hyperbolic Cosine
 #' @description
@@ -1966,7 +1969,7 @@ prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_cosh(1)
 #' @export
-prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni))
+prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Hyperbolic Sine
 #' @description
@@ -1987,7 +1990,7 @@ prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_sinh(1)
 #' @export
-prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni))
+prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Digamma
 #' @description
@@ -2008,7 +2011,7 @@ prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_digamma(2)
 #' @export
-prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni))
+prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Log-Gamma
 #' @description
@@ -2029,7 +2032,7 @@ prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_lgamma(2)
 #' @export
-prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni))
+prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Psigamma
 #' @description
@@ -2057,7 +2060,8 @@ prim_psigamma <- new_primitive(
   function(x, deriv) {
     operands <- apply_promotion(list(x = x, deriv = deriv), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_polygamma)[[1L]]
-  }
+  },
+  tags = "elementwise"
 )
 
 #' @title Primitive Error Function
@@ -2079,7 +2083,7 @@ prim_psigamma <- new_primitive(
 #' # an R value materializes at its default data type
 #' prim_erf(1)
 #' @export
-prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni))
+prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Inverse Error Function
 #' @description
@@ -2100,7 +2104,7 @@ prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_erf_inv(0.5)
 #' @export
-prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni))
+prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Complementary Error Function
 #' @description
@@ -2121,7 +2125,7 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni))
 #' # an R value materializes at its default data type
 #' prim_erfc(1)
 #' @export
-prim_erfc <- new_primitive("erfc", make_unary_op(infer_float_uni))
+prim_erfc <- new_primitive("erfc", make_unary_op(infer_float_uni), tags = "elementwise")
 
 #' @title Primitive Is Finite
 #' @description
@@ -2147,7 +2151,8 @@ prim_is_finite <- new_primitive(
   "is_finite",
   function(x) {
     graph_desc_add(self, list(x = x), list(), infer_fn = infer_is_finite)[[1L]]
-  }
+  },
+  tags = "elementwise"
 )
 
 #' @title Primitive Population Count
@@ -2170,7 +2175,8 @@ prim_popcnt <- new_primitive(
   "popcnt",
   function(x) {
     graph_desc_add(self, list(x = x), list(), infer_fn = infer_integer_uni)[[1L]]
-  }
+  },
+  tags = "elementwise"
 )
 
 #' @title Primitive Clamp
@@ -2210,7 +2216,8 @@ prim_clamp <- new_primitive(
       list(),
       infer_fn = infer_clamp
     )[[1L]]
-  }
+  },
+  tags = "elementwise"
 )
 
 #' @title Primitive Reverse
@@ -2372,7 +2379,8 @@ prim_round <- new_primitive(
   function(x, method = "nearest_even") {
     graph_desc_add(self, list(x = x), list(method = method), infer_fn = infer_round)[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "elementwise"
 )
 
 # dtype conversion ----------------------------------------------------------------
@@ -2421,7 +2429,8 @@ prim_convert <- new_primitive(
       infer_fn = infer_convert
     )[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "elementwise"
 )
 
 
@@ -2461,7 +2470,8 @@ prim_ifelse <- new_primitive(
       c(list(test = test), operands),
       infer_fn = infer_select
     )[[1L]]
-  }
+  },
+  tags = "elementwise"
 )
 
 # Higher order primitives -------------------------------------------------------

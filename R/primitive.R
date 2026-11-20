@@ -15,22 +15,35 @@
 #'   The name of the primitive, without the `prim_` prefix.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
+#' @param tags (`character()`)\cr
+#'   The kinds of operation the primitive is, see [`new_primitive()`].
 #' @return (`AnvlPrimitiveDef`)
 #' @export
-AnvlPrimitiveDef <- function(name, subgraphs = character()) {
+AnvlPrimitiveDef <- function(name, subgraphs = character(), tags = character()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
+  checkmate::assert_subset(tags, primitive_tags)
 
   env <- new.env(parent = emptyenv())
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
+  env$tags <- tags
 
   structure(env, class = "AnvlPrimitiveDef")
 }
 
 
 primitive_env <- new.env(parent = emptyenv())
+
+# The kinds of operation a primitive can be tagged with (see `new_primitive()`).
+primitive_tags <- c("elementwise", "reduction", "cumulative")
+
+# The registered primitives tagged with any of `tags`, by name.
+primitives_tagged <- function(tags) {
+  prims <- mget(sort(ls(primitive_env)), envir = primitive_env)
+  Filter(function(p) any(primitive_def(p)$tags %in% tags), prims)
+}
 
 # The `AnvlPrimitiveDef` of `x`, which is either that definition or the
 # `AnvlPrimitive` callable carrying it.
@@ -99,6 +112,15 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
+#' @param tags (`character()`)\cr
+#'   The kinds of operation the primitive is, which rules shared between
+#'   primitives of one kind read:
+#'   * `"elementwise"`: each element of the output is computed from the
+#'     elements at the same position of the operands alone, e.g. [`prim_add()`].
+#'   * `"reduction"`: reduces its operand along the axes a parameter names,
+#'     e.g. [`prim_sum()`].
+#'   * `"cumulative"`: scans its operand along the axis a parameter names,
+#'     e.g. [`prim_cumsum()`].
 #' @param register (`logical(1)`)\cr
 #'   Whether to add the primitive to anvl's internal registry of primitives,
 #'   under `name`, replacing one registered under the same name. The quickr
@@ -119,6 +141,7 @@ new_primitive <- function(
   fn,
   subgraphs = character(),
   static = character(),
+  tags = character(),
   register = TRUE
 ) {
   checkmate::assert_string(name)
@@ -126,7 +149,7 @@ new_primitive <- function(
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
-  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs)
+  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs, tags = tags)
 
   # Bind `self` (the AnvlPrimitiveDef) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —
