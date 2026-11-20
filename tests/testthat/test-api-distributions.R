@@ -2303,6 +2303,14 @@ pois_grid <- function() {
   )
 }
 
+# Relative tolerance for an f32 probability at count k and mean lambda. Its log
+# sums terms of magnitude ~|k - lambda| that largely cancel, so a few f32 ulps
+# of those terms -- what the backends' f32 log() and exp() may differ by --
+# become a relative error of that size once exp() is taken.
+pois_f32_tolerance <- function(k, lambda) {
+  pmax(2e-5, 8 * 2^-23 * (abs(k - lambda) + 1))
+}
+
 # Element-by-element relative comparison, with NaN and infinities matched
 # exactly. `expect_equal()` measures the mean relative difference over the whole
 # vector, which tiny elements barely move, and compares absolutely when the
@@ -2357,7 +2365,11 @@ describe("nv_dpois", {
     lambda <- as.vector(nv_array(g$lambda[near], dtype = "f32"))
     for (lg in c(FALSE, TRUE)) {
       got <- as.vector(nv_dpois(nv_array(k, dtype = "f32"), nv_array(lambda, dtype = "f32"), log = lg))
-      expect_equal_elementwise(got, dpois(k, lambda, log = lg), tolerance = if (lg) 1e-5 else 2e-5)
+      expect_equal_elementwise(
+        got,
+        dpois(k, lambda, log = lg),
+        tolerance = if (lg) 1e-5 else pois_f32_tolerance(k, lambda)
+      )
     }
   })
 
@@ -2596,7 +2608,7 @@ describe("nv_ppois", {
       want <- ppois(k, lambda, lower.tail = lt, log.p = lp)
       # leave out what f32 holds only as a subnormal, which XLA flushes to zero
       keep <- abs(want) >= 2^-126
-      expect_equal_elementwise(got[keep], want[keep], tolerance = 2e-5)
+      expect_equal_elementwise(got[keep], want[keep], tolerance = pois_f32_tolerance(k, lambda)[keep])
     }
   })
 
