@@ -32,7 +32,6 @@ Imports:
     methods,
     pjrt (>= 0.8.0.9002),
     rlang,
-    safetensors (>= 0.2.0),
     stablehlo (>= 0.6.0),
     withr,
     xlamisc (>= 0.5.0)
@@ -42,6 +41,7 @@ Suggests:
     quarto,
     rmarkdown,
     quickr (>= 0.3.0),
+    safetensors (>= 0.2.0),
     testthat (>= 3.0.0)
 Remotes:
     r-xla/pjrt@develop
@@ -89,7 +89,7 @@ Collate:
     'roxygen.R'
     'rules-pullback.R'
     'rules-stablehlo.R'
-    'serialize.R'
+    'safetensors.R'
     'stablehlo.R'
     'zzz.R'
 Config/roxygen2/version: 8.1.0

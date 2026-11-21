@@ -9,6 +9,9 @@
   to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
 * `Shape()` is no longer exported; use `shp()`.
 * The `"reverse"` rule of a primitive is renamed to `"pullback"`.
+* `nv_save()`, `nv_read()`, `nv_serialize()` and `nv_unserialize()` are
+  removed. Save arrays with `saveRDS()`, or with the {safetensors} package to
+  exchange them with other frameworks (see below).
 
 ## Features
 
@@ -21,6 +24,9 @@
   allow to prevent optimizations from moving computations across it.
 * Added two new transformations `pullback()` and `value_and_pullback()`.
 * Elementwise primitives such as `prim_add()` now broadcast scalars.
+* `safetensors::safe_save_file()` writes `AnvlArray`s, and
+  `safetensors::safe_load_file(framework = "anvl")` reads them.
+* The `"quickr"` backend accepts a raw payload in `nv_array()`.
 
 ## Bug fixes
 
@@ -28,6 +34,9 @@
   differentiates with respect to no argument, rather than all of them.
 * `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
   recycling it, and keeps the values of a `bit64::integer64`.
+* `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
+  row-major order with `row_major = TRUE`.
+* The `"quickr"` backend accepts a device given as a string, `"cpu"`.
 
 ## Performance
 
