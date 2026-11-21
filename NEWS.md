@@ -5,7 +5,6 @@
 * Batch axes now come last to have consistent col-major semantics everywhere.
   This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.
 * Random draws fill a shape in column-major order.
-* Random draws now fill multi-dimensional arrays in a transposed order.
 * `NULL` (and so `c()`) is no longer a shape; constructors that infer one default
   to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
 * `Shape()` is no longer exported; use `shp()`.
