@@ -254,6 +254,8 @@ AnvlGraph <- function(
 #'   - `"loop"`: as fresh inputs of the graph, which the graph also returns
 #'     there. The bodies of [nv_while()] and [nv_scan()] take side effects this
 #'     way, and hand them on to the next iteration.
+#'   - `"vectorize"`: as fresh inputs of the graph, which [vectorize()] binds
+#'     to the values the slices start from.
 #'   - `"capture"`: as the value of `parent`'s view, which the graph closes
 #'     over and continues. The branches of [nv_if()] and the function
 #'     [gradient()] differentiates take side effects this way.
@@ -574,6 +576,7 @@ get_box_or_register_const <- function(desc, x) {
   # it, so an array `desc` already holds is matched by itself: the box returned
   # may then be of another GraphValue than `x`.
   if (is_concrete_array(x$aval)) {
+    desc$devices <- c(desc$devices, placement_device(x$aval$data))
     known <- desc$array_to_gval[[x$aval$data]]
     if (!is.null(known)) {
       return(desc$gval_to_box[[known]])
@@ -699,6 +702,14 @@ substitute_gnodes <- function(graph, map) {
 # array (see `get_box_or_register_const()`).
 register_consts <- function(desc, consts) {
   lapply(consts, get_box_or_register_const, desc = desc)
+}
+
+# Records `call` into `desc` unchanged, reading the gnodes `inputs` in place of
+# its own and writing `outputs`, and returns the boxes of its outputs. By
+# default, it shares its outputs with `call`.
+replay_statement <- function(desc, call, inputs, outputs = call$outputs) {
+  desc$statements$add(GraphStatement(call$primitive, inputs, call$params, outputs))
+  register_gvals(desc, outputs)
 }
 
 register_inputs <- function(desc, inputs) {

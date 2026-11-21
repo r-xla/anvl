@@ -23,6 +23,7 @@ Element-wise reciprocal square root.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

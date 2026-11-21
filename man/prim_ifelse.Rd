@@ -37,6 +37,7 @@ branches between two \emph{functions}, evaluating only the selected one.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

@@ -89,6 +89,8 @@ Collate:
     'roxygen.R'
     'rules-pullback.R'
     'rules-stablehlo.R'
+    'vectorize.R'
+    'rules-vectorize.R'
     'safetensors.R'
     'stablehlo.R'
     'zzz.R'

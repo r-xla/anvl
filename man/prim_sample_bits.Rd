@@ -44,6 +44,7 @@ place.
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 
