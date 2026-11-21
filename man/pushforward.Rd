@@ -55,7 +55,7 @@ pushforward.
 
 \code{.f} runs once, when \code{pushforward()} is called. The pushforward can be
 called more than once, e.g. with every unit vector to build a Jacobian
-column by column.
+column by column, as \code{\link[=jacobian]{jacobian()}} does.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

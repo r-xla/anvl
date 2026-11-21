@@ -15,7 +15,7 @@
 #'
 #' `.f` runs once, when `pushforward()` is called. The pushforward can be
 #' called more than once, e.g. with every unit vector to build a Jacobian
-#' column by column.
+#' column by column, as [`jacobian()`] does.
 #' @inheritParams pullback
 #' @return
 #'   For `pushforward()`, the pushforward (`function`); for
@@ -72,19 +72,32 @@ value_and_pushforward <- function(.f, ...) {
   trace_pushforward(.f, pullback_args(.f, list(...)), "value_and_pushforward")
 }
 
-# The pushforward of `f` for `pushforward()` or `value_and_pushforward()`,
-# named by `fn`, at the arguments `prep` holds (see `pullback_args()`): `f`
-# traced into a graph whose forward pass is replayed into the enclosing trace,
-# and the function that records the tangents of a direction there.
+# The pushforward of `f` for `pushforward()`, `value_and_pushforward()` or
+# `jacobian()`, named by `fn`, at the arguments `prep` holds (see
+# `pullback_args()`): `f` traced into a graph whose forward pass is replayed
+# into the enclosing trace, and the function that records the tangents of a
+# direction there. `value_flat` and `pushforward_flat` are the same on the
+# leaves: the boxes of the value, and a function from a tangent per leaf of the
+# arguments (`NULL` for one held fixed) to a tangent per leaf of the value
+# (`NULL` for one that is not a float).
 trace_pushforward <- function(f, prep, fn, call = rlang::caller_env()) {
   traced <- trace_replayed(f, prep, fn, call = call, replay = graph_pushforward)
   graph <- traced$graph
+  push_flat <- function(tangents) {
+    assert_called_within(traced$enclosing, "pushforward", fn)
+    traced$res$pushforward(tangents[!graph$is_static_flat])
+  }
   push <- function(...) {
     assert_called_within(traced$enclosing, "pushforward", fn)
     tangents <- flatten_tangents(f, prep, list(...), call = rlang::current_env())
-    unflatten(graph$out_tree, traced$res$pushforward(tangents[!graph$is_static_flat]))
+    unflatten(graph$out_tree, push_flat(tangents))
   }
-  list(value = unflatten(graph$out_tree, traced$res$value), pushforward = push)
+  list(
+    value = unflatten(graph$out_tree, traced$res$value),
+    pushforward = push,
+    value_flat = traced$res$value,
+    pushforward_flat = push_flat
+  )
 }
 
 # The tangents `tangents` of the arguments `prep` holds, given as `f` takes
