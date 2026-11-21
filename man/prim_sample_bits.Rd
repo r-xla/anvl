@@ -22,7 +22,7 @@ truncated to its low bits, as JAX's \code{jax.random.bits()} does by default.
 The value at a position thus does not depend on the number of values
 drawn, so a draw of \code{3} is the start of a draw of \code{6}. The draws fill
 \code{shape} in column-major order, so a draw of \code{c(2, 3)} is a draw of \code{6}
-filled into \code{c(2, 3)}. JAX fills a shape in row-major order instead.
+filled into \code{c(2, 3)}.
 }
 \description{
 Draws random bits from the active random state (see \code{\link[=nv_set_seed]{nv_set_seed()}}) with

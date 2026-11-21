@@ -15,37 +15,55 @@ nv_conv3d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, D, H, W]}. Can be any data type; \code{x} and
-\code{kernel} are \link[=nv_promote_to_common]{promoted to a common data type}. An
-R value assumes the other operand's data type, and materializes at its
+\item{x}{(\code{\link{arrayish}})\cr Input with the shape given under Shapes. Can be
+any data type; \code{x} and \code{kernel} are
+\link[=nv_promote_to_common]{promoted to a common data type}. An R value
+assumes the other operand's data type, and materializes at its
 \link[=default_dtypes]{default data type} when that has none either.}
 
-\item{kernel}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kD, kH, kW]}.
+\item{kernel}{(\code{\link{arrayish}})\cr Kernel with the shape given under Shapes.
 Promoted together with \code{x} -- see \code{x}.}
 
-\item{stride, padding, dilation}{(\code{integer()})\cr Length 1 or 3.}
+\item{stride}{(\code{integer()})\cr Step between neighbouring window positions,
+as \verb{(W, H, D)} or one value for all three spatial axes.}
 
-\item{groups}{(\code{integer(1)})\cr Grouped/depthwise convolution.}
+\item{padding}{(\code{integer()})\cr Number of zeros added on each side of each
+spatial axis, as \verb{(W, H, D)} or one value for all three.}
+
+\item{dilation}{(\code{integer()})\cr Spacing between the kernel's elements, as
+\verb{(W, H, D)} or one value for all three.}
+
+\item{groups}{(\code{integer(1)})\cr Number of groups the channels are split into:
+the \code{g}-th block of input channels is convolved with the \code{g}-th block of
+output channels only. It must divide \code{C_in} and \code{C_out}, and
+\code{groups = C_in} is a depthwise convolution.}
 
 \item{precision}{(\code{character(1)})\cr \code{"highest"}, \code{"high"} or \code{"default"}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the operands' common data type, and shape
-\verb{[N, C_out, out_D, out_H, out_W]}.
+Has the operands' common data type and the shape given under Shapes.
 }
 \description{
-Torch-style 3D convolution in NCDHW layout. \code{x} is
-\verb{[batch, in_channels, depth, height, width]}, \code{kernel} is
-\verb{[out_channels, in_channels / groups, kD, kH, kW]}. Asymmetric
-padding (e.g. causal temporal padding) is available via
-\code{\link[=prim_convolution]{prim_convolution()}}.
+3D convolution like torch's \code{nnf_conv3d()}, but with the axes in reverse
+order: width, height, depth, channels, batch.
 }
+\section{Shapes}{
+
+\itemize{
+\item \code{x}: \verb{(W, H, D, C_in, N)}
+\item \code{kernel}: \verb{(kW, kH, kD, C_in / groups, C_out)}
+\item output: \verb{(W_out, H_out, D_out, C_out, N)}, with each spatial axis as in
+\code{\link[=nv_conv1d]{nv_conv1d()}}
+}
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
-x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
-kernel <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+# a 3x3x2 volume with one channel, in a batch of one, convolved with a
+# 2x2x1 kernel
+x <- nv_array(1:18, shape = c(3, 3, 2, 1, 1), dtype = "f32")
+kernel <- nv_fill(1, shape = c(2, 2, 1, 1, 1), dtype = "f32")
 shape(nv_conv3d(x, kernel))
 \dontshow{\}) # examplesIf}
 }

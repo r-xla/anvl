@@ -364,15 +364,14 @@ assert_some_arrays <- function(..., call = rlang::caller_env()) {
   invisible(NULL)
 }
 
-# `batched = TRUE` accepts leading batch axes and checks only the last two,
-# which is what the operations whose lowering broadcasts over batches take
-# (`prim_chol()`, `prim_triangular_solve()`); the others are strictly 2-D.
+# `batched = TRUE` accepts trailing batch axes and checks only the first two,
+# as `prim_chol()` takes them; the other callers are strictly 2-D.
 assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   s <- shape(x)
   if (batched) {
     if (length(s) < 2L) {
       cli_abort(c(
-        "{.arg {arg}} must have at least 2 axes, the last two forming a matrix.",
+        "{.arg {arg}} must have at least 2 axes, the first two forming a matrix.",
         "x" = "Got shape {shape_repr(s)}."
       ))
     }
@@ -388,10 +387,9 @@ assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
       "x" = "Got shape {shape_repr(s)}."
     ))
   }
-  mat <- utils::tail(s, 2L)
-  if (square && mat[[1L]] != mat[[2L]]) {
+  if (square && s[[1L]] != s[[2L]]) {
     cli_abort(c(
-      "{.arg {arg}} must be square in its last two axes.",
+      if (batched) "{.arg {arg}} must be square in its first two axes." else "{.arg {arg}} must be square.",
       "x" = "Got shape {shape_repr(s)}."
     ))
   }

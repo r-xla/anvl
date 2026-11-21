@@ -455,7 +455,7 @@ describe("the global random state in sub-graphs", {
       )$out
     })
     expected <- unlist(draws(1L, 3L))
-    out <- with_nv_seed(1L, f(nv_array(matrix(c(0, 10, 20), ncol = 1L))))
+    out <- with_nv_seed(1L, f(nv_array(matrix(c(0, 10, 20), nrow = 1L))))
     # the body runs from the last step to the first, drawing in that order
     expect_equal(as.vector(as_array(out)), c(0, 10, 20) + rev(expected), tolerance = 1e-6)
   })

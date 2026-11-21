@@ -67,20 +67,3 @@ xla_batching_pairs <- function(x_axes, n_x, indices_axes, n_indices) {
 xla_index_vector_dim <- function(axis, n_indices) {
   if (axis > n_indices) n_indices else xla_dims(axis, n_indices)
 }
-
-# An array whose R axes `row_axis` and `col_axis` form a matrix and whose other
-# axes are batch axes, transposed so that the batch dimensions come first in
-# XLA order, then the matrix's column dimension, then its row dimension:
-# blocks pjrt's linear algebra handlers take, each the column-major matrix as
-# row-major bytes. `back` is the permutation that restores the XLA order of
-# `x`; both are `NULL` when nothing has to move.
-xla_matrix_last <- function(x, row_axis, col_axis) {
-  n <- naxes(x)
-  d_row <- xla_dims(row_axis, n)
-  d_col <- xla_dims(col_axis, n)
-  perm <- c(setdiff(seq_len(n) - 1L, c(d_row, d_col)), d_col, d_row)
-  if (identical(perm, seq_len(n) - 1L)) {
-    return(list(value = x, back = NULL))
-  }
-  list(value = hlo_transpose(x, perm), back = order(perm) - 1L)
-}

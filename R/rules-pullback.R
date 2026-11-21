@@ -356,17 +356,24 @@ prim_dot_general[["pullback"]] <- rule_pullback(function(inputs, outputs, grads,
   rd_lhs <- without(axes(lhs), c(bd_lhs, cd_lhs))
   rd_rhs <- without(axes(rhs), c(bd_rhs, cd_rhs))
 
-  # output axes: the batching axes, then the remaining axes of lhs, then those of rhs
-  bd_out <- seq_along(bd_lhs)
-  d_lhs_out <- length(bd_lhs) + seq_along(rd_lhs)
-  d_rhs_out <- length(bd_lhs) + length(rd_lhs) + seq_along(rd_rhs)
+  # output axes: the remaining axes of lhs, then those of rhs, then the batching axes
+  d_lhs_out <- seq_along(rd_lhs)
+  d_rhs_out <- length(rd_lhs) + seq_along(rd_rhs)
+  bd_out <- length(rd_lhs) + length(rd_rhs) + seq_along(bd_lhs)
 
-  # `order()` of a permutation is its inverse.
-  cd_lhs2 <- cd_lhs[order(cd_rhs)]
-  perm_lhs <- order(c(bd_lhs, rd_lhs, cd_lhs2))
-
-  cd_rhs2 <- cd_rhs[order(cd_lhs)]
-  perm_rhs <- order(c(bd_rhs, rd_rhs, cd_rhs2))
+  # `grad_lhs` contracts `grad` with `rhs` over the remaining axes of rhs. As
+  # axes of lhs, its axes are the remaining ones (from `grad`), then the
+  # contracting ones in the ascending order of their partners in rhs, then the
+  # batching ones. `grad_rhs` contracts `lhs` with `grad`, so as axes of rhs its
+  # axes are the contracting ones in the ascending order of their partners in
+  # lhs, then the remaining ones, then the batching ones. `order()` of such an
+  # axis list is the permutation back into the input's axis order; for a matrix
+  # product it is the identity.
+  perm_lhs <- order(c(rd_lhs, cd_lhs[order(cd_rhs)], bd_lhs))
+  perm_rhs <- order(c(cd_rhs[order(cd_lhs)], rd_rhs, bd_rhs))
+  transpose_unless_identity <- function(x, perm) {
+    if (identical(perm, seq_along(perm))) x else prim_transpose(x, perm)
+  }
 
   list(
     if (required[[1L]]) {
@@ -377,17 +384,17 @@ prim_dot_general[["pullback"]] <- rule_pullback(function(inputs, outputs, grads,
         batching_axes = list(bd_out, bd_rhs),
         precision = precision
       )
-      prim_transpose(grad_lhs, perm_lhs)
+      transpose_unless_identity(grad_lhs, perm_lhs)
     },
     if (required[[2L]]) {
       grad_rhs <- prim_dot_general(
-        grad,
         lhs,
-        contracting_axes = list(d_lhs_out, rd_lhs),
-        batching_axes = list(bd_out, bd_lhs),
+        grad,
+        contracting_axes = list(rd_lhs, d_lhs_out),
+        batching_axes = list(bd_lhs, bd_out),
         precision = precision
       )
-      prim_transpose(grad_rhs, perm_rhs)
+      transpose_unless_identity(grad_rhs, perm_rhs)
     }
   )
 })
@@ -1295,7 +1302,7 @@ prim_sort[["pullback"]] <- rule_pullback(forward = function(inputs, params, requ
 # zero buffer of the input shape. Using the actual forward indices (rather
 # than recomputing a permutation) is correct by construction even when
 # `x` has duplicate values — top-k indices are pairwise unique along
-# the last axis.
+# axis 1.
 # The forward always runs with indices, even when the call asked for the values
 # only, so the backward has them without a second top_k.
 prim_top_k[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
@@ -1312,7 +1319,7 @@ prim_top_k[["pullback"]] <- rule_pullback(forward = function(inputs, params, req
       grad_values <- grads[[1L]]
       full_shape <- shape(x)
       rank <- length(full_shape)
-      batching <- seq_len(rank - 1L)
+      batching <- seq_len(rank - 1L) + 1L
 
       zero_input <- prim_fill(
         0L,
@@ -1321,17 +1328,17 @@ prim_top_k[["pullback"]] <- rule_pullback(forward = function(inputs, params, req
       )
 
       # All axes are iteration axes and we have a single index vector axis that
-      # indicates the position to write to (in the last axis of the input)
+      # indicates the position to write to (in axis 1 of the input)
       list(prim_scatter(
         x = zero_input,
-        # index vectors selecting positions along the last axis of `x`
+        # index vectors selecting positions along axis 1 of `x`
         scatter_indices = indices,
         update = grad_values,
         update_window_axes = integer(0L),
-        inserted_window_axes = rank,
+        inserted_window_axes = 1L,
         x_batching_axes = batching,
         scatter_indices_batching_axes = batching,
-        scatter_axes_to_x_axes = rank,
+        scatter_axes_to_x_axes = 1L,
         # we sort along a single axis -> all axes are iteration axes
         index_vector_axis = rank + 1L,
         unique_indices = TRUE
@@ -1852,7 +1859,7 @@ prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params
 
   L <- outputs[[1L]]
   grad <- grads[[1L]]
-  n <- shape(L)[naxes(L)]
+  n <- shape(L)[[1L]]
 
   # Phi: keep lower triangle, halve diagonal, zero upper triangle
   phi <- function(x) {
@@ -1930,7 +1937,7 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   # i.e. we also zero out those.
   grad_a <- if (required[[1L]]) {
     raw <- prim_negate(if (left_side) nv_matmul(grad_b, t(x)) else nv_matmul(t(x), grad_b))
-    n <- shape(a)[naxes(a)]
+    n <- shape(a)[[1L]]
     mask <- triangular_mask(n, lower, unit_diagonal)
     if (transpose_a) {
       raw <- t(raw)

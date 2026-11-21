@@ -172,7 +172,7 @@ stablehlo(graph)[[1L]]
 ```
 
 R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R's first axis -- the contiguous one -- is XLA's minor dimension, and trailing R axes are XLA's major ones.
-XLA's kernels want batch axes outermost in memory, which are the trailing R axes.
+XLA's kernels want batch axes outermost in memory, which are the trailing R axes, so anvl's batch axes come last.
 To XLA, every program anvl builds is a row-major one, which is the happy path its kernels and its compiler are optimized for.
 
 Every lowering rule maps the axis numbers of its parameters accordingly, and the StableHLO program shows the reversed shapes.
