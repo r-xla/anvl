@@ -195,6 +195,8 @@ Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of 
 This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
 
+Do not add unit tests that manually inspect the code to which a primitive lowers. Only test their behavior.
+
 ## Documentation
 
 When writing roxygen2 documentation for primitives or API functions:
