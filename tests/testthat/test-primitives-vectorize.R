@@ -1,188 +1,24 @@
 # Each primitive with a vectorize rule is checked by `autotest_vectorize()`
 # (helper-vectorize.R): mapped over every subset of its operands, it must agree
-# with applying the primitive to one slice at a time. The element-wise
-# primitives share one rule, so most of them skip the checks at another batch
-# size and nested in `vectorize()`; the arithmetic ones keep them.
+# with applying the primitive to one slice at a time. A primitive tagged
+# "elementwise", "reduction" or "cumulative" gets the rule of its tag, so one
+# primitive of each tag is checked, the element-wise one also with a scalar
+# operand.
 
-positive <- function(n) stats::runif(n, 0.5, 2)
-unit <- function(n) stats::runif(n, -0.9, 0.9)
-small_ints <- function(n) sample(0:5, n, replace = TRUE)
-coin <- function(n) stats::runif(n) > 0.5
-
-describe("element-wise unary primitives", {
-  it("vectorizes the ones on the real line", {
-    withr::local_seed(1L)
-    for (prim in list(
-      prim_negate,
-      prim_abs,
-      prim_tanh,
-      prim_tan,
-      prim_sin,
-      prim_cos,
-      prim_floor,
-      prim_ceiling,
-      prim_sign,
-      prim_exp,
-      prim_expm1,
-      prim_cbrt,
-      prim_plogis,
-      prim_asinh,
-      prim_atan,
-      prim_cosh,
-      prim_sinh,
-      prim_erf,
-      prim_erfc,
-      prim_is_finite,
-      prim_round
-    )) {
-      autotest_vectorize(prim, x = rand_array(c(2L, 3L)), extra = FALSE)
-    }
-  })
-
-  it("vectorizes the ones on a restricted domain", {
-    withr::local_seed(1L)
-    for (prim in list(prim_sqrt, prim_rsqrt, prim_log, prim_log1p, prim_digamma, prim_lgamma)) {
-      autotest_vectorize(prim, x = rand_array(c(2L, 3L), sample = positive), extra = FALSE)
-    }
-    for (prim in list(prim_acos, prim_asin, prim_atanh, prim_erf_inv)) {
-      autotest_vectorize(prim, x = rand_array(c(2L, 3L), sample = unit), extra = FALSE)
-    }
-    autotest_vectorize(prim_acosh, x = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, 1.5, 3)))
-  })
-
-  it("vectorizes the ones on integers and booleans", {
-    withr::local_seed(1L)
-    autotest_vectorize(prim_not, x = rand_array(c(2L, 3L), dtype = "bool", sample = coin))
-    autotest_vectorize(prim_popcnt, x = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints))
-  })
-})
-
-describe("element-wise binary primitives", {
-  it("vectorizes the arithmetic ones", {
-    withr::local_seed(1L)
-    for (prim in list(prim_add, prim_mul, prim_sub, prim_pmax, prim_pmin)) {
-      autotest_vectorize(prim, lhs = rand_array(c(2L, 3L)), rhs = rand_array(c(2L, 3L)))
-    }
-    autotest_vectorize(prim_div, lhs = rand_array(c(2L, 3L)), rhs = rand_array(c(2L, 3L), sample = positive))
-    autotest_vectorize(prim_pow, x = rand_array(c(2L, 3L), sample = positive), y = rand_array(c(2L, 3L)))
-    autotest_vectorize(prim_remainder, x = rand_array(c(2L, 3L)), y = rand_array(c(2L, 3L), sample = positive))
-    autotest_vectorize(prim_atan2, y = rand_array(c(2L, 3L)), x = rand_array(c(2L, 3L)))
-  })
-
-  it("vectorizes with a scalar operand", {
-    withr::local_seed(1L)
-    autotest_vectorize(prim_mul, lhs = rand_array(c(2L, 3L)), rhs = rand_array(3L))
-    autotest_vectorize(prim_sub, lhs = rand_array(3L), rhs = rand_array(c(2L, 3L)), extra = FALSE)
-  })
-
-  it("vectorizes the comparisons", {
-    withr::local_seed(1L)
-    for (prim in list(prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le)) {
-      autotest_vectorize(
-        prim,
-        lhs = rand_array(c(4L, 3L), dtype = "i32", sample = small_ints),
-        rhs = rand_array(c(4L, 3L), dtype = "i32", sample = small_ints),
-        extra = FALSE
-      )
-    }
-  })
-
-  it("vectorizes the logical and bitwise ones", {
-    withr::local_seed(1L)
-    for (prim in list(prim_and, prim_or)) {
-      autotest_vectorize(
-        prim,
-        lhs = rand_array(c(2L, 3L), dtype = "bool", sample = coin),
-        rhs = rand_array(c(2L, 3L), dtype = "bool", sample = coin),
-        extra = FALSE
-      )
-    }
-    autotest_vectorize(
-      prim_xor,
-      x = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints),
-      y = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints)
-    )
-    for (prim in list(prim_shift_left, prim_shift_right_logical, prim_shift_right_arithmetic)) {
-      autotest_vectorize(
-        prim,
-        x = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints),
-        shift = rand_array(c(2L, 3L), dtype = "i32", sample = small_ints),
-        extra = FALSE
-      )
-    }
-  })
-})
-
-describe("prim_psigamma", {
+describe("the rule of the element-wise primitives", {
   it("vectorizes", {
     withr::local_seed(1L)
-    autotest_vectorize(
-      prim_psigamma,
-      x = rand_array(c(2L, 3L), sample = positive),
-      deriv = rand_array(c(2L, 3L), sample = \(n) sample(0:2, n, replace = TRUE))
-    )
-  })
-})
-
-describe("prim_clamp", {
-  it("vectorizes with bounds of the shape of x", {
-    withr::local_seed(1L)
-    autotest_vectorize(
-      prim_clamp,
-      x = rand_array(c(2L, 3L)),
-      min = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, -1, 0)),
-      max = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, 0, 1))
-    )
+    autotest_vectorize(prim_add, lhs = rand_array(c(2L, 3L)), rhs = rand_array(c(2L, 3L)))
   })
 
-  it("vectorizes with scalar bounds", {
-    withr::local_seed(1L)
-    autotest_vectorize(
-      prim_clamp,
-      x = rand_array(c(2L, 3L)),
-      min = rand_array(3L, sample = \(n) stats::runif(n, -1, 0)),
-      max = rand_array(3L, sample = \(n) stats::runif(n, 0, 1))
-    )
-  })
-
-  it("vectorizes with a scalar x", {
+  it("broadcasts a scalar operand that is mapped over, and leaves one that is not", {
     withr::local_seed(1L)
     autotest_vectorize(
       prim_clamp,
       x = rand_array(3L),
       min = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, -1, 0)),
-      max = rand_array(3L, sample = \(n) stats::runif(n, 0, 1)),
-      extra = FALSE
+      max = rand_array(3L, sample = \(n) stats::runif(n, 0, 1))
     )
-  })
-})
-
-describe("prim_ifelse", {
-  it("vectorizes with an element-wise test", {
-    withr::local_seed(1L)
-    autotest_vectorize(
-      prim_ifelse,
-      test = rand_array(c(2L, 3L), dtype = "bool", sample = coin),
-      yes = rand_array(c(2L, 3L)),
-      no = rand_array(c(2L, 3L))
-    )
-  })
-
-  it("vectorizes with a scalar test", {
-    withr::local_seed(1L)
-    autotest_vectorize(
-      prim_ifelse,
-      test = rand_array(3L, dtype = "bool", sample = coin),
-      yes = rand_array(c(2L, 3L)),
-      no = rand_array(c(2L, 3L))
-    )
-  })
-})
-
-describe("prim_convert", {
-  it("vectorizes", {
-    withr::local_seed(1L)
-    autotest_vectorize(function(x) prim_convert(x, "f64"), x = rand_array(c(2L, 3L)))
   })
 })
 
@@ -207,39 +43,18 @@ describe("prim_bitcast_convert", {
   })
 })
 
-describe("reductions", {
-  it("vectorizes prim_sum, prim_prod, prim_max and prim_min", {
+describe("the rule of the reductions", {
+  it("vectorizes", {
     withr::local_seed(1L)
-    for (prim in list(prim_sum, prim_prod, prim_max, prim_min)) {
-      autotest_vectorize(function(x) prim(x, axes = 2L, drop = TRUE), x = rand_array(c(2L, 4L, 3L)))
-      autotest_vectorize(function(x) prim(x, axes = 1:2, drop = FALSE), x = rand_array(c(2L, 4L, 3L)))
-    }
-  })
-
-  it("vectorizes prim_any and prim_all", {
-    withr::local_seed(1L)
-    for (prim in list(prim_any, prim_all)) {
-      autotest_vectorize(
-        function(x) prim(x, axes = 1L, drop = TRUE),
-        x = rand_array(c(2L, 4L, 3L), dtype = "bool", sample = coin)
-      )
-    }
-  })
-
-  it("vectorizes prim_which_max and prim_which_min", {
-    withr::local_seed(1L)
-    for (prim in list(prim_which_max, prim_which_min)) {
-      autotest_vectorize(function(x) prim(x, axis = 2L), x = rand_array(c(2L, 4L, 3L)))
-    }
+    autotest_vectorize(function(x) prim_sum(x, axes = 2L, drop = TRUE), x = rand_array(c(2L, 4L, 3L)))
+    autotest_vectorize(function(x) prim_sum(x, axes = 1:2, drop = FALSE), x = rand_array(c(2L, 4L, 3L)))
   })
 })
 
-describe("cumulative primitives", {
-  it("vectorizes prim_cumsum, prim_cumprod, prim_cummax and prim_cummin", {
+describe("the rule of the cumulative primitives", {
+  it("vectorizes", {
     withr::local_seed(1L)
-    for (prim in list(prim_cumsum, prim_cumprod, prim_cummax, prim_cummin)) {
-      autotest_vectorize(function(x) prim(x, axis = 2L), x = rand_array(c(2L, 4L, 3L)))
-    }
+    autotest_vectorize(function(x) prim_cumsum(x, axis = 2L), x = rand_array(c(2L, 4L, 3L)))
   })
 })
 
@@ -452,17 +267,19 @@ describe("prim_sample_bits", {
 })
 
 # Every primitive with a vectorize rule must have been applied by one of the
-# `autotest_vectorize()` calls above (see helper-vectorize.R).
+# `autotest_vectorize()` calls above (see helper-vectorize.R), except one that
+# gets the rule of its tag, of which one per tag suffices.
 describe("vectorize rules", {
-  it("are all tested", {
+  it("are tested for every primitive with a rule of its own, and once per tag", {
     nms <- names(asNamespace("anvl"))
-    with_rule <- Filter(
-      function(nm) {
-        inherits(get(nm, asNamespace("anvl")), "AnvlPrimitive") && !is.null(get(nm, asNamespace("anvl"))[["vectorize"]])
-      },
-      nms[grepl("^prim_", nms)]
-    )
-    untested <- setdiff(sub("^prim_", "", with_rule), names(vectorize_tested))
-    expect_identical(untested, character())
+    prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
+    with_rule <- sub("^prim_", "", names(Filter(\(p) !is.null(p[["vectorize"]]), prims)))
+    tested <- names(vectorize_tested)
+    tags <- c("elementwise", "reduction", "cumulative")
+    tagged <- lapply(stats::setNames(nm = tags), \(tag) sub("^prim_", "", names(primitives_tagged(tag))))
+    expect_identical(setdiff(with_rule, c(tested, unlist(tagged))), character())
+    for (tag in tags) {
+      expect_true(any(tagged[[tag]] %in% tested), label = sprintf("a primitive tagged %s is tested", tag))
+    }
   })
 })

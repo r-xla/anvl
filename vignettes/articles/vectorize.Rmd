@@ -11,34 +11,41 @@ knitr::opts_chunk$set(
 
 In this article, you will learn how to write a function for a single instance and apply it to a whole batch with `vectorize()`.
 
-## Mapping a Function over a Batch
+## What `vectorize()` Does
 
-Many computations are easiest to write for one instance: one observation, one parameter vector, one sequence.
-`vectorize()` takes such a function and returns one that maps it over an axis of its arguments, much like `base::Vectorize()`.
-Unlike `Vectorize()`, it does not call the function once per instance.
-It traces the function once and turns every operation into one that works on the whole batch, so the result runs as a single program.
+`vectorize(f)` returns a function that cuts its arguments into slices along an axis, applies `f` to every slice, as `lapply()` would, and stacks the results along an axis into one array.
+By default, both are the last axis: the slices of a matrix are its columns, and the results of `f` become the columns of the output.
 
-Below, `f` computes the squared norm of a single vector.
-Vectorized, it computes one norm per column of a matrix:
+Below, `normalize()` scales a single vector to sum to one.
+Vectorized, it normalizes every column of a matrix, which is what applying it to one column after the other and binding the results as columns gives:
 
 ```{r}
 library(anvl)
 
-f <- function(x) sum(x^2)
+normalize <- function(x) x / sum(x)
 x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
 
-jit(vectorize(f))(x)
+jit(vectorize(normalize))(x)
+
+normalize_jit <- jit(normalize)
+sapply(1:3, function(j) as_array(normalize_jit(x[, j])))
 ```
 
+So a computation can be written for one instance -- one observation, one parameter vector, one sequence -- and applied to a whole batch.
+Unlike that loop, and unlike `base::Vectorize()`, `vectorize()` does not call the function once per slice.
+It traces the function once and turns every operation into one that works on the whole batch, so the result runs as a single program.
 As with `gradient()`, the result of `vectorize()` must be called inside `jit()`, because it transforms the traced program of `f`.
 
 ## Choosing the Batch Axes with `in_axes`
 
-By default, `vectorize()` maps over the last axis of every argument that is an array, so the slices of a matrix are its columns.
+By default, `vectorize()` maps over the last axis of every argument that is an array.
 `in_axes` changes this.
-A single axis applies to all of them, so `in_axes = 1L` maps over the rows instead:
+A single axis applies to all of them, so for `f`, which computes the squared norm of a single vector, `in_axes = 1L` gives one norm per row instead of one per column:
 
 ```{r}
+f <- function(x) sum(x^2)
+
+jit(vectorize(f))(x)
 jit(vectorize(f, in_axes = 1L))(x)
 ```
 
