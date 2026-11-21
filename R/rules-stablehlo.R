@@ -700,6 +700,10 @@ prim_sample_bits[["stablehlo"]] <- function(key, counter, shape, dtype) {
 }
 
 prim_fork_rng_state[["stablehlo"]] <- function(key, counter) {
+  # one function for every fork, of a single random state
+  if (length(shape(counter$value_type))) {
+    cli_abort("Internal error: cannot fork a batch of random states.")
+  }
   rng_state_call("fork_rng_state", key, counter, function(fresh_key) {
     words <- lapply(fresh_key, hlo_reshape, 1L)
     list(
@@ -718,20 +722,20 @@ prim_fork_rng_state[["stablehlo"]] <- function(key, counter) {
 # JAX's `split(key, c + 1)`. A batched key, of R shape `c(2, B)`, holds its two
 # words along the last XLA dimension.
 rng_state_call <- function(id, key, counter, body) {
-  batch <- shape(counter$value_type)
+  xla_batch <- shape(counter$value_type)
   callee <- lowering_func(id, function(id) {
     func <- local_func(id)
-    key <- stablehlo::hlo_input("key", "ui32", shape = c(batch, 2L), func = func)
-    counter <- stablehlo::hlo_input("counter", "ui64", shape = batch, func = func)
-    n_batch <- length(batch)
+    key <- stablehlo::hlo_input("key", "ui32", shape = c(xla_batch, 2L), func = func)
+    counter <- stablehlo::hlo_input("counter", "ui64", shape = xla_batch, func = func)
+    n_batch <- length(xla_batch)
     key_words <- lapply(0:1, function(i) {
-      word <- hlo_slice(key, c(rep(0L, n_batch), i), c(batch, i + 1L), rep(1L, n_batch + 1L))
-      hlo_reshape(word, batch)
+      word <- hlo_slice(key, c(rep(0L, n_batch), i), c(xla_batch, i + 1L), rep(1L, n_batch + 1L))
+      hlo_reshape(word, xla_batch)
     })
     # each word is cleared of the other first, so that the conversion is exact
     by32 <- hlo_scalar(32L, dtype = "ui64", func = func)
     if (n_batch) {
-      by32 <- hlo_broadcast_in_dim(by32, integer(), batch)
+      by32 <- hlo_broadcast_in_dim(by32, integer(), xla_batch)
     }
     low <- hlo_shift_right_logical(hlo_shift_left(counter, by32), by32)
     high <- hlo_shift_right_logical(counter, by32)
@@ -758,19 +762,18 @@ shape_id <- function(shape) {
 # bits.
 threefry_draw <- function(key, shape, dtype) {
   func <- key[[1L]]$func
-  # the XLA batch shape
-  batch <- shape(key[[1L]]$value_type)
+  xla_batch <- shape(key[[1L]]$value_type)
   n <- prod(shape)
   if (n > .Machine$integer.max) {
     limit <- .Machine$integer.max
     cli_abort(c("Cannot draw more than {limit} values at once.", i = "Draw fewer values at once."))
   }
   # every draw of the batch flattened along the last XLA dimension
-  flat <- c(batch, as.integer(n))
+  flat <- c(xla_batch, as.integer(n))
   zeros <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = "ui32", func = func), integer(), flat)
-  index <- hlo_iota(iota_dimension = length(batch), dtype = "ui32", shape = flat, func = func)
-  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, seq_along(batch) - 1L, flat), list(zeros, index))
-  out_shape <- c(batch, xla_shape(shape))
+  index <- hlo_iota(iota_dimension = length(xla_batch), dtype = "ui32", shape = flat, func = func)
+  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, seq_along(xla_batch) - 1L, flat), list(zeros, index))
+  out_shape <- c(xla_batch, xla_shape(shape))
   if (dtype == "ui64") {
     by32 <- hlo_broadcast_in_dim(hlo_scalar(32L, dtype = "ui64", func = func), integer(), flat)
     high <- hlo_shift_left(hlo_convert(words[[1L]], "ui64"), by32)

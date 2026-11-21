@@ -8,7 +8,8 @@ NULL
 # leading axis, and `prim_top_k()` works along the first axis with the trailing
 # ones as batch axes, which leaves the batch axis last. A scalar operand of an
 # element-wise primitive is broadcast only if it is mapped over (see
-# `batch_operands()`).
+# `batch_operands()`). The rules of a primitive live in its definition, an
+# environment, so assigning to `prim` gives the primitive itself the rule.
 for (prim in c(
   primitives_tagged(c("elementwise", "reduction", "cumulative")),
   list(prim_rev, prim_concatenate, prim_bitcast_convert, prim_top_k)

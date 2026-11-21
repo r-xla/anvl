@@ -4,6 +4,18 @@ apply_cols <- function(f, x) {
   sapply(seq_len(shape(x)[[2L]]), function(j) as_r(f(x[, j])))
 }
 
+# A primitive that is not registered and has no vectorize rule: an element-wise
+# negation, which lowers like `prim_negate()`.
+unary_primitive <- function() {
+  prim <- new_primitive(
+    "negate_test",
+    function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
+    register = FALSE
+  )
+  prim[["stablehlo"]] <- prim_negate[["stablehlo"]]
+  prim
+}
+
 describe("vectorize", {
   # three slices along the last axis: the columns (1, 4), (2, 5) and (3, 6)
   x <- nv_array(rbind(c(1, 2, 3), c(4, 5, 6)), dtype = "f32")
@@ -86,18 +98,6 @@ describe("vectorize", {
   it("names an argument passed through dots by its position", {
     f <- function(...) ..1 + sum(..2)
     expect_error(jit(vectorize(f))(x, nv_array(1:2, dtype = "f32")), "`argument 2` has size 2")
-  })
-
-  it("checks the attribute batched a rule returns", {
-    prim_bad <- new_primitive(
-      "bad",
-      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
-      register = FALSE
-    )
-    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
-      structure(list(inputs[[1L]]), batched = c(TRUE, FALSE))
-    })
-    expect_error(jit(vectorize(prim_bad))(x), "invalid attribute")
   })
 
   it("matches out_axes to named outputs by name", {
@@ -312,26 +312,139 @@ describe("vectorize", {
     expect_equal(device(out), nv_device("cpu:1"))
   })
 
-  it("calls a primitive that is not registered", {
-    prim_neg <- new_primitive(
-      "negate",
-      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
-      register = FALSE
+  it("rejects an argument without the axis", {
+    expect_error(jit(vectorize(function(x) x, in_axes = 3L))(x), "has no axis 3")
+    expect_error(jit(vectorize(function(x) x, in_axes = -3L))(x), "has no axis -3")
+  })
+
+  it("rejects mapping over a value that is not an array", {
+    expect_error(
+      jit(vectorize(function(x) x, in_axes = list(x = 1L)), static = "x")(x = "a"),
+      "Can only map over arrays"
     )
-    prim_neg[["stablehlo"]] <- prim_negate[["stablehlo"]]
-    prim_neg[["vectorize"]] <- rule_vectorize()
-    out <- jit(vectorize(prim_neg))(x)
-    expect_equal(as_r(out), -as_r(x))
+  })
+
+  it("rejects a primitive that has no vectorize rule", {
+    prim_neg <- unary_primitive()
+    expect_error(jit(vectorize(prim_neg))(x), "does not support `prim_negate_test\\(\\)`")
+  })
+
+  it("replays a primitive without a vectorize rule if nothing it reads is mapped over", {
+    prim_neg <- unary_primitive()
+    f <- function(x, m) x + sum(prim_neg(m))
+    m <- nv_array(c(2, 1), dtype = "f32")
+    out <- jit(vectorize(f, in_axes = list(x = -1L)))(nv_array(c(1, 2), dtype = "f32"), m)
+    expect_equal(as_r(out), array(c(1, 2) - 3, dim = 2L))
+  })
+
+  it("refuses to give every slice random numbers of its own through a primitive without a rule", {
+    in_while <- function(x) {
+      nv_while(list(i = 0L), function(i) i < 2L, function(i) {
+        nv_runif(shape = 2L)
+        list(i = i + 1L)
+      })
+      x + 1
+    }
+    expect_error(jit(vectorize(in_while))(x), "in an `nv_while\\(\\)` loop that draws")
+    expect_error(jit(vectorize(in_while))(x), "randomness = \"same\"")
+    in_scan <- function(x) {
+      body <- function(carry, i) list(carry = carry + nv_runif(shape = integer()), out = carry)
+      x + nv_scan(body, init = nv_scalar(0, dtype = "f32"), xs = nv_array(1:2, dtype = "i32"))$carry
+    }
+    expect_error(jit(vectorize(in_scan))(x), "random numbers of its own in `prim_scan\\(\\)`")
+    expect_equal(shape(jit(vectorize(in_scan, randomness = "same"))(x)), c(2L, 3L))
+  })
+
+  it("names the call of vectorize() or of the function it returns in its errors", {
+    expect_error(vectorize(function(x) x, in_axes = list(1L)), class = "rlang_error")
+    cnd <- rlang::catch_cnd(vectorize(function(x) x, in_axes = list(1L)))
+    expect_identical(rlang::call_name(cnd$call), "vectorize")
+    f_vec <- vectorize(function(x) x, in_axes = 3L)
+    cnd <- rlang::catch_cnd(jit(function(x) f_vec(x))(x))
+    expect_identical(rlang::call_name(cnd$call), "f_vec")
+  })
+
+  it("rejects in_axes that name an argument twice", {
+    twice <- stats::setNames(list(1L, 2L), c("x", "x"))
+    expect_error(vectorize(function(x, y) x, in_axes = twice), "at most once")
+  })
+
+  it("maps over a batch of size 0", {
+    empty <- nv_array(numeric(), shape = c(2L, 0L), dtype = "f32")
+    expect_equal(shape(jit(vectorize(function(x) sum(x)))(empty)), 0L)
+    expect_equal(shape(jit(vectorize(function(x) x + nv_runif(shape = 2L)))(empty)), c(2L, 0L))
+  })
+
+  it("draws in an nv_scan() body what a loop over the slices draws there", {
+    g <- function(x) x + nv_runif(shape = 2L)
+    f <- function(x) {
+      body <- function(carry, i) list(carry = vectorize(g)(carry), out = NULL)
+      nv_scan(body, init = x, xs = nv_array(1:2, dtype = "i32"))$carry
+    }
+    local_nv_seed(1L)
+    out <- as_r(jit(f)(x))
+    after <- state_words()
+    local_nv_seed(1L)
+    g_jit <- jit(g)
+    once <- apply_cols(g_jit, x)
+    expect_equal(out, apply_cols(g_jit, nv_array(once, dtype = "f32")), tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
+  it("draws in a branch of nv_if() what a loop over the slices draws", {
+    g <- function(x) x + nv_runif(shape = 2L)
+    f <- function(x, p) nv_if(p, function() vectorize(g)(x), function() x)
+    local_nv_seed(1L)
+    out <- as_r(jit(f)(x, TRUE))
+    after <- state_words()
+    local_nv_seed(1L)
+    expect_equal(out, apply_cols(jit(g), x), tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
+  it("nests with an inner function that closes over a value the outer one maps over", {
+    outer_fn <- function(a) vectorize(function(b) a * b, in_axes = list(b = -1L))(nv_array(c(1, 2), dtype = "f32"))
+    out <- jit(vectorize(outer_fn))(nv_array(c(10, 20, 30), dtype = "f32"))
+    expect_equal(as_r(out), outer(c(1, 2), c(10, 20, 30)))
+  })
+})
+
+describe("rule_vectorize", {
+  x <- nv_array(rbind(c(1, 2, 3), c(4, 5, 6)), dtype = "f32")
+
+  it("checks the attribute batched a rule returns", {
+    prim_bad <- unary_primitive()
+    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+      structure(list(inputs[[1L]]), batched = c(TRUE, FALSE))
+    })
+    expect_error(jit(vectorize(prim_bad))(x), "invalid attribute")
+  })
+
+  it("checks how many outputs a rule returns", {
+    prim_bad <- unary_primitive()
+    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+      list(inputs[[1L]], inputs[[1L]])
+    })
+    expect_error(jit(vectorize(prim_bad))(x), "returned 2 outputs, not 1")
+  })
+
+  it("checks what a rule returns", {
+    prim_bad <- unary_primitive()
+    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+      list(prim_sum(inputs[[1L]], axes = 1L))
+    })
+    expect_error(jit(vectorize(prim_bad))(x), "returned a wrong output 1")
   })
 
   it("accepts a rule that returns a single output unwrapped", {
-    prim_neg <- new_primitive(
-      "negate",
-      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
-      register = FALSE
-    )
-    prim_neg[["stablehlo"]] <- prim_negate[["stablehlo"]]
+    prim_neg <- unary_primitive()
     prim_neg[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) prim_negate(inputs[[1L]]))
+    expect_equal(as_r(jit(vectorize(prim_neg))(x)), -as_r(x))
+  })
+
+  it("applies a declared rule to a primitive that is not registered", {
+    prim_neg <- unary_primitive()
+    prim_neg[["vectorize"]] <- rule_vectorize()
     expect_equal(as_r(jit(vectorize(prim_neg))(x)), -as_r(x))
   })
 
@@ -348,60 +461,6 @@ describe("vectorize", {
     expect_error(jit(vectorize(function(a) prim_scale(a, k = 2)))(x), "cannot call it with them")
   })
 
-  it("checks how many outputs a rule returns", {
-    prim_bad <- new_primitive(
-      "bad",
-      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
-      register = FALSE
-    )
-    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
-      list(inputs[[1L]], inputs[[1L]])
-    })
-    expect_error(jit(vectorize(prim_bad))(x), "returned 2 outputs, not 1")
-  })
-
-  it("checks what a rule returns", {
-    prim_bad <- new_primitive(
-      "bad",
-      function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]],
-      register = FALSE
-    )
-    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
-      list(prim_sum(inputs[[1L]], axes = 1L))
-    })
-    expect_error(jit(vectorize(prim_bad))(x), "returned a wrong output 1")
-  })
-
-  it("rejects an argument without the axis", {
-    expect_error(jit(vectorize(function(x) x, in_axes = 3L))(x), "has no axis 3")
-    expect_error(jit(vectorize(function(x) x, in_axes = -3L))(x), "has no axis -3")
-  })
-
-  it("rejects mapping over a value that is not an array", {
-    expect_error(
-      jit(vectorize(function(x) x, in_axes = list(x = 1L)), static = "x")(x = "a"),
-      "Can only map over arrays"
-    )
-  })
-
-  it("rejects a primitive that has no vectorize rule", {
-    f <- function(x) prim_qr(x)
-    expect_error(
-      jit(vectorize(f))(nv_array(1:12, shape = c(2L, 2L, 3L), dtype = "f32")),
-      "does not support `prim_qr\\(\\)`"
-    )
-  })
-
-  it("replays a primitive without a vectorize rule if nothing it reads is mapped over", {
-    f <- function(x, m) x + sum(prim_qr(m)[[1L]])
-    m <- nv_array(c(2, 1, 1, 3), shape = c(2L, 2L), dtype = "f32")
-    out <- jit(vectorize(f, in_axes = list(x = -1L)))(nv_array(c(1, 2), dtype = "f32"), m)
-    s <- as_r(jit(function(m) sum(prim_qr(m)[[1L]]))(m))
-    expect_equal(as_r(out), array(c(1, 2) + s, dim = 2L), tolerance = 1e-6)
-  })
-})
-
-describe("rule_vectorize", {
   it("takes either a function or a declaration", {
     expect_error(rule_vectorize(function(...) NULL, unbatched = 1L), "either")
     expect_s3_class(rule_vectorize(params = list(shape = param_shape())), "anvl_rule_vectorize")

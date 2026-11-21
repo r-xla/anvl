@@ -33,10 +33,11 @@ trailing axis already, and a parameter that names an axis still names the
 same one. Only the parameters with an entry per axis, or a shape, change.
 Declaring how each of them changes is enough, via \code{params}. The
 rule then gives every operand the batch axis -- broadcasting the ones that
-are not mapped over, except a scalar operand of an element-wise primitive,
-which stays a scalar -- and applies the primitive with the changed
-parameters, so all of its outputs are batched. A parameter \code{params} does not
-name stays as it is.
+are not mapped over -- and applies the primitive with the changed
+parameters, so all of its outputs are batched. A scalar operand among
+operands that are not scalars stays a scalar if it is not mapped over, and
+is broadcast to their shape if it is; an operand that must stay as it is
+belongs in \code{unbatched}. A parameter \code{params} does not name stays as it is.
 
 For a primitive that this does not fit, pass \code{fn} instead, with the
 signature \verb{function(inputs, batched, params, size)}: \code{inputs} are the
