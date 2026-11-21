@@ -173,7 +173,9 @@ We implement `repeat_along` using concatenation:
 ```{r}
 prim_repeat_along[["stablehlo"]] <- function(x, times, axis) {
   xs <- rep(list(x), times)
-  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = axis - 1L))
+  # R axis `axis` of an n-axis array is StableHLO dimension n - axis
+  n <- length(shape(x$value_type))
+  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = n - axis))
 }
 ```
 
@@ -184,8 +186,8 @@ The rule receives:
 
 It must return a list of `stablehlo::FuncValue`s, even if there is only one output.
 
-**Important**: StableHLO uses 0-based indexing, while {anvl} uses R's 1-based indexing.
-Always convert axis indices by subtracting 1.
+**Important**: the lowering reverses every axis, so that R's column-major arrays are XLA's row-major ones (see [Axis Reversal](internals.html#axis-reversal)).
+`shape(x$value_type)` is the reversed shape, and R axis `a` of an `n`-axis array is StableHLO dimension `n - a`, which also accounts for StableHLO's 0-based indexing.
 Nothing translates StableHLO's error messages back into {anvl}'s terms: an input that only StableHLO rejects surfaces as an MLIR error in its own vocabulary, with 0-based axes.
 This is why the inference function has to check every constraint the StableHLO operation imposes, so that the lowering rule only ever sees valid inputs.
 
@@ -326,10 +328,11 @@ grad_f <- jit(gradient(f))
 grad_f(x)[[1L]]
 ```
 
-And map it over a batch with `vectorize()`, here over the rows of `x`:
+And map it over a batch with `vectorize()`, here over the columns of a matrix, each of which is repeated:
 
 ```{r}
-jit(vectorize(function(x) prim_repeat_along(x, times = 2L, axis = 1L)))(x)
+m <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(3, 2))
+jit(vectorize(function(x) prim_repeat_along(x, times = 2L, axis = 1L)))(m)
 ```
 
 ## Contributing to the Package
