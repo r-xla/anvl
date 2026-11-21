@@ -9,6 +9,9 @@
   to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
 * `Shape()` is no longer exported; use `shp()`.
 * The `"reverse"` rule of a primitive is renamed to `"pullback"`.
+* `nv_save()`, `nv_read()`, `nv_serialize()` and `nv_unserialize()` are
+  removed. Save arrays with `saveRDS()`, or with the {safetensors} package to
+  exchange them with other frameworks (see below).
 
 ## Features
 
@@ -25,6 +28,9 @@
   `out_axes`, by default the last axis), like `base::Vectorize()` but as one
   traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
   primitive its rule.
+* `safetensors::safe_save_file()` writes `AnvlArray`s, and
+  `safetensors::safe_load_file(framework = "anvl")` reads them.
+* The `"quickr"` backend accepts a raw payload in `nv_array()`.
 
 ## Bug fixes
 
@@ -35,6 +41,9 @@
 * An array that a branch of `nv_if()`, the body of `nv_while()` or a function
   differentiated by `gradient()` closes over now counts toward the device
   `jit()` detects, as it already did for the jitted function itself.
+* `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
+  row-major order with `row_major = TRUE`.
+* The `"quickr"` backend accepts a device given as a string, `"cpu"`.
 
 ## Performance
 

@@ -115,12 +115,6 @@ reference:
       - as_raw
       - as-AnvlArray
 
-  - subtitle: Serialization
-    desc: Functions for serializing and deserializing arrays
-    contents:
-      - nv_save
-      - nv_serialize
-
   - subtitle: Miscellaneous
     contents:
       - is_arrayish
