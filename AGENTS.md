@@ -31,8 +31,8 @@ config above. anvl-specific:
     the `default-dtypes` workflow runs it so that anything hardcoding `f32` / `i32` where it should
     read `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the override.
-- anvl tracks the **dev** versions of its r-xla dependencies:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))`.
+- anvl tracks the **dev** versions of its r-xla dependencies, pjrt from its `develop` branch:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))`.
 
 ## Two-Layer API
 
@@ -41,7 +41,7 @@ config above. anvl-specific:
 
 When adding new functionality, decide which layer it belongs to. Most new operations need both: a `prim_*` primitive with rules, and an `nv_*` wrapper with R-idiomatic semantics.
 
-Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
+Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets, and an elementwise primitive broadcasts it, like any scalar operand, to the shape of the others: `prim_mul(grad, 0.5)`. A primitive's operands only take a data type of their own category, though, so a literal that meets a float operand there is a double even when it is whole: `prim_sub(1, y)`, `prim_ifelse(mask, x, 0)`.
 
 The two spellings of a whole number are not symmetric here. An R integer widens into whatever
 category it meets, while a plain `1` is an R *double* and pulls an integer array into the float
@@ -125,7 +125,7 @@ another backend is an error. Only helpers *about* the backend name one (`install
 Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. A primitive that is an element-wise operation, a reduction or a cumulative scan says so with `new_primitive(tags = )` (`"elementwise"`, `"reduction"`, `"cumulative"`); a rule shared by every primitive of a kind is assigned from the tag (`primitives_tagged()`), so a new primitive of that kind gets it without being added to a list. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
-- **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
+- **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 - **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
   The batch axis is the operands' last axis, so a parameter that names axes keeps its value: the primitives
@@ -161,9 +161,23 @@ Wrap every function whose body issues **more than one operation**.
 
 ## Broadcasting
 
-Anvl's elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises `nv_broadcast_scalars()` errors like *"All non-scalar arrays must have the same shape, ... Use `nv_broadcast_arrays()` for general broadcasting."*
+Anvl's elementwise operations (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …, and the elementwise primitives beneath them) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises errors like *"`lhs` and `rhs` must have the same shape, unless one of them is a scalar. ... Use `nv_broadcast_arrays()` for general broadcasting."*
+
+The scalar broadcast belongs to the elementwise primitives themselves: the trace records `mul(%x, 2:f32)`, not a `broadcast_in_axes` first. Their inference rules take the shape of the operands that are not scalars (`infer_elementwise_shape()`), their StableHLO rules broadcast a scalar operand while lowering (`elementwise_rule()`, `hlo_broadcast_scalar()`), and their pullback rules sum the gradient of a scalar operand back down (`unbroadcast()`).
 
 When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
+
+## Axis Reversal
+
+The StableHLO lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape
+`(dn, ..., d1)`, and the pjrt backend stores it that way: R's column-major bytes are XLA's row-major
+bytes of the reversed shape, so transfers copy them as they are. A pjrt `AnvlArray` holds a buffer
+whose dims are `rev(x$shape)`; `x$shape` stays the R shape. R axis `i` of an `n`-axis array is XLA
+dimension `n - i`, so R axis 1 is the contiguous (minor) one and the trailing R axes are XLA's major
+dimensions, where XLA's kernels want batch axes -- which is why anvl's batch axes go last. Every
+lowering rule maps its axis numbers, shapes and per-axis vectors with the helpers in
+`R/lowering-axes.R`; `at2vt()` reverses every type, so `shape()` of a `FuncValue` is the XLA shape.
+Dumped HLO and XLA's error messages show the reversed shapes.
 
 ## Graph Tracing
 
@@ -182,7 +196,7 @@ The trace under way is a `GraphDescriptor` (`current_descriptor()`). A function 
 Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
-- `tests/testthat/test-primitives-reverse.R` -- sources `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-pullback.R` -- sources `inst/extra-tests/test-primitives-pullback-torch.R`
 - `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
   (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
@@ -191,6 +205,8 @@ Prefer testing by comparing with the corresponding torch function. If the test i
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
 This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
+
+Do not add unit tests that manually inspect the code to which a primitive lowers. Only test their behavior.
 
 ## Documentation
 

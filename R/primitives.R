@@ -77,8 +77,6 @@ prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
     assert_fill_value(value, dtype)
-    # `shape = c()` is how a caller asks for a scalar.
-    shape <- shape %||% integer()
     shape <- assert_shapevec(shape)
     graph_desc_add(
       self,
@@ -108,6 +106,9 @@ prim_fill <- new_primitive(
 #'
 #' # the R value is built at the array's data type instead
 #' prim_add(1, nv_scalar(2, "f64"))
+#'
+#' # a scalar is broadcast to the shape of the other operand
+#' prim_add(nv_array(c(1, 2, 3)), 1)
 #' @export
 prim_add <- new_primitive("add", make_binary_op(infer_generic_biv), tags = "elementwise")
 
@@ -271,13 +272,16 @@ prim_broadcast_in_axes <- new_primitive(
 #'   operation. One of `"highest"` (default), `"high"` or `"default"`.
 #'   Only the StableHLO backend honors this; it is ignored by the quickr backend.
 #' @return ([`arrayish`])\cr
-#'   Has the data type the operands agreed on. The output shape is the batch
-#'   axes followed by the remaining
-#'   (non-contracted, non-batched) axes of `lhs`, then `rhs`.
+#'   Has the data type the operands agreed on. The output shape is the remaining
+#'   (non-contracted, non-batched) axes of `lhs`, then those of `rhs`, each in
+#'   ascending order, and last the batch axes, in the order `batching_axes`
+#'   names them.
 #' @templateVar primitive_id dot_general
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("dot_general")`
+#' StableHLO puts the batch dimensions first in its result; anvl's result has
+#' them last, which is the same array once the lowering reverses every axis.
 #' @seealso [nv_matmul()], `%*%`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type
@@ -286,6 +290,13 @@ prim_broadcast_in_axes <- new_primitive(
 #' prim_dot_general(x, y,
 #'   contracting_axes = list(2L, 1L),
 #'   batching_axes = list(integer(0), integer(0))
+#' )
+#' # two such products at once: the batch axis trails, in the result as well
+#' x <- nv_array(1:12, shape = c(2, 3, 2))
+#' y <- nv_array(1:12, shape = c(3, 2, 2))
+#' prim_dot_general(x, y,
+#'   contracting_axes = list(2L, 1L),
+#'   batching_axes = list(3L, 3L)
 #' )
 #' @export
 prim_dot_general <- new_primitive(
@@ -359,9 +370,9 @@ prim_transpose <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("reshape")`
-#' The lowering wraps it in two [hlo_transpose()] calls that reverse every
-#' axis, which is what turns stablehlo's row-major reshape into a column-major
-#' one; each is skipped where that side has at most one axis.
+#' The lowering represents an array by the reversed shape, so stablehlo's
+#' row-major reshape of the reversed shapes is exactly a column-major reshape
+#' of the R shapes.
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the elements keep their column-major order; the data type is untouched
@@ -1424,8 +1435,8 @@ prim_shift_right_arithmetic <- new_primitive(
 #' The operands are named `y` and `x`, in that order, after
 #' [`base::atan2()`], rather than `lhs` / `rhs`.
 #' @param y,x ([`arrayish`])\cr
-#'   Ordinate and abscissa of the point, of the same shape. Can be any float
-#'   data type.
+#'   Ordinate and abscissa of the point, of the same shape, except that a
+#'   scalar is broadcast to the shape of the other. Can be any float data type.
 #'   `r roxy_agree("y", "x")`
 #' @template return_prim_binary
 #' @templateVar primitive_id atan2
@@ -1463,9 +1474,8 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv, c("y", "x")
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("bitcast_convert")`
-#' StableHLO puts the lane axis last, so a width-changing conversion is
-#' lowered with one [hlo_transpose()] that rotates it to the front, or off the
-#' front, depending on the direction.
+#' StableHLO puts the lane axis last; the lowering represents an array by the
+#' reversed shape, so that is the leading R axis.
 #' @seealso [nv_bitcast_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # same width: the bits are reread, the shape stays
@@ -2038,10 +2048,10 @@ prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni), tags = "e
 #' @description
 #' Element-wise psigamma function: the `deriv`-th derivative of the digamma
 #' function, i.e. the `(deriv + 1)`-th derivative of the log-gamma function.
-#' Both `x` and `deriv` must have the same shape; `deriv` typically holds
-#' non-negative integer values.
+#' `deriv` typically holds non-negative integer values.
 #' @param x,deriv ([`arrayish`])\cr
-#'   Two inputs of the same shape. Can be any float data type.
+#'   Two inputs of the same shape, except that a scalar is broadcast to the
+#'   shape of the other. Can be any float data type.
 #'   `r roxy_agree("x", "deriv")`
 #' @template return_prim_binary
 #' @templateVar primitive_id psigamma
@@ -2186,10 +2196,10 @@ prim_popcnt <- new_primitive(
 #'   The array to clamp. Can be any data type.
 #'   `r roxy_agree("x", "min", "max")`
 #' @param min,max ([`arrayish`])\cr
-#'   Lower and upper bound. Each must be scalar or the same shape as `x`, and
-#'   shares its data type.
+#'   Lower and upper bound, sharing `x`'s data type. The operands that are not
+#'   scalars have the same shape, and a scalar is broadcast to it.
 #' @return ([`arrayish`])\cr
-#'   Has `x`'s shape and the data type the operands agreed on.
+#'   Has the operands' broadcast shape and the data type they agreed on.
 #' @templateVar primitive_id clamp
 #' @template section_rules
 #' @section StableHLO:
@@ -2439,17 +2449,19 @@ prim_convert <- new_primitive(
 #' Element-wise selection based on a boolean predicate, mirroring R's
 #' [`ifelse()`]. For each element, returns the corresponding element from
 #' `yes` where `test` is `TRUE` and from `no` where `test` is `FALSE`.
+#' The operands that are not scalars, `test` among them, have the same shape,
+#' and a scalar is broadcast to it.
 #'
 #' [`prim_if()`] is the other conditional: it mirrors R's `if` construct and
 #' branches between two *functions*, evaluating only the selected one.
 #' @param test ([`arrayish`])\cr
-#'   Predicate array. Must be a boolean or an R logical, and scalar or the same
-#'   shape as `yes`.
+#'   Predicate array. Must be a boolean or an R logical.
 #' @param yes,no ([`arrayish`])\cr
-#'   Values to select from, of the same shape. Can be any data type.
+#'   Values to select from. Can be any data type.
 #'   `r roxy_agree("yes", "no")`
 #' @return ([`arrayish`])\cr
-#'   Has the shape of `yes` and `no`, and the data type they agreed on.
+#'   Has the operands' broadcast shape and the data type `yes` and `no` agreed
+#'   on.
 #' @templateVar primitive_id ifelse
 #' @template section_rules
 #' @section StableHLO:
@@ -2459,6 +2471,9 @@ prim_convert <- new_primitive(
 #' # the result takes the branches' data type; `test` only selects
 #' test <- nv_array(c(TRUE, FALSE, TRUE))
 #' prim_ifelse(test, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+#'
+#' # a scalar branch is broadcast to the shape of `test`
+#' prim_ifelse(test, nv_array(c(1, 2, 3)), 0)
 #' @export
 prim_ifelse <- new_primitive(
   "ifelse",
@@ -2668,30 +2683,30 @@ prim_while <- new_primitive(
 #' @title Primitive Scan
 #' @description
 #' Runs `body` a fixed number of times, threading a carry through the steps
-#' and stacking each step's outputs along a new leading axis. Step `t`
+#' and stacking each step's outputs along a new trailing axis. Step `t`
 #' receives the carry and, for every array in `xs`, its slice at position `t`
-#' along axis 1 with that axis dropped.
+#' along its last axis with that axis dropped.
 #' @param init (`list()`)\cr
 #'   Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
 #'   shape and data type across steps. It must not contain a random state: to
 #'   draw from one in `body`, make it the default before the loop with
 #'   [local_nv_rng_state()].
 #' @param xs (`list()`)\cr
-#'   Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-#'   all of size `steps` along it. An empty list runs a counted loop. It must
-#'   not contain a random state.
+#'   Per-step inputs: a (possibly nested) list of arrays sliced along their
+#'   last axis, all of size `steps` along it. An empty list runs a counted
+#'   loop. It must not contain a random state.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning `list(carry = , out = )`,
 #'   where `carry` has the structure of `init` and `out` is a (possibly
 #'   nested) list of arrays or `NULL`. `x` is `NULL` when `xs` is empty.
 #' @param steps (`integer(1)`)\cr
-#'   Static trip count; the size of axis 1 of every array in `xs`. `0` runs
-#'   no step and returns `init` with zero-length stacked outputs.
+#'   Static trip count; the size of the last axis of every array in `xs`.
+#'   `0` runs no step and returns `init` with zero-length stacked outputs.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run from `steps` down to `1`; each step still reads
 #'   `xs` at its own position and writes its output there.
 #' @return `list(carry = , out = )`: the final carry and the stacked
-#'   outputs, each leaf of `out` gaining a leading axis of size `steps`.
+#'   outputs, each leaf of `out` gaining a trailing axis of size `steps`.
 #' @templateVar primitive_id scan
 #' @template section_rules
 #' @section StableHLO:
@@ -2735,7 +2750,7 @@ prim_scan <- new_primitive(
       cli_abort("{.arg init} must contain at least one array.")
     }
 
-    # The body is traced once, seeing each `xs` leaf with its leading axis
+    # The body is traced once, seeing each `xs` leaf with its last axis
     # dropped; the lowering slices the real arrays inside the loop. This is
     # why `trace_fn()` alone is not enough, unlike in `prim_while()`, which
     # traces against the very values it was handed: we have to build the
@@ -2755,10 +2770,11 @@ prim_scan <- new_primitive(
       if (!length(shp)) {
         cli_abort("every array in {.arg xs} must have at least one axis.")
       }
-      if (shp[[1L]] != steps) {
-        cli_abort("every array in {.arg xs} must have size {steps} along axis 1, not {shp[[1L]]}.")
+      last <- length(shp)
+      if (shp[[last]] != steps) {
+        cli_abort("every array in {.arg xs} must have size {steps} along its last axis, not {shp[[last]]}.")
       }
-      AbstractArray(dtype = aval$dtype, shape = shp[-1L])
+      AbstractArray(dtype = aval$dtype, shape = shp[-last])
     })
     x_slices <- if (n_xs) unflatten(build_tree(xs), x_slices) else list()
 
@@ -2814,7 +2830,7 @@ prim_scan <- new_primitive(
         }
       }
       stacked <- lapply(outs_body[-seq_len(n_carry)], function(aval) {
-        AbstractArray(dtype = aval$dtype, shape = c(steps, shape(aval)))
+        AbstractArray(dtype = aval$dtype, shape = c(shape(aval), steps))
       })
       c(carry_out, stacked)
     }
@@ -2857,7 +2873,7 @@ prim_scan <- new_primitive(
 #' @param fn (`function`)\cr
 #'   Computes the result from the entries of `args`, which it receives as
 #'   arguments. Returns an array, or a tree of them.
-#' @param rule (`function` | `anvl_rule_reverse`)\cr
+#' @param rule (`function` | `anvl_rule_pullback`)\cr
 #'   Computes the gradient. A function receives the entries of `args` as arguments, plus
 #'   `out`, the result of `fn`, `grad`, the gradient with respect to `out`, of
 #'   the same structure, data types and shapes, and `required`, a named
@@ -2869,7 +2885,7 @@ prim_scan <- new_primitive(
 #'   `x`'s structure, data types and shapes. An entry that is not required,
 #'   e.g. an integer, which never is, can be left out or be `NULL`.
 #'
-#'   Alternatively, a [rule_reverse()] with a `forward` pass, which replaces
+#'   Alternatively, a [rule_pullback()] with a `forward` pass, which replaces
 #'   `fn` where the result is differentiated, so that the backward pass can
 #'   read what the forward pass computed. Its passes are those of a
 #'   primitive's rule, except that `inputs` are the entries of `args` by name
@@ -2923,7 +2939,7 @@ prim_scan <- new_primitive(
 #'   prim_custom_gradient(
 #'     list(x = x, n = n),
 #'     fn = pow_loop,
-#'     rule = rule_reverse(forward = function(inputs, params, required) {
+#'     rule = rule_pullback(forward = function(inputs, params, required) {
 #'       p <- inputs$x^(inputs$n - 1L)
 #'       list(
 #'         outputs = p * inputs$x,
@@ -2946,16 +2962,16 @@ prim_custom_gradient <- new_primitive(
         x = "Got {value_repr(fn)}."
       ))
     }
-    if (inherits(rule, "anvl_rule_reverse") && is.null(rule$forward)) {
+    if (inherits(rule, "anvl_rule_pullback") && is.null(rule$forward)) {
       cli_abort(c(
-        "{.arg rule} must have a forward pass where it is a {.fn rule_reverse}.",
-        x = "Got a reverse rule with only a backward pass.",
+        "{.arg rule} must have a forward pass where it is a {.fn rule_pullback}.",
+        x = "Got a pullback rule with only a backward pass.",
         i = "Pass a function as {.arg rule} instead: it receives the arguments, the result and its gradient by name."
       ))
     }
-    if (!is.function(rule) && !inherits(rule, "anvl_rule_reverse")) {
+    if (!is.function(rule) && !inherits(rule, "anvl_rule_pullback")) {
       cli_abort(c(
-        "{.arg rule} must be a function, or a {.fn rule_reverse} with a forward pass.",
+        "{.arg rule} must be a function, or a {.fn rule_pullback} with a forward pass.",
         x = "Got {value_repr(rule)}."
       ))
     }
@@ -3027,7 +3043,7 @@ prim_custom_gradient <- new_primitive(
 
     # `fn`'s graph takes what it closes over after the arguments; the call's
     # operands are the arguments, then the same captures. `rule` stays an R
-    # function: the reverse rule traces it once it knows which gradients are
+    # function: the pullback rule traces it once it knows which gradients are
     # required.
     captures <- purify_subgraphs(current_desc, list(fn_graph))
 
@@ -3106,7 +3122,7 @@ prim_sort <- new_primitive(
         call = print_call_repr(self)
       )
     }
-    axis <- resolve_axis(axis, length(shape(xs[[1L]])))
+    axis <- resolve_axis(axis, naxes(xs[[1L]]))
 
     graph_desc_add(
       self,
@@ -3122,28 +3138,27 @@ prim_sort <- new_primitive(
 
 #' @title Primitive Top-K
 #' @description
-#' Returns the `k` largest values along the last axis, sorted in
-#' decreasing order, and with `indices = TRUE` their indices into that
-#' axis as well.
+#' Returns the `k` largest values along axis 1, sorted in decreasing order,
+#' and with `indices = TRUE` their indices into that axis as well. The
+#' trailing axes are batch axes.
 #'
-#' For other axes, transpose so the target axis is last, call
+#' For other axes, transpose so the target axis is first, call
 #' `prim_top_k()`, then transpose back. [nv_top_k()] does this.
 #' @templateVar dtypes any numeric data type
 #' @templateVar shapes with at least 1 axis
 #' @template param_unary_x
 #' @param k (`integer(1)`)\cr
-#'   Number of top elements. Must satisfy
-#'   `1 <= k <= shape(x)[naxes(x)]`.
+#'   Number of top elements. Must satisfy `1 <= k <= shape(x)[1]`.
 #' @param indices (`logical(1)`)\cr
 #'   Whether to also return the indices of the top elements. Without them
 #'   the order among tied values is unspecified, which lets the lowering
 #'   pick the cheapest selection for the platform.
 #' @return (named `list` of one or two [`arrayish`])\cr
 #'   Element `values`, the top-`k` values at the input's data type, and, when
-#'   `indices` is `TRUE`, `indices`, their indices along the last axis at
-#'   the default integer data type (see [`default_dtypes()`]). Both have the
-#'   input's shape with the last axis replaced by `k`. With indices, ties are
-#'   broken by lower index first.
+#'   `indices` is `TRUE`, `indices`, their indices along axis 1 at the
+#'   default integer data type (see [`default_dtypes()`]). Both have the
+#'   input's shape with axis 1 replaced by `k`. With indices, ties are broken
+#'   by lower index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
@@ -3158,6 +3173,10 @@ prim_sort <- new_primitive(
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' prim_top_k(x, k = 3L, indices = FALSE)
 #' prim_top_k(x, k = 3L, indices = TRUE)
+#'
+#' # the top 2 of each column
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 3)
+#' prim_top_k(m, k = 2L, indices = TRUE)
 #' @export
 prim_top_k <- new_primitive(
   "top_k",
@@ -3324,8 +3343,8 @@ prim_optimization_barrier <- new_primitive(
 #'   truncated to its low bits, as JAX's `jax.random.bits()` does by default.
 #'   The value at a position thus does not depend on the number of values
 #'   drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
-#'   `shape` in row-major order, as JAX's do, so a draw of `c(2, 3)` is not a
-#'   draw of `6` filled into `c(2, 3)` in R's column-major order.
+#'   `shape` in column-major order, so a draw of `c(2, 3)` is a draw of `6`
+#'   filled into `c(2, 3)`.
 #' @references
 #' `r format_bib("salmon2011parallel", "claessen2013splittable", "jax2018github")`
 #' @templateVar primitive_id sample_bits
@@ -3555,7 +3574,7 @@ prim_scatter <- new_primitive(
 )
 
 # The update functions `prim_scatter()` knows by name. A scatter keeps the name
-# in its `update_op` parameter, and the reverse rule differentiates these and
+# in its `update_op` parameter, and the pullback rule differentiates these and
 # nothing else.
 scatter_update_fns <- list(
   replace = function(old, new) new,
@@ -3709,12 +3728,12 @@ prim_gather <- new_primitive(
 #' @title Primitive Cholesky Decomposition
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-#' Axes before the last two are batch axes.
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @details
-#' Differentiation is only implemented for a single matrix: the `reverse` rule
+#' Differentiation is only implemented for a single matrix: the `pullback` rule
 #' errors on a batched input (an input with more than 2 axes).
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes
+#' @templateVar shapes with at least 2 axes, the first two of equal size (a square matrix); any trailing axes are batch axes
 #' @template param_unary_x
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
@@ -3754,21 +3773,21 @@ prim_chol <- new_primitive(
 #' Solves a system of linear equations with a triangular coefficient matrix.
 #' When `left_side` is `TRUE`, solves `op(a) %*% x = b` for `x`.
 #' When `left_side` is `FALSE`, solves `x %*% op(a) = b` for `x`.
-#' Axes before the last two are batch axes and must match
-#' between `a` and `b` (no broadcasting).
+#' The first two axes form the matrices, and any trailing axes are batch axes,
+#' which must match between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
 #' @details
-#' Differentiation is only implemented for a single system: the `reverse` rule
+#' Differentiation is only implemented for a single system: the `pullback` rule
 #' errors on batched operands (operands with more than 2 axes).
 #' @param a ([`arrayish`])\cr
-#'   Triangular coefficient matrix with at least 2 axes. The last two axes must
-#'   be equal (square matrix); any leading axes are batch axes. Can be any
-#'   float data type. `r roxy_agree("a", "b")`
+#'   Triangular coefficient matrix with at least 2 axes, of shape
+#'   `(n, n, b1, ..., bk)`: the first two axes are of equal size (a square
+#'   matrix), and any trailing axes are batch axes. Can be any float data type.
+#'   `r roxy_agree("a", "b")`
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side. Same rank as `a` (rank >= 2), with
-#'   matching leading batch axes. The size of `a`'s last two (square)
-#'   axes must equal `b`'s second-to-last axis when
-#'   `left_side = TRUE`, or `b`'s last axis when `left_side = FALSE`.
+#'   Right-hand side, of the same rank as `a` and with matching trailing batch
+#'   axes: of shape `(n, m, b1, ..., bk)` when `left_side = TRUE`, or
+#'   `(m, n, b1, ..., bk)` when `left_side = FALSE`.
 #'   Shares `a`'s data type -- see `a`.
 #' @param left_side (`logical(1)`)\cr
 #'   If `TRUE`, solve `op(a) %*% x = b`. If `FALSE`, solve `x %*% op(a) = b`.
@@ -3990,9 +4009,10 @@ prim_eigh <- new_primitive(
 #' General N-D windowed convolution. The axis arguments say which axis of each
 #' operand plays which role, so any layout can be described.
 #' Most users want [nv_conv1d()] / [nv_conv2d()] / [nv_conv3d()] instead.
-#' @param x ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
+#' @param x ([`arrayish`])\cr Input, e.g. `(*spatial, channels, batch)`.
 #'   Can be any data type. `r roxy_agree("x", "kernel")`
-#' @param kernel ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
+#' @param kernel ([`arrayish`])\cr Kernel, e.g.
+#'   `(*spatial, in_channels / groups, out_channels)`.
 #'   Shares `x`'s data type -- see `x`.
 #' @param x_batch_axis,x_feature_axis (`integer(1)`)\cr
 #'   Batch and feature axis of `x`.
@@ -4004,7 +4024,8 @@ prim_eigh <- new_primitive(
 #'   Batch and feature axis of the output.
 #' @param output_spatial_axes (`integer()`)\cr
 #'   Spatial axes of the output.
-#' @param window_strides (`integer()`)\cr Stride per spatial axis.
+#' @param window_strides (`integer()`)\cr Stride per spatial axis, in the
+#'   order of `x_spatial_axes`, as are all per-spatial-axis parameters.
 #' @param padding (`matrix`)\cr `[n_spatial, 2]` of `(low, high)` padding.
 #' @param x_dilation,kernel_dilation (`integer()`)\cr Input/kernel dilation.
 #' @param feature_group_count,batch_group_count (`integer(1)`)\cr Grouping.
@@ -4022,17 +4043,18 @@ prim_eigh <- new_primitive(
 #' The axis numbers are converted on the way down.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [nv_conv3d()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # a 1-D convolution in NCW layout: one batch, one channel, width 5,
-#' # convolved with a width-3 kernel, giving 3 window positions
-#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-#' kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' # a causal 1-D convolution in the layout of nv_conv1d(): width 5, one
+#' # channel, a batch of one, convolved with a width-3 kernel; padding only the
+#' # start of the width keeps all 5 window positions
+#' x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+#' kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
 #' prim_convolution(
 #'   x, kernel,
-#'   x_batch_axis = 1L, x_feature_axis = 2L, x_spatial_axes = 3L,
-#'   kernel_output_feature_axis = 1L, kernel_input_feature_axis = 2L,
-#'   kernel_spatial_axes = 3L,
-#'   output_batch_axis = 1L, output_feature_axis = 2L, output_spatial_axes = 3L,
-#'   window_strides = 1L, padding = matrix(0L, nrow = 1, ncol = 2),
+#'   x_spatial_axes = 1L, x_feature_axis = 2L, x_batch_axis = 3L,
+#'   kernel_spatial_axes = 1L, kernel_input_feature_axis = 2L,
+#'   kernel_output_feature_axis = 3L,
+#'   output_spatial_axes = 1L, output_feature_axis = 2L, output_batch_axis = 3L,
+#'   window_strides = 1L, padding = matrix(c(2L, 0L), nrow = 1),
 #'   x_dilation = 1L, kernel_dilation = 1L
 #' )
 #' @export

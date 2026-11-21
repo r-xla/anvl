@@ -4,12 +4,7 @@
 \alias{rule_vectorize}
 \title{Vectorize Rule}
 \usage{
-rule_vectorize(
-  fn = NULL,
-  params = list(),
-  scalar = integer(),
-  unbatched = integer()
-)
+rule_vectorize(fn = NULL, params = list(), unbatched = integer())
 }
 \arguments{
 \item{fn}{(\code{NULL} | \code{function})\cr
@@ -19,11 +14,6 @@ defaults.}
 \item{params}{(named \code{list()})\cr
 How each parameter with an entry per axis of the operands, or a shape,
 changes, one of the kinds in \code{\link[=param_shape]{param_shape()}}.}
-
-\item{scalar}{(\code{integer()})\cr
-Positions of the operands that may be scalars while the others are not,
-e.g. the bounds of \code{\link[=prim_clamp]{prim_clamp()}}. Such an operand stays a scalar when it
-is not mapped over.}
 
 \item{unbatched}{(\code{integer()})\cr
 Positions of the operands that cannot be mapped over, e.g. the padding
@@ -43,7 +33,8 @@ trailing axis already, and a parameter that names an axis still names the
 same one. Only the parameters with an entry per axis, or a shape, change.
 Declaring how each of them changes is enough, via \code{params}. The
 rule then gives every operand the batch axis -- broadcasting the ones that
-are not mapped over -- and applies the primitive with the changed
+are not mapped over, except a scalar operand of an element-wise primitive,
+which stays a scalar -- and applies the primitive with the changed
 parameters, so all of its outputs are batched. A parameter \code{params} does not
 name stays as it is.
 

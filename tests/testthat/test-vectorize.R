@@ -403,7 +403,7 @@ describe("vectorize", {
 
 describe("rule_vectorize", {
   it("takes either a function or a declaration", {
-    expect_error(rule_vectorize(function(...) NULL, scalar = 1L), "either")
+    expect_error(rule_vectorize(function(...) NULL, unbatched = 1L), "either")
     expect_s3_class(rule_vectorize(params = list(shape = param_shape())), "anvl_rule_vectorize")
   })
 

@@ -20,6 +20,31 @@ describe("nv_scalar_like()", {
 })
 
 describe("the `_like` constructors", {
+  it("take the shape of `like` at \"auto\" and refuse NULL", {
+    like <- nv_array(1:6, shape = shp(2, 3), dtype = "f32")
+    cases <- list(
+      nv_fill_like = function(shape) nv_fill_like(like, 1, shape = shape),
+      nv_iota_like = function(shape) nv_iota_like(like, axis = 1L, shape = shape),
+      nv_empty_like = function(shape) nv_empty_like(like, shape = shape)
+    )
+    for (nm in names(cases)) {
+      expect_shape(cases[[nm]]("auto"), c(2L, 3L), info = nm)
+      expect_shape(cases[[nm]](shp(4)), 4L, info = nm)
+      # `c()` is `NULL`, which must neither mean "the shape of `like`" nor a scalar
+      expect_error(cases[[nm]](c()), "Leave it at \"auto\"", info = nm)
+    }
+    expect_shape(nv_fill_like(like, 1, shape = shp()), integer())
+    expect_shape(nv_lower_tri_like(nv_array(1:6, shape = shp(2, 3))), c(2L, 3L))
+    expect_error(nv_upper_tri_like(like, shape = NULL), "Leave it at \"auto\"")
+  })
+
+  it("let nv_array_like() take a shape of no axes rather than that of `like`", {
+    like <- nv_array(c(1L, 2L, 3L), dtype = "i16")
+    expect_shape(nv_array_like(like, 7L), 3L)
+    expect_shape(nv_array_like(like, 7L, shape = shp()), integer())
+    expect_error(nv_array_like(like, 7L, shape = c()), "Leave it at \"auto\"")
+  })
+
   # Regression: `nv_qnorm()` builds its coefficients with `nv_scalar_like()` from
   # an array built inside the trace. Reading that constant's `PlainDeviceCpu()`
   # back allocated them on `cpu:0` while the operands were elsewhere, and jit's

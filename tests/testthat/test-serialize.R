@@ -1,5 +1,13 @@
 # the main tests are in {pjrt}, hence we keep them minimal here
 
+test_that("nv_serialize writes an array's R shape and its row-major bytes", {
+  raw_data <- nv_serialize(list(x = nv_array(matrix(1:6, nrow = 2L), dtype = "i32")))
+  n <- readBin(raw_data[1:4], "integer", size = 4L)
+  expect_match(rawToChar(raw_data[9:(8L + n)]), '"shape":[2,3]', fixed = TRUE)
+  values <- readBin(raw_data[(9L + n):length(raw_data)], "integer", n = 6L, size = 4L)
+  expect_equal(values, c(1L, 3L, 5L, 2L, 4L, 6L))
+})
+
 test_that("nv_serialize and nv_unserialize work for single array", {
   x <- nv_matrix(rnorm(12), nrow = 3)
   lst <- list(x = x)

@@ -26,8 +26,8 @@ Has the operands' common data type, and the shape of \code{t(x) \%*\% y}.
 }
 \description{
 Computes \code{t(x) \%*\% y}. If \code{y} is missing, computes \code{t(x) \%*\% x}.
-Above rank 2 the last two axes are the matrix and the leading ones are batch
-axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed.
+Above rank 2 the first two axes are the matrix and the trailing ones are
+batch axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

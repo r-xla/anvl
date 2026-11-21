@@ -20,7 +20,9 @@ backend.
 
 An \code{\link{AnvlArray}} with \code{backend = "pjrt"} wraps a \code{\link[pjrt:pjrt_buffer]{pjrt::pjrt_buffer()}}
 stored in the \verb{$data} field. The buffer owns the memory holding the array
-values and may live on any device supported by PJRT (CPU, CUDA, ...).
+values and may live on any device supported by PJRT (CPU, CUDA, ...). It
+holds the array's column-major bytes as an XLA array of the reversed shape,
+so that uploads and read-backs copy the bytes without reordering them.
 Calling \code{\link[=as_array]{as_array()}} transfers the buffer contents back to an R
 array; calling \code{\link[=nv_array]{nv_array()}} on an R object uploads it to the requested
 device.

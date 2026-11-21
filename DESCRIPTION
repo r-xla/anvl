@@ -30,7 +30,7 @@ Imports:
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.7.0),
+    pjrt (>= 0.8.0.9002),
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.6.0),
@@ -43,6 +43,8 @@ Suggests:
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
+Remotes:
+    r-xla/pjrt@develop
 Additional_repositories: https://r-xla.r-universe.dev
 Config/testthat/edition: 3
 Encoding: UTF-8
@@ -77,6 +79,7 @@ Collate:
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
+    'lowering-axes.R'
     'quickr.R'
     'rdata.R'
     'reexports.R'
@@ -84,7 +87,7 @@ Collate:
     'rng.R'
     'rng-trace.R'
     'roxygen.R'
-    'rules-reverse.R'
+    'rules-pullback.R'
     'rules-stablehlo.R'
     'vectorize.R'
     'rules-vectorize.R'

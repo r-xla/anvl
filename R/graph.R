@@ -167,7 +167,7 @@ GraphStatement <- function(primitive, inputs, params, outputs) {
 #' graph$constants
 #'
 #' # several outputs are returned together; `out_tree` records their structure
-#' graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", c())))
+#' graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", shp())))
 #' graph
 #' graph$out_tree
 #' @keywords internal
@@ -1008,7 +1008,7 @@ graph_desc_add <- function(
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["infer_primitive"]] <- NULL
   # An output is computed, whatever its inputs were: an inference rule that
-  # hands an input's aval back (`infer_generic_biv()` returns `lhs`) must not
+  # hands an input's aval back (`infer_float_uni()` returns `x`) must not
   # make `sin(y)` of a closed-over `y` look like `y` itself. Only a constant's
   # node carries a `ConcreteArray`.
   gvals_out <- lapply(ats_out, \(aval) GraphValue(abstract_aval(aval)))

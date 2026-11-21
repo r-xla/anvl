@@ -492,7 +492,7 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
 
 quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, axis, out_aval) {
   axis <- as.integer(axis)
-  rank <- length(shape(out_aval))
+  rank <- naxes(out_aval)
   if (!rank || rank > 5L) {
     cli_abort("concatenate: only arrays of rank 1..5 are supported by quickr lowering")
   }
@@ -986,8 +986,10 @@ quickr_emit_dot_general <- function(
     ))
   }
 
-  nbatch <- length(bd_lhs)
+  # The output axes are the free axes of lhs, then those of rhs, then the batch
+  # axes.
   nfree_lhs <- length(free_lhs)
+  nfree <- nfree_lhs + length(free_rhs)
 
   out_idxs <- lapply(seq_len(out_rank), function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
   k_idxs <- lapply(seq_along(cd_lhs), function(i) as.name(paste0("k_", as.character(out_sym), "_", i)))
@@ -996,9 +998,9 @@ quickr_emit_dot_general <- function(
   lhs_idxs <- vector("list", lhs_rank)
   for (d in seq_len(lhs_rank)) {
     if (d %in% bd_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[match(d, bd_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_lhs)]]
     } else if (d %in% free_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[nbatch + match(d, free_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[match(d, free_lhs)]]
     } else {
       lhs_idxs[[d]] <- k_idxs[[match(d, cd_lhs)]]
     }
@@ -1007,9 +1009,9 @@ quickr_emit_dot_general <- function(
   rhs_idxs <- vector("list", rhs_rank)
   for (d in seq_len(rhs_rank)) {
     if (d %in% bd_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[match(d, bd_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_rhs)]]
     } else if (d %in% free_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[nbatch + nfree_lhs + match(d, free_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree_lhs + match(d, free_rhs)]]
     } else {
       rhs_idxs[[d]] <- k_idxs[[match(d, cd_rhs)]]
     }
@@ -1461,16 +1463,31 @@ quickr_register_prim_lowerer <- function(primitive, fun) {
 }
 
 # Registers `fun` for an elementwise primitive: one whose output has the shape
-# of its operands, so an output with a zero-size axis has nothing to compute.
-# Such an output is allocated directly instead -- quickr rejects an elementwise
-# operation with an empty operand (Fortran has no recycling).
-quickr_register_elementwise_lowerer <- function(primitive, fun) {
+# of its operands that are not scalars, so an output with a zero-size axis has
+# nothing to compute. Such an output is allocated directly instead -- quickr
+# rejects an elementwise operation with an empty operand (Fortran has no
+# recycling). `fun` receives a scalar operand broadcast to the output's shape,
+# since the lowerings index their operands element by element, except at the
+# positions `scalar_inputs`, which it takes as they are.
+quickr_register_elementwise_lowerer <- function(primitive, fun, scalar_inputs = integer()) {
   guarded <- function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
     empty <- quickr_emit_known_empty(out_syms[[1L]], out_avals[[1L]])
     if (!is.null(empty)) {
       return(empty)
     }
-    fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx)
+    out_shape <- as.integer(shape(out_avals[[1L]]))
+    scalars <- Filter(
+      \(i) length(out_shape) && !naxes(input_nodes[[i]]$aval),
+      setdiff(seq_along(inputs), scalar_inputs)
+    )
+    syms <- lapply(scalars, \(i) ctx$new_tmp_sym())
+    broadcast <- Map(
+      \(sym, i) quickr_emit_full_like(sym, inputs[[i]], out_shape, out_avals[[1L]]),
+      syms,
+      scalars
+    )
+    inputs[scalars] <- syms
+    c(unlist(broadcast, recursive = FALSE), fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx))
   }
   quickr_register_prim_lowerer(primitive, guarded)
 }
@@ -2085,7 +2102,8 @@ local({
         shape(input_nodes[[1L]]$aval),
         out_avals[[1L]]
       )
-    }
+    },
+    scalar_inputs = 1L
   )
 
   quickr_register_elementwise_lowerer(
@@ -2403,7 +2421,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
   if (pjrt::tree_root_kind(graph$out_tree) == "leaf" && length(out_exprs) == 1L) {
     out_node <- graph$outputs[[1L]]
     out_expr <- out_exprs[[1L]]
-    if (is_graph_value(out_node) && length(shape(out_node$aval)) == 1L) {
+    if (is_graph_value(out_node) && naxes(out_node$aval) == 1L) {
       out_expr <- rlang::call2("array", out_expr, dim = as.integer(shape(out_node$aval)))
     }
     stmts <- c(stmts, list(rlang::call2("<-", result_sym, out_expr), result_sym))

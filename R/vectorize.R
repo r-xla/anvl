@@ -404,7 +404,7 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size) {
       )
     }
   }
-  operands <- batch_operands(inputs, batched, size, scalar = rule$scalar, unbatched = rule$unbatched)
+  operands <- batch_operands(inputs, batched, size, unbatched = rule$unbatched)
   for (nm in names(rule$params)) {
     params[[nm]] <- rule$params[[nm]](params[[nm]], size)
   }
@@ -446,7 +446,8 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
 #' same one. Only the parameters with an entry per axis, or a shape, change.
 #' Declaring how each of them changes is enough, via `params`. The
 #' rule then gives every operand the batch axis -- broadcasting the ones that
-#' are not mapped over -- and applies the primitive with the changed
+#' are not mapped over, except a scalar operand of an element-wise primitive,
+#' which stays a scalar -- and applies the primitive with the changed
 #' parameters, so all of its outputs are batched. A parameter `params` does not
 #' name stays as it is.
 #'
@@ -471,10 +472,6 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
 #' @param params (named `list()`)\cr
 #'   How each parameter with an entry per axis of the operands, or a shape,
 #'   changes, one of the kinds in [`param_shape()`].
-#' @param scalar (`integer()`)\cr
-#'   Positions of the operands that may be scalars while the others are not,
-#'   e.g. the bounds of [`prim_clamp()`]. Such an operand stays a scalar when it
-#'   is not mapped over.
 #' @param unbatched (`integer()`)\cr
 #'   Positions of the operands that cannot be mapped over, e.g. the padding
 #'   value of [`prim_pad()`]. They are passed on unchanged.
@@ -485,16 +482,15 @@ check_vectorized_outputs <- function(call, outputs, batched, size) {
 #' @examples
 #' # the rule of prim_transpose()
 #' rule_vectorize(params = list(perm = param_axis_map()))
-rule_vectorize <- function(fn = NULL, params = list(), scalar = integer(), unbatched = integer()) {
+rule_vectorize <- function(fn = NULL, params = list(), unbatched = integer()) {
   checkmate::assert_function(fn, null.ok = TRUE)
   checkmate::assert_list(params, types = "anvl_param_kind", names = "unique")
-  checkmate::assert_integerish(scalar, lower = 1L)
   checkmate::assert_integerish(unbatched, lower = 1L)
-  if (!is.null(fn) && (length(params) || length(scalar) || length(unbatched))) {
-    cli_abort("Provide either {.arg fn} or {.arg params}, {.arg scalar} and {.arg unbatched}.")
+  if (!is.null(fn) && (length(params) || length(unbatched))) {
+    cli_abort("Provide either {.arg fn} or {.arg params} and {.arg unbatched}.")
   }
   structure(
-    list(fn = fn, params = params, scalar = as.integer(scalar), unbatched = as.integer(unbatched)),
+    list(fn = fn, params = params, unbatched = as.integer(unbatched)),
     class = "anvl_rule_vectorize"
   )
 }
@@ -555,22 +551,23 @@ batch_operand <- function(x, batched, size) {
 }
 
 # The operands of a primitive whose operands share one shape, each given the
-# batch axis -- except those at the positions `unbatched` names, and a scalar at
-# a position `scalar` names when the others are not scalars: such an operand is
-# broadcast to the others' shape if it is batched, and left a scalar otherwise.
-batch_operands <- function(inputs, batched, size, scalar = integer(), unbatched = integer()) {
-  inner_shape <- function(i) {
+# batch axis -- except those at the positions `unbatched` names, and a scalar
+# operand of an element-wise primitive, which stands for an array of the
+# others' shape: such an operand is broadcast to that shape if it is batched,
+# and left a scalar otherwise.
+batch_operands <- function(inputs, batched, size, unbatched = integer()) {
+  inner_shapes <- lapply(seq_along(inputs), function(i) {
     s <- shape(inputs[[i]])
     if (batched[[i]]) s[-length(s)] else s
-  }
-  main <- setdiff(seq_along(inputs), c(scalar, unbatched))
-  full <- if (length(main)) inner_shape(main[[1L]])
+  })
+  arrays <- Filter(length, inner_shapes[setdiff(seq_along(inputs), unbatched)])
+  full <- if (length(arrays)) arrays[[1L]] else integer()
   lapply(seq_along(inputs), function(i) {
     x <- inputs[[i]]
     if (i %in% unbatched) {
       return(x)
     }
-    if (i %in% scalar && !identical(inner_shape(i), full)) {
+    if (!length(inner_shapes[[i]]) && length(full)) {
       if (!batched[[i]]) {
         return(x)
       }

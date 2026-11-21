@@ -22,7 +22,7 @@ Element-wise cube root.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 \item \code{vectorize}
 }
 }

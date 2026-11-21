@@ -50,13 +50,7 @@ nv_extremal_value <- function(dtype, which, float_value, bool_value, device) {
   if (dtype == "bool") {
     return(nv_scalar(bool_value, dtype = "bool", device = device))
   }
-  nv_scalar(pjrt_buffer(
-    globals$ranges_raw[[dtype]][[which]],
-    dtype = dtype,
-    device = device,
-    row_major = TRUE,
-    shape = integer()
-  ))
+  nv_scalar(globals$ranges_raw[[dtype]][[which]], dtype = dtype, device = device)
 }
 
 without <- function(x, indices) {
@@ -160,20 +154,12 @@ gather_clamp_indices <- function(
   index_dtype <- dtype(start_indices)
   if (index_vector_axis > length(indices_shape)) {
     # Implicit index vector (single coordinate)
-    min_bound <- prim_fill(1L, dtype = index_dtype, shape = integer())
-    max_bound <- prim_fill(max_bounds[1L], dtype = index_dtype, shape = integer())
-    return(prim_clamp(start_indices, min_bound, max_bound))
+    return(prim_clamp(start_indices, 1L, max_bounds[[1L]]))
   }
 
   # Explicit index vector axis - build bounds arrays
   bounds_shape <- rep(1L, length(indices_shape))
   bounds_shape[index_vector_axis] <- n_index_coords
-
-  min_bound <- prim_broadcast_in_axes(
-    prim_fill(1L, dtype = index_dtype, shape = integer()),
-    indices_shape,
-    integer()
-  )
 
   # The max bound is the same for a given slice along the index_vector_axis
   max_bound_vals <- prim_reshape(
@@ -185,7 +171,7 @@ gather_clamp_indices <- function(
   )
   max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-  prim_clamp(start_indices, min_bound, max_bound)
+  prim_clamp(start_indices, 1L, max_bound)
 }
 
 # Compute gather slice_sizes from scatter parameters.
@@ -219,30 +205,19 @@ col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
 }
 
-# Transpose the matrix an array's last two axes form, leaving any leading batch
-# axes in place -- what `t()` means for the batched operands `nv_matmul()`
-# takes. `nv_aperm()` reverses *every* axis, which would put a batch axis
-# into the contraction slot. An array with fewer than two axes is handed on
-# unchanged, for `nv_matmul()` to report.
+row_major_layouts <- function(...) {
+  lapply(list(...), \(naxes) rev(col_major_layout(naxes)))
+}
+
+# Transpose the matrix an array's first two axes form, leaving any trailing
+# batch axes in place -- what `t()` means for the batched operands
+# `nv_matmul()` takes. `nv_aperm()` reverses *every* axis, which would put a
+# batch axis into the contraction slot. An array with fewer than two axes is
+# handed on unchanged, for `nv_matmul()` to report.
 transpose_matrix_axes <- function(x) {
   n <- naxes(x)
   if (n < 2L) {
     return(x)
   }
-  nv_aperm(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
-}
-
-# Where `prim_bitcast_convert()` puts the axis holding an element's pieces when
-# the two data types differ in width. StableHLO puts it last, where the pieces
-# of one element sit next to each other under its row-major reading; anvl is
-# column-major, so the axis belongs first instead. Returns the number of pieces
-# and which way the conversion goes, so the shape rule and the lowering agree.
-bitcast_lane <- function(dtype_in, dtype_out) {
-  width_in <- dtype_width(as_dtype(dtype_in))
-  width_out <- dtype_width(as_dtype(dtype_out))
-  list(
-    pieces = as.integer(max(width_in, width_out) / min(width_in, width_out)),
-    splits = width_in > width_out,
-    joins = width_in < width_out
-  )
+  nv_aperm(x, c(2L, 1L, seq_len(n - 2L) + 2L))
 }

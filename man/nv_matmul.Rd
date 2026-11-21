@@ -27,14 +27,16 @@ Has the operands' common data type and the shape given under Shapes.
 }
 \description{
 Matrix multiplication of two arrays. You can also use the \code{\%*\%} operator.
-Supports batched matrix multiplication when inputs have more than 2 axes.
+Supports batched matrix multiplication: above rank 2, the first two axes
+are the matrix and the trailing ones are batch axes, which both operands
+must share.
 }
 \section{Shapes}{
 
 \itemize{
-\item \code{x}: \verb{(b1, ..., bk, m, n)}
-\item \code{y}: \verb{(b1, ..., bk, n, p)}
-\item output: \verb{(b1, ..., bk, m, p)}
+\item \code{x}: \verb{(m, n, b1, ..., bk)}
+\item \code{y}: \verb{(n, p, b1, ..., bk)}
+\item output: \verb{(m, p, b1, ..., bk)}
 }
 }
 
@@ -44,6 +46,10 @@ Supports batched matrix multiplication when inputs have more than 2 axes.
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 nv_matmul(x, y)
+x \%*\% y
+# a batch of three such products along the trailing axis
+x <- nv_array(1:18, shape = c(2, 3, 3))
+y <- nv_array(1:18, shape = c(3, 2, 3))
 x \%*\% y
 \dontshow{\}) # examplesIf}
 }

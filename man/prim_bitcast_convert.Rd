@@ -32,7 +32,7 @@ modifying the underlying data.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 \item \code{vectorize}
 }
 }
@@ -41,9 +41,8 @@ modifying the underlying data.
 
 Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}, specified under
 \href{https://openxla.org/stablehlo/spec#bitcast_convert}{bitcast_convert}.
-StableHLO puts the lane axis last, so a width-changing conversion is
-lowered with one \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}} that rotates it to the front, or off the
-front, depending on the direction.
+StableHLO puts the lane axis last; the lowering represents an array by the
+reversed shape, so that is the leading R axis.
 }
 
 \examples{

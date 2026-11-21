@@ -5,18 +5,17 @@ NULL
 # Primitives that work on an extra trailing axis as they are: the element-wise
 # ones, and those whose parameters name axes, which keep their positions in
 # front of the batch axis. anvl's bitcast packs from, or unpacks into, a
-# leading axis, which leaves the batch axis last. The element-wise primitives
-# that take scalar operands get rules of their own below.
+# leading axis, and `prim_top_k()` works along the first axis with the trailing
+# ones as batch axes, which leaves the batch axis last. A scalar operand of an
+# element-wise primitive is broadcast only if it is mapped over (see
+# `batch_operands()`).
 for (prim in c(
   primitives_tagged(c("elementwise", "reduction", "cumulative")),
-  list(prim_rev, prim_concatenate, prim_bitcast_convert)
+  list(prim_rev, prim_concatenate, prim_bitcast_convert, prim_top_k)
 )) {
   prim[["vectorize"]] <- rule_vectorize()
 }
 rm(prim)
-
-prim_clamp[["vectorize"]] <- rule_vectorize(scalar = 2:3)
-prim_ifelse[["vectorize"]] <- rule_vectorize(scalar = 1L)
 
 prim_transpose[["vectorize"]] <- rule_vectorize(params = list(perm = param_axis_map()))
 prim_reshape[["vectorize"]] <- rule_vectorize(params = list(shape = param_shape()))
@@ -59,15 +58,6 @@ prim_sort[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, siz
   )
 })
 
-# `prim_top_k()` works along the last axis, so the batch axis moves in front for
-# the call, and back to the end of every output after it.
-prim_top_k[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
-  x <- inputs[[1L]]
-  n <- naxes(x)
-  out <- prim_top_k(move_axis(x, n, 1L), k = params$k, indices = params$indices)
-  lapply(out, move_axis, from = 1L, to = n)
-})
-
 # The start indices are scalars: the slice starts at the beginning of the batch
 # axis and spans all of it.
 prim_dynamic_slice[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
@@ -90,20 +80,17 @@ prim_dynamic_update_slice[["vectorize"]] <- rule_vectorize(function(inputs, batc
 
 # The batch axis of a batched operand becomes a batching axis when both are
 # batched, and a free axis otherwise: the last free axis of `lhs` or of `rhs`.
-# `dot_general` places the batching axes first, then the free axes of `lhs`,
-# then those of `rhs`, so the batch axis is moved to the end unless it is the
-# last free axis of `rhs` already.
+# `dot_general` places the free axes of `lhs` first, then those of `rhs`, then
+# the batching axes, so a batching axis appended last is the last axis of the
+# output, and a free batch axis is moved there.
 prim_dot_general[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
   lhs <- inputs[[1L]]
   rhs <- inputs[[2L]]
   contracting <- params$contracting_axes
   batching <- params$batching_axes
   n_batching <- length(batching[[1L]])
-  from <- if (all(batched)) {
+  if (all(batched)) {
     batching <- list(c(batching[[1L]], naxes(lhs)), c(batching[[2L]], naxes(rhs)))
-    n_batching + 1L
-  } else if (batched[[1L]]) {
-    naxes(lhs) - length(contracting[[1L]])
   }
   out <- prim_dot_general(
     lhs,
@@ -112,7 +99,15 @@ prim_dot_general[["vectorize"]] <- rule_vectorize(function(inputs, batched, para
     batching_axes = batching,
     precision = params$precision
   )
-  if (is.null(from)) list(out) else list(move_axis(out, from, naxes(out)))
+  if (all(batched)) {
+    return(list(out))
+  }
+  from <- if (batched[[1L]]) {
+    naxes(lhs) - length(contracting[[1L]]) - n_batching
+  } else {
+    naxes(out) - n_batching
+  }
+  list(move_axis(out, from, naxes(out)))
 })
 
 # A draw from a batch of random states draws from each of them (see

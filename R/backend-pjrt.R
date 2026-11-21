@@ -64,6 +64,9 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, xla_options, device) {
     # the default afresh, so a call of literals alone recompiles when the
     # default device changes rather than reusing the old entry.
     default_device = if (is.null(device)) function() default_device("pjrt"),
+    # Buffers hold the reversed shape (see R/lowering-axes.R): the dispatcher
+    # reports and declares R shapes and uploads R data without reordering it.
+    reverse_shapes = TRUE,
     # The default dtypes the program is compiled under are part of the key, so
     # a program compiled under one pair is never served under another.
     context = default_dtypes_context("pjrt")
@@ -232,7 +235,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device, xla_options 
     }
     arr <- const$aval$data
     if (backend(arr) == "plain") {
-      pjrt_buffer(as_array(arr), dtype = dtype(arr), device = device, shape = shape(arr))
+      pjrt_buffer(as_array(arr), dtype = dtype(arr), device = device, shape = rev(shape(arr)), row_major = TRUE)
     } else if (backend(arr) != "pjrt") {
       cli_abort("Found non-PJRT constant in program")
     } else {
@@ -284,7 +287,9 @@ compile_graph_pjrt <- function(graph, donate = character(), device, xla_options 
 #' @section Data representation:
 #' An [`AnvlArray`] with `backend = "pjrt"` wraps a [`pjrt::pjrt_buffer()`]
 #' stored in the `$data` field. The buffer owns the memory holding the array
-#' values and may live on any device supported by PJRT (CPU, CUDA, ...).
+#' values and may live on any device supported by PJRT (CPU, CUDA, ...). It
+#' holds the array's column-major bytes as an XLA array of the reversed shape,
+#' so that uploads and read-backs copy the bytes without reordering them.
 #' Calling [`as_array()`] transfers the buffer contents back to an R
 #' array; calling [`nv_array()`] on an R object uploads it to the requested
 #' device.
@@ -318,29 +323,34 @@ compile_graph_pjrt <- function(graph, donate = character(), device, xla_options 
 AnvlBackendPjrt <- function() {
   backend <- AnvlBackend(
     new_data = function(data, dtype, shape, device, row_major = FALSE) {
-      # A buffer arrives on a device of its own; everything else is placed on
-      # the default when the call names none.
-      if (is.null(device) && !inherits(data, "PJRTBuffer")) {
-        device <- default_device("pjrt")
+      if (inherits(data, "PJRTBuffer")) {
+        return(pjrt_anvl_array_of_buffer(data, dtype, shape, device))
       }
-      buf <- if (is.raw(data)) {
-        pjrt_buffer(data, dtype = dtype, device = device, shape = shape, row_major = row_major)
-      } else {
-        pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
-      }
-      pjrt_anvl_array(buf)
+      # Everything but a buffer is placed on the default device when the call
+      # names none.
+      device <- device %||% default_device("pjrt")
+      # R data is column-major, which is the row-major order of the reversed
+      # shape, so it is copied as it is. Only a raw payload can come in
+      # row-major order (`byrow`), and that is the column-major order of the
+      # reversed shape.
+      row_major_rev <- if (is.raw(data)) !row_major else TRUE
+      pjrt_anvl_array(
+        pjrt_buffer(data, dtype = dtype, device = device, shape = rev(shape), row_major = row_major_rev),
+        shape = as.integer(shape)
+      )
     },
     new_empty = function(dtype, shape, device) {
-      pjrt_anvl_array(pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device %||% default_device("pjrt")))
+      buf <- pjrt::pjrt_empty(dtype = dtype, shape = rev(shape), device = device %||% default_device("pjrt"))
+      pjrt_anvl_array(buf, shape = as.integer(shape))
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    as_array = function(x, check) xlamisc::as_array(x$data, check = check),
-    as_raw = function(x, row_major) xlamisc::as_raw(x$data, row_major = row_major),
+    as_array = function(x, check) pjrt::as_array(x$data, check = check, row_major = TRUE),
+    as_raw = function(x, row_major) xlamisc::as_raw(x$data, row_major = !row_major),
     platform = function(x) pjrt::platform(x$data),
     device = function(x) xlamisc::device(x$data),
     new_device = function(x) pjrt::pjrt_device(x),
-    print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, ...),
+    print_data = function(x, footer, ...) print(x$data, header = FALSE, footer = footer, reversed = TRUE, ...),
     jit = function(f, static, cache_size, donate = character(), xla_options = list(), device = NULL) {
       assert_subset(donate, formalArgs2(f))
       assert_list(xla_options)
@@ -358,15 +368,17 @@ AnvlBackendPjrt <- function() {
   backend
 }
 
-# Wrap a PJRT buffer into an AnvlArray. The dtype/shape of a buffer are
-# immutable, so they are resolved once here and cached on the AnvlArray (as the
-# plain/quickr backends already do). This turns the per-call dtype()/shape()
-# reads on the hot dispatch path into plain field accesses instead of repeated
-# S3-dispatch -> C++/pjrt calls. The device is not cached: a PJRTDevice is an
-# external pointer, which would not survive serializing the array, while the
-# buffer itself does. A caller that knows the buffer's `dtype` (a `DataType`)
-# and `shape` passes them, which saves reading them.
-pjrt_anvl_array <- function(buf, dtype = xlamisc::dtype(buf), shape = xlamisc::shape(buf)) {
+# Wrap a PJRT buffer that holds an array in anvl's storage -- its column-major
+# bytes as an XLA array of the reversed shape -- into an AnvlArray. The
+# dtype/shape of a buffer are immutable, so they are resolved once here and
+# cached on the AnvlArray (as the plain/quickr backends already do). This turns
+# the per-call dtype()/shape() reads on the hot dispatch path into plain field
+# accesses instead of repeated S3-dispatch -> C++/pjrt calls. The device is not
+# cached: a PJRTDevice is an external pointer, which would not survive
+# serializing the array, while the buffer itself does. A caller that knows the
+# array's `dtype` (a `DataType`) and R `shape` passes them, which saves reading
+# them.
+pjrt_anvl_array <- function(buf, dtype = xlamisc::dtype(buf), shape = rev(xlamisc::shape(buf))) {
   structure(
     list(
       data = buf,
@@ -379,3 +391,29 @@ pjrt_anvl_array <- function(buf, dtype = xlamisc::dtype(buf), shape = xlamisc::s
 }
 
 register_backend("pjrt", AnvlBackendPjrt())
+
+# The AnvlArray of a bare PJRTBuffer handed to `nv_array()`. Nothing on a buffer
+# says which layout its bytes are in -- a buffer of shape (3, 2) is pjrt's 3x2
+# array and anvl's 2x3 one -- so a bare buffer is read the way pjrt reads it: its
+# shape is the array's shape and `as_array(buf)` its values. Code that holds a
+# buffer already in anvl's layout wraps it with `pjrt_anvl_array()` instead.
+# `pjrt_buffer()` checks that `dtype`, `shape` and `device`, when given, agree
+# with the buffer's. anvl stores the reversed shape, so a buffer of rank 2 or
+# more is read back column-major and uploaded again; a buffer of rank 0 or 1 is
+# stored as it is.
+pjrt_anvl_array_of_buffer <- function(buf, dtype, shape, device) {
+  buf <- pjrt_buffer(buf, dtype = dtype, device = device, shape = shape)
+  buf_shape <- xlamisc::shape(buf)
+  buf_dtype <- xlamisc::dtype(buf)
+  if (length(buf_shape) <= 1L) {
+    return(pjrt_anvl_array(buf, dtype = buf_dtype, shape = buf_shape))
+  }
+  stored <- pjrt_buffer(
+    xlamisc::as_raw(buf, row_major = FALSE),
+    dtype = as.character(buf_dtype),
+    shape = rev(buf_shape),
+    device = xlamisc::device(buf),
+    row_major = TRUE
+  )
+  pjrt_anvl_array(stored, dtype = buf_dtype, shape = buf_shape)
+}

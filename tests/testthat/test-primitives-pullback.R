@@ -1,4 +1,4 @@
-# most reverse tests are in extra-tests for comparison with torch
+# most pullback tests are in extra-tests for comparison with torch
 # Just a few selected ones that don't use torch are here
 
 test_that("prim_dot_general: vector dot product gradient", {
@@ -219,7 +219,7 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     batching_axes = list(c(4L, 5L), c(1L, 2L))
   )
 
-  # lhs has no free axes, so the free axes of rhs come right after the batching axes
+  # lhs has no free axes, so the free axes of rhs come first, then the batching axes
   # A[b,k] • B[b,k,n] with batching b and contracting k
   A6 <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
   B6 <- nv_array(1:24, shape = c(2, 3, 4), dtype = "f32")
@@ -228,6 +228,17 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     B6,
     contracting_axes = list(2L, 2L),
     batching_axes = list(1L, 1L)
+  )
+
+  # the layout of `nv_matmul()`: trailing batching axes
+  # A[m,k,b1,b2] • B[k,n,b1,b2] with batching (b1,b2) and contracting k
+  A7 <- nv_array(1:(2 * 3 * 2 * 4), shape = c(2, 3, 2, 4), dtype = "f32")
+  B7 <- nv_array(1:(3 * 5 * 2 * 4), shape = c(3, 5, 2, 4), dtype = "f32")
+  check_case(
+    A7,
+    B7,
+    contracting_axes = list(2L, 1L),
+    batching_axes = list(c(3L, 4L), c(3L, 4L))
   )
 })
 
@@ -392,8 +403,8 @@ describe("prim_if", {
     expect_equal(as.numeric(f(nv_scalar(2, "f64"))), cos(2))
   })
 
-  it("differentiates a value an earlier call's reverse rule replaced", {
-    # `prim_sort()`'s reverse rule replaces its forward, so the value the
+  it("differentiates a value an earlier call's pullback rule replaced", {
+    # `prim_sort()`'s pullback rule replaces its forward, so the value the
     # branches closed over is rebuilt before they are differentiated.
     g <- function(p, x) {
       y <- nv_sort(x)
@@ -462,7 +473,7 @@ describe("prim_custom_gradient", {
     prim_custom_gradient(
       list(x = x, n = n),
       fn = pow_loop,
-      rule = rule_reverse(forward = function(inputs, params, required) {
+      rule = rule_pullback(forward = function(inputs, params, required) {
         p <- inputs$x^(inputs$n - 1L)
         list(
           outputs = p * inputs$x,
@@ -720,7 +731,7 @@ describe("prim_custom_gradient", {
         nv_sum(prim_custom_gradient(
           list(x = x),
           fn = function(x) x * x,
-          rule = rule_reverse(forward = function(inputs, params, required) stop("forward was traced"))
+          rule = rule_pullback(forward = function(inputs, params, required) stop("forward was traced"))
         ))
       }
       expect_equal(as.numeric(jit(f)(x)), 14)
@@ -733,7 +744,7 @@ describe("prim_custom_gradient", {
         nv_sum(prim_custom_gradient(
           list(a = a, b = b),
           fn = function(a, b) a * b,
-          rule = rule_reverse(forward = function(inputs, params, required) {
+          rule = rule_pullback(forward = function(inputs, params, required) {
             seen$forward <<- list(names(inputs), params, required)
             list(
               outputs = inputs$a * inputs$b,
@@ -755,7 +766,7 @@ describe("prim_custom_gradient", {
         r <- prim_custom_gradient(
           list(p = p),
           fn = function(p) list(s = p$w + p$b, d = p$w - p$b),
-          rule = rule_reverse(forward = function(inputs, params, required) {
+          rule = rule_pullback(forward = function(inputs, params, required) {
             p <- inputs$p
             list(
               outputs = list(s = p$w + p$b, d = p$w - p$b),
@@ -784,7 +795,7 @@ describe("prim_custom_gradient", {
         nv_sum(prim_custom_gradient(
           list(x = x),
           fn = function(x) x * k,
-          rule = rule_reverse(forward = function(inputs, params, required) {
+          rule = rule_pullback(forward = function(inputs, params, required) {
             list(
               outputs = inputs$x * k,
               backward = function(inputs, outputs, grads, params, required) list(x = grads * k * 2)
@@ -802,7 +813,7 @@ describe("prim_custom_gradient", {
           nv_sum(prim_custom_gradient(
             list(x = x),
             fn = function(x) x * s,
-            rule = rule_reverse(forward = forward(s))
+            rule = rule_pullback(forward = forward(s))
           ))
         }
         jit(gradient(f, wrt = "x"))(x, nv_scalar(2, dtype = "f64"))
@@ -834,7 +845,7 @@ describe("prim_custom_gradient", {
     it("refuses a forward pass that does not return its outputs and a backward pass", {
       differentiate <- function(forward) {
         f <- function(x) {
-          nv_sum(prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule_reverse(forward = forward)))
+          nv_sum(prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule_pullback(forward = forward)))
         }
         jit(gradient(f))(x)
       }
@@ -851,7 +862,7 @@ describe("prim_custom_gradient", {
           nv_sum(prim_custom_gradient(
             list(x = x),
             fn = function(x) x,
-            rule = rule_reverse(forward = function(inputs, params, required) {
+            rule = rule_pullback(forward = function(inputs, params, required) {
               list(
                 outputs = outputs(inputs$x),
                 backward = function(inputs, outputs, grads, params, required) list(x = grads)
@@ -870,7 +881,7 @@ describe("prim_custom_gradient", {
         nv_sum(prim_custom_gradient(
           list(x = x),
           fn = function(x) x,
-          rule = rule_reverse(forward = function(inputs, params, required) {
+          rule = rule_pullback(forward = function(inputs, params, required) {
             list(outputs = inputs$x, backward = function(inputs, outputs, grads, params, required) list())
           })
         ))
@@ -880,7 +891,7 @@ describe("prim_custom_gradient", {
   })
 })
 
-describe("prim_pow reverse", {
+describe("prim_pow pullback", {
   it("gives a zero derivative in the exponent at base 0", {
     f <- jit(gradient(function(y) nv_sum(prim_pow(nv_array(c(0, 2), dtype = "f64"), y))))
     expect_equal(as.numeric(as_array(f(nv_array(c(2, 2), dtype = "f64"))[[1L]])), c(0, 4 * log(2)))
@@ -897,7 +908,7 @@ describe("prim_pow reverse", {
   })
 })
 
-test_that("prim_log reverse", {
+test_that("prim_log pullback", {
   f <- jit(gradient(function(x) {
     nv_log(x)
   }))
@@ -919,7 +930,7 @@ test_that("prim_exp", {
   expect_equal(as_array(grad), exp(2))
 })
 
-test_that("prim_max reverse", {
+test_that("prim_max pullback", {
   f <- jit(gradient(function(x) {
     rows_max <- prim_max(x, axes = 2L, drop = TRUE)
     nv_sum(rows_max, axes = 1L, drop = TRUE)
@@ -943,7 +954,7 @@ test_that("prim_max reverse", {
   )
 })
 
-test_that("prim_min reverse", {
+test_that("prim_min pullback", {
   f <- jit(gradient(function(x) {
     rows_min <- prim_min(x, axes = 2L, drop = TRUE)
     nv_sum(rows_min, axes = 1L, drop = TRUE)
@@ -996,7 +1007,7 @@ test_that("prim_pmin", {
   expect_equal(as_array(grads$y), array(c(0, 0.5, 1), dim = 3))
 })
 
-test_that("prim_convert reverse converts gradients to the input dtype", {
+test_that("prim_convert pullback converts gradients to the input dtype", {
   x_arr <- array(1:6, c(2, 3))
   x <- nv_array(x_arr, dtype = "f32")
   f <- jit(gradient(function(x) {
@@ -1009,7 +1020,7 @@ test_that("prim_convert reverse converts gradients to the input dtype", {
   expect_dtype(grads[[1L]], "f32")
 })
 
-test_that("prim_convert reverse is zero across a non-float data type", {
+test_that("prim_convert pullback is zero across a non-float data type", {
   # `float(int(x))` is a staircase: its derivative is zero almost everywhere,
   # the same answer `prim_floor()` gives for the same function on the reals.
   x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
@@ -1026,14 +1037,14 @@ test_that("prim_convert reverse is zero across a non-float data type", {
   expect_equal(as.numeric(through_int(x)[[1L]]), as.numeric(floor_ref(x)[[1L]]))
 })
 
-test_that("prim_convert reverse passes the gradient through between floats", {
+test_that("prim_convert pullback passes the gradient through between floats", {
   x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
   f <- jit(gradient(function(x) nv_sum(prim_convert(prim_convert(x, "f32"), "f64"))))
   expect_equal(as.numeric(f(x)[[1L]]), c(1, 1, 1))
   expect_dtype(f(x)[[1L]], "f64")
 })
 
-test_that("prim_convert reverse leaves the rest of an expression differentiable", {
+test_that("prim_convert pullback leaves the rest of an expression differentiable", {
   x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
   f <- jit(gradient(function(x) {
     nv_sum(x * nv_scalar(2, "f64") + nv_convert(nv_convert(x, "i32"), "f64"))
@@ -1081,7 +1092,7 @@ test_that("prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le", {
   }
 })
 
-test_that("prim_pad reverse with interior padding", {
+test_that("prim_pad pullback with interior padding", {
   # Interior padding adds padding between elements
   # For input [a, b, c] with interior_padding=1, output is [a, 0, b, 0, c]
   # Gradient flows only to original positions [a, b, c]
@@ -1126,14 +1137,14 @@ test_that("prim_pad reverse with interior padding", {
   expect_equal(g4[[1L]], nv_matrix(rep(1, 6), nrow = 2, ncol = 3, dtype = "f64"))
 })
 
-describe("prim_static_slice reverse", {
+describe("prim_static_slice pullback", {
   it("pads the cotangent of an empty strided slice back to the input shape", {
     f <- jit(gradient(function(x) nv_sum(prim_static_slice(x, 3L, 2L, 2L)) + nv_sum(x)))
     expect_equal(as.numeric(as_array(f(nv_array(as.double(1:6), dtype = "f64"))[[1L]])), rep(1, 6))
   })
 })
 
-describe("prim_pad reverse", {
+describe("prim_pad pullback", {
   it("gives a trimmed element a zero gradient", {
     f <- jit(gradient(function(x) nv_sum(nv_pad(x, 0, low = -1L, high = 0L))))
     expect_equal(as.numeric(as_array(f(nv_array(c(1, 2, 3), dtype = "f64"))[[1L]])), c(0, 1, 1))
@@ -1154,7 +1165,7 @@ describe("prim_pad reverse", {
   })
 })
 
-test_that("prim_dynamic_slice reverse", {
+test_that("prim_dynamic_slice pullback", {
   # Gradient should scatter the incoming gradient back to the input position
   f <- jit(gradient(
     function(x, start_i) {
@@ -1189,7 +1200,7 @@ test_that("prim_dynamic_slice reverse", {
   expect_equal(grad2d, nv_array(c(0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0), dtype = "f64", shape = c(3, 4)))
 })
 
-test_that("prim_dynamic_slice reverse with out-of-bounds", {
+test_that("prim_dynamic_slice pullback with out-of-bounds", {
   # Test that gradient works correctly when indices are clamped
   f <- jit(gradient(
     function(x, start_i) {
@@ -1208,7 +1219,7 @@ test_that("prim_dynamic_slice reverse with out-of-bounds", {
   expect_equal(grad, nv_array(c(0, 0, 0, 0, 0, 1, 1, 1, 1, 1), dtype = "f64", shape = 10L))
 })
 
-test_that("prim_dynamic_update_slice reverse", {
+test_that("prim_dynamic_update_slice pullback", {
   # Test gradient for `x` (zero out the updated region)
   f_x <- jit(gradient(
     function(x, update, start_i) {
@@ -1241,7 +1252,7 @@ test_that("prim_dynamic_update_slice reverse", {
   expect_equal(grad_update, nv_array(c(1, 1, 1), dtype = "f64", shape = 3L))
 })
 
-test_that("prim_dynamic_update_slice reverse with out-of-bounds", {
+test_that("prim_dynamic_update_slice pullback with out-of-bounds", {
   # Test that gradient works correctly when indices are clamped
   f_x <- jit(gradient(
     function(x, update, start_i) {
@@ -1517,7 +1528,7 @@ describe("prim_scatter", {
   })
 })
 
-describe("gather/scatter reverse via subset operators", {
+describe("gather/scatter pullback via subset operators", {
   check <- function(shape, ...) {
     quos <- rlang::enquos(...)
 
@@ -1616,7 +1627,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 })
 
-# argmax / argmin reverse rule short-circuits the gradient to zero.
+# argmax / argmin pullback rule short-circuits the gradient to zero.
 test_that("prim_which_max / prim_which_min have zero gradient", {
   x <- nv_array(c(3, 1, 4), dtype = "f32")
   for (prim in list(prim_which_max, prim_which_min)) {
@@ -1739,31 +1750,39 @@ test_that("prim_sort", {
   expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
 })
 
-test_that("prim_top_k", {
-  for (indices in c(TRUE, FALSE)) {
-    withr::local_seed(42)
-    x_arr <- matrix(rnorm(4 * 6), nrow = 4)
+describe("prim_top_k reverse", {
+  it("scatters the gradient back along axis 1, with any number of batch axes", {
     k <- 3L
-    w_arr <- matrix(as.double(seq_len(4 * k)), nrow = 4)
+    for (x_shape in list(6L, c(6L, 4L), c(5L, 2L, 3L))) {
+      for (indices in c(TRUE, FALSE)) {
+        withr::local_seed(42)
+        x_arr <- array(rnorm(prod(x_shape)), x_shape)
+        out_shape <- replace(x_shape, 1L, k)
+        w_arr <- array(as.double(seq_len(prod(out_shape))), out_shape)
 
-    x_nv <- nv_array(x_arr)
-    w_nv <- nv_array(w_arr)
+        x_nv <- nv_array(x_arr)
+        w_nv <- nv_array(w_arr)
 
-    f_nv <- function(x) {
-      top <- prim_top_k(x, k = k, indices = indices)[[1L]]
-      nv_sum(top * w_nv, axes = c(1L, 2L))
+        f_nv <- function(x) {
+          top <- prim_top_k(x, k = k, indices = indices)[[1L]]
+          nv_sum(top * w_nv)
+        }
+        grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
+
+        # Scatter w along the top-k indices of each column, with the batch
+        # axes flattened into the columns.
+        x_mat <- matrix(x_arr, nrow = x_shape[[1L]])
+        w_mat <- matrix(w_arr, nrow = k)
+        expected_grad <- matrix(0, nrow = nrow(x_mat), ncol = ncol(x_mat))
+        for (j in seq_len(ncol(x_mat))) {
+          top_idx <- order(x_mat[, j], decreasing = TRUE)[seq_len(k)]
+          expected_grad[top_idx, j] <- w_mat[, j]
+        }
+
+        expect_equal(as_array(grad_nv), array(expected_grad, x_shape), tolerance = 1e-5)
+      }
     }
-    grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
-
-    # Scatter w along the top-k indices for each row.
-    expected_grad <- matrix(0, nrow = nrow(x_arr), ncol = ncol(x_arr))
-    for (i in seq_len(nrow(x_arr))) {
-      top_idx <- order(x_arr[i, ], decreasing = TRUE)[seq_len(k)]
-      expected_grad[i, top_idx] <- w_arr[i, ]
-    }
-
-    expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
-  }
+  })
 })
 
 test_that("prim_prod: gradient is safe at zeros", {
@@ -1797,10 +1816,10 @@ test_that("prim_prod: drop = FALSE matches drop = TRUE", {
 })
 
 if (nzchar(system.file(package = "torch"))) {
-  source(system.file("extra-tests", "test-primitives-reverse-torch.R", package = "anvl"), local = TRUE)
+  source(system.file("extra-tests", "test-primitives-pullback-torch.R", package = "anvl"), local = TRUE)
 }
 
-describe("prim_reshape reverse", {
+describe("prim_reshape pullback", {
   it("reshapes the gradient back in column-major order", {
     # d/dx sum(reshape(x) * w) = reshape(w, shape(x)), so a distinct weight per
     # element pins the order the gradient travels back in.
@@ -1812,7 +1831,7 @@ describe("prim_reshape reverse", {
   })
 })
 
-describe("prim_broadcast_in_axes reverse", {
+describe("prim_broadcast_in_axes pullback", {
   it("permutes the gradient back for unsorted broadcast axes", {
     # Distinct weights pin where each element of the gradient lands; c(3, 1, 2)
     # is not its own inverse.
@@ -1861,7 +1880,7 @@ describe("prim_scan", {
     graph <- trace_fn(gradient(f), avals)
     scans <- Filter(\(call) call$primitive$name == "scan", graph$statements)
     out_shapes <- lapply(unlist(lapply(scans, \(call) call$outputs)), \(g) shape(g$aval))
-    expect_false(list(c(3L, 2L, 2L)) %in% out_shapes)
+    expect_false(list(c(2L, 2L, 3L)) %in% out_shapes)
     # Nor does the forward scan carry it, which would cost a copy per step, or
     # compute it again: it reads the copy computed before it.
     fwd <- Filter(\(call) !call$params$reverse, scans)[[1L]]
@@ -1895,7 +1914,7 @@ describe("prim_scan", {
 
     graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
     fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
-    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    stacked <- Filter(\(g) identical(shape(g$aval), c(2L, 3L)), fwd$outputs)
     expect_length(stacked, 2L)
   })
 
@@ -1922,7 +1941,7 @@ describe("prim_scan", {
 
     graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
     fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
-    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    stacked <- Filter(\(g) identical(shape(g$aval), c(2L, 3L)), fwd$outputs)
     expect_length(stacked, 1L)
   })
 
@@ -1988,7 +2007,7 @@ describe("prim_scan", {
     expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x)$x), c(2, 4, 6))
   })
 
-  it("differentiates a value an earlier call's reverse rule replaced", {
+  it("differentiates a value an earlier call's pullback rule replaced", {
     f <- function(x) {
       y <- nv_sort(x)
       body <- function(carry, xs) list(carry = list(a = carry$a + nv_sum(y * y)), out = NULL)
@@ -1999,7 +2018,7 @@ describe("prim_scan", {
 
   it("leaves a carry that does not depend on wrt undifferentiated", {
     # The scan carries the random state the body draws from. That state has no
-    # reverse rule, and needs none: it does not depend on x.
+    # pullback rule, and needs none: it does not depend on x.
     f <- function(x) {
       body <- function(carry, xs) {
         z <- nv_rnorm(integer(), dtype = "f64")
@@ -2201,10 +2220,10 @@ describe("prim_optimization_barrier", {
 describe("prim_convolution", {
   it("has zero gradients when the result is empty", {
     # a width-3 window does not fit into a width-2 input
-    x <- nv_array(1:4, shape = c(1L, 2L, 2L), dtype = "f32")
-    kernel <- nv_array(1:12, shape = c(2L, 2L, 3L), dtype = "f32")
+    x <- nv_array(1:4, shape = c(2L, 2L, 1L), dtype = "f32")
+    kernel <- nv_array(1:12, shape = c(3L, 2L, 2L), dtype = "f32")
     grads <- jit(gradient(function(x, kernel) nv_sum(nv_conv1d(x, kernel))))(x, kernel)
-    expect_equal(as_array(grads[[1L]]), array(0, c(1L, 2L, 2L)))
-    expect_equal(as_array(grads[[2L]]), array(0, c(2L, 2L, 3L)))
+    expect_equal(as_array(grads[[1L]]), array(0, c(2L, 2L, 1L)))
+    expect_equal(as_array(grads[[2L]]), array(0, c(3L, 2L, 2L)))
   })
 })

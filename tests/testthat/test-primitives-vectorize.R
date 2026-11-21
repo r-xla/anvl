@@ -69,6 +69,12 @@ describe("element-wise binary primitives", {
     autotest_vectorize(prim_atan2, y = rand_array(c(2L, 3L)), x = rand_array(c(2L, 3L)))
   })
 
+  it("vectorizes with a scalar operand", {
+    withr::local_seed(1L)
+    autotest_vectorize(prim_mul, lhs = rand_array(c(2L, 3L)), rhs = rand_array(3L))
+    autotest_vectorize(prim_sub, lhs = rand_array(3L), rhs = rand_array(c(2L, 3L)), extra = FALSE)
+  })
+
   it("vectorizes the comparisons", {
     withr::local_seed(1L)
     for (prim in list(prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le)) {
@@ -136,6 +142,17 @@ describe("prim_clamp", {
       x = rand_array(c(2L, 3L)),
       min = rand_array(3L, sample = \(n) stats::runif(n, -1, 0)),
       max = rand_array(3L, sample = \(n) stats::runif(n, 0, 1))
+    )
+  })
+
+  it("vectorizes with a scalar x", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      prim_clamp,
+      x = rand_array(3L),
+      min = rand_array(c(2L, 3L), sample = \(n) stats::runif(n, -1, 0)),
+      max = rand_array(3L, sample = \(n) stats::runif(n, 0, 1)),
+      extra = FALSE
     )
   })
 })

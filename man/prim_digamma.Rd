@@ -22,7 +22,7 @@ Element-wise digamma function (logarithmic derivative of the gamma function).
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
 \item \code{vectorize}
 }
 }

@@ -25,14 +25,31 @@
       ! `initial_state` must have 1 axis.
       x Got (2x3).
 
-# the element-wise rules / refuse operands whose types disagree
+# the element-wise rules / refuse operands whose data types disagree
+
+    Code
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i64", integer()))
+    Condition
+      Error in `assert_same_dtype()`:
+      ! `lhs` and `rhs` must have the same data type.
+      x Got "i32" and "i64".
+
+# the element-wise rules / refuse operands whose shapes disagree, naming the two that do
 
     Code
       infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
     Condition
-      Error in `assert_same_type()`:
-      ! `lhs` and `rhs` must have the same array type.
+      Error in `infer_elementwise_shape()`:
+      ! `lhs` and `rhs` must have the same shape, unless one of them is a scalar.
       x Got i32[4] and i32[6].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
+    Code
+      infer_select(nv_aval("bool", 4L), nv_aval("f32", integer()), nv_aval("f32", 6L))
+    Condition
+      Error in `infer_elementwise_shape()`:
+      ! `test` and `no` must have the same shape, unless one of them is a scalar.
+      x Got bool[4] and f32[6].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
 
 # infer_transpose() / reports the permutation it expected in 1-based axes
 
@@ -110,13 +127,13 @@
       x `x` has shape (3); axis 1 would end up at -3.
       i Got `edge_padding_low` = -3, `edge_padding_high` = -3, `interior_padding` = 0.
 
-# infer_top_k() / refuses a k larger than the last axis
+# infer_top_k() / refuses a k larger than axis 1
 
     Code
-      infer_top_k(nv_aval("f32", c(2L, 3L)), k = 4L, indices = TRUE)
+      infer_top_k(nv_aval("f32", c(3L, 5L)), k = 4L, indices = TRUE)
     Condition
       Error in `infer_top_k()`:
-      ! `k` must not exceed the size of the last axis of `x` (3).
+      ! `k` must not exceed the size of axis 1 of `x` (3).
       x Got 4.
 
 # the inference rules as the primitives reach them / reports an axis the primitive itself does not catch in 1-based terms
@@ -818,17 +835,17 @@
       prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r")
     Condition
       Error in `prim_custom_gradient()`:
-      ! `rule` must be a function, or a `rule_reverse()` with a forward pass.
+      ! `rule` must be a function, or a `rule_pullback()` with a forward pass.
       x Got "r".
 
-# prim_custom_gradient / refuses a reverse rule without a forward pass
+# prim_custom_gradient / refuses a pullback rule without a forward pass
 
     Code
       prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule)
     Condition
       Error in `prim_custom_gradient()`:
-      ! `rule` must have a forward pass where it is a `rule_reverse()`.
-      x Got a reverse rule with only a backward pass.
+      ! `rule` must have a forward pass where it is a `rule_pullback()`.
+      x Got a pullback rule with only a backward pass.
       i Pass a function as `rule` instead: it receives the arguments, the result and its gradient by name.
 
 # prim_custom_gradient / refuses args that are not a list with names
