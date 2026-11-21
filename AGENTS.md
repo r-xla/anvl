@@ -13,8 +13,8 @@ config above. anvl-specific:
 - **Tests are gated behind `ANVL_TEST=1`** -- `tests/testthat.R` only calls `test_check()` when it
   is set, so `R CMD check` in a shell without it runs *no* tests. `.Renviron` sets it (together with
   `PJRT_INSTALL=1`) for work inside the package.
-- Single file: `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
-  `devtools::test(filter = "reverse")`.
+- Single file: `testthat::test_active_file("tests/testthat/test-pullback.R")`, or
+  `devtools::test(filter = "pullback")`.
 - `ANVL_TEST_SKIP_QUICKR=1` skips the (slow) quickr tests. `setup.R` sets `PJRT_CPU_DEVICE_COUNT=2`
   so multi-device tests have something to spread over.
 - `ANVL_DEFAULT_DEVICE` / `ANVL_DEFAULT_DTYPES` are package-level: anvl reads them once when it is
