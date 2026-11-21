@@ -32,9 +32,9 @@
 * Constructing `AnvlArray`s from R objects is now more efficient.
 * The generated XLA programs are more efficient, especially around
   flattening operations.
-* `nv_rnorm()` is up to 5x faster on CPU for large samples, with the same
-  values: an optimisation barrier stops XLA fusing the random bits into the
-  sine and cosine kernel.
+* `nv_rnorm()` is up to 6x faster on CPU for large samples, with the same
+  values: an optimisation barrier stops XLA computing the random draws again
+  for each of their consumers.
 
 # anvl 0.6.0
 

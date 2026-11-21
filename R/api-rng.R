@@ -139,9 +139,9 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
 # standard normals. The radius uses 1 - u1, which lies in (0, 1], so a uniform
 # of exactly 0 gives a finite sample.
 #
-# Barrier to keep random bits apart from the sine and cosine. Without it,
-# XLA on CPU fuses the integer ThreeFry draws of both uniforms into the kernel
-# that computes the sine and cosine, which then barely vectorises.
+# Barrier on radius and theta, before each fans out to two consumers. XLA on CPU
+# treats the ThreeFry draws as cheap and fuses them into every kernel that uses
+# them, so without it the draws are recomputed per consumer.
 box_muller <- function(u1, u2) {
   polar <- nv_optimization_barrier(list(
     radius = nv_sqrt(nv_log(1L - u1) * -2L),
