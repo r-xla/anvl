@@ -2,26 +2,18 @@
 % Please edit documentation in R/higher-order.R
 \name{jacobian}
 \alias{jacobian}
-\alias{hessian}
-\title{Jacobians and Hessians}
+\title{Jacobians}
 \usage{
 jacobian(f, wrt = NULL, mode = "backward")
-
-hessian(f, wrt = NULL, mode = "backward")
 }
 \arguments{
 \item{f}{(\code{function})\cr
-Function to differentiate. For \code{jacobian()}, it can return any (nested)
-list of arrays; for \code{hessian()}, it must return a single float scalar.}
+Function to differentiate. It can return any (nested) list of arrays.}
 
 \item{wrt}{(\code{character} | \code{integer} | \code{NULL})\cr
-Names or positions of the arguments to compute the gradient with respect to.
-Only float arrays can be included; static arguments must not appear in
-\code{wrt}. At call time, an argument in \code{wrt} must be an array with a data
-type, not an R value such as \code{3}, since the data type of its gradient
-would otherwise be undetermined.
-If \code{NULL} (the default), the gradient is computed with respect to all
-arguments (which must all be arrayish in that case).}
+Names or positions of the arguments to differentiate with respect to, as
+for \code{\link[=gradient]{gradient()}}: float arrays, or lists of them, passed as arrays with
+a data type. If \code{NULL} (the default), all arguments.}
 
 \item{mode}{(\code{character(1)})\cr
 \code{"backward"} (the default) or \code{"forward"}: how to compute the Jacobian,
@@ -29,43 +21,29 @@ see Description.}
 }
 \value{
 (\code{function})\cr
-Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}.
-
-For \code{jacobian()}, it returns the value of \code{f} with each of its float
-arrays \code{y} replaced by the derivatives of \code{y}: a named \code{list} with an
-entry per argument of \code{f} (or per \code{wrt} entry), structured like that
-argument, as \code{\link[=gradient]{gradient()}} returns it. In place of each array \code{a} of
-the argument, it holds the derivative of \code{y} with respect to \code{a}, of
-shape \code{c(shape(y), shape(a))} and the data type of \code{y}: its element at
-\verb{[i, j]} is the derivative of \code{y[i]} with respect to \code{a[j]}, for \code{i} and
-\code{j} indices into the axes of \code{y} and \code{a}. An array of the value that is
-not a float has no derivative, and gets \code{NULL}.
-
-For \code{hessian()}, that is the named \code{list} of the gradient's arrays, each
-replaced by that same \code{list} again: the second derivatives of \code{f} with
-respect to the arrays \code{a} and \code{b} are at \verb{[[a]][[b]]}, of shape
-\code{c(shape(a), shape(b))}.
+Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}. It
+returns the value of \code{f} with each of its float arrays \code{y} replaced by the
+derivatives of \code{y}: a named \code{list} with an entry per argument of \code{f} (or
+per \code{wrt} entry), structured like that argument, as \code{\link[=gradient]{gradient()}}
+returns it. In place of each array \code{a} of the argument, it holds the
+derivative of \code{y} with respect to \code{a}, of shape \code{c(shape(y), shape(a))}
+and the data type of \code{y}: its element at \verb{[i, j]} is the derivative of
+\code{y[i]} with respect to \code{a[j]}, for \code{i} and \code{j} indices into the axes of
+\code{y} and \code{a}. An array of the value that is not a float has no
+derivative, and gets \code{NULL}.
 }
 \description{
-Return a new function that computes the Jacobian of \code{f} -- the derivative
-of every element of its value with respect to every element of its
-arguments -- or its Hessian, the Jacobian of its gradient. The returned
-function has the same signature as \code{f}.
-\itemize{
-\item \code{jacobian()} differentiates a function with any value: an array or a
-(nested) list of arrays.
-\item \code{hessian()} differentiates a function that returns a single float scalar
-twice: it is the \code{jacobian()} of the \code{\link[=gradient]{gradient()}} of \code{f}.
-}
+Return a new function that computes the Jacobian of \code{f}: the derivative of
+every element of its value with respect to every element of its arguments.
+\code{f} can return any value, an array or a (nested) list of arrays. The
+returned function has the same signature as \code{f}.
 
 \code{mode} says how the Jacobian is computed. \code{"backward"} pulls back a unit
 cotangent for every element of the value (see \code{\link[=pullback]{pullback()}}), and
 \code{"forward"} pushes forward a unit tangent for every element of the
 arguments in \code{wrt} (see \code{\link[=pushforward]{pushforward()}}), all of them at once with
 \code{\link[=vectorize]{vectorize()}}. So \code{"backward"} is the cheaper one for a value with fewer
-elements than the arguments, and \code{"forward"} for one with more. For
-\code{hessian()}, \code{mode} is that of the Jacobian of the gradient, so \code{"forward"}
-differentiates forward-over-reverse.
+elements than the arguments, and \code{"forward"} for one with more.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -79,12 +57,12 @@ jit(jacobian(f, mode = "forward"))(x)
 g <- function(x, y) x * sum(y)
 jit(jacobian(g))(x, nv_array(c(1, 2)))
 
-# the Hessian of a function returning a scalar: 6 * x on the diagonal
-h <- function(x) sum(x^3L)
-jit(hessian(h))(x)
+# a value with several parts, each with its derivatives
+h <- function(x) list(square = x^2L, total = sum(x))
+jit(jacobian(h))(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-the \href{https://r-xla.github.io/anvl/articles/autodiff.html}{Automatic Differentiation} article, \code{\link[=gradient]{gradient()}}, \code{\link[=pullback]{pullback()}},
-\code{\link[=pushforward]{pushforward()}}
+the \href{https://r-xla.github.io/anvl/articles/autodiff.html}{Automatic Differentiation} article, \code{\link[=hessian]{hessian()}}, \code{\link[=gradient]{gradient()}},
+\code{\link[=pullback]{pullback()}}, \code{\link[=pushforward]{pushforward()}}
 }

@@ -1,49 +1,38 @@
-#' @title Jacobians and Hessians
+#' @title Jacobians
 #' @description
-#' Return a new function that computes the Jacobian of `f` -- the derivative
-#' of every element of its value with respect to every element of its
-#' arguments -- or its Hessian, the Jacobian of its gradient. The returned
-#' function has the same signature as `f`.
-#'
-#' * `jacobian()` differentiates a function with any value: an array or a
-#'   (nested) list of arrays.
-#' * `hessian()` differentiates a function that returns a single float scalar
-#'   twice: it is the `jacobian()` of the [`gradient()`] of `f`.
+#' Return a new function that computes the Jacobian of `f`: the derivative of
+#' every element of its value with respect to every element of its arguments.
+#' `f` can return any value, an array or a (nested) list of arrays. The
+#' returned function has the same signature as `f`.
 #'
 #' `mode` says how the Jacobian is computed. `"backward"` pulls back a unit
 #' cotangent for every element of the value (see [`pullback()`]), and
 #' `"forward"` pushes forward a unit tangent for every element of the
 #' arguments in `wrt` (see [`pushforward()`]), all of them at once with
 #' [`vectorize()`]. So `"backward"` is the cheaper one for a value with fewer
-#' elements than the arguments, and `"forward"` for one with more. For
-#' `hessian()`, `mode` is that of the Jacobian of the gradient, so `"forward"`
-#' differentiates forward-over-reverse.
-#' @inheritParams gradient
+#' elements than the arguments, and `"forward"` for one with more.
 #' @param f (`function`)\cr
-#'   Function to differentiate. For `jacobian()`, it can return any (nested)
-#'   list of arrays; for `hessian()`, it must return a single float scalar.
+#'   Function to differentiate. It can return any (nested) list of arrays.
+#' @param wrt (`character` | `integer` | `NULL`)\cr
+#'   Names or positions of the arguments to differentiate with respect to, as
+#'   for [`gradient()`]: float arrays, or lists of them, passed as arrays with
+#'   a data type. If `NULL` (the default), all arguments.
 #' @param mode (`character(1)`)\cr
 #'   `"backward"` (the default) or `"forward"`: how to compute the Jacobian,
 #'   see Description.
 #' @return (`function`)\cr
-#'   Has the same formals as `f` and must be called inside [`jit()`].
-#'
-#'   For `jacobian()`, it returns the value of `f` with each of its float
-#'   arrays `y` replaced by the derivatives of `y`: a named `list` with an
-#'   entry per argument of `f` (or per `wrt` entry), structured like that
-#'   argument, as [`gradient()`] returns it. In place of each array `a` of
-#'   the argument, it holds the derivative of `y` with respect to `a`, of
-#'   shape `c(shape(y), shape(a))` and the data type of `y`: its element at
-#'   `[i, j]` is the derivative of `y[i]` with respect to `a[j]`, for `i` and
-#'   `j` indices into the axes of `y` and `a`. An array of the value that is
-#'   not a float has no derivative, and gets `NULL`.
-#'
-#'   For `hessian()`, that is the named `list` of the gradient's arrays, each
-#'   replaced by that same `list` again: the second derivatives of `f` with
-#'   respect to the arrays `a` and `b` are at `[[a]][[b]]`, of shape
-#'   `c(shape(a), shape(b))`.
-#' @seealso `r roxy_article("autodiff")`, [`gradient()`], [`pullback()`],
-#'   [`pushforward()`]
+#'   Has the same formals as `f` and must be called inside [`jit()`]. It
+#'   returns the value of `f` with each of its float arrays `y` replaced by the
+#'   derivatives of `y`: a named `list` with an entry per argument of `f` (or
+#'   per `wrt` entry), structured like that argument, as [`gradient()`]
+#'   returns it. In place of each array `a` of the argument, it holds the
+#'   derivative of `y` with respect to `a`, of shape `c(shape(y), shape(a))`
+#'   and the data type of `y`: its element at `[i, j]` is the derivative of
+#'   `y[i]` with respect to `a[j]`, for `i` and `j` indices into the axes of
+#'   `y` and `a`. An array of the value that is not a float has no
+#'   derivative, and gets `NULL`.
+#' @seealso `r roxy_article("autodiff")`, [`hessian()`], [`gradient()`],
+#'   [`pullback()`], [`pushforward()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- function(x) x^2L
@@ -56,9 +45,9 @@
 #' g <- function(x, y) x * sum(y)
 #' jit(jacobian(g))(x, nv_array(c(1, 2)))
 #'
-#' # the Hessian of a function returning a scalar: 6 * x on the diagonal
-#' h <- function(x) sum(x^3L)
-#' jit(hessian(h))(x)
+#' # a value with several parts, each with its derivatives
+#' h <- function(x) list(square = x^2L, total = sum(x))
+#' jit(jacobian(h))(x)
 jacobian <- function(f, wrt = NULL, mode = "backward") {
   assert_function(f)
   wrt <- resolve_transformation_args(f, wrt, "wrt")
@@ -66,8 +55,39 @@ jacobian <- function(f, wrt = NULL, mode = "backward") {
   jacobian_fn(f, wrt, mode, "jacobian")
 }
 
-#' @rdname jacobian
+#' @title Hessians
+#' @description
+#' Return a new function that computes the Hessian of `f`, a function that
+#' returns a single float scalar: its second derivatives with respect to
+#' every two elements of its arguments. It is the [`jacobian()`] of the
+#' [`gradient()`] of `f`. The returned function has the same signature as
+#' `f`.
+#' @inheritParams jacobian
+#' @param f (`function`)\cr
+#'   Function to differentiate. Must return a single float scalar.
+#' @param mode (`character(1)`)\cr
+#'   `"backward"` (the default) or `"forward"`: how [`jacobian()`] computes
+#'   the Jacobian of the gradient, so `"forward"` differentiates
+#'   forward-over-reverse.
+#' @return (`function`)\cr
+#'   Has the same formals as `f` and must be called inside [`jit()`]. It
+#'   returns a named `list` with an entry per argument of `f` (or per `wrt`
+#'   entry), structured like that argument, as [`gradient()`] returns it, with
+#'   each array of it replaced by that same `list` again: the second
+#'   derivatives of `f` with respect to the arrays `a` and `b` are at
+#'   `[[a]][[b]]`, of shape `c(shape(a), shape(b))`.
+#' @seealso `r roxy_article("autodiff")`, [`jacobian()`], [`gradient()`]
 #' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' f <- function(x) sum(x^3L)
+#' x <- nv_array(c(1, 2, 3))
+#' # 6 * x on the diagonal
+#' jit(hessian(f))(x)
+#' jit(hessian(f, mode = "forward"))(x)
+#'
+#' # the second derivatives with respect to two arguments
+#' g <- function(x, y) sum(x^2L * y)
+#' jit(hessian(g))(x, nv_array(c(4, 5, 6)))
 hessian <- function(f, wrt = NULL, mode = "backward") {
   assert_function(f)
   wrt <- resolve_transformation_args(f, wrt, "wrt")
