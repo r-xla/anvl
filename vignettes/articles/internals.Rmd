@@ -138,14 +138,49 @@ program <- pjrt::pjrt_program(src = hlo_str, format = "mlir")
 exec <- pjrt::pjrt_compile(program)
 ```
 
-To run the function, we need to extract the underlying buffers from the arrays before passing them to the executable, which will output a `PJRTBuffer` that we can easily convert to an `AnvlArray`.
+To run the function, we need to extract the underlying buffers from the arrays before passing them to the executable, which will output a `PJRTBuffer`.
+It holds the result the way anvl stores every array, with its shape reversed (see [Axis Reversal](#axis-reversal) below), so we read it back with `row_major = TRUE`.
 
 ```{r}
 x <- nv_scalar(3, "f32")
 y <- nv_scalar(4, "f32")
 out <- pjrt::pjrt_execute(exec, x$data, y$data)
 out
-nv_array(out)
+as_array(out, row_major = TRUE)
+```
+
+### Axis Reversal
+
+R arrays are column-major, while XLA's arrays are row-major. The two agree once every axis is reversed: the column-major bytes of an array of shape `(d1, ..., dn)` are exactly the row-major bytes of an array of shape `(dn, ..., d1)`.
+For example, R holds `A <- matrix(1:6, ncol = 2L)` in memory as `c(1, 2, 3, 4, 5, 6)` and `B <- matrix(7:10, nrow = 2L)` as `c(7, 8, 9, 10)`, and read row-major with their shapes reversed, these bytes are `t(A)` and `t(B)`.
+
+So the lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape `(dn, ..., d1)`, and the pjrt backend stores it that way: an upload copies R's bytes as they are, without a transpose, and so does a read-back.
+Read as an array of its own shape, as `pjrt::as_array()` does, the buffer of `A` is `t(A)`:
+
+```{r}
+a <- nv_array(matrix(1:6, ncol = 2L), dtype = "f32")
+pjrt::as_array(a$data)
+```
+
+The lowering rules compute on these transposes.
+For `C <- A %*% B`, XLA holds `t(A)` and `t(B)` and computes `t(B) %*% t(A)`, which is `t(C)` -- and `t(C)`, with its shape reversed, is the `AnvlArray` `C`.
+So the lowering of `nv_matmul()` passes its operands to `stablehlo.dot_general` the other way round:
+
+```{r}
+graph <- trace_fn(nv_matmul, list(x = nv_aval("f32", c(3L, 2L)), y = nv_aval("f32", c(2L, 2L))))
+stablehlo(graph)[[1L]]
+```
+
+R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R's first axis -- the contiguous one -- is XLA's minor dimension, and trailing R axes are XLA's major ones.
+XLA's kernels want batch axes outermost in memory, which are the trailing R axes, so anvl's batch axes come last.
+To XLA, every program anvl builds is a row-major one, which is the happy path its kernels and its compiler are optimized for.
+
+Every lowering rule maps the axis numbers of its parameters accordingly, and the StableHLO program shows the reversed shapes.
+An array of shape `(2, 3)` is a `tensor<3x2xf32>`, and a column-major reshape is a single row-major `stablehlo.reshape` of the reversed shapes:
+
+```{r}
+graph <- trace_fn(function(x) nv_reshape(x, c(3L, 2L)), list(x = nv_aval("f32", c(2L, 3L))))
+stablehlo(graph)[[1L]]
 ```
 
 ## The User Interface

@@ -109,7 +109,7 @@ nv_broadcast_scalars <- jit(function(...) {
   }
 
   lapply(args, \(x) {
-    if (length(shape(x)) == 0L) {
+    if (naxes(x) == 0L) {
       nv_broadcast_to(x, target_shape)
     } else {
       x
@@ -2287,11 +2287,13 @@ nv_round <- function(x, method = "nearest_even") {
 #' @title Matrix Multiplication
 #' @description
 #' Matrix multiplication of two arrays. You can also use the `%*%` operator.
-#' Supports batched matrix multiplication when inputs have more than 2 axes.
+#' Supports batched matrix multiplication: above rank 2, the first two axes
+#' are the matrix and the trailing ones are batch axes, which both operands
+#' must share.
 #' @section Shapes:
-#' - `x`: `(b1, ..., bk, m, n)`
-#' - `y`: `(b1, ..., bk, n, p)`
-#' - output: `(b1, ..., bk, m, p)`
+#' - `x`: `(m, n, b1, ..., bk)`
+#' - `y`: `(n, p, b1, ..., bk)`
+#' - output: `(m, p, b1, ..., bk)`
 #' @param x,y ([`arrayish`])\cr
 #'   Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
 #'   [promoted to a common data type][nv_promote_to_common()]. An R value
@@ -2309,6 +2311,10 @@ nv_round <- function(x, method = "nearest_even") {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
 #' nv_matmul(x, y)
+#' x %*% y
+#' # a batch of three such products along the trailing axis
+#' x <- nv_array(1:18, shape = c(2, 3, 3))
+#' y <- nv_array(1:18, shape = c(3, 2, 3))
 #' x %*% y
 #' @export
 nv_matmul <- jit(
@@ -2331,28 +2337,28 @@ nv_matmul <- jit(
         x = "{.arg x} is {shape_repr(shape(x))} and {.arg y} is {shape_repr(shape(y))}." # nolint
       ))
     }
-    inner_x <- shape(x)[naxes(x)]
-    inner_y <- shape(y)[naxes(y) - 1L]
+    inner_x <- shape(x)[2L]
+    inner_y <- shape(y)[1L]
     if (inner_x != inner_y) {
       cli_abort(c(
         "{.arg x} and {.arg y} are not conformable.",
-        x = "The last axis of {.arg x} has size {inner_x}, but the second-to-last axis of {.arg y} has size {inner_y}." # nolint
+        x = "Axis 2 of {.arg x} has size {inner_x}, but axis 1 of {.arg y} has size {inner_y}."
       ))
     }
-    nbatch <- naxes(x) - 2L
-    batch_x <- shape(x)[seq_len(nbatch)]
-    batch_y <- shape(y)[seq_len(nbatch)]
+    batch_axes <- seq_len(naxes(x) - 2L) + 2L
+    batch_x <- shape(x)[batch_axes]
+    batch_y <- shape(y)[batch_axes]
     if (!identical(batch_x, batch_y)) {
       cli_abort(c(
-        "{.arg x} and {.arg y} must have the same batch axes -- the axes before the last two.",
+        "{.arg x} and {.arg y} must have the same batch axes -- the axes after the first two.",
         x = "{.arg x} has {shape_repr(batch_x)} and {.arg y} has {shape_repr(batch_y)}." # nolint
       ))
     }
     prim_dot_general(
       x,
       y,
-      contracting_axes = list(naxes(x), naxes(y) - 1L),
-      batching_axes = list(seq_len(nbatch), seq_len(nbatch)),
+      contracting_axes = list(2L, 1L),
+      batching_axes = list(batch_axes, batch_axes),
       precision = precision
     )
   },
@@ -2362,11 +2368,12 @@ nv_matmul <- jit(
 #' @title Cholesky Decomposition
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-#' Supports batched inputs: axes before the last two are batch axes.
+#' Supports batched inputs: the first two axes form the square matrix and any
+#' trailing ones are batch axes.
 #' @details
 #' Differentiation is only implemented for a single matrix: a [gradient()] of a
 #' batched decomposition errors.
-#' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the last two forming the square matrix and any leading ones batch axes
+#' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the first two forming the square matrix and any trailing ones batch axes
 #' @template param_unary_x_tofloat
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
@@ -2477,17 +2484,17 @@ nv_solve <- jit(function(a, b) {
 #' depending on `transpose`.
 #' @details
 #' As a convenience, `b` may have one fewer axis than `a` (a single
-#' right-hand side per batch, shape `(B..., n)` for `a` of shape
-#' `(B..., n, n)`). It is reshaped internally to a column (`left =
+#' right-hand side per batch, shape `(n, b1, ..., bk)` for `a` of shape
+#' `(n, n, b1, ..., bk)`). It is reshaped internally to a column (`left =
 #' TRUE`) or row (`left = FALSE`) and reshaped back on the way out.
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
 #'
 #' Differentiation is only implemented for a single system: a [gradient()] of a
 #' batched solve errors.
 #' @param a ([`arrayish`])\cr
-#'   Triangular coefficient matrix with at least 2 axes. The last two
-#'   axes must be equal; any leading axes are batch axes. Can be any numeric
-#'   data type: `a` and `b` are
+#'   Triangular coefficient matrix with at least 2 axes. The first two
+#'   axes must be of equal size; any trailing axes are batch axes. Can be any
+#'   numeric data type: `a` and `b` are
 #'   [promoted to a common data type][nv_promote_to_common()] and that is then
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, since the solve is a float one. An R value
@@ -2495,16 +2502,16 @@ nv_solve <- jit(function(a, b) {
 #'   [data type category][dtype_categories], and settles on the default float when
 #'   neither has one.
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
-#'   * full rank — shape `(B..., n, k)` when `left = TRUE`, or
-#'     `(B..., k, n)` when `left = FALSE`;
-#'   * one rank less, shape `(B..., n)`, meaning a single column
+#'   Right-hand side. For `a` of shape `(n, n, b1, ..., bk)`, `b` may be either:
+#'   * full rank — shape `(n, m, b1, ..., bk)` when `left = TRUE`, or
+#'     `(m, n, b1, ..., bk)` when `left = FALSE`;
+#'   * one rank less, shape `(n, b1, ..., bk)`, meaning a single column
 #'     (`left = TRUE`) or row (`left = FALSE`) per batch — it
 #'     is reshaped internally and the reshape is undone on the result so
 #'     the output rank matches `b`.
 #'
-#'   `b`'s batch axes (`B...`) must match `a`'s exactly. It is promoted
-#'   together with `a` -- see `a`.
+#'   `b`'s trailing batch axes (`b1, ..., bk`) must match `a`'s exactly. It is
+#'   promoted together with `a` -- see `a`.
 #' @param left (`logical(1)`)\cr
 #'   If `TRUE` (default), solve `op(a) %*% x = b`; if `FALSE`,
 #'   solve `x %*% op(a) = b`.
@@ -2553,22 +2560,18 @@ nv_triangular_solve <- jit(
     }
 
     # Convenience: accept a `b` whose rank is one less than `a`'s. The
-    # primitive requires rank(b) == rank(a); for left = TRUE we append
-    # a trailing 1 (column vector per batch), for left = FALSE we
-    # insert a 1 before the last axis (row vector per batch). The shape is
-    # restored on the way out. Nothing is ambiguous about the broadcast since
-    # we require exact shape match for the batch axes.
+    # primitive requires rank(b) == rank(a); for left = TRUE we insert a 1
+    # after the first axis (a column per batch), for left = FALSE we prepend
+    # a 1 (a row per batch). The shape is restored on the way out. Nothing is
+    # ambiguous about the broadcast since we require exact shape match for the
+    # batch axes.
     b_is_vector <- rank_b == rank_a - 1L
     if (b_is_vector) {
-      n <- if (left) a_shape[rank_a - 1L] else a_shape[rank_a]
-      if (b_shape[length(b_shape)] != n) {
-        cli_abort("{.arg b} must have size {n} in its last axis to match {.arg a}")
+      n <- a_shape[[if (left) 1L else 2L]]
+      if (b_shape[[1L]] != n) {
+        cli_abort("{.arg b} must have size {n} in its first axis to match {.arg a}")
       }
-      b <- if (left) {
-        prim_reshape(b, shape = c(b_shape, 1L))
-      } else {
-        prim_reshape(b, shape = c(b_shape[-length(b_shape)], 1L, n))
-      }
+      b <- prim_reshape(b, shape = if (left) c(n, 1L, b_shape[-1L]) else c(1L, b_shape))
     }
 
     x <- prim_triangular_solve(
@@ -2964,22 +2967,23 @@ nv_eye <- jit(
   if (nan_rm && is_dtype_float(peek_dtype(x))) nv_ifelse(nv_is_nan(x), value, x) else x
 }
 
-# Gather `axes` into a single trailing axis, so an operation that only ever
-# handles one axis -- a sort, an arg-reduction -- can reduce several at once by
-# ranking their elements together. `axes` must already be resolved and sorted.
-# The reshape is column-major, so a position along the merged axis is the
-# column-major linear index within the block of `axes`, like `which.max()`
-# reports for a whole array. Returns the reshaped array along with the shape
-# its kept axes take afterwards, which `drop = FALSE` restores the reduced axes
-# into at size 1.
+# Gather `axes` into a single leading axis, so an operation that only ever
+# handles one axis -- a top-k, a sort, an arg-reduction -- can reduce several at
+# once by ranking their elements together. Axis 1 is the contiguous axis, the
+# one `prim_top_k()` works along, so reducing leading axes moves nothing.
+# `axes` must already be resolved and sorted. The reshape is column-major, so a
+# position along the merged axis is the column-major linear index within the
+# block of `axes`, like `which.max()` reports for a whole array. Returns the
+# reshaped array along with the shape its kept axes take afterwards, which
+# `drop = FALSE` restores the reduced axes into at size 1.
 .flatten_reduce_axes <- function(x, axes, drop) {
   x_shape <- shape(x)
   keep <- setdiff(seq_along(x_shape), axes)
-  perm <- c(keep, axes)
+  perm <- c(axes, keep)
   if (!identical(perm, seq_along(x_shape))) {
     x <- prim_transpose(x, perm = perm)
   }
-  flat_shape <- c(x_shape[keep], as.integer(prod(x_shape[axes])))
+  flat_shape <- c(as.integer(prod(x_shape[axes])), x_shape[keep])
   if (!identical(shape(x), flat_shape)) {
     x <- prim_reshape(x, flat_shape)
   }
@@ -3518,21 +3522,23 @@ nv_while <- prim_while
 #' stacking each step's output into preallocated buffers.
 #'
 #' At step `t`, `body` receives the current carry and the step's slice of
-#' `xs` (taken along axis 1, with that unit axis dropped; a 1-D leaf
+#' `xs` (taken along the last axis, with that axis dropped; a 1-D leaf
 #' yields a scalar), and must return
 #' `list(carry = <same structure as init>, out = <arrays to stack>)`.
-#' The stacked `out` buffers gain a new leading axis of size `steps`.
+#' The stacked `out` buffers gain a new trailing axis of size `steps`. Like a
+#' batch axis, the step axis trails, so each step is a contiguous block of
+#' memory.
 #'
 #' The whole loop, written out in R:
 #'
 #' ```r
 #' carry <- init
-#' out <- <empty, `steps` rows>
+#' out <- <empty, of size `steps` along a new last axis>
 #' order <- if (reverse) rev(seq_len(steps)) else seq_len(steps)
 #' for (t in order) {
-#'   step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+#'   step <- body(carry, xs[..., t])  # `x` is NULL when `xs` is empty
 #'   carry <- step$carry
-#'   out[t, ...] <- step$out          # position t, not the loop's position
+#'   out[..., t] <- step$out          # position t, not the loop's position
 #' }
 #' list(carry = carry, out = out)
 #' ```
@@ -3541,9 +3547,9 @@ nv_while <- prim_while
 #'   Initial carry: a single array or a (possibly nested) named list.
 #'   Every slot must keep a fixed shape and dtype across steps
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
-#'   Per-step inputs, sliced along axis 1. All leaves must agree on
-#'   the size of axis 1. `NULL` or a list with no leaves runs a counted
-#'   loop over `steps` steps instead.
+#'   Per-step inputs, sliced along their last axis. All leaves must agree
+#'   on the size of the last axis. `NULL` or a list with no leaves runs a
+#'   counted loop over `steps` steps instead.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning
 #'   `list(carry = , out = )`. `out` may be a single array, a (nested)
@@ -3551,15 +3557,15 @@ nv_while <- prim_while
 #'   must be identical at every step. `x` is `NULL` when `xs` is empty.
 #' @param steps (`integer(1)` | `NULL`)\cr
 #'   Static trip count. Required when `xs` is empty; otherwise inferred
-#'   from (and checked against) axis 1 of `xs`. A trip count of `0` runs
-#'   no step.
+#'   from (and checked against) the last axis of `xs`. A trip count of `0`
+#'   runs no step.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run `t = steps, ..., 1`; each step still reads
 #'   `xs` at position `t` and writes its output at position `t`, so a
 #'   reverse scan consumes and produces arrays in the original order.
 #' @return `list(carry = , out = )`: the final carry (same structure as
 #'   `init`) and the stacked outputs (structure of `body`'s `out`, each
-#'   leaf gaining a leading axis of size `steps`).
+#'   leaf gaining a trailing axis of size `steps`).
 #' @section Gradients:
 #' Unlike [nv_while()], a scan is differentiable with [gradient()], with
 #' respect to `init`, `xs` and the arrays `body` closes over. The forward pass
@@ -3567,11 +3573,19 @@ nv_while <- prim_while
 #' takes grows linearly with `steps`.
 #' @seealso [prim_scan()], [nv_while()], [nv_cumsum()] for fixed associative scans.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # cumulative sum along axis 1
+#' # cumulative sum
 #' x <- nv_array(c(1, 2, 3, 4))
 #' nv_scan(
 #'   init = nv_scalar(0),
 #'   xs = x,
+#'   body = function(carry, x) list(carry = carry + x, out = carry + x)
+#' )$out
+#'
+#' # running sums of the columns of a matrix: each step reads a column
+#' m <- nv_array(matrix(c(1, 2, 3, 4, 5, 6), nrow = 2L))
+#' nv_scan(
+#'   init = nv_array(c(0, 0)),
+#'   xs = m,
 #'   body = function(carry, x) list(carry = carry + x, out = carry + x)
 #' )$out
 #'
@@ -3597,13 +3611,13 @@ nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
     if (!length(xs_flat)) {
       cli_abort("{.arg steps} is required when {.arg xs} is empty")
     }
-    # Reading axis 1 needs there to be one; the other leaves are checked
-    # against the count that comes out of this one.
+    # Reading the last axis needs there to be one; the other leaves are
+    # checked against the count that comes out of this one.
     s <- shape(xs_flat[[1L]])
     if (!length(s)) {
       cli_abort("every array in {.arg xs} must have at least one axis.")
     }
-    steps <- as.integer(s[[1L]])
+    steps <- as.integer(s[[length(s)]])
   }
 
   prim_scan(init, xs, body, steps = steps, reverse = reverse)
@@ -4118,8 +4132,8 @@ nv_triu <- jit(
 #' @title Cross Product (Matrix)
 #' @description
 #' Computes `t(x) %*% y`. If `y` is missing, computes `t(x) %*% x`.
-#' Above rank 2 the last two axes are the matrix and the leading ones are batch
-#' axes, as in [nv_matmul()]: only the matrix is transposed.
+#' Above rank 2 the first two axes are the matrix and the trailing ones are
+#' batch axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param x ([`arrayish`])\cr
 #'   An array with at least 2 axes, as for [base::crossprod()]. Can be any numeric
 #'   data type; `x` and `y` are
@@ -4142,8 +4156,8 @@ nv_crossprod <- jit(function(x, y = NULL) {
 #' @title Transpose Cross Product (Matrix)
 #' @description
 #' Computes `x %*% t(y)`. If `y` is missing, computes `x %*% t(x)`.
-#' Above rank 2 the last two axes are the matrix and the leading ones are batch
-#' axes, as in [nv_matmul()]: only the matrix is transposed.
+#' Above rank 2 the first two axes are the matrix and the trailing ones are
+#' batch axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param x ([`arrayish`])\cr
 #'   An array with at least 2 axes, as for [base::tcrossprod()]. Can be any numeric
 #'   data type; `x` and `y` are
@@ -4426,17 +4440,17 @@ nv_top_k <- jit(
     }
     k <- as.integer(k)
 
-    # `prim_top_k` reads the last axis only, so several axes are gathered into
-    # one first -- which is what makes the indices index their column-major
-    # flattening -- and the `k` axis is moved back to where the first of them
-    # was.
+    # `prim_top_k` reads axis 1 only, so several axes are gathered into one
+    # leading axis first -- which is what makes the indices index their
+    # column-major flattening -- and the `k` axis is moved back to where the
+    # first of them was.
     flat <- .flatten_reduce_axes(x, axes, drop = TRUE)
     out <- prim_top_k(flat$x, k = k, indices = indices)
     keep <- setdiff(seq_len(rank), axes)
     out_rank <- length(keep) + 1L
     perm <- append(
-      seq_len(out_rank - 1L),
-      out_rank,
+      seq_len(out_rank - 1L) + 1L,
+      1L,
       after = sum(keep < axes[[1L]])
     )
     restore <- function(v) {
@@ -4565,7 +4579,7 @@ nv_quantile <- jit(
     x <- flat$x
 
     rank <- naxes(x)
-    axis <- rank
+    axis <- 1L
     shp <- shape(x)
     K <- length(probs)
     probs <- as.numeric(probs)
@@ -4696,15 +4710,10 @@ nv_quantile <- jit(
     bad <- if (nan_rm) n_valid_kd == 0L else prim_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
 
-    # Unpack the trailing axis the reduced ones were gathered into: dropped, or
-    # restored at size 1 in their original positions. For array `probs`, the K
-    # axis moves from the back, where it is now, to the front.
-    if (is_probs_array) {
-      out <- prim_transpose(out, perm = c(axis, seq_len(rank - 1L)))
-      prim_reshape(out, c(K, flat$keep_shape))
-    } else {
-      prim_reshape(out, flat$keep_shape)
-    }
+    # Unpack the leading axis the reduced ones were gathered into: dropped, or
+    # restored at size 1 in their original positions. For array `probs`, it
+    # holds the K quantiles and stays in front.
+    prim_reshape(out, if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape)
   },
   static = 2:6
 )
@@ -4857,40 +4866,56 @@ nv_which_min <- jit(
 # NaN in an integer, so we surface "a NaN was here" by returning the first NaN's
 # index instead.
 .nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
-  flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
-  x <- flat$x
-  axis <- naxes(x)
-  result <- prim_arg(x, axis = axis)
+  axes <- sort(.resolve_reduce_axes(x, axes))
+  # A single axis is reduced where it is; several are merged into one first.
+  if (length(axes) == 1L) {
+    axis <- axes
+    keep_shape <- NULL
+  } else {
+    flat <- .flatten_reduce_axes(x, axes, drop)
+    x <- flat$x
+    axis <- 1L
+    keep_shape <- flat$keep_shape
+    drop <- TRUE
+  }
+  result <- prim_arg(x, axis = axis, drop = drop)
   if (!nan_rm && is_dtype_float(peek_dtype(x))) {
     # argmax on the bool mask returns the index of the first TRUE (tie-break:
     # smallest index) — exactly the first NaN's position — or 1 if no NaN
     # exists. `any_nan` disambiguates those two cases.
     nan_mask <- nv_is_nan(x)
-    any_nan <- prim_any(nan_mask, axes = axis)
-    first_nan_idx <- prim_which_max(nan_mask, axis = axis)
+    any_nan <- prim_any(nan_mask, axes = axis, drop = drop)
+    first_nan_idx <- prim_which_max(nan_mask, axis = axis, drop = drop)
     result <- nv_ifelse(any_nan, first_nan_idx, result)
   }
-  prim_reshape(result, flat$keep_shape)
+  if (is.null(keep_shape)) result else prim_reshape(result, keep_shape)
 }
 
-# Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.
+# The axis numbers (1-based) of the layouts of nv_conv*: the spatial axes
+# first, then the channels (the kernel's input channels), and last the batch
+# (the kernel's output channels). The spatial axes go to `prim_convolution()`
+# last to first, which lists them in XLA's dimension order, so the lowering
+# builds the convolution of XLA's NC(D)HW layout. The per-spatial-axis
+# parameters pair with them by position and have to be reversed to match.
 .nv_conv_axis_numbers <- function(n_spatial) {
-  spatial <- 3:(2L + n_spatial)
+  spatial <- rev(seq_len(n_spatial))
+  channel <- n_spatial + 1L
+  last <- n_spatial + 2L
   list(
-    x_batch_axis = 1L,
-    x_feature_axis = 2L,
+    x_batch_axis = last,
+    x_feature_axis = channel,
     x_spatial_axes = spatial,
-    kernel_output_feature_axis = 1L,
-    kernel_input_feature_axis = 2L,
+    kernel_output_feature_axis = last,
+    kernel_input_feature_axis = channel,
     kernel_spatial_axes = spatial,
-    output_batch_axis = 1L,
-    output_feature_axis = 2L,
+    output_batch_axis = last,
+    output_feature_axis = channel,
     output_spatial_axes = spatial
   )
 }
 
 # Normalize a stride/dilation/padding arg to length n_spatial.
-.nv_conv_vec <- function(x, n, name) {
+.nv_conv_vec <- function(x, n, name, lower = NULL) {
   x <- as.integer(x)
   if (length(x) == 1L) {
     x <- rep(x, n)
@@ -4898,32 +4923,44 @@ nv_which_min <- jit(
   if (length(x) != n) {
     cli_abort("{.arg {name}} must have length 1 or {n}.")
   }
+  if (!is.null(lower) && any(x < lower)) {
+    cli_abort("{.arg {name}} must be at least {lower} along every spatial axis, not {x}.")
+  }
   x
 }
 
 #' @title 1D Convolution
 #' @description
-#' Torch-style 1D convolution in NCW layout: `x` is
-#' `[batch, in_channels, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kW]`, output is
-#' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
+#' 1D convolution like torch's `nnf_conv1d()`, but with the axes in reverse
+#' order: width, channels, batch.
+#' @section Shapes:
+#' - `x`: `(W, C_in, N)`
+#' - `kernel`: `(kW, C_in / groups, C_out)`
+#' - output: `(W_out, C_out, N)`, where
+#'   `W_out = floor((W + 2 * padding - dilation * (kW - 1) - 1) / stride) + 1`
+#' @param x ([`arrayish`])\cr Input with the shape given under Shapes. Can be
+#'   any data type; `x` and `kernel` are
+#'   [promoted to a common data type][nv_promote_to_common()]. An R value
+#'   assumes the other operand's data type, and materializes at its
 #'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
+#' @param kernel ([`arrayish`])\cr Kernel with the shape given under Shapes.
 #'   Promoted together with `x` -- see `x`.
-#' @param stride,padding,dilation (`integer()`)\cr Length 1.
-#' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
+#' @param stride (`integer(1)`)\cr Step between neighbouring window positions.
+#' @param padding (`integer(1)`)\cr Number of zeros added on each side of the
+#'   spatial axis.
+#' @param dilation (`integer(1)`)\cr Spacing between the kernel's elements.
+#' @param groups (`integer(1)`)\cr Number of groups the channels are split into:
+#'   the `g`-th block of input channels is convolved with the `g`-th block of
+#'   output channels only. It must divide `C_in` and `C_out`, and
+#'   `groups = C_in` is a depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, width 5, convolved with a width-3 kernel
-#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-#' kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' # width 5, one channel, a batch of one, convolved with a width-3 kernel
+#' x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+#' kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
 #' nv_conv1d(x, kernel)
 #'
 #' # `padding = 1` keeps the input width, `stride = 2` visits every other
@@ -4937,34 +4974,35 @@ nv_conv1d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 2D Convolution
 #' @description
-#' Torch-style 2D convolution in NCHW layout: `x` is
-#' `[batch, in_channels, height, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kh, kw]`, output is
-#' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
-#'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
-#'   Promoted together with `x` -- see `x`.
-#' @param stride (`integer()`)\cr Length 1 or 2.
-#' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
-#' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
-#' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
-#' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
+#' 2D convolution like torch's `nnf_conv2d()`, but with the axes in reverse
+#' order: width, height, channels, batch.
+#' @section Shapes:
+#' - `x`: `(W, H, C_in, N)`
+#' - `kernel`: `(kW, kH, C_in / groups, C_out)`
+#' - output: `(W_out, H_out, C_out, N)`, with each spatial axis as in
+#'   [nv_conv1d()]
+#' @inheritParams nv_conv1d
+#' @param stride (`integer()`)\cr Step between neighbouring window positions,
+#'   as `(W, H)` or one value for both spatial axes.
+#' @param padding (`integer()`)\cr Number of zeros added on each side of each
+#'   spatial axis, as `(W, H)` or one value for both.
+#' @param dilation (`integer()`)\cr Spacing between the kernel's elements, as
+#'   `(W, H)` or one value for both.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_H, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, 4x4, convolved with a 3x3 kernel
-#' x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
-#' kernel <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+#' # a 4x4 image with one channel, in a batch of one, convolved with a 3x3
+#' # kernel
+#' x <- nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f32")
 #' nv_conv2d(x, kernel)
 #'
-#' # two output channels give a result with two channels
-#' kernel2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
-#' shape(nv_conv2d(x, kernel2))
+#' # a batch of two 6x4 images with three channels, and a kernel with two
+#' # output channels; the stride is 2 along the width and 1 along the height
+#' x <- nv_fill(1, shape = c(6, 4, 3, 2), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(3, 3, 3, 2), dtype = "f32")
+#' shape(nv_conv2d(x, kernel, stride = c(2L, 1L)))
 #' @export
 nv_conv2d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, kernel, 2L, stride, padding, dilation, groups, precision)
@@ -4972,27 +5010,28 @@ nv_conv2d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 3D Convolution
 #' @description
-#' Torch-style 3D convolution in NCDHW layout. `x` is
-#' `[batch, in_channels, depth, height, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
-#' padding (e.g. causal temporal padding) is available via
-#' [prim_convolution()].
-#' @param x ([`arrayish`])\cr `[N, C_in, D, H, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
-#'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kD, kH, kW]`.
-#'   Promoted together with `x` -- see `x`.
-#' @inheritParams nv_conv2d
-#' @param stride,padding,dilation (`integer()`)\cr Length 1 or 3.
+#' 3D convolution like torch's `nnf_conv3d()`, but with the axes in reverse
+#' order: width, height, depth, channels, batch.
+#' @section Shapes:
+#' - `x`: `(W, H, D, C_in, N)`
+#' - `kernel`: `(kW, kH, kD, C_in / groups, C_out)`
+#' - output: `(W_out, H_out, D_out, C_out, N)`, with each spatial axis as in
+#'   [nv_conv1d()]
+#' @inheritParams nv_conv1d
+#' @param stride (`integer()`)\cr Step between neighbouring window positions,
+#'   as `(W, H, D)` or one value for all three spatial axes.
+#' @param padding (`integer()`)\cr Number of zeros added on each side of each
+#'   spatial axis, as `(W, H, D)` or one value for all three.
+#' @param dilation (`integer()`)\cr Spacing between the kernel's elements, as
+#'   `(W, H, D)` or one value for all three.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_D, out_H, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
-#' x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
-#' kernel <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+#' # a 3x3x2 volume with one channel, in a batch of one, convolved with a
+#' # 2x2x1 kernel
+#' x <- nv_array(1:18, shape = c(3, 3, 2, 1, 1), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(2, 2, 1, 1, 1), dtype = "f32")
 #' shape(nv_conv3d(x, kernel))
 #' @export
 nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
@@ -5017,28 +5056,44 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
       ))
     }
   }
-  in_channels <- shape(x)[2L]
+  in_channels <- shape(x)[n + 1L]
+  out_channels <- shape(kernel)[n + 2L]
   if (in_channels %% groups != 0L) {
     cli_abort(c(
       "{.arg groups} must divide the number of input channels of {.arg x}.",
       x = "{.arg x} has {in_channels} input channel{?s}, and {.arg groups} is {groups}."
     ))
   }
-  if (shape(kernel)[2L] != in_channels / groups) {
+  if (shape(kernel)[n + 1L] != in_channels / groups) {
     cli_abort(c(
-      "{.arg kernel}'s second axis must be {.arg x}'s input channels divided by {.arg groups}.",
+      "{.arg kernel}'s second-to-last axis must be {.arg x}'s input channels divided by {.arg groups}.",
       x = "Expected {in_channels / groups}, but {.arg kernel} is {shape_repr(shape(kernel))}."
     ))
   }
-  if (shape(kernel)[1L] %% groups != 0L) {
+  if (out_channels %% groups != 0L) {
     cli_abort(c(
       "{.arg groups} must divide the number of output channels of {.arg kernel}.",
-      x = "{.arg kernel} has {shape(kernel)[1L]} output channel{?s}, and {.arg groups} is {groups}."
+      x = "{.arg kernel} has {out_channels} output channel{?s}, and {.arg groups} is {groups}."
     ))
   }
-  stride <- .nv_conv_vec(stride, n, "stride")
+  stride <- .nv_conv_vec(stride, n, "stride", lower = 1L)
   pad <- .nv_conv_vec(padding, n, "padding")
-  dilation <- .nv_conv_vec(dilation, n, "dilation")
+  dilation <- .nv_conv_vec(dilation, n, "dilation", lower = 1L)
+  # Checked here, in the user's axis order, as the inference rule sees the
+  # vectors reversed below.
+  padded <- shape(x)[seq_len(n)] + 2L * pad
+  emptied <- which(padded < 0L)
+  if (length(emptied)) {
+    i <- emptied[[1L]]
+    cli_abort(c(
+      "Negative {.arg padding} must not remove more than spatial axis {i} of {.arg x} holds.",
+      x = "Axis {i} of {.arg x} has size {shape(x)[[i]]}, and padding {pad[[i]]} on both sides leaves {padded[[i]]}."
+    ))
+  }
+  # Reversed to pair with the spatial axes of `.nv_conv_axis_numbers()`.
+  stride <- rev(stride)
+  pad <- rev(pad)
+  dilation <- rev(dilation)
   do.call(
     prim_convolution,
     c(

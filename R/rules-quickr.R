@@ -493,7 +493,7 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
 
 quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, axis, out_aval) {
   axis <- as.integer(axis)
-  rank <- length(shape(out_aval))
+  rank <- naxes(out_aval)
   if (!rank || rank > 5L) {
     cli_abort("concatenate: only arrays of rank 1..5 are supported by quickr lowering")
   }
@@ -987,8 +987,10 @@ quickr_emit_dot_general <- function(
     ))
   }
 
-  nbatch <- length(bd_lhs)
+  # The output axes are the free axes of lhs, then those of rhs, then the batch
+  # axes.
   nfree_lhs <- length(free_lhs)
+  nfree <- nfree_lhs + length(free_rhs)
 
   out_idxs <- lapply(seq_len(out_rank), function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
   k_idxs <- lapply(seq_along(cd_lhs), function(i) as.name(paste0("k_", as.character(out_sym), "_", i)))
@@ -997,9 +999,9 @@ quickr_emit_dot_general <- function(
   lhs_idxs <- vector("list", lhs_rank)
   for (d in seq_len(lhs_rank)) {
     if (d %in% bd_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[match(d, bd_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_lhs)]]
     } else if (d %in% free_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[nbatch + match(d, free_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[match(d, free_lhs)]]
     } else {
       lhs_idxs[[d]] <- k_idxs[[match(d, cd_lhs)]]
     }
@@ -1008,9 +1010,9 @@ quickr_emit_dot_general <- function(
   rhs_idxs <- vector("list", rhs_rank)
   for (d in seq_len(rhs_rank)) {
     if (d %in% bd_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[match(d, bd_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_rhs)]]
     } else if (d %in% free_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[nbatch + nfree_lhs + match(d, free_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree_lhs + match(d, free_rhs)]]
     } else {
       rhs_idxs[[d]] <- k_idxs[[match(d, cd_rhs)]]
     }
@@ -1476,7 +1478,7 @@ quickr_register_elementwise_lowerer <- function(primitive, fun, scalar_inputs = 
     }
     out_shape <- as.integer(shape(out_avals[[1L]]))
     scalars <- Filter(
-      \(i) length(out_shape) && !length(shape(input_nodes[[i]]$aval)),
+      \(i) length(out_shape) && !naxes(input_nodes[[i]]$aval),
       setdiff(seq_along(inputs), scalar_inputs)
     )
     syms <- lapply(scalars, \(i) ctx$new_tmp_sym())
@@ -2420,7 +2422,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
   if (pjrt::tree_root_kind(graph$out_tree) == "leaf" && length(out_exprs) == 1L) {
     out_node <- graph$outputs[[1L]]
     out_expr <- out_exprs[[1L]]
-    if (is_graph_value(out_node) && length(shape(out_node$aval)) == 1L) {
+    if (is_graph_value(out_node) && naxes(out_node$aval) == 1L) {
       out_expr <- rlang::call2("array", out_expr, dim = as.integer(shape(out_node$aval)))
     }
     stmts <- c(stmts, list(rlang::call2("<-", result_sym, out_expr), result_sym))

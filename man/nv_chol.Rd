@@ -11,7 +11,7 @@ nv_chol(x, lower = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, a symmetric positive-definite matrix with at least 2 axes, the last two forming the square matrix and any leading ones batch axes. Can be any numeric data type: a float keeps its
+One input, a symmetric positive-definite matrix with at least 2 axes, the first two forming the square matrix and any trailing ones batch axes. Can be any numeric data type: a float keeps its
 own, and an integer one is converted to the default float data type (see
 \code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
 \link[=default_dtypes]{default data type} and is converted in the same way.}
@@ -30,7 +30,8 @@ to \code{NaN}.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Supports batched inputs: axes before the last two are batch axes.
+Supports batched inputs: the first two axes form the square matrix and any
+trailing ones are batch axes.
 }
 \details{
 Differentiation is only implemented for a single matrix: a \code{\link[=gradient]{gradient()}} of a

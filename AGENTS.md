@@ -31,8 +31,8 @@ config above. anvl-specific:
     the `default-dtypes` workflow runs it so that anything hardcoding `f32` / `i32` where it should
     read `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the override.
-- anvl tracks the **dev** versions of its r-xla dependencies:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))`.
+- anvl tracks the **dev** versions of its r-xla dependencies, pjrt from its `develop` branch:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))`.
 
 ## Two-Layer API
 
@@ -158,6 +158,18 @@ The scalar broadcast belongs to the elementwise primitives themselves: the trace
 
 When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
 
+## Axis Reversal
+
+The StableHLO lowering represents an array of R shape `(d1, ..., dn)` as an XLA array of shape
+`(dn, ..., d1)`, and the pjrt backend stores it that way: R's column-major bytes are XLA's row-major
+bytes of the reversed shape, so transfers copy them as they are. A pjrt `AnvlArray` holds a buffer
+whose dims are `rev(x$shape)`; `x$shape` stays the R shape. R axis `i` of an `n`-axis array is XLA
+dimension `n - i`, so R axis 1 is the contiguous (minor) one and the trailing R axes are XLA's major
+dimensions, where XLA's kernels want batch axes -- which is why anvl's batch axes go last. Every
+lowering rule maps its axis numbers, shapes and per-axis vectors with the helpers in
+`R/lowering-axes.R`; `at2vt()` reverses every type, so `shape()` of a `FuncValue` is the XLA shape.
+Dumped HLO and XLA's error messages show the reversed shapes.
+
 ## Graph Tracing
 
 When a function is JIT-compiled, anvl traces it by executing with `GraphBox` objects instead of real data. Operations record themselves into an `AnvlGraph` (see `R/graph.R`). The graph is then lowered to StableHLO IR or quickr code for compilation.
@@ -182,6 +194,8 @@ Prefer testing by comparing with the corresponding torch function. If the test i
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
 This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
+
+Do not add unit tests that manually inspect the code to which a primitive lowers. Only test their behavior.
 
 ## Documentation
 

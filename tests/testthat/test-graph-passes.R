@@ -38,7 +38,13 @@ describe("inline_scalarish_constants", {
       const_arrays <- lapply(consts, \(c) {
         arr <- c$aval$data
         if (backend(arr) == "plain") {
-          pjrt::pjrt_buffer(as_array(arr), as.character(dtype(arr)), shape = shape(arr), device = dev)
+          pjrt::pjrt_buffer(
+            as_array(arr),
+            as.character(dtype(arr)),
+            shape = rev(shape(arr)),
+            device = dev,
+            row_major = TRUE
+          )
         } else {
           arr$data
         }

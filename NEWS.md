@@ -2,12 +2,13 @@
 
 ## Breaking changes
 
+* Batch axes now come last to have consistent col-major semantics everywhere.
+  This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.
+* Random draws fill a shape in column-major order.
 * `NULL` (and so `c()`) is no longer a shape; constructors that infer one default
   to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
 * `Shape()` is no longer exported; use `shp()`.
-* The `"reverse"` rule of a primitive is renamed to `"pullback"`: write
-  `prim_x[["pullback"]]` and `rule_pullback()` instead of
-  `prim_x[["reverse"]]` and `rule_reverse()`.
+* The `"reverse"` rule of a primitive is renamed to `"pullback"`.
 * `nv_save()`, `nv_read()`, `nv_serialize()` and `nv_unserialize()` are
   removed. Save arrays with `saveRDS()`, or with the {safetensors} package to
   exchange them with other frameworks (see below).
@@ -15,21 +16,14 @@
 ## Features
 
 * New `nv_split_rng_states()` splits `n` random states off a random state.
-* New `shp()` creates a shape from its axis sizes: `shp(2, 3)`, or `shp()` for
+* New `shp()` creates a shape vector from its axis sizes: `shp(2, 3)`, or `shp()` for
   a scalar.
 * New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
   as on CRAN. The new "Depending on anvl" article explains its use.
-* New `prim_optimization_barrier()` returns its input arrays unchanged and
-  keeps the compiler from moving computations across it, so the operations
-  that produce the arrays are not fused with those that use them.
-  `nv_optimization_barrier()` does the same for a single array or a tree of
-  arrays, returning it with the same structure.
-* New `pullback()` and `value_and_pullback()` differentiate a function with any
-  result: they return its pullback, which takes a cotangent of the result back
-  to the arguments.
-* Elementwise primitives such as `prim_add()`, `prim_eq()`, `prim_ifelse()` and
-  `prim_clamp()` broadcast a scalar operand themselves, so a traced graph has no
-  `broadcast_in_axes` for it.
+* New `prim_optimization_barrier()` and `nv_optimization_barrier()` which
+  allow to prevent optimizations from moving computations across it.
+* Added two new transformations `pullback()` and `value_and_pullback()`.
+* Elementwise primitives such as `prim_add()` now broadcast scalars.
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.
@@ -43,6 +37,12 @@
 * `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
   row-major order with `row_major = TRUE`.
 * The `"quickr"` backend accepts a device given as a string, `"cpu"`.
+
+## Performance
+
+* Constructing `AnvlArray`s from R objects is now more efficient.
+* The generated XLA programs are more efficient, especially around
+  flattening operations.
 
 # anvl 0.6.0
 

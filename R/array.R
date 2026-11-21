@@ -492,7 +492,7 @@ nv_matrix <- function(
   assert_int(nrow, lower = 0L, null.ok = TRUE)
   assert_int(ncol, lower = 0L, null.ok = TRUE)
   is_r_scalar <- !is_anvl_array(data) && is_valid_r_lit(data)
-  is_array_scalar <- is_anvl_array(data) && length(shape(data)) == 0L
+  is_array_scalar <- is_anvl_array(data) && naxes(data) == 0L
   if (is_r_scalar || is_array_scalar) {
     nrow <- nrow %||% 1L
     ncol <- ncol %||% 1L
