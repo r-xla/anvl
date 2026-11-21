@@ -1,26 +1,18 @@
-# The pushforward rules are checked automatically: every primitive with a
-# pushforward rule has an entry in `pushforward_cases`, and
-# `check_pushforward_rule()` runs the same checks on each of them against
-# references that do not use the pushforward rules. torch has no forward mode to
-# compare with.
+# A primitive tagged "elementwise" gets its pushforward rule from its pullback
+# rule (`pushforward_from_pullback()`), which the pullback tests cover, so only
+# the derivation itself is checked here, on a few primitives that take each of
+# its paths. Every other pushforward rule has an entry in `pushforward_cases`.
+# `check_pushforward_rule()` runs the same checks on each against references
+# that do not use the pushforward rules. torch has no forward mode to compare
+# with.
 
 # Samplers for the values a case calls its primitive with, as a
 # `function(shape)` returning an R array, or a number for the scalar shape.
 unif <- function(lower, upper) {
   function(shape) shaped(runif(prod(shape), lower, upper), shape)
 }
-# Away from the integers and the half-integers, where a step function jumps.
-off_step <- function(lower, upper) {
-  function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE) + runif(prod(shape), 0.1, 0.4), shape)
-}
-ints <- function(lower, upper) {
-  function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE), shape)
-}
 coin <- function() {
   function(shape) shaped(runif(prod(shape)) < 0.5, shape)
-}
-fixed <- function(value) {
-  function(shape) shaped(rep(value, prod(shape)), shape)
 }
 shaped <- function(values, shape) {
   if (length(shape)) array(values, shape) else values
@@ -44,92 +36,30 @@ binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
   pushforward_case(list(lhs = lhs, rhs = rhs))
 }
 
+# The pushforward rules of their own.
 pushforward_cases <- list(
-  add = binary_case(),
-  sub = binary_case(),
-  mul = binary_case(),
-  div = binary_case(rhs = unif(0.5, 2)),
-  remainder = pushforward_case(list(x = unif(-5, 5), y = unif(0.5, 2))),
-  pow = pushforward_case(list(x = unif(0.5, 2), y = unif(-2, 2))),
-  negate = pushforward_case(list(x = unif(-2, 2))),
-  abs = pushforward_case(list(x = unif(-2, 2))),
-  pmax = binary_case(),
-  pmin = binary_case(),
-  clamp = pushforward_case(list(x = unif(-2, 2), min = fixed(-1), max = fixed(1)), wrt = "x"),
-  ifelse = pushforward_case(list(test = coin(), yes = unif(-2, 2), no = unif(-2, 2)), wrt = c("yes", "no")),
-  exp = pushforward_case(list(x = unif(-2, 2))),
-  expm1 = pushforward_case(list(x = unif(-2, 2))),
-  log = pushforward_case(list(x = unif(0.5, 3))),
-  log1p = pushforward_case(list(x = unif(-0.5, 2))),
-  plogis = pushforward_case(list(x = unif(-3, 3))),
-  sqrt = pushforward_case(list(x = unif(0.5, 3))),
-  rsqrt = pushforward_case(list(x = unif(0.5, 3))),
-  cbrt = pushforward_case(list(x = unif(0.5, 3))),
-  sin = pushforward_case(list(x = unif(-3, 3))),
-  cos = pushforward_case(list(x = unif(-3, 3))),
-  tan = pushforward_case(list(x = unif(-1, 1))),
-  asin = pushforward_case(list(x = unif(-0.9, 0.9))),
-  acos = pushforward_case(list(x = unif(-0.9, 0.9))),
-  atan = pushforward_case(list(x = unif(-3, 3))),
-  atan2 = pushforward_case(list(y = unif(-2, 2), x = unif(-2, 2))),
-  sinh = pushforward_case(list(x = unif(-2, 2))),
-  cosh = pushforward_case(list(x = unif(-2, 2))),
-  tanh = pushforward_case(list(x = unif(-2, 2))),
-  asinh = pushforward_case(list(x = unif(-2, 2))),
-  acosh = pushforward_case(list(x = unif(1.5, 3))),
-  atanh = pushforward_case(list(x = unif(-0.9, 0.9))),
-  lgamma = pushforward_case(list(x = unif(0.5, 3))),
-  digamma = pushforward_case(list(x = unif(0.5, 3))),
-  psigamma = pushforward_case(list(x = unif(0.5, 3), deriv = fixed(1)), wrt = "x"),
-  erf = pushforward_case(list(x = unif(-2, 2))),
-  erfc = pushforward_case(list(x = unif(-2, 2))),
-  erf_inv = pushforward_case(list(x = unif(-0.9, 0.9))),
-  floor = pushforward_case(list(x = off_step(-3L, 2L))),
-  ceiling = pushforward_case(list(x = off_step(-3L, 2L))),
-  round = pushforward_case(list(x = off_step(-3L, 2L))),
-  sign = pushforward_case(list(x = unif(-2, 2))),
-  eq = binary_case(),
-  ne = binary_case(),
-  gt = binary_case(),
-  ge = binary_case(),
-  lt = binary_case(),
-  le = binary_case(),
-  is_finite = pushforward_case(list(x = unif(-2, 2))),
   # at f64 a conversion to f64 is the identity, at f32 one that changes the
   # data type
-  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64")),
-  # integer and boolean operations, whose result has no tangent
-  and = pushforward_case(list(lhs = coin(), rhs = coin()), wrt = character()),
-  or = pushforward_case(list(lhs = coin(), rhs = coin()), wrt = character()),
-  xor = pushforward_case(list(x = coin(), y = coin()), wrt = character()),
-  not = pushforward_case(list(x = coin()), wrt = character()),
-  shift_left = pushforward_case(list(x = ints(0L, 7L), shift = ints(0L, 3L)), wrt = character()),
-  shift_right_logical = pushforward_case(list(x = ints(0L, 7L), shift = ints(0L, 3L)), wrt = character()),
-  shift_right_arithmetic = pushforward_case(list(x = ints(0L, 7L), shift = ints(0L, 3L)), wrt = character()),
-  popcnt = pushforward_case(list(x = ints(0L, 100L)), wrt = character())
+  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64"))
 )
 
-# Calls with a scalar operand, named `<primitive>/<scalar operands>`. The
-# primitive broadcasts it, so its cotangent is summed and its tangent
-# broadcast.
-pushforward_scalar_cases <- list(
-  "add/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "rhs"),
-  "sub/lhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "lhs"),
+# Pushforward rules derived from the pullback rule, named
+# `<primitive>[/<scalar operand>]`: an operand alone and several whose tangents
+# add up, a scalar operand whose tangent is broadcast, an operand without a
+# tangent, and a result that is not a float.
+derived_cases <- list(
+  sin = pushforward_case(list(x = unif(-3, 3))),
+  mul = binary_case(),
   "mul/lhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "lhs"),
-  "div/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(0.5, 2)), scalar = "rhs"),
-  "pow/y" = pushforward_case(list(x = unif(0.5, 2), y = unif(-2, 2)), scalar = "y"),
-  "remainder/y" = pushforward_case(list(x = unif(-5, 5), y = unif(0.5, 2)), scalar = "y"),
-  "pmax/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "rhs"),
-  "atan2/x" = pushforward_case(list(y = unif(-2, 2), x = unif(-2, 2)), scalar = "x"),
-  "psigamma/deriv" = pushforward_case(list(x = unif(0.5, 3), deriv = fixed(1)), wrt = "x", scalar = "deriv"),
-  "clamp/x" = pushforward_case(list(x = unif(-2, 2), min = fixed(-1), max = fixed(1)), wrt = "x", scalar = "x"),
-  "ifelse/no" = pushforward_case(
-    list(test = coin(), yes = unif(-2, 2), no = unif(-2, 2)),
-    wrt = c("yes", "no"),
-    scalar = "no"
-  ),
-  "eq/rhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "rhs")
+  ifelse = pushforward_case(list(test = coin(), yes = unif(-2, 2), no = unif(-2, 2)), wrt = c("yes", "no")),
+  eq = binary_case()
 )
+
+# Whether the pushforward rule of `prim` is the one `pushforward_from_pullback()`
+# derives from its pullback rule.
+derived_from_pullback <- function(prim) {
+  identical(body(prim[["pushforward"]]), body(pushforward_from_pullback(prim[["pullback"]])))
+}
 
 # `body(args)`, for `args` a named list, as a function with one formal per name.
 with_formals <- function(arg_names, body) {
@@ -245,11 +175,11 @@ check_pushforward_rule <- function(name, case) {
 }
 
 describe("pushforward rules", {
-  it("have a case for every primitive with a pushforward rule", {
+  it("have a case for every primitive with a rule of its own", {
     nms <- names(asNamespace("anvl"))
     prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
-    with_rule <- sub("^prim_", "", names(Filter(\(p) !is.null(p[["pushforward"]]), prims)))
-    expect_setequal(names(pushforward_cases), with_rule)
+    own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_pullback(p), prims)
+    expect_setequal(names(pushforward_cases), sub("^prim_", "", names(own)))
   })
 
   for (name in names(pushforward_cases)) {
@@ -258,13 +188,19 @@ describe("pushforward rules", {
       check_pushforward_rule(name, pushforward_cases[[name]])
     })
   }
+})
 
-  for (name in names(pushforward_scalar_cases)) {
-    prim_name <- sub("/.*", "", name)
-    scalar <- sub(".*/", "", name)
-    it(sprintf("of prim_%s agree with finite differences and the pullback for a scalar %s", prim_name, scalar), {
+describe("pushforward_from_pullback", {
+  it("gives every elementwise primitive a pushforward rule", {
+    for (prim in primitives_tagged("elementwise")) {
+      expect_false(is.null(prim[["pushforward"]]), label = primitive_def(prim)$name)
+    }
+  })
+
+  for (name in names(derived_cases)) {
+    it(sprintf("derives a pushforward rule that agrees with finite differences and the pullback for %s", name), {
       withr::local_seed(1L)
-      check_pushforward_rule(prim_name, pushforward_scalar_cases[[name]])
+      check_pushforward_rule(sub("/.*", "", name), derived_cases[[name]])
     })
   }
 })

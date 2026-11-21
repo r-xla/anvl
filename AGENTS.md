@@ -203,10 +203,11 @@ Each rule of each primitive should be tested. Tests are organized as:
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
 - `tests/testthat/test-primitives-pullback.R` -- sources `inst/extra-tests/test-primitives-pullback-torch.R`
 - `tests/testthat/test-primitives-pushforward.R` -- an autotest: every primitive with a
-  pushforward rule needs an entry in `pushforward_cases` (inputs from its domain, the arguments to
-  differentiate), and each entry is checked against central differences, against the pullback
-  (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of the
-  gradient. torch has no forward mode to compare with.
+  pushforward rule of its own needs an entry in `pushforward_cases` (inputs from its domain, the
+  arguments to differentiate), and each entry is checked against central differences, against the
+  pullback (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of
+  the gradient. A rule derived from the pullback rule (tag `"elementwise"`) needs no entry: a few
+  `derived_cases` check the derivation itself. torch has no forward mode to compare with.
 - `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
   (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
