@@ -83,7 +83,6 @@
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
 <ul><li>Batch axes now come last to have consistent col-major semantics everywhere. This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.</li>
 <li>Random draws fill a shape in column-major order.</li>
-<li>Random draws now fill multi-dimensional arrays in a transposed order.</li>
 <li>
 <code>NULL</code> (and so <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code>) is no longer a shape; constructors that infer one default to <code>shape = "auto"</code>. Write the shape of a scalar as <code><a href="../reference/shp.html">shp()</a></code> (<a href="https://github.com/r-xla/anvl/issues/552" class="external-link">#552</a>).</li>
 <li>
