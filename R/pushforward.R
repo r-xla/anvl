@@ -16,10 +16,6 @@
 #' `.f` runs once, when `pushforward()` is called. The pushforward can be
 #' called more than once, e.g. with every unit vector to build a Jacobian
 #' column by column.
-#'
-#' Forward mode does not cover every primitive yet: the *Pushforward* column of
-#' `r roxy_article("primitives")` shows which primitives have a pushforward
-#' rule.
 #' @inheritParams pullback
 #' @return
 #'   For `pushforward()`, the pushforward (`function`); for

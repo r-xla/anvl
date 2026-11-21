@@ -17,8 +17,7 @@
 
 * New `pushforward()` and `value_and_pushforward()` differentiate in forward
   mode: they return the pushforward of a function, which takes a tangent of
-  the arguments to that of the result. So far they cover the elementwise
-  primitives.
+  the arguments to that of the result.
 * New `nv_split_rng_states()` splits `n` random states off a random state.
 * New `shp()` creates a shape vector from its axis sizes: `shp(2, 3)`, or `shp()` for
   a scalar.

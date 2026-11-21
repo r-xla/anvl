@@ -56,10 +56,6 @@ pushforward.
 \code{.f} runs once, when \code{pushforward()} is called. The pushforward can be
 called more than once, e.g. with every unit vector to build a Jacobian
 column by column.
-
-Forward mode does not cover every primitive yet: the \emph{Pushforward} column of
-the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article shows which primitives have a pushforward
-rule.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

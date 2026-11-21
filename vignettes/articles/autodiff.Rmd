@@ -229,8 +229,6 @@ hvp(nv_array(c(0, 1, 2)), nv_array(c(1, 0, 0)))
 
 ## Limitations
 
-- Forward mode does not cover every primitive yet: so far, only the elementwise ones have a pushforward rule.
-  The *Pushforward* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
 - There is no function computing a whole Hessian.
 - Not every primitive has a derivative yet, so some functions cannot be differentiated.
   The *Pullback* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
