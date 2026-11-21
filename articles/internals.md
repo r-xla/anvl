@@ -209,7 +209,7 @@ prim_mul[["stablehlo"]]
     ##     operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
     ##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
     ## }
-    ## <environment: 0x62d8847c8308>
+    ## <environment: 0x62502e2592d0>
 
 The [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)
 function creates a
@@ -310,9 +310,9 @@ stablehlo(graph)[[1L]]
 R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R’s first
 axis – the contiguous one – is XLA’s minor dimension, and trailing R
 axes are XLA’s major ones. XLA’s kernels want batch axes outermost in
-memory, which are the trailing R axes. To XLA, every program anvl builds
-is a row-major one, which is the happy path its kernels and its compiler
-are optimized for.
+memory, which are the trailing R axes, so anvl’s batch axes come last.
+To XLA, every program anvl builds is a row-major one, which is the happy
+path its kernels and its compiler are optimized for.
 
 Every lowering rule maps the axis numbers of its parameters accordingly,
 and the StableHLO program shows the reversed shapes. An array of shape

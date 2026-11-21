@@ -1,9 +1,10 @@
 # Primitive Top-K
 
-Returns the `k` largest values along the last axis, sorted in decreasing
-order, and with `indices = TRUE` their indices into that axis as well.
+Returns the `k` largest values along axis 1, sorted in decreasing order,
+and with `indices = TRUE` their indices into that axis as well. The
+trailing axes are batch axes.
 
-For other axes, transpose so the target axis is last, call
+For other axes, transpose so the target axis is first, call
 `prim_top_k()`, then transpose back.
 [`nv_top_k()`](https://r-xla.github.io/anvl/reference/nv_top_k.md) does
 this.
@@ -26,7 +27,7 @@ prim_top_k(x, k, indices)
 - k:
 
   (`integer(1)`)  
-  Number of top elements. Must satisfy `1 <= k <= shape(x)[naxes(x)]`.
+  Number of top elements. Must satisfy `1 <= k <= shape(x)[1]`.
 
 - indices:
 
@@ -40,11 +41,11 @@ prim_top_k(x, k, indices)
 (named `list` of one or two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
 Element `values`, the top-`k` values at the input's data type, and, when
-`indices` is `TRUE`, `indices`, their indices along the last axis at the
+`indices` is `TRUE`, `indices`, their indices along axis 1 at the
 default integer data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md)).
-Both have the input's shape with the last axis replaced by `k`. With
-indices, ties are broken by lower index first.
+Both have the input's shape with axis 1 replaced by `k`. With indices,
+ties are broken by lower index first.
 
 ## Implemented Rules
 
@@ -97,5 +98,21 @@ prim_top_k(x, k = 3L, indices = TRUE)
 #>  8
 #>  5
 #> [ CPUi32{3} ] 
+#> 
+
+# the top 2 of each column
+m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 3)
+prim_top_k(m, k = 2L, indices = TRUE)
+#> $values
+#> AnvlArray
+#>  5 4
+#>  3 2
+#> [ CPUf32{2,2} ] 
+#> 
+#> $indices
+#> AnvlArray
+#>  3 2
+#>  1 1
+#> [ CPUi32{2,2} ] 
 #> 
 ```

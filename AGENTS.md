@@ -337,9 +337,10 @@ reversed shape, so transfers copy them as they are. A pjrt `AnvlArray`
 holds a buffer whose dims are `rev(x$shape)`; `x$shape` stays the R
 shape. R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R
 axis 1 is the contiguous (minor) one and the trailing R axes are XLA’s
-major dimensions, where XLA’s kernels want batch axes. Every lowering
-rule maps its axis numbers, shapes and per-axis vectors with the helpers
-in `R/lowering-axes.R`; `at2vt()` reverses every type, so
+major dimensions, where XLA’s kernels want batch axes – which is why
+anvl’s batch axes go last. Every lowering rule maps its axis numbers,
+shapes and per-axis vectors with the helpers in `R/lowering-axes.R`;
+`at2vt()` reverses every type, so
 [`shape()`](https://r-xla.github.io/anvl/reference/shape.md) of a
 `FuncValue` is the XLA shape. Dumped HLO and XLA’s error messages show
 the reversed shapes.

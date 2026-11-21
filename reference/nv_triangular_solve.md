@@ -23,9 +23,9 @@ nv_triangular_solve(
 - a:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Triangular coefficient matrix with at least 2 axes. The last two axes
-  must be equal; any leading axes are batch axes. Can be any numeric
-  data type: `a` and `b` are [promoted to a common data
+  Triangular coefficient matrix with at least 2 axes. The first two axes
+  must be of equal size; any trailing axes are batch axes. Can be any
+  numeric data type: `a` and `b` are [promoted to a common data
   type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md)
   and that is then converted to the default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/reference/default_dtypes.md))
@@ -37,18 +37,19 @@ nv_triangular_solve(
 - b:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
+  Right-hand side. For `a` of shape `(n, n, b1, ..., bk)`, `b` may be
+  either:
 
-  - full rank — shape `(B..., n, k)` when `left = TRUE`, or
-    `(B..., k, n)` when `left = FALSE`;
+  - full rank — shape `(n, m, b1, ..., bk)` when `left = TRUE`, or
+    `(m, n, b1, ..., bk)` when `left = FALSE`;
 
-  - one rank less, shape `(B..., n)`, meaning a single column
+  - one rank less, shape `(n, b1, ..., bk)`, meaning a single column
     (`left = TRUE`) or row (`left = FALSE`) per batch — it is reshaped
     internally and the reshape is undone on the result so the output
     rank matches `b`.
 
-  `b`'s batch axes (`B...`) must match `a`'s exactly. It is promoted
-  together with `a` – see `a`.
+  `b`'s trailing batch axes (`b1, ..., bk`) must match `a`'s exactly. It
+  is promoted together with `a` – see `a`.
 
 - left:
 
@@ -83,10 +84,11 @@ where that was an integer one.
 ## Details
 
 As a convenience, `b` may have one fewer axis than `a` (a single
-right-hand side per batch, shape `(B..., n)` for `a` of shape
-`(B..., n, n)`). It is reshaped internally to a column (`left = TRUE`)
-or row (`left = FALSE`) and reshaped back on the way out. Because we
-don't broadcast, this is not ambiguous (as it would be for NumPy).
+right-hand side per batch, shape `(n, b1, ..., bk)` for `a` of shape
+`(n, n, b1, ..., bk)`). It is reshaped internally to a column
+(`left = TRUE`) or row (`left = FALSE`) and reshaped back on the way
+out. Because we don't broadcast, this is not ambiguous (as it would be
+for NumPy).
 
 Differentiation is only implemented for a single system: a
 [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md) of a

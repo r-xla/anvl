@@ -6,8 +6,12 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Matrix Multiplication — nv_matmul"><meta name="description" content="Matrix multiplication of two arrays. You can also use the %*% operator.
-Supports batched matrix multiplication when inputs have more than 2 axes."><meta property="og:description" content="Matrix multiplication of two arrays. You can also use the %*% operator.
-Supports batched matrix multiplication when inputs have more than 2 axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+Supports batched matrix multiplication: above rank 2, the first two axes
+are the matrix and the trailing ones are batch axes, which both operands
+must share."><meta property="og:description" content="Matrix multiplication of two arrays. You can also use the %*% operator.
+Supports batched matrix multiplication: above rank 2, the first two axes
+are the matrix and the trailing ones are batch axes, which both operands
+must share."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -82,7 +86,9 @@ Supports batched matrix multiplication when inputs have more than 2 axes."><meta
 
     <div class="ref-description section level2">
     <p>Matrix multiplication of two arrays. You can also use the <code>%*%</code> operator.
-Supports batched matrix multiplication when inputs have more than 2 axes.</p>
+Supports batched matrix multiplication: above rank 2, the first two axes
+are the matrix and the trailing ones are batch axes, which both operands
+must share.</p>
     </div>
 
     <div class="section level2">
@@ -121,9 +127,9 @@ Has the operands' common data type and the shape given under Shapes.</p>
     <h2 id="shapes">Shapes<a class="anchor" aria-label="anchor" href="#shapes"></a></h2>
 
 
-<ul><li><p><code>x</code>: <code>(b1, ..., bk, m, n)</code></p></li>
-<li><p><code>y</code>: <code>(b1, ..., bk, n, p)</code></p></li>
-<li><p>output: <code>(b1, ..., bk, m, p)</code></p></li>
+<ul><li><p><code>x</code>: <code>(m, n, b1, ..., bk)</code></p></li>
+<li><p><code>y</code>: <code>(n, p, b1, ..., bk)</code></p></li>
+<li><p>output: <code>(m, p, b1, ..., bk)</code></p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -145,6 +151,19 @@ Has the operands' common data type and the shape given under Shapes.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  22 49</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  28 64</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,2} ] </span>
+<span class="r-in"><span><span class="co"># a batch of three such products along the trailing axis</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">18</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">18</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">y</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (1,.,.) =</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   22 220 634</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   49 301 769</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (2,.,.) =</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   28 244 676</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   64 334 820</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,2,3} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

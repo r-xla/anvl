@@ -4,6 +4,11 @@
 
 ### Breaking changes
 
+- Batch axes now come last to have consistent col-major semantics
+  everywhere. This includes: matrix multiplication, Cholesky
+  decomposition, triangular solves, convolutions, scans, and top-k
+  operations.
+- Random draws fill a shape in column-major order.
 - Random draws now fill multi-dimensional arrays in a transposed order.
 - `NULL` (and so [`c()`](https://rdrr.io/r/base/c.html)) is no longer a
   shape; constructors that infer one default to `shape = "auto"`. Write

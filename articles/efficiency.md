@@ -73,12 +73,13 @@ few rules of thumb:
   (e.g. `x * y` or `nv_sum(x)` instead of a `for` loop).
 - **Prefer batched operations.** Operations like
   [`nv_matmul()`](https://r-xla.github.io/anvl/reference/nv_matmul.md)
-  accept a full batch of matrices at once. Stacking many small inputs
-  into one larger array and processing them in a single call is
-  typically much faster than calling the same operation many times. This
-  mirrors plain R, where vectorized code beats a `for` loop – except
-  that on a GPU the win comes from running the batch entries in parallel
-  rather than from avoiding interpreter overhead.
+  accept a full batch of matrices at once, stacked along trailing batch
+  axes. Stacking many small inputs into one larger array and processing
+  them in a single call is typically much faster than calling the same
+  operation many times. This mirrors plain R, where vectorized code
+  beats a `for` loop – except that on a GPU the win comes from running
+  the batch entries in parallel rather than from avoiding interpreter
+  overhead.
 - **Sometimes the algorithm itself has to be rewritten.** Inherently
   sequential formulations – e.g. a running update that depends on the
   previous step – can leave most of the GPU idle. Reformulating the

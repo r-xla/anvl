@@ -1,9 +1,9 @@
 # Primitive Scan
 
 Runs `body` a fixed number of times, threading a carry through the steps
-and stacking each step's outputs along a new leading axis. Step `t`
+and stacking each step's outputs along a new trailing axis. Step `t`
 receives the carry and, for every array in `xs`, its slice at position
-`t` along axis 1 with that axis dropped.
+`t` along its last axis with that axis dropped.
 
 ## Usage
 
@@ -25,9 +25,9 @@ prim_scan(init, xs, body, steps, reverse = FALSE)
 - xs:
 
   ([`list()`](https://rdrr.io/r/base/list.html))  
-  Per-step inputs: a (possibly nested) list of arrays sliced along axis
-  1, all of size `steps` along it. An empty list runs a counted loop. It
-  must not contain a random state.
+  Per-step inputs: a (possibly nested) list of arrays sliced along their
+  last axis, all of size `steps` along it. An empty list runs a counted
+  loop. It must not contain a random state.
 
 - body:
 
@@ -39,8 +39,8 @@ prim_scan(init, xs, body, steps, reverse = FALSE)
 - steps:
 
   (`integer(1)`)  
-  Static trip count; the size of axis 1 of every array in `xs`. `0` runs
-  no step and returns `init` with zero-length stacked outputs.
+  Static trip count; the size of the last axis of every array in `xs`.
+  `0` runs no step and returns `init` with zero-length stacked outputs.
 
 - reverse:
 
@@ -51,7 +51,7 @@ prim_scan(init, xs, body, steps, reverse = FALSE)
 ## Value
 
 `list(carry = , out = )`: the final carry and the stacked outputs, each
-leaf of `out` gaining a leading axis of size `steps`.
+leaf of `out` gaining a trailing axis of size `steps`.
 
 ## Implemented Rules
 

@@ -6,8 +6,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Cholesky Decomposition — prim_chol"><meta name="description" content="Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Axes before the last two are batch axes."><meta property="og:description" content="Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Axes before the last two are batch axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:description" content="Computes the Cholesky decomposition of a symmetric positive-definite matrix.
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -82,7 +82,7 @@ Axes before the last two are batch axes."><meta property="og:image" content="htt
 
     <div class="ref-description section level2">
     <p>Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Axes before the last two are batch axes.</p>
+The first two axes form the matrix, and any trailing axes are batch axes.</p>
     </div>
 
     <div class="section level2">
@@ -96,7 +96,7 @@ Axes before the last two are batch axes.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-One input, with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes. Can be any float data type. An R value materializes at its
+One input, with at least 2 axes, the first two of equal size (a square matrix); any trailing axes are batch axes. Can be any float data type. An R value materializes at its
 <a href="default_dtypes.html">default data type</a>.</p></dd>
 
 

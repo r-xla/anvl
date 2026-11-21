@@ -2,9 +2,10 @@
 
 Solves a system of linear equations with a triangular coefficient
 matrix. When `left_side` is `TRUE`, solves `op(a) %*% x = b` for `x`.
-When `left_side` is `FALSE`, solves `x %*% op(a) = b` for `x`. Axes
-before the last two are batch axes and must match between `a` and `b`
-(no broadcasting). Here `op` is `A` or `A^T` depending on `transpose_a`.
+When `left_side` is `FALSE`, solves `x %*% op(a) = b` for `x`. The first
+two axes form the matrices, and any trailing axes are batch axes, which
+must match between `a` and `b` (no broadcasting). Here `op` is `A` or
+`A^T` depending on `transpose_a`.
 
 ## Usage
 
@@ -17,11 +18,11 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 - a:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Triangular coefficient matrix with at least 2 axes. The last two axes
-  must be equal (square matrix); any leading axes are batch axes. Can be
-  any float data type. `a` and `b` must have the same data type. An R
-  value among them assumes the data type of the others when it is in its
-  [data type
+  Triangular coefficient matrix with at least 2 axes, of shape
+  `(n, n, b1, ..., bk)`: the first two axes are of equal size (a square
+  matrix), and any trailing axes are batch axes. Can be any float data
+  type. `a` and `b` must have the same data type. An R value among them
+  assumes the data type of the others when it is in its [data type
   category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
   and its [default data
   type](https://r-xla.github.io/anvl/reference/default_dtypes.md) when
@@ -30,10 +31,10 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 - b:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Right-hand side. Same rank as `a` (rank \>= 2), with matching leading
-  batch axes. The size of `a`'s last two (square) axes must equal `b`'s
-  second-to-last axis when `left_side = TRUE`, or `b`'s last axis when
-  `left_side = FALSE`. Shares `a`'s data type – see `a`.
+  Right-hand side, of the same rank as `a` and with matching trailing
+  batch axes: of shape `(n, m, b1, ..., bk)` when `left_side = TRUE`, or
+  `(m, n, b1, ..., bk)` when `left_side = FALSE`. Shares `a`'s data type
+  – see `a`.
 
 - left_side:
 

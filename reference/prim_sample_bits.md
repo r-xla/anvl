@@ -39,7 +39,7 @@ truncated to its low bits, as JAX's `jax.random.bits()` does by default.
 The value at a position thus does not depend on the number of values
 drawn, so a draw of `3` is the start of a draw of `6`. The draws fill
 `shape` in column-major order, so a draw of `c(2, 3)` is a draw of `6`
-filled into `c(2, 3)`. JAX fills a shape in row-major order instead.
+filled into `c(2, 3)`.
 
 ## Random State
 

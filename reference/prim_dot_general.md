@@ -53,9 +53,10 @@ prim_dot_general(
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-Has the data type the operands agreed on. The output shape is the batch
-axes followed by the remaining (non-contracted, non-batched) axes of
-`lhs`, then `rhs`.
+Has the data type the operands agreed on. The output shape is the
+remaining (non-contracted, non-batched) axes of `lhs`, then those of
+`rhs`, each in ascending order, and last the batch axes, in the order
+`batching_axes` names them.
 
 ## Implemented Rules
 
@@ -70,7 +71,9 @@ axes followed by the remaining (non-contracted, non-batched) axes of
 Lowers to
 [`hlo_dot_general()`](https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html),
 specified under
-[dot_general](https://openxla.org/stablehlo/spec#dot_general).
+[dot_general](https://openxla.org/stablehlo/spec#dot_general). StableHLO
+puts the batch dimensions first in its result; anvl's result has them
+last, which is the same array once the lowering reverses every axis.
 
 ## See also
 
@@ -91,4 +94,20 @@ prim_dot_general(x, y,
 #>  22 49
 #>  28 64
 #> [ CPUi32{2,2} ] 
+# two such products at once: the batch axis trails, in the result as well
+x <- nv_array(1:12, shape = c(2, 3, 2))
+y <- nv_array(1:12, shape = c(3, 2, 2))
+prim_dot_general(x, y,
+  contracting_axes = list(2L, 1L),
+  batching_axes = list(3L, 3L)
+)
+#> AnvlArray
+#> (1,.,.) =
+#>   22 220
+#>   49 301
+#> 
+#> (2,.,.) =
+#>   28 244
+#>   64 334
+#> [ CPUi32{2,2,2} ] 
 ```

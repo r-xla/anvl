@@ -6,12 +6,12 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Scan — prim_scan"><meta name="description" content="Runs body a fixed number of times, threading a carry through the steps
-and stacking each step's outputs along a new leading axis. Step t
+and stacking each step's outputs along a new trailing axis. Step t
 receives the carry and, for every array in xs, its slice at position t
-along axis 1 with that axis dropped."><meta property="og:description" content="Runs body a fixed number of times, threading a carry through the steps
-and stacking each step's outputs along a new leading axis. Step t
+along its last axis with that axis dropped."><meta property="og:description" content="Runs body a fixed number of times, threading a carry through the steps
+and stacking each step's outputs along a new trailing axis. Step t
 receives the carry and, for every array in xs, its slice at position t
-along axis 1 with that axis dropped."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+along its last axis with that axis dropped."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -86,9 +86,9 @@ along axis 1 with that axis dropped."><meta property="og:image" content="https:/
 
     <div class="ref-description section level2">
     <p>Runs <code>body</code> a fixed number of times, threading a carry through the steps
-and stacking each step's outputs along a new leading axis. Step <code>t</code>
+and stacking each step's outputs along a new trailing axis. Step <code>t</code>
 receives the carry and, for every array in <code>xs</code>, its slice at position <code>t</code>
-along axis 1 with that axis dropped.</p>
+along its last axis with that axis dropped.</p>
     </div>
 
     <div class="section level2">
@@ -110,9 +110,9 @@ draw from one in <code>body</code>, make it the default before the loop with
 
 <dt id="arg-xs">xs<a class="anchor" aria-label="anchor" href="#arg-xs"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
-Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-all of size <code>steps</code> along it. An empty list runs a counted loop. It must
-not contain a random state.</p></dd>
+Per-step inputs: a (possibly nested) list of arrays sliced along their
+last axis, all of size <code>steps</code> along it. An empty list runs a counted
+loop. It must not contain a random state.</p></dd>
 
 
 <dt id="arg-body">body<a class="anchor" aria-label="anchor" href="#arg-body"></a></dt>
@@ -124,8 +124,8 @@ nested) list of arrays or <code>NULL</code>. <code>x</code> is <code>NULL</code>
 
 <dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Static trip count; the size of axis 1 of every array in <code>xs</code>. <code>0</code> runs
-no step and returns <code>init</code> with zero-length stacked outputs.</p></dd>
+Static trip count; the size of the last axis of every array in <code>xs</code>.
+<code>0</code> runs no step and returns <code>init</code> with zero-length stacked outputs.</p></dd>
 
 
 <dt id="arg-reverse">reverse<a class="anchor" aria-label="anchor" href="#arg-reverse"></a></dt>
@@ -137,7 +137,7 @@ If <code>TRUE</code>, steps run from <code>steps</code> down to <code>1</code>; 
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list(carry = , out = )</code>: the final carry and the stacked
-outputs, each leaf of <code>out</code> gaining a leading axis of size <code>steps</code>.</p>
+outputs, each leaf of <code>out</code> gaining a trailing axis of size <code>steps</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>

@@ -38,7 +38,7 @@ prim_convolution(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Input, e.g. `[batch, channels, *spatial]`. Can be any data type. `x`
+  Input, e.g. `(*spatial, channels, batch)`. Can be any data type. `x`
   and `kernel` must have the same data type. An R value among them
   assumes the data type of the others when it is in its [data type
   category](https://r-xla.github.io/anvl/reference/dtype_categories.md),
@@ -49,8 +49,8 @@ prim_convolution(
 - kernel:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`. Shares `x`'s data
-  type – see `x`.
+  Kernel, e.g. `(*spatial, in_channels / groups, out_channels)`. Shares
+  `x`'s data type – see `x`.
 
 - x_batch_axis, x_feature_axis:
 
@@ -85,7 +85,8 @@ prim_convolution(
 - window_strides:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Stride per spatial axis.
+  Stride per spatial axis, in the order of `x_spatial_axes`, as are all
+  per-spatial-axis parameters.
 
 - padding:
 
@@ -138,21 +139,34 @@ numbers are converted on the way down.
 ## Examples
 
 ``` r
-# a 1-D convolution in NCW layout: one batch, one channel, width 5,
-# convolved with a width-3 kernel, giving 3 window positions
-x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+# a causal 1-D convolution in the layout of nv_conv1d(): width 5, one
+# channel, a batch of one, convolved with a width-3 kernel; padding only the
+# start of the width keeps all 5 window positions
+x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
 prim_convolution(
   x, kernel,
-  x_batch_axis = 1L, x_feature_axis = 2L, x_spatial_axes = 3L,
-  kernel_output_feature_axis = 1L, kernel_input_feature_axis = 2L,
-  kernel_spatial_axes = 3L,
-  output_batch_axis = 1L, output_feature_axis = 2L, output_spatial_axes = 3L,
-  window_strides = 1L, padding = matrix(0L, nrow = 1, ncol = 2),
+  x_spatial_axes = 1L, x_feature_axis = 2L, x_batch_axis = 3L,
+  kernel_spatial_axes = 1L, kernel_input_feature_axis = 2L,
+  kernel_output_feature_axis = 3L,
+  output_spatial_axes = 1L, output_feature_axis = 2L, output_batch_axis = 3L,
+  window_strides = 1L, padding = matrix(c(2L, 0L), nrow = 1),
   x_dilation = 1L, kernel_dilation = 1L
 )
 #> AnvlArray
 #> (1,.,.) =
-#>  -2 -2 -2
-#> [ CPUf32{1,1,3} ] 
+#>  -1
+#> 
+#> (2,.,.) =
+#>  -2
+#> 
+#> (3,.,.) =
+#>  -2
+#> 
+#> (4,.,.) =
+#>  -2
+#> 
+#> (5,.,.) =
+#>  -2
+#> [ CPUf32{5,1,1} ] 
 ```

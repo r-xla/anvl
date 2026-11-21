@@ -109,9 +109,9 @@ depending on <code>transpose</code>.</p>
 
 <dl><dt id="arg-a">a<a class="anchor" aria-label="anchor" href="#arg-a"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Triangular coefficient matrix with at least 2 axes. The last two
-axes must be equal; any leading axes are batch axes. Can be any numeric
-data type: <code>a</code> and <code>b</code> are
+Triangular coefficient matrix with at least 2 axes. The first two
+axes must be of equal size; any trailing axes are batch axes. Can be any
+numeric data type: <code>a</code> and <code>b</code> are
 <a href="nv_promote_to_common.html">promoted to a common data type</a> and that is then
 converted to the default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where
 it is not a float already, since the solve is a float one. An R value
@@ -122,14 +122,14 @@ neither has one.</p></dd>
 
 <dt id="arg-b">b<a class="anchor" aria-label="anchor" href="#arg-b"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Right-hand side. For <code>a</code> of shape <code>(B..., n, n)</code>, <code>b</code> may be either:</p><ul><li><p>full rank — shape <code>(B..., n, k)</code> when <code>left = TRUE</code>, or
-<code>(B..., k, n)</code> when <code>left = FALSE</code>;</p></li>
-<li><p>one rank less, shape <code>(B..., n)</code>, meaning a single column
+Right-hand side. For <code>a</code> of shape <code>(n, n, b1, ..., bk)</code>, <code>b</code> may be either:</p><ul><li><p>full rank — shape <code>(n, m, b1, ..., bk)</code> when <code>left = TRUE</code>, or
+<code>(m, n, b1, ..., bk)</code> when <code>left = FALSE</code>;</p></li>
+<li><p>one rank less, shape <code>(n, b1, ..., bk)</code>, meaning a single column
 (<code>left = TRUE</code>) or row (<code>left = FALSE</code>) per batch — it
 is reshaped internally and the reshape is undone on the result so
 the output rank matches <code>b</code>.</p></li>
-</ul><p><code>b</code>'s batch axes (<code>B...</code>) must match <code>a</code>'s exactly. It is promoted
-together with <code>a</code> – see <code>a</code>.</p></dd>
+</ul><p><code>b</code>'s trailing batch axes (<code>b1, ..., bk</code>) must match <code>a</code>'s exactly. It is
+promoted together with <code>a</code> – see <code>a</code>.</p></dd>
 
 
 <dt id="arg-left">left<a class="anchor" aria-label="anchor" href="#arg-left"></a></dt>
@@ -164,8 +164,8 @@ an integer one.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>As a convenience, <code>b</code> may have one fewer axis than <code>a</code> (a single
-right-hand side per batch, shape <code>(B..., n)</code> for <code>a</code> of shape
-<code>(B..., n, n)</code>). It is reshaped internally to a column (<code>left = TRUE</code>) or row (<code>left = FALSE</code>) and reshaped back on the way out.
+right-hand side per batch, shape <code>(n, b1, ..., bk)</code> for <code>a</code> of shape
+<code>(n, n, b1, ..., bk)</code>). It is reshaped internally to a column (<code>left = TRUE</code>) or row (<code>left = FALSE</code>) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).</p>
 <p>Differentiation is only implemented for a single system: a <code><a href="gradient.html">gradient()</a></code> of a
 batched solve errors.</p>

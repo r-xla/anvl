@@ -132,9 +132,10 @@ Only the StableHLO backend honors this; it is ignored by the quickr backend.</p>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Has the data type the operands agreed on. The output shape is the batch
-axes followed by the remaining
-(non-contracted, non-batched) axes of <code>lhs</code>, then <code>rhs</code>.</p>
+Has the data type the operands agreed on. The output shape is the remaining
+(non-contracted, non-batched) axes of <code>lhs</code>, then those of <code>rhs</code>, each in
+ascending order, and last the batch axes, in the order <code>batching_axes</code>
+names them.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -149,7 +150,9 @@ axes followed by the remaining
 
 
 <p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html" class="external-link">hlo_dot_general()</a></code>, specified under
-<a href="https://openxla.org/stablehlo/spec#dot_general" class="external-link">dot_general</a>.</p>
+<a href="https://openxla.org/stablehlo/spec#dot_general" class="external-link">dot_general</a>.
+StableHLO puts the batch dimensions first in its result; anvl's result has
+them last, which is the same array once the lowering reverses every axis.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -169,6 +172,22 @@ axes followed by the remaining
 <span class="r-out co"><span class="r-pr">#&gt;</span>  22 49</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  28 64</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,2} ] </span>
+<span class="r-in"><span><span class="co"># two such products at once: the batch axis trails, in the result as well</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_dot_general</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>,</span></span>
+<span class="r-in"><span>  contracting_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">1L</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  batching_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">3L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (1,.,.) =</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   22 220</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   49 301</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (2,.,.) =</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   28 244</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   64 334</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,2,2} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

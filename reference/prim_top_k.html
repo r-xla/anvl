@@ -5,14 +5,14 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Top-K — prim_top_k"><meta name="description" content="Returns the k largest values along the last axis, sorted in
-decreasing order, and with indices = TRUE their indices into that
-axis as well.
-For other axes, transpose so the target axis is last, call
-prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:description" content="Returns the k largest values along the last axis, sorted in
-decreasing order, and with indices = TRUE their indices into that
-axis as well.
-For other axes, transpose so the target axis is last, call
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Top-K — prim_top_k"><meta name="description" content="Returns the k largest values along axis 1, sorted in decreasing order,
+and with indices = TRUE their indices into that axis as well. The
+trailing axes are batch axes.
+For other axes, transpose so the target axis is first, call
+prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:description" content="Returns the k largest values along axis 1, sorted in decreasing order,
+and with indices = TRUE their indices into that axis as well. The
+trailing axes are batch axes.
+For other axes, transpose so the target axis is first, call
 prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -87,10 +87,10 @@ prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:ima
     </div>
 
     <div class="ref-description section level2">
-    <p>Returns the <code>k</code> largest values along the last axis, sorted in
-decreasing order, and with <code>indices = TRUE</code> their indices into that
-axis as well.</p>
-<p>For other axes, transpose so the target axis is last, call
+    <p>Returns the <code>k</code> largest values along axis 1, sorted in decreasing order,
+and with <code>indices = TRUE</code> their indices into that axis as well. The
+trailing axes are batch axes.</p>
+<p>For other axes, transpose so the target axis is first, call
 <code>prim_top_k()</code>, then transpose back. <code><a href="nv_top_k.html">nv_top_k()</a></code> does this.</p>
     </div>
 
@@ -111,8 +111,7 @@ One input, with at least 1 axis. Can be any numeric data type. An R value materi
 
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Number of top elements. Must satisfy
-<code>1 &lt;= k &lt;= shape(x)[naxes(x)]</code>.</p></dd>
+Number of top elements. Must satisfy <code>1 &lt;= k &lt;= shape(x)[1]</code>.</p></dd>
 
 
 <dt id="arg-indices">indices<a class="anchor" aria-label="anchor" href="#arg-indices"></a></dt>
@@ -126,10 +125,10 @@ pick the cheapest selection for the platform.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(named <code>list</code> of one or two <code><a href="arrayish.html">arrayish</a></code>)<br>
 Element <code>values</code>, the top-<code>k</code> values at the input's data type, and, when
-<code>indices</code> is <code>TRUE</code>, <code>indices</code>, their indices along the last axis at
-the default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>). Both have the
-input's shape with the last axis replaced by <code>k</code>. With indices, ties are
-broken by lower index first.</p>
+<code>indices</code> is <code>TRUE</code>, <code>indices</code>, their indices along axis 1 at the
+default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>). Both have the
+input's shape with axis 1 replaced by <code>k</code>. With indices, ties are broken
+by lower index first.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -179,6 +178,22 @@ backend has a dedicated top-k kernel, so it keeps <code><a href="https://r-xla.g
 <span class="r-out co"><span class="r-pr">#&gt;</span>  8</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># the top 2 of each column</span></span></span>
+<span class="r-in"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_top_k</span><span class="op">(</span><span class="va">m</span>, k <span class="op">=</span> <span class="fl">2L</span>, indices <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $values</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5 4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,2} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $indices</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,2} ] </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>

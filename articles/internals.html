@@ -323,7 +323,7 @@ transformation are attached to each primitive.</p>
 <span><span class="co">##     operands &lt;- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)</span></span>
 <span><span class="co">##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))</span></span>
 <span><span class="co">## }</span></span>
-<span><span class="co">## &lt;environment: 0x62d8847c8308&gt;</span></span></code></pre>
+<span><span class="co">## &lt;environment: 0x62502e2592d0&gt;</span></span></code></pre>
 <p>The <code><a href="../reference/stablehlo.html">stablehlo()</a></code> function creates a
 <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code> object and sequentially translates the
 <code>GraphStatement</code>s into StableHLO operations.</p>
@@ -400,9 +400,9 @@ the <code>AnvlArray</code> <code>C</code>. So the lowering of
 dimension <code>n - i</code>, so R’s first axis – the contiguous one –
 is XLA’s minor dimension, and trailing R axes are XLA’s major ones.
 XLA’s kernels want batch axes outermost in memory, which are the
-trailing R axes. To XLA, every program anvl builds is a row-major one,
-which is the happy path its kernels and its compiler are optimized
-for.</p>
+trailing R axes, so anvl’s batch axes come last. To XLA, every program
+anvl builds is a row-major one, which is the happy path its kernels and
+its compiler are optimized for.</p>
 <p>Every lowering rule maps the axis numbers of its parameters
 accordingly, and the StableHLO program shows the reversed shapes. An
 array of shape <code>(2, 3)</code> is a

@@ -187,13 +187,13 @@ possible (e.g. <code>x * y</code> or <code>nv_sum(x)</code> instead of a
 <code>for</code> loop).</li>
 <li>
 <strong>Prefer batched operations.</strong> Operations like
-<code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> accept a full batch of matrices at once.
-Stacking many small inputs into one larger array and processing them in
-a single call is typically much faster than calling the same operation
-many times. This mirrors plain R, where vectorized code beats a
-<code>for</code> loop – except that on a GPU the win comes from running
-the batch entries in parallel rather than from avoiding interpreter
-overhead.</li>
+<code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> accept a full batch of matrices at once,
+stacked along trailing batch axes. Stacking many small inputs into one
+larger array and processing them in a single call is typically much
+faster than calling the same operation many times. This mirrors plain R,
+where vectorized code beats a <code>for</code> loop – except that on a
+GPU the win comes from running the batch entries in parallel rather than
+from avoiding interpreter overhead.</li>
 <li>
 <strong>Sometimes the algorithm itself has to be rewritten.</strong>
 Inherently sequential formulations – e.g. a running update that depends
