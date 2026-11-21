@@ -16,13 +16,13 @@
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
 #' @param tags (`character()`)\cr
-#'   The kinds of operation the primitive is, see [`new_primitive()`].
+#'   Tags for internal use, see [`new_primitive()`].
 #' @return (`AnvlPrimitiveDef`)
 #' @export
 AnvlPrimitiveDef <- function(name, subgraphs = character(), tags = character()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
-  checkmate::assert_subset(tags, primitive_tags)
+  checkmate::assert_character(tags, any.missing = FALSE)
 
   env <- new.env(parent = emptyenv())
   env$name <- name
@@ -36,8 +36,17 @@ AnvlPrimitiveDef <- function(name, subgraphs = character(), tags = character()) 
 
 primitive_env <- new.env(parent = emptyenv())
 
-# The kinds of operation a primitive can be tagged with (see `new_primitive()`).
-primitive_tags <- c("elementwise", "reduction", "cumulative")
+# A primitive's tags say what kind of operation it is, so that a rule shared by
+# every primitive of a kind, or derived from another of their rules, is
+# assigned from the tag, and a new primitive of that kind gets it without being
+# added to a list. The tags in use:
+# * "elementwise": each element of the output is computed from the elements at
+#   the same position of the operands alone, where a scalar operand is
+#   broadcast, e.g. `prim_add()`.
+# * "reduction": reduces its operand along the axes a parameter names, e.g.
+#   `prim_sum()`.
+# * "cumulative": scans its operand along the axis a parameter names, e.g.
+#   `prim_cumsum()`.
 
 # The registered primitives tagged with any of `tags`, by name.
 primitives_tagged <- function(tags) {
@@ -113,14 +122,9 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
 #' @param tags (`character()`)\cr
-#'   The kinds of operation the primitive is, which rules shared between
-#'   primitives of one kind read:
-#'   * `"elementwise"`: each element of the output is computed from the
-#'     elements at the same position of the operands alone, e.g. [`prim_add()`].
-#'   * `"reduction"`: reduces its operand along the axes a parameter names,
-#'     e.g. [`prim_sum()`].
-#'   * `"cumulative"`: scans its operand along the axis a parameter names,
-#'     e.g. [`prim_cumsum()`].
+#'   Tags for anvl's internal use, which say what kind of operation the
+#'   primitive is, e.g. `"elementwise"`, so that rules shared by the
+#'   primitives of one kind can be derived from them.
 #' @param register (`logical(1)`)\cr
 #'   Whether to add the primitive to anvl's internal registry of primitives,
 #'   under `name`, replacing one registered under the same name. The quickr

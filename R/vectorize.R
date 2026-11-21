@@ -53,18 +53,6 @@
 #'   what `f` returns, with the batch axis added to every output where
 #'   `out_axes` puts it; an output whose entry in `out_axes` is `NULL` is
 #'   returned as it is.
-#' @section Supported Primitives:
-#' A primitive applied to a value that is mapped over needs a `vectorize` rule
-#' (see [`rule_vectorize()`]); calling one that has none raises an error.
-#' Values that are not mapped over can go through any primitive. Without a rule
-#' so far are [`prim_gather()`], [`prim_scatter()`], [`prim_chol()`],
-#' [`prim_triangular_solve()`], control flow ([`prim_if()`], [`prim_while()`],
-#' [`prim_scan()`]), [`prim_reduce()`],
-#' [`prim_convolution()`] and the decompositions [`prim_qr()`], [`prim_lu()`],
-#' [`prim_svd()`] and [`prim_eigh()`].
-#' Some operands cannot be mapped over yet: the start indices of
-#' [`prim_dynamic_slice()`] and [`prim_dynamic_update_slice()`], and the
-#' padding value of [`prim_pad()`].
 #' @seealso [`rule_vectorize()`], [`gradient()`], `r roxy_article("vectorize")`
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
