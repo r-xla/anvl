@@ -4,7 +4,7 @@
 \alias{hessian}
 \title{Hessians}
 \usage{
-hessian(f, wrt = NULL, mode = "backward")
+hessian(f, wrt = NULL)
 }
 \arguments{
 \item{f}{(\code{function})\cr
@@ -14,11 +14,6 @@ Function to differentiate. Must return a single float scalar.}
 Names or positions of the arguments to differentiate with respect to, as
 for \code{\link[=gradient]{gradient()}}: float arrays, or lists of them, passed as arrays with
 a data type. If \code{NULL} (the default), all arguments.}
-
-\item{mode}{(\code{character(1)})\cr
-\code{"backward"} (the default) or \code{"forward"}: how \code{\link[=jacobian]{jacobian()}} computes
-the Jacobian of the gradient, so \code{"forward"} differentiates
-forward-over-reverse.}
 }
 \value{
 (\code{function})\cr
@@ -33,7 +28,9 @@ derivatives of \code{f} with respect to the arrays \code{a} and \code{b} are at
 Return a new function that computes the Hessian of \code{f}, a function that
 returns a single float scalar: its second derivatives with respect to
 every two elements of its arguments. It is the \code{\link[=jacobian]{jacobian()}} of the
-\code{\link[=gradient]{gradient()}} of \code{f}. The returned function has the same signature as
+\code{\link[=gradient]{gradient()}} of \code{f}, forward-over-reverse: the gradient in backward mode,
+and its Jacobian in forward mode, vectorized over a unit tangent for every
+element of the arguments. The returned function has the same signature as
 \code{f}.
 }
 \examples{
@@ -42,7 +39,6 @@ f <- function(x) sum(x^3L)
 x <- nv_array(c(1, 2, 3))
 # 6 * x on the diagonal
 jit(hessian(f))(x)
-jit(hessian(f, mode = "forward"))(x)
 
 # the second derivatives with respect to two arguments
 g <- function(x, y) sum(x^2L * y)

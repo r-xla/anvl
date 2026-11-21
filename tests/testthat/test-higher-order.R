@@ -115,26 +115,22 @@ describe("jacobian", {
 })
 
 describe("hessian", {
-  it("is the Jacobian of the gradient, in both modes", {
+  it("is the Jacobian of the gradient", {
     x <- c(0.5, 1, 2)
     f <- function(x) sum(x^3L)
-    for (mode in c("backward", "forward")) {
-      out <- jit(hessian(f, mode = mode))(nv_array(x, dtype = "f64"))
-      expect_equal(as_array(out$x$x), diag(6 * x))
-    }
+    out <- jit(hessian(f))(nv_array(x, dtype = "f64"))
+    expect_equal(as_array(out$x$x), diag(6 * x))
   })
 
   it("holds the second derivatives with respect to two arrays at [[a]][[b]]", {
     f <- function(x, y) sum(x^2L * y)
     x <- c(1, 2)
     y <- c(3, 4)
-    for (mode in c("backward", "forward")) {
-      out <- as_arrays(jit(hessian(f, mode = mode))(nv_array(x, dtype = "f64"), nv_array(y, dtype = "f64")))
-      expect_equal(out$x$x, diag(2 * y))
-      expect_equal(out$x$y, diag(2 * x))
-      expect_equal(out$y$x, diag(2 * x))
-      expect_equal(out$y$y, matrix(0, 2L, 2L))
-    }
+    out <- as_arrays(jit(hessian(f))(nv_array(x, dtype = "f64"), nv_array(y, dtype = "f64")))
+    expect_equal(out$x$x, diag(2 * y))
+    expect_equal(out$x$y, diag(2 * x))
+    expect_equal(out$y$x, diag(2 * x))
+    expect_equal(out$y$y, matrix(0, 2L, 2L))
   })
 
   it("differentiates with respect to the arguments in wrt", {

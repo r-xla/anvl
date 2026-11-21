@@ -60,15 +60,13 @@ jacobian <- function(f, wrt = NULL, mode = "backward") {
 #' Return a new function that computes the Hessian of `f`, a function that
 #' returns a single float scalar: its second derivatives with respect to
 #' every two elements of its arguments. It is the [`jacobian()`] of the
-#' [`gradient()`] of `f`. The returned function has the same signature as
+#' [`gradient()`] of `f`, forward-over-reverse: the gradient in backward mode,
+#' and its Jacobian in forward mode, vectorized over a unit tangent for every
+#' element of the arguments. The returned function has the same signature as
 #' `f`.
 #' @inheritParams jacobian
 #' @param f (`function`)\cr
 #'   Function to differentiate. Must return a single float scalar.
-#' @param mode (`character(1)`)\cr
-#'   `"backward"` (the default) or `"forward"`: how [`jacobian()`] computes
-#'   the Jacobian of the gradient, so `"forward"` differentiates
-#'   forward-over-reverse.
 #' @return (`function`)\cr
 #'   Has the same formals as `f` and must be called inside [`jit()`]. It
 #'   returns a named `list` with an entry per argument of `f` (or per `wrt`
@@ -83,16 +81,14 @@ jacobian <- function(f, wrt = NULL, mode = "backward") {
 #' x <- nv_array(c(1, 2, 3))
 #' # 6 * x on the diagonal
 #' jit(hessian(f))(x)
-#' jit(hessian(f, mode = "forward"))(x)
 #'
 #' # the second derivatives with respect to two arguments
 #' g <- function(x, y) sum(x^2L * y)
 #' jit(hessian(g))(x, nv_array(c(4, 5, 6)))
-hessian <- function(f, wrt = NULL, mode = "backward") {
+hessian <- function(f, wrt = NULL) {
   assert_function(f)
   wrt <- resolve_transformation_args(f, wrt, "wrt")
-  assert_choice(mode, c("backward", "forward"))
-  jacobian_fn(gradient(f, wrt), wrt, mode, "hessian")
+  jacobian_fn(gradient(f, wrt), wrt, "forward", "hessian")
 }
 
 # The function `jacobian()` or `hessian()` (named by `fn`) returns for `f`.

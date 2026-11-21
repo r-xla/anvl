@@ -239,7 +239,8 @@ jit(jacobian(f))(nv_array(c(0, 1, 2)))
 jit(jacobian(f, mode = "forward"))(nv_array(c(0, 1, 2)))
 ```
 
-`hessian()` is the Jacobian of the gradient of a function that returns a scalar, with the second derivatives with respect to the arguments `a` and `b` at `[[a]][[b]]`:
+`hessian()` is the Jacobian of the gradient of a function that returns a scalar, forward-over-reverse: the gradient in backward mode, and its Jacobian in forward mode.
+It holds the second derivatives with respect to the arguments `a` and `b` at `[[a]][[b]]`:
 
 ```{r}
 jit(hessian(function(x) sum(x * sin(x))))(nv_array(c(0, 1, 2)))
