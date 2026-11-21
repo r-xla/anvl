@@ -6,7 +6,12 @@ sizes.
 ## Usage
 
 ``` r
-assert_shapevec(x, min_len = 0L, var_name = rlang::caller_arg(x))
+assert_shapevec(
+  x,
+  min_len = 0L,
+  var_name = rlang::caller_arg(x),
+  call = rlang::current_env()
+)
 ```
 
 ## Arguments
@@ -24,6 +29,11 @@ assert_shapevec(x, min_len = 0L, var_name = rlang::caller_arg(x))
 
   (`character(1)`)  
   Name of the variable to use in error messages.
+
+- call:
+
+  (`environment`)  
+  The frame an error is reported for.
 
 ## Value
 

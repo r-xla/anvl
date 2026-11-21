@@ -28,7 +28,9 @@ with `backend = "pjrt"` wraps a
 [`pjrt::pjrt_buffer()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html)
 stored in the `$data` field. The buffer owns the memory holding the
 array values and may live on any device supported by PJRT (CPU, CUDA,
-...). Calling
+...). It holds the array's column-major bytes as an XLA array of the
+reversed shape, so that uploads and read-backs copy the bytes without
+reordering them. Calling
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 transfers the buffer contents back to an R array; calling
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)

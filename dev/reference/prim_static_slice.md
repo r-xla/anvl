@@ -55,7 +55,7 @@ Has the same data type as the input and shape
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

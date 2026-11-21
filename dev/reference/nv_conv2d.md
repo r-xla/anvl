@@ -1,9 +1,7 @@
 # 2D Convolution
 
-Torch-style 2D convolution in NCHW layout: `x` is
-`[batch, in_channels, height, width]`, `kernel` is
-`[out_channels, in_channels / groups, kh, kw]`, output is
-`[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
+2D convolution like torch's `nnf_conv2d()`, but with the axes in reverse
+order: width, height, channels, batch.
 
 ## Usage
 
@@ -24,8 +22,8 @@ nv_conv2d(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[N, C_in, H, W]`. Can be any data type; `x` and `kernel` are
-  [promoted to a common data
+  Input with the shape given under Shapes. Can be any data type; `x` and
+  `kernel` are [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
   An R value assumes the other operand's data type, and materializes at
   its [default data
@@ -35,28 +33,34 @@ nv_conv2d(
 - kernel:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[C_out, C_in / groups, kH, kW]`. Promoted together with `x` – see
-  `x`.
+  Kernel with the shape given under Shapes. Promoted together with `x` –
+  see `x`.
 
 - stride:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Length 1 or 2.
+  Step between neighbouring window positions, as `(W, H)` or one value
+  for both spatial axes.
 
 - padding:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Symmetric padding, length 1 or 2.
+  Number of zeros added on each side of each spatial axis, as `(W, H)`
+  or one value for both.
 
 - dilation:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Kernel dilation, length 1 or 2.
+  Spacing between the kernel's elements, as `(W, H)` or one value for
+  both.
 
 - groups:
 
   (`integer(1)`)  
-  Grouped/depthwise convolution.
+  Number of groups the channels are split into: the `g`-th block of
+  input channels is convolved with the `g`-th block of output channels
+  only. It must divide `C_in` and `C_out`, and `groups = C_in` is a
+  depthwise convolution.
 
 - precision:
 
@@ -66,8 +70,16 @@ nv_conv2d(
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the operands' common data type, and shape
-`[N, C_out, out_H, out_W]`.
+Has the operands' common data type and the shape given under Shapes.
+
+## Shapes
+
+- `x`: `(W, H, C_in, N)`
+
+- `kernel`: `(kW, kH, C_in / groups, C_out)`
+
+- output: `(W_out, H_out, C_out, N)`, with each spatial axis as in
+  [`nv_conv1d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv1d.md)
 
 ## See also
 
@@ -78,18 +90,29 @@ Has the operands' common data type, and shape
 ## Examples
 
 ``` r
-# one batch, one channel, 4x4, convolved with a 3x3 kernel
-x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
-kernel <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+# a 4x4 image with one channel, in a batch of one, convolved with a 3x3
+# kernel
+x <- nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32")
+kernel <- nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f32")
 nv_conv2d(x, kernel)
 #> AnvlArray
 #> (1,1,.,.) =
-#>  54 90
-#>  63 99
-#> [ CPUf32{1,1,2,2} ] 
+#>  54
+#> 
+#> (1,2,.,.) =
+#>  90
+#> 
+#> (2,1,.,.) =
+#>  63
+#> 
+#> (2,2,.,.) =
+#>  99
+#> [ CPUf32{2,2,1,1} ] 
 
-# two output channels give a result with two channels
-kernel2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
-shape(nv_conv2d(x, kernel2))
-#> [1] 1 2 2 2
+# a batch of two 6x4 images with three channels, and a kernel with two
+# output channels; the stride is 2 along the width and 1 along the height
+x <- nv_fill(1, shape = c(6, 4, 3, 2), dtype = "f32")
+kernel <- nv_fill(1, shape = c(3, 3, 3, 2), dtype = "f32")
+shape(nv_conv2d(x, kernel, stride = c(2L, 1L)))
+#> [1] 2 2 2 2
 ```

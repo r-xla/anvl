@@ -8,7 +8,7 @@ with respect to the inputs specified by `wrt`.
 ## Usage
 
 ``` r
-transform_gradient(graph, wrt)
+graph_gradient(graph, wrt)
 ```
 
 ## Arguments
@@ -33,11 +33,11 @@ Its outputs are the requested gradients.
 
 To support alternative forward passes for more efficient backward
 passes, we replay and possibly rewrite the graph into a new descriptor.
-Afterwards, we traverse it backwards and call the gradient rules where
+Afterwards, we traverse it backwards and call the pullback rules where
 necessary.
 
 See
-[`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md)
+[`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md)
 for more information.
 
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
@@ -51,7 +51,7 @@ graphs directly.
 
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
 [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
-[`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md)
+[`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md)
 
 ## Examples
 
@@ -62,7 +62,7 @@ graph
 #>   %1: f32[] = mul(%x1, %x2)
 #>   return %1
 #> }
-transform_gradient(graph, "lhs")
+graph_gradient(graph, "lhs")
 #> <AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
 #>   %1: f32[] = mul(%x1, %x2)
 #>   %2: f32[] = mul(%c1, %x2)

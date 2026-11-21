@@ -39,9 +39,11 @@ when one shape is a “tile” of the other:
 nv_array(1:4) + nv_array(1:2)
 ```
 
-    ## Error:
-    ## ! All non-scalar arrays must have the same shape, but got (4), (2). Use
-    ##   `nv_broadcast_arrays()` for general broadcasting.
+    ## Error in `prim_add()`:
+    ## ! `lhs` and `rhs` must have the same shape, unless one of them is a
+    ##   scalar.
+    ## ✖ Got i32[4] and i32[2].
+    ## ℹ Use `nv_broadcast_arrays()` for general broadcasting.
 
 When two non-scalar arrays differ only by size-1 axes (e.g. shape
 `(2, 3)` and `(1, 3)`), use
@@ -242,7 +244,7 @@ nv_scalar(NA)
 ```
 
     ## Error:
-    ## ! Missing value (NA/NaN) cannot be converted to "pred".
+    ## ! Missing value (NA/NaN) cannot be converted to "bool".
 
 ``` r
 
@@ -273,7 +275,7 @@ as_array(nv_scalar(NA_integer_, dtype = "i32"), check = "err")
     ##   way back.
     ## ℹ Use `suppressWarnings()` to silence this.
 
-    ## Error in `xlamisc::as_array()`:
+    ## Error in `pjrt::as_array()`:
     ## ! Materialized <i32> buffer contains a value that R cannot distinguish
     ##   from "NA".
     ## ℹ "i32" reserves the bit pattern "-2147483648" (`INT_MIN`); "i64" reserves
@@ -409,7 +411,7 @@ as_array(big)
 as_array(big, check = "err")
 ```
 
-    ## Error in `xlamisc::as_array()`:
+    ## Error in `pjrt::as_array()`:
     ## ! Materialized <ui64> buffer contains a value `>= 2^63` that wrapped
     ##   through R's signed <integer64>.
     ## ℹ Exactly `2^63` becomes `NA_integer64_`; larger values become negative

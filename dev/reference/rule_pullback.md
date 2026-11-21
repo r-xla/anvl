@@ -1,7 +1,8 @@
-# Reverse Rule
+# Pullback Rule
 
-Construct a reverse-mode autodiff rule for a primitive. Provide exactly
-one of `backward` and `forward`.
+Construct a pullback rule for a primitive, the rule that reverse-mode
+automatic differentiation uses. Provide exactly one of `backward` and
+`forward`.
 
 Pass `backward` when the primitive's forward statement can run
 unmodified, which covers most use cases. It has the signature
@@ -17,10 +18,13 @@ forward results and a closure with the signature of `backward` above,
 which can use intermediate values of the forward pass via lexical
 scoping.
 
+A rule with a `forward` pass can also be the `rule` of
+[`prim_custom_gradient()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.md).
+
 ## Usage
 
 ``` r
-rule_reverse(backward = NULL, forward = NULL)
+rule_pullback(backward = NULL, forward = NULL)
 ```
 
 ## Arguments
@@ -38,17 +42,17 @@ rule_reverse(backward = NULL, forward = NULL)
 
 ## Value
 
-(`anvl_rule_reverse`)
+(`anvl_rule_pullback`)
 
 ## See also
 
-[`transform_gradient()`](https://r-xla.github.io/anvl/dev/reference/transform_gradient.md)
+[`graph_gradient()`](https://r-xla.github.io/anvl/dev/reference/graph_gradient.md)
 
 ## Examples
 
 ``` r
 # the rule of prim_negate()
-rule_reverse(function(inputs, outputs, grads, params, required) {
+rule_pullback(function(inputs, outputs, grads, params, required) {
   list(if (required[[1L]]) prim_negate(grads[[1L]]))
 })
 #> $forward
@@ -59,8 +63,8 @@ rule_reverse(function(inputs, outputs, grads, params, required) {
 #> {
 #>     list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #> }
-#> <environment: 0x55934703e858>
+#> <environment: 0x5941729e3230>
 #> 
 #> attr(,"class")
-#> [1] "anvl_rule_reverse"
+#> [1] "anvl_rule_pullback"
 ```

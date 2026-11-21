@@ -26,7 +26,8 @@ AnvlGraph(
   constants = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  rdata_types = NULL
+  rdata_types = NULL,
+  side_effects = list()
 )
 ```
 
@@ -89,6 +90,17 @@ AnvlGraph(
   call's arguments are uploaded: the aval gives the data type and shape,
   this gives the R type it is uploaded from.
 
+- side_effects:
+
+  ([`list()`](https://rdrr.io/r/base/list.html))  
+  The graph's views of the side effects it uses, in the order of their
+  first use, e.g. of a random state it draws from: the value its uses
+  start from (`$value`), their number (`$n`), and the
+  [`GraphValue`](https://r-xla.github.io/anvl/dev/reference/GraphValue.md)s
+  the graph takes for it beyond its inputs (`$inputs`). A sub-graph's
+  views are folded into its inputs and outputs by the construct that
+  traced it.
+
 ## Value
 
 (`AnvlGraph`)
@@ -125,12 +137,9 @@ w <- nv_array(c(1, 2), dtype = "f32")
 graph <- trace_fn(function(x) x + w * 2, list(x = nv_aval("f32", 2)))
 graph
 #> <AnvlGraph> [%c1: f32[2]] (%x1: f32[2]) {
-#>   %1: f32[2] = broadcast_in_axes [
-#>     shape = 2, broadcast_axes = integer(0)
-#>   ] (2:f32)
-#>   %2: f32[2] = mul(%c1, %1)
-#>   %3: f32[2] = add(%x1, %2)
-#>   return %3
+#>   %1: f32[2] = mul(%c1, 2:f32)
+#>   %2: f32[2] = add(%x1, %1)
+#>   return %2
 #> }
 graph$constants
 #> [[1]]
@@ -138,7 +147,7 @@ graph$constants
 #> 
 
 # several outputs are returned together; `out_tree` records their structure
-graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", c())))
+graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", shp())))
 graph
 #> <AnvlGraph> (%x1: f32[]) {
 #>   %1: f32[] = exp(%x1)

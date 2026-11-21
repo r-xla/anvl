@@ -40,7 +40,7 @@ Has the given `dtype` and the input's shape.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

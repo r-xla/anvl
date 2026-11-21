@@ -11,16 +11,17 @@ zero out the other triangle of an existing array instead.
 ``` r
 nv_lower_tri(shape, diagonal = -1L, device = NULL)
 
-nv_lower_tri_like(like, shape = NULL, diagonal = -1L, device = NULL)
+nv_lower_tri_like(like, shape = "auto", diagonal = -1L, device = NULL)
 ```
 
 ## Arguments
 
 - shape:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `"auto"`)  
   Shape of the result: exactly two axis sizes, since the result is a
-  matrix.
+  matrix. For `nv_lower_tri_like()`, `"auto"` (the default) uses
+  `shape(like)`.
 
 - diagonal:
 

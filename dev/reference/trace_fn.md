@@ -7,7 +7,11 @@ operation into an
 The resulting graph can be lowered to StableHLO (via
 [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md))
 or transformed (e.g. via
-[`transform_gradient()`](https://r-xla.github.io/anvl/dev/reference/transform_gradient.md)).
+[`graph_gradient()`](https://r-xla.github.io/anvl/dev/reference/graph_gradient.md)).
+
+When `f` uses a side effect, the graph records it in its `side_effects`
+field rather than among its inputs and outputs (see
+[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md)).
 
 ## Usage
 

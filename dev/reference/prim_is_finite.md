@@ -26,7 +26,7 @@ Has the same shape as the input and boolean data type.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

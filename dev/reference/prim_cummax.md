@@ -40,7 +40,7 @@ Both have the input's shape.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

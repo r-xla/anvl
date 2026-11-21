@@ -6,7 +6,7 @@ Create an R array without having to wrap data in
 ## Usage
 
 ``` r
-arr(..., shape = NULL)
+arr(..., shape = "auto")
 ```
 
 ## Arguments
@@ -22,20 +22,25 @@ arr(..., shape = NULL)
 
 - shape:
 
-  (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape of new array. If `NULL` (default), uses length of elements to
-  create a 1D array.
+  (`"auto"` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
+  Shape of the new array, with at least one axis. The default `"auto"`
+  creates a 1-D array holding all values.
 
 ## Value
 
 (`array`)
+
+## See also
+
+[`shp()`](https://r-xla.github.io/anvl/dev/reference/shp.md) to create a
+shape.
 
 ## Examples
 
 ``` r
 arr(1, 2, 3)
 #> [1] 1 2 3
-arr(1, 2, 3, 4, shape = c(2, 2))
+arr(1, 2, 3, 4, shape = shp(2, 2))
 #>      [,1] [,2]
 #> [1,]    1    3
 #> [2,]    2    4
@@ -43,7 +48,7 @@ arr(1, 2, 3, 4, shape = c(2, 2))
 arr(1:3, 4L)
 #> [1] 1 2 3 4
 # a single value fills the whole shape
-arr(0, shape = c(2, 3))
+arr(0, shape = shp(2, 3))
 #>      [,1] [,2] [,3]
 #> [1,]    0    0    0
 #> [2,]    0    0    0

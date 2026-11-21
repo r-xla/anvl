@@ -42,7 +42,7 @@ regardless of the input's, and the input's shape with `axis` removed
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

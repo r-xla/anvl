@@ -1,7 +1,8 @@
 # Primitive Cholesky Decomposition
 
 Computes the Cholesky decomposition of a symmetric positive-definite
-matrix. Axes before the last two are batch axes.
+matrix. The first two axes form the matrix, and any trailing axes are
+batch axes.
 
 ## Usage
 
@@ -14,8 +15,8 @@ prim_chol(x, lower = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  One input, with at least 2 axes, the last two of equal size (a square
-  matrix); any leading axes are batch axes. Can be any float data type.
+  One input, with at least 2 axes, the first two of equal size (a square
+  matrix); any trailing axes are batch axes. Can be any float data type.
   An R value materializes at its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
@@ -31,24 +32,25 @@ prim_chol(x, lower = FALSE)
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the same shape and data type as the input. The values in the
-triangle not specified by `lower` are implementation-defined.
+triangle not specified by `lower` are implementation-defined. A matrix
+that is not positive definite factors to `NaN`.
 
 ## Details
 
-Differentiation is only implemented for a single matrix: the `reverse`
+Differentiation is only implemented for a single matrix: the `pullback`
 rule errors on a batched input (an input with more than 2 axes).
 
 ## Implemented Rules
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 
-Lowers to
-[`hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html),
-specified under [cholesky](https://openxla.org/stablehlo/spec#cholesky).
+Lowers to a `"potrf"`
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+(backed by LAPACK on CPU and cuSOLVER on CUDA) + postprocessing.
 
 ## References
 

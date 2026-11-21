@@ -188,11 +188,9 @@ f32_vec3
 #> AbstractArray(dtype=f32, shape=3)
 trace_fn(linear, args = list(x = f32_vec3, w = f32_scalar, b = f32_scalar))
 #> <AnvlGraph> (%x1: f32[3], %x2: f32[], %x3: f32[]) {
-#>   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x2)
-#>   %2: f32[3] = mul(%x1, %1)
-#>   %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x3)
-#>   %4: f32[3] = add(%2, %3)
-#>   return %4
+#>   %1: f32[3] = mul(%x1, %x2)
+#>   %2: f32[3] = add(%1, %x3)
+#>   return %2
 #> }
 ```
 
@@ -224,6 +222,30 @@ primitive calls it performs – must depend only on:
     input, and
 2.  The *value* of each static input.
 
+However, there is currently one exception top this rule, which concerns
+the handling of the RNG state. Stochastic functions, which are those
+functions that call
+[`prim_sample_bits()`](https://r-xla.github.io/anvl/dev/reference/prim_sample_bits.md)
+either directly or indirectly, automatically advance the RNG state that
+was either passed explicitly or implicitly and as such have side
+effects:
+
+``` r
+
+nv_get_rng_state()
+#> <AnvlRngState> key 0xea30ba97efe42c9e, counter 0x0000000000000000
+prim_sample_bits(1L, "ui32")
+#> AnvlArray
+#>  2.0749e+09
+#> [ CPUui32{1} ]
+nv_get_rng_state()
+#> <AnvlRngState> key 0xea30ba97efe42c9e, counter 0x0000000000000001
+```
+
+See the [random
+numbers](https://r-xla.github.io/anvl/dev/articles/random-numbers.md)
+article for more information.
+
 The next subsections each show what tracing does to particular R code
 and where its behavior might be surprising.
 
@@ -242,23 +264,22 @@ linear_repeated <- function(x, w, b, n) {
 }
 trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3, n = 2L))
 #> <AnvlGraph> (%x1: f32[], %x2: f32[3], %x3: f32[3]) {
-#>   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)
-#>   %2: f32[3] = mul(%1, %x2)
-#>   %3: f32[3] = add(%2, %x3)
-#>   %4: f32[3] = mul(%3, %x2)
-#>   %5: f32[3] = add(%4, %x3)
-#>   return %5
+#>   %1: f32[3] = mul(%x1, %x2)
+#>   %2: f32[3] = add(%1, %x3)
+#>   %3: f32[3] = mul(%2, %x2)
+#>   %4: f32[3] = add(%3, %x3)
+#>   return %4
 #> }
 ```
 
-The graph contains a single `broadcast_in_axes` (lifting the scalar `x`
-to `f32[3]`) followed by two `mul`/`add` pairs in sequence – not a loop
-construct. The broadcast happens only once because by the second
-iteration `x` is already an `f32[3]` and matches `w` and `b` directly.
-The compiled executable will contain those five operations laid out one
-after another. For a different value of `n`, the loop would get unrolled
-for this specific iteration number. Long loops also lead to long compile
-times and large executables. You can instead use
+The graph contains two `mul`/`add` pairs in sequence – not a loop
+construct. In the first iteration, `mul` takes the scalar `x` as it is,
+and broadcasts it to the shape of `w` when it is lowered to StableHLO;
+by the second, `x` is already an `f32[3]`. The compiled executable will
+contain these operations laid out one after another. For a different
+value of `n`, the loop would get unrolled for this specific iteration
+number. Long loops also lead to long compile times and large
+executables. You can instead use
 [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md),
 which records a single statement in the graph regardless of how many
 iterations the loop runs.

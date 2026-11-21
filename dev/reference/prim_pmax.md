@@ -14,9 +14,9 @@ prim_pmax(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Two inputs of the same data type and shape. Can be any data type. R
-  values take the other operand's data type when it is in their [data
-  type
+  Two inputs of the same data type and shape, except that a scalar is
+  broadcast to the shape of the other. Can be any data type. R values
+  take the other operand's data type when it is in their [data type
   category](https://r-xla.github.io/anvl/dev/reference/dtype_categories.md),
   and their [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
@@ -26,7 +26,7 @@ prim_pmax(lhs, rhs)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the inputs' shape and data type.
+Has the inputs' broadcast shape and data type.
 
 ## Implemented Rules
 
@@ -34,7 +34,7 @@ Has the inputs' shape and data type.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

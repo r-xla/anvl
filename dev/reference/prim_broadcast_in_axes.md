@@ -42,7 +42,7 @@ Has the same data type as the input and the given `shape`.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

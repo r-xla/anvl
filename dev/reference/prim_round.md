@@ -32,7 +32,7 @@ Has `x`'s data type and shape.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

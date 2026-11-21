@@ -11,7 +11,7 @@ default to those of `like`.
 ``` r
 nv_fill(value, shape, dtype = NULL, device = NULL)
 
-nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
+nv_fill_like(like, value, shape = "auto", dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -26,8 +26,9 @@ nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 
 - shape:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape of the output array.
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `"auto"`)  
+  Shape of the output array, e.g. `shp(2, 3)`. For `nv_fill_like()`,
+  `"auto"` (the default) uses `shape(like)`.
 
 - dtype:
 

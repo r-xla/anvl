@@ -41,10 +41,11 @@ transforming the traced program of `f`, which only exists within
 
 The function that is differentiated must return a single float scalar,
 such as a loss. If you are interested in the derivative of a function
-that returns an array, reduce it to a scalar first. For an elementwise
-function such as [`sin()`](https://rdrr.io/r/base/Trig.html), the
-gradient of `sum(sin(x))` is exactly the elementwise derivative
-`cos(x)`:
+that returns an array, reduce it to a scalar first, or use
+[`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
+(see [below](#pullbacks)). For an elementwise function such as
+[`sin()`](https://rdrr.io/r/base/Trig.html), the gradient of
+`sum(sin(x))` is exactly the elementwise derivative `cos(x)`:
 
 ``` r
 
@@ -196,6 +197,62 @@ loss_vg(params, x, y)
 #> [ CPUf32{} ]
 ```
 
+## Pullbacks
+
+For a function with any other result,
+[`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
+evaluates it and returns its *pullback*. The pullback takes a cotangent
+– a weight for each element of the result – back to the arguments. For
+\\f: \mathbb{R}^n \to \mathbb{R}^m\\ evaluated at \\x\\, it maps a
+cotangent \\w \in \mathbb{R}^m\\ to the gradient of the result’s
+elements summed with the weights \\w\\, which is the transposed Jacobian
+of \\f\\ applied to \\w\\:
+
+\\w \mapsto \nabla_x \sum\_{j=1}^m w_j f_j(x) = J_f(x)^\top w\\
+
+[`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
+takes the arguments as a call of the function would, and the pullback
+returns the same named list as
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md):
+
+``` r
+
+f <- function(x) x^2L
+f_pullback <- jit(function(x, w) pullback(f, x)(w))
+f_pullback(nv_array(c(1, 2, 3)), nv_array(c(1, 0, 1)))
+#> $x
+#> AnvlArray
+#>  2
+#>  0
+#>  6
+#> [ CPUf32{3} ]
+```
+
+[`value_and_pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
+returns the result of the function as well, as
+[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+does. The pullback can be called several times, while the function runs
+only once.
+
+The cotangent is structured like the result. `NULL` stands for zeros in
+place of an array or of a whole part of it:
+
+``` r
+
+stats <- function(x) list(total = sum(x), squares = x^2L)
+jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))(nv_array(c(1, 2, 3)))
+#> $x
+#> AnvlArray
+#>  1
+#>  1
+#>  1
+#> [ CPUf32{3} ]
+```
+
+Every float array among the arguments is differentiated. An argument
+that is not one, such as an integer array or an R value, is held fixed,
+and the pullback returns `NULL` for it.
+
 ## Composing with `jit()`
 
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
@@ -252,10 +309,12 @@ conventions of other frameworks such as PyTorch.
 ## Control Flow
 
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
-differentiates through
-[`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md),
-including the values its branches close over. The gradient flows through
-the branch the predicate selects:
+differentiates through the control-flow functions
+[`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) and
+[`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md).
+Values their functions close over are differentiated as well. For
+[`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md), the
+gradient flows through the branch the predicate selects:
 
 ``` r
 
@@ -275,8 +334,36 @@ f_grad(nv_array(c(1, 2)), nv_scalar(FALSE))
 #> [ CPUf32{2} ]
 ```
 
+A loop with a fixed number of steps can be written with
+[`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md).
+Below, `x` takes three steps of gradient descent on \\\sum_i x_i^2\\,
+and we differentiate the loss it ends at with respect to the learning
+rate `lr`:
+
+``` r
+
+loss_after_steps <- function(lr, x) {
+  step <- \(x, unused) list(carry = x - lr * 2 * x, out = NULL)
+  x_final <- nv_scan(x, body = step, steps = 3L)$carry
+  sum(x_final^2L)
+}
+jit(gradient(loss_after_steps, wrt = "lr"))(nv_scalar(0.1), nv_array(c(1, 2)))
+#> $lr
+#> AnvlArray
+#>  -19.6608
+#> [ CPUf32{} ]
+```
+
 [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md),
-in contrast, cannot be differentiated.
+in contrast, cannot be differentiated. Its number of iterations is only
+known when the program runs, so there is no fixed size for the
+intermediate states that computing the gradient needs to keep. Where the
+number of iterations is known, use
+[`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md)
+instead. Where the derivative of what a loop computes has a formula of
+its own,
+[`prim_custom_gradient()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.md)
+attaches it.
 
 ## Limitations
 
@@ -287,12 +374,12 @@ in contrast, cannot be differentiated.
 - Higher-order derivatives, such as Hessians, are currently not really
   supported.
 - Not every primitive has a derivative yet, so some functions cannot be
-  differentiated. The *Reverse* column of the [Primitives
+  differentiated. The *Pullback* column of the [Primitives
   Reference](https://r-xla.github.io/anvl/dev/articles/primitives.md)
   shows which primitives implement it. If a derivative is missing and
-  you need it, you can add a reverse rule to the primitive yourself, as
-  shown in the [add the reverse
-  rule](https://r-xla.github.io/anvl/dev/articles/extending_primitive.html#step-3-add-the-reverse-rule)
+  you need it, you can add a pullback rule to the primitive yourself, as
+  shown in the [add the pullback
+  rule](https://r-xla.github.io/anvl/dev/articles/extending_primitive.html#step-3-add-the-pullback-rule)
   step of the Adding a Primitive article.
 
 ## How It Works
@@ -304,4 +391,4 @@ and
 sections of the internals article for how {anvl} computes gradients, and
 the [Adding a
 Primitive](https://r-xla.github.io/anvl/dev/articles/extending_primitive.md)
-article for how to write a reverse rule.
+article for how to write a pullback rule.

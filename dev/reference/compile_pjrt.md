@@ -12,6 +12,7 @@ compile_pjrt(
   args_flat,
   in_tree,
   donate = character(),
+  xla_options = list(),
   device = NULL,
   arg_device = NULL,
   fallback_device = NULL,
@@ -40,6 +41,12 @@ compile_pjrt(
 
   ([`character()`](https://rdrr.io/r/base/character.html))  
   Names of the arguments whose buffers should be donated.
+
+- xla_options:
+
+  (named [`list()`](https://rdrr.io/r/base/list.html))  
+  XLA options for this compile, passed to
+  [`pjrt::pjrt_compile()`](https://r-xla.github.io/pjrt/reference/pjrt_compile.html).
 
 - device:
 
@@ -97,3 +104,20 @@ With elements:
 - `phantom_specs`: One `list(dtype, shape)` per phantom donated input
   the executor must allocate for an output (see
   [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)).
+
+- `implicit_inputs`: One `list(get, dtype, shape)` per value of a side
+  effect the program takes from outside of it, which pjrt's dispatcher
+  supplies as an input after the call's own:
+  [`get()`](https://rdrr.io/r/base/get.html) takes no arguments and
+  returns the current value, a `PJRTBuffer` of `dtype` and `shape`, e.g.
+  the key of the global random state.
+
+- `on_success`: `NULL`, or a function pjrt's dispatcher calls after
+  every successful run with the call's arguments: it advances the host
+  object of each side effect by its count, e.g. a random state passed as
+  an argument.
+
+- `uses_default_device`: Whether the program was compiled for
+  `fallback_device` (or the default device) because nothing else named
+  one. `FALSE` means its device is fixed by `device`, the inputs or the
+  traced arrays, which the default device does not affect.

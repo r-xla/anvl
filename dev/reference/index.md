@@ -16,6 +16,20 @@ Functions for creating and initializing arrays
   [`nv_scalar_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
   [`nv_empty_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
   : AnvlArray
+- [`nv_bool()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_int8()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_int16()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_int32()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_int64()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_uint8()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_uint16()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_uint32()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_uint64()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_float32()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  [`nv_float64()`](https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.md)
+  : Create an Array of a Given Data Type
+- [`shp()`](https://r-xla.github.io/anvl/dev/reference/shp.md) : Create
+  a Shape
 - [`nv_fill()`](https://r-xla.github.io/anvl/dev/reference/nv_fill.md)
   [`nv_fill_like()`](https://r-xla.github.io/anvl/dev/reference/nv_fill.md)
   : Fill Constant
@@ -99,7 +113,7 @@ generic is documented together with the `nv_*` function it delegates to.
 - [`length(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/length.AnvlArray.md)
   : Number of Elements
 
-## API Functions
+## Array API
 
 User-facing `nv_*` functions for array operations
 
@@ -541,6 +555,18 @@ distributions
   [`nv_qunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
   : The Uniform Distribution
+- [`nv_dbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_binomial.md)
+  [`nv_pbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_binomial.md)
+  [`nv_qbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_binomial.md)
+  : The Binomial Distribution
+- [`nv_dpois()`](https://r-xla.github.io/anvl/dev/reference/nv_poisson.md)
+  [`nv_ppois()`](https://r-xla.github.io/anvl/dev/reference/nv_poisson.md)
+  [`nv_qpois()`](https://r-xla.github.io/anvl/dev/reference/nv_poisson.md)
+  : The Poisson Distribution
+- [`nv_dexp()`](https://r-xla.github.io/anvl/dev/reference/nv_exponential.md)
+  [`nv_pexp()`](https://r-xla.github.io/anvl/dev/reference/nv_exponential.md)
+  [`nv_qexp()`](https://r-xla.github.io/anvl/dev/reference/nv_exponential.md)
+  : The Exponential Distribution
 - [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)
   : Sample from a Binomial Distribution
 - [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md)
@@ -548,14 +574,33 @@ distributions
 - [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
   : Sample Integers
 
+### Random Numbers
+
+Seeding, saving and restoring the global random state the samplers draw
+from
+
+- [`nv_set_seed()`](https://r-xla.github.io/anvl/dev/reference/nv_set_seed.md)
+  [`nv_get_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_set_seed.md)
+  [`nv_set_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_set_seed.md)
+  [`local_nv_seed()`](https://r-xla.github.io/anvl/dev/reference/nv_set_seed.md)
+  [`with_nv_seed()`](https://r-xla.github.io/anvl/dev/reference/nv_set_seed.md)
+  : Set the Global Random State
+- [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
+  : Create a Random State
+- [`nv_split_rng_states()`](https://r-xla.github.io/anvl/dev/reference/nv_split_rng_states.md)
+  : Split Random States Off a Random State
+- [`local_nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/local_nv_rng_state.md)
+  [`with_nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/local_nv_rng_state.md)
+  : Draw From a Random State for a Scope
+
 ### Utilities
 
 Helpers supporting the API functions
 
-- [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
-  : Generate RNG State
 - [`nv_print()`](https://r-xla.github.io/anvl/dev/reference/nv_print.md)
   : Print Array
+- [`nv_optimization_barrier()`](https://r-xla.github.io/anvl/dev/reference/nv_optimization_barrier.md)
+  : Optimization Barrier
 
 ## Data Types and Promotion
 
@@ -612,6 +657,9 @@ Code transformations
 - [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
   [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
   : Gradients
+- [`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
+  [`value_and_pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
+  : Pullbacks
 
 ## Backend
 
@@ -705,7 +753,7 @@ Internal data structures and functions
 
 - [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
   : Trace an R Function into a Graph
-- [`transform_gradient()`](https://r-xla.github.io/anvl/dev/reference/transform_gradient.md)
+- [`graph_gradient()`](https://r-xla.github.io/anvl/dev/reference/graph_gradient.md)
   : Transform a Graph to Its Gradient
 - [`graph_to_quickr_r_function()`](https://r-xla.github.io/anvl/dev/reference/graph_to_quickr_r_function.md)
   : Convert an AnvlGraph to a Plain R Function
@@ -737,8 +785,6 @@ Utilities for working with nested structures
   : Get Active Backend
 - [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
   : Number of Cached Programs of a Jitted Function
-- [`Shape()`](https://r-xla.github.io/anvl/dev/reference/Shape-constructor.md)
-  : Create a Shape Object
 
 ## Primitives
 
@@ -752,8 +798,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Definition
 - [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
   : Add a Statement to a Graph Descriptor
-- [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md)
-  : Reverse Rule
+- [`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md)
+  : Pullback Rule
 
 ### Implemented Primitives
 
@@ -811,6 +857,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Cumulative Product
 - [`prim_cumsum()`](https://r-xla.github.io/anvl/dev/reference/prim_cumsum.md)
   : Primitive Cumulative Sum
+- [`prim_custom_gradient()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.md)
+  : Primitive Custom Gradient
 - [`prim_digamma()`](https://r-xla.github.io/anvl/dev/reference/prim_digamma.md)
   : Primitive Digamma
 - [`prim_div()`](https://r-xla.github.io/anvl/dev/reference/prim_div.md)
@@ -877,6 +925,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Negation
 - [`prim_not()`](https://r-xla.github.io/anvl/dev/reference/prim_not.md)
   : Primitive Bitwise Not
+- [`prim_optimization_barrier()`](https://r-xla.github.io/anvl/dev/reference/prim_optimization_barrier.md)
+  : Primitive Optimization Barrier
 - [`prim_or()`](https://r-xla.github.io/anvl/dev/reference/prim_or.md) :
   Primitive Bitwise Or
 - [`prim_pad()`](https://r-xla.github.io/anvl/dev/reference/prim_pad.md)
@@ -907,12 +957,12 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Reshape
 - [`prim_rev()`](https://r-xla.github.io/anvl/dev/reference/prim_rev.md)
   : Primitive Reverse
-- [`prim_rng_bit_generator()`](https://r-xla.github.io/anvl/dev/reference/prim_rng_bit_generator.md)
-  : Primitive RNG Bit Generator
 - [`prim_round()`](https://r-xla.github.io/anvl/dev/reference/prim_round.md)
   : Primitive Round
 - [`prim_rsqrt()`](https://r-xla.github.io/anvl/dev/reference/prim_rsqrt.md)
   : Primitive Reciprocal Square Root
+- [`prim_sample_bits()`](https://r-xla.github.io/anvl/dev/reference/prim_sample_bits.md)
+  : Primitive Random Bits
 - [`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
   : Primitive Scan
 - [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)
@@ -967,3 +1017,10 @@ Low-level primitive operations (prim\_\* functions)
   : anvl: Accelerated Array Computing and Automatic Differentiation
 - [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md)
   : Install What a Backend Needs to Run
+
+## Testing
+
+Helpers for the tests of packages that depend on anvl
+
+- [`skip_if_no_plugin()`](https://r-xla.github.io/anvl/dev/reference/skip_if_no_plugin.md)
+  : Skip a Test When No PJRT Plugin Is Available

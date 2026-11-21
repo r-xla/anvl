@@ -20,8 +20,9 @@ nv_clamp(x, min, max)
 - min, max:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Lower and upper bound, each scalar or the same shape as `x`. They are
-  brought to `x`'s data type: an R value is built at it when its
+  Lower and upper bound. The operands that are not scalars, `x` among
+  them, have the same shape, and a scalar is broadcast to it. The bounds
+  are brought to `x`'s data type: an R value is built at it when its
   category can reach it (`0L` serves an integer and a float `x` alike,
   `0` only a float one), and a value that already has a data type is
   converted unless that would narrow it – an `f64` bound for an `f32`
@@ -30,7 +31,7 @@ nv_clamp(x, min, max)
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has `x`'s shape and data type.
+Has the operands' broadcast shape and `x`'s data type.
 
 ## See also
 

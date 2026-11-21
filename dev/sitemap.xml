@@ -1,10 +1,10 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://r-xla.github.io/anvl/dev/AGENTS.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/CLAUDE.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/LICENSE-text.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/LICENSE.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/anvl.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/autodiff.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/articles/depending-on-anvl.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/efficiency.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/extending_api.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/extending_primitive.html</loc></url>
@@ -43,7 +43,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/IotaArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/LiteralArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/RData.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/Shape-constructor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/active_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/anvl-package.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/apply_promotion.html</loc></url>
@@ -71,6 +70,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/eq_type.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/graph_desc_add.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/graph_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/graph_to_quickr_function.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/graph_to_quickr_r_function.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/index.html</loc></url>
@@ -84,6 +84,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_default_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_descriptor.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/local_nv_rng_state.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/map_tree.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/naxes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/new_primitive.html</loc></url>
@@ -101,6 +102,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_atan2.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_atanh.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_bind.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_binomial.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_bitcast_convert.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.html</loc></url>
@@ -128,6 +130,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_diag.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_digamma.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_div.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_dtype_constructors.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_eigh.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_eq.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_erf.html</loc></url>
@@ -135,6 +138,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_erfc.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_exp.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_expm1.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_exponential.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_extract_diag.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_eye.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_fill.html</loc></url>
@@ -172,6 +176,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_negate.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_normal.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_not.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_optimization_barrier.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_or.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_order.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_outer.html</loc></url>
@@ -179,6 +184,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_plogis.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_pmax.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_pmin.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_poisson.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_popcnt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_pow.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_print.html</loc></url>
@@ -203,6 +209,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_select.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_seq.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_serialize.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_set_seed.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_shift_left.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_shift_right_arithmetic.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_shift_right_logical.html</loc></url>
@@ -212,6 +219,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sinpi.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_solve.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sort.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_split_rng_states.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sqrt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_squeeze.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_static_slice.html</loc></url>
@@ -267,6 +275,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cummin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cumprod.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cumsum.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_digamma.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_div.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_dot_general.html</loc></url>
@@ -300,6 +309,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_ne.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_negate.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_not.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_optimization_barrier.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_or.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_pad.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_plogis.html</loc></url>
@@ -315,9 +325,9 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_remainder.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_reshape.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_rev.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_rng_bit_generator.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_round.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_rsqrt.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_sample_bits.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_scan.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_scatter.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_shift_left.html</loc></url>
@@ -342,15 +352,17 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_while.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_xor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/promotion_rule.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/pullback.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/quickr_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/reexports.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/rule_reverse.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/rule_pullback.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/shape.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/shp.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/skip_if_no_plugin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/stablehlo.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/subgraphs.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/to_abstract.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/trace_fn.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/transform_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/unwrap_if_array.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/with_dtypes.html</loc></url>
 </urlset>

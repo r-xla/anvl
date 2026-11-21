@@ -1,9 +1,7 @@
 # 1D Convolution
 
-Torch-style 1D convolution in NCW layout: `x` is
-`[batch, in_channels, width]`, `kernel` is
-`[out_channels, in_channels / groups, kW]`, output is
-`[batch, out_channels, out_w]`. Symmetric zero padding.
+1D convolution like torch's `nnf_conv1d()`, but with the axes in reverse
+order: width, channels, batch.
 
 ## Usage
 
@@ -24,8 +22,8 @@ nv_conv1d(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[N, C_in, W]`. Can be any data type; `x` and `kernel` are [promoted
-  to a common data
+  Input with the shape given under Shapes. Can be any data type; `x` and
+  `kernel` are [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
   An R value assumes the other operand's data type, and materializes at
   its [default data
@@ -35,17 +33,31 @@ nv_conv1d(
 - kernel:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[C_out, C_in / groups, kW]`. Promoted together with `x` – see `x`.
+  Kernel with the shape given under Shapes. Promoted together with `x` –
+  see `x`.
 
-- stride, padding, dilation:
+- stride:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Length 1.
+  (`integer(1)`)  
+  Step between neighbouring window positions.
+
+- padding:
+
+  (`integer(1)`)  
+  Number of zeros added on each side of the spatial axis.
+
+- dilation:
+
+  (`integer(1)`)  
+  Spacing between the kernel's elements.
 
 - groups:
 
   (`integer(1)`)  
-  Grouped/depthwise convolution.
+  Number of groups the channels are split into: the `g`-th block of
+  input channels is convolved with the `g`-th block of output channels
+  only. It must divide `C_in` and `C_out`, and `groups = C_in` is a
+  depthwise convolution.
 
 - precision:
 
@@ -55,7 +67,16 @@ nv_conv1d(
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has the operands' common data type, and shape `[N, C_out, out_W]`.
+Has the operands' common data type and the shape given under Shapes.
+
+## Shapes
+
+- `x`: `(W, C_in, N)`
+
+- `kernel`: `(kW, C_in / groups, C_out)`
+
+- output: `(W_out, C_out, N)`, where
+  `W_out = floor((W + 2 * padding - dilation * (kW - 1) - 1) / stride) + 1`
 
 ## See also
 
@@ -66,25 +87,46 @@ Has the operands' common data type, and shape `[N, C_out, out_W]`.
 ## Examples
 
 ``` r
-# one batch, one channel, width 5, convolved with a width-3 kernel
-x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+# width 5, one channel, a batch of one, convolved with a width-3 kernel
+x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
 nv_conv1d(x, kernel)
 #> AnvlArray
 #> (1,.,.) =
-#>  -2 -2 -2
-#> [ CPUf32{1,1,3} ] 
+#>  -2
+#> 
+#> (2,.,.) =
+#>  -2
+#> 
+#> (3,.,.) =
+#>  -2
+#> [ CPUf32{3,1,1} ] 
 
 # `padding = 1` keeps the input width, `stride = 2` visits every other
 # window position
 nv_conv1d(x, kernel, padding = 1L)
 #> AnvlArray
 #> (1,.,.) =
-#>  -2 -2 -2 -2  4
-#> [ CPUf32{1,1,5} ] 
+#>  -2
+#> 
+#> (2,.,.) =
+#>  -2
+#> 
+#> (3,.,.) =
+#>  -2
+#> 
+#> (4,.,.) =
+#>  -2
+#> 
+#> (5,.,.) =
+#>  4
+#> [ CPUf32{5,1,1} ] 
 nv_conv1d(x, kernel, stride = 2L)
 #> AnvlArray
 #> (1,.,.) =
-#>  -2 -2
-#> [ CPUf32{1,1,2} ] 
+#>  -2
+#> 
+#> (2,.,.) =
+#>  -2
+#> [ CPUf32{2,1,1} ] 
 ```

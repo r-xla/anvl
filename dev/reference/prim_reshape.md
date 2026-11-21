@@ -37,18 +37,16 @@ Has the same data type as the input and the given `shape`.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 
 Lowers to
 [`hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html),
 specified under [reshape](https://openxla.org/stablehlo/spec#reshape).
-The lowering wraps it in two
-[`hlo_transpose()`](https://r-xla.github.io/stablehlo/reference/hlo_transpose.html)
-calls that reverse every axis, which is what turns stablehlo's row-major
-reshape into a column-major one; each is skipped where that side has at
-most one axis.
+The lowering represents an array by the reversed shape, so stablehlo's
+row-major reshape of the reversed shapes is exactly a column-major
+reshape of the R shapes.
 
 ## See also
 

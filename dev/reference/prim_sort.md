@@ -57,7 +57,7 @@ shape and data type of its input.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

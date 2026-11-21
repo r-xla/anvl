@@ -2,7 +2,9 @@
 
 Solves the linear system `a %*% x = b` for `x`. Uses LU decomposition
 with partial pivoting internally, so `a` need only be square and
-non-singular.
+non-singular. Unlike
+[`base::solve()`](https://rdrr.io/r/base/solve.html), a singular `a` is
+not an error: the result then holds non-finite values.
 
 ## Usage
 
@@ -81,7 +83,7 @@ nv_solve(a, b)
 # an integer system is solved at the default float data type
 nv_solve(nv_matrix(c(3L, 1L, 1L, 2L), nrow = 2), nv_array(c(9L, 8L)))
 #> AnvlArray
-#>  2.0000
-#>  3.0000
+#>  2
+#>  3
 #> [ CPUf32{2} ] 
 ```

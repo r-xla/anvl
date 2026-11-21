@@ -52,12 +52,18 @@ integer living on the CPU.
 
 library(anvl)
 set.seed(42)
-nv_array(1L, dtype = "i16", device = "cpu", shape = integer())
+nv_array(1L, dtype = "i16", device = "cpu", shape = shp())
 ```
 
     ## AnvlArray
     ##  1
     ## [ CPUi16{} ]
+
+A shape is written with
+[`shp()`](https://r-xla.github.io/anvl/dev/reference/shp.md), which
+takes the axis sizes: `shp(2, 3)` for a 2x3 matrix, and
+[`shp()`](https://r-xla.github.io/anvl/dev/reference/shp.md) for a
+scalar, which has none.
 
 For scalars,
 [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)

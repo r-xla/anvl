@@ -41,7 +41,7 @@ Has the given `dtype`, and the shape described under `dtype`.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 
@@ -49,11 +49,8 @@ Lowers to
 [`hlo_bitcast_convert()`](https://r-xla.github.io/stablehlo/reference/hlo_bitcast_convert.html),
 specified under
 [bitcast_convert](https://openxla.org/stablehlo/spec#bitcast_convert).
-StableHLO puts the lane axis last, so a width-changing conversion is
-lowered with one
-[`hlo_transpose()`](https://r-xla.github.io/stablehlo/reference/hlo_transpose.html)
-that rotates it to the front, or off the front, depending on the
-direction.
+StableHLO puts the lane axis last; the lowering represents an array by
+the reversed shape, so that is the leading R axis.
 
 ## See also
 

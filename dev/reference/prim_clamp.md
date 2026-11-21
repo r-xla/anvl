@@ -24,19 +24,19 @@ prim_clamp(x, min, max)
 - min, max:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Lower and upper bound. Each must be scalar or the same shape as `x`,
-  and shares its data type.
+  Lower and upper bound, sharing `x`'s data type. The operands that are
+  not scalars have the same shape, and a scalar is broadcast to it.
 
 ## Value
 
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Has `x`'s shape and the data type the operands agreed on.
+Has the operands' broadcast shape and the data type they agreed on.
 
 ## Implemented Rules
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

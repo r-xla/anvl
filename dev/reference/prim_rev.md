@@ -34,7 +34,7 @@ Has the input's data type and shape.
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

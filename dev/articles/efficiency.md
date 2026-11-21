@@ -3,8 +3,8 @@
 This article collects what makes {anvl} programs fast or slow, from
 compiling with
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) and running
-on a GPU to data types, compilation cost, asynchronous execution, and
-memory.
+on a GPU to data types, XLA compiler options, compilation cost,
+asynchronous execution, and memory.
 
 ## Eager vs. JIT
 
@@ -74,12 +74,13 @@ few rules of thumb:
   (e.g. `x * y` or `nv_sum(x)` instead of a `for` loop).
 - **Prefer batched operations.** Operations like
   [`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md)
-  accept a full batch of matrices at once. Stacking many small inputs
-  into one larger array and processing them in a single call is
-  typically much faster than calling the same operation many times. This
-  mirrors plain R, where vectorized code beats a `for` loop – except
-  that on a GPU the win comes from running the batch entries in parallel
-  rather than from avoiding interpreter overhead.
+  accept a full batch of matrices at once, stacked along trailing batch
+  axes. Stacking many small inputs into one larger array and processing
+  them in a single call is typically much faster than calling the same
+  operation many times. This mirrors plain R, where vectorized code
+  beats a `for` loop – except that on a GPU the win comes from running
+  the batch entries in parallel rather than from avoiding interpreter
+  overhead.
 - **Sometimes the algorithm itself has to be rewritten.** Inherently
   sequential formulations – e.g. a running update that depends on the
   previous step – can leave most of the GPU idle. Reformulating the
@@ -118,6 +119,54 @@ The default R install on many platforms ships with a reference BLAS /
 LAPACK that is single-threaded and considerably slower than tuned
 alternatives such as OpenBLAS, Intel MKL, or Apple’s Accelerate
 framework. The CUDA backend is unaffected.
+
+## XLA compiler options
+
+XLA has many options that control how it compiles a program: which
+optimizations run, how operations are fused into kernels, whether
+floating-point arithmetic may be reordered, and so on. The defaults work
+well in general, but for some programs changing them gives a significant
+speed-up. [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)
+passes such options to XLA through its `xla_options` argument (pjrt
+backend only), and they apply to the compiles of that function only. For
+example, the following allows XLA on the CPU to use fast-math
+optimizations, which trade some floating-point accuracy for speed:
+
+``` r
+
+f <- jit(
+  function(x) nv_sum(exp(x) / (1 + x * x)),
+  xla_options = list(xla_cpu_enable_fast_math = TRUE)
+)
+```
+
+The names of the options are the fields of the `DebugOptions` message in
+XLA’s
+[`xla.proto`](https://github.com/openxla/xla/blob/main/xla/xla.proto),
+where each one comes with a short description. The [XLA flags
+guidance](https://openxla.org/xla/flags_guidance) discusses the options
+most commonly tuned for performance. The type of a value decides how XLA
+reads it, so an integer option takes `3L` and not `3`; see
+[`pjrt::pjrt_compile()`](https://r-xla.github.io/pjrt/reference/pjrt_compile.html)
+for the details.
+
+Some things to keep in mind:
+
+- **Only the outermost
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) counts.**
+  A jitted function called inside another one’s trace becomes part of
+  the outer program, so pass the options to the function you call from
+  R, e.g. `jit(value_and_gradient(f), xla_options = ...)`.
+- **Measure.** Whether an option helps depends on the program and the
+  hardware, and some options make things slower or change the results.
+  See the
+  [FAQ](https://r-xla.github.io/anvl/dev/articles/faq.html#why-does-timing-my-function-show-suspiciously-fast-results)
+  on how to time {anvl} functions correctly.
+- **Session-wide options.** To apply options to every compile of the R
+  session instead, set the `XLA_FLAGS` environment variable before
+  anything is compiled,
+  e.g. `XLA_FLAGS="--xla_cpu_enable_fast_math=true"` in your
+  `.Renviron`.
 
 ## Compilation cost
 

@@ -24,11 +24,17 @@ prim_print(x)
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Returns the input unchanged.
 
+## Order of prints
+
+A print is currently not ordered with respect to other prints. Due to
+compiler reordering it is possible that the order of the prints differs
+from their location in the code.
+
 ## Implemented Rules
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

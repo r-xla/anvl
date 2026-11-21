@@ -1,8 +1,9 @@
 # Matrix Multiplication
 
 Matrix multiplication of two arrays. You can also use the `%*%`
-operator. Supports batched matrix multiplication when inputs have more
-than 2 axes.
+operator. Supports batched matrix multiplication: above rank 2, the
+first two axes are the matrix and the trailing ones are batch axes,
+which both operands must share.
 
 ## Usage
 
@@ -41,11 +42,11 @@ Has the operands' common data type and the shape given under Shapes.
 
 ## Shapes
 
-- `x`: `(b1, ..., bk, m, n)`
+- `x`: `(m, n, b1, ..., bk)`
 
-- `y`: `(b1, ..., bk, n, p)`
+- `y`: `(n, p, b1, ..., bk)`
 
-- output: `(b1, ..., bk, m, p)`
+- output: `(m, p, b1, ..., bk)`
 
 ## See also
 
@@ -68,4 +69,17 @@ x %*% y
 #>  22 49
 #>  28 64
 #> [ CPUi32{2,2} ] 
+# a batch of three such products along the trailing axis
+x <- nv_array(1:18, shape = c(2, 3, 3))
+y <- nv_array(1:18, shape = c(3, 2, 3))
+x %*% y
+#> AnvlArray
+#> (1,.,.) =
+#>   22 220 634
+#>   49 301 769
+#> 
+#> (2,.,.) =
+#>   28 244 676
+#>   64 334 820
+#> [ CPUi32{2,2,3} ] 
 ```

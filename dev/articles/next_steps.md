@@ -305,6 +305,34 @@ double_until(nv_scalar(1), 100)
     ##  128
     ## [ CPUf32{} ]
 
+For a loop with a fixed number of steps there is also
+[`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md),
+which threads a carry through `body` like
+[`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md)
+and additionally stacks what each step returns. The difference matters
+for automatic differentiation:
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+differentiates through
+[`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) and
+[`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md),
+but not through
+[`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md).
+A while loop’s number of iterations is only known at run time, so there
+is no static size for the per-iteration states the backward pass needs:
+
+``` r
+
+double_n <- function(x) {
+  nv_scan(list(x = x), body = \(carry, xs) list(carry = list(x = carry$x * 2), out = NULL), steps = 3L)$carry$x
+}
+jit(gradient(double_n))(nv_scalar(1))
+```
+
+    ## $x
+    ## AnvlArray
+    ##  8
+    ## [ CPUf32{} ]
+
 Alternatively, an R loop around a jitted function, as in the [Get
 Started](https://r-xla.github.io/anvl/dev/articles/anvl.md) article, can
 also be an option.
@@ -360,19 +388,27 @@ chol(nv_array(m))
 
 R’s [`rnorm()`](https://rdrr.io/r/stats/Normal.html) and friends are
 only called once, while tracing, so their result is fixed in the
-compiled function. Use {anvl}’s own generators instead, which take the
-random state as an explicit input and return a new one:
+compiled function. Use {anvl}’s own generators instead:
 
 ``` r
 
-draw <- jit(function(state) nv_rnorm(state, shape = 2L))
-res <- draw(nv_rng_state(42L))
-res$values
+draw <- jit(function() nv_rnorm(2L))
+draw()
 ```
 
     ## AnvlArray
-    ##  0.4299
-    ##  0.3097
+    ##  0.8734
+    ##  0.5105
+    ## [ CPUf32{2} ]
+
+``` r
+
+draw()
+```
+
+    ## AnvlArray
+    ##  2.1332
+    ##  1.4731
     ## [ CPUf32{2} ]
 
 See the [Random Number

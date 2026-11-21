@@ -39,7 +39,7 @@ axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 - `quickr`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

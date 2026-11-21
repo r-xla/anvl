@@ -1,6 +1,6 @@
 # NA
 
-@../claude-config/CLAUDE.md
+@../claude-config/AGENTS.md
 
 ## Package Overview
 
@@ -9,7 +9,9 @@ provides JIT compilation
 ([`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)) and
 automatic differentiation
 ([`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
-[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)).
+[`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
+[`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md),
+[`value_and_pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)).
 
 ## Commands
 
@@ -49,8 +51,9 @@ anvl-specific:
     fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the
     override.
-- anvl tracks the **dev** versions of its r-xla dependencies:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo"))`.
+- anvl tracks the **dev** versions of its r-xla dependencies, pjrt from
+  its `develop` branch:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))`.
 
 ## Two-Layer API
 
@@ -77,11 +80,12 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`,
 [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 /
 [`nv_scalar_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md).
-The literal takes the dtype of the operands it meets. Shape is a
-separate matter: primitives do not broadcast, so a literal only works in
-a slot that takes a scalar (a padding value, a clamp bound, a
-reduction’s `init`). For an elementwise primitive, broadcast first with
-[`nv_broadcast_scalars()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md).
+The literal takes the dtype of the operands it meets, and an elementwise
+primitive broadcasts it, like any scalar operand, to the shape of the
+others: `prim_mul(grad, 0.5)`. A primitive’s operands only take a data
+type of their own category, though, so a literal that meets a float
+operand there is a double even when it is whole: `prim_sub(1, y)`,
+`prim_ifelse(mask, x, 0)`.
 
 The two spellings of a whole number are not symmetric here. An R integer
 widens into whatever category it meets, while a plain `1` is an R
@@ -252,16 +256,37 @@ graphs and error messages name a function the reader can look up.
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
 lexically binds `self` (the `AnvlPrimitiveDef`) into the body’s
 enclosing environment, so inside a primitive body you write
-`graph_desc_add(self, ...)` — never the primitive name as a string.
-Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+`graph_desc_add(self, ...)` — never the primitive name as a string. A
+primitive with nothing for a user to call it for is not exported, and
+has a comment instead of roxygen docs (`prim_fork_rng_state()`, which
+only `side_effect_fork()` calls). Interpretation rules are accessed via
+`prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** – JIT lowering rules in `R/rules-stablehlo.R`. These
   convert traced operations into StableHLO IR. Since stablehlo uses
   0-based indexing, convert indices by subtracting 1.
-- **`reverse`** – Autodiff rules in `R/rules-reverse.R`, built with
-  [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md).
+- **`pullback`** – Reverse-mode autodiff rules in `R/rules-pullback.R`,
+  built with
+  [`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md).
+  A rule type that serves a transformation is named after it:
+  [`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
+  (and
+  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
+  which builds on it) uses the `pullback` rule.
 - **`quickr`** – R-native lowering rules in `R/rules-quickr.R` for the
   quickr backend.
+
+## Side Effects
+
+A side effect is state outside the traced function that primitives read
+and update; currently only the random state. A trace counts the uses of
+each side effect it meets, and after the run the host advances the state
+by that count. The generic mechanism (loops, branches, gradients,
+lowering, the host) is in `R/side-effects.R`, the random state’s
+implementation of it in `R/rng-trace.R`, and the random number API in
+`R/rng.R`. The side effects section of the internals article
+(`vignettes/articles/internals.Rmd`) describes the mechanism; read it
+before changing any of this.
 
 ## Jit-wrapping
 
@@ -281,21 +306,45 @@ Wrap every function whose body issues **more than one operation**.
 
 ## Broadcasting
 
-Anvl’s elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`,
-`nv_mul`, …) only **auto-broadcast scalars** — i.e. operands with
-`shape = integer()`. They do **not** do general numpy-style
-broadcasting; mixing two non-scalar arrays of different (but
-broadcastable) shapes raises
-[`nv_broadcast_scalars()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
-errors like *“All non-scalar arrays must have the same shape, … Use
+Anvl’s elementwise operations (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`,
+…, and the elementwise primitives beneath them) only **auto-broadcast
+scalars** — i.e. operands with `shape = integer()`. They do **not** do
+general numpy-style broadcasting; mixing two non-scalar arrays of
+different (but broadcastable) shapes raises errors like *“`lhs` and
+`rhs` must have the same shape, unless one of them is a scalar. … Use
 [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
 for general broadcasting.”*
+
+The scalar broadcast belongs to the elementwise primitives themselves:
+the trace records `mul(%x, 2:f32)`, not a `broadcast_in_axes` first.
+Their inference rules take the shape of the operands that are not
+scalars (`infer_elementwise_shape()`), their StableHLO rules broadcast a
+scalar operand while lowering (`elementwise_rule()`,
+`hlo_broadcast_scalar()`), and their pullback rules sum the gradient of
+a scalar operand back down (`unbroadcast()`).
 
 When two non-scalar arrays need to be combined and only differ by size-1
 axes (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via
 `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` /
 [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_axes.md)
 for a one-sided broadcast).
+
+## Axis Reversal
+
+The StableHLO lowering represents an array of R shape `(d1, ..., dn)` as
+an XLA array of shape `(dn, ..., d1)`, and the pjrt backend stores it
+that way: R’s column-major bytes are XLA’s row-major bytes of the
+reversed shape, so transfers copy them as they are. A pjrt `AnvlArray`
+holds a buffer whose dims are `rev(x$shape)`; `x$shape` stays the R
+shape. R axis `i` of an `n`-axis array is XLA dimension `n - i`, so R
+axis 1 is the contiguous (minor) one and the trailing R axes are XLA’s
+major dimensions, where XLA’s kernels want batch axes – which is why
+anvl’s batch axes go last. Every lowering rule maps its axis numbers,
+shapes and per-axis vectors with the helpers in `R/lowering-axes.R`;
+`at2vt()` reverses every type, so
+[`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) of a
+`FuncValue` is the XLA shape. Dumped HLO and XLA’s error messages show
+the reversed shapes.
 
 ## Graph Tracing
 
@@ -306,6 +355,13 @@ StableHLO IR or quickr code for compilation.
 
 Key types: `GraphValue` (traced variable), `GraphLiteral` (embedded
 constant), `AbstractArray` (shape + dtype metadata), `AnvlGraph`.
+
+The trace under way is a `GraphDescriptor`
+([`current_descriptor()`](https://r-xla.github.io/anvl/dev/reference/current_descriptor.md)).
+A function that modifies one in place starts with `desc_` and takes the
+descriptor as its first argument (`desc_begin_loop(desc, ...)`,
+`desc_end_capture(desc, ...)`), so every call shows which trace it
+changes.
 
 ## NSE and Tracing
 
@@ -324,8 +380,8 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` – sources
   `inst/extra-tests/test-primitives-stablehlo-torch.R`
-- `tests/testthat/test-primitives-reverse.R` – sources
-  `inst/extra-tests/test-primitives-reverse-torch.R`
+- `tests/testthat/test-primitives-pullback.R` – sources
+  `inst/extra-tests/test-primitives-pullback-torch.R`
 
 Prefer testing by comparing with the corresponding torch function. If
 the test is trivial or the functionality is not covered by torch, test
@@ -340,6 +396,9 @@ different backend, use
 (not
 [`withr::local_options()`](https://withr.r-lib.org/reference/with_options.html)
 directly).
+
+Do not add unit tests that manually inspect the code to which a
+primitive lowers. Only test their behavior.
 
 ## Documentation
 

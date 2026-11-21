@@ -38,7 +38,7 @@ Has the input's shape and data type.
 
 - `stablehlo`
 
-- `reverse`
+- `pullback`
 
 ## StableHLO
 

@@ -97,7 +97,7 @@ prim_repeat_along <- new_primitive(
       new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
         dtype = dtype(x),
-        shape = Shape(new_shape)
+        shape = new_shape
       ))
     }
 
@@ -242,8 +242,9 @@ factories that generate the body for you:
   `prim_mul`).
 - `make_reduce_op(infer_fn)` – reductions with `axes` / `drop`
   parameters (e.g. `prim_sum`).
-- `make_compare_op(direction)` – comparison ops with a fixed `direction`
-  string (e.g. `prim_eq`, `prim_lt`).
+- `compare_op` – the body of the comparison ops (e.g. `prim_eq`,
+  `prim_lt`); passed as is, since each op’s direction is set by its
+  stablehlo rule.
 
 Used together with the matching inference rule, the primitive definition
 collapses to a one-liner:
@@ -293,11 +294,11 @@ vocabulary, with 0-based axes. This is why the inference function has to
 check every constraint the StableHLO operation imposes, so that the
 lowering rule only ever sees valid inputs.
 
-### Step 3: Add the Reverse Rule
+### Step 3: Add the Pullback Rule
 
 If the operation should support automatic differentiation, attach a
-reverse rule built with
-[`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md).
+pullback rule built with
+[`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md).
 The idea here is the following, where we assume the input `x` has shape
 `(s_1, ..., s_n)`, which means that the output (and therefore its
 gradient) has shape
@@ -309,7 +310,7 @@ gradient) has shape
 
 ``` r
 
-prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+prim_repeat_along[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
   if (!required[[1L]]) {
     return(list(NULL))
   }
@@ -344,7 +345,7 @@ The wrapped backward receives:
 It returns a list with one gradient per input (or `NULL` if not
 required).
 
-Note that the reverse rule will only be called if at least one input
+Note that the pullback rule will only be called if at least one input
 gradient is required, so this can be assumed.
 
 #### Optional: alternative-forward rule
@@ -352,7 +353,7 @@ gradient is required, so this can be assumed.
 For most primitives the backward-only form above is enough. If the
 gradient computation can be made significantly more efficient by running
 an alternative forward pass that exposes intermediate values for reuse,
-use the alternative-forward form: `rule_reverse(forward = ...)`. The
+use the alternative-forward form: `rule_pullback(forward = ...)`. The
 forward hook receives `(inputs, params, required)` – `required` says
 which inputs need a gradient –, emits whatever forward primitives it
 likes via the normal `prim_*` callables, and returns a list with the
@@ -360,7 +361,7 @@ primal outputs and a `backward` closure. Intermediates flow from forward
 to backward via R’s lexical scoping:
 
 ``` r
-prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params, required) {
+prim_<name>[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
   x <- inputs[[1L]]
   y <- prim_some_op(x)        # forward emit 1
   z <- prim_other_op(x, y)    # forward emit 2; both `x` and `y` captured
@@ -382,7 +383,7 @@ the original statement, with matching shape/dtype.
 
 #### Optional: a quickr rule
 
-`prim_<name>[["stablehlo"]]` and `prim_<name>[["reverse"]]` are the two
+`prim_<name>[["stablehlo"]]` and `prim_<name>[["pullback"]]` are the two
 rules you almost always want. A primitive can optionally also carry a
 `quickr` rule, which lowers it to plain R code for the quickr backend
 (see `R/rules-quickr.R`). The quickr rule is only required if you want
@@ -392,20 +393,24 @@ the primitive will still work on the pjrt backend.
 ### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives. An
-example is `prim_add` vs `nv_add`, where the latter calls into the
-former after optionally broadcasting (scalar) inputs:
+example is `prim_add` vs `nv_add`, where the latter promotes its
+operands to a common data type before calling into the former:
 
 ``` r
 
-nv_add(1L, nv_array(2:3))
+nv_add(0.5, nv_array(2:3))
 #> AnvlArray
-#>  3
-#>  4
-#> [ CPUi32{2} ]
-prim_add(1L, nv_array(2:3))
+#>  2.5000
+#>  3.5000
+#> [ CPUf32{2} ]
+prim_add(0.5, nv_array(2:3))
 #> Error in `prim_add()`:
-#> ! `lhs` and `rhs` must have the same array type.
-#> ✖ Got i32[] and i32[2].
+#> ! `lhs` is an R double, which cannot be used at the "i32" data type
+#>   here.
+#> ℹ A literal is only ever built at a data type of its own category: a double
+#>   becomes a float, an integer an integer, a logical a "bool".
+#> ℹ Use an operation that promotes across categories, or convert explicitly with
+#>   `nv_convert()`.
 ```
 
 In our case, no such convenience is needed and the functionality is not
@@ -439,16 +444,22 @@ x <- nv_array(c(1, 2, 3), shape = c(3, 1))
 # Eager call -- works because prim_repeat_along is itself jit-compiled.
 prim_repeat_along(x, times = 2L, axis = 2L)
 #> AnvlArray
-#>  1 1
-#>  2 2
-#>  3 3
+#>  1
+#>  2
+#>  3
+#>  1
+#>  2
+#>  3
 #> [ CPUf32{3,2} ]
 # Traced into the outer graph when composed with another jit-compiled function.
 jit(function(x) prim_repeat_along(x, times = 2L, axis = 2L))(x)
 #> AnvlArray
-#>  1 1
-#>  2 2
-#>  3 3
+#>  1
+#>  2
+#>  3
+#>  1
+#>  2
+#>  3
 #> [ CPUf32{3,2} ]
 ```
 
@@ -482,7 +493,7 @@ additional things to be aware of.
 - **`R/rules-inference.R`**: Add the inference rule
   `infer_<primitive>()` (unless an existing one can be reused)
 - **`R/rules-stablehlo.R`**: Add the StableHLO lowering rule
-- **`R/rules-reverse.R`**: Add the reverse rule (if differentiable)
+- **`R/rules-pullback.R`**: Add the pullback rule (if differentiable)
 - **`R/rules-quickr.R`**: Add the quickr lowering rule (optional; only
   if the primitive should run on the quickr backend)
 - **`R/api.R`**: Add the `nv_*` wrapper function (or possibly in another
@@ -499,14 +510,14 @@ Tests can go in two places:
 **Important**: the `describe()` / `test_that()` label must start with
 the full primitive name, e.g. `describe("prim_repeat_along", { ... })`.
 The meta tests in `tests/testthat/test-primitives-meta.R` verify that
-every primitive has corresponding stablehlo and reverse tests, and flag
+every primitive has corresponding stablehlo and pullback tests, and flag
 any that are missing.
 
 Since no torch counterpart exists for `prim_repeat_along`, we would add
 manual tests in:
 
 - `tests/testthat/test-primitives-stablehlo.R`
-- `tests/testthat/test-primitives-reverse.R`
+- `tests/testthat/test-primitives-pullback.R`
 
 Also, ensure that no linter errors are present,
 [`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
@@ -520,5 +531,5 @@ These are generally much more complex to handle, so we don’t cover them
 here in detail (for now). The general idea, however, is that the
 primitive `prim_*` function needs to trace the provided function using
 [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
-and then forward this graph to the stablehlo lowering rule and reverse
+and then forward this graph to the stablehlo lowering rule and pullback
 rule.
