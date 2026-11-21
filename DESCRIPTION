@@ -96,5 +96,6 @@ Collate:
     'rules-vectorize.R'
     'safetensors.R'
     'stablehlo.R'
+    'transformation.R'
     'zzz.R'
 Config/roxygen2/version: 8.1.0

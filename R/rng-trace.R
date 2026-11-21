@@ -183,16 +183,11 @@ side_effect_fork.AnvlRngStateHandle <- function(effect, value) {
 
 # Slice i of `vectorize()` starts (i - 1) * n draws after `value`, where the
 # i-th run of a loop over the slices would: every slice has the same key, and
-# the counters step by `n`. `n` enters as R integer literals, as in
-# `counter_plus()`.
+# the counters step by `n`.
 #' @export
 side_effect_stack.AnvlRngStateHandle <- function(effect, value, n, size) {
   steps <- prim_iota(1L, size, dtype = "ui64", start = 0L)
-  offsets <- steps * as.integer(n %% 2^31)
-  if (n >= 2^31) {
-    offsets <- offsets + nv_shift_left(steps * as.integer(n %/% 2^31), 31L)
-  }
-  rng_state_value(batch_operand(value$key, FALSE, size), value$counter + offsets)
+  rng_state_value(add_batch_axis(value$key, size), counter_plus(value$counter, n, steps))
 }
 
 # After a run, R advances the counter by the draws the program made.
@@ -238,16 +233,31 @@ rng_state_argument <- function(args, ordinal) {
 }
 
 # The `ui64` counter `counter` plus `n` (a whole R double below 2^53) in a
-# trace, wrapping around at 2^64. `n` enters as R integer literals, which keep
-# the counter's data type where a double would make the sum a float: its low 31
-# bits, and the rest shifted into place.
-counter_plus <- function(counter, n) {
-  if (n == 0) {
-    return(counter)
+# trace, or plus `n` times `steps`, a `ui64` array, wrapping around at 2^64.
+# `n` enters as R integer literals, which keep the counter's data type where a
+# double would make the sum a float: its low 31 bits, and the rest shifted into
+# place.
+counter_plus <- function(counter, n, steps = NULL) {
+  times <- function(m) {
+    if (is.null(steps)) {
+      m
+    } else if (m == 1L) {
+      steps
+    } else {
+      steps * m
+    }
   }
-  counter <- counter + as.integer(n %% 2^31)
+  low <- as.integer(n %% 2^31)
+  # without `steps`, adding a zero would change nothing
+  if (low || !is.null(steps)) {
+    counter <- counter + times(low)
+  }
   if (n >= 2^31) {
-    counter <- counter + nv_shift_left(nv_fill(as.integer(n %/% 2^31), integer(), dtype = "ui64"), 31L)
+    high <- times(as.integer(n %/% 2^31))
+    if (is.null(steps)) {
+      high <- nv_fill(high, integer(), dtype = "ui64")
+    }
+    counter <- counter + nv_shift_left(high, 31L)
   }
   counter
 }

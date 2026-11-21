@@ -705,11 +705,35 @@ register_consts <- function(desc, consts) {
 }
 
 # Records `call` into `desc` unchanged, reading the gnodes `inputs` in place of
-# its own and writing `outputs`, and returns the boxes of its outputs. By
-# default, it shares its outputs with `call`.
-replay_statement <- function(desc, call, inputs, outputs = call$outputs) {
+# its own and writing `outputs`, and returns the boxes of its outputs.
+replay_statement <- function(desc, call, inputs, outputs) {
   desc$statements$add(GraphStatement(call$primitive, inputs, call$params, outputs))
   register_gvals(desc, outputs)
+}
+
+# Binds the inputs and constants of `graph`, which is about to be replayed into
+# `desc` as a function of `inputs` (boxes, one per graph input, or `NULL` for
+# one the replay must not read). Returns `trans`, a hashtab from each input to
+# the gnode of its box -- a box of an enclosing trace is captured by `desc` --
+# and from each constant to the gnode `desc` holds for its array where that is
+# another GraphValue, and `unbound`, a hashtab of the inputs passed as `NULL`.
+bind_graph <- function(graph, desc, inputs) {
+  trans <- hashtab()
+  unbound <- hashtab()
+  for (i in seq_along(inputs)) {
+    if (is.null(inputs[[i]])) {
+      unbound[[graph$inputs[[i]]]] <- TRUE
+    } else {
+      trans[[graph$inputs[[i]]]] <- maybe_box_arrayish(inputs[[i]], desc = desc)$gnode
+    }
+  }
+  const_boxes <- register_consts(desc, graph$constants)
+  for (i in seq_along(const_boxes)) {
+    if (!identical(const_boxes[[i]]$gnode, graph$constants[[i]])) {
+      trans[[graph$constants[[i]]]] <- const_boxes[[i]]$gnode
+    }
+  }
+  list(trans = trans, unbound = unbound)
 }
 
 register_inputs <- function(desc, inputs) {

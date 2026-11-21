@@ -687,6 +687,22 @@ describe("counter_plus", {
       expect_identical(state_words(rng_state_of_arrays(state$key, counter)), c(1, 2, expected[[i]]))
     }
   })
+
+  it("advances the counter by n times each of the steps", {
+    state <- state_arrays(rng_state_of_words(c(1, 2, 2^32 - 1, 7)))
+    stacked_and_looped <- jit(
+      function(counter, n) {
+        steps <- prim_iota(1L, 3L, dtype = "ui64", start = 0L)
+        looped <- lapply(0:2, function(i) nv_reshape(counter_plus(counter, i * n), 1L))
+        list(stacked = counter_plus(counter, n, steps), looped = do.call(nv_concatenate, looped))
+      },
+      static = "n"
+    )
+    for (n in c(1, 5, 2^31, 2^32 + 2^31 + 5)) {
+      out <- stacked_and_looped(state$counter, n)
+      expect_identical(as_array(out$stacked), as_array(out$looped))
+    }
+  })
 })
 
 describe("side_effect_advance", {
