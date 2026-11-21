@@ -236,7 +236,16 @@ It returns a list with one gradient per input (or `NULL` if not required).
 Note that the pullback rule will only be called if at least one input gradient is required, so this can be assumed.
 
 A primitive like `prim_repeat_along()`, whose result is not computed element by element, needs a `pushforward` rule of its own for forward-mode differentiation with `pushforward()`.
-An elementwise primitive, such as `prim_sin()`, does not: tagged with `new_primitive(tags = "elementwise")`, it gets one derived from its pullback rule, because its derivative is diagonal.
+It is a `function(inputs, outputs, tangents, params)` that returns one tangent per output, or `NULL` for a zero one, where `tangents` holds one tangent per input, `NULL` for an input no tangent reaches.
+`prim_repeat_along()` is linear, so the tangent of its result repeats the tangent of its input:
+
+```{r}
+prim_repeat_along[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  list(prim_repeat_along(tangents[[1L]], times = params$times, axis = params$axis))
+}
+```
+
+An elementwise primitive, such as `prim_sin()`, needs no such rule: tagged with `new_primitive(tags = "elementwise")`, it gets one derived from its pullback rule, because its derivative is diagonal.
 
 #### Optional: alternative-forward rule
 

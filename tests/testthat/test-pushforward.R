@@ -16,6 +16,23 @@ describe("pushforward", {
     expect_equal(g(x, y), x)
   })
 
+  it("matches tangents to arguments passed through ... by position, and by name where they have one", {
+    f <- function(...) ..1 * ..2
+    expect_equal(jit(function(x, y) pushforward(f, x, y)(f64(1, 1), f64(0, 0)))(x, y), y)
+    expect_equal(jit(function(x, y) pushforward(f, x, y)(NULL, f64(1, 1)))(x, y), x)
+    g <- function(x, ...) x * list(...)$b
+    expect_equal(jit(function(x, y) pushforward(g, x, b = y)(f64(1, 1)))(x, y), y)
+    expect_equal(jit(function(x, y) pushforward(g, x, b = y)(b = f64(1, 1)))(x, y), x)
+  })
+
+  it("refuses a tangent of the wrong shape for an argument passed through ...", {
+    f <- function(...) ..1 * ..2
+    expect_error(
+      jit(function(x, y) pushforward(f, x, y)(f64(1, 1), f64(1)))(x, y),
+      "must have the data type and shape of the argument"
+    )
+  })
+
   it("takes tangents structured like their argument, with NULL for any part", {
     f <- function(p) p$a * p$b[[1L]] + p$b[[2L]]
     g <- jit(function(a, b1, b2) pushforward(f, list(a = a, b = list(b1, b2)))(list(a = f64(1), b = NULL)))
@@ -162,5 +179,14 @@ describe("value_and_pushforward", {
       g(f64(2), f64(3)),
       list(value = list(sum = f64(5), prod = f64(6)), tangent = list(sum = f64(1), prod = f64(3)))
     )
+  })
+
+  it("returns exactly the value and the pushforward", {
+    names_of <- NULL
+    jit(function(x) {
+      names_of <<- names(value_and_pushforward(function(x) x * x, x))
+      x
+    })(f64(1))
+    expect_identical(names_of, c("value", "pushforward"))
   })
 })

@@ -46,5 +46,5 @@ Note that a rule might be missing because it was just not added yet, or because 
 
 
 ```{r, echo = FALSE}
-knitr::kable(primitives_df, align = c("l", "c", "c", "c", "c"))
+knitr::kable(primitives_df, align = c("l", rep("c", ncol(primitives_df) - 1L)))
 ```

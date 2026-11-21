@@ -80,6 +80,25 @@ describe("jacobian", {
     }
   })
 
+  it("holds an integer array argument outside wrt fixed", {
+    f <- function(x, k) x * nv_convert(k, "f64")
+    for (mode in c("backward", "forward")) {
+      out <- jit(jacobian(f, wrt = "x", mode = mode))(nv_array(c(1, 2), dtype = "f64"), nv_array(c(2L, 3L)))
+      expect_equal(as_array(out$x), diag(c(2, 3)))
+    }
+  })
+
+  it("gives an array of the value that does not depend on wrt zero derivatives", {
+    f <- function(x, y) list(a = x * 2, b = y * 3)
+    x <- nv_array(c(1, 2), dtype = "f64")
+    y <- nv_array(c(1, 2, 3), dtype = "f64")
+    for (mode in c("backward", "forward")) {
+      out <- as_arrays(jit(jacobian(f, wrt = "x", mode = mode))(x, y))
+      expect_equal(out$a$x, diag(c(2, 2)))
+      expect_equal(out$b$x, matrix(0, 3L, 2L))
+    }
+  })
+
   it("passes static arguments through", {
     f <- function(x, power) x^power
     g <- jit(jacobian(f, wrt = "x", mode = "forward"), static = "power")
@@ -131,6 +150,15 @@ describe("hessian", {
     expect_equal(out$x$y, diag(2 * x))
     expect_equal(out$y$x, diag(2 * x))
     expect_equal(out$y$y, matrix(0, 2L, 2L))
+  })
+
+  it("gives the block of a and b the shape of a followed by that of b", {
+    f <- function(x, y) sum(x^3L) + sum(y^2L)
+    out <- as_arrays(jit(hessian(f))(nv_array(c(1, 2), dtype = "f64"), nv_array(c(1, 2, 3), dtype = "f64")))
+    expect_equal(out$x$x, diag(c(6, 12)))
+    expect_equal(out$x$y, matrix(0, 2L, 3L))
+    expect_equal(out$y$x, matrix(0, 3L, 2L))
+    expect_equal(out$y$y, diag(2, 3L))
   })
 
   it("differentiates with respect to the arguments in wrt", {

@@ -188,6 +188,18 @@ describe("pushforward rules", {
       check_pushforward_rule(name, pushforward_cases[[name]])
     })
   }
+
+  it("of prim_convert give no tangent to an integer result, nor one to the float result of an integer", {
+    x <- nv_array(c(1.5, 2.5), dtype = "f64")
+    tangent <- "none yet"
+    jit(function(x) {
+      tangent <<- pushforward(function(x) prim_convert(x, "i32"), x)(x)
+      x
+    })(x)
+    expect_null(tangent)
+    from_int <- jit(function(i) pushforward(function(i) prim_convert(i, "f64"), i)(NULL))
+    expect_equal(as.vector(as_array(from_int(nv_array(1:2, dtype = "i32")))), c(0, 0))
+  })
 })
 
 describe("pushforward_from_pullback", {

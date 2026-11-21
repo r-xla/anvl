@@ -352,6 +352,15 @@ describe("value_and_pullback", {
     expect_equal(res$value, list(sq = x * x, total = nv_scalar(6, "f64")))
     expect_equal(as.numeric(res$x), c(2, 2, 2))
   })
+
+  it("returns exactly the value and the pullback", {
+    names_of <- NULL
+    jit(function(x) {
+      names_of <<- names(value_and_pullback(function(x) x * x, x))
+      x
+    })(nv_scalar(1, dtype = "f64"))
+    expect_identical(names_of, c("value", "pullback"))
+  })
 })
 
 test_that("gradients are present even if they don't influence the output", {

@@ -104,100 +104,92 @@ jacobian_fn <- function(f, wrt, mode, fn) {
 trace_jacobian <- function(f, args, wrt, mode, fn) {
   prep <- prepare_gradient_args(args, wrt)
   wrt_leaves <- prep$args_flat[prep$is_wrt_flat]
-  traced <- if (mode == "backward") trace_pullback(f, prep, fn) else trace_pushforward(f, prep, fn)
-  values <- traced$value_flat
-  is_float <- vapply(values, \(v) is_dtype_float(dtype(v)), logical(1L))
-  ys <- values[is_float]
-
+  traced <- if (mode == "backward") trace_pullback(f, prep, fn)$flat else trace_pushforward(f, prep, fn)$flat
+  is_float <- vapply(traced$value, \(v) is_dtype_float(dtype(v)), logical(1L))
   # one list per float array of the value, with a block per array in `wrt`
-  blocks <- if (!length(ys)) {
-    list()
-  } else if (!sum(basis_sizes(if (mode == "backward") ys else wrt_leaves))) {
-    lapply(ys, \(y) lapply(wrt_leaves, \(a) nv_fill(0L, c(shape(y), shape(a)), dtype = dtype(y))))
-  } else if (mode == "backward") {
-    jacobian_backward(traced$pullback_flat, is_float, ys, wrt_leaves)
+  blocks <- if (mode == "backward") {
+    jacobian_backward(traced$pullback, traced$value, is_float, wrt_leaves)
   } else {
-    jacobian_forward(traced$pushforward_flat, is_float, prep$is_wrt_flat, wrt_leaves)
+    jacobian_forward(traced$pushforward, is_float, wrt_leaves)
   }
-
-  derivatives <- vector("list", length(values))
+  derivatives <- vector("list", length(is_float))
   derivatives[is_float] <- lapply(blocks, function(blocks_y) {
     leaves <- vector("list", length(prep$args_flat))
     leaves[prep$is_wrt_flat] <- blocks_y
     jac <- unflatten(prep$in_tree, leaves)
     if (is.null(wrt)) jac else jac[names(jac) %in% wrt]
   })
-  unflatten(build_tree(traced$value), derivatives)
+  unflatten(traced$out_tree, derivatives)
 }
 
-# The blocks of the Jacobian in reverse mode: the pullback `pull` (a
-# `pullback_flat`, see `trace_pullback()`) of a unit cotangent of every element
-# of the float arrays `ys` of the value (those `is_float` selects), vectorized
-# over them. One list per array of `ys`, with a block per array of
-# `wrt_leaves`.
-jacobian_backward <- function(pull, is_float, ys, wrt_leaves) {
-  # each pulled array of shape c(n, shape(a)), for n unit cotangents
+# The blocks of the Jacobian in reverse mode: the pullback `pull` (see
+# `trace_pullback()`) of a unit cotangent of every element of the float arrays
+# of the value `values` (those `is_float` selects), vectorized over them. One
+# list per float array of the value, with a block per array of `wrt_leaves`.
+jacobian_backward <- function(pull, values, is_float, wrt_leaves) {
+  ys <- values[is_float]
+  # nothing to map over
+  if (!length(ys)) {
+    return(list())
+  }
+  # each of shape c(n, shape(a)), for n unit cotangents
   pulled <- vectorize(
     function(basis) {
-      cts <- vector("list", length(is_float))
+      cts <- vector("list", length(values))
       cts[is_float] <- basis
       pull(cts)
     },
     out_axes = 1L
   )(unit_basis(ys))
   sizes <- basis_sizes(ys)
-  offsets <- basis_offsets(sizes)
   Map(
     function(y, size, offset) {
-      lapply(pulled, function(p) {
-        k <- naxes(p)
-        block <- prim_static_slice(
-          p,
-          start_indices = c(offset + 1L, rep(1L, k - 1L)),
-          end_indices = c(offset + size, shape(p)[-1L]),
-          strides = rep(1L, k)
-        )
-        block <- prim_reshape(block, c(shape(y), shape(p)[-1L]))
-        if (dtype(block) == dtype(y)) block else prim_convert(block, dtype(y))
-      })
+      Map(
+        function(p, a) {
+          block <- prim_reshape(slice_axis(p, 1L, offset, size), c(shape(y), shape(a)))
+          if (dtype(block) == dtype(y)) block else prim_convert(block, dtype(y))
+        },
+        pulled,
+        wrt_leaves
+      )
     },
     ys,
     sizes,
-    offsets
+    basis_offsets(sizes)
   )
 }
 
-# The blocks of the Jacobian in forward mode: the pushforward `push` (a
-# `pushforward_flat`, see `trace_pushforward()`) of a unit tangent of every
-# element of the arrays `wrt_leaves` (the leaves of the arguments `is_wrt`
-# selects), vectorized over them. One list per float array of the value (those
-# `is_float` selects), with a block per array of `wrt_leaves`.
-jacobian_forward <- function(push, is_float, is_wrt, wrt_leaves) {
-  # each pushed array of shape c(shape(y), n), for n unit tangents
-  pushed <- vectorize(function(basis) {
-    tangents <- vector("list", length(is_wrt))
-    tangents[is_wrt] <- basis
-    push(tangents)[is_float]
-  })(unit_basis(wrt_leaves))
+# The blocks of the Jacobian in forward mode: the pushforward `push` (see
+# `trace_pushforward()`) of a unit tangent of every element of the arrays
+# `wrt_leaves`, vectorized over them. One list per float array of the value
+# (those `is_float` selects), with a block per array of `wrt_leaves`.
+jacobian_forward <- function(push, is_float, wrt_leaves) {
+  # nothing to map over
+  if (!length(wrt_leaves)) {
+    return(rep(list(list()), sum(is_float)))
+  }
+  # each of shape c(shape(y), n), for n unit tangents
+  pushed <- vectorize(function(basis) push(basis)[is_float])(unit_basis(wrt_leaves))
   sizes <- basis_sizes(wrt_leaves)
-  offsets <- basis_offsets(sizes)
   lapply(pushed, function(p) {
     k <- naxes(p)
     Map(
-      function(a, size, offset) {
-        block <- prim_static_slice(
-          p,
-          start_indices = c(rep(1L, k - 1L), offset + 1L),
-          end_indices = c(shape(p)[-k], offset + size),
-          strides = rep(1L, k)
-        )
-        prim_reshape(block, c(shape(p)[-k], shape(a)))
-      },
+      function(a, size, offset) prim_reshape(slice_axis(p, k, offset, size), c(shape(p)[-k], shape(a))),
       wrt_leaves,
       sizes,
-      offsets
+      basis_offsets(sizes)
     )
   })
+}
+
+# `x` sliced along its axis `axis` to the `size` elements after the first
+# `offset`.
+slice_axis <- function(x, axis, offset, size) {
+  start <- rep(1L, naxes(x))
+  end <- shape(x)
+  start[[axis]] <- offset + 1L
+  end[[axis]] <- offset + size
+  prim_static_slice(x, start, end, rep(1L, naxes(x)))
 }
 
 # The unit vectors of the elements of the arrays `xs`, taken one after the

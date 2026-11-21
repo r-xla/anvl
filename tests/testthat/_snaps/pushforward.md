@@ -5,7 +5,7 @@
     Condition
       Error:
       ! Can only pass a tangent for a float array.
-      x `n` is not one.
+      x `n` is an array of data type "i32".
       i Pass `NULL` in its place.
 
 # pushforward / refuses a tangent of another data type, shape or structure than its argument

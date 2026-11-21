@@ -26,9 +26,11 @@ The pushforward takes the tangents of the arguments as \code{.f} takes the
 arguments, matched to its formals as in a call of \code{.f}. Each is
 structured like its argument, with an array of the same shape and data
 type for each float array of it; an R value takes the data type of its
-array. An argument without a tangent is held fixed, and \code{NULL} in place of
-an array -- or of a whole part of an argument -- stands for zeros. An
-array that is not a float has no tangent: pass \code{NULL} in its place.
+array. An argument passed through \code{...} without a name gets its tangent
+at the same position. An argument without a tangent is held fixed, and
+\code{NULL} in place of an array -- or of a whole part of an argument -- stands
+for zeros. An array that is not a float, and an R value without a data
+type such as \code{2}, has no tangent: pass \code{NULL} in its place.
 
 The pushforward returns the tangent of the value of \code{.f}, structured like
 it. An array of the value that is not a float has no tangent, and gets
