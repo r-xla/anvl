@@ -4,7 +4,7 @@
 \alias{AnvlPrimitiveDef}
 \title{Primitive Definition}
 \usage{
-AnvlPrimitiveDef(name, subgraphs = character(), elementwise = FALSE)
+AnvlPrimitiveDef(name, subgraphs = character(), tags = character())
 }
 \arguments{
 \item{name}{(\code{character(1)})\cr
@@ -13,12 +13,8 @@ The name of the primitive, without the \code{prim_} prefix.}
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs.}
 
-\item{elementwise}{(\code{logical(1)})\cr
-Whether the primitive is elementwise: each element of its single result is
-computed from the elements at the same position of its operands alone,
-where a scalar operand is broadcast, at the operands' data type or as a
-boolean. Its derivative is then diagonal, and its \code{pushforward} rule is
-derived from its \code{pullback} rule.}
+\item{tags}{(\code{character()})\cr
+The kinds of operation the primitive is, see \code{\link[=new_primitive]{new_primitive()}}.}
 }
 \value{
 (\code{AnvlPrimitiveDef})
@@ -30,7 +26,9 @@ called through is an \code{\link{AnvlPrimitive}}, which carries
 its \code{AnvlPrimitiveDef} as \verb{attr(<fn>, "definition")}. The graph records the
 \code{AnvlPrimitiveDef} in each \code{\link{GraphStatement}}.
 Note that \code{[[} and \verb{[[<-} access the interpretation rules.
-To access other fields, use \code{$} and \verb{$<-}.
+To access other fields, use \code{$} and \verb{$<-}. \code{\link[=new_primitive]{new_primitive()}} stores the
+\code{AnvlPrimitive} in the field \code{fn}, so a rule can call the primitive it
+belongs to.
 
 A primitive is considered higher-order if it has subgraphs.
 }

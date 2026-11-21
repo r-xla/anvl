@@ -986,11 +986,11 @@ infer_dot_general <- function(
     ))
   }
 
-  # (C12)
+  # (C12), with the batch axes last
   result_shape <- c(
-    size_batch_lhs,
     without(shape_lhs, c(lhs_contracting, lhs_batching)),
-    without(shape_rhs, c(rhs_contracting, rhs_batching))
+    without(shape_rhs, c(rhs_contracting, rhs_batching)),
+    size_batch_lhs
   )
 
   list(AbstractArray(dtype = dtype(lhs), shape = Shape(result_shape)))
@@ -1104,16 +1104,15 @@ infer_top_k <- function(x, k, indices) {
       x = "Got {.val {k}}."
     ))
   }
-  last <- in_shape[[n_axes]]
-  if (k > last) {
+  axis_size <- in_shape[[1L]]
+  if (k > axis_size) {
     cli_abort(c(
-      "{.arg k} must not exceed the size of the last axis of {.arg x} ({last}).",
+      "{.arg k} must not exceed the size of axis 1 of {.arg x} ({axis_size}).",
       x = "Got {.val {k}}."
     ))
   }
 
-  result_shape <- in_shape
-  result_shape[[n_axes]] <- k
+  result_shape <- replace(in_shape, 1L, k)
 
   values <- AbstractArray(dtype = dtype(x), shape = Shape(result_shape))
   if (!indices) {
@@ -1846,15 +1845,15 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   }
 
   # (C3)
-  if (shape_a[[n_axes]] != shape_a[[n_axes - 1L]]) {
+  if (shape_a[[1L]] != shape_a[[2L]]) {
     cli_abort(c(
-      "{.arg a} must be square in its last two axes.",
+      "{.arg a} must be square in its first two axes.",
       x = "Got {shape_repr(shape_a)}."
     ))
   }
 
-  batch_a <- shape_a[seq_len(n_axes - 2L)]
-  batch_b <- shape_b[seq_len(n_axes - 2L)]
+  batch_a <- shape_a[-(1:2)]
+  batch_b <- shape_b[-(1:2)]
   if (!identical(batch_a, batch_b)) {
     cli_abort(c(
       "The batch axes of {.arg a} and {.arg b} must match.",
@@ -1863,8 +1862,8 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   }
 
   # (C3)
-  side <- if (left_side) shape_b[[n_axes - 1L]] else shape_b[[n_axes]]
-  if (shape_a[[n_axes]] != side) {
+  side <- if (left_side) shape_b[[1L]] else shape_b[[2L]]
+  if (shape_a[[1L]] != side) {
     cli_abort(c(
       "{.arg a} and {.arg b} must agree on the axis the solve contracts over.",
       x = "Got {shape_repr(shape_a)} and {shape_repr(shape_b)}."
@@ -1875,10 +1874,13 @@ infer_triangular_solve <- function(a, b, left_side, lower, unit_diagonal, transp
   list(AbstractArray(dtype = dtype(b), shape = b$shape))
 }
 
+# A sampling call that `vectorize()` batched draws from a batch of random
+# states, of the shape of `counter`, one draw of shape `shape` from each, which
+# the batch axes follow.
 infer_sample_bits <- function(key, counter, shape, dtype) {
   shape <- assert_shapevec(shape)
   dtype <- assert_dtype_param(dtype, categories = "uint")
-  list(AbstractArray(dtype = dtype, shape = Shape(shape)))
+  list(AbstractArray(dtype = dtype, shape = Shape(c(shape, shape(counter)))))
 }
 
 infer_fork_rng_state <- function(key, counter) {

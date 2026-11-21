@@ -24,6 +24,7 @@ Element-wise population count (number of set bits).
 \item \code{stablehlo}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

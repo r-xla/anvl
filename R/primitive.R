@@ -6,32 +6,44 @@
 #' its `AnvlPrimitiveDef` as `attr(<fn>, "definition")`. The graph records the
 #' `AnvlPrimitiveDef` in each [`GraphStatement`].
 #' Note that `[[` and `[[<-` access the interpretation rules.
-#' To access other fields, use `$` and `$<-`.
+#' To access other fields, use `$` and `$<-`. [`new_primitive()`] stores the
+#' `AnvlPrimitive` in the field `fn`, so a rule can call the primitive it
+#' belongs to.
 #'
 #' A primitive is considered higher-order if it has subgraphs.
 #' @param name (`character(1)`)\cr
 #'   The name of the primitive, without the `prim_` prefix.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
-#' @template param_elementwise
+#' @param tags (`character()`)\cr
+#'   The kinds of operation the primitive is, see [`new_primitive()`].
 #' @return (`AnvlPrimitiveDef`)
 #' @export
-AnvlPrimitiveDef <- function(name, subgraphs = character(), elementwise = FALSE) {
+AnvlPrimitiveDef <- function(name, subgraphs = character(), tags = character()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
-  checkmate::assert_flag(elementwise)
+  checkmate::assert_subset(tags, primitive_tags)
 
   env <- new.env(parent = emptyenv())
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
-  env$elementwise <- elementwise
+  env$tags <- tags
 
   structure(env, class = "AnvlPrimitiveDef")
 }
 
 
 primitive_env <- new.env(parent = emptyenv())
+
+# The kinds of operation a primitive can be tagged with (see `new_primitive()`).
+primitive_tags <- c("elementwise", "reduction", "cumulative")
+
+# The registered primitives tagged with any of `tags`, by name.
+primitives_tagged <- function(tags) {
+  prims <- mget(sort(ls(primitive_env)), envir = primitive_env)
+  Filter(function(p) any(primitive_def(p)$tags %in% tags), prims)
+}
 
 # The `AnvlPrimitiveDef` of `x`, which is either that definition or the
 # `AnvlPrimitive` callable carrying it.
@@ -100,6 +112,15 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
+#' @param tags (`character()`)\cr
+#'   The kinds of operation the primitive is, which rules shared between
+#'   primitives of one kind read:
+#'   * `"elementwise"`: each element of the output is computed from the
+#'     elements at the same position of the operands alone, e.g. [`prim_add()`].
+#'   * `"reduction"`: reduces its operand along the axes a parameter names,
+#'     e.g. [`prim_sum()`].
+#'   * `"cumulative"`: scans its operand along the axis a parameter names,
+#'     e.g. [`prim_cumsum()`].
 #' @param register (`logical(1)`)\cr
 #'   Whether to add the primitive to anvl's internal registry of primitives,
 #'   under `name`, replacing one registered under the same name. The quickr
@@ -108,7 +129,6 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #'   it has a `quickr` rule. The other backends only read the rules of the
 #'   primitive itself. This does not bind the result to a `prim_<name>`
 #'   variable; assign it yourself.
-#' @template param_elementwise
 #' @return (`AnvlPrimitive`)\cr
 #'   The function the primitive is called through, of class
 #'   `c("AnvlPrimitive", "JitFunction")`. Its [`AnvlPrimitiveDef`] is
@@ -121,15 +141,15 @@ new_primitive <- function(
   fn,
   subgraphs = character(),
   static = character(),
-  register = TRUE,
-  elementwise = FALSE
+  tags = character(),
+  register = TRUE
 ) {
   checkmate::assert_string(name)
   checkmate::assert_function(fn)
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
-  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs, elementwise = elementwise)
+  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs, tags = tags)
 
   # Bind `self` (the AnvlPrimitiveDef) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —
@@ -143,6 +163,7 @@ new_primitive <- function(
 
   jit_fn <- jit(fn, static = static)
   attr(jit_fn, "definition") <- definition
+  definition$fn <- jit_fn
   class(jit_fn) <- c("AnvlPrimitive", class(jit_fn))
 
   if (register) {

@@ -95,6 +95,9 @@ pushforward_cases <- list(
   lt = binary_case(),
   le = binary_case(),
   is_finite = pushforward_case(list(x = unif(-2, 2))),
+  # at f64 a conversion to f64 is the identity, at f32 one that changes the
+  # data type
+  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64")),
   # integer and boolean operations, whose result has no tangent
   and = pushforward_case(list(lhs = coin(), rhs = coin()), wrt = character()),
   or = pushforward_case(list(lhs = coin(), rhs = coin()), wrt = character()),
@@ -161,7 +164,7 @@ central_difference <- function(fn, x, t, h) {
 #     difference of the gradient, which needs a pushforward rule for whatever
 #     the reverse rule computes with -- not yet with a scalar operand, whose
 #     cotangent the pullback rule sums with `prim_sum()`;
-#   - at f32, that the tangent keeps the data type.
+#   - at f32, that the tangent has the data type of the result.
 # An output that is not a float has no derivative, and so no tangent.
 check_pushforward_rule <- function(name, case) {
   prim <- getFromNamespace(paste0("prim_", name), "anvl")
@@ -235,8 +238,9 @@ check_pushforward_rule <- function(name, case) {
     expect_equal(as_array(res$hvp[[nm]]), as_array(res$hvp_fd[[nm]]), tolerance = 1e-5, label = paste("hvp", nm))
   }
 
-  tangent32 <- jit(\(x, t) tangent_along(f, x, t))(arrays_at("f32"), lapply(directions, anvl_array, dtype = "f32"))
-  expect_equal(dtype(tangent32), as_dtype("f32"))
+  x32 <- arrays_at("f32")
+  tangent32 <- jit(\(x, t) tangent_along(f, x, t))(x32, lapply(directions, anvl_array, dtype = "f32"))
+  expect_equal(dtype(tangent32), dtype(trace_fn(f, x32)$outputs[[1L]]))
   expect_equal(as_array(tangent32), as_array(res$tangent[[length(res$tangent)]]), tolerance = 1e-4)
 }
 

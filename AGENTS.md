@@ -122,17 +122,25 @@ another backend is an error. Only helpers *about* the backend name one (`install
 
 ## Primitive System
 
-Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. A primitive that is an element-wise operation, a reduction or a cumulative scan says so with `new_primitive(tags = )` (`"elementwise"`, `"reduction"`, `"cumulative"`); a rule shared by every primitive of a kind is assigned from the tag (`primitives_tagged()`), so a new primitive of that kind gets it without being added to a list. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
 - **`pushforward`** -- Forward-mode rules for `pushforward()` (engine in `R/pushforward.R`): a
   `function(inputs, outputs, tangents, params)` returning one tangent per output, `NULL` for a
-  zero. A `NULL` input tangent is a zero too. A primitive created with
-  `new_primitive(elementwise = TRUE)` gets its pushforward rule from its pullback rule in
+  zero. A `NULL` input tangent is a zero too. A primitive tagged `"elementwise"` gets its pushforward rule from its pullback rule in
   `R/rules-pushforward.R`: its derivative is diagonal, so the pullback rule applied to a tangent
   gives that tangent's pushforward.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
+- **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
+  The batch axis is the operands' last axis, so a parameter that names axes keeps its value: the primitives
+  tagged `"elementwise"`, `"reduction"` or `"cumulative"` (`new_primitive(tags = )`) take the plain
+  rule from their tag. Most other rules are declarations of how the parameters with an entry per axis, or a shape, change (`param_shape()`,
+  `param_axis_map()`, `param_per_axis()`), with the generic rule broadcasting operands that are not
+  mapped over. `vectorize()` maps over, and stacks along, the last axis by default (`in_axes = -1L`,
+  `out_axes = -1L`). Only primitives that do not fit write a
+  `fn`. Every rule is checked by `autotest_vectorize()` (`helper-vectorize.R`) in
+  `test-primitives-vectorize.R`.
 
 ## Side Effects
 
@@ -171,10 +179,10 @@ The StableHLO lowering represents an array of R shape `(d1, ..., dn)` as an XLA 
 bytes of the reversed shape, so transfers copy them as they are. A pjrt `AnvlArray` holds a buffer
 whose dims are `rev(x$shape)`; `x$shape` stays the R shape. R axis `i` of an `n`-axis array is XLA
 dimension `n - i`, so R axis 1 is the contiguous (minor) one and the trailing R axes are XLA's major
-dimensions, where XLA's kernels want batch axes. Every lowering rule maps its axis numbers, shapes and
-per-axis vectors with the helpers in `R/lowering-axes.R`; `at2vt()` reverses every type, so
-`shape()` of a `FuncValue` is the XLA shape. Dumped HLO and XLA's error messages show the reversed
-shapes.
+dimensions, where XLA's kernels want batch axes -- which is why anvl's batch axes go last. Every
+lowering rule maps its axis numbers, shapes and per-axis vectors with the helpers in
+`R/lowering-axes.R`; `at2vt()` reverses every type, so `shape()` of a `FuncValue` is the XLA shape.
+Dumped HLO and XLA's error messages show the reversed shapes.
 
 ## Graph Tracing
 
@@ -199,12 +207,16 @@ Each rule of each primitive should be tested. Tests are organized as:
   differentiate), and each entry is checked against central differences, against the pullback
   (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of the
   gradient. torch has no forward mode to compare with.
+- `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
+  (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
 This helper skips when quickr is not installed, and also when the `ANVL_TEST_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
+
+Do not add unit tests that manually inspect the code to which a primitive lowers. Only test their behavior.
 
 ## Documentation
 

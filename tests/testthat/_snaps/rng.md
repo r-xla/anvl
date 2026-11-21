@@ -76,7 +76,7 @@
         %1: ui32[2] = sample_bits [shape = 2, dtype = "ui32"] (%key1, %counter1)
         %counter2: ui64[] = add(%counter1, 1:ui64)
         (%2, %key2, %counter3, %3, %4): (
-          i32[], ui32[2], ui64[], ui32[3,1], ui32[3,1]
+          i32[], ui32[2], ui64[], ui32[1,3], ui32[1,3]
         ) = scan [
           body = (%x1: i32[], %key3: ui32[2], %counter4: ui64[]) {
             %5: ui32[1] = sample_bits [shape = 1, dtype = "ui32"] (%key3, %counter4)

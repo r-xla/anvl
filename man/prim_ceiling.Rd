@@ -25,6 +25,7 @@ Element-wise ceiling.
 \item \code{quickr}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

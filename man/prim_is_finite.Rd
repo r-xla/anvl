@@ -24,6 +24,7 @@ Element-wise check if values are finite (not Inf, -Inf, or NaN).
 \item \code{stablehlo}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

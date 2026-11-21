@@ -29,6 +29,7 @@ Element-wise minimum of two arrays, like \code{\link[base:pmin]{base::pmin()}}.
 \item \code{quickr}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

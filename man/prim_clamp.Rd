@@ -30,6 +30,7 @@ Clamps every element of \code{x} to the range \verb{[min, max]}.
 \item \code{stablehlo}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

@@ -28,6 +28,7 @@ Rounds the elements of an array to the nearest integer.
 \item \code{stablehlo}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

@@ -24,6 +24,7 @@ Element-wise inverse sine.
 \item \code{stablehlo}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

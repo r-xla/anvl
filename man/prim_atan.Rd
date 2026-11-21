@@ -24,6 +24,7 @@ Element-wise inverse tangent.
 \item \code{stablehlo}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

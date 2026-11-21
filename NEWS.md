@@ -2,7 +2,9 @@
 
 ## Breaking changes
 
-* Random draws now fill multi-dimensional arrays in a transposed order.
+* Batch axes now come last to have consistent col-major semantics everywhere.
+  This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.
+* Random draws fill a shape in column-major order.
 * `NULL` (and so `c()`) is no longer a shape; constructors that infer one default
   to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
 * `Shape()` is no longer exported; use `shp()`.
@@ -119,6 +121,15 @@
 * `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
 * nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
   summed at the default float.
+* New `vectorize()` maps a function over axes of its arguments (`in_axes`,
+  `out_axes`, by default the last axis), like `base::Vectorize()` but as one
+  traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
+  primitive its rule.
+* `new_primitive()` takes `tags` naming the kind of operation a primitive is:
+  `"elementwise"`, `"reduction"` or `"cumulative"`.
+* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
+  differentiated by `gradient()` closes over now counts toward the device
+  `jit()` detects, as it already did for the jitted function itself.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the Poisson distribution: `nv_dpois()`, `nv_ppois()`,

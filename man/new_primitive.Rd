@@ -10,8 +10,8 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
-  register = TRUE,
-  elementwise = FALSE
+  tags = character(),
+  register = TRUE
 )
 }
 \arguments{
@@ -30,6 +30,18 @@ Names of parameters that are subgraphs (for higher-order primitives).}
 \item{static}{(\code{character()} | \code{integer()})\cr
 Passed to \code{\link[=jit]{jit()}}.}
 
+\item{tags}{(\code{character()})\cr
+The kinds of operation the primitive is, which rules shared between
+primitives of one kind read:
+\itemize{
+\item \code{"elementwise"}: each element of the output is computed from the
+elements at the same position of the operands alone, e.g. \code{\link[=prim_add]{prim_add()}}.
+\item \code{"reduction"}: reduces its operand along the axes a parameter names,
+e.g. \code{\link[=prim_sum]{prim_sum()}}.
+\item \code{"cumulative"}: scans its operand along the axis a parameter names,
+e.g. \code{\link[=prim_cumsum]{prim_cumsum()}}.
+}}
+
 \item{register}{(\code{logical(1)})\cr
 Whether to add the primitive to anvl's internal registry of primitives,
 under \code{name}, replacing one registered under the same name. The quickr
@@ -38,13 +50,6 @@ primitive created with \code{register = FALSE} is rejected on quickr even if
 it has a \code{quickr} rule. The other backends only read the rules of the
 primitive itself. This does not bind the result to a \verb{prim_<name>}
 variable; assign it yourself.}
-
-\item{elementwise}{(\code{logical(1)})\cr
-Whether the primitive is elementwise: each element of its single result is
-computed from the elements at the same position of its operands alone,
-where a scalar operand is broadcast, at the operands' data type or as a
-boolean. Its derivative is then diagonal, and its \code{pushforward} rule is
-derived from its \code{pullback} rule.}
 }
 \value{
 (\code{AnvlPrimitive})\cr

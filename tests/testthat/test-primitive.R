@@ -89,15 +89,6 @@ describe("subgraphs", {
 })
 
 describe("new_primitive", {
-  it("records whether the primitive is elementwise", {
-    expect_true(primitive_def(prim_sin)$elementwise)
-    expect_true(primitive_def(prim_add)$elementwise)
-    expect_false(primitive_def(prim_sum)$elementwise)
-    np <- new_primitive("np_elementwise", function(x) x, register = FALSE, elementwise = TRUE)
-    expect_true(primitive_def(np)$elementwise)
-    expect_false(primitive_def(new_primitive("np_other", function(x) x, register = FALSE))$elementwise)
-  })
-
   it("works for a body defined outside the anvl namespace", {
     fn <- function(x) {
       graph_desc_add(self, list(x), infer_fn = function(x) list(x))[[1L]]
@@ -108,6 +99,13 @@ describe("new_primitive", {
     environment(fn) <- list2env(list(graph_desc_add = graph_desc_add), parent = baseenv())
     prim_identity <- new_primitive("identity_ext", fn, register = FALSE)
     expect_s3_class(trace_fn(prim_identity, list(nv_aval("f32", 2L))), "AnvlGraph")
+  })
+
+  it("stores the tags of the primitive and refuses unknown ones", {
+    fn <- function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]]
+    prim_neg <- new_primitive("negate_tagged", fn, tags = "elementwise", register = FALSE)
+    expect_identical(primitive_def(prim_neg)$tags, "elementwise")
+    expect_error(new_primitive("negate_tagged", fn, tags = "pointwise", register = FALSE), "tags")
   })
 })
 

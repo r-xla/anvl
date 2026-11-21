@@ -219,7 +219,7 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     batching_axes = list(c(4L, 5L), c(1L, 2L))
   )
 
-  # lhs has no free axes, so the free axes of rhs come right after the batching axes
+  # lhs has no free axes, so the free axes of rhs come first, then the batching axes
   # A[b,k] • B[b,k,n] with batching b and contracting k
   A6 <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
   B6 <- nv_array(1:24, shape = c(2, 3, 4), dtype = "f32")
@@ -228,6 +228,17 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     B6,
     contracting_axes = list(2L, 2L),
     batching_axes = list(1L, 1L)
+  )
+
+  # the layout of `nv_matmul()`: trailing batching axes
+  # A[m,k,b1,b2] • B[k,n,b1,b2] with batching (b1,b2) and contracting k
+  A7 <- nv_array(1:(2 * 3 * 2 * 4), shape = c(2, 3, 2, 4), dtype = "f32")
+  B7 <- nv_array(1:(3 * 5 * 2 * 4), shape = c(3, 5, 2, 4), dtype = "f32")
+  check_case(
+    A7,
+    B7,
+    contracting_axes = list(2L, 1L),
+    batching_axes = list(c(3L, 4L), c(3L, 4L))
   )
 })
 
@@ -1739,31 +1750,39 @@ test_that("prim_sort", {
   expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
 })
 
-test_that("prim_top_k", {
-  for (indices in c(TRUE, FALSE)) {
-    withr::local_seed(42)
-    x_arr <- matrix(rnorm(4 * 6), nrow = 4)
+describe("prim_top_k reverse", {
+  it("scatters the gradient back along axis 1, with any number of batch axes", {
     k <- 3L
-    w_arr <- matrix(as.double(seq_len(4 * k)), nrow = 4)
+    for (x_shape in list(6L, c(6L, 4L), c(5L, 2L, 3L))) {
+      for (indices in c(TRUE, FALSE)) {
+        withr::local_seed(42)
+        x_arr <- array(rnorm(prod(x_shape)), x_shape)
+        out_shape <- replace(x_shape, 1L, k)
+        w_arr <- array(as.double(seq_len(prod(out_shape))), out_shape)
 
-    x_nv <- nv_array(x_arr)
-    w_nv <- nv_array(w_arr)
+        x_nv <- nv_array(x_arr)
+        w_nv <- nv_array(w_arr)
 
-    f_nv <- function(x) {
-      top <- prim_top_k(x, k = k, indices = indices)[[1L]]
-      nv_sum(top * w_nv, axes = c(1L, 2L))
+        f_nv <- function(x) {
+          top <- prim_top_k(x, k = k, indices = indices)[[1L]]
+          nv_sum(top * w_nv)
+        }
+        grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
+
+        # Scatter w along the top-k indices of each column, with the batch
+        # axes flattened into the columns.
+        x_mat <- matrix(x_arr, nrow = x_shape[[1L]])
+        w_mat <- matrix(w_arr, nrow = k)
+        expected_grad <- matrix(0, nrow = nrow(x_mat), ncol = ncol(x_mat))
+        for (j in seq_len(ncol(x_mat))) {
+          top_idx <- order(x_mat[, j], decreasing = TRUE)[seq_len(k)]
+          expected_grad[top_idx, j] <- w_mat[, j]
+        }
+
+        expect_equal(as_array(grad_nv), array(expected_grad, x_shape), tolerance = 1e-5)
+      }
     }
-    grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
-
-    # Scatter w along the top-k indices for each row.
-    expected_grad <- matrix(0, nrow = nrow(x_arr), ncol = ncol(x_arr))
-    for (i in seq_len(nrow(x_arr))) {
-      top_idx <- order(x_arr[i, ], decreasing = TRUE)[seq_len(k)]
-      expected_grad[i, top_idx] <- w_arr[i, ]
-    }
-
-    expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
-  }
+  })
 })
 
 test_that("prim_prod: gradient is safe at zeros", {
@@ -1861,7 +1880,7 @@ describe("prim_scan", {
     graph <- trace_fn(gradient(f), avals)
     scans <- Filter(\(call) call$primitive$name == "scan", graph$statements)
     out_shapes <- lapply(unlist(lapply(scans, \(call) call$outputs)), \(g) shape(g$aval))
-    expect_false(list(c(3L, 2L, 2L)) %in% out_shapes)
+    expect_false(list(c(2L, 2L, 3L)) %in% out_shapes)
     # Nor does the forward scan carry it, which would cost a copy per step, or
     # compute it again: it reads the copy computed before it.
     fwd <- Filter(\(call) !call$params$reverse, scans)[[1L]]
@@ -1895,7 +1914,7 @@ describe("prim_scan", {
 
     graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
     fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
-    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    stacked <- Filter(\(g) identical(shape(g$aval), c(2L, 3L)), fwd$outputs)
     expect_length(stacked, 2L)
   })
 
@@ -1922,7 +1941,7 @@ describe("prim_scan", {
 
     graph <- trace_fn(gradient(f), list(nv_aval("f64", 2L), nv_aval("f64", 2L)))
     fwd <- Filter(\(call) call$primitive$name == "scan" && !call$params$reverse, graph$statements)[[1L]]
-    stacked <- Filter(\(g) identical(shape(g$aval), c(3L, 2L)), fwd$outputs)
+    stacked <- Filter(\(g) identical(shape(g$aval), c(2L, 3L)), fwd$outputs)
     expect_length(stacked, 1L)
   })
 
@@ -2201,10 +2220,10 @@ describe("prim_optimization_barrier", {
 describe("prim_convolution", {
   it("has zero gradients when the result is empty", {
     # a width-3 window does not fit into a width-2 input
-    x <- nv_array(1:4, shape = c(1L, 2L, 2L), dtype = "f32")
-    kernel <- nv_array(1:12, shape = c(2L, 2L, 3L), dtype = "f32")
+    x <- nv_array(1:4, shape = c(2L, 2L, 1L), dtype = "f32")
+    kernel <- nv_array(1:12, shape = c(3L, 2L, 2L), dtype = "f32")
     grads <- jit(gradient(function(x, kernel) nv_sum(nv_conv1d(x, kernel))))(x, kernel)
-    expect_equal(as_array(grads[[1L]]), array(0, c(1L, 2L, 2L)))
-    expect_equal(as_array(grads[[2L]]), array(0, c(2L, 2L, 3L)))
+    expect_equal(as_array(grads[[1L]]), array(0, c(2L, 2L, 1L)))
+    expect_equal(as_array(grads[[2L]]), array(0, c(3L, 2L, 2L)))
   })
 })

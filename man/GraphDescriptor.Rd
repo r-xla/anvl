@@ -81,6 +81,8 @@ of \code{\link[=jit]{jit()}} and \code{\link[=trace_fn]{trace_fn()}} takes side 
 \item \code{"loop"}: as fresh inputs of the graph, which the graph also returns
 there. The bodies of \code{\link[=nv_while]{nv_while()}} and \code{\link[=nv_scan]{nv_scan()}} take side effects this
 way, and hand them on to the next iteration.
+\item \code{"vectorize"}: as fresh inputs of the graph, which \code{\link[=vectorize]{vectorize()}} binds
+to the values the slices start from.
 \item \code{"capture"}: as the value of \code{parent}'s view, which the graph closes
 over and continues. The branches of \code{\link[=nv_if]{nv_if()}} and the function
 \code{\link[=gradient]{gradient()}} differentiates take side effects this way.

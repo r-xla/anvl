@@ -29,6 +29,7 @@ Element-wise greater than comparison.
 \item \code{quickr}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

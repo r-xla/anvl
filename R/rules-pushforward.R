@@ -8,9 +8,8 @@ NULL
 # to each operand is diagonal: its own transpose. The pullback rule multiplies a
 # cotangent of the result by that derivative, so given a tangent of an operand
 # in place of the cotangent, it gives that tangent's pushforward. The
-# pushforward rule of a primitive created with `new_primitive(elementwise =
-# TRUE)` therefore calls its pullback rule once per operand with a tangent, and
-# adds up the results.
+# pushforward rule of a primitive tagged `"elementwise"` therefore calls its
+# pullback rule once per operand with a tangent, and adds up the results.
 
 # The pushforward rule of the elementwise primitive whose pullback rule is
 # `pullback`, a `rule_pullback()` without a forward pass.
@@ -37,16 +36,20 @@ pushforward_from_pullback <- function(pullback) {
   }
 }
 
-local({
-  for (name in ls(primitive_env)) {
-    def <- primitive_def(primitive_env[[name]])
-    if (isTRUE(def$elementwise)) {
-      if (is.null(def[["pullback"]]$backward)) {
-        cli_abort(
-          "Internal error: the elementwise primitive {.field {name}} has no pullback rule without a forward pass."
-        )
-      }
-      def[["pushforward"]] <- pushforward_from_pullback(def[["pullback"]])
-    }
+for (prim in primitives_tagged("elementwise")) {
+  if (is.null(prim[["pullback"]]$backward)) {
+    cli_abort(
+      "Internal error: the elementwise primitive {.field {primitive_def(prim)$name}} has no pullback rule without a forward pass."
+    )
   }
-})
+  prim[["pushforward"]] <- pushforward_from_pullback(prim[["pullback"]])
+}
+rm(prim)
+
+# `prim_convert()` is elementwise, but its pullback rule converts back to the
+# operand's data type: the tangent of a float result is the operand's tangent
+# converted to the result's.
+prim_convert[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  out <- outputs[[1L]]
+  list(if (is_dtype_float(dtype(out))) prim_convert(tangents[[1L]], dtype(out)))
+}

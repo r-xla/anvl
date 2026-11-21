@@ -29,6 +29,7 @@ Element-wise equality comparison.
 \item \code{quickr}
 \item \code{pullback}
 \item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

@@ -95,33 +95,27 @@ prim_broadcast_in_axes[["stablehlo"]] <- function(x, shape, broadcast_axes, outp
   list(hlo_broadcast_in_dim(x, dims, xla_shape(shape), output_types = output_types))
 }
 
-# The result of `prim_dot_general()` in R order is the batch axes (in the
-# order `batching_axes` names them), then the free axes of `lhs`, then those of
-# `rhs`; its XLA order is the reverse. XLA's `dot_general` puts its batch
-# dimensions first and then each operand's free dimensions in XLA order, so
-# with the operands swapped and the batch dimensions named in reverse it
-# produces the free dimensions in exactly the order the result needs, and only
-# the batch dimensions have to move to the end.
+# The result of `prim_dot_general()` in R order is the free axes of `lhs`, then
+# those of `rhs`, then the batch axes (in the order `batching_axes` names
+# them); its XLA order is the reverse: the batch dimensions in reverse, then the
+# free dimensions of `rhs`, then those of `lhs`, each in XLA order. XLA's
+# `dot_general` puts its batch dimensions first, in the order they are named,
+# and then each operand's free dimensions in XLA order, so with the operands
+# swapped and the batch dimensions named in reverse it produces exactly the
+# result.
 prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching_axes, precision, output_types) {
   n_lhs <- naxes(lhs)
   n_rhs <- naxes(rhs)
-  n_batch <- length(batching_axes[[1L]])
   contracting <- list(xla_dims(contracting_axes[[2L]], n_rhs), xla_dims(contracting_axes[[1L]], n_lhs))
   batching <- list(xla_dims(rev(batching_axes[[2L]]), n_rhs), xla_dims(rev(batching_axes[[1L]]), n_lhs))
-  if (n_batch == 0L) {
-    return(list(hlo_dot_general(
-      rhs,
-      lhs,
-      contracting,
-      batching,
-      precision_config = toupper(precision),
-      output_types = output_types
-    )))
-  }
-  out <- hlo_dot_general(rhs, lhs, contracting, batching, precision_config = toupper(precision))
-  n_out <- naxes(out)
-  perm <- c(seq_len(n_out - n_batch) + n_batch - 1L, seq_len(n_batch) - 1L)
-  list(hlo_transpose(out, perm, output_types = output_types))
+  list(hlo_dot_general(
+    rhs,
+    lhs,
+    contracting,
+    batching,
+    precision_config = toupper(precision),
+    output_types = output_types
+  ))
 }
 
 prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {
@@ -689,13 +683,18 @@ prim_ifelse[["stablehlo"]] <- function(test, yes, no, output_types) {
 
 # A random state is a ThreeFry-2x32 key, `ui32[2]` (the words of JAX's key data), and a
 # counter, `ui64`. ?prim_sample_bits says which values a sampling call draws.
-# Each sampling call and each fork is a call of a function built once per
-# lowering (and draw shape and data type), so that many sampling calls lower
-# and compile quickly.
+# A sampling call that `vectorize()` batched draws from a batch of random states
+# of a batch shape B, keys `ui32[2, B]` and counters `ui64[B]`, from each as from
+# one, into draws of shape `c(shape, B)` (R shapes; the lowering sees each
+# reversed). Each sampling call and each fork is a call of a function built once
+# per lowering (and batch shape, draw shape and data type), so that many
+# sampling calls lower and compile quickly.
 prim_sample_bits[["stablehlo"]] <- function(key, counter, shape, dtype) {
   shape <- as.integer(shape)
   dtype <- as.character(as_dtype(dtype))
-  rng_state_call(paste0("sample_bits_", dtype, "_", shape_id(shape)), key, counter, function(fresh_key) {
+  batch <- r_shape(counter)
+  id <- paste0("sample_bits_", dtype, "_", shape_id(shape), if (length(batch)) paste0("_batch_", shape_id(batch)))
+  rng_state_call(id, key, counter, function(fresh_key) {
     list(threefry_draw(fresh_key, shape, dtype))
   })
 }
@@ -712,18 +711,28 @@ prim_fork_rng_state[["stablehlo"]] <- function(key, counter) {
 
 # A call of the function `id` of the lowering, built on first use, that splits
 # the random state with the key `key` at the counter `counter` and returns what
-# `body()` computes from the key ThreeFry_key(counter) (two `ui32` scalars). It
-# encrypts the counter with its high word as the first input word and its low
-# word as the second: for a counter c below 2^32 the key is JAX's
-# `fold_in(key, c)`, and for every c the c-th key of JAX's `split(key, c + 1)`.
+# `body()` computes from the key ThreeFry_key(counter) (two `ui32` arrays of the
+# batch shape, the shape of `counter`). It encrypts the counter with its high
+# word as the first input word and its low word as the second: for a counter c
+# below 2^32 the key is JAX's `fold_in(key, c)`, and for every c the c-th key of
+# JAX's `split(key, c + 1)`. A batched key, of R shape `c(2, B)`, holds its two
+# words along the last XLA dimension.
 rng_state_call <- function(id, key, counter, body) {
+  batch <- shape(counter$value_type)
   callee <- lowering_func(id, function(id) {
     func <- local_func(id)
-    key <- stablehlo::hlo_input("key", "ui32", shape = 2L, func = func)
-    counter <- stablehlo::hlo_input("counter", "ui64", func = func)
-    key_words <- lapply(0:1, function(i) hlo_reshape(hlo_slice(key, i, i + 1L, 1L), integer()))
+    key <- stablehlo::hlo_input("key", "ui32", shape = c(batch, 2L), func = func)
+    counter <- stablehlo::hlo_input("counter", "ui64", shape = batch, func = func)
+    n_batch <- length(batch)
+    key_words <- lapply(0:1, function(i) {
+      word <- hlo_slice(key, c(rep(0L, n_batch), i), c(batch, i + 1L), rep(1L, n_batch + 1L))
+      hlo_reshape(word, batch)
+    })
     # each word is cleared of the other first, so that the conversion is exact
     by32 <- hlo_scalar(32L, dtype = "ui64", func = func)
+    if (n_batch) {
+      by32 <- hlo_broadcast_in_dim(by32, integer(), batch)
+    }
     low <- hlo_shift_right_logical(hlo_shift_left(counter, by32), by32)
     high <- hlo_shift_right_logical(counter, by32)
     counter_words <- list(hlo_convert(high, "ui32"), hlo_convert(low, "ui32"))
@@ -738,8 +747,9 @@ shape_id <- function(shape) {
 }
 
 # The values of R shape `shape` and unsigned data type `dtype` a draw from the
-# key `key` (two `ui32` scalars) gives: the value at the column-major index t is
-# made from the block that encrypts the input words (0, t) alone, so that it
+# key `key` (two `ui32` arrays of a batch shape B) gives, of R shape
+# `c(shape, B)`: the value at the column-major index t of a draw is made from
+# the block that encrypts the input words (0, t) under its key alone, so that it
 # does not depend on how many values the draw has. This is how JAX's
 # `jax.random.bits()` draws by default (`jax_threefry_partitionable`), except
 # that JAX fills a shape in row-major order. A `ui64` value is the
@@ -748,19 +758,23 @@ shape_id <- function(shape) {
 # bits.
 threefry_draw <- function(key, shape, dtype) {
   func <- key[[1L]]$func
+  # the XLA batch shape
+  batch <- shape(key[[1L]]$value_type)
   n <- prod(shape)
   if (n > .Machine$integer.max) {
     limit <- .Machine$integer.max
     cli_abort(c("Cannot draw more than {limit} values at once.", i = "Draw fewer values at once."))
   }
-  n <- as.integer(n)
-  zeros <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = "ui32", func = func), integer(), n)
-  index <- hlo_iota(iota_dimension = 0L, dtype = "ui32", shape = n, func = func)
-  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, integer(), n), list(zeros, index))
+  # every draw of the batch flattened along the last XLA dimension
+  flat <- c(batch, as.integer(n))
+  zeros <- hlo_broadcast_in_dim(hlo_scalar(0L, dtype = "ui32", func = func), integer(), flat)
+  index <- hlo_iota(iota_dimension = length(batch), dtype = "ui32", shape = flat, func = func)
+  words <- threefry2x32(lapply(key, hlo_broadcast_in_dim, seq_along(batch) - 1L, flat), list(zeros, index))
+  out_shape <- c(batch, xla_shape(shape))
   if (dtype == "ui64") {
-    by32 <- hlo_broadcast_in_dim(hlo_scalar(32L, dtype = "ui64", func = func), integer(), n)
+    by32 <- hlo_broadcast_in_dim(hlo_scalar(32L, dtype = "ui64", func = func), integer(), flat)
     high <- hlo_shift_left(hlo_convert(words[[1L]], "ui64"), by32)
-    return(hlo_reshape(hlo_or(high, hlo_convert(words[[2L]], "ui64")), xla_shape(shape)))
+    return(hlo_reshape(hlo_or(high, hlo_convert(words[[2L]], "ui64")), out_shape))
   }
   values <- hlo_xor(words[[1L]], words[[2L]])
   if (dtype != "ui32") {
@@ -768,11 +782,11 @@ threefry_draw <- function(key, shape, dtype) {
     mask <- hlo_broadcast_in_dim(
       hlo_scalar(as.integer(2^dtype_width(as_dtype(dtype)) - 1), dtype = "ui32", func = func),
       integer(),
-      n
+      flat
     )
     values <- hlo_convert(hlo_and(values, mask), dtype)
   }
-  hlo_reshape(values, xla_shape(shape))
+  hlo_reshape(values, out_shape)
 }
 
 # ThreeFry-2x32 with 20 rounds (Salmon et al., 2011), as XLA implements it: the
@@ -866,7 +880,8 @@ prim_while[["stablehlo"]] <- function(..., cond, body, n_captures) {
 # A while loop over the state (i, carry..., out buffers..., xs...). Each
 # iteration slices step i of every xs leaf, runs the traced body inline, and
 # writes its outputs into the buffers at step i; xs ride along unchanged. The
-# step axis is R axis 1, the last XLA dimension.
+# step axis is the last R axis, XLA dimension 0, so a step is a contiguous
+# block of every buffer and every xs leaf.
 prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n_captures) {
   args <- list(...)
   outer <- args[[1L]]$func
@@ -884,14 +899,14 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
     hlo_tensor(
       0L,
       dtype = aval$dtype,
-      shape = xla_shape(c(n, shape(aval))),
+      shape = xla_shape(c(shape(aval), n)),
       func = outer
     )
   })
   # A zero-step scan is the buffers as allocated and the carry untouched. We
   # cannot emit the loop and let the condition stop it immediately: the body
   # slices one step off `xs`, which does not type-check against an `xs` whose
-  # axis 1 is empty, and MLIR verifies a region it never runs.
+  # last axis is empty, and MLIR verifies a region it never runs.
   if (n == 0L) {
     return(c(carry0, bufs0))
   }
@@ -929,12 +944,13 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   one_i <- hlo_scalar(1L, dtype = "i32")
   idx <- if (reverse) hlo_subtract(hlo_scalar(n - 1L, dtype = "i32"), i) else i
 
+  # The starts are per XLA dimension, the step's first.
   slices <- lapply(xs_in, function(x) {
-    shp <- shape(x$value_type)
+    shp <- r_shape(x)
     last <- length(shp)
-    starts <- c(rep(list(zero_i), last - 1L), list(idx))
-    sl <- rlang::exec(hlo_dynamic_slice, x, !!!starts, slice_sizes = as.integer(c(shp[-last], 1L)))
-    hlo_reshape(sl, as.integer(shp[-last]))
+    starts <- c(list(idx), rep(list(zero_i), last - 1L))
+    sl <- rlang::exec(hlo_dynamic_slice, x, !!!starts, slice_sizes = xla_shape(c(shp[-last], 1L)))
+    hlo_reshape(sl, xla_shape(shp[-last]))
   })
 
   env <- HloEnv()
@@ -946,9 +962,9 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
   carry_new <- outs[seq_len(n_carry)]
   bufs_new <- Map(
     function(buf, out) {
-      shp <- shape(out$value_type)
-      upd <- hlo_reshape(out, as.integer(c(shp, 1L)))
-      starts <- c(rep(list(zero_i), length(shp)), list(idx))
+      shp <- r_shape(out)
+      upd <- hlo_reshape(out, xla_shape(c(shp, 1L)))
+      starts <- c(list(idx), rep(list(zero_i), length(shp)))
       rlang::exec(hlo_dynamic_update_slice, buf, upd, !!!starts)
     },
     bufs_in,
@@ -1043,36 +1059,26 @@ prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {
 # negative NaN ranks below `-Inf` on both, as `?nv_top_k` documents.
 .hlo_top_k_values <- function(x, k) {
   if (!identical(current_platform(), "cuda")) {
-    return(top_k_on_dim0(x, k)[[1L]])
+    return(hlo_top_k(x, k = k)[[1L]])
   }
   shp <- shape(x$value_type)
   n_axes <- length(shp)
   sorted <- hlo_sort(
     x,
-    dimension = 0L,
+    dimension = n_axes - 1L,
     is_stable = FALSE,
     comparator = .build_sort_comparator(list(x), decreasing = TRUE, canonicalize = FALSE)
   )
-  hlo_slice(sorted[[1L]], rep(0L, n_axes), replace(shp, 1L, k), rep(1L, n_axes))
+  hlo_slice(sorted[[1L]], rep(0L, n_axes), replace(shp, n_axes, k), rep(1L, n_axes))
 }
 
-# `hlo_top_k()` along XLA dimension 0, the last R axis, where `prim_top_k()`
-# works: the operand's dimension 0 is moved last for it and back after.
-top_k_on_dim0 <- function(x, k) {
-  n <- naxes(x)
-  if (n <= 1L) {
-    return(hlo_top_k(x, k = k))
-  }
-  to_last <- c(seq_len(n - 1L), 0L)
-  back <- c(n - 1L, seq_len(n - 1L) - 1L)
-  lapply(hlo_top_k(hlo_transpose(x, to_last), k = k), hlo_transpose, back)
-}
-
+# R axis 1, along which `prim_top_k()` works, is XLA's last dimension, the one
+# `hlo_top_k()` works along, so neither lowering moves an axis.
 prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
   if (!indices) {
     return(list(.hlo_top_k_values(x, k)))
   }
-  out <- top_k_on_dim0(x, k)
+  out <- hlo_top_k(x, k = k)
   values <- out[[1L]]
   indices <- out[[2L]]
 
@@ -1187,20 +1193,19 @@ prim_gather[["stablehlo"]] <- function(
 # pjrt's `potrf` custom call (LAPACK on the host, cuSOLVER on CUDA) factors
 # column-major matrices, batched over its leading dimensions, and returns
 # potrf's `info` per matrix, which is non-zero for a matrix that is not
-# positive definite. With the batch dimensions moved first, each block is the
-# column-major matrix as XLA's row-major bytes, so potrf factors exactly the
-# matrix the R axes hold and writes the factor the same way.
+# positive definite. The trailing batch axes are XLA's leading dimensions, and
+# the matrix in R axes 1 and 2 is the block behind them, (column, row) in XLA
+# order: the column-major matrix as XLA's row-major bytes. So potrf factors
+# exactly the matrix the R axes hold and writes the factor the same way.
 prim_chol[["stablehlo"]] <- function(x, lower) {
-  r <- naxes(x)
-  moved <- xla_matrix_last(x, r - 1L, r)
-  xm <- moved$value
-  op_shape <- shape(xm$value_type)
+  op_shape <- shape(x$value_type)
+  r <- length(op_shape)
   batch_dims <- seq_len(r - 2L) - 1L
   dt <- dtype(x)
 
   row_major <- rev(seq_len(r) - 1L)
   out <- hlo_custom_call(
-    xm,
+    x,
     call_target_name = "potrf",
     api_version = 4L,
     has_side_effect = FALSE,
@@ -1237,11 +1242,7 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
     mask <- hlo_broadcast_in_dim(mask, c(r - 2L, r - 1L), op_shape)
   }
   zero <- hlo_tensor(0L, dtype = dt, shape = op_shape, func = x$func)
-  out <- hlo_select(mask, L, zero)
-  if (!is.null(moved$back)) {
-    out <- hlo_transpose(out, moved$back)
-  }
-  list(out)
+  list(hlo_select(mask, L, zero))
 }
 
 # XLA lowers `stablehlo.triangular_solve` to cuBLAS trsm on CUDA, but on the
@@ -1249,20 +1250,17 @@ prim_chol[["stablehlo"]] <- function(x, lower) {
 # So, as JAX does, the CPU takes pjrt's `trsm` custom call for the data types
 # BLAS has.
 #
-# Both take their batch dimensions first and solve on the blocks behind them,
-# which hold the transposes of the R matrices. op(a) x = b is
+# Both take their batch dimensions first and solve on the blocks behind them.
+# The trailing batch axes are XLA's leading dimensions, and each block holds the
+# matrix in R axes 1 and 2 transposed, as (column, row). op(a) x = b is
 # t(x) op(t(a)) = t(b), so they solve for t(x) with the side and the triangle
 # swapped.
 prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a, output_types) {
-  r <- naxes(b)
-  am <- xla_matrix_last(a, r - 1L, r)
-  bm <- xla_matrix_last(b, r - 1L, r)
-  out_types <- if (is.null(bm$back)) output_types
   if (identical(current_platform(), "cpu") && as.character(dtype(a)) %in% c("f32", "f64")) {
-    row_major <- rev(seq_len(r) - 1L)
+    row_major <- rev(seq_len(naxes(b)) - 1L)
     x <- hlo_custom_call(
-      am$value,
-      bm$value,
+      a,
+      b,
       call_target_name = "trsm",
       api_version = 4L,
       has_side_effect = FALSE,
@@ -1272,23 +1270,20 @@ prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_di
         stablehlo::BoolAttr(name = "transpose_a", value = transpose_a),
         stablehlo::BoolAttr(name = "unit_diagonal", value = unit_diagonal)
       )),
-      output_types = out_types %||% list(bm$value$value_type),
+      output_types = output_types,
       operand_layouts = list(row_major, row_major),
       result_layouts = list(row_major)
     )
   } else {
     x <- hlo_triangular_solve(
-      am$value,
-      bm$value,
+      a,
+      b,
       left_side = !left_side,
       lower = !lower,
       unit_diagonal = unit_diagonal,
       transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE",
-      output_types = out_types
+      output_types = output_types
     )
-  }
-  if (!is.null(bm$back)) {
-    x <- hlo_transpose(x, bm$back, output_types = output_types)
   }
   list(x)
 }
