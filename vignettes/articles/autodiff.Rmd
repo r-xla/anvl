@@ -204,11 +204,50 @@ Its number of iterations is only known when the program runs, so there is no fix
 Where the number of iterations is known, use `nv_scan()` instead.
 Where the derivative of what a loop computes has a formula of its own, `prim_custom_gradient()` attaches it.
 
+## Pushforwards
+
+`gradient()` and `pullback()` differentiate in *reverse mode*: they give the derivative of a single scalar -- or of a weighted sum of the result -- with respect to all arguments at once, which is efficient for functions with many inputs and one output, such as losses.
+`pushforward()` differentiates in *forward mode* instead.
+It evaluates a function and returns its *pushforward*, which takes a direction to move the arguments in -- their *tangents* -- to the derivative of the whole result along that direction, the product of the Jacobian with a vector.
+The pushforward takes the tangents as the function takes its arguments, and an argument without a tangent is held fixed.
+For $f(x) = x \sin(x)$, the tangent along $v$ is $(\sin(x) + x \cos(x)) v$:
+
+```{r}
+f <- function(x) x * sin(x)
+f_pushforward <- jit(function(x, v) pushforward(f, x)(v))
+f_pushforward(nv_array(c(0, 1, 2)), nv_array(c(1, 1, 1)))
+```
+
+`value_and_pushforward()` returns the result of the function as well.
+The two modes combine: the pushforward of the gradient along $v$ is the product of the Hessian with $v$:
+
+```{r}
+f_grad <- function(x) gradient(function(x) sum(x * sin(x)))(x)$x
+hvp <- jit(function(x, v) pushforward(f_grad, x)(v))
+hvp(nv_array(c(0, 1, 2)), nv_array(c(1, 0, 0)))
+```
+
+## Jacobians and Hessians
+
+`jacobian()` computes the whole Jacobian of a function: the derivative of every element of its result with respect to every element of the arguments.
+Like `gradient()`, it returns a function, whose result has a block for each argument, of the shape of the result followed by that of the argument.
+With `mode = "backward"` (the default) it pulls back a unit cotangent for every element of the result, and with `mode = "forward"` it pushes forward a unit tangent for every element of the arguments, all of them at once with `vectorize()`, so the cheaper mode is the one with fewer elements to go through:
+
+```{r}
+f <- function(x) x * sin(x)
+jit(jacobian(f))(nv_array(c(0, 1, 2)))
+jit(jacobian(f, mode = "forward"))(nv_array(c(0, 1, 2)))
+```
+
+`hessian()` is the Jacobian of the gradient of a function that returns a scalar, forward-over-reverse: the gradient in backward mode, and its Jacobian in forward mode.
+It holds the second derivatives with respect to the arguments `a` and `b` at `[[a]][[b]]`:
+
+```{r}
+jit(hessian(function(x) sum(x * sin(x))))(nv_array(c(0, 1, 2)))
+```
+
 ## Limitations
 
-- {anvl} only implements *reverse-mode* differentiation, which is efficient for functions with many inputs and a single scalar output, such as losses.
-  Forward mode differentiation is currently not supported.
-- Higher-order derivatives, such as Hessians, are currently not really supported.
 - Not every primitive has a derivative yet, so some functions cannot be differentiated.
   The *Pullback* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
   If a derivative is missing and you need it, you can add a pullback rule to the primitive yourself, as shown in the [add the pullback rule](extending_primitive.html#step-3-add-the-pullback-rule) step of the Adding a Primitive article.

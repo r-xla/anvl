@@ -3,7 +3,7 @@
 ## Package Overview
 
 `anvl` is a code transformation framework for R, similar to JAX.
-It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()`, `value_and_gradient()`, `pullback()`, `value_and_pullback()`).
+It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()`, `value_and_gradient()`, `pullback()`, `value_and_pullback()`, `pushforward()`, `value_and_pushforward()`).
 
 ## Commands
 
@@ -13,8 +13,8 @@ config above. anvl-specific:
 - **Tests are gated behind `ANVL_TEST=1`** -- `tests/testthat.R` only calls `test_check()` when it
   is set, so `R CMD check` in a shell without it runs *no* tests. `.Renviron` sets it (together with
   `PJRT_INSTALL=1`) for work inside the package.
-- Single file: `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
-  `devtools::test(filter = "reverse")`.
+- Single file: `testthat::test_active_file("tests/testthat/test-pullback.R")`, or
+  `devtools::test(filter = "pullback")`.
 - `ANVL_TEST_SKIP_QUICKR=1` skips the (slow) quickr tests. `setup.R` sets `PJRT_CPU_DEVICE_COUNT=2`
   so multi-device tests have something to spread over.
 - `ANVL_DEFAULT_DEVICE` / `ANVL_DEFAULT_DTYPES` are package-level: anvl reads them once when it is
@@ -122,11 +122,25 @@ another backend is an error. Only helpers *about* the backend name one (`install
 
 ## Primitive System
 
-Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. A primitive can carry tags, `new_primitive(tags = )`, a plain `character()` for internal use that says what kind of operation it is (the tags in use, `"elementwise"`, `"reduction"` and `"cumulative"`, are listed in `R/primitive.R`); a rule shared by every primitive of a kind, or derived from another of their rules, is assigned from the tag (`primitives_tagged()`), so a new primitive of that kind gets it without being added to a list. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
+- **`pushforward`** -- Forward-mode rules for `pushforward()` (engine in `R/pushforward.R`): a
+  `function(inputs, outputs, tangents, params)` returning one tangent per output, `NULL` for a
+  zero. A `NULL` input tangent is a zero too. A primitive tagged `"elementwise"` gets its pushforward rule from its pullback rule in
+  `R/rules-pushforward.R`: its derivative is diagonal, so the pullback rule applied to a tangent
+  gives that tangent's pushforward.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
+- **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
+  The batch axis is the operands' last axis, so a parameter that names axes keeps its value: the primitives
+  tagged `"elementwise"`, `"reduction"` or `"cumulative"` (`new_primitive(tags = )`) take the plain
+  rule from their tag. Most other rules are declarations of how the parameters with an entry per axis, or a shape, change (`param_shape()`,
+  `param_axis_map()`, `param_per_axis()`), with the generic rule broadcasting operands that are not
+  mapped over. `vectorize()` maps over, and stacks along, the last axis by default (`in_axes = -1L`,
+  `out_axes = -1L`). Only primitives that do not fit write a
+  `fn`. Every rule is checked by `autotest_vectorize()` (`helper-vectorize.R`) in
+  `test-primitives-vectorize.R`.
 
 ## Side Effects
 
@@ -188,6 +202,14 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
 - `tests/testthat/test-primitives-pullback.R` -- sources `inst/extra-tests/test-primitives-pullback-torch.R`
+- `tests/testthat/test-primitives-pushforward.R` -- an autotest: every primitive with a
+  pushforward rule of its own needs an entry in `pushforward_cases` (inputs from its domain, the
+  arguments to differentiate), and each entry is checked against central differences, against the
+  pullback (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of
+  the gradient. A rule derived from the pullback rule (tag `"elementwise"`) needs no entry: a few
+  `derived_cases` check the derivation itself. torch has no forward mode to compare with.
+- `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
+  (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 

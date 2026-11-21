@@ -24,6 +24,8 @@ Element-wise log(1 + x), more accurate for small x.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

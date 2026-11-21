@@ -29,6 +29,8 @@ divisor instead and is available via \code{\link[=nv_mod]{nv_mod()}}.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

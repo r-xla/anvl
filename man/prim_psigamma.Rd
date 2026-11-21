@@ -28,6 +28,8 @@ function, i.e. the \code{(deriv + 1)}-th derivative of the log-gamma function.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{pushforward}
+\item \code{vectorize}
 }
 }
 

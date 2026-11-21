@@ -6,29 +6,53 @@
 #' its `AnvlPrimitiveDef` as `attr(<fn>, "definition")`. The graph records the
 #' `AnvlPrimitiveDef` in each [`GraphStatement`].
 #' Note that `[[` and `[[<-` access the interpretation rules.
-#' To access other fields, use `$` and `$<-`.
+#' To access other fields, use `$` and `$<-`. [`new_primitive()`] stores the
+#' `AnvlPrimitive` in the field `fn`, so a rule can call the primitive it
+#' belongs to.
 #'
 #' A primitive is considered higher-order if it has subgraphs.
 #' @param name (`character(1)`)\cr
 #'   The name of the primitive, without the `prim_` prefix.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
+#' @param tags (`character()`)\cr
+#'   Tags for internal use, see [`new_primitive()`].
 #' @return (`AnvlPrimitiveDef`)
 #' @export
-AnvlPrimitiveDef <- function(name, subgraphs = character()) {
+AnvlPrimitiveDef <- function(name, subgraphs = character(), tags = character()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
+  checkmate::assert_character(tags, any.missing = FALSE)
 
   env <- new.env(parent = emptyenv())
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
+  env$tags <- tags
 
   structure(env, class = "AnvlPrimitiveDef")
 }
 
 
 primitive_env <- new.env(parent = emptyenv())
+
+# A primitive's tags say what kind of operation it is, so that a rule shared by
+# every primitive of a kind, or derived from another of their rules, is
+# assigned from the tag, and a new primitive of that kind gets it without being
+# added to a list. The tags in use:
+# * "elementwise": each element of the output is computed from the elements at
+#   the same position of the operands alone, where a scalar operand is
+#   broadcast, e.g. `prim_add()`.
+# * "reduction": reduces its operand along the axes a parameter names, e.g.
+#   `prim_sum()`.
+# * "cumulative": scans its operand along the axis a parameter names, e.g.
+#   `prim_cumsum()`.
+
+# The registered primitives tagged with any of `tags`, by name.
+primitives_tagged <- function(tags) {
+  prims <- mget(sort(ls(primitive_env)), envir = primitive_env)
+  Filter(function(p) any(primitive_def(p)$tags %in% tags), prims)
+}
 
 # The `AnvlPrimitiveDef` of `x`, which is either that definition or the
 # `AnvlPrimitive` callable carrying it.
@@ -97,6 +121,10 @@ print.AnvlPrimitiveDef <- function(x, ...) {
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
+#' @param tags (`character()`)\cr
+#'   Tags for anvl's internal use, which say what kind of operation the
+#'   primitive is, e.g. `"elementwise"`, so that rules shared by the
+#'   primitives of one kind can be derived from them.
 #' @param register (`logical(1)`)\cr
 #'   Whether to add the primitive to anvl's internal registry of primitives,
 #'   under `name`, replacing one registered under the same name. The quickr
@@ -117,6 +145,7 @@ new_primitive <- function(
   fn,
   subgraphs = character(),
   static = character(),
+  tags = character(),
   register = TRUE
 ) {
   checkmate::assert_string(name)
@@ -124,7 +153,7 @@ new_primitive <- function(
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
-  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs)
+  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs, tags = tags)
 
   # Bind `self` (the AnvlPrimitiveDef) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —
@@ -138,6 +167,7 @@ new_primitive <- function(
 
   jit_fn <- jit(fn, static = static)
   attr(jit_fn, "definition") <- definition
+  definition$fn <- jit_fn
   class(jit_fn) <- c("AnvlPrimitive", class(jit_fn))
 
   if (register) {

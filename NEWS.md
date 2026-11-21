@@ -15,6 +15,11 @@
 
 ## Features
 
+* New `pushforward()` and `value_and_pushforward()` differentiate in forward
+  mode: they return the pushforward of a function, which takes a tangent of
+  the arguments to that of the result.
+* New `jacobian()` computes the Jacobian of a function, in backward or forward
+  mode (`mode`), and `hessian()` its Hessian, forward-over-reverse.
 * New `nv_split_rng_states()` splits `n` random states off a random state.
 * New `shp()` creates a shape vector from its axis sizes: `shp(2, 3)`, or `shp()` for
   a scalar.
@@ -24,6 +29,10 @@
   allow to prevent optimizations from moving computations across it.
 * Added two new transformations `pullback()` and `value_and_pullback()`.
 * Elementwise primitives such as `prim_add()` now broadcast scalars.
+* New `vectorize()` maps a function over axes of its arguments (`in_axes`,
+  `out_axes`, by default the last axis), like `base::Vectorize()` but as one
+  traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
+  primitive its rule.
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.
@@ -34,6 +43,9 @@
   differentiates with respect to no argument, rather than all of them.
 * `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
   recycling it, and keeps the values of a `bit64::integer64`.
+* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
+  differentiated by `gradient()` closes over now counts toward the device
+  `jit()` detects, as it already did for the jitted function itself.
 * `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
   row-major order with `row_major = TRUE`.
 * The `"quickr"` backend accepts a device given as a string, `"cpu"`.
