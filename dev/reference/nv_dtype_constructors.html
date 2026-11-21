@@ -147,7 +147,7 @@ nv_float64()f64
 <dd><p>(any)<br><code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>, <code><a href="https://rdrr.io/r/base/double.html" class="external-link">double()</a></code>, or <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code> scalar, vector, or array.
 Alternatively a <code><a href="https://rdrr.io/r/base/raw.html" class="external-link">raw()</a></code> vector holding the native little-endian byte
 payload of <code>prod(shape)</code> elements of <code>dtype</code>; both <code>dtype</code> and <code>shape</code>
-are then required (only supported on the <code>"pjrt"</code> backend).
+are then required.
 Raw payloads are read in column-major element order, or row-major
 with <code>byrow = TRUE</code>. An existing <code><a href="AnvlArray.html">AnvlArray</a></code> is returned unchanged if
 the <code>shape</code>, <code>dtype</code> and <code>device</code> given agree with it, and is an error

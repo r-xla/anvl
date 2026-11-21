@@ -436,18 +436,31 @@ there are various differences to be aware of. For an overview, see the
 
 ## Saving `AnvlArray`s
 
-An `AnvlArray` only holds a pointer to its data, so
-[`saveRDS()`](https://rdrr.io/r/base/readRDS.html) does not work for it.
-Use [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
-and [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
-instead, which use the
-[safetensors](https://huggingface.co/docs/safetensors/index) format.
+An `AnvlArray` can be saved like any R object, for example with
+[`saveRDS()`](https://rdrr.io/r/base/readRDS.html). It loads onto the
+default device at the time it is read, not the one it was saved from.
+
+``` r
+
+path <- tempfile(fileext = ".rds")
+saveRDS(list(w = nv_array(c(1, 2)), b = nv_scalar(0.5)), path)
+readRDS(path)$w
+```
+
+    ## AnvlArray
+    ##  1
+    ##  2
+    ## [ CPUf32{2} ]
+
+To exchange arrays with other frameworks such as PyTorch or JAX, use the
+[safetensors](https://huggingface.co/docs/safetensors/index) format: the
+{safetensors} package reads and writes `AnvlArray`s.
 
 ``` r
 
 path <- tempfile(fileext = ".safetensors")
-nv_save(list(w = nv_array(c(1, 2)), b = nv_scalar(0.5)), path)
-nv_read(path)$w
+safetensors::safe_save_file(list(w = nv_array(c(1, 2))), path)
+safetensors::safe_load_file(path, framework = "anvl")$w
 ```
 
     ## AnvlArray

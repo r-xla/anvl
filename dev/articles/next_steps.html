@@ -445,14 +445,25 @@ there are various differences to be aware of. For an overview, see the
 <div class="section level2">
 <h2 id="saving-anvlarrays">Saving <code>AnvlArray</code>s<a class="anchor" aria-label="anchor" href="#saving-anvlarrays"></a>
 </h2>
-<p>An <code>AnvlArray</code> only holds a pointer to its data, so
-<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code> does not work for it. Use <code><a href="../reference/nv_save.html">nv_save()</a></code>
-and <code><a href="../reference/nv_save.html">nv_read()</a></code> instead, which use the <a href="https://huggingface.co/docs/safetensors/index" class="external-link">safetensors</a>
-format.</p>
+<p>An <code>AnvlArray</code> can be saved like any R object, for example
+with <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code>. It loads onto the default device at the
+time it is read, not the one it was saved from.</p>
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".rds"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>w <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, b <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span><span class="op">)</span>, <span class="va">path</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">path</span><span class="op">)</span><span class="op">$</span><span class="va">w</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  1</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">## [ CPUf32{2} ]</span></span></code></pre>
+<p>To exchange arrays with other frameworks such as PyTorch or JAX, use
+the <a href="https://huggingface.co/docs/safetensors/index" class="external-link">safetensors</a>
+format: the {safetensors} package reads and writes
+<code>AnvlArray</code>s.</p>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".safetensors"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/nv_save.html">nv_save</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>w <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, b <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span><span class="op">)</span>, <span class="va">path</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/nv_save.html">nv_read</a></span><span class="op">(</span><span class="va">path</span><span class="op">)</span><span class="op">$</span><span class="va">w</span></span></code></pre></div>
+<span><span class="fu">safetensors</span><span class="fu">::</span><span class="fu"><a href="https://mlverse.github.io/safetensors/reference/safe_save_file.html" class="external-link">safe_save_file</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>w <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="va">path</span><span class="op">)</span></span>
+<span><span class="fu">safetensors</span><span class="fu">::</span><span class="fu"><a href="https://mlverse.github.io/safetensors/reference/safe_load_file.html" class="external-link">safe_load_file</a></span><span class="op">(</span><span class="va">path</span>, framework <span class="op">=</span> <span class="st">"anvl"</span><span class="op">)</span><span class="op">$</span><span class="va">w</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1</span></span>
 <span><span class="co">##  2</span></span>
@@ -468,7 +479,7 @@ deliberately strict – for example, they do not combine
 <code>AnvlArray</code>s of different data types – but can express things
 for which there is no <code>nv_*</code> function, such as reducing an
 <code>AnvlArray</code> with an arbitrary function:</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">logsumexp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_reduce.html">prim_reduce</a></span><span class="op">(</span><span class="va">x</span>, init <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>, axes <span class="op">=</span> <span class="fl">1L</span>, reducer <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="../reference/nv_pmax.html">nv_pmax</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log1p</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">a</span> <span class="op">-</span> <span class="va">b</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>

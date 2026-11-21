@@ -109,7 +109,8 @@ quickr package to be installed.</p>
 <p>An <code><a href="AnvlArray.html">AnvlArray</a></code> with <code>backend = "quickr"</code> is, under the hood, a plain R
 vector or array (<code>numeric</code>, <code>integer</code>, or <code>logical</code>) stored in the <code>$data</code>
 field. <code><a href="as_array.html">as_array()</a></code> returns the underlying vector/array directly without
-copying, and <code><a href="AnvlArray.html">nv_array()</a></code> simply wraps an R vector/array. Data always lives
+copying, and <code><a href="AnvlArray.html">nv_array()</a></code> simply wraps an R vector/array, or decodes a raw
+payload into one. Data always lives
 in R's memory and computation always runs on the CPU, so the only device is
 <code><a href="quickr_device.html">quickr_device("cpu")</a></code>; every array still carries it in
 <code>$device</code>.</p>

@@ -33,8 +33,9 @@ with `backend = "quickr"` is, under the hood, a plain R vector or array
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 returns the underlying vector/array directly without copying, and
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-simply wraps an R vector/array. Data always lives in R's memory and
-computation always runs on the CPU, so the only device is
+simply wraps an R vector/array, or decodes a raw payload into one. Data
+always lives in R's memory and computation always runs on the CPU, so
+the only device is
 [`quickr_device("cpu")`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md);
 every array still carries it in `$device`.
 

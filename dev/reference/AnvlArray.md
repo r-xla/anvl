@@ -38,11 +38,11 @@ nv_empty_like(like, shape = "auto", dtype = NULL, device = NULL)
   [`logical()`](https://rdrr.io/r/base/logical.html) scalar, vector, or
   array. Alternatively a [`raw()`](https://rdrr.io/r/base/raw.html)
   vector holding the native little-endian byte payload of `prod(shape)`
-  elements of `dtype`; both `dtype` and `shape` are then required (only
-  supported on the `"pjrt"` backend). Raw payloads are read in
-  column-major element order, or row-major with `byrow = TRUE`. An
-  existing `AnvlArray` is returned unchanged if the `shape`, `dtype` and
-  `device` given agree with it, and is an error otherwise.
+  elements of `dtype`; both `dtype` and `shape` are then required. Raw
+  payloads are read in column-major element order, or row-major with
+  `byrow = TRUE`. An existing `AnvlArray` is returned unchanged if the
+  `shape`, `dtype` and `device` given agree with it, and is an error
+  otherwise.
 
 - shape:
 
@@ -169,25 +169,22 @@ an `AnvlArray`:
 
 ## Serialization
 
-Arrays can be serialized to and from the
-[safetensors](https://huggingface.co/docs/safetensors/index) format:
-
-- [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md) /
-  [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md):
-  Save/load arrays to/from a file.
-
-- [`nv_serialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
-  /
-  [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md):
-  Serialize/deserialize arrays to/from raw vectors.
-
-An array can also be saved like any R object, e.g. with
+An array can be saved like any R object, e.g. with
 [`saveRDS()`](https://rdrr.io/r/base/readRDS.html). Its device is not
 saved: an array of the pjrt backend loads onto the [default
 device](https://r-xla.github.io/anvl/dev/reference/default_device.md) at
 the time it is read, so an array saved on a GPU also loads on a machine
 without one. anvl arranges this when it is loaded, so load anvl before
 reading arrays.
+
+To exchange arrays with other frameworks, such as PyTorch or JAX, use
+the [safetensors](https://huggingface.co/docs/safetensors/index) format:
+[`safetensors::safe_save_file()`](https://mlverse.github.io/safetensors/reference/safe_save_file.html)
+writes a named list of arrays, and
+`safetensors::safe_load_file(framework = "anvl")` reads a file into
+arrays on the active backend. They load onto the device given by its
+`device` argument, by default the [default
+device](https://r-xla.github.io/anvl/dev/reference/default_device.md).
 
 ## Backend
 
@@ -232,8 +229,7 @@ wraps around.
 [nv_fill](https://r-xla.github.io/anvl/dev/reference/nv_fill.md),
 [nv_iota](https://r-xla.github.io/anvl/dev/reference/nv_iota.md),
 [nv_seq](https://r-xla.github.io/anvl/dev/reference/nv_seq.md),
-[as_array](https://r-xla.github.io/anvl/dev/reference/as_array.md),
-[nv_serialize](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
+[as_array](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 
 ## Examples
 
@@ -278,8 +274,9 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  1.6584e+28 1.3800e+29 1.3799e+29
-#>  3.2018e-41 3.2018e-41 3.2018e-41
+#> 1e+45 *
+#>  1.4013 0.0000 0.0000
+#>  0.0000 0.0000 0.0000
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

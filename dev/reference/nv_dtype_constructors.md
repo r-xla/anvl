@@ -56,10 +56,9 @@ nv_float64(data, shape = "auto", device = NULL, byrow = FALSE)
   [`logical()`](https://rdrr.io/r/base/logical.html) scalar, vector, or
   array. Alternatively a [`raw()`](https://rdrr.io/r/base/raw.html)
   vector holding the native little-endian byte payload of `prod(shape)`
-  elements of `dtype`; both `dtype` and `shape` are then required (only
-  supported on the `"pjrt"` backend). Raw payloads are read in
-  column-major element order, or row-major with `byrow = TRUE`. An
-  existing
+  elements of `dtype`; both `dtype` and `shape` are then required. Raw
+  payloads are read in column-major element order, or row-major with
+  `byrow = TRUE`. An existing
   [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
   is returned unchanged if the `shape`, `dtype` and `device` given agree
   with it, and is an error otherwise.

@@ -17,6 +17,11 @@
 - `Shape()` is no longer exported; use
   [`shp()`](https://r-xla.github.io/anvl/dev/reference/shp.md).
 - The `"reverse"` rule of a primitive is renamed to `"pullback"`.
+- `nv_save()`, `nv_read()`, `nv_serialize()` and `nv_unserialize()` are
+  removed. Save arrays with
+  [`saveRDS()`](https://rdrr.io/r/base/readRDS.html), or with the
+  {safetensors} package to exchange them with other frameworks (see
+  below).
 
 ### Features
 
@@ -44,6 +49,11 @@
 - Elementwise primitives such as
   [`prim_add()`](https://r-xla.github.io/anvl/dev/reference/prim_add.md)
   now broadcast scalars.
+- [`safetensors::safe_save_file()`](https://mlverse.github.io/safetensors/reference/safe_save_file.html)
+  writes `AnvlArray`s, and
+  `safetensors::safe_load_file(framework = "anvl")` reads them.
+- The `"quickr"` backend accepts a raw payload in
+  [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md).
 
 ### Bug fixes
 
@@ -56,6 +66,10 @@
 - `nv_array(byrow = TRUE)` refuses data that does not fill `shape`
   instead of recycling it, and keeps the values of a
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
+- [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md) of
+  a `"quickr"` array returns the bytes of its data type, in row-major
+  order with `row_major = TRUE`.
+- The `"quickr"` backend accepts a device given as a string, `"cpu"`.
 
 ### Performance
 

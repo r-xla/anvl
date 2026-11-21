@@ -203,12 +203,10 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_rsqrt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sample.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sample_int.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_save.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_scan.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sd.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_select.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_seq.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_serialize.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_set_seed.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_shift_left.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_shift_right_arithmetic.html</loc></url>

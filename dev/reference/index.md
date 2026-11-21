@@ -85,17 +85,6 @@ Functions for converting arrays
   [`as.vector(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.md)
   : Coerce AnvlArray to an R Vector
 
-### Serialization
-
-Functions for serializing and deserializing arrays
-
-- [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
-  [`nv_read()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md) :
-  Save and Read Arrays in a File
-- [`nv_serialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
-  [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
-  : Serialize Arrays to Raw Bytes
-
 ### Miscellaneous
 
 - [`is_arrayish()`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
