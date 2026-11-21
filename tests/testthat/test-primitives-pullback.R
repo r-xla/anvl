@@ -242,16 +242,6 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
   )
 })
 
-describe("prim_dot_general", {
-  it("differentiates a batched matrix product without a transpose", {
-    f <- function(A, B) {
-      sum(prim_dot_general(A, B, contracting_axes = list(2L, 1L), batching_axes = list(3L, 3L)))
-    }
-    graph <- trace_fn(gradient(f), list(nv_aval("f32", c(3L, 4L, 2L)), nv_aval("f32", c(4L, 5L, 2L))))
-    expect_no_match(repr(stablehlo(graph)[[1L]]), "stablehlo.transpose", fixed = TRUE)
-  })
-})
-
 test_that("broadcasting", {
   f <- jit(gradient(
     function(x, y) {

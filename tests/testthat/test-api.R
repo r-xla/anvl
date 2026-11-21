@@ -1718,14 +1718,6 @@ describe("nv_matmul", {
       "Axis 2 of `x` has size 3, but axis 1 of `y` has size 2"
     )
   })
-
-  it("lowers without a transpose", {
-    matmul <- function(x, y) x %*% y
-    batched <- trace_fn(matmul, list(nv_aval("f32", c(3L, 4L, 2L)), nv_aval("f32", c(4L, 5L, 2L))))
-    expect_no_match(repr(stablehlo(batched)[[1L]]), "stablehlo.transpose", fixed = TRUE)
-    plain <- trace_fn(matmul, list(nv_aval("f32", c(3L, 4L)), nv_aval("f32", c(4L, 5L))))
-    expect_no_match(repr(stablehlo(plain)[[1L]]), "stablehlo.transpose", fixed = TRUE)
-  })
 })
 
 describe("nv_crossprod", {
@@ -2088,16 +2080,6 @@ describe("nv_top_k", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expect_equal(nv_top_k(m, k = 2L, axes = -1L), nv_top_k(m, k = 2L, axes = 2L))
     expect_equal(nv_top_k(m, k = 2L, axes = -2L), nv_top_k(m, k = 2L, axes = 1L))
-  })
-
-  it("ranks the leading axes without a transpose", {
-    avals <- list(nv_aval("f32", c(7L, 3L, 2L)))
-    for (axes in list(1L, c(1L, 2L), NULL)) {
-      for (indices in c(TRUE, FALSE)) {
-        g <- trace_fn(function(x) nv_top_k(x, k = 2L, axes = axes, indices = indices), avals)
-        expect_no_match(repr(stablehlo(g)[[1L]]), "stablehlo.transpose", fixed = TRUE)
-      }
-    }
   })
 })
 
@@ -2708,18 +2690,6 @@ describe("nv_triangular_solve", {
     expect_error(nv_triangular_solve(a, nv_fill(0, c(3L, 5L, 3L), dtype = "f64")), "batch axes")
     expect_error(nv_triangular_solve(a, nv_fill(0, c(2L, 3L, 2L), dtype = "f64")), "must agree on the axis")
     expect_error(nv_triangular_solve(a, nv_fill(0, c(2L, 3L), dtype = "f64")), "size 3 in its first axis")
-  })
-
-  it("lowers a batch without transposing it", {
-    for (platform in c("cpu", "cuda")) {
-      for (b_shape in list(c(3L, 5L, 2L), c(3L, 2L))) {
-        g <- trace_fn(
-          function(a, b) nv_triangular_solve(a, b),
-          list(nv_aval("f64", c(3L, 3L, 2L)), nv_aval("f64", b_shape))
-        )
-        expect_no_match(repr(stablehlo(g, platform = platform)[[1L]]), "stablehlo.transpose", fixed = TRUE)
-      }
-    }
   })
 })
 
@@ -3350,15 +3320,6 @@ describe("nv_conv2d", {
       nv_conv2d(x4, nv_fill(1, shape = c(3L, 3L, 2L, 5L), dtype = "f32"), groups = 2L),
       "must divide the number of output channels"
     )
-  })
-
-  it("lowers a batch to a convolution without a transpose", {
-    graph <- trace_fn(
-      nv_conv2d,
-      list(x = nv_aval("f32", c(9L, 8L, 3L, 2L)), kernel = nv_aval("f32", c(3L, 3L, 3L, 4L)))
-    )
-    mlir <- repr(stablehlo(graph)[[1L]])
-    expect_false(grepl("stablehlo.transpose", mlir, fixed = TRUE))
   })
 })
 

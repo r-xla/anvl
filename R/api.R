@@ -4931,20 +4931,8 @@ nv_which_min <- jit(
 
 #' @title 1D Convolution
 #' @description
-#' 1D convolution in the WCN layout of Julia's Flux: the spatial axis comes
-#' first, then the channels, and the batch axis trails. `x` is zero-padded by
-#' the same amount on both sides.
-#' @details
-#' This is a cross-correlation, as in torch and JAX: the kernel slides over `x`
-#' without being flipped. Flux's `Conv` flips it by default (its `CrossCor`
-#' does not), so a kernel taken from a `Conv` layer needs its spatial axes
-#' reversed first, e.g. with [nv_rev()].
-#'
-#' Where `stride`, `padding` and `dilation` take one value per spatial axis,
-#' they follow the order of the spatial axes of `x`, width first.
-#'
-#' For a padding that differs between the two sides, e.g. a causal padding along
-#' time, call [prim_convolution()] with the axis numbers of this layout.
+#' 1D convolution like torch's `nnf_conv1d()`, but with the axes in reverse
+#' order: width, channels, batch.
 #' @section Shapes:
 #' - `x`: `(W, C_in, N)`
 #' - `kernel`: `(kW, C_in / groups, C_out)`
@@ -4986,10 +4974,8 @@ nv_conv1d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 2D Convolution
 #' @description
-#' 2D convolution in the WHCN layout of Julia's Flux: the spatial axes come
-#' first, width before height, then the channels, and the batch axis trails.
-#' `x` is zero-padded by the same amount on both sides of each spatial axis.
-#' @inherit nv_conv1d details
+#' 2D convolution like torch's `nnf_conv2d()`, but with the axes in reverse
+#' order: width, height, channels, batch.
 #' @section Shapes:
 #' - `x`: `(W, H, C_in, N)`
 #' - `kernel`: `(kW, kH, C_in / groups, C_out)`
@@ -5024,11 +5010,8 @@ nv_conv2d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 3D Convolution
 #' @description
-#' 3D convolution in the WHDCN layout of Julia's Flux: the spatial axes come
-#' first, in the order width, height, depth, then the channels, and the batch
-#' axis trails. `x` is zero-padded by the same amount on both sides of each
-#' spatial axis.
-#' @inherit nv_conv1d details
+#' 3D convolution like torch's `nnf_conv3d()`, but with the axes in reverse
+#' order: width, height, depth, channels, batch.
 #' @section Shapes:
 #' - `x`: `(W, H, D, C_in, N)`
 #' - `kernel`: `(kW, kH, kD, C_in / groups, C_out)`

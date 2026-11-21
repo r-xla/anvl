@@ -1238,7 +1238,7 @@ describe("prim_convolution", {
     function(x, kernel) rev_tensor(conv(rev_tensor(x), rev_tensor(kernel)))
   }
 
-  # A 1-D convolution in nv_conv1d()'s WCN layout.
+  # A 1-D convolution in nv_conv1d()'s layout.
   conv1d_wcn <- function(x, kernel, padding, window_strides = 1L, x_dilation = 1L, kernel_dilation = 1L, ...) {
     prim_convolution(
       x,

@@ -4033,7 +4033,7 @@ prim_eigh <- new_primitive(
 #' The axis numbers are converted on the way down.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [nv_conv3d()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # a causal 1-D convolution in the WCN layout of nv_conv1d(): width 5, one
+#' # a causal 1-D convolution in the layout of nv_conv1d(): width 5, one
 #' # channel, a batch of one, convolved with a width-3 kernel; padding only the
 #' # start of the width keeps all 5 window positions
 #' x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")

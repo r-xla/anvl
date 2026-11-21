@@ -43,21 +43,8 @@ output channels only. It must divide \code{C_in} and \code{C_out}, and
 Has the operands' common data type and the shape given under Shapes.
 }
 \description{
-1D convolution in the WCN layout of Julia's Flux: the spatial axis comes
-first, then the channels, and the batch axis trails. \code{x} is zero-padded by
-the same amount on both sides.
-}
-\details{
-This is a cross-correlation, as in torch and JAX: the kernel slides over \code{x}
-without being flipped. Flux's \code{Conv} flips it by default (its \code{CrossCor}
-does not), so a kernel taken from a \code{Conv} layer needs its spatial axes
-reversed first, e.g. with \code{\link[=nv_rev]{nv_rev()}}.
-
-Where \code{stride}, \code{padding} and \code{dilation} take one value per spatial axis,
-they follow the order of the spatial axes of \code{x}, width first.
-
-For a padding that differs between the two sides, e.g. a causal padding along
-time, call \code{\link[=prim_convolution]{prim_convolution()}} with the axis numbers of this layout.
+1D convolution like torch's \code{nnf_conv1d()}, but with the axes in reverse
+order: width, channels, batch.
 }
 \section{Shapes}{
 

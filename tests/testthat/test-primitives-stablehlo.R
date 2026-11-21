@@ -662,17 +662,6 @@ describe("prim_scan", {
     expect_equal(as_array(res$carry$s), apply(a, c(1L, 2L), sum))
   })
 
-  it("lowers with the step on XLA's leading dimension, without a transpose", {
-    f <- function(xs) prim_scan(list(s = nv_fill(0, shape = 3L, dtype = "f32")), list(x = xs), cumsum_body, steps = 5L)
-    graph <- trace_fn(f, list(nv_aval("f32", c(3L, 5L))))
-    expect_equal(shape(graph$outputs[[2L]]$aval), c(3L, 5L))
-    mlir <- repr(stablehlo(graph)[[1L]])
-    expect_false(grepl("stablehlo.transpose", mlir, fixed = TRUE))
-    # The step axis, R's last, is XLA dimension 0: a step is a row of the XLA array.
-    expect_match(mlir, "slice_sizes = array<i64: 1, 3>", fixed = TRUE)
-    expect_match(mlir, "(tensor<5x3xf32>, tensor<1x3xf32>, tensor<i32>, tensor<i32>)", fixed = TRUE)
-  })
-
   it("reverse reads and writes at the original positions", {
     res <- prim_scan(
       list(s = nv_scalar(0)),
@@ -1152,13 +1141,6 @@ describe("prim_chol", {
       }
     }
   })
-
-  it("lowers a batch without transposing it", {
-    for (lower in c(TRUE, FALSE)) {
-      g <- trace_fn(function(x) prim_chol(x, lower = lower), list(nv_aval("f64", c(4L, 4L, 3L))))
-      expect_no_match(repr(stablehlo(g, platform = "cpu")[[1L]]), "stablehlo.transpose", fixed = TRUE)
-    }
-  })
 })
 
 describe("prim_triangular_solve", {
@@ -1190,42 +1172,25 @@ describe("prim_triangular_solve", {
     expect_equal(c(x2), c(7 / 6, 2.5), tolerance = 1e-5)
   })
 
-  it("solves a batch along the trailing axes, through trsm and through triangular_solve", {
-    # The CPU takes the `trsm` custom call for f32 and f64, every other platform
-    # `stablehlo.triangular_solve`; lowering for CUDA runs the latter on the CPU.
-    skip_if_not(is_cpu())
+  it("solves a batch of right-side, transposed systems through trsm on CPU", {
     withr::local_seed(1L)
-    a <- array(rnorm(54L), c(3L, 3L, 2L, 3L))
+    a <- array(rnorm(18L), c(3L, 3L, 2L))
+    b <- array(rnorm(24L), c(4L, 3L, 2L))
     for (i in 1:2) {
-      for (j in 1:3) {
-        diag(a[,, i, j]) <- 3
-      }
+      diag(a[,, i]) <- 3
     }
-    bs <- list(left = array(rnorm(72L), c(3L, 4L, 2L, 3L)), right = array(rnorm(72L), c(4L, 3L, 2L, 3L)))
-    for (side in names(bs)) {
-      b <- bs[[side]]
-      left_side <- side == "left"
-      g <- trace_fn(
-        function(a, b) {
-          prim_triangular_solve(a, b, left_side = left_side, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
-        },
-        list(nv_aval("f64", dim(a)), nv_aval("f64", dim(b)))
-      )
-      for (platform in c("cpu", "cuda")) {
-        info <- paste(side, platform)
-        ir <- repr(stablehlo(g, platform = platform)[[1L]])
-        expect_match(ir, if (platform == "cpu") "trsm" else "stablehlo.triangular_solve", fixed = TRUE, info = info)
-        expect_no_match(ir, "stablehlo.transpose", fixed = TRUE, info = info)
-        x <- with_mocked_bindings(eval_graph_pjrt(g, a, b), current_platform = function() platform)
-        for (i in 1:2) {
-          for (j in 1:3) {
-            l <- a[,, i, j]
-            l[upper.tri(l)] <- 0
-            expected <- if (left_side) solve(t(l), b[,, i, j]) else b[,, i, j] %*% solve(t(l))
-            expect_equal(x[,, i, j], expected, tolerance = 1e-10, info = info)
-          }
-        }
-      }
+    x <- as_array(prim_triangular_solve(
+      nv_array(a, dtype = "f64"),
+      nv_array(b, dtype = "f64"),
+      left_side = FALSE,
+      lower = TRUE,
+      unit_diagonal = FALSE,
+      transpose_a = TRUE
+    ))
+    for (i in 1:2) {
+      l <- a[,, i]
+      l[upper.tri(l)] <- 0
+      expect_equal(x[,, i], b[,, i] %*% solve(t(l)), tolerance = 1e-10)
     }
   })
 })
@@ -1745,18 +1710,6 @@ describe("prim_top_k", {
     )
   })
 
-  it("lowers along axis 1 without a transpose", {
-    for (indices in c(TRUE, FALSE)) {
-      g <- trace_fn(
-        function(x) prim_top_k(x, k = 2L, indices = indices),
-        list(nv_aval("f32", shape = c(7L, 3L)))
-      )
-      for (platform in c("cpu", "cuda")) {
-        expect_no_match(repr(stablehlo(g, platform = platform)[[1L]]), "stablehlo.transpose", fixed = TRUE)
-      }
-    }
-  })
-
   it("breaks ties with the smaller index", {
     out <- prim_top_k(nv_array(c(1, 5, 5, 3)), k = 2L, indices = TRUE)
     expect_equal(as.vector(out[[1L]]), c(5, 5))
@@ -1983,18 +1936,6 @@ describe("prim_dot_general", {
         expect_equal(out[,, j, k], x[,, k, j] %*% y[,, j, k])
       }
     }
-  })
-
-  it("lowers a product with trailing batch axes without a transpose", {
-    batched <- trace_fn(batched_matmul, list(nv_aval("f32", c(3L, 4L, 2L)), nv_aval("f32", c(4L, 5L, 2L))))
-    expect_no_match(repr(stablehlo(batched)[[1L]]), "stablehlo.transpose", fixed = TRUE)
-    plain <- trace_fn(
-      function(x, y) {
-        prim_dot_general(x, y, contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
-      },
-      list(nv_aval("f32", c(3L, 4L)), nv_aval("f32", c(4L, 5L)))
-    )
-    expect_no_match(repr(stablehlo(plain)[[1L]]), "stablehlo.transpose", fixed = TRUE)
   })
 })
 

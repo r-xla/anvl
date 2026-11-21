@@ -573,7 +573,7 @@ describe("prim_convolution", {
   })
 
   it("asymmetric (causal) padding matches F.pad + valid conv", {
-    # 1D causal conv in nv_conv1d's WCN layout: left-pad only, so out length ==
+    # 1D causal conv in nv_conv1d's layout: left-pad only, so out length ==
     # in length and out[t] depends only on inputs <= t. torch has no asymmetric
     # conv padding, so emulate it with an explicit left pad + valid
     # (padding = 0) conv.
