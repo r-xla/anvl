@@ -9,6 +9,9 @@
   to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
 * `Shape()` is no longer exported; use `shp()`.
 * The `"reverse"` rule of a primitive is renamed to `"pullback"`.
+* `nv_save()`, `nv_read()`, `nv_serialize()` and `nv_unserialize()` are
+  removed. Save arrays with `saveRDS()`, or with the {safetensors} package to
+  exchange them with other frameworks (see below).
 
 ## Features
 
@@ -25,6 +28,13 @@
   allow to prevent optimizations from moving computations across it.
 * Added two new transformations `pullback()` and `value_and_pullback()`.
 * Elementwise primitives such as `prim_add()` now broadcast scalars.
+* New `vectorize()` maps a function over axes of its arguments (`in_axes`,
+  `out_axes`, by default the last axis), like `base::Vectorize()` but as one
+  traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
+  primitive its rule.
+* `safetensors::safe_save_file()` writes `AnvlArray`s, and
+  `safetensors::safe_load_file(framework = "anvl")` reads them.
+* The `"quickr"` backend accepts a raw payload in `nv_array()`.
 
 ## Bug fixes
 
@@ -32,6 +42,12 @@
   differentiates with respect to no argument, rather than all of them.
 * `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
   recycling it, and keeps the values of a `bit64::integer64`.
+* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
+  differentiated by `gradient()` closes over now counts toward the device
+  `jit()` detects, as it already did for the jitted function itself.
+* `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
+  row-major order with `row_major = TRUE`.
+* The `"quickr"` backend accepts a device given as a string, `"cpu"`.
 
 ## Performance
 
@@ -121,15 +137,6 @@
 * `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
 * nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
   summed at the default float.
-* New `vectorize()` maps a function over axes of its arguments (`in_axes`,
-  `out_axes`, by default the last axis), like `base::Vectorize()` but as one
-  traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
-  primitive its rule.
-* `new_primitive()` takes `tags` naming the kind of operation a primitive is:
-  `"elementwise"`, `"reduction"` or `"cumulative"`.
-* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
-  differentiated by `gradient()` closes over now counts toward the device
-  `jit()` detects, as it already did for the jitted function itself.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
   create an array of the data type in their name.
 * New functions for the Poisson distribution: `nv_dpois()`, `nv_ppois()`,

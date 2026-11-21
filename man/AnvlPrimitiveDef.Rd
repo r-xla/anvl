@@ -14,7 +14,7 @@ The name of the primitive, without the \code{prim_} prefix.}
 Names of parameters that are subgraphs.}
 
 \item{tags}{(\code{character()})\cr
-The kinds of operation the primitive is, see \code{\link[=new_primitive]{new_primitive()}}.}
+Tags for internal use, see \code{\link[=new_primitive]{new_primitive()}}.}
 }
 \value{
 (\code{AnvlPrimitiveDef})

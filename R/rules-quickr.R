@@ -11,21 +11,22 @@ quickr_user_arg_names <- function(n) {
   paste0("x", seq_len(n))
 }
 
-# What quickr can represent, per data type: the R storage it uses, its zero, and
-# the cast to it. quickr has no single precision, so `f32` is *not* accepted --
-# carrying it as a double would label an array `f32` while holding `f64` values,
-# which is the mislabelling the data type system exists to prevent.
+# What quickr can represent, per data type: the R storage it uses, its zero, the
+# cast to it, and the bytes per element of its raw payload. quickr has no single
+# precision, so `f32` is *not* accepted -- carrying it as a double would label
+# an array `f32` while holding `f64` values, which is the mislabelling the data
+# type system exists to prevent.
 quickr_dtype_info <- function(dt_chr) {
   dt_chr <- as.character(dt_chr)
 
   if (dt_chr == "f64") {
-    return(list(ctor = "double", zero = 0.0, scalar_cast = as.double))
+    return(list(ctor = "double", zero = 0.0, scalar_cast = as.double, size = 8L))
   }
   if (dt_chr == "i32") {
-    return(list(ctor = "integer", zero = 0L, scalar_cast = as.integer))
+    return(list(ctor = "integer", zero = 0L, scalar_cast = as.integer, size = 4L))
   }
   if (dt_chr %in% "bool") {
-    return(list(ctor = "logical", zero = FALSE, scalar_cast = as.logical))
+    return(list(ctor = "logical", zero = FALSE, scalar_cast = as.logical, size = 1L))
   }
 
   cli_abort(paste0(

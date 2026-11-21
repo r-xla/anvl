@@ -42,7 +42,7 @@ nv_float64(data, shape = "auto", device = NULL, byrow = FALSE)
 \code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.
 Alternatively a \code{raw()} vector holding the native little-endian byte
 payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \code{shape}
-are then required (only supported on the \code{"pjrt"} backend).
+are then required.
 Raw payloads are read in column-major element order, or row-major
 with \code{byrow = TRUE}. An existing \code{\link{AnvlArray}} is returned unchanged if
 the \code{shape}, \code{dtype} and \code{device} given agree with it, and is an error

@@ -37,7 +37,7 @@ nv_empty_like(like, shape = "auto", dtype = NULL, device = NULL)
 \code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.
 Alternatively a \code{raw()} vector holding the native little-endian byte
 payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \code{shape}
-are then required (only supported on the \code{"pjrt"} backend).
+are then required.
 Raw payloads are read in column-major element order, or row-major
 with \code{byrow = TRUE}. An existing \code{\link{AnvlArray}} is returned unchanged if
 the \code{shape}, \code{dtype} and \code{device} given agree with it, and is an error
@@ -132,19 +132,18 @@ The following generic functions can be used to extract information from an \code
 
 \section{Serialization}{
 
-Arrays can be serialized to and from the
-\href{https://huggingface.co/docs/safetensors/index}{safetensors} format:
-\itemize{
-\item \code{\link[=nv_save]{nv_save()}} / \code{\link[=nv_read]{nv_read()}}: Save/load arrays to/from a file.
-\item \code{\link[=nv_serialize]{nv_serialize()}} / \code{\link[=nv_unserialize]{nv_unserialize()}}:
-Serialize/deserialize arrays to/from raw vectors.
-}
-
-An array can also be saved like any R object, e.g. with \code{\link[=saveRDS]{saveRDS()}}.
+An array can be saved like any R object, e.g. with \code{\link[=saveRDS]{saveRDS()}}.
 Its device is not saved: an array of the pjrt backend loads onto the
 \link[=default_device]{default device} at the time it is read, so an array saved
 on a GPU also loads on a machine without one. anvl arranges this when it
 is loaded, so load anvl before reading arrays.
+
+To exchange arrays with other frameworks, such as PyTorch or JAX, use the
+\href{https://huggingface.co/docs/safetensors/index}{safetensors} format:
+\code{safetensors::safe_save_file()} writes a named list of arrays, and
+\code{safetensors::safe_load_file(framework = "anvl")} reads a file into arrays on
+the active backend. They load onto the device given by its \code{device}
+argument, by default the \link[=default_device]{default device}.
 }
 
 \section{Backend}{
@@ -221,5 +220,5 @@ nv_add(nv_array(1:3), nv_array(4:6))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link{nv_fill}, \link{nv_iota}, \link{nv_seq}, \link{as_array}, \link{nv_serialize}
+\link{nv_fill}, \link{nv_iota}, \link{nv_seq}, \link{as_array}
 }
