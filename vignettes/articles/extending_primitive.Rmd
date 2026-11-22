@@ -292,7 +292,7 @@ Most primitives already work on an extra trailing axis, and a parameter that nam
 prim_repeat_along[["vectorize"]] <- rule_vectorize()
 ```
 
-A primitive with a parameter that has an entry per axis, or a shape, declares how it changes, e.g. `rule_vectorize(params = list(shape = param_shape()))` for a shape that gains the batch axis at its end.
+A primitive with a parameter that has an entry per axis, or a shape, declares how it changes, e.g. `rule_vectorize(params = list(shape = vec_shape()))` for a shape that gains the batch axis at its end.
 The rule broadcasts an operand that is not mapped over and calls the primitive with the changed parameters.
 A primitive this does not fit passes a function of its own, `rule_vectorize(fn = function(inputs, batched, params, size) ...)`.
 

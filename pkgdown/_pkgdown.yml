@@ -476,7 +476,7 @@ reference:
       - graph_desc_add
       - rule_pullback
       - rule_vectorize
-      - param_shape
+      - vec_shape
 
   - subtitle: Implemented Primitives
     contents:

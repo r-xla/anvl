@@ -170,33 +170,74 @@ batch_axis_position <- function(axis, n) {
 # leaf, which `f` receives as it is. Errors name `call`.
 vectorize_call <- function(f, call_args, in_axes, out_axes, randomness, call) {
   flat <- flatten_args(call_args)
+  mapped <- resolve_mapped_leaves(flat, in_axes, call)
+  is_mapped <- !vapply(mapped$axes, is.null, logical(1L))
+
+  # `f` takes the side effects it uses as fresh inputs, which are bound to the
+  # values the slices start from once its uses are counted.
+  enclosing <- current_descriptor()
+  desc <- local_descriptor(side_effects_mode = "vectorize")
+  graph <- trace_fn(f, args_flat = mapped$slice_args, in_tree = flat$in_tree, desc = desc)
+  is_input <- !graph$is_static_flat
+  operands <- Map(
+    function(box, axis) if (is.null(axis)) box else move_axis(box, axis, naxes(box)),
+    graph_operands(graph, flat$args_flat),
+    mapped$axes[is_input]
+  )
+  side_effects <- desc_bind_vectorized(enclosing, graph, mapped$size, randomness)
+  res <- graph_vectorize(
+    graph,
+    c(operands, side_effects$operands),
+    batched = c(is_mapped[is_input], side_effects$batched),
+    is_state = c(rep(FALSE, length(operands)), rep(TRUE, length(side_effects$operands))),
+    size = mapped$size,
+    call = call
+  )
+
+  outs <- Map(
+    function(out, batched, axis, j) {
+      path <- pjrt::tree_path(graph$out_tree, j)
+      what <- if (nzchar(path)) sprintf("Output `%s`", path) else sprintf("Output %d", j)
+      place_batch_axis(out, batched, axis, mapped$size, what, call)
+    },
+    res$outputs,
+    res$batched,
+    expand_out_axes(out_axes, graph$out_tree, length(res$outputs), call),
+    seq_along(res$outputs)
+  )
+  unflatten(graph$out_tree, outs)
+}
+
+# The leaves of the arguments `flat` (see `flatten_args()`) that `in_axes` maps
+# over: the position of each one's batch axis, `NULL` for a leaf that is not
+# mapped over, as `axes`; the size they agree on along it, as `size`; and the
+# leaves to trace `f` with, those mapped over as the abstract array of one
+# slice, as `slice_args`. Errors name `call`.
+resolve_mapped_leaves <- function(flat, in_axes, call) {
   args_flat <- flat$args_flat
-  in_tree <- flat$in_tree
-  # The argument each flat leaf belongs to.
-  sizes <- pjrt::tree_child_sizes(in_tree)
-  arg_names <- pjrt::tree_child_names(in_tree) %||% rep("", length(sizes))
+  # the argument each leaf belongs to
+  sizes <- pjrt::tree_child_sizes(flat$in_tree)
+  arg_names <- pjrt::tree_child_names(flat$in_tree) %||% rep("", length(sizes))
+  missing_args <- if (is.list(in_axes)) setdiff(names(in_axes), arg_names)
+  if (length(missing_args)) {
+    cli_abort(
+      "Cannot map over {.arg {missing_args}}: {cli::qty(length(missing_args))}{?it was/they were} not passed.",
+      call = call
+    )
+  }
   # An argument passed through `...` has no name, so messages give its position.
   arg_names[!nzchar(arg_names)] <- paste("argument", which(!nzchar(arg_names)))
   leaf_args <- rep(arg_names, times = sizes)
-  leaf_axes <- if (is.list(in_axes)) {
-    missing_args <- setdiff(names(in_axes), names(call_args))
-    if (length(missing_args)) {
-      cli_abort(
-        "Cannot map over {.arg {missing_args}}: {cli::qty(length(missing_args))}{?it was/they were} not passed.",
-        call = call
-      )
-    }
+  axes <- if (is.list(in_axes)) {
     lapply(leaf_args, function(nm) if (nm %in% names(in_axes)) in_axes[[nm]])
   } else {
     lapply(args_flat, function(x) if (is_graph_box(x) || is_anvl_array(x)) in_axes)
   }
-  is_mapped <- !vapply(leaf_axes, is.null, logical(1L))
 
   size <- NULL
-  trace_args <- args_flat
-  for (i in which(is_mapped)) {
+  slice_args <- args_flat
+  for (i in which(!vapply(axes, is.null, logical(1L)))) {
     x <- args_flat[[i]]
-    axis <- leaf_axes[[i]]
     if (!is_arrayish(x)) {
       cli_abort(
         c(
@@ -208,19 +249,18 @@ vectorize_call <- function(f, call_args, in_axes, out_axes, randomness, call) {
     }
     aval <- to_abstract(x)
     x_shape <- shape(aval)
-    pos <- batch_axis_position(axis, length(x_shape))
-    if (is.na(pos)) {
+    axis <- batch_axis_position(axes[[i]], length(x_shape))
+    if (is.na(axis)) {
       cli_abort(
         c(
           "Every argument mapped over must have its batch axis.",
-          x = "{.arg {leaf_args[[i]]}} has shape {shape_repr(x_shape)}, so it has no axis {.val {axis}}.",
+          x = "{.arg {leaf_args[[i]]}} has shape {shape_repr(x_shape)}, so it has no axis {.val {axes[[i]]}}.",
           i = "Name the arguments to map over with {.arg in_axes}; an argument of the enclosing {.fn jit} that is not static is an array here."
         ),
         call = call
       )
     }
-    axis <- pos
-    leaf_axes[[i]] <- pos
+    axes[[i]] <- axis
     if (is.null(size)) {
       size <- x_shape[[axis]]
     } else if (x_shape[[axis]] != size) {
@@ -232,7 +272,7 @@ vectorize_call <- function(f, call_args, in_axes, out_axes, randomness, call) {
         call = call
       )
     }
-    trace_args[[i]] <- if (is_rdata(aval)) {
+    slice_args[[i]] <- if (is_rdata(aval)) {
       RData(shape = x_shape[-axis], r_type = aval$r_type)
     } else {
       AbstractArray(dtype = aval$dtype, shape = x_shape[-axis])
@@ -241,65 +281,40 @@ vectorize_call <- function(f, call_args, in_axes, out_axes, randomness, call) {
   if (is.null(size)) {
     cli_abort("{.fn vectorize} needs at least one argument to map over.", call = call)
   }
+  list(axes = axes, size = size, slice_args = slice_args)
+}
 
-  # `f` takes the side effects it uses as fresh inputs, which are bound to the
-  # values the slices start from once its uses are counted.
-  enclosing <- current_descriptor()
-  desc <- local_descriptor(side_effects_mode = "vectorize")
-  graph <- trace_fn(f, args_flat = trace_args, in_tree = in_tree, desc = desc)
-  is_input <- !graph$is_static_flat
-  operands <- Map(
-    function(box, axis) if (is.null(axis)) box else move_axis(box, axis, naxes(box)),
-    graph_operands(graph, args_flat),
-    leaf_axes[is_input]
-  )
-  side_effects <- desc_bind_vectorized(enclosing, graph, size, randomness)
-
-  res <- graph_vectorize(
-    graph,
-    c(operands, side_effects$operands),
-    batched = c(is_mapped[is_input], side_effects$batched),
-    is_state = c(rep(FALSE, length(operands)), rep(TRUE, length(side_effects$operands))),
-    size = size,
-    call = call
-  )
-  outs <- Map(
-    function(out, batched, axis, j) {
-      path <- pjrt::tree_path(graph$out_tree, j)
-      what <- if (nzchar(path)) sprintf("Output `%s`", path) else sprintf("Output %d", j)
-      if (is.null(axis)) {
-        if (batched) {
-          cli_abort(
-            c(
-              "Can only return an output as it is if it does not depend on the arguments mapped over.",
-              x = "{what} does, but {.arg out_axes} is {.code NULL} for it."
-            ),
-            call = call
-          )
-        }
-        return(out)
-      }
-      slice_shape <- if (batched) shape(out)[-naxes(out)] else shape(out)
-      n <- length(slice_shape) + 1L
-      pos <- batch_axis_position(axis, n)
-      if (is.na(pos)) {
-        cli_abort(
-          c(
-            "Every output must have room for its batch axis.",
-            x = "{what} has shape {shape_repr(slice_shape)}, so it can be stacked along axes {.val {1L}} to {.val {n}} (or {.val {-n}} to {.val {-1L}}) only, not {.val {axis}}.",
-            i = "Stack it along an axis it has room for with {.arg out_axes}."
-          ),
-          call = call
-        )
-      }
-      if (batched) move_axis(out, from = n, to = pos) else add_batch_axis(out, size, pos)
-    },
-    res$outputs,
-    res$batched,
-    expand_out_axes(out_axes, graph$out_tree, length(res$outputs), call),
-    seq_along(res$outputs)
-  )
-  unflatten(graph$out_tree, outs)
+# The output `out` of the vectorized function -- with a trailing batch axis of
+# size `size` if it is `batched`, as one of every slice otherwise -- with its
+# batch axis where the entry `axis` of `out_axes` puts it, or as it is for an
+# entry `NULL`. `what` names the output for the messages. Errors name `call`.
+place_batch_axis <- function(out, batched, axis, size, what, call) {
+  if (is.null(axis)) {
+    if (batched) {
+      cli_abort(
+        c(
+          "Can only return an output as it is if it does not depend on the arguments mapped over.",
+          x = "{what} does, but {.arg out_axes} is {.code NULL} for it."
+        ),
+        call = call
+      )
+    }
+    return(out)
+  }
+  slice_shape <- if (batched) shape(out)[-naxes(out)] else shape(out)
+  n <- length(slice_shape) + 1L
+  pos <- batch_axis_position(axis, n)
+  if (is.na(pos)) {
+    cli_abort(
+      c(
+        "Every output must have room for its batch axis.",
+        x = "{what} has shape {shape_repr(slice_shape)}, so it can be stacked along axes {.val {1L}} to {.val {n}} (or {.val {-n}} to {.val {-1L}}) only, not {.val {axis}}.",
+        i = "Stack it along an axis it has room for with {.arg out_axes}."
+      ),
+      call = call
+    )
+  }
+  if (batched) move_axis(out, from = n, to = pos) else add_batch_axis(out, size, pos)
 }
 
 # `out_axes` (see `vectorize()`) as one entry per flat output of a function
@@ -369,10 +384,10 @@ graph_vectorize <- function(graph, inputs, batched, is_state, size, call) {
       out_batched <- rep(FALSE, length(outputs))
     } else {
       state_only <- all(vapply(stmt$inputs[in_batched], \(g) isTRUE(from_state[[g]]), logical(1L)))
-      res <- apply_vectorize_rule(stmt$primitive, in_boxes, in_batched, stmt$params, size, state_only, call)
-      check_vectorized_outputs(stmt, res$outputs, res$batched, size, call)
-      outputs <- lapply(res$outputs, \(b) b$gnode)
-      out_batched <- res$batched
+      out_boxes <- apply_vectorize_rule(stmt$primitive, in_boxes, in_batched, stmt$params, size, state_only, call)
+      check_vectorized_outputs(stmt, out_boxes, size, call)
+      outputs <- lapply(out_boxes, \(b) b$gnode)
+      out_batched <- rep(TRUE, length(outputs))
     }
     for (j in seq_along(stmt$outputs)) {
       trans[[stmt$outputs[[j]]]] <- outputs[[j]]
@@ -388,10 +403,10 @@ graph_vectorize <- function(graph, inputs, batched, is_state, size, call) {
 }
 
 # The outputs of the primitive `primitive` applied to `inputs` with the
-# parameters `params`, by its vectorize rule, as `outputs`, and which of them
-# carry the batch axis of size `size`, as `batched`. The inputs that `batched`
-# flags carry it; `state_only` says that they do only because they derive from
-# the random states, for the message when there is no rule. Errors name `call`.
+# parameters `params`, by its vectorize rule, each with a trailing batch axis of
+# size `size`. The inputs that `batched` flags carry it; `state_only` says that
+# they do only because they derive from the random states, for the message when
+# there is no rule. Errors name `call`.
 apply_vectorize_rule <- function(primitive, inputs, batched, params, size, state_only, call) {
   rule <- primitive[["vectorize"]]
   name <- paste0("prim_", primitive$name)
@@ -400,21 +415,7 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size, state
   }
   if (!is.null(rule$fn)) {
     out <- rule$fn(inputs, batched, params, size)
-    out_batched <- attr(out, "batched")
-    out <- if (is_graph_box(out)) list(out) else unclass(out)
-    attr(out, "batched") <- NULL
-    if (is.null(out_batched)) {
-      out_batched <- rep(TRUE, length(out))
-    } else if (!checkmate::test_logical(out_batched, any.missing = FALSE, len = length(out))) {
-      cli_abort(
-        c(
-          "The vectorize rule of {.fn {name}} returned an invalid attribute {.field batched}.",
-          i = "It must be a logical vector with one entry per output, without missing values."
-        ),
-        call = call
-      )
-    }
-    return(list(outputs = out, batched = out_batched))
+    return(if (is_graph_box(out)) list(out) else out)
   }
   prim_fn <- primitive$fn
   if (is.null(prim_fn) || !all(names(params) %in% formalArgs(prim_fn))) {
@@ -435,8 +436,7 @@ apply_vectorize_rule <- function(primitive, inputs, batched, params, size, state
   declared <- names(rule$params)
   params[declared] <- Map(function(kind, value) kind(value, size), rule$params, params[declared])
   out <- do.call(prim_fn, c(operands, params))
-  out <- if (is_graph_box(out)) list(out) else out
-  list(outputs = out, batched = rep(TRUE, length(out)))
+  if (is_graph_box(out)) list(out) else out
 }
 
 # The error for a call of `primitive`, which has no vectorize rule, with a
@@ -468,8 +468,8 @@ abort_no_vectorize_rule <- function(primitive, state_only, call) {
 }
 
 # A vectorize rule must return what the statement `stmt` returned, each with
-# the batch axis last unless `batched` says otherwise. Errors name `call`.
-check_vectorized_outputs <- function(stmt, outputs, batched, size, call) {
+# the batch axis last. Errors name `call`.
+check_vectorized_outputs <- function(stmt, outputs, size, call) {
   name <- paste0("prim_", stmt$primitive$name)
   if (length(outputs) != length(stmt$outputs)) {
     cli_abort(
@@ -479,7 +479,7 @@ check_vectorized_outputs <- function(stmt, outputs, batched, size, call) {
   }
   for (j in seq_along(outputs)) {
     want <- stmt$outputs[[j]]$aval
-    want_shape <- if (batched[[j]]) c(shape(want), size) else shape(want)
+    want_shape <- c(shape(want), size)
     got <- outputs[[j]]
     if (!identical(as.integer(shape(got)), as.integer(want_shape)) || dtype(got) != dtype(want)) {
       cli_abort(
@@ -515,12 +515,7 @@ check_vectorized_outputs <- function(stmt, outputs, batched, size, call) {
 #' operands, `batched` says which of them carry the batch axis, `params` are
 #' the parameters of the call, and `size` is the size of the batch axis. It
 #' returns the list of outputs, or a single output as it is, each with the
-#' batch axis last. An output
-#' that does not depend on the values mapped over may be returned without it,
-#' if the list of outputs says so in its attribute `batched`, a logical vector
-#' with one entry per output (set it last: [c()] and [lapply()] drop it). Only
-#' an output that is the same for every slice may be marked `FALSE`: one that
-#' differs between slices would silently give every slice the same value.
+#' batch axis last, also one that is the same for every slice.
 #'
 #' A declared rule calls the primitive with its parameters as arguments, so it
 #' only fits a primitive made with [`new_primitive()`] whose parameters are
@@ -530,17 +525,17 @@ check_vectorized_outputs <- function(stmt, outputs, batched, size, call) {
 #'   defaults.
 #' @param params (named `list()`)\cr
 #'   How each parameter with an entry per axis of the operands, or a shape,
-#'   changes, one of the kinds in [`param_shape()`].
+#'   changes, one of the kinds in [`vec_shape()`].
 #' @param unbatched (`integer()`)\cr
 #'   Positions of the operands that cannot be mapped over, e.g. the padding
 #'   value of [`prim_pad()`]. They are passed on unchanged.
 #' @return (`anvl_rule_vectorize`)\cr
 #'   A rule to assign to `prim_<name>[["vectorize"]]`.
-#' @seealso [`vectorize()`], [`param_shape()`]
+#' @seealso [`vectorize()`], [`vec_shape()`]
 #' @export
 #' @examples
 #' # the rule of prim_transpose()
-#' rule_vectorize(params = list(perm = param_axis_map()))
+#' rule_vectorize(params = list(perm = vec_axis_map()))
 rule_vectorize <- function(fn = NULL, params = list(), unbatched = integer()) {
   checkmate::assert_function(fn, null.ok = TRUE)
   checkmate::assert_list(params, types = "anvl_param_kind", names = "unique")
@@ -561,11 +556,11 @@ rule_vectorize <- function(fn = NULL, params = list(), unbatched = integer()) {
 #' axes needs none of these: the batch axis comes after all of them, so they
 #' keep their positions.
 #'
-#' * `param_shape()`: a shape, which gains the batch axis (`c(shape, size)`).
-#' * `param_axis_map()`: one axis per axis of an operand, of an output with as
-#'   many axes, such as a permutation; the batch axis maps to the batch axis
+#' * `vec_shape()`: a shape, which gains the batch axis (`c(shape, size)`).
+#' * `vec_axis_map()`: for each axis of the output, the operand axis it takes,
+#'   such as a permutation; the batch axis maps to itself
 #'   (`c(axes, length(axes) + 1L)`).
-#' * `param_per_axis()`: one entry per axis of an operand, with `value` for the
+#' * `vec_per_axis()`: one entry per axis of an operand, with `value` for the
 #'   batch axis.
 #' @param value (`integer(1)` | `function`)\cr
 #'   The entry for the batch axis, or a function of `size` that returns it.
@@ -573,22 +568,22 @@ rule_vectorize <- function(fn = NULL, params = list(), unbatched = integer()) {
 #'   A function of the parameter's value and `size` that returns its new value.
 #' @export
 #' @examples
-#' param_shape()(c(2L, 3L), size = 5L)
-#' param_axis_map()(c(2L, 1L), size = 5L)
-#' param_per_axis(0L)(c(1L, 2L), size = 5L)
-param_shape <- function() {
+#' vec_shape()(c(2L, 3L), size = 5L)
+#' vec_axis_map()(c(2L, 1L), size = 5L)
+#' vec_per_axis(0L)(c(1L, 2L), size = 5L)
+vec_shape <- function() {
   param_kind(function(x, size) c(x, size))
 }
 
-#' @rdname param_shape
+#' @rdname vec_shape
 #' @export
-param_axis_map <- function() {
+vec_axis_map <- function() {
   param_kind(function(x, size) c(x, length(x) + 1L))
 }
 
-#' @rdname param_shape
+#' @rdname vec_shape
 #' @export
-param_per_axis <- function(value) {
+vec_per_axis <- function(value) {
   if (!is.function(value)) {
     checkmate::assert_int(value)
   }

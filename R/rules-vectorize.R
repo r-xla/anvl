@@ -18,20 +18,20 @@ for (prim in c(
 }
 rm(prim)
 
-prim_transpose[["vectorize"]] <- rule_vectorize(params = list(perm = param_axis_map()))
-prim_reshape[["vectorize"]] <- rule_vectorize(params = list(shape = param_shape()))
+prim_transpose[["vectorize"]] <- rule_vectorize(params = list(perm = vec_axis_map()))
+prim_reshape[["vectorize"]] <- rule_vectorize(params = list(shape = vec_shape()))
 prim_static_slice[["vectorize"]] <- rule_vectorize(
   params = list(
-    start_indices = param_per_axis(1L),
-    end_indices = param_per_axis(function(size) size),
-    strides = param_per_axis(1L)
+    start_indices = vec_per_axis(1L),
+    end_indices = vec_per_axis(function(size) size),
+    strides = vec_per_axis(1L)
   )
 )
 prim_pad[["vectorize"]] <- rule_vectorize(
   params = list(
-    edge_padding_low = param_per_axis(0L),
-    edge_padding_high = param_per_axis(0L),
-    interior_padding = param_per_axis(0L)
+    edge_padding_low = vec_per_axis(0L),
+    edge_padding_high = vec_per_axis(0L),
+    interior_padding = vec_per_axis(0L)
   ),
   unbatched = 2L
 )

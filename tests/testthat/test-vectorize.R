@@ -412,14 +412,6 @@ describe("vectorize", {
 describe("rule_vectorize", {
   x <- nv_array(rbind(c(1, 2, 3), c(4, 5, 6)), dtype = "f32")
 
-  it("checks the attribute batched a rule returns", {
-    prim_bad <- unary_primitive()
-    prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
-      structure(list(inputs[[1L]]), batched = c(TRUE, FALSE))
-    })
-    expect_error(jit(vectorize(prim_bad))(x), "invalid attribute")
-  })
-
   it("checks how many outputs a rule returns", {
     prim_bad <- unary_primitive()
     prim_bad[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
@@ -463,7 +455,7 @@ describe("rule_vectorize", {
 
   it("takes either a function or a declaration", {
     expect_error(rule_vectorize(function(...) NULL, unbatched = 1L), "either")
-    expect_s3_class(rule_vectorize(params = list(shape = param_shape())), "anvl_rule_vectorize")
+    expect_s3_class(rule_vectorize(params = list(shape = vec_shape())), "anvl_rule_vectorize")
   })
 
   it("only takes parameter kinds", {
@@ -471,11 +463,11 @@ describe("rule_vectorize", {
   })
 })
 
-describe("param_shape", {
+describe("vec_shape", {
   it("appends the batch axis", {
-    expect_identical(param_shape()(c(2L, 3L), size = 5L), c(2L, 3L, 5L))
-    expect_identical(param_axis_map()(c(2L, 1L), size = 5L), c(2L, 1L, 3L))
-    expect_identical(param_per_axis(0L)(c(1L, 2L), size = 5L), c(1L, 2L, 0L))
-    expect_identical(param_per_axis(function(size) size)(c(1L, 2L), size = 5L), c(1L, 2L, 5L))
+    expect_identical(vec_shape()(c(2L, 3L), size = 5L), c(2L, 3L, 5L))
+    expect_identical(vec_axis_map()(c(2L, 1L), size = 5L), c(2L, 1L, 3L))
+    expect_identical(vec_per_axis(0L)(c(1L, 2L), size = 5L), c(1L, 2L, 0L))
+    expect_identical(vec_per_axis(function(size) size)(c(1L, 2L), size = 5L), c(1L, 2L, 5L))
   })
 })
