@@ -404,14 +404,14 @@ test_that("gradient: does not depend on input", {
 test_that("wrt for non-array input: gradient", {
   expect_snapshot(error = TRUE, {
     g <- gradient(nv_round, wrt = "method")
-    jit(g, static = "method")(nv_scalar(1), method = "nearest_even")
+    g(nv_scalar(1), method = "nearest_even")
   })
 })
 
 test_that("wrt for non-array input: value_and_gradient", {
   expect_snapshot(error = TRUE, {
     g <- value_and_gradient(nv_round, wrt = "method")
-    jit(g, static = "method")(nv_scalar(1), method = "nearest_even")
+    g(nv_scalar(1), method = "nearest_even")
   })
 })
 
@@ -825,19 +825,5 @@ describe("graph_gradient", {
     expect_true(identical(grad$side_effects[[1L]]$effect, graph$side_effects[[1L]]$effect))
     expect_length(grad$side_effects, 1L)
     expect_identical(grad$side_effects[[1L]]$n, 1)
-  })
-})
-
-describe("eager gradients", {
-  it("computes gradients and values on direct calls", {
-    f <- function(x) sum(x^2L)
-    x <- nv_array(c(2, 3), dtype = "f32")
-    g <- gradient(f)
-    vg <- value_and_gradient(f)
-
-    expect_equal(as.numeric(as_array(g(x)$x)), c(4, 6))
-    out <- vg(x)
-    expect_equal(as.numeric(as_array(out$value)), 13)
-    expect_equal(as.numeric(as_array(out$grad$x)), c(4, 6))
   })
 })

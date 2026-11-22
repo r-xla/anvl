@@ -15,9 +15,6 @@
 
 ## Features
 
-* Functions returned by `gradient()`, `value_and_gradient()`, and
-  `vectorize()` can be called directly.
-
 * New `nv_split_rng_states()` splits `n` random states off a random state.
 * New `shp()` creates a shape vector from its axis sizes: `shp(2, 3)`, or `shp()` for
   a scalar.

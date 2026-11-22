@@ -35,7 +35,7 @@ an integer or boolean array, an R value such as \code{3}, a random state -- is
 held fixed, and gets \code{NULL} in place of a cotangent, as does each such
 part of a list.
 
-\code{pullback()} must be called inside \code{\link[=jit]{jit()}}. The
+Like \code{\link[=gradient]{gradient()}}, \code{pullback()} must be called inside \code{\link[=jit]{jit()}}. The
 pullback must be called in the same function, or in a function traced
 inside it, such as a branch of \code{\link[=nv_if]{nv_if()}}.
 }

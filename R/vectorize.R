@@ -49,7 +49,7 @@
 #'   Whether the slices draw `"different"` (the default) or the `"same"`
 #'   random numbers.
 #' @return (`function`)\cr
-#'   Has the same formals as `f` and can be called directly or inside [`jit()`]. It returns
+#'   Has the same formals as `f` and must be called inside [`jit()`]. It returns
 #'   what `f` returns, with the batch axis added to every output where
 #'   `out_axes` puts it; an output whose entry in `out_axes` is `NULL` is
 #'   returned as it is.
@@ -61,14 +61,14 @@
 #' x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
 #'
 #' # one dot product per column of x, against the same y
-#' vectorize(f, in_axes = list(x = -1L))(x, nv_array(c(1, 2), dtype = "f32"))
+#' jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
 #'
 #' # map over the rows instead: each row divided by its sum
 #' jit(vectorize(function(x) x / sum(x), in_axes = 1L, out_axes = 1L))(x)
 #'
 #' # every column gets noise of its own, the noise a loop over the columns
 #' # would draw
-#' noisy <- function(x) x + nv_runif(shape = 2L)
+#' noisy <- function(x) x + nv_rnorm(shape = 2L)
 #' nv_set_seed(1L)
 #' jit(vectorize(noisy))(x)
 #' # or the same noise for every column
@@ -78,15 +78,12 @@ vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "different"
   in_axes <- check_in_axes(f, in_axes)
   check_out_axes(out_axes)
   assert_choice(randomness, c("different", "same"))
-  transformation_fn(
-    f,
-    function(call_args) {
-      # errors name the call of the vectorized function
-      call <- rlang::caller_env()
-      vectorize_call(f, call_args, in_axes, out_axes, randomness, call = call)
-    },
-    eager = TRUE
-  )
+  transformation_fn(f, function(call_args) {
+    # errors name the call of the vectorized function
+    call <- rlang::caller_env()
+    assert_in_trace("vectorize", call = call)
+    vectorize_call(f, call_args, in_axes, out_axes, randomness, call = call)
+  })
 }
 
 # `in_axes` of `vectorize()` as an axis or a named list of axes, without the

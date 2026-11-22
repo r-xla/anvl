@@ -24,7 +24,7 @@ arguments (which must all be arrayish in that case).}
 }
 \value{
 (\code{function})\cr
-Has the same formals as \code{f} and can be called directly or inside \code{\link[=jit]{jit()}}.
+Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}.
 For \code{gradient()}, it returns a named \code{list} of gradients, one per
 argument of \code{f} (or per \code{wrt} entry), each structured like that argument.
 For \code{value_and_gradient()}, it returns \code{list(value = , grad = )}: the
@@ -44,7 +44,7 @@ computed in a single forward and reverse pass.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 f <- function(x, y) sum(x * y)
-g <- gradient(f)
+g <- jit(gradient(f))
 g(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 
 # differentiate with respect to a single argument
