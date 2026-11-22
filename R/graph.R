@@ -574,6 +574,7 @@ get_box_or_register_const <- function(desc, x) {
   # it, so an array `desc` already holds is matched by itself: the box returned
   # may then be of another GraphValue than `x`.
   if (is_concrete_array(x$aval)) {
+    desc$devices <- c(desc$devices, placement_device(x$aval$data))
     known <- desc$array_to_gval[[x$aval$data]]
     if (!is.null(known)) {
       return(desc$gval_to_box[[known]])

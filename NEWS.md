@@ -34,6 +34,9 @@
   differentiates with respect to no argument, rather than all of them.
 * `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
   recycling it, and keeps the values of a `bit64::integer64`.
+* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
+  differentiated by `gradient()` closes over now counts toward the device
+  `jit()` detects, as it already did for the jitted function itself.
 * `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
   row-major order with `row_major = TRUE`.
 * The `"quickr"` backend accepts a device given as a string, `"cpu"`.
