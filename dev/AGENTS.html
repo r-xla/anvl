@@ -88,7 +88,7 @@
 <p>The generic R workflow (<code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>, <code>make format</code>, <code>jarl check .</code>, …) is in the shared config above. anvl-specific:</p>
 <ul><li>
 <strong>Tests are gated behind <code>ANVL_TEST=1</code></strong> – <code>tests/testthat.R</code> only calls <code>test_check()</code> when it is set, so <code>R CMD check</code> in a shell without it runs <em>no</em> tests. <code>.Renviron</code> sets it (together with <code>PJRT_INSTALL=1</code>) for work inside the package.</li>
-<li>Single file: <code>testthat::test_active_file("tests/testthat/test-reverse.R")</code>, or <code>devtools::test(filter = "reverse")</code>.</li>
+<li>Single file: <code>testthat::test_active_file("tests/testthat/test-pullback.R")</code>, or <code>devtools::test(filter = "pullback")</code>.</li>
 <li>
 <code>ANVL_TEST_SKIP_QUICKR=1</code> skips the (slow) quickr tests. <code>setup.R</code> sets <code>PJRT_CPU_DEVICE_COUNT=2</code> so multi-device tests have something to spread over.</li>
 <li>
