@@ -903,6 +903,41 @@ infer_optimization_barrier <- function(...) {
 # Contraction, indexing and reduction rules
 # ---------------------------------------------------------------------------
 
+infer_scaled_dot_product_attention <- function(x, key, value, scale, causal, compute_dtype) {
+  assert_arrays(x = x, key = key, value = value)
+  assert_array_dtype(x, "float")
+  assert_same_dtype(x, key)
+  assert_same_dtype(x, value)
+  checkmate::assert_number(scale, finite = TRUE, null.ok = TRUE)
+  assert_flag_param(causal)
+  if (!is.null(compute_dtype)) {
+    assert_choice_param(compute_dtype, c("f16", "bf16"))
+  }
+
+  rank <- naxes(x)
+  if (rank < 2L || naxes(key) != rank || naxes(value) != rank) {
+    cli_abort("{.arg x}, {.arg key} and {.arg value} must have the same number of axes, at least two.")
+  }
+  query_shape <- shape(x)
+  key_shape <- shape(key)
+  value_shape <- shape(value)
+  batch_axes <- seq_len(rank - 2L)
+  sequence_axis <- rank - 1L
+  if (
+    !identical(query_shape[batch_axes], key_shape[batch_axes]) ||
+      !identical(query_shape[batch_axes], value_shape[batch_axes])
+  ) {
+    cli_abort("{.arg x}, {.arg key} and {.arg value} must have the same batch shape.")
+  }
+  if (query_shape[[rank]] != key_shape[[rank]] || query_shape[[rank]] == 0L) {
+    cli_abort("{.arg x} and {.arg key} must have the same nonzero feature axis size.")
+  }
+  if (key_shape[[sequence_axis]] != value_shape[[sequence_axis]] || key_shape[[sequence_axis]] == 0L) {
+    cli_abort("{.arg key} and {.arg value} must have the same nonzero sequence axis size.")
+  }
+  list(AbstractArray(dtype = dtype(x), shape = Shape(replace(query_shape, rank, value_shape[[rank]]))))
+}
+
 infer_dot_general <- function(
   lhs,
   rhs,

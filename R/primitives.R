@@ -318,6 +318,60 @@ prim_dot_general <- new_primitive(
   static = 3:5
 )
 
+#' @title Primitive Scaled Dot-Product Attention
+#' @description
+#' Computes softmax of the scaled query-key scores over the key positions,
+#' then uses those probabilities to weight the values.
+#' @param x ([`arrayish`])\cr
+#'   Queries with shape `c(batch_shape, query_positions, query_features)`.
+#'   Leading batch axes can include an attention head axis.
+#' @param key ([`arrayish`])\cr
+#'   Keys with shape `c(batch_shape, key_positions, query_features)`.
+#' @param value ([`arrayish`])\cr
+#'   Values with shape `c(batch_shape, key_positions, value_features)`.
+#'   All three arrays must have the same floating-point data type and batch
+#'   shape. The key sequence and query feature axis must be nonempty.
+#' @param scale (`numeric(1)` | `NULL`)\cr
+#'   Static multiplier for the query-key scores. `NULL` uses
+#'   `1 / sqrt(query_features)`.
+#' @param causal (`logical(1)`)\cr
+#'   Static flag. If true, each query can attend only to keys at or before
+#'   its own position, counting both sequences from the start.
+#' @param compute_dtype (`character(1)` | `NULL`)\cr
+#'   Static precision for the query, key and value operands, either `"f16"`
+#'   or `"bf16"`. The returned array keeps the original data type.
+#'   `NULL` computes at the input data type.
+#' @return ([`arrayish`])\cr
+#'   An array with shape `c(batch_shape, query_positions, value_features)`
+#'   and the input data type.
+#' @templateVar primitive_id scaled_dot_product_attention
+#' @template section_rules
+#' @section StableHLO:
+#' On CUDA with cuDNN Flash Attention support, setting `compute_dtype`
+#' uses the fused kernel when the query and value feature axes have the
+#' same size, a multiple of eight up to 128. Causal Flash Attention also
+#' requires equal query and key sequence axis sizes.
+#' The portable lowering uses batched dot products and max-shifted softmax.
+#' If `compute_dtype` is set, it rounds the operands to that data type and
+#' computes in `f32`.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_matrix(c(1, 0, 0, 1), nrow = 2, dtype = "f32")
+#' prim_scaled_dot_product_attention(x, x, x, causal = TRUE)
+#' @export
+prim_scaled_dot_product_attention <- new_primitive(
+  "scaled_dot_product_attention",
+  function(x, key, value, scale = NULL, causal = FALSE, compute_dtype = NULL) {
+    operands <- apply_promotion(list(x = x, key = key, value = value), promotion_rdata_common())
+    graph_desc_add(
+      self,
+      operands,
+      list(scale = scale, causal = causal, compute_dtype = compute_dtype),
+      infer_fn = infer_scaled_dot_product_attention
+    )[[1L]]
+  },
+  static = c("scale", "causal", "compute_dtype")
+)
+
 #' @title Primitive Transpose
 #' @description
 #' Permutes the axes of an array.

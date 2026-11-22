@@ -1,3 +1,77 @@
+describe("prim_scaled_dot_product_attention", {
+  it("computes batched rectangular attention with a stable softmax", {
+    q <- array(seq_len(12L), c(2L, 3L, 2L))
+    k <- array(seq_len(16L), c(2L, 4L, 2L))
+    v <- array(seq_len(24L), c(2L, 4L, 3L))
+    x <- nv_array(q, dtype = "f64")
+    key <- nv_array(k, dtype = "f64")
+    value <- nv_array(v, dtype = "f64")
+
+    for (causal in c(FALSE, TRUE)) {
+      expected <- array(0, c(2L, 3L, 3L))
+      for (batch in 1:2) {
+        scores <- tcrossprod(q[batch, , ], k[batch, , ]) / sqrt(2)
+        if (causal) {
+          scores[col(scores) > row(scores)] <- -Inf
+        }
+        weights <- exp(scores - apply(scores, 1L, max))
+        expected[batch, , ] <- (weights / rowSums(weights)) %*% v[batch, , ]
+      }
+
+      out <- prim_scaled_dot_product_attention(x, key, value, causal = causal)
+      expect_identical(as.character(dtype(out)), "f64")
+      expect_equal(as_array(out), expected, tolerance = 1e-12)
+    }
+  })
+
+  it("uses half-precision operands with f32 inputs and output under jit", {
+    withr::local_seed(440L)
+    q <- matrix(runif(16L * 64L, -1, 1), 16L, 64L)
+    k <- matrix(runif(24L * 64L, -1, 1), 24L, 64L)
+    v <- matrix(runif(24L * 64L, -1, 1), 24L, 64L)
+    x <- nv_array(q, dtype = "f32")
+    key <- nv_array(k, dtype = "f32")
+    value <- nv_array(v, dtype = "f32")
+    f <- jit(
+      function(x, key, value, compute_dtype) {
+        prim_scaled_dot_product_attention(x, key, value, scale = 0.2, compute_dtype = compute_dtype)
+      },
+      static = "compute_dtype"
+    )
+    scores <- 0.2 * tcrossprod(q, k)
+    weights <- exp(scores - apply(scores, 1L, max))
+    expected <- (weights / rowSums(weights)) %*% v
+
+    for (compute_dtype in c("f16", "bf16")) {
+      out <- f(x, key, value, compute_dtype)
+      expect_identical(as.character(dtype(out)), "f32")
+      expect_lt(max(abs(as_array(out) - expected)), 0.005)
+    }
+  })
+
+  it("rejects mismatched key and value sequence axis sizes", {
+    x <- nv_array(matrix(1, 2L, 2L), dtype = "f32")
+    key <- nv_array(matrix(1, 3L, 2L), dtype = "f32")
+    expect_error(prim_scaled_dot_product_attention(x, key, x), "sequence axis size")
+  })
+
+  it("emits the cuDNN call only for compatible CUDA shapes and data types", {
+    lower <- function(compute_dtype, features, platform) {
+      aval <- nv_aval("f32", c(2L, 3L, 32L, features))
+      fn <- function(x, key, value) {
+        prim_scaled_dot_product_attention(x, key, value, compute_dtype = compute_dtype)
+      }
+      graph <- trace_fn(fn, list(aval, aval, aval))
+      stablehlo::repr(stablehlo(graph, platform = platform)[[1L]])
+    }
+    target <- "__cudnn$fmhaSoftmax"
+    expect_match(lower("f16", 64L, "cuda"), target, fixed = TRUE)
+    expect_no_match(lower("f16", 64L, "cpu"), target, fixed = TRUE)
+    expect_no_match(lower(NULL, 64L, "cuda"), target, fixed = TRUE)
+    expect_no_match(lower("bf16", 6L, "cuda"), target, fixed = TRUE)
+  })
+})
+
 test_that("prim_sin", {
   x <- nv_array(c(0, pi / 2, pi, 3 / 2 * pi), dtype = "f64")
   out <- as_array(prim_sin(x))

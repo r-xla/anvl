@@ -118,6 +118,162 @@ prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching
   ))
 }
 
+prim_scaled_dot_product_attention[["stablehlo"]] <- function(x, key, value, scale, causal, compute_dtype) {
+  # Both attention paths use leading batch axes followed by positions and
+  # features. Convert from anvl's reversed XLA axis order at the boundary.
+  reverse_axes <- function(x) hlo_transpose(x, rev(seq_len(naxes(x)) - 1L))
+  x <- reverse_axes(x)
+  key <- reverse_axes(key)
+  value <- reverse_axes(value)
+  query_shape <- shape(x)
+  value_shape <- shape(value)
+  rank <- length(query_shape)
+  dt <- as.character(dtype(x))
+  feature_size <- query_shape[[rank]]
+  scale <- scale %||% (1 / sqrt(feature_size))
+
+  if (!is.null(compute_dtype)) {
+    x <- hlo_convert(x, compute_dtype)
+    key <- hlo_convert(key, compute_dtype)
+    value <- hlo_convert(value, compute_dtype)
+  }
+  half <- as.character(dtype(x)) %in% c("bf16", "f16")
+  if (
+    identical(current_platform(), "cuda") &&
+      half &&
+      all(query_shape > 0L) &&
+      all(value_shape > 0L) &&
+      feature_size == value_shape[[rank]] &&
+      feature_size <= 128L &&
+      feature_size %% 8L == 0L &&
+      (!causal || query_shape[[rank - 1L]] == value_shape[[rank - 1L]])
+  ) {
+    out <- hlo_cudnn_attention(x, key, value, scale, causal)
+    return(list(reverse_axes(hlo_convert(out, dt))))
+  }
+
+  if (half) {
+    x <- hlo_convert(x, "f32")
+    key <- hlo_convert(key, "f32")
+    value <- hlo_convert(value, "f32")
+  }
+  batch_axes <- seq_len(rank - 2L) - 1L
+  position_axis <- rank - 2L
+  feature_axis <- rank - 1L
+  scores <- hlo_dot_general(
+    x,
+    key,
+    list(feature_axis, feature_axis),
+    list(batch_axes, batch_axes),
+    precision_config = "HIGHEST"
+  )
+  score_shape <- shape(scores)
+  scores <- hlo_multiply(
+    scores,
+    hlo_tensor(scale, shape = score_shape, dtype = dtype(scores), func = scores$func)
+  )
+  if (causal) {
+    q <- hlo_iota(position_axis, "i32", score_shape, func = scores$func)
+    k <- hlo_iota(feature_axis, "i32", score_shape, func = scores$func)
+    allowed <- hlo_compare(q, k, comparison_direction = "GE", compare_type = "SIGNED")
+    masked <- hlo_tensor(-Inf, shape = score_shape, dtype = dtype(scores), func = scores$func)
+    scores <- hlo_select(allowed, scores, masked)
+  }
+
+  # The reduction helpers interpret an R axis, so axis 1 names the last
+  # StableHLO axis, which holds the key positions here.
+  maximum <- .stablehlo_apply_reduce(
+    hlo_maximum,
+    scores,
+    \(x) hlo_scalar(-Inf, dtype = dtype(x), func = x$func),
+    axes = 1L,
+    drop = TRUE
+  )[[1L]]
+  broadcast <- function(x) hlo_broadcast_in_dim(x, seq_len(rank - 1L) - 1L, score_shape)
+  weights <- hlo_exponential(hlo_subtract(scores, broadcast(maximum)))
+  total <- prim_sum[["stablehlo"]](weights, axes = 1L, drop = TRUE)[[1L]]
+  weights <- hlo_divide(weights, broadcast(total))
+
+  out <- hlo_dot_general(
+    weights,
+    value,
+    list(feature_axis, position_axis),
+    list(batch_axes, batch_axes),
+    precision_config = "HIGHEST"
+  )
+  list(reverse_axes(if (half) hlo_convert(out, dt) else out))
+}
+
+# XLA's cuDNN FMHA custom call expects [batch, heads, positions, features]
+# in row-major layout, plus a second result for compiler-sized workspace.
+hlo_cudnn_attention <- function(x, key, value, scale, causal) {
+  reshape_for_cudnn <- function(x) {
+    shp <- shape(x)
+    rank <- length(shp)
+    if (rank == 4L) {
+      return(x)
+    }
+    heads <- if (rank >= 3L) shp[[rank - 2L]] else 1L
+    batch <- prod(shp[seq_len(max(0L, rank - 3L))])
+    hlo_reshape(x, c(batch, heads, tail(shp, 2L)))
+  }
+  query_shape <- shape(x)
+  x <- reshape_for_cudnn(x)
+  key <- reshape_for_cudnn(key)
+  value <- reshape_for_cudnn(value)
+  bnth <- shape(x)
+  value_bnth <- shape(value)
+  layout <- 3:0
+  # Protobuf repeated fields require JSON arrays, including singleton axes.
+  dot_axes <- function(rhs_contracting) {
+    list(
+      lhs_contracting_dimensions = list("3"),
+      rhs_contracting_dimensions = list(rhs_contracting),
+      lhs_batch_dimensions = c("0", "1"),
+      rhs_batch_dimensions = c("0", "1")
+    )
+  }
+  config <- jsonlite::toJSON(
+    list(
+      cudnn_fmha_backend_config = list(
+        algorithm = list(
+          algo_id = "0",
+          math_type = "TENSOR_OP_MATH",
+          tuning_knobs = list("17" = "1", "24" = "0"),
+          is_cudnn_frontend = TRUE,
+          workspace_size = "0"
+        ),
+        fmha_scale = scale,
+        intermediate_tensor_shape = list(
+          element_type = toupper(as.character(dtype(x))),
+          dimensions = as.character(c(bnth[1:3], value_bnth[[3L]])),
+          layout = list(minor_to_major = as.character(layout))
+        ),
+        is_flash_attention = TRUE,
+        mask_type = if (causal) "CAUSAL" else "NO_MASK",
+        max_seg_per_batch = 1L,
+        bmm1_dot_dimension_numbers = dot_axes("3"),
+        bmm2_dot_dimension_numbers = dot_axes("2")
+      )
+    ),
+    auto_unbox = TRUE,
+    digits = NA
+  )
+  out <- hlo_custom_call(
+    x,
+    key,
+    value,
+    call_target_name = "__cudnn$fmhaSoftmax",
+    api_version = 2L,
+    has_side_effect = FALSE,
+    backend_config = as.character(config),
+    output_types = list(vt(dtype(x), bnth), vt("ui8", 0L)),
+    operand_layouts = rep(list(layout), 3L),
+    result_layouts = list(layout, 0L)
+  )[[1L]]
+  if (length(query_shape) == 4L) out else hlo_reshape(out, query_shape)
+}
+
 prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {
   list(hlo_transpose(x, xla_perm(perm), output_types = output_types))
 }
