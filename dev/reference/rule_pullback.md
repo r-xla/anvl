@@ -63,7 +63,7 @@ rule_pullback(function(inputs, outputs, grads, params, required) {
 #> {
 #>     list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #> }
-#> <environment: 0x56b6b8595f90>
+#> <environment: 0x59dac1720b10>
 #> 
 #> attr(,"class")
 #> [1] "anvl_rule_pullback"
