@@ -138,9 +138,17 @@ assert_sample_param_shape <- function(x, shape, arg = rlang::caller_arg(x)) {
 # Box-Muller transform: map two batches of uniforms in [0, 1) to twice as many
 # standard normals. The radius uses 1 - u1, which lies in (0, 1], so a uniform
 # of exactly 0 gives a finite sample.
+#
+# Barrier on radius and theta, before each fans out to two consumers. XLA on CPU
+# treats the ThreeFry draws as cheap and fuses them into every kernel that uses
+# them, so without it the draws are recomputed per consumer.
 box_muller <- function(u1, u2) {
-  radius <- nv_sqrt(nv_log(1L - u1) * -2L)
-  theta <- u2 * (2 * pi)
+  polar <- nv_optimization_barrier(list(
+    radius = nv_sqrt(nv_log(1L - u1) * -2L),
+    theta = u2 * (2 * pi)
+  ))
+  radius <- polar$radius
+  theta <- polar$theta
   nv_concatenate(radius * nv_sin(theta), radius * nv_cos(theta), axis = 1L)
 }
 
