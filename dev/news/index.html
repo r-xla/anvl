@@ -116,6 +116,8 @@
 <h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>
 <ul><li>Constructing <code>AnvlArray</code>s from R objects is now more efficient.</li>
 <li>The generated XLA programs are more efficient, especially around flattening operations.</li>
+<li>
+<code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> is up to 6x faster on CPU for large samples, with the same values: an optimisation barrier stops XLA computing the random draws again for each of their consumers.</li>
 </ul></div>
 </div>
     <div class="section level2">
