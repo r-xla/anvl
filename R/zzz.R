@@ -49,6 +49,11 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   })
 }
 
+.onUnload <- function(libpath) {
+  # Otherwise devtools::document() fails if run twice in the same session.
+  pjrt::unregister_tree_node("AnvlRngState")
+}
+
 # Read `ANVL_DEFAULT_DTYPES` / `ANVL_DEFAULT_DEVICE`, the fallbacks of the
 # `anvl.default_dtypes` / `anvl.default_device` options.
 read_env_defaults <- function() {
