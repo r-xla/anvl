@@ -2,7 +2,7 @@
 
     Code
       g <- gradient(nv_round, wrt = "method")
-      g(nv_scalar(1), method = "nearest_even")
+      jit(g, static = "method")(nv_scalar(1), method = "nearest_even")
     Condition
       Error in `check_wrt_arrayish()`:
       ! Cannot compute gradient with respect to non-array argument.
@@ -12,7 +12,7 @@
 
     Code
       g <- value_and_gradient(nv_round, wrt = "method")
-      g(nv_scalar(1), method = "nearest_even")
+      jit(g, static = "method")(nv_scalar(1), method = "nearest_even")
     Condition
       Error in `check_wrt_arrayish()`:
       ! Cannot compute gradient with respect to non-array argument.

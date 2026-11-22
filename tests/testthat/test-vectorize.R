@@ -20,6 +20,17 @@ describe("vectorize", {
   # three slices along the last axis: the columns (1, 4), (2, 5) and (3, 6)
   x <- nv_array(rbind(c(1, 2, 3), c(4, 5, 6)), dtype = "f32")
 
+  it("can be called directly and caches the compiled batch", {
+    traces <- 0L
+    sums <- vectorize(function(x) {
+      traces <<- traces + 1L
+      sum(x)
+    })
+    expect_equal(as_r(sums(x)), array(colSums(as_r(x)), dim = 3L))
+    expect_equal(as_r(sums(x)), array(colSums(as_r(x)), dim = 3L))
+    expect_identical(traces, 1L)
+  })
+
   it("maps over the arguments in in_axes and passes the others to every application", {
     f <- function(x, y) sum(x * y)
     out <- jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
@@ -242,10 +253,6 @@ describe("vectorize", {
 
   it("rejects randomness other than \"different\" and \"same\"", {
     expect_error(vectorize(function(x) x, randomness = "error"), "randomness")
-  })
-
-  it("must be called inside jit", {
-    expect_error(vectorize(function(x) x)(x), "inside a")
   })
 
   it("rejects mapping over an argument that was not passed", {

@@ -576,7 +576,7 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
 #'   If `NULL` (the default), the gradient is computed with respect to all
 #'   arguments (which must all be arrayish in that case).
 #' @return (`function`)\cr
-#'   Has the same formals as `f` and must be called inside [`jit()`].
+#'   Has the same formals as `f` and can be called directly or inside [`jit()`].
 #'   For `gradient()`, it returns a named `list` of gradients, one per
 #'   argument of `f` (or per `wrt` entry), each structured like that argument.
 #'   For `value_and_gradient()`, it returns `list(value = , grad = )`: the
@@ -586,7 +586,7 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- function(x, y) sum(x * y)
-#' g <- jit(gradient(f))
+#' g <- gradient(f)
 #' g(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #'
 #' # differentiate with respect to a single argument
@@ -612,7 +612,11 @@ run_backward_pass <- function(graph, backwards, required_env, grad_env) {
 gradient <- function(f, wrt = NULL) {
   assert_function(f)
   wrt <- resolve_transformation_args(f, wrt, "wrt")
-  transformation_fn(f, function(args) trace_value_and_grad(f, args, wrt, "gradient")$grad)
+  transformation_fn(
+    f,
+    function(args) trace_value_and_grad(f, args, wrt, "gradient")$grad,
+    eager = TRUE
+  )
 }
 
 #' @rdname gradient
@@ -620,7 +624,11 @@ gradient <- function(f, wrt = NULL) {
 value_and_gradient <- function(f, wrt = NULL) {
   assert_function(f)
   wrt <- resolve_transformation_args(f, wrt, "wrt")
-  transformation_fn(f, function(args) trace_value_and_grad(f, args, wrt, "value_and_gradient"))
+  transformation_fn(
+    f,
+    function(args) trace_value_and_grad(f, args, wrt, "value_and_gradient"),
+    eager = TRUE
+  )
 }
 
 # gradient() / value_and_gradient() (named by `fn`) at the call's arguments:
@@ -628,8 +636,7 @@ value_and_gradient <- function(f, wrt = NULL) {
 # for its value.
 trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
   prep <- prepare_gradient_args(args, wrt)
-  assert_in_trace(fn, call = call)
-  out <- trace_pullback(f, prep, fn)
+  out <- trace_pullback(f, prep, fn, call = call)
   value <- validate_gradient_output(lapply(flatten(out$value), \(box) box$gnode))
   seed <- get_box_or_register_const(current_descriptor(), nv_scalar(1L, dtype = value$aval$dtype))
   grad <- out$pullback(unflatten(build_tree(out$value), list(seed)))
@@ -675,7 +682,7 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 #'   held fixed, and gets `NULL` in place of a cotangent, as does each such
 #'   part of a list.
 #'
-#'   Like [`gradient()`], `pullback()` must be called inside [`jit()`]. The
+#'   `pullback()` must be called inside [`jit()`]. The
 #'   pullback must be called in the same function, or in a function traced
 #'   inside it, such as a branch of [`nv_if()`].
 #' @seealso `r roxy_article("autodiff")`, [`gradient()`]

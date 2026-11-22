@@ -40,7 +40,7 @@ random numbers.}
 }
 \value{
 (\code{function})\cr
-Has the same formals as \code{f} and must be called inside \code{\link[=jit]{jit()}}. It returns
+Has the same formals as \code{f} and can be called directly or inside \code{\link[=jit]{jit()}}. It returns
 what \code{f} returns, with the batch axis added to every output where
 \code{out_axes} puts it; an output whose entry in \code{out_axes} is \code{NULL} is
 returned as it is.
@@ -75,14 +75,14 @@ f <- function(x, y) sum(x * y)
 x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
 
 # one dot product per column of x, against the same y
-jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
+vectorize(f, in_axes = list(x = -1L))(x, nv_array(c(1, 2), dtype = "f32"))
 
 # map over the rows instead: each row divided by its sum
 jit(vectorize(function(x) x / sum(x), in_axes = 1L, out_axes = 1L))(x)
 
 # every column gets noise of its own, the noise a loop over the columns
 # would draw
-noisy <- function(x) x + nv_rnorm(shape = 2L)
+noisy <- function(x) x + nv_runif(shape = 2L)
 nv_set_seed(1L)
 jit(vectorize(noisy))(x)
 # or the same noise for every column

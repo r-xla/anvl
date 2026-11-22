@@ -21,7 +21,7 @@ Consider $f(x) = \sum_i x_i^2$, whose gradient is $2x$:
 library(anvl)
 
 f <- function(x) sum(x^2)
-f_grad <- jit(gradient(f))
+f_grad <- gradient(f)
 
 f_grad(nv_array(c(1, 2, 3)))
 ```
@@ -29,8 +29,7 @@ f_grad(nv_array(c(1, 2, 3)))
 The gradient function has the same arguments as `f`, and returns a named list with one gradient per argument.
 Each gradient has the same shape and data type as its argument.
 
-Note that the result of `gradient()` must be jitted.
-This is because {anvl} computes gradients by transforming the traced program of `f`, which only exists within `jit()`.
+Call the gradient function directly or use it inside `jit()` to compose it with other operations.
 
 ## Differentiable Functions
 
