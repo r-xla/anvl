@@ -13,7 +13,7 @@ defaults.}
 
 \item{params}{(named \code{list()})\cr
 How each parameter with an entry per axis of the operands, or a shape,
-changes, one of the kinds in \code{\link[=param_shape]{param_shape()}}.}
+changes, one of the kinds in \code{\link[=vec_shape]{vec_shape()}}.}
 
 \item{unbatched}{(\code{integer()})\cr
 Positions of the operands that cannot be mapped over, e.g. the padding
@@ -44,12 +44,7 @@ signature \verb{function(inputs, batched, params, size)}: \code{inputs} are the
 operands, \code{batched} says which of them carry the batch axis, \code{params} are
 the parameters of the call, and \code{size} is the size of the batch axis. It
 returns the list of outputs, or a single output as it is, each with the
-batch axis last. An output
-that does not depend on the values mapped over may be returned without it,
-if the list of outputs says so in its attribute \code{batched}, a logical vector
-with one entry per output (set it last: \code{\link[=c]{c()}} and \code{\link[=lapply]{lapply()}} drop it). Only
-an output that is the same for every slice may be marked \code{FALSE}: one that
-differs between slices would silently give every slice the same value.
+batch axis last, also one that is the same for every slice.
 
 A declared rule calls the primitive with its parameters as arguments, so it
 only fits a primitive made with \code{\link[=new_primitive]{new_primitive()}} whose parameters are
@@ -57,8 +52,8 @@ named like the arguments of its function.
 }
 \examples{
 # the rule of prim_transpose()
-rule_vectorize(params = list(perm = param_axis_map()))
+rule_vectorize(params = list(perm = vec_axis_map()))
 }
 \seealso{
-\code{\link[=vectorize]{vectorize()}}, \code{\link[=param_shape]{param_shape()}}
+\code{\link[=vectorize]{vectorize()}}, \code{\link[=vec_shape]{vec_shape()}}
 }

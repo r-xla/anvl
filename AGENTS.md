@@ -130,8 +130,8 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 - **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
   The batch axis is the operands' last axis, so a parameter that names axes keeps its value: the primitives
   tagged `"elementwise"`, `"reduction"` or `"cumulative"` (`new_primitive(tags = )`) take the plain
-  rule from their tag. Most other rules are declarations of how the parameters with an entry per axis, or a shape, change (`param_shape()`,
-  `param_axis_map()`, `param_per_axis()`), with the generic rule broadcasting operands that are not
+  rule from their tag. Most other rules are declarations of how the parameters with an entry per axis, or a shape, change (`vec_shape()`,
+  `vec_axis_map()`, `vec_per_axis()`), with the generic rule broadcasting operands that are not
   mapped over. `vectorize()` maps over, and stacks along, the last axis by default (`in_axes = -1L`,
   `out_axes = -1L`). Only primitives that do not fit write a
   `fn`. Every rule is checked by `autotest_vectorize()` (`helper-vectorize.R`) in
