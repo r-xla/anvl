@@ -66,6 +66,15 @@
 - `nv_array(byrow = TRUE)` refuses data that does not fill `shape`
   instead of recycling it, and keeps the values of a
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
+- An array that a branch of
+  [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md), the
+  body of
+  [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md)
+  or a function differentiated by
+  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  closes over now counts toward the device
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) detects,
+  as it already did for the jitted function itself.
 - [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md) of
   a `"quickr"` array returns the bytes of its data type, in row-major
   order with `row_major = TRUE`.
