@@ -52,6 +52,7 @@ then uses those probabilities to weight the values.
 
 \itemize{
 \item \code{stablehlo}
+\item \code{decomposition}
 }
 }
 
@@ -63,7 +64,7 @@ same size, a multiple of eight up to 128. Causal Flash Attention also
 requires equal query and key sequence axis sizes.
 The portable lowering uses batched dot products and max-shifted softmax.
 If \code{compute_dtype} is set, it rounds the operands to that data type and
-computes in \code{f32}.
+computes in \code{f32}. Differentiation uses the portable path on all devices.
 }
 
 \examples{

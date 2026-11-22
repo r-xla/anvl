@@ -353,7 +353,7 @@ prim_dot_general <- new_primitive(
 #' requires equal query and key sequence axis sizes.
 #' The portable lowering uses batched dot products and max-shifted softmax.
 #' If `compute_dtype` is set, it rounds the operands to that data type and
-#' computes in `f32`.
+#' computes in `f32`. Differentiation uses the portable path on all devices.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(1, 0, 0, 1), nrow = 2, dtype = "f32")
 #' prim_scaled_dot_product_attention(x, x, x, causal = TRUE)
@@ -371,6 +371,48 @@ prim_scaled_dot_product_attention <- new_primitive(
   },
   static = c("scale", "causal", "compute_dtype")
 )
+
+prim_scaled_dot_product_attention[["decomposition"]] <- function(x, key, value, scale, causal, compute_dtype) {
+  rank <- naxes(x)
+  dt <- as.character(dtype(x))
+  scale <- scale %||% (1 / sqrt(shape(x)[[rank]]))
+  compute_dtype <- compute_dtype %||% dt
+  half <- compute_dtype %in% c("f16", "bf16")
+  if (half) {
+    to_compute <- function(x) prim_convert(prim_convert(x, compute_dtype), "f32")
+    x <- to_compute(x)
+    key <- to_compute(key)
+    value <- to_compute(value)
+  }
+
+  batch_axes <- seq_len(rank - 2L)
+  position_axis <- rank - 1L
+  scores <- prim_dot_general(x, key, list(rank, rank), list(batch_axes, batch_axes))
+  scores <- prim_mul(scores, scale)
+  score_shape <- shape(scores)
+  if (causal) {
+    q <- prim_iota(1L, score_shape, "i32")
+    k <- prim_iota(2L, score_shape, "i32")
+    scores <- prim_ifelse(prim_ge(q, k), scores, -Inf)
+  }
+
+  # The scores' axes are query, key, then batch. The maximum is a
+  # constant shift for differentiation of softmax.
+  broadcast <- function(x) prim_broadcast_in_axes(x, score_shape, seq_len(rank))
+  maximum <- stop_gradient(prim_max(scores, axes = 2L, drop = FALSE))
+  weights <- prim_exp(prim_sub(scores, broadcast(maximum)))
+  total <- prim_sum(weights, axes = 2L, drop = FALSE)
+  weights <- prim_div(weights, broadcast(total))
+
+  out <- prim_dot_general(
+    weights,
+    value,
+    list(2L, position_axis),
+    list(batch_axes + 2L, batch_axes)
+  )
+  out <- prim_transpose(out, c(batch_axes + 2L, 1L, 2L))
+  if (half) prim_convert(out, dt) else out
+}
 
 #' @title Primitive Transpose
 #' @description

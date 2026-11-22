@@ -1,6 +1,62 @@
 # most pullback tests are in extra-tests for comparison with torch
 # Just a few selected ones that don't use torch are here
 
+describe("prim_scaled_dot_product_attention", {
+  it("differentiates batched causal attention through its decomposition", {
+    withr::local_seed(543L)
+    q <- array(runif(12L), c(2L, 3L, 2L))
+    k <- array(runif(16L), c(2L, 4L, 2L))
+    v <- array(runif(24L), c(2L, 4L, 3L))
+    ct <- array(runif(18L), c(2L, 3L, 3L))
+    args <- list(x = q, key = k, value = v)
+    loss <- function(x, key, value) {
+      sum(vapply(
+        seq_len(2L),
+        function(b) {
+          scores <- 0.2 * tcrossprod(x[b, , ], key[b, , ])
+          scores[col(scores) > row(scores)] <- -Inf
+          weights <- exp(scores - apply(scores, 1L, max))
+          sum(((weights / rowSums(weights)) %*% value[b, , ]) * ct[b, , ])
+        },
+        numeric(1L)
+      ))
+    }
+    expected <- lapply(names(args), function(arg) {
+      array(
+        vapply(
+          seq_along(args[[arg]]),
+          function(i) {
+            plus <- minus <- args
+            plus[[arg]][[i]] <- plus[[arg]][[i]] + 1e-5
+            minus[[arg]][[i]] <- minus[[arg]][[i]] - 1e-5
+            (do.call(loss, plus) - do.call(loss, minus)) / 2e-5
+          },
+          numeric(1L)
+        ),
+        dim(args[[arg]])
+      )
+    })
+
+    f <- function(x, key, value) {
+      prim_scaled_dot_product_attention(x, key, value, scale = 0.2, causal = TRUE)
+    }
+    operands <- lapply(args, nv_array, dtype = "f64")
+    cotangent <- nv_array(ct, dtype = "f64")
+    all_grads <- jit(function(x, key, value, ct) pullback(f, x, key, value)(ct))
+    out <- do.call(all_grads, c(operands, list(ct = cotangent)))
+    expect_equal(unname(lapply(out, as_array)), expected, tolerance = 1e-8)
+
+    key_grad <- jit(gradient(
+      function(x, key, value, ct) {
+        nv_sum(f(x, key, value) * ct)
+      },
+      wrt = "key"
+    ))
+    out <- do.call(key_grad, c(operands, list(ct = cotangent)))
+    expect_equal(as_array(out$key), expected[[2L]], tolerance = 1e-8)
+  })
+})
+
 test_that("prim_dot_general: vector dot product gradient", {
   # y = <x, y> = sum_i x_i * y_i, scalar output
   f <- function(x, y) {

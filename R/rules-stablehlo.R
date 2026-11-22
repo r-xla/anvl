@@ -119,89 +119,33 @@ prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching
 }
 
 prim_scaled_dot_product_attention[["stablehlo"]] <- function(x, key, value, scale, causal, compute_dtype) {
-  # Both attention paths use leading batch axes followed by positions and
-  # features. Convert from anvl's reversed XLA axis order at the boundary.
-  reverse_axes <- function(x) hlo_transpose(x, rev(seq_len(naxes(x)) - 1L))
-  x <- reverse_axes(x)
-  key <- reverse_axes(key)
-  value <- reverse_axes(value)
-  query_shape <- shape(x)
-  value_shape <- shape(value)
+  query_shape <- r_shape(x)
+  value_shape <- r_shape(value)
   rank <- length(query_shape)
   dt <- as.character(dtype(x))
+  compute_dtype <- compute_dtype %||% dt
   feature_size <- query_shape[[rank]]
-  scale <- scale %||% (1 / sqrt(feature_size))
-
-  if (!is.null(compute_dtype)) {
-    x <- hlo_convert(x, compute_dtype)
-    key <- hlo_convert(key, compute_dtype)
-    value <- hlo_convert(value, compute_dtype)
-  }
-  half <- as.character(dtype(x)) %in% c("bf16", "f16")
   if (
-    identical(current_platform(), "cuda") &&
-      half &&
-      all(query_shape > 0L) &&
-      all(value_shape > 0L) &&
-      feature_size == value_shape[[rank]] &&
-      feature_size <= 128L &&
-      feature_size %% 8L == 0L &&
-      (!causal || query_shape[[rank - 1L]] == value_shape[[rank - 1L]])
+    !identical(current_platform(), "cuda") ||
+      !compute_dtype %in% c("bf16", "f16") ||
+      !all(query_shape > 0L) ||
+      !all(value_shape > 0L) ||
+      feature_size != value_shape[[rank]] ||
+      feature_size > 128L ||
+      feature_size %% 8L != 0L ||
+      (causal && query_shape[[rank - 1L]] != value_shape[[rank - 1L]])
   ) {
-    out <- hlo_cudnn_attention(x, key, value, scale, causal)
-    return(list(reverse_axes(hlo_convert(out, dt))))
+    return(NULL)
   }
 
-  if (half) {
-    x <- hlo_convert(x, "f32")
-    key <- hlo_convert(key, "f32")
-    value <- hlo_convert(value, "f32")
-  }
-  batch_axes <- seq_len(rank - 2L) - 1L
-  position_axis <- rank - 2L
-  feature_axis <- rank - 1L
-  scores <- hlo_dot_general(
-    x,
-    key,
-    list(feature_axis, feature_axis),
-    list(batch_axes, batch_axes),
-    precision_config = "HIGHEST"
-  )
-  score_shape <- shape(scores)
-  scores <- hlo_multiply(
-    scores,
-    hlo_tensor(scale, shape = score_shape, dtype = dtype(scores), func = scores$func)
-  )
-  if (causal) {
-    q <- hlo_iota(position_axis, "i32", score_shape, func = scores$func)
-    k <- hlo_iota(feature_axis, "i32", score_shape, func = scores$func)
-    allowed <- hlo_compare(q, k, comparison_direction = "GE", compare_type = "SIGNED")
-    masked <- hlo_tensor(-Inf, shape = score_shape, dtype = dtype(scores), func = scores$func)
-    scores <- hlo_select(allowed, scores, masked)
-  }
-
-  # The reduction helpers interpret an R axis, so axis 1 names the last
-  # StableHLO axis, which holds the key positions here.
-  maximum <- .stablehlo_apply_reduce(
-    hlo_maximum,
-    scores,
-    \(x) hlo_scalar(-Inf, dtype = dtype(x), func = x$func),
-    axes = 1L,
-    drop = TRUE
-  )[[1L]]
-  broadcast <- function(x) hlo_broadcast_in_dim(x, seq_len(rank - 1L) - 1L, score_shape)
-  weights <- hlo_exponential(hlo_subtract(scores, broadcast(maximum)))
-  total <- prim_sum[["stablehlo"]](weights, axes = 1L, drop = TRUE)[[1L]]
-  weights <- hlo_divide(weights, broadcast(total))
-
-  out <- hlo_dot_general(
-    weights,
-    value,
-    list(feature_axis, position_axis),
-    list(batch_axes, batch_axes),
-    precision_config = "HIGHEST"
-  )
-  list(reverse_axes(if (half) hlo_convert(out, dt) else out))
+  # cuDNN expects leading batch axes followed by positions and features.
+  reverse_axes <- function(x) hlo_transpose(x, rev(seq_len(naxes(x)) - 1L))
+  x <- reverse_axes(hlo_convert(x, compute_dtype))
+  key <- reverse_axes(hlo_convert(key, compute_dtype))
+  value <- reverse_axes(hlo_convert(value, compute_dtype))
+  scale <- scale %||% (1 / sqrt(feature_size))
+  out <- hlo_cudnn_attention(x, key, value, scale, causal)
+  list(reverse_axes(hlo_convert(out, dt)))
 }
 
 # XLA's cuDNN FMHA custom call expects [batch, heads, positions, features]
@@ -1116,12 +1060,7 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
 # operations are lowered in place. `rule` is not lowered: a gradient is traced,
 # as anvl operations, before the program is lowered.
 prim_custom_gradient[["stablehlo"]] <- function(..., fn, rule, n_captures) {
-  env <- HloEnv()
-  ins <- list(...)
-  for (k in seq_along(fn$inputs)) {
-    env_add(env, fn$inputs[[k]], ins[[k]])
-  }
-  lower_graph_calls(fn, env, stablehlo::.current_func())
+  inline_stablehlo_graph(fn, list(...), stablehlo::.current_func())
 }
 
 prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {

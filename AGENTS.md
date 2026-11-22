@@ -127,6 +127,8 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
+- **`decomposition`** -- An internal composition of primitives with the same operands, static parameters, and output types. A composition takes no captured arrays and uses no side effects. StableHLO lowering expands it when a specialized rule is absent or returns `NULL`. Reverse-mode autodiff expands it when the primitive has no explicit pullback rule.
+
 
 ## Side Effects
 

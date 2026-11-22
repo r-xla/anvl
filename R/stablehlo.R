@@ -313,7 +313,12 @@ lower_graph_calls <- function(graph, env, func) {
         list(output_types = lapply(call$outputs, function(o) at2vt(o$aval)))
       )
     }
-    fvals_out <- rlang::exec(rule, !!!c(inputs, params))
+    fvals_out <- if (!is.null(rule)) rlang::exec(rule, !!!c(inputs, params))
+    # A target-specific rule can return NULL to use the portable composition.
+    if (is.null(fvals_out)) {
+      graph <- trace_primitive_decomposition(call)
+      fvals_out <- inline_stablehlo_graph(graph, inputs, func)
+    }
     if (length(call$outputs) != length(fvals_out)) {
       cli_abort("Expected {length(call$outputs)} outputs, but got {length(fvals_out)}")
     }
@@ -330,6 +335,14 @@ lower_graph_calls <- function(graph, env, func) {
     # an output is a literal only when the function returns one directly
     if (is_graph_literal(x)) literal_to_fval(x) else gnode_to_fval(x)
   })
+}
+
+inline_stablehlo_graph <- function(graph, inputs, func) {
+  env <- HloEnv()
+  for (i in seq_along(graph$inputs)) {
+    env_add(env, graph$inputs[[i]], inputs[[i]])
+  }
+  lower_graph_calls(graph, env, func)
 }
 
 #' @title Current Lowering Target Platform
