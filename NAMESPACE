@@ -813,3 +813,4 @@ importFrom(xlamisc,
   naxes,
   shape
 )
+useDynLib(anvl, .registration = TRUE, .fixes = "C_")

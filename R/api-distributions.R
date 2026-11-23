@@ -1939,6 +1939,9 @@ dpois_log_raw <- function(x, lambda) {
 # scaling keeps them in range without rounding from the scaling itself.
 #
 # Inputs must not carry gradients: `nv_while()` has no pullback rule.
+#
+# Note: see also `prim_poisson_series()` for C++ SIMD custom call version
+#       suitable for CPUs
 poisson_series <- function(k, lambda, upper, is_f32) {
   tol <- if (is_f32) 2^-24 else 2^-53
   # Tuned on the CPU backend for lambda from 1 to 150 (a trip costs about as
@@ -2140,20 +2143,19 @@ ppois_raw <- function(k, lambda, lower_tail, log_p, is_f32, grad = FALSE) {
 
   log_density <- dpois_log_raw(k, lambda)
 
-  # The asymptotic expansion is computed only if some element needs it (see
-  # `skip_unless()`). The series is not gated the same way, though it costs
-  # about a third of the time of a batch that is all asymptotic (large lambda
-  # with counts near it): its result then has to cross a loop boundary, which
-  # on the CPU backend cost up to ~18% (f64) on batches that need only the
-  # series (lambda below ~200, the common case for count data) at 1e7
-  # elements, ~3-5% at 1e6.
+  # The series and the asymptotic expansion are each computed only if some
+  # element needs them (see `skip_unless()`). On the CPU the series is a custom
+  # call (`prim_poisson_series()`), whose result is materialised anyway, so
+  # gating costs nothing extra for that case.
   # FIXME: Gate both with nv_if() once https://github.com/openxla/xla/issues/52376
-  # is fixed, then re-measure whether gating the series still costs time.
+  # is fixed.
   series_branch <- function() {
     # Elements outside both series are given k = 0, whose lower series has no
     # terms for any finite lambda > 0 (see `poisson_series()`), so lambda is
     # passed as it is and a scalar lambda stays scalar
-    sum <- poisson_series(nv_ifelse(use_series, k, 0), lambda, upper, is_f32)
+    sum <- skip_unless(nv_any(use_series), nv_fill_like(k, 0), function() {
+      prim_poisson_series(nv_ifelse(use_series, k, 0), lambda)
+    })
     # The upper series starts at lambda / (k + 1), which underflows for a tiny
     # enough lambda (below the smallest normal times k + 1), leaving the sum zero
     # and its log -Inf. The later terms are then below eps of it, so the series

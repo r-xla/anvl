@@ -3,8 +3,8 @@
 ^\.Renviron$
 ^compile_commands\.json$
 ^\.cache$
+^\.clang-format$
 ^stablehlo.*$
-^src/Makevars$
 ^\.github$
 ^LICENSE\.md$
 ^.ccache.*

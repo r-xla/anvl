@@ -1403,6 +1403,113 @@ test_that("prim_clamp", {
   )
 })
 
+describe("prim_poisson_series", {
+  # A reference that sums the series term by term in double precision. Where
+  # lambda <= k this is lambda / (k + 1) + lambda^2 / ((k + 1)(k + 2)) + ...,
+  # and elsewhere it is k / lambda + k (k - 1) / lambda^2 + ..., which has k
+  # terms.
+  ref_series <- function(k, lambda) {
+    mapply(
+      function(k, lambda) {
+        s <- 0
+        t <- 1
+        j <- 0
+        repeat {
+          r <- if (lambda <= k) lambda / (k + j + 1) else max(k - j, 0) / lambda
+          t <- t * r
+          if (t <= s * 2^-60) {
+            break
+          }
+          s <- s + t
+          j <- j + 1
+        }
+        s
+      },
+      k,
+      lambda
+    )
+  }
+  # Counts above and below their means, all in the regions where `ppois_raw()`
+  # uses the series.
+  k <- c(0, 0, 1, 3, 5, 10, 40, 100, 150, 1000, 1, 4, 10, 30, 90, 900)
+  lambda <- c(0.5, 7, 1, 2.5, 0.1, 9, 33, 100, 120, 900, 3, 20, 40, 60, 130, 1200)
+  # Runs the primitive with or without the CPU kernel. We make a fresh jit()
+  # each time, because the option is only read when a function is compiled.
+  series <- function(k, lambda, kernel = TRUE) {
+    withr::local_options(anvl.cpu_kernels = kernel)
+    jit(\(k, lambda) prim_poisson_series(k, lambda))(k, lambda)
+  }
+
+  it("sums the upper series where lambda <= k and the lower one elsewhere", {
+    for (dt in c("f32", "f64")) {
+      out <- as.vector(series(nv_array(k, dtype = dt), nv_array(lambda, dtype = dt)))
+      # The reference uses the inputs after rounding them to the data type.
+      kk <- as.vector(nv_array(k, dtype = dt))
+      ll <- as.vector(nv_array(lambda, dtype = dt))
+      expect_equal(out, ref_series(kk, ll), tolerance = if (dt == "f32") 1e-6 else 1e-14, info = dt)
+    }
+  })
+
+  it("agrees with the plain StableHLO lowering used off the CPU", {
+    for (dt in c("f32", "f64")) {
+      x <- nv_array(k, dtype = dt)
+      y <- nv_array(lambda, dtype = dt)
+      expect_equal(
+        as.vector(series(x, y, kernel = TRUE)),
+        as.vector(series(x, y, kernel = FALSE)),
+        tolerance = if (dt == "f32") 1e-6 else 1e-14,
+        info = dt
+      )
+    }
+  })
+
+  it("broadcasts a scalar operand and keeps the shape", {
+    lam <- nv_scalar(4, dtype = "f64")
+    m <- nv_array(c(0, 1, 5, 10, 2, 3), shape = c(2L, 3L), dtype = "f64")
+    out <- series(m, lam)
+    expect_equal(shape(out), c(2L, 3L))
+    expect_equal(c(as_array(out)), ref_series(c(0, 1, 5, 10, 2, 3), 4), tolerance = 1e-14)
+    out <- series(nv_scalar(10, dtype = "f64"), nv_array(c(5, 8, 20), dtype = "f64"))
+    expect_equal(as.vector(out), ref_series(10, c(5, 8, 20)), tolerance = 1e-14)
+    expect_equal(
+      as.vector(series(nv_scalar(3, dtype = "f32"), nv_scalar(2, dtype = "f32"))),
+      ref_series(3, 2),
+      tolerance = 1e-6
+    )
+  })
+
+  it("is zero without terms, small for a tiny mean, and NaN for NaN", {
+    out <- as.vector(series(
+      nv_array(c(0, 5, NaN, 3), dtype = "f64"),
+      nv_array(c(2, 1e-310, 1, NaN), dtype = "f64")
+    ))
+    expect_identical(out[[1L]], 0)
+    # With a tiny lambda the first term underflows. Callers treat any sum below
+    # the smallest normal number as having underflowed, so that is all we check.
+    expect_true(out[[2L]] < 2^-1022)
+    expect_true(all(is.nan(out[3:4])))
+  })
+
+  it("gives an element the same result whatever its neighbours and the batch size", {
+    # Some of these elements need many more terms than others, so neighbouring
+    # lanes stop at different times. A batch this size is also split across
+    # several threads.
+    kk <- rep(k, 2000)
+    ll <- rep(lambda, 2000)
+    for (dt in c("f32", "f64")) {
+      alone <- as.vector(series(nv_array(k, dtype = dt), nv_array(lambda, dtype = dt)))
+      batch <- as.vector(series(nv_array(kk, dtype = dt), nv_array(ll, dtype = dt)))
+      expect_identical(batch, rep(alone, 2000), info = dt)
+      one <- vapply(
+        seq_along(k),
+        \(i) as.vector(series(nv_scalar(k[i], dtype = dt), nv_scalar(lambda[i], dtype = dt))),
+        numeric(1L)
+      )
+      expect_identical(one, alone, info = dt)
+    }
+  })
+})
+
 describe("the elementwise primitives", {
   it("record a scalar operand as it is and broadcast it in the lowering", {
     graph <- trace_fn(
