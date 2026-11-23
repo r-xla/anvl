@@ -49,6 +49,9 @@
 * `nv_rnorm()` is up to 6x faster on CPU for large samples, with the same
   values: an optimisation barrier stops XLA computing the random draws again
   for each of their consumers.
+* `nv_sample()` is up to 3x faster on CPU for large samples, with the same
+  values: an optimisation barrier keeps the random draws out of the gather
+  kernel, where they could not be vectorised.
 
 # anvl 0.6.0
 
