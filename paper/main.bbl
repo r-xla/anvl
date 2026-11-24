@@ -1,4 +1,4 @@
-\begin{thebibliography}{73}
+\begin{thebibliography}{75}
 \newcommand{\enquote}[1]{``#1''}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
@@ -28,6 +28,11 @@ Ansel J, Yang E, He H, Gimelshein N, Jain A, Voznesensky M, \emph{et~al.} (2024)
 {Apple Inc} (2026).
 \newblock \emph{Metal Shading Language Specification}.
 \newblock Version 4.1, \urlprefix\url{https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf}.
+
+\bibitem[{Aslett(2026)}]{ref-highway-r}
+Aslett LJM (2026).
+\newblock \emph{highway: {Highway} {C++} Headers for Portable {SIMD} with Runtime Dispatch}.
+\newblock R package version 1.4.0-1, \urlprefix\url{https://github.com/louisaslett/highway}.
 
 \bibitem[{Bezanson \emph{et~al.}(2017)Bezanson, Edelman, Karpinski, and Shah}]{ref-bezanson2017julia}
 Bezanson J, Edelman A, Karpinski S, Shah VB (2017).
@@ -349,6 +354,11 @@ Sartore L (2025).
 Talts S (2026).
 \newblock \emph{{stanli}: The {Stan} Language Interpreter}.
 \newblock R package version 0.28.0, \urlprefix\url{https://github.com/seantalts/stanli}.
+
+\bibitem[{{The Highway Project Authors}(2026)}]{ref-highway}
+{The Highway Project Authors} (2026).
+\newblock \emph{Highway: Performance-Portable, Length-Agnostic {SIMD} with Runtime Dispatch}.
+\newblock \urlprefix\url{https://github.com/google/highway}.
 
 \bibitem[{{The JAX Authors}(2024)}]{ref-autodidax}
 {The JAX Authors} (2024).

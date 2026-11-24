@@ -94,31 +94,31 @@ f <- function(x, y) x * y
 s <- nv_aval("f32", integer())
 graph <- trace_fn(f, list(x = s, y = s))
 graph
+
 grad_graph <- graph_gradient(graph, wrt = "x")
 grad_graph
+
 stablehlo(grad_graph)[[1L]]
 
 # 4.1 Tracing R code into an AnvlGraph
-f <- function(x, y, op) {
-  if (op == "add") x + y else x * y
+g <- function(x, y, op) if (op == "add") x + y else x * y
+trace_fn(g, list(x = s, y = s, op = "mul"))
+
+h <- function(x, y) nv_if(x > y, function() x, function() y)
+trace_fn(h, list(x = s, y = s))
+
+times2 <- function(x, n) {
+  for (i in seq_len(n)) x <- x * 2
+  x
 }
-s <- nv_aval("f32", integer())
-graph <- trace_fn(f, list(x = s, y = s, op = "mul"))
-graph
+trace_fn(times2, list(x = s, n = 3L))
 
-f_jit <- jit(function(x, y) {
-  cat("tracing\n")
-  x * y
+# 4.3 Lowering and compilation
+with_backend("quickr", {
+  z <- nv_array(c(1, 2, 3))
+  jit(function(z) z * 2)(z)
 })
-v <- nv_array(1:3)
-y1 <- f_jit(v, v)
-y2 <- f_jit(v, v + 1L)
 
-# 4.2 Higher-order primitives for control flow
-h <- function(x) nv_if(sum(x) > 0, function() x, function() -x)
-trace_fn(h, list(x = nv_aval("f32", 3L)))
-
-# 4.4 The OpenXLA compiler ecosystem
 library(stablehlo)
 func <- local_func("main")
 x <- hlo_input("x", "f32", shape = c(2, 2))
@@ -133,7 +133,16 @@ a <- pjrt_buffer(matrix(1:4, 2), dtype = "f32", device = dev)
 b <- pjrt_buffer(matrix(5:8, 2), dtype = "f32", device = dev)
 pjrt_execute(exec, a, b)
 
-# 4.8 An R-like array interface
+# 4.4 The lazy user interface
+f_jit <- jit(function(x, y) {
+  cat("tracing\n")
+  x * y
+})
+v <- nv_array(1:3)
+y1 <- f_jit(v, v)
+y2 <- f_jit(v, v + 1L)
+
+# 4.7 An R-like array interface
 m <- matrix(1:6, nrow = 2)
 cumsum(m)
 cumsum(nv_array(m))
@@ -144,7 +153,7 @@ x <- nv_array(matrix(1:6, 2))
 shape(x[1, ])
 shape(x[array(1), ])
 
-# 4.9 Type system
+# 4.8 Type system
 B <- matrix(c(0.1, 0.2, 0.3, 0.4), 2, 2)
 matmul <- jit(function(x, b) x %*% b)
 c(dtype(matmul(nv_array(diag(2), dtype = "f32"), B)),
