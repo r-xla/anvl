@@ -119,6 +119,8 @@
 <li>The generated XLA programs are more efficient, especially around flattening operations.</li>
 <li>
 <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code> is up to 6x faster on CPU for large samples, with the same values: an optimisation barrier stops XLA computing the random draws again for each of their consumers.</li>
+<li>
+<code><a href="../reference/nv_sample.html">nv_sample()</a></code> is up to 3x faster on CPU for large samples, with the same values: an optimisation barrier keeps the random draws out of the gather kernel, where they could not be vectorised.</li>
 </ul></div>
 </div>
     <div class="section level2">
