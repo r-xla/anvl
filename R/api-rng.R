@@ -343,6 +343,12 @@ nv_sample <- jit(
     }
 
     idx <- sample_indices(n, prod(shape))
+    # We pass the indices through a barrier so that XLA computes them in a
+    # kernel of their own, which it can then vectorise. Without the barrier, XLA
+    # fuses the random bits and the index arithmetic into the gather. Because a
+    # loop that gathers is not vectorised on CPU, that would all run as scalar
+    # code.
+    idx <- nv_optimization_barrier(idx)
     nv_reshape(nv_subset(x, idx), shape)
   },
   static = "shape"
