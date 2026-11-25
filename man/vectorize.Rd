@@ -4,25 +4,29 @@
 \alias{vectorize}
 \title{Vectorize a Function}
 \usage{
-vectorize(f, in_axes = -1L, out_axes = -1L, randomness = "different")
+vectorize(f, in_axes = NULL, out_axes = -1L, randomness = "different")
 }
 \arguments{
 \item{f}{(\code{function})\cr
 Function to vectorize.}
 
-\item{in_axes}{(\code{integer(1)} | named \code{list()})\cr
+\item{in_axes}{(\code{NULL} | \code{integer(1)} | named \code{list()})\cr
 Specify the batch axis.
-If \code{in_axes} is a single integer, it maps over every argument that is an
-array; other values, such as R numbers, are passed to every application
-as they are.
-A scalar is never mapped over, as it has no axis: every application gets it
-as it is, whether it is an R value or an array, e.g. one that an enclosing
+By default (\code{NULL}), it maps over the last axis of every argument that is
+an array, except a scalar, which has no axis: every application gets it as
+it is, whether it is an R value or an array, e.g. one that an enclosing
 \code{\link[=jit]{jit()}} made of an R value.
+If \code{in_axes} is a single integer, it maps over that axis of every argument
+that is an array.
+Either way, other values, such as R numbers, are passed to every
+application as they are.
 If it is a named list, it must be compatible with the argument tree of the function.
 The values of the tree must either be integers, indicating the batch axis (negative
 values count from the end), or \code{NULL}, indicating no batching.
 Values are applied to all leaves of the node.
-Arguments or named elements the list leaves out are not batched either.}
+Arguments or named elements the list leaves out are not batched either.
+Every array that \code{in_axes} gives an axis must have it, so a scalar can only
+be passed to every application.}
 
 \item{out_axes}{(\code{integer(1)} | \code{list()})\cr
 Along which axis to stack the outputs of \code{f}. Specified like \code{in_axes},

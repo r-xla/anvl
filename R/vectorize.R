@@ -11,19 +11,23 @@
 #'
 #' @param f (`function`)\cr
 #'   Function to vectorize.
-#' @param in_axes (`integer(1)` | named `list()`)\cr
+#' @param in_axes (`NULL` | `integer(1)` | named `list()`)\cr
 #'   Specify the batch axis.
-#'   If `in_axes` is a single integer, it maps over every argument that is an
-#'   array; other values, such as R numbers, are passed to every application
-#'   as they are.
-#'   A scalar is never mapped over, as it has no axis: every application gets it
-#'   as it is, whether it is an R value or an array, e.g. one that an enclosing
+#'   By default (`NULL`), it maps over the last axis of every argument that is
+#'   an array, except a scalar, which has no axis: every application gets it as
+#'   it is, whether it is an R value or an array, e.g. one that an enclosing
 #'   [`jit()`] made of an R value.
+#'   If `in_axes` is a single integer, it maps over that axis of every argument
+#'   that is an array.
+#'   Either way, other values, such as R numbers, are passed to every
+#'   application as they are.
 #'   If it is a named list, it must be compatible with the argument tree of the function.
 #'   The values of the tree must either be integers, indicating the batch axis (negative
 #'   values count from the end), or `NULL`, indicating no batching.
 #'   Values are applied to all leaves of the node.
 #'   Arguments or named elements the list leaves out are not batched either.
+#'   Every array that `in_axes` gives an axis must have it, so a scalar can only
+#'   be passed to every application.
 #' @param out_axes (`integer(1)` | `list()`)\cr
 #'   Along which axis to stack the outputs of `f`. Specified like `in_axes`,
 #'   but a tree follows the structure of what `f` returns. `NULL` returns an
@@ -83,7 +87,7 @@
 #' jit(vectorize(noisy))(x)
 #' # or the same noise for every column
 #' jit(vectorize(noisy, randomness = "same"))(x)
-vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "different") {
+vectorize <- function(f, in_axes = NULL, out_axes = -1L, randomness = "different") {
   assert_function(f)
   in_axes <- check_in_axes(f, in_axes)
   check_out_axes(out_axes)
@@ -96,10 +100,13 @@ vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "different"
   })
 }
 
-# `in_axes` of `vectorize()` as an axis or a list of axes named by arguments,
-# each nested to any depth (see `check_in_axes_tree()`), without the entries
-# that are `NULL`. Errors name `call`.
+# `in_axes` of `vectorize()` as `NULL`, an axis or a list of axes named by
+# arguments, each nested to any depth (see `check_in_axes_tree()`), without the
+# entries that are `NULL`. Errors name `call`.
 check_in_axes <- function(f, in_axes, call = rlang::caller_env()) {
+  if (is.null(in_axes)) {
+    return(NULL)
+  }
   if (!is.list(in_axes)) {
     if (!is.null(names(in_axes))) {
       cli_abort(
@@ -290,7 +297,13 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
   axes <- if (is.list(in_axes)) {
     expand_axes(in_axes, flat$in_tree, length(args_flat), partial = TRUE, arg = "in_axes", part = "argument", call)
   } else {
-    lapply(args_flat, function(x) if (is_graph_box(x) || is_anvl_array(x)) in_axes)
+    lapply(args_flat, function(x) {
+      if (!is_graph_box(x) && !is_anvl_array(x)) {
+        return(NULL)
+      }
+      # by default, the last axis of every array that has one
+      in_axes %||% if (length(shape(x))) -1L
+    })
   }
 
   size <- NULL
@@ -308,12 +321,6 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
     }
     aval <- to_abstract(x)
     x_shape <- shape(aval)
-    # A scalar has no axis to map over, so every slice gets it as it is,
-    # whether it is an R value or an array.
-    if (!length(x_shape)) {
-      axes[i] <- list(NULL)
-      next
-    }
     axis <- batch_axis_position(axes[[i]], length(x_shape))
     if (is.na(axis)) {
       cli_abort(
@@ -347,7 +354,7 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
     cli_abort(
       c(
         "{.fn vectorize} needs at least one argument to map over.",
-        i = "A scalar is not mapped over: every slice gets it as it is."
+        i = if (is.null(in_axes)) "By default, it maps over every array that is not a scalar."
       ),
       call = call
     )

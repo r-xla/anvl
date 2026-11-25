@@ -40,11 +40,19 @@ describe("vectorize", {
     expect_equal(as_r(jit(vectorize(nv_add))(nv_scalar(1, dtype = "f32"), y)), in_trace)
   })
 
-  it("passes a scalar in an argument it maps over to every application", {
-    affine <- function(params, y) params$w * y + params$b
+  it("passes a scalar in a list argument to every application by default", {
     params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
-    out <- jit(vectorize(affine, in_axes = list(params = -1L)))(params, nv_array(c(1, 2), dtype = "f32"))
-    expect_equal(as_r(out), as_r(x) * c(1, 2) + 10)
+    out <- jit(vectorize(function(params) params$w + params$b))(params)
+    expect_equal(as_r(out), as_r(x) + 10)
+  })
+
+  it("needs every array that in_axes gives an axis to have it, so not a scalar", {
+    y <- nv_array(c(1, 2, 3), dtype = "f32")
+    expect_error(jit(vectorize(nv_add, in_axes = -1L))(1, y), "`lhs` has shape")
+    expect_error(jit(vectorize(nv_add, in_axes = list(lhs = -1L)))(1, y), "`lhs` has shape")
+    params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
+    f <- function(params) params$w + params$b
+    expect_error(jit(vectorize(f, in_axes = list(params = -1L)))(params), "`params\\$b` has shape")
   })
 
   it("maps over each argument along its own axis", {
@@ -386,12 +394,8 @@ describe("vectorize", {
     )
   })
 
-  it("needs an argument to map over that is not a scalar", {
-    expect_error(jit(vectorize(nv_add))(1, 2), "A scalar is not mapped over")
-    expect_error(
-      jit(vectorize(nv_add, in_axes = list(lhs = -1L)))(1, nv_array(c(1, 2), dtype = "f32")),
-      "A scalar is not mapped over"
-    )
+  it("needs an argument to map over that is not a scalar by default", {
+    expect_error(jit(vectorize(nv_add))(1, 2), "every array that is not a scalar")
   })
 
   it("names the argument that cannot be mapped over", {
