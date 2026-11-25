@@ -166,9 +166,9 @@ new_primitive <- function(
   body(fn) <- mark_primitive_body(body(fn))
 
   jit_fn <- jit(fn, static = static)
+  class(jit_fn) <- c("AnvlPrimitive", class(jit_fn))
   attr(jit_fn, "definition") <- definition
   definition$fn <- jit_fn
-  class(jit_fn) <- c("AnvlPrimitive", class(jit_fn))
 
   if (register) {
     assign(name, jit_fn, envir = primitive_env)
