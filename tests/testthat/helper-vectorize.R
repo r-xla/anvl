@@ -128,10 +128,16 @@ vectorize_tested <- new.env()
 # An array as plain R data of its shape: a vector for a scalar, an array
 # otherwise. A 64-bit integer or `ui32` array comes back as `integer64`, which
 # `as.vector()` would turn into garbage, so it is read as doubles, which hold its
-# values exactly up to 2^53.
+# values exactly up to 2^53. A `ui64` array, such as random bits, spans the whole
+# range instead, so it is read as strings of the `integer64` its values wrap to,
+# which keep them apart exactly.
 as_r <- function(x) {
-  a <- as_array(x)
-  v <- if (inherits(a, "integer64")) as.double(a) else as.vector(a)
+  v <- if (dtype(x) == "ui64") {
+    as.character(as_array(x, check = FALSE))
+  } else {
+    a <- as_array(x)
+    if (inherits(a, "integer64")) as.double(a) else as.vector(a)
+  }
   s <- shape(x)
   if (length(s)) array(v, dim = s) else v
 }
