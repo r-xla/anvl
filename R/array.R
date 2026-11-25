@@ -80,6 +80,13 @@
 #'   default column-major order.
 #'   Only allowed when `data` is an R object — passing an existing
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
+#' @param check (`NULL` | `character(1)` | `FALSE`)\cr
+#'   How to report a missing value that the data type keeps as an ordinary
+#'   number (see *Missing values*): `"warn"` warns and creates the array, `"err"`
+#'   aborts, and `FALSE` skips the scan for it. For the `"pjrt"` backend the
+#'   default (`NULL`) is the option `pjrt.upload_check`, and `"warn"` when it is
+#'   not set; backends that keep R's `NA` ignore `check`. A missing value the
+#'   data type cannot hold is an error whatever this is set to.
 #'
 #' @section Missing values:
 #' XLA, the compiler that is used by the `"pjrt"` (the default) backend
@@ -88,10 +95,16 @@
 #' presence of such values.
 #' `NA`s are always rejected, except when:
 #' 1. Creating `float` arrays where we convert the `NA` to `NaN`.
-#' 2. When creating an `i32` from an R `integer()`.
-#'    There, we throw a warning, but the resulting `AnvlArray` gets the bit
-#'    representation of `NA_integer_`, which is `INT_MIN` (`-2147483648`).
-#'    Disallowing this would prevent round-trips between the data types.
+#' 2. When creating an `i32` from an R `integer()` (or `logical()`).
+#'    The resulting `AnvlArray` gets the bit representation of `NA_integer_`,
+#'    which is `INT_MIN` (`-2147483648`), an ordinary number on the device.
+#'    This is reported at the level of `check`: a warning by default.
+#'    Disallowing it would prevent round-trips between the data types.
+#'
+#' The same holds for an R value that enters a [`jit()`]-compiled function,
+#' as an argument or written in its body: it is built at the data type it takes
+#' as `nv_array()` builds it. An argument has no `check` of its own, so it is
+#' reported at the level of the option `pjrt.upload_check`.
 #'
 #' See `r roxy_article("gotchas")` for more information.
 #'
@@ -150,9 +163,13 @@ nv_array <- function(
   shape = "auto",
   dtype = NULL,
   device = NULL,
-  byrow = FALSE
+  byrow = FALSE,
+  check = NULL
 ) {
   assert_flag(byrow)
+  if (!is.null(check)) {
+    assert_check_level(check)
+  }
   if (is_anvl_array(data)) {
     if (byrow) {
       cli_abort(c(
@@ -205,7 +222,7 @@ nv_array <- function(
   # Data that names no dtype materializes at the defaults -- inside a trace, the
   # ones the trace is pinned to.
   dtype <- resolve_default_dtype(data, dtype)
-  globals$backends[[creation_backend(device)]]$new_data(data, dtype, shape, device, row_major = byrow)
+  globals$backends[[creation_backend(device)]]$new_data(data, dtype, shape, device, row_major = byrow, check = check)
 }
 
 # The backend an array created on `device` belongs to. Inside a trace, an array
@@ -451,12 +468,13 @@ unwrap_if_array <- function(x) {
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar <- function(data, dtype = NULL, device = NULL) {
+nv_scalar <- function(data, dtype = NULL, device = NULL, check = NULL) {
   nv_array(
     data,
     dtype = dtype,
     device = device,
-    shape = integer()
+    shape = integer(),
+    check = check
   )
 }
 
@@ -487,7 +505,8 @@ nv_matrix <- function(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  byrow = FALSE
+  byrow = FALSE,
+  check = NULL
 ) {
   assert_int(nrow, lower = 0L, null.ok = TRUE)
   assert_int(ncol, lower = 0L, null.ok = TRUE)
@@ -505,7 +524,8 @@ nv_matrix <- function(
       data,
       shape = c(nrow, ncol),
       dtype = dtype,
-      device = device
+      device = device,
+      check = check
     ))
   }
   if (is.null(nrow) && is.null(ncol)) {
@@ -524,7 +544,8 @@ nv_matrix <- function(
     shape = c(nrow, ncol),
     dtype = dtype,
     device = device,
-    byrow = byrow
+    byrow = byrow,
+    check = check
   )
 }
 

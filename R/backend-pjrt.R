@@ -235,7 +235,14 @@ compile_graph_pjrt <- function(graph, donate = character(), device, xla_options 
     }
     arr <- const$aval$data
     if (backend(arr) == "plain") {
-      pjrt_buffer(as_array(arr), dtype = dtype(arr), device = device, shape = rev(shape(arr)), row_major = TRUE)
+      pjrt_buffer(
+        as_array(arr),
+        dtype = dtype(arr),
+        device = device,
+        shape = rev(shape(arr)),
+        row_major = TRUE,
+        check = arr$check
+      )
     } else if (backend(arr) != "pjrt") {
       cli_abort("Found non-PJRT constant in program")
     } else {
@@ -322,7 +329,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device, xla_options 
 #' @export
 AnvlBackendPjrt <- function() {
   backend <- AnvlBackend(
-    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+    new_data = function(data, dtype, shape, device, row_major = FALSE, check = NULL) {
       if (inherits(data, "PJRTBuffer")) {
         return(pjrt_anvl_array_of_buffer(data, dtype, shape, device))
       }
@@ -335,7 +342,7 @@ AnvlBackendPjrt <- function() {
       # reversed shape.
       row_major_rev <- if (is.raw(data)) !row_major else TRUE
       pjrt_anvl_array(
-        pjrt_buffer(data, dtype = dtype, device = device, shape = rev(shape), row_major = row_major_rev),
+        pjrt_buffer(data, dtype = dtype, device = device, shape = rev(shape), row_major = row_major_rev, check = check),
         shape = as.integer(shape)
       )
     },
