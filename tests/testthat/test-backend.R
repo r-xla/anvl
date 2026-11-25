@@ -88,11 +88,11 @@ test_that("install_anvl rejects backends that have nothing to install", {
 })
 
 describe("skip_if_no_plugin", {
-  # An empty plugin cache and none of the variables that make a plugin
-  # available otherwise. The plugin this session already loaded is unaffected.
+  # No downloaded plugin and none of the variables that make a plugin available
+  # otherwise. The plugin this session already loaded is unaffected.
   local_no_pjrt_plugin <- function(envir = parent.frame()) {
+    local_mocked_bindings(plugins_downloaded = function(platforms = NULL) FALSE, .package = "pjrt", .env = envir)
     withr::local_envvar(
-      R_USER_CACHE_DIR = withr::local_tempdir(.local_envir = envir),
       PJRT_PLUGIN_PATH_CPU = NA,
       PJRT_PLUGIN_PATH_CUDA = NA,
       PJRT_INSTALL = NA,
@@ -109,7 +109,7 @@ describe("skip_if_no_plugin", {
 
   it("does not skip when the plugin is downloaded", {
     local_no_pjrt_plugin()
-    dir.create(file.path(tools::R_user_dir("pjrt", "cache"), "cpu"), recursive = TRUE)
+    local_mocked_bindings(plugins_downloaded = function(platforms = NULL) TRUE, .package = "pjrt")
     expect_no_condition(skip_if_no_plugin("cpu"), class = "skip")
   })
 
