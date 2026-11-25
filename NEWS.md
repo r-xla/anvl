@@ -27,6 +27,9 @@
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.
+* `gradient()`, `value_and_gradient()` and `graph_gradient()` start reverse
+  mode from a literal 1, embedded in the program, rather than from a constant
+  that the program takes as an additional input.
 
 ## Bug fixes
 
