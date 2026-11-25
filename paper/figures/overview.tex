@@ -1,0 +1,69 @@
+% The three kinds of transformations in anvl: tracing (R function -> graph), graph -> graph
+% (reverse-mode AD), and graph -> executable (the "pjrt" and "quickr" backends, drawn
+% symmetrically above and below the graph). The fill colour of a node is the package that implements it. Colours follow the mlr3torch figures.
+% Shared style in style.tex.
+\documentclass[tikz]{standalone}
+\usepackage[utf8]{inputenc}
+\input{style}
+
+\tikzset{
+  pbox/.style = {draw = black!60, rounded corners = 3pt, line width = 0.5pt},
+  obj/.style = {pbox, align = center, font = \footnotesize, minimum height = 1.1cm,
+    text width = #1, inner sep = 2pt},
+  obj/.default = 2.1cm,
+  dev/.style = {pbox, fill = cpjrt, align = center, font = \scriptsize,
+    minimum height = 0.5cm, minimum width = 1.75cm, inner sep = 2pt},
+  oflow/.style = {-{Stealth[length = 2mm]}, black!60, line width = 0.7pt},
+  lab/.style = {font = \scriptsize\ttfamily, inner sep = 1pt},
+  stage/.style = {font = \footnotesize\bfseries, text = black!70},
+  leg/.style = {pbox, minimum width = 0.42cm, minimum height = 0.28cm},
+}
+
+\begin{document}
+\begin{tikzpicture}
+
+  % (1) and (2): the R function is traced into a graph, which can be transformed into a graph.
+  \node[obj = 1.75cm, fill = cr] (fn) at (0, 0) {R function\\[1pt]{\scriptsize\ttfamily f(x, y, op)}};
+  \node[obj = 1.9cm, fill = canvl, right = 1.45cm of fn] (graph) {\ttfamily AnvlGraph};
+  \draw[oflow] (fn) -- node[lab, above = 2pt] {trace\_fn()} (graph);
+  \draw[oflow] ([xshift = -0.45cm] graph.north) to[out = 110, in = 70, looseness = 3.2]
+    node[above = 1pt, font = \scriptsize, align = center, text = black!70, inner sep = 1pt] {semantic graph transformation\\(e.g., autodiff)} ([xshift = 0.45cm] graph.north);
+
+  % (3): the two backends, symmetric around the graph: "pjrt" above, "quickr" below.
+  \coordinate (fork) at ($(graph.east) + (0.3, 0)$);
+  \node[obj = 2.1cm, fill = cstablehlo, anchor = west] (hlo) at ($(fork) + (1.8, 0.95)$)
+    {StableHLO\\[1pt]{\scriptsize\ttfamily Func}};
+  \node[obj = 2.1cm, fill = cquickr, anchor = west] (qr) at ($(fork) + (1.8, -0.95)$)
+    {R function with\\[1pt]{\scriptsize\ttfamily declare()}};
+  \node[obj = 1.7cm, fill = cpjrt, right = 2.1cm of hlo] (exe) {PJRT\\[1pt]executable};
+  \node[obj = 1.7cm, fill = cquickr, right = 2.1cm of qr] (fortran) {compiled\\Fortran};
+
+  \draw[black!60, line width = 0.7pt] (graph.east) -- (fork);
+  \draw[oflow] (fork) |- node[lab, above = 2pt, pos = 0.67] {stablehlo()} (hlo.west);
+  \draw[oflow] (fork) |- node[lab, below = 2pt, pos = 0.67] {quickr rules} (qr.west);
+  \draw[oflow] (hlo) -- node[lab, above = 2pt] {pjrt\_compile()} (exe);
+  \draw[oflow] (qr) -- node[lab, below = 2pt] {quickr()} (fortran);
+
+  \node[dev, right = 0.55cm of exe, yshift = 0.3cm] (cpu) {CPU};
+  \node[dev, right = 0.55cm of exe, yshift = -0.3cm] (gpu) {NVIDIA GPU};
+  \draw[oflow] (exe.east) -- (cpu.west);
+  \draw[oflow] (exe.east) -- (gpu.west);
+  \node[dev, fill = cquickr, right = 0.55cm of fortran] (cpu2) {CPU};
+  \draw[oflow] (fortran) -- (cpu2);
+
+  \coordinate (stages) at ($(hlo.north) + (0, 0.7)$);
+  \node[stage, anchor = south] (s2) at (stages -| graph) {(2) graph $\rightarrow$ graph};
+  \node[stage, anchor = south] at (stages -| fn) {(1) R $\rightarrow$ graph};
+  \node[stage, anchor = south] at ($(stages -| hlo)!0.5!(stages -| exe)$) {(3) graph $\rightarrow$ executable};
+
+  \node[leg, fill = canvl, anchor = west] (l1) at ($(fn.west |- fortran.south) + (0, -0.45)$) {};
+  \node[font = \footnotesize, right = 1pt of l1] (t1) {\textit{anvl}};
+  \node[leg, fill = cstablehlo, right = 6pt of t1] (l2) {};
+  \node[font = \footnotesize, right = 1pt of l2] (t2) {\textit{stablehlo}};
+  \node[leg, fill = cpjrt, right = 6pt of t2] (l3) {};
+  \node[font = \footnotesize, right = 1pt of l3] (t3) {\textit{pjrt}};
+  \node[leg, fill = cquickr, right = 6pt of t3] (l4) {};
+  \node[font = \footnotesize, right = 1pt of l4] {\textit{quickr}};
+
+\end{tikzpicture}
+\end{document}

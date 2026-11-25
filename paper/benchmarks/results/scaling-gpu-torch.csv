@@ -1,0 +1,4 @@
+"framework","label","experiment","n","K","p","L","n_draws","first","rep","time","acceptance"
+"torch","gpu","scaling",1e+05,1,100,10,200,11.087,1,7.347,0.974874371859296
+"torch","gpu","scaling",1e+05,1,100,10,200,11.087,2,6.949,0.974874371859296
+"torch","gpu","scaling",1e+05,1,100,10,200,11.087,3,6.95,0.974874371859296

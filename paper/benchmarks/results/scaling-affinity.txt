@@ -1,0 +1,1 @@
+pid 3398020's current affinity list: 8,32-46,56,80-94

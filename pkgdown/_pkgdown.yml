@@ -54,6 +54,8 @@ navbar:
       menu:
       - text: Metropolis Hastings
         href: articles/metropolis-hastings.html
+      - text: Hamiltonian Monte Carlo
+        href: articles/hmc.html
       - text: Gaussian Process
         href: articles/gaussian-process.html
     developers:

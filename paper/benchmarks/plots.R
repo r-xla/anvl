@@ -1,0 +1,104 @@
+# Figures and tables of the runtime evaluation, used by figures/runtime.R.
+library(ggplot2)
+
+read_results <- function(files) {
+  files <- files[basename(files) %in% c("cpu.csv", "cpu-torch.csv", "cpu-tmb.csv", "gpu.csv", "gpu-stan.csv", "gpu-torch.csv")]
+  res <- do.call(rbind, lapply(files, utils::read.csv))
+  res$config <- factor(
+    paste(res$framework, res$label),
+    levels = c("anvl cpu1", "anvl cpu16", "anvl cpu16prog", "anvl gpu", "stan cpu1", "stan cpu16",
+      "stan opencl", "torch cpu1", "torch cpu16", "torch gpu", "tmb cpu1", "tmb cpu16"),
+    labels = c("anvl, 1 core", "anvl, 16 cores", "anvl, 16 cores (one program)", "anvl, GPU",
+      "Stan, 1 core", "Stan, 16 cores", "Stan, GPU (OpenCL)", "torch, 1 core", "torch, 16 threads",
+      "torch, GPU", "TMB, 1 core", "TMB, 16 cores")
+  )
+  res
+}
+
+summarize_results <- function(res) {
+  stats::aggregate(time ~ config + experiment + n + K, data = res, FUN = function(t) {
+    c(median = stats::median(t), lo = min(t), hi = max(t))
+  })
+}
+
+# The font family is "" (the device's default) unless the option `paper.plot_family` names one;
+# figures/runtime.R sets it to Latin Modern, the font of the paper and of its other figures.
+bench_theme <- function() {
+  # Compact legend keys, so that the twelve configurations of the chains plot fit its height.
+  theme_bw(base_size = 9, base_family = getOption("paper.plot_family", "")) +
+    theme(legend.position = "right", legend.title = element_blank(),
+      legend.key.height = unit(9, "pt"), legend.key.spacing.y = unit(1, "pt"))
+}
+
+# anvl is teal, the color of anvl in the other figures of the paper (figures/style.tex).
+anvl_colors <- c(cpu1 = "#21908c", cpu16 = "#5ec962", gpu = "#0f4f4c")
+
+bench_colors <- c(
+  "anvl, 1 core" = anvl_colors[["cpu1"]], "anvl, 16 cores" = anvl_colors[["cpu16"]],
+  "anvl, 16 cores (one program)" = anvl_colors[["cpu16"]],
+  "anvl, GPU" = anvl_colors[["gpu"]], "Stan, GPU (OpenCL)" = "#a6761d",
+  "torch, 1 core" = "#e7298a", "torch, 16 threads" = "#f781bf", "torch, GPU" = "#666666",
+  "TMB, 1 core" = "#1f78b4", "TMB, 16 cores" = "#a6cee3",
+  "Stan, 1 core" = "#d95f02", "Stan, 16 cores" = "#e6ab02"
+)
+
+bench_linetypes <- c(
+  "anvl, 1 core" = "solid", "anvl, 16 cores" = "solid", "anvl, 16 cores (one program)" = "dashed",
+  "anvl, GPU" = "solid", "Stan, 1 core" = "solid", "Stan, 16 cores" = "solid",
+  "Stan, GPU (OpenCL)" = "solid", "torch, 1 core" = "dotted", "torch, 16 threads" = "dotted",
+  "torch, GPU" = "dotted", "TMB, 1 core" = "dotdash", "TMB, 16 cores" = "dotdash"
+)
+
+plot_bench <- function(files, exp, x) {
+  s <- summarize_results(read_results(files))
+  s <- s[s$experiment == exp, ]
+  s <- droplevels(data.frame(s[c("config", "n", "K")], as.data.frame(s$time)))
+  ggplot(s, aes(.data[[x]], median, color = config, linetype = config)) +
+    geom_line() +
+    geom_point(size = 1) +
+    scale_x_log10() +
+    scale_y_log10() +
+    scale_color_manual(values = bench_colors) +
+    scale_linetype_manual(values = bench_linetypes) +
+    labs(x = if (x == "n") "Number of observations n" else "Number of chains K",
+      y = "Time (seconds)") +
+    bench_theme()
+}
+
+plot_single <- function(files) plot_bench(files, "single", "n")
+plot_chains <- function(files) plot_bench(files, "chains", "K")
+
+overhead_table <- function(files) {
+  o <- utils::read.csv(files[basename(files) == "overhead.csv"])
+  o$time <- format(signif(o$time, 2L), scientific = FALSE, drop0trailing = TRUE)
+  names(o) <- c("Step", "Time (s)")
+  knitr::kable(o, format = "latex", booktabs = TRUE, label = "overhead",
+    caption = "One-off and per-call costs for $n = 10^4$ on 16 CPU cores, measured once. The sampler draws 1000 samples from one chain.")
+}
+
+plot_scaling <- function(files) {
+  res <- do.call(rbind, lapply(files[basename(files) %in% c("scaling.csv", "scaling-tmb.csv")], utils::read.csv))
+  res <- res[res$experiment == "scaling", ]
+  res$cores <- as.integer(sub(".*-", "", res$label))
+  res$method <- sub("-.*", "", res$label)
+  s <- stats::aggregate(time ~ method + cores, data = res, FUN = stats::median)
+  s$method <- factor(s$method, levels = c("anvl", "stan_threads", "stan", "torch", "tmb"),
+    labels = c("anvl", "Stan (reduce_sum)", "Stan", "torch", "TMB (OpenMP)"))
+  colors <- c("anvl" = anvl_colors[["cpu1"]], "Stan (reduce_sum)" = "#e6ab02", "Stan" = "#d95f02", "torch" = "#e7298a",
+    "TMB (OpenMP)" = "#1f78b4", "anvl, GPU" = anvl_colors[["gpu"]], "Stan, GPU (OpenCL)" = "#a6761d", "torch, GPU" = "#666666")
+  p <- ggplot(s, aes(cores, time, color = method)) +
+    geom_line(data = s[s$method != "Stan", ]) +
+    geom_point(size = 1.5) +
+    scale_x_continuous(trans = "log2", breaks = c(1, 2, 4, 8, 16)) +
+    scale_y_log10() +
+    labs(x = "Number of CPU cores", y = "Time (seconds)") +
+    bench_theme()
+  gpu_file <- files[basename(files) %in% c("scaling-gpu.csv", "scaling-gpu-stan.csv", "scaling-gpu-torch.csv")]
+  if (length(gpu_file)) {
+    g <- do.call(rbind, lapply(gpu_file, utils::read.csv))
+    g <- stats::aggregate(time ~ framework, data = g, FUN = stats::median)
+    g$method <- c(anvl = "anvl, GPU", stan = "Stan, GPU (OpenCL)", torch = "torch, GPU")[g$framework]
+    p <- p + geom_hline(aes(yintercept = time, color = method), data = g, linetype = "dashed")
+  }
+  p + scale_color_manual(values = colors)
+}

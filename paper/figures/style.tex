@@ -1,0 +1,54 @@
+% The style shared by the TikZ figures of the paper (overview.tex, tracing.tex, async.tex):
+% fonts, the colors of the packages, the highlight color, and the styles of boxes, headings,
+% numbered badges, and notes. benchmarks/plots.R uses the same colors and font for the plots.
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usetikzlibrary{positioning, calc, fit, backgrounds, matrix, arrows.meta}
+
+% Colors of the packages, as in the overview figure (after the mlr3torch figures).
+\definecolor{tealframe}{HTML}{21908c}
+\definecolor{lightbox}{HTML}{e4f1f1}
+\definecolor{viridis1}{HTML}{8e6698}
+\definecolor{viridis8}{HTML}{ccea84}
+\definecolor{modelgrey}{HTML}{e5e5e5}
+\colorlet{cr}{white}
+\colorlet{canvl}{lightbox}
+\colorlet{cstablehlo}{viridis1!22}
+\colorlet{cpjrt}{viridis8!45}
+\colorlet{cquickr}{modelgrey}
+
+% The highlight color: the part of a figure that shows its point.
+\colorlet{accent}{tealframe}
+
+\newcommand{\cd}[1]{\texttt{#1}}
+\newcommand{\hl}[1]{\textcolor{accent}{#1}}
+
+\tikzset{
+  % a box around a part of a figure, and its heading
+  box/.style = {rounded corners = 2pt, inner sep = 5pt},
+  plainbox/.style = {box, draw = black!25, fill = black!4},
+  framebox/.style = {box, draw = black!40},
+  accentbox/.style = {box, draw = accent!80!black, fill = accent!7},
+  head/.style = {font = \footnotesize\bfseries, text = black!70, anchor = south west,
+    inner sep = 1pt},
+  % a number that links a part of a figure to a note
+  badge/.style = {circle, fill = black!65, text = white, font = \sffamily\tiny\bfseries,
+    inner sep = 0pt, minimum size = 3.2mm, anchor = base},
+  note/.style = {font = \footnotesize, align = left, text width = 7.4cm, anchor = north west,
+    inner sep = 0pt, execute at begin node = {\thickmuskip = 5mu}},
+  % lines of code or of a printed graph, followed by columns of badges
+  lines/.style = {matrix of nodes, row sep = {3.9mm, between origins}, column sep = 2pt,
+    nodes = {anchor = base west, inner sep = 0.5pt, font = \ttfamily\scriptsize}},
+  % rows of a name and its value(s)
+  fields/.style = {matrix of nodes, row sep = {3.9mm, between origins}, column sep = 2pt,
+    nodes = {anchor = base west, inner sep = 0.5pt, font = \ttfamily\scriptsize},
+    column 1/.style = {nodes = {text = black!55}}},
+  flow/.style = {-{Stealth[length = 1.6mm]}, black!55, thin}
+}
+
+% A note: its text at #2, numbered #1 in a badge hanging to its left.
+\newcommand{\note}[3]{
+  \node[note] (#1) at #2 {#3};
+  \node[badge, font = \sffamily\scriptsize\bfseries, minimum size = 3.8mm, anchor = north east]
+    at ($(#1.north west) + (-0.15, 0.04)$) {#1};
+}
