@@ -453,7 +453,7 @@ describe("vectorize", {
     expect_error(jit(vectorize(in_while))(x), "in an `nv_while\\(\\)` loop that draws")
     expect_error(jit(vectorize(in_while))(x), "randomness = \"same\"")
     in_scan <- function(x) {
-      body <- function(carry, i) list(carry = carry + nv_runif(shape = integer()), out = carry)
+      body <- function(carry, i) list(carry = carry + nv_runif(shape = integer(), dtype = dtype(carry)), out = carry)
       x + nv_scan(body, init = nv_scalar(0, dtype = "f32"), xs = nv_array(1:2, dtype = "i32"))$carry
     }
     expect_error(jit(vectorize(in_scan))(x), "random numbers of its own in `prim_scan\\(\\)`")
@@ -481,7 +481,7 @@ describe("vectorize", {
   })
 
   it("draws in an nv_scan() body what a loop over the slices draws there", {
-    g <- function(x) x + nv_runif(shape = 2L)
+    g <- function(x) x + nv_runif(shape = 2L, dtype = dtype(x))
     f <- function(x) {
       body <- function(carry, i) list(carry = vectorize(g)(carry), out = NULL)
       nv_scan(body, init = x, xs = nv_array(1:2, dtype = "i32"))$carry
@@ -497,7 +497,7 @@ describe("vectorize", {
   })
 
   it("draws in a branch of nv_if() what a loop over the slices draws", {
-    g <- function(x) x + nv_runif(shape = 2L)
+    g <- function(x) x + nv_runif(shape = 2L, dtype = dtype(x))
     f <- function(x, p) nv_if(p, function() vectorize(g)(x), function() x)
     local_nv_seed(1L)
     out <- as_r(jit(f)(x, TRUE))
