@@ -4,7 +4,7 @@ NULL
 #' Create a Backend
 #'
 #' @description
-#' **Experimental**: this interface may change without notice.
+#' `r lifecycle::badge("experimental")`
 #'
 #' A backend defines how arrays are stored, converted to R and placed on
 #' devices, and how [`jit()`] runs a function. `AnvlBackend()` bundles the
@@ -117,7 +117,7 @@ AnvlBackend <- function(
 #' Register a Backend
 #'
 #' @description
-#' **Experimental**: this interface may change without notice.
+#' `r lifecycle::badge("experimental")`
 #'
 #' Makes a backend selectable under `name`: [`local_backend()`] and
 #' [`with_backend()`] accept the name, and so does the option `anvl.backend`.

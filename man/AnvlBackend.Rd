@@ -80,7 +80,7 @@ selected needs them.}
 (\code{AnvlBackend})
 }
 \description{
-\strong{Experimental}: this interface may change without notice.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
 A backend defines how arrays are stored, converted to R and placed on
 devices, and how \code{\link[=jit]{jit()}} runs a function. \code{AnvlBackend()} bundles the

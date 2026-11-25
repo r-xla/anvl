@@ -15,7 +15,7 @@ The rule type.}
 Invisibly. Called for its side effect.
 }
 \description{
-\strong{Experimental}: this interface may change without notice.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
 Makes \code{name} a type of rule that primitives can carry: afterwards,
 \verb{prim_<id>[[name]] <- rule} attaches a rule of that type to a primitive and

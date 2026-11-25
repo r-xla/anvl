@@ -11,6 +11,8 @@ AnvlBackendQuickr()
 With subclass \code{"AnvlBackendQuickr"}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Constructs the quickr backend, which stores array data as plain R arrays and
 compiles jitted functions to R code via the \CRANpkg{quickr} package.
 }

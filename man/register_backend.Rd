@@ -21,7 +21,7 @@ The backend. It is evaluated on first use rather than in this call.}
 Invisibly. Called for its side effect.
 }
 \description{
-\strong{Experimental}: this interface may change without notice.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
 Makes a backend selectable under \code{name}: \code{\link[=local_backend]{local_backend()}} and
 \code{\link[=with_backend]{with_backend()}} accept the name, and so does the option \code{anvl.backend}.

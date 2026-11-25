@@ -123,9 +123,13 @@ compile_quickr <- function(
 
 #' Quickr Backend
 #'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
 #' Constructs the quickr backend, which stores array data as plain R arrays and
 #' compiles jitted functions to R code via the \CRANpkg{quickr} package.
 #'
+#' @details
 #' Registered automatically under the name `"quickr"` when the package is
 #' loaded; call [`local_backend("quickr")`][local_backend()] or
 #' [`with_backend("quickr", ...)`][with_backend()] to use it. Requires the

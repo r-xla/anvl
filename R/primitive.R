@@ -44,7 +44,7 @@ is_higher_order_primitive <- function(x) {
 #' Register a Rule Type
 #'
 #' @description
-#' **Experimental**: this interface may change without notice.
+#' `r lifecycle::badge("experimental")`
 #'
 #' Makes `name` a type of rule that primitives can carry: afterwards,
 #' `prim_<id>[[name]] <- rule` attaches a rule of that type to a primitive and
