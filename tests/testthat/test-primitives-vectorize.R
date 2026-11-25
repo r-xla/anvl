@@ -376,7 +376,14 @@ describe("prim_optimization_barrier", {
   it("vectorizes the draws of nv_rnorm(), which go through it", {
     withr::local_seed(1L)
     local_nv_seed(1L)
-    autotest_vectorize(function(x) x + nv_rnorm(shape = 2L), x = rand_array(c(2L, 3L)))
+    # Box-Muller draws in pairs, so a scalar or an odd number of draws takes
+    # part of one
+    for (shape in list(integer(), 1L, 2L, 3L)) {
+      autotest_vectorize(
+        function(x) x + nv_rnorm(shape = shape),
+        x = rand_array(c(if (length(shape)) shape else 2L, 3L))
+      )
+    }
   })
 })
 
