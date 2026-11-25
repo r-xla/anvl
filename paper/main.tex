@@ -58,7 +58,7 @@
 We introduce the \proglang{R} package \pkg{anvl}, a code transformation framework for numerical array programs.
 The package allows users to just-in-time (JIT) compile and differentiate \proglang{R} functions written against its array interface and run them on both CPUs and NVIDIA GPUs.
 It thus has a unique combination of features and strives to serve as a foundation for implementing numerical algorithms, such as model fitting routines, natively in \proglang{R}.
-The primary compilation path goes through the XLA compiler of the OpenXLA project via the packages \pkg{stablehlo} and \pkg{pjrt}, but a second, experimental backend translates the R code to \proglang{Fortran} via \pkg{quickr}.
+The primary compilation path goes through the XLA compiler of the OpenXLA project via the packages \pkg{stablehlo} and \pkg{pjrt}, but a second, experimental backend translates the \proglang{R} code to \proglang{Fortran} via \pkg{quickr}.
 This is possible due to \pkg{anvl}'s modular design, which separates the array interface, semantic transformations, and execution into distinct components while allowing each of them to be extended independently.
 The package strives to provide semantics and an interface that are familiar to \proglang{R} users and focuses on numeric precision, e.g., in the type system and the implementations of the distribution functions.
 We illustrate the package's design, demonstrate its capabilities by implementing a Hamiltonian Monte Carlo sampler, and evaluate its performance against \proglang{Stan}, \pkg{TMB}, and \pkg{torch} on CPUs and GPUs.
@@ -124,33 +124,33 @@ We illustrate the package's design, demonstrate its capabilities by implementing
 
 Most statistical and machine learning methods are, at their core, sequences of operations on arrays, which \proglang{R} can execute reasonably efficiently via vectorized operations and optimized linear algebra routines.
 There are, however, various limitations to this approach.
-First, while vectorized operations are reasonably efficient, there is still a considerable interpreter overhead and rewriting the performance-critical parts in \proglang{C++} via \pkg{Rcpp} \citep{ref-rcpp} or in \proglang{Rust} via \pkg{rextendr} \citep{ref-rextendr} can yield significant speed ups.
+First, while vectorized operations are reasonably efficient, there is still a considerable interpreter overhead and rewriting the performance-critical parts in \proglang{C++} via \pkg{Rcpp} \citep{ref-rcpp} or in \proglang{Rust} via \pkg{rextendr} \citep{ref-rextendr} can yield significant speedups.
 Second, many algorithms require derivatives, and implementing them by hand is tedious.
 For example, when no gradient function is supplied via its argument \code{gr}, base \proglang{R}'s \code{optim()} approximates the gradient by finite differences for its gradient-based methods \citep{ref-r}.
 Finite differences have well-known drawbacks \citep[Section~8.1]{ref-nocedal2006numerical}.
 Automatic differentiation (AD) instead computes exact derivatives from the program itself, at a small constant multiple of its cost.
-Third, for highly parallelizable workloads, execution on graphic processing units (GPUs) can lead to orders-of-magnitude speedups.
+Third, for highly parallelizable workloads, execution on graphics processing units (GPUs) can lead to orders-of-magnitude speedups.
 
 The \proglang{R} package \pkg{anvl} addresses these limitations by offering a just-in-time (JIT) compiled array computing framework with support for composable code transformations and hardware acceleration.
 This approach has been popularized in \proglang{Python} by \pkg{JAX} \citep{ref-jax}, but has since also made its way into other frameworks such as \pkg{PyTorch} \citep{ref-pytorch} via \code{torch.func}.
-Without the ability to compile GPU programs and distribute them, e.g. via CRAN, the \proglang{R} ecosystem thus misses out on the large gains that come from modern accelerators which are driven by heavy industry investments targeted at large-scale machine learning workloads.
-This limits both the research that can be conducted in \proglang{R}, as well as the implementation of such algorithms in \proglang{R} packages.
+Without the ability to compile GPU programs and distribute them, e.g., via CRAN, the \proglang{R} ecosystem thus misses out on the large gains that come from modern accelerators, which are driven by heavy industry investments targeted at large-scale machine learning workloads.
+This limits both the research that can be conducted in \proglang{R} and the implementation of such algorithms in \proglang{R} packages.
 Potential applications in statistics and machine learning include Markov chain Monte Carlo (MCMC) methods, variational inference, hidden Markov models, spatial modeling, and deep learning.
 More generally, \pkg{anvl} can speed up expensive model fitting routines, e.g., those that evaluate a likelihood and its gradient many times.
-Packages that already build on \pkg{anvl} include the choice modelling package \pkg{apollo} \citep{ref-apollo} and the lazy raster engine \pkg{garry} \citep{ref-garry} for remote sensing.
+Packages that already build on \pkg{anvl} include the choice modeling package \pkg{apollo} \citep{ref-apollo} and the lazy raster engine \pkg{garry} \citep{ref-garry} for remote sensing.
 For \pkg{apollo}, rewriting its computations with \pkg{anvl} has led to speedups of up to a factor of 30, reducing the time to fit some models from an hour to two minutes.\footnote{As reported by the authors of \pkg{apollo}.}
 
-At its core, \pkg{anvl} exposes three types of functions: array constructors, array operations, and code transformations, which includes semantic rewrites and compilation.
-A user can implement a numeric algorithm natively in \proglang{R} against the \pkg{anvl} API and subsequently transform it, e.g. by obtaining the gradient of a function via \code{gradient(f)}.
-Such a code transformation is similar in spirit to \pkg{base} \proglang{R}'s \code{Vectorize}, but actually rewrites the underlying code, which allows for both more efficient and sophisticated transformations.
+At its core, \pkg{anvl} exposes three types of functions: array constructors, array operations, and code transformations, which include semantic rewrites and compilation.
+A user can implement a numeric algorithm natively in \proglang{R} against the \pkg{anvl} API and subsequently transform it, e.g., by obtaining the gradient of a function via \code{gradient(f)}.
+Such a code transformation is similar in spirit to \pkg{base} \proglang{R}'s \code{Vectorize()}, but actually rewrites the underlying code, which allows for both more efficient and more sophisticated transformations.
 The core idea of this code transformation framework is adopted from \pkg{JAX}.
 It consists of tracing the execution of the \proglang{R} program into an intermediate representation which can be rewritten by code transformation functions.
 Tracing involves running an \proglang{R} function with abstract inputs and recording the operations instead of actually executing them.
 For execution, the intermediate representation is translated to a target language and subsequently compiled.
 The primary compilation path builds on OpenXLA \citep{ref-openxla}, an open-source compiler ecosystem for machine learning, whose compiler XLA \citep{ref-xla} also powers \pkg{JAX} and supports a variety of hardware, although \pkg{anvl} currently only supports CPUs and NVIDIA GPUs.
 We interface it via two companion packages: \pkg{stablehlo} translates the intermediate representation of \pkg{anvl} to StableHLO \citep{ref-stablehlo}, OpenXLA's portable intermediate representation for array programs, and \pkg{pjrt} compiles and runs StableHLO programs via PJRT \citep{ref-pjrt}, OpenXLA's runtime interface.
-Through \pkg{anvl}'s backend-agnostic design that separates what gets computed from how it gets computed, we are also able to offer a second, experimental, backend that translates programs to \proglang{Fortran} via \pkg{quickr} \citep{ref-quickr}.
-One design goal of \pkg{anvl} is to focus on precision, both in the design of the type system, but also in the implementation of the API.
+Through \pkg{anvl}'s backend-agnostic design that separates what gets computed from how it gets computed, we are also able to offer a second, experimental backend that translates programs to \proglang{Fortran} via \pkg{quickr} \citep{ref-quickr}.
+One design goal of \pkg{anvl} is to focus on precision, both in the design of the type system and in the implementation of the API.
 For example, the statistical distribution functions are designed with a strong focus on numerical accuracy and are rigorously benchmarked with the results available on the anvl-bench website\footnote{\url{https://r-xla.github.io/anvl-bench/}}.
 Moreover, our goal is to offer an API that is familiar to \proglang{R} users and to keep the semantics of array operations consistent with base \proglang{R}, unless there are specific reasons to deviate.
 
@@ -159,7 +159,7 @@ Section~\ref{related-work} compares \pkg{anvl} with related software libraries i
 Section~\ref{usage} shows how to use \pkg{anvl} and applies it to implement a Hamiltonian Monte Carlo sampler.
 \Cref{design} then describes how \pkg{anvl} works, including the OpenXLA compiler ecosystem and the two packages \pkg{stablehlo} and \pkg{pjrt} that make it accessible from \proglang{R}.
 Section~\ref{extending} shows how to extend \pkg{anvl}, and Section~\ref{runtime} evaluates the runtime of the sampler.
-Section~\ref{limitations} discusses the current limitations of \pkg{anvl} and future work, and Section~\ref{discussion} summarizes the paper.
+Section~\ref{discussion} summarizes the paper and discusses the current limitations of \pkg{anvl} and future work.
 
 \section{Related work}\label{related-work}
 
@@ -171,20 +171,20 @@ For a more detailed comparison of a few selected packages, see Table~\ref{tab:co
 
 \paragraph{Extensions in compiled languages.}
 One common way to speed up \proglang{R} code is to rewrite its performance-critical parts in a compiled language, either directly against \proglang{R}'s \proglang{C} API \citep{ref-r-exts} or in \proglang{C++} via \pkg{Rcpp} \citep{ref-rcpp} or in \proglang{Rust} via \pkg{rextendr} \citep{ref-rextendr}.
-While this removes the interpreter overhead and comes with considerable speed gains, most \proglang{R} users are less familiar with lower level languages.
-Furthermore, the resulting binaries only run on CPU and GPU code has to be written as \proglang{CUDA} or \proglang{OpenCL} kernels and built with the corresponding toolkit.
+While this removes the interpreter overhead and comes with considerable speed gains, most \proglang{R} users are less familiar with lower-level languages.
+Furthermore, the resulting binaries only run on the CPU, and GPU code has to be written as \proglang{CUDA} or \proglang{OpenCL} kernels and built with the corresponding toolkit.
 In addition, the source code is compiled ahead of time (AOT) rather than just-in-time.
-The advantage of this is that there is no compilation overhead during runtime, but this also means that the user-facing modeling functions lose flexibility.
-This is because function parameters such as the kernel of a gaussian process have to be hard-coded in the precompiled source code for offering native speed.
-With a JIT compiler, function parameters can instead be specified by the user at runtime without any performance penalty beyond the initial compilation.
+The advantage of this is that there is no compilation overhead at run time, but this also means that the user-facing modeling functions lose flexibility.
+This is because function parameters such as the kernel of a Gaussian process, have to be hard-coded in the precompiled source code to offer native speed.
+With a JIT compiler, function parameters can instead be specified by the user at run time without any performance penalty beyond the initial compilation.
 
 \paragraph{GPU computing in \proglang{R}.}
 \pkg{torch} \citep{ref-rtorch} brings the \pkg{LibTorch} library that underpins \pkg{PyTorch} to \proglang{R} without a \proglang{Python} dependency and is the foundation of the deep learning ecosystem in \proglang{R}.
 Like \pkg{PyTorch}, it is designed for eager execution, in which each operation runs immediately without JIT compilation.
-There is some support for compilation via the deprecated \proglang{TorchScript}, but this is focused on deployment of neural networks and the gradient computation can, for example, not be part of the compiled program.
+There is some support for compilation via the deprecated \proglang{TorchScript}, but this is focused on deployment of neural networks and the gradient computation cannot, for example, be part of the compiled program.
 For large neural networks, where the runtime is dominated by individually expensive operations such as an attention layer, eager execution comes with good performance, although compilation still improves the runtime.
 However, for a flexible statistical modeling toolbox that is less focused on a few specific operations like attention, compilation is arguably even more important.
-\pkg{tinytorch} \citep{ref-tinytorch} is a small version of \pkg{torch} that aims to reduce \pkg{torch}'s overhead, but is less mature, only available for Linux and not on CRAN.
+\pkg{tinytorch} \citep{ref-tinytorch} is a small version of \pkg{torch} that aims to reduce \pkg{torch}'s overhead, but is less mature, only available for Linux, and not on CRAN.
 \pkg{tensorflow} \citep{ref-r-tensorflow}, \pkg{keras3} \citep{ref-keras3}, and \pkg{greta} \citep{ref-greta}, a probabilistic programming language built on \pkg{TensorFlow Probability} \citep{ref-tfp}, instead wrap \proglang{Python} libraries via \pkg{reticulate} and give access to XLA-compiled programs, and \pkg{JAX} itself can be used via \pkg{reticulate} as well.
 They inherit the maturity and large feature set of these libraries, but also the costs of the language boundary.
 For example, different \proglang{R} packages might require conflicting versions of \proglang{Python} dependencies, which goes against the CRAN philosophy, memory management can be problematic (cf.~Section~\ref{memory}), and error messages seem foreign.
@@ -195,12 +195,12 @@ None of them compiles \proglang{R} code or computes derivatives.
 
 \paragraph{Compilers and AD for \proglang{R} and domain-specific languages.}
 Compiling general \proglang{R} code is difficult, because the language is very flexible and introspective: any function, even \code{+}, can be redefined at any time, arguments are evaluated lazily, and code can inspect and modify the environments of other functions, so a compiler can make only few assumptions about the code it compiles \citep{ref-evaluating-r}.
-The byte-code \pkg{compiler} included in \proglang{R} \citep{ref-r} therefore performs only limited optimizations, and implementations that go further, such as \v{R} \citep{ref-rir} and FastR \citep{ref-fastr}, which replace the \proglang{R} interpreter, have not reached wide spread adoption.
+The byte-code \pkg{compiler} included in \proglang{R} \citep{ref-r} therefore performs only limited optimizations, and implementations that go further, such as \v{R} \citep{ref-rir} and FastR \citep{ref-fastr}, which replace the \proglang{R} interpreter, have not reached widespread adoption.
 Thus, a more promising direction that has been taken by various packages is to only compile a small subset of \proglang{R} with a focus on the core algorithmic routines.
 The \proglang{R} package \pkg{quickr} \citep{ref-quickr} compiles a typed subset of \proglang{R} to \proglang{Fortran}, and \pkg{ast2ast} \citep{ref-ast2ast} translates a subset of \proglang{R} to \proglang{C++} with AD, while \pkg{odin} \citep{ref-odin} and \pkg{rxode2} \citep{ref-rxode2} compile domain-specific languages for differential equations to \proglang{C}.
 All of them analyze the source code before running it, whereas \pkg{anvl} traces a function by running it (\cref{trace}).
 Statistical modeling languages form another group.
-\proglang{Stan} \citep{ref-stan} compiles its probabilistic programming language to \proglang{C++} with a reverse-mode AD library \citep{ref-stanmath}, is available from \proglang{R} via \pkg{rstan}, \pkg{cmdstanr} \citep{ref-cmdstanr}, and interfaces such as \pkg{brms} \citep{ref-brms}.
+\proglang{Stan} \citep{ref-stan} compiles its probabilistic programming language to \proglang{C++} with a reverse-mode AD library \citep{ref-stanmath} and is available from \proglang{R} via \pkg{rstan}, \pkg{cmdstanr} \citep{ref-cmdstanr}, and interfaces such as \pkg{brms} \citep{ref-brms}.
 On GPUs, it runs only built-in functions with \proglang{OpenCL} implementations, such as various log densities \citep{ref-stan-guide}, while user-defined functions, e.g., a custom likelihood, and the rest of the model run on the CPU.
 \pkg{stanli} \citep{ref-stanli}, a recent interpreter for \proglang{Stan}, instead turns a model into a graph of operations over precompiled \proglang{Stan} Math kernels, so that models are not compiled to \proglang{C++} and need no toolchain; it is also available from \proglang{R}.
 \pkg{nimble} \citep{ref-nimble} generates \proglang{C++} from a \proglang{BUGS}-like language \citep{ref-bugs} and from a subset of \proglang{R}, and \pkg{TMB} \citep{ref-tmb} differentiates \proglang{C++} templates.
@@ -226,7 +226,7 @@ Finally, \pkg{anvl} is backend-agnostic and extensible from \proglang{R}: a trac
 Its semantics, e.g., its implicit broadcasting of arrays of different shapes, are shared by most array libraries in \proglang{Python}.
 
 When it comes to GPU computing, especially for deep learning, \proglang{Python} also has many options, including the widely used \pkg{TensorFlow} \citep{ref-abadi2016tensorflow} and \pkg{PyTorch} \citep{ref-pytorch} libraries.
-Currently, \pkg{PyTorch} is the de-facto standard for deep learning in \proglang{Python} because of its ease of use and flexibility.
+Currently, \pkg{PyTorch} is the de facto standard for deep learning in \proglang{Python} because of its ease of use and flexibility.
 
 \pkg{JAX} \citep{ref-jax} extends the API of \pkg{NumPy} with support for accelerators, such as GPUs and TPUs, and with composable code transformations, such as automatic differentiation, vectorization, and JIT compilation.
 Unlike \pkg{PyTorch}, \pkg{JAX} is thus not a deep learning library, although it offers the computational base layer for one.
@@ -235,7 +235,7 @@ This functional style goes back to \pkg{Autograd} \citep{ref-autograd}.
 For example, \code{grad()} takes a function and returns a new function that computes its gradient; other common transformations are \code{jacfwd()} and \code{jacrev()}, which compute Jacobians in forward and reverse mode, \code{hessian()}, and \code{vmap()}, which vectorizes a function, and all of them can be composed.
 The core API has since also made its way into other array libraries: \pkg{PyTorch} offers it in its \code{torch.func} module, which originated in \pkg{functorch} \citep{ref-functorch}, and Apple's \pkg{MLX} \citep{ref-mlx} provides \code{grad()} and \code{vmap()} in the same style.
 Internally, \pkg{JAX} implements each transformation as an interpreter of its primitives.
-The composition of transformations is made possible as these interpreters can be stacked.
+The composition of transformations is made possible because these interpreters can be stacked.
 The Autodidax tutorial \citep{ref-autodidax} explains in detail how \pkg{JAX} works internally, and the minimalistic \proglang{Python} library \pkg{microjax} \citep{ref-microjax} gives a concise summary of this approach.
 \pkg{anvl} approaches this differently and instead implements every code transformation as a simple graph rewrite (cf.~\Cref{trace}).
 While this might be somewhat less efficient during the code rewrite, we argue that this allows for a simpler mental model, which is beneficial when adding new transformations.
@@ -259,7 +259,7 @@ In \pkg{anvl}, we instead only auto-broadcast scalars.
 Next, \pkg{anvl} always supports double precision, and users can configure the default data types separately at run time (cf.~\Cref{choosing-precision}).
 In \pkg{JAX}, by contrast, 64-bit data types are disabled by default, and the global flag \code{jax_enable_x64} that enables them also makes them the default.
 Generally, it is not straightforward to combine single- and double-precision computations in one program.
-This generally gives users of \pkg{anvl} more control over the precision of computations, which is especially relevant in statistics.
+\pkg{anvl}'s approach thus gives its users more control over the precision of computations, which is especially relevant in statistics.
 The focus on precision is also reflected in the design of \pkg{anvl}'s type system, which we describe in detail in \Cref{type-system}.
 Its core idea is that \pkg{anvl} keeps the precision of \proglang{R} values that enter a program without pulling single-precision computations into double precision, whereas \pkg{JAX} achieves only one of the two, depending on \code{jax_enable_x64} (cf.~\Cref{r-values}).
 Then, users can also control how inputs are promoted and combined with other data types (cf.~\Cref{promotion}).
@@ -279,7 +279,7 @@ Other languages have followed similar routes.
 In \proglang{Julia} \citep{ref-bezanson2017julia}, \pkg{Reactant.jl} \citep{ref-reactant} compiles \proglang{Julia} functions to StableHLO and runs them via XLA, \pkg{Nx} \citep{ref-nx} traces numerical definitions in \proglang{Elixir} and compiles them with XLA, and \pkg{GoMLX} \citep{ref-gomlx} does the same for \proglang{Go} via the PJRT wrapper \pkg{gopjrt} \citep{ref-gopjrt}.
 Like \proglang{R}, \proglang{Julia} stores arrays in column-major order, whereas XLA uses row-major order by default, and we studied how \pkg{Reactant.jl} bridges this difference to make \pkg{anvl} efficient.
 \pkg{GX} \citep{ref-gx} goes a step further and defines an embedded, statically typed language for array programs, in which the shapes of arrays are part of their types.
-This demonstrates that the OpenXLA ecosystem we are building on is a widely used base-layer for accelerated array programming.
+This demonstrates that the OpenXLA ecosystem we are building on is a widely used base layer for accelerated array programming.
 
 % Every cell of this table is backed by the packages' documentation; see the text for references.
 \begin{sidewaystable}
@@ -313,7 +313,7 @@ Dependencies & PJRT plugin, \proglang{CUDA} libraries & \pkg{LibTorch}, \proglan
 \section[Using anvl]{Using \pkg{anvl}}\label{usage}
 
 This section shows how to use \pkg{anvl}.
-We show how to install \pkg{anvl}, how to construct and manipulate arrays, how to compile and differentiate functions, how to generate pseudo random numbers, and how to choose the precision and device of a computation, and then apply \pkg{anvl} to implement a Hamiltonian Monte Carlo sampler (\Cref{hmc}).
+We show how to install \pkg{anvl}, how to construct and manipulate arrays, how to compile and differentiate functions, how to generate pseudo-random numbers, and how to choose the precision and device of a computation, and then apply \pkg{anvl} to implement a Hamiltonian Monte Carlo sampler (\Cref{hmc}).
 
 \subsection{Installation}\label{installation}
 
@@ -324,13 +324,13 @@ A compatible NVIDIA driver is then all that is needed to run programs on the GPU
 \subsection{Array construction and operations}\label{eager}
 
 The main data structure is the \code{AnvlArray}, which, compared to an \proglang{R} array, supports more data types, lives on a specific device, such as a CPU or a GPU, and represents scalars as arrays without axes.
-Note that we generally follow the terminology from \pkg{NumPy}, where an array has a given number of axes. For example, a matrix has two axes and a scalar no axis.
+Note that we generally follow the terminology from \pkg{NumPy}, where an array has a given number of axes. For example, a matrix has two axes and a scalar has none.
 The extent of each axis is referred to as its axis size, and their collection is referred to as an array's shape.
-We decided for this terminology, as the term dimension is rather ambiguous and used to refer to an axis, its size, as well as the number of axes.
+We chose this terminology because the term dimension is ambiguous: it is used to refer to an axis, its size, and the number of axes.
 
 Arrays are created from \proglang{R} data via \code{nv_array()} and \code{nv_scalar()}, or with dedicated functions such as \code{nv_seq()}.
-The supported data types are booleans, (un)signed integers from 8 to 64 bits and single and double precision floating point.
-Operations are available through \code{nv_*()} functions and the corresponding \proglang{R} generics, and called on arrays, they are executed immediately, which is commonly referred to as eager execution.
+The supported data types are booleans, (un)signed integers from 8 to 64 bits, and single- and double-precision floating-point numbers.
+Operations are available through \code{nv_*()} functions and the corresponding \proglang{R} generics, and, when called on arrays, they are executed immediately, which is commonly referred to as eager execution.
 Plain \proglang{R} values take the data type of the array they meet, so the literal \code{2} below becomes an \code{f32}.
 
 \begin{CodeChunk}
@@ -361,15 +361,15 @@ AnvlArray
 \end{CodeOutput}
 \end{CodeChunk}
 
-See~\Cref{rng-design} for more information about the random number generation or the ``Random numbers'' article on the package website\footnote{\url{https://r-xla.github.io/anvl/articles/random-numbers.html}}.
+See~\Cref{rng-design} or the article ``Random numbers'' on the package website\footnote{\url{https://r-xla.github.io/anvl/articles/random-numbers.html}} for more information about random number generation.
 
-Arrays have methods for about 100 \proglang{R} generics, such as arithmetic operators, \code{sum()}, \code{\%*\%}, and \code{[}, whose semantics and naming mostly follow  base \proglang{R}, including column-major semantics.
-Where a function deviates from base R, their documentation specifies the differences.
-Further functions include common linear algebra routines, distribution and random number generation (RNG) functions, and higher order primitives.
+Arrays have methods for about 100 \proglang{R} generics, such as arithmetic operators, \code{sum()}, \code{\%*\%}, and \code{[}, whose semantics and naming mostly follow base \proglang{R}, including column-major semantics.
+Where a function deviates from base \proglang{R}, its documentation specifies the differences.
+Further functions include common linear algebra routines, distribution and random number generation (RNG) functions, and higher-order primitives.
 For a full overview of the available array operations, see the package documentation\footnote{\url{https://r-xla.github.io/anvl/reference/index.html}}.
 
 Arrays are created on the CPU by default, and, e.g., \code{nv_array(x, device = "cuda")} creates them on an NVIDIA GPU (\Cref{hardware}).
-Converting a \code{AnvlArray} back to \proglang{R} is possible via \code{as_array()}.
+Converting an \code{AnvlArray} back to \proglang{R} is possible via \code{as_array()}.
 
 \begin{CodeChunk}
 \begin{CodeInput}
@@ -384,7 +384,7 @@ R> as_array(x)
 
 \subsection{Compilation}\label{ui}
 
-Instead of eagerly execution functions one by one, it is possible to combine them together into a single compiled function via \code{jit()}.
+Instead of executing functions eagerly one by one, it is possible to combine them into a single compiled function via \code{jit()}.
 The resulting executable will be more efficient than executing the functions eagerly one by one as the compiler can optimize across the individual function calls.
 
 \begin{CodeChunk}
@@ -428,7 +428,7 @@ AnvlArray
 \end{CodeOutput}
 \end{CodeChunk}
 
-\pkg{anvl} currently implements reverse-mode AD, see \Cref{ad} for more information.
+\pkg{anvl} currently implements reverse-mode AD; see \Cref{ad} for more information.
 
 \subsection{Choosing the precision and device}\label{choosing-precision}
 
@@ -458,7 +458,7 @@ Similarly, arrays are created and programs run on the CPU by default, and the de
 \subsection{Hamiltonian Monte Carlo}\label{hmc}
 
 We now put everything together and implement a Hamiltonian Monte Carlo sampler with \pkg{anvl}.
-Hamiltonian Monte Carlo (HMC) \citep{ref-neal2011mcmc} is an MCMC method that uses the gradient of the log posterior density to propose distant states that are still accepted with high probability, and thus a natural use case for \pkg{anvl}.
+Hamiltonian Monte Carlo (HMC) \citep{ref-neal2011mcmc} is an MCMC method that uses the gradient of the log posterior density to propose distant states that are still accepted with high probability, and is thus a natural use case for \pkg{anvl}.
 Dedicated software, such as \proglang{Stan} \citep{ref-stan}, provides more efficient samplers, such as the No-U-Turn sampler \citep{ref-nuts}, which also tunes the length of the trajectories.
 We picked this example here because it is simple, yet demonstrates some of the key features of \pkg{anvl}.
 
@@ -548,7 +548,8 @@ R> hmc <- function(beta, X, y, eps, L, n_draws) {
 \end{CodeInput}
 \end{CodeChunk}
 
-We apply the sampler to data with $n = 1000$ observations and $p = 2$ features, so that the draws can be shown in the plane, which we simulate with the samplers of \pkg{anvl}: a response is one if a uniform variate falls below its success probability.
+We apply the sampler to data with $n = 1000$ observations and $p = 2$ features, so that the draws can be shown in the plane.
+We simulate the data with the samplers of \pkg{anvl}: a response is one if a uniform variate falls below its success probability.
 We run four chains in double precision, the default float that we set in \Cref{choosing-precision}.
 The posterior means, computed from the second half of each chain, are similar to the maximum likelihood estimates.
 
@@ -621,8 +622,8 @@ Names such as \code{\%x1} for inputs and \code{\%1} for the outputs of statement
 
 Each statement calls a primitive, an \code{AnvlPrimitive} such as \code{prim_mul()}.
 Like the primitive functions of base \proglang{R}, such as \code{+} or \code{sum()}, primitives are the building blocks of all other functions.
-Compared to \pkg{base} \proglang{R} primitives, they carry different rules, such as \code{"pullback"} for their derivative of \code{"stablehlo"} for their lowering to StableHLO.
-In some lose analogy, the primitive can be seen as an S3 generic and the different rules as its methods under different transformations.
+Compared to \pkg{base} \proglang{R} primitives, they carry different rules, such as \code{"pullback"} for their derivative or \code{"stablehlo"} for their lowering to StableHLO.
+In loose analogy, a primitive can be seen as an S3 generic and its rules as its methods for different transformations.
 
 Second, \code{graph_gradient()} transforms this graph into one that computes the derivative with respect to $x$.
 
@@ -640,7 +641,7 @@ R> grad_graph
 \end{CodeOutput}
 \end{CodeChunk}
 
-The added statement multiplies the derivative of the output with respect to itself with $y$ and assigns the result to \code{\%2} and returns it.
+The added statement multiplies the derivative of the output with respect to itself by $y$, assigns the result to \code{\%2}, and returns it.
 This derivative is always $1$ and appears in the graph as the literal \code{1:f32}, the value $1$ as a single-precision float.
 
 Third, \code{stablehlo()} lowers the graph to a StableHLO function, which we could compile using XLA.
@@ -663,7 +664,7 @@ return %4 : tensor<f32>
 
 Each statement is translated to (one or more) StableHLO operations, and the literal to a constant; the unused product of the forward pass, \code{\%2}, is removed by the compiler.
 
-In the following sections we will now go through the above steps in more detail.
+In the following sections, we go through these steps in more detail.
 
 \begin{table}[tbp]
 \centering
@@ -790,7 +791,7 @@ For this, every primitive stores a \code{"pullback"} rule, which receives the in
 Because the pullback rules themselves call primitives, the backward pass is recorded with the same tracing machinery, and the result is again an \code{AnvlGraph}.
 
 Because such semantic transformations always first trace a graph and then rewrite it, the original program already has to be valid.
-In the future, it would be worth exploring how to relax this requirement, for instance to offer a \code{broadcast()} transformation that can be used to enable automatic \pkg{NumPy}-style broadcasting on-demand.
+In the future, it would be worth exploring how to relax this requirement, for instance to offer a \code{broadcast()} transformation that can be used to enable automatic \pkg{NumPy}-style broadcasting on demand.
 
 \subsection{Lowering and compilation}\label{lowering}
 
@@ -825,7 +826,7 @@ A framework that emits StableHLO and executes it via PJRT can run on any hardwar
 Such a plugin essentially bundles a compiler for one kind of hardware with a runtime that allocates data on the device and executes the compiled programs; plugins exist, e.g., for CPUs and NVIDIA GPUs.
 
 One compiler for StableHLO is XLA \citep{ref-xla}, which is part of the OpenXLA project itself and compiles programs for CPUs, NVIDIA GPUs, and Google TPUs.
-As it knows the semantics of every operation, it optimizes the program as a whole, before it generates machine code via LLVM \citep{ref-llvm}.
+As it knows the semantics of every operation, it optimizes the program as a whole before it generates machine code via LLVM \citep{ref-llvm}.
 Among other optimizations, it simplifies algebraic expressions, eliminates common subexpressions and unused computations, and fuses chains of operations into a single kernel, so that intermediate arrays are never written to memory.
 It also chooses the memory layout of each array, plans the memory of the whole program in advance, reusing the buffers of values that are no longer needed, and hands operations such as matrix products to optimized libraries, e.g., cuBLAS on NVIDIA GPUs.
 On GPUs, it additionally autotunes the program: during compilation, it benchmarks several implementations of, e.g., matrix products and fused kernels, and keeps the fastest.
@@ -833,7 +834,7 @@ A compiler that translates \proglang{R} code to \proglang{C++} or \proglang{Fort
 One of the limitations of XLA is that every shape in a program must be fully specified ahead of time.
 IREE \citep{ref-iree} is an alternative compiler and runtime that also accepts StableHLO.
 One of its core advantages is that it supports dynamic shapes, so the same program can be run with input arrays of different sizes.
-This does come with a runtime cost, however, as there is less information during the compilation.
+This does come with a runtime cost, however, as less information is available during compilation.
 
 The \pkg{stablehlo} package, which is written in \proglang{R}, provides an S3 representation of the language, type inference for its operations, and a builder API.
 \pkg{anvl} uses it to produce StableHLO programs, such as the one that \code{stablehlo()} created from the gradient graph at the beginning of this section.
@@ -863,7 +864,7 @@ On a machine with an NVIDIA GPU, \code{device = "cuda"} would compile and run th
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> dev = "cpu"
+R> dev <- "cpu"
 R> library(pjrt)
 R> exec <- pjrt_compile(pjrt_program(repr(func)), device = dev)
 R> a <- pjrt_buffer(matrix(1:4, 2), dtype = "f32", device = dev)
@@ -880,16 +881,16 @@ PJRTBuffer
 
 As compiling a PJRT plugin itself is rather expensive, \pkg{pjrt} downloads prebuilt plugins when they are first needed, after asking for permission.
 The \proglang{CUDA} plugin additionally requires NVIDIA libraries, which the companion package \pkg{pjrt.cuda} downloads as NVIDIA's official redistributable binaries.
-The only thing it requires on a user machine is a compatible \proglang{CUDA} driver.
+The only thing it requires on the user's machine is a compatible \proglang{CUDA} driver.
 
 \subsubsection{Lowering to StableHLO}
 
 For the \code{"pjrt"} backend, \code{stablehlo()} translates the graph into a StableHLO function by applying each primitive's \code{"stablehlo"} rule, which maps it to one or more \pkg{stablehlo} operations and converts \proglang{R}'s 1-based indices to StableHLO's 0-based ones.
 \proglang{R} literals are embedded into the program as constants, while arrays that the traced function closes over become additional inputs, which avoids copying their data into the program.
 The result is compiled via \pkg{pjrt}.
-As StableHLO programs cannot raise errors at runtime, \pkg{anvl} checks the shapes and data types of all operations during tracing.
+As StableHLO programs cannot raise errors at run time, \pkg{anvl} checks the shapes and data types of all operations during tracing.
 
-The lowering also bridges a difference in memory layout (cf.~\Cref{libraries}): \proglang{R} stores arrays in column-major order and \pkg{anvl} uses column-major semantics for its operations.
+The lowering also bridges a difference in memory layout (cf.~\Cref{libraries}): \proglang{R} stores arrays in column-major order, and \pkg{anvl} uses column-major semantics for its operations.
 While XLA does not dictate a specific memory layout, most of the XLA consumers operate on row-major arrays.
 Deviating from this would thus mean that the compilation hits less optimized code paths.
 Therefore, we instead translate the \code{AnvlGraph} to a StableHLO function that works on the transposed inputs: the column-major bytes of an array of shape $(d_1, \ldots, d_n)$ are the row-major bytes of an array of shape $(d_n, \ldots, d_1)$, so the \code{PJRTBuffer} backing an \code{AnvlArray} of shape $(d_1, \ldots, d_n)$ has the reversed shape $(d_n, \ldots, d_1)$ and holds the transposed array, which only requires copying the array's bytes between \proglang{R} and the device as they are.
@@ -958,7 +959,7 @@ As XLA's kernels expect batch axes to be major, \pkg{anvl}'s batch axes come las
 The user-facing functions \code{jit()}, \code{gradient()}, and \code{value_and_gradient()} (\Cref{ui,differentiation}) are function factories: they return a function that applies the steps of the previous subsections just in time, when it is called.
 Only then are the types of the inputs known, which tracing needs (\Cref{trace}) but an \proglang{R} function does not declare, so the returned function takes them from its arguments.
 \pkg{quickr}, in contrast, requires the types to be declared in the body of the function via \code{declare()}, so that it can compile the function ahead of time, when \code{quickr()} is called.
-In pseudo-code, \code{jit()} is defined as follows:
+In pseudocode, \code{jit()} is defined as follows:
 
 \begin{Code}
 jit <- function(f, static = character()) {
@@ -978,7 +979,7 @@ A jitted function thus holds a cache of executables.
 When it is called, it determines a key from its inputs: the type, i.e., the data type and shape, of each array and the value of each static argument.
 If the cache holds no executable for this key, the function is traced, lowered, and compiled, and the executable is stored; otherwise, the cached executable runs directly.
 The key also includes the device on which the program runs: by default, \code{jit()} infers it from the arrays that the function receives, falling back to the default device (\Cref{choosing-precision}), and with its argument \code{device}, e.g., \code{jit(f, device = "cuda")}, it moves all arrays to the given device.
-Arguments that are not arrays must therefore be declared as \code{static}, e.g., \code{jit(g, static = "op")} for the function \code{g} of \Cref{trace}, so that the function is traced and compiled anew for every new value of \code{op}.
+Arguments that are not arrays must therefore be declared as \code{static}, e.g., \code{jit(g, static = "op")} for the function \code{g} of \Cref{trace}, so that the function is traced and compiled new for every new value of \code{op}.
 Below, the side effect shows that the second call, with inputs of the same types, does not trace the function again.
 
 \begin{CodeChunk}
@@ -1011,33 +1012,33 @@ A program always runs on a single device: \pkg{anvl} does not yet distribute a p
 We plan to add data parallelism across multiple devices in the future.
 
 Furthermore, execution is asynchronous and does not block \proglang{R}.
-I.e., calling a compiled program only schedules the computation and immediately returns a, not yet ready, \code{AnvlArray} object.
+That is, calling a compiled program only schedules the computation and immediately returns an \code{AnvlArray} that is not yet ready.
 In \proglang{R} terms, the returned values are promises.
-Only when the value is actually needed, e.g. when printing it, is the computation awaited.
-This allows to overlap device computation with the single-threaded \code{R} interpreter.
+Only when the value is actually needed, e.g., when printing it, is the computation awaited.
+This allows device computation to overlap with the single-threaded \proglang{R} interpreter.
 While this is most important for GPU execution, it also benefits CPU execution by allowing \proglang{R} to schedule multiple programs concurrently on XLA's thread pool.
 
 \subsection{Memory management}\label{memory}
 
 The mark-and-sweep \proglang{R} garbage collector poses a problem for \proglang{R} packages that create many objects that manage their own resources, usually via external pointers.
-This is, because \proglang{R} is, by default, not aware of the memory they are using and thus do not influence when the garbage collector (GC) runs.
-However, only when the GC runs are the finalizers of external pointers run and their memory reclaimed.
-If not handled carefully, this can, in the worst case, lead to situations where \proglang{R} runs out of memory and still does not call the GC which would free the memory held by external pointers.
-Other packages such as \pkg{torch} also have this problem and work around it by manually triggering the GC according to some heuristic rule\footnote{\url{https://torch.mlverse.org/docs/articles/memory-management}}.
+This is because \proglang{R} is, by default, not aware of the memory that these objects use, so it does not influence when the garbage collector (GC) runs.
+However, only when the GC runs are the finalizers of external pointers called and their memory reclaimed.
+If not handled carefully, this can, in the worst case, lead to situations where \proglang{R} runs out of memory and still does not run the GC, which would free the memory held by external pointers.
+Other packages, such as \pkg{torch}, also have this problem and work around it by manually triggering the GC according to some heuristic rule\footnote{\url{https://torch.mlverse.org/docs/articles/memory-management}}.
 This is less of a problem for GCs that work via reference counting and immediately free non-cyclic resources when they go out of scope.
-In \pkg{anvl} we are able to solve this by allocating the \code{PJRTBuffer}s directly on \code{raw} vectors managed by \proglang{R}, so that the garbage collector is aware of their memory usage.
-Unfortunately, this strategy is not viable on GPU, where we instead manually call the \proglang{R} garbage collector when an allocation fails.
-Furthermore, this memory management problem is much less prevalent for \pkg{anvl} than for packages that execute every operation eagerly (such as \pkg{torch}), because all intermediate results in a jitted function do not become \proglang{R} objects.
+In \pkg{anvl}, we are able to solve this by allocating the \code{PJRTBuffer}s directly on \code{raw} vectors managed by \proglang{R}, so that the garbage collector is aware of their memory usage.
+Unfortunately, this strategy is not viable on GPUs, where we instead manually call the \proglang{R} garbage collector when an allocation fails.
+Furthermore, this memory management problem is much less prevalent for \pkg{anvl} than for packages that execute every operation eagerly (such as \pkg{torch}), because the intermediate results in a jitted function do not become \proglang{R} objects.
 
-\subsection[An R-like array interface with some differences]{An \proglang{R}-like array interface}\label{rapi}
+\subsection[An R-like array interface]{An \proglang{R}-like array interface}\label{rapi}
 
-Array libraries such as \pkg{torch} or \pkg{tensorflow} for the most part mirror their corresponding \proglang{Python} libraries, e.g. w.r.t. the function names or row-major semantics.
+Array libraries such as \pkg{torch} or \pkg{tensorflow} for the most part mirror their corresponding \proglang{Python} libraries, e.g., with respect to function names or row-major semantics.
 With \pkg{anvl}, we instead aim to offer a package that feels natural to \proglang{R} users, adhering to \proglang{R}'s conventions.
 This includes 1-based indexing everywhere and column-major semantics.
 Moreover, the array interface tries to follow \proglang{R}'s conventions unless there are specific reasons not to.
 This also includes implementing available generics, naming functions according to their \proglang{R} counterparts, and following \proglang{R}'s argument order and default values.
 We try to document any deviations in the function-level manual pages and global differences on the package website.
-While non-trivial \code{R} code cannot be compiled with \pkg{anvl} without modifications, we hope that the design reduces the mental overhead when switching between \pkg{base} \proglang{R} and \pkg{anvl}.
+While non-trivial \proglang{R} code cannot be compiled with \pkg{anvl} without modifications, we hope that the design reduces the mental overhead when switching between \pkg{base} \proglang{R} and \pkg{anvl}.
 
 Below, we show that \pkg{anvl} preserves \proglang{R}'s column-major semantics for array operations like \code{cumsum()}:
 
@@ -1064,14 +1065,14 @@ R> torch::as_array(torch::torch_cumsum(t, dim = 1))
 \end{CodeOutput}
 \end{CodeChunk}
 
-We also deviated from some of \proglang{R}'s conventions in order to provide a more consistent array interface.
+We also deviate from some of \proglang{R}'s conventions in order to provide a more consistent array interface.
 One important aspect is that \pkg{anvl} only broadcasts scalars, i.e., arrays with zero axes.
 Base \proglang{R} has no broadcasting between arrays, but recycles vectors over the column-major elements of an array.
 Broadcasting only scalars also deviates from \pkg{NumPy}, which broadcasts arrays of any shape against each other: its rules align shapes from the last axis and silently turn, e.g., the sum of arrays of shape $(n)$ and $(n, 1)$ into an $n \times n$ matrix.
 We avoid this automatic broadcasting, as it is a rather complex operation that we think should be opt-in: general broadcasting is requested explicitly via \code{nv_broadcast_arrays()}, which aligns shapes from the first axis, the column-major counterpart of \pkg{NumPy}'s rule.
 
 Another difference in \pkg{anvl} is the distinction between scalars and length-1 vectors.
-\proglang{R} notoriously has no scalars, but this comes with the cost of having shape-discontinuouties in array operations such as subsetting (i.e., the \code{drop} argument in \code{[}) or needing a special function \code{[[} for accessing list elements.
+\proglang{R} notoriously has no scalars, but this comes at the cost of shape discontinuities in array operations such as subsetting (i.e., the \code{drop} argument in \code{[}) or needing a special function \code{[[} for accessing list elements.
 Below, \code{m[, 1]} drops the second axis in \proglang{R} unless \code{drop = FALSE} is given, while \pkg{anvl} drops it for the scalar index \code{1} and keeps it for the array index \code{array(1)}:
 
 \begin{CodeChunk}
@@ -1111,25 +1112,25 @@ AnvlArray
 \end{CodeChunk}
 
 As wrapping such indices in \code{array()} is somewhat verbose, \pkg{anvl} provides the helper \code{arr()}, which creates an \proglang{R} array with one axis from its arguments.
-The consistent semantics only work because \pkg{anvl} does not auto-convert \proglang{R} vectors of length other than one so it is possible to distinguish ``scalars'' from arrays with a single axis (i.e., vectors).
+The consistent semantics only work because \pkg{anvl} does not auto-convert \proglang{R} vectors of length other than one, so it is possible to distinguish ``scalars'' from arrays with a single axis (i.e., vectors).
 Therefore, \code{x[, c(1L, 2L)]} would fail in \pkg{anvl}.
-For subsetting there is one exception to this rule and slicing via \code{a:b} is possible through non-standard evaluation.
+For subsetting, there is one exception to this rule: slicing via \code{a:b} is possible through non-standard evaluation.
 For more information about how and which \proglang{R} values are auto-converted to \code{AnvlArray}s, see \Cref{r-values}.
 Also note that static function inputs can be vectors of length greater than one.
 The addition of scalars to the type system is also supported empirically: in an analysis of a large corpus of \proglang{R} packages, \citet{ref-turcotte2020types} found that a third of all function arguments are scalars, and their proposed type language for \proglang{R} therefore distinguishes scalars from vectors.
 
 Further deviations from base \proglang{R} follow from static shapes and from functional purity (\Cref{eager,ui}).
-For example, a logical mask that is computed inside a jitted function cannot select elements, as in \code{x[x > 0]}, because the shape of the result would depend on the data, but masking, e.g., \code{sum(nv_ifelse(x > 0, x, 0))}, gives the same result (Section~\ref{limitations}).
+For example, a logical mask that is computed inside a jitted function cannot select elements, as in \code{x[x > 0]}, because the shape of the result would depend on the data, but masking, e.g., \code{sum(nv_ifelse(x > 0, x, 0))}, gives the same result (Section~\ref{discussion}).
 The article ``Static Shape Restriction'' on the package website\footnote{\url{https://r-xla.github.io/anvl/articles/static_shapes.html}} describes how to work around this restriction for common operations.
 
-\subsection{Precision, the type system and automatic conversion}\label{type-system}
+\subsection{Precision, the type system, and automatic conversion}\label{type-system}
 
 One important concern in statistical computing is numerical accuracy.
-This concerns the numerical algorithms (e.g., for the distribution functions), the precision (single vs double), and the type system and promotion rules.
-Our goal is to implement numerically delicate routines with a high focus on precision, allow to easily switch between single and double precision via \code{anvl.default_dtypes}, and design our type system and promotion rules accordingly.
-Despite this, the default floating point type in \pkg{anvl} is \code{f32} as \pkg{anvl} is designed with accelerators such as GPUs in mind and these can run considerable faster on \code{f32} than on \code{f64}.
-This is because large neural networks for which these modern accelerators are primarily developed for priorize speed over precision.
-Some of them, such as Metal GPUs, even do not support double precision at all.
+This concerns the numerical algorithms (e.g., for the distribution functions), the precision (single vs.\ double), and the type system and promotion rules.
+Our goal is to implement numerically delicate routines with a high focus on precision, make it easy to switch between single and double precision via \code{anvl.default_dtypes}, and design our type system and promotion rules accordingly.
+Despite this, the default floating-point type in \pkg{anvl} is \code{f32}, as \pkg{anvl} is designed with accelerators such as GPUs in mind, and these can run considerably faster on \code{f32} than on \code{f64}.
+This is because these accelerators are primarily developed for large neural networks, which prioritize speed over precision.
+Some of them, such as Metal GPUs, do not support double precision at all.
 \pkg{anvl} thus has to strike a balance: it must not convert values to \code{f64} too eagerly, while still preserving the precision that the user intends.
 
 \subsubsection{Type promotion}\label{type-promotion}
@@ -1215,7 +1216,7 @@ With this approach, \code{nv_add(nv_scalar(1, dtype = "f64"), pi)} would lose pr
 Furthermore, always converting \proglang{R} doubles to \code{f64} would sneak in double precision without the user ever requesting this, which can considerably slow down programs on GPUs.
 
 In addition to the data type, the type of an \code{AnvlArray} also consists of a shape, and the previous section already demonstrated that handling this correctly is important for ensuring semantics without shape discontinuities.
-For the shape, \pkg{anvl} has to bridge that \proglang{R}'s arrays cannot have zero axes: a number is a vector of length one, \code{array(1, dim = integer(0))} is an error, and a vector, which has no \code{dim}, is a different object from an array with one axis.
+For the shape, \pkg{anvl} has to bridge the fact that \proglang{R}'s arrays cannot have zero axes: a number is a vector of length one, \code{array(1, dim = integer(0))} is an error, and a vector, which has no \code{dim}, is a different object from an array with one axis.
 \pkg{anvl} therefore treats a vector of length one as a scalar, whose shape is \code{integer()}, whereas an \proglang{R} array keeps its \code{dim} as its shape, even if it holds a single element:
 
 \begin{CodeChunk}
@@ -1243,9 +1244,9 @@ The article ``Gotchas'' on the package website\footnote{\url{https://r-xla.githu
 
 While promoting inputs to the common data type is natural for many functions, some computations might want to retain the precision of a specific argument instead.
 One such example in \pkg{anvl} is \code{nv_dnorm()}, which prioritizes the precision of the argument \code{x} and throws an error when, e.g., the argument \code{mean} has a data type that cannot be held by \code{x}.
-This works, because in \pkg{anvl}, the promotion rules (including the treatment of \proglang{R} values) are not hard-coded into the package, but can be simply expressed as function calls.
+This works because, in \pkg{anvl}, the promotion rules (including the treatment of \proglang{R} values) are not hard-coded into the package but can simply be expressed as function calls.
 In general, a JIT-compiled function should canonicalize its inputs via a call to \code{as_anvl_arrays()} at the beginning of the function and should pass the promotion rule through the argument \code{.promote}.
-Different default promotion rules such as \code{promotion_common()} or \code{promotion_like()} exist, but it is also possible to add custom ones.
+Several predefined promotion rules, such as \code{promotion_common()} or \code{promotion_like()}, exist, but it is also possible to add custom ones.
 Below, we implement a function that runs $a \times x + y$ at the data type of \code{y}, where \code{coerce = TRUE} converts \code{x} to this data type even if it loses precision:
 
 \begin{CodeChunk}
@@ -1302,11 +1303,11 @@ Except for the PJRT runtime, \pkg{anvl} and \pkg{stablehlo} are written in \prog
 \pkg{anvl} can be extended at several levels, and the package website has articles for most of them:
 \begin{itemize}
 \item Functions: most operations can be expressed in terms of existing primitives and are best added as \code{nv_*()} functions. The article ``Extending the API''\footnote{\url{https://r-xla.github.io/anvl/articles/extending_api.html}} contains a practical guide with some recommended practices.
-\item Primitives: an operation that cannot be expressed otherwise, or that benefits from a dedicated implementation, e.g., of its derivative, becomes a primitive, which is created via \code{new_primitive()} together with a StableHLO rule, a pullback rule, and optionally a \pkg{quickr} rule. The article ``Adding a Primitive''\footnote{\url{https://r-xla.github.io/anvl/articles/extending_primitive.html}} walks through an example. Some primitives currently also miss specific rules (such as the derivative), but these rules can also be provided by the use by assining e.g. to \code{prim_<op>[["pullback"]]}.
-\item Custom calls: operations that cannot be expressed in StableHLO, or only inefficiently, can call handlers written in \proglang{C}, \proglang{C++}, or CUDA, against XLA's foreign function interface. This can be advantageous for functions for which optimized routines exist, e.g. in LAPACK, BLAS, or CuBLAS or for for very low-level algorithms.
-      This is currently not very well documented and especially the CUDA path is not very ergonomic. We aim to make this more straightforward in the future.
-      One of reasons \pkg{anvl} is so fast is through it's use of SIMD (single instruction, multiple data) instructions.
-      In order to enable this also in a portable way in custom CPU calls,we developed the \proglang{R} package \pkg{highway} \citep{ref-highway-r}, which provides Google's \proglang{C++} library \pkg{Highway} \citep{ref-highway}.
+\item Primitives: an operation that cannot be expressed otherwise, or that benefits from a dedicated implementation, e.g., of its derivative, becomes a primitive, which is created via \code{new_primitive()} together with a StableHLO rule, a pullback rule, and optionally a \pkg{quickr} rule. The article ``Adding a Primitive''\footnote{\url{https://r-xla.github.io/anvl/articles/extending_primitive.html}} walks through an example. Some primitives currently lack specific rules, such as the pullback rule, but users can provide them by assigning, e.g., to \code{prim_<op>[["pullback"]]}.
+\item Custom calls: operations that cannot be expressed in StableHLO, or only inefficiently, can call handlers written in \proglang{C}, \proglang{C++}, or \proglang{CUDA} against XLA's foreign function interface. This can be advantageous for functions for which optimized routines exist, e.g., in LAPACK, BLAS, or cuBLAS, or for very low-level algorithms.
+      This is currently not well documented, and especially the \proglang{CUDA} path is not very ergonomic. We aim to make this more straightforward in the future.
+      One of the reasons why \pkg{anvl} is fast is its use of SIMD (single instruction, multiple data) instructions.
+      To enable them in custom CPU calls in a portable way as well, we developed the \proglang{R} package \pkg{highway} \citep{ref-highway-r}, which provides Google's \proglang{C++} library \pkg{Highway} \citep{ref-highway}.
       There, a kernel is written once, compiled for several instruction sets, and the best one that the processor supports is chosen at run time.
 \item Code transformations: a code transformation is essentially a function that takes an \code{AnvlGraph}, traverses its statements, and applies a rule of the primitive of each statement (\Cref{ad}).
       The primitives themselves only hold the rules of \pkg{anvl}'s own transformations, i.e., \code{"stablehlo"}, \code{"quickr"}, and \code{"pullback"}, but a third-party package can keep its own rules, e.g., in a list indexed by the names of the primitives, and thus add new code transformations.
@@ -1317,13 +1318,13 @@ Except for the PJRT runtime, \pkg{anvl} and \pkg{stablehlo} are written in \prog
 \end{itemize}
 
 A current limitation is that CRAN packages cannot run tests that require the PJRT plugins.
-This is because these plugins are downloaded during runtime because of their long running and complex compilation.
-Moreover, different PJRT plugins are distributed for the same OS-architecture combination (e.g. with or without CUDA support), and distributing this via CRAN is not possible.
-In order to be able for us to run reverse dependency checks when updating \pkg{anvl} on CRAN and contact authors in time in case of breaking changes, package authors need to skip their PJRT-dependent tests via \code{skip_if_no_plugin()}.
-This will skip the tests only when a plugin is not downloaded.
-Because we will run our reverse dependency checks with the plugins installed, all packages adhering to this practice will thus still be notified in time.
-Even if it was possible to run the PJRT-dependent tests on CRAN, it would still not be possible to run CUDA tests, as there are no GPU resources available on CRAN machines.
-We summarize these recommendatoins in the ``Depending on \pkg{anvl}''\footnote{\url{https://r-xla.github.io/anvl/articles/depending-on-anvl.html}} article.
+This is because these plugins are downloaded at run time, as their compilation is long-running and complex.
+Moreover, different PJRT plugins are distributed for the same OS-architecture combination (e.g., with or without \proglang{CUDA} support), and distributing them via CRAN is not possible.
+So that we can run reverse dependency checks when updating \pkg{anvl} on CRAN and contact authors in time in case of breaking changes, package authors need to skip their PJRT-dependent tests via \code{skip_if_no_plugin()}.
+This skips the tests only when no plugin is installed.
+Because we will run our reverse dependency checks with the plugins installed, the authors of all packages that follow this practice will still be notified in time.
+Even if it were possible to run the PJRT-dependent tests on CRAN, it would still not be possible to run CUDA tests, as there are no GPU resources available on CRAN machines.
+We summarize these recommendations in the ``Depending on \pkg{anvl}''\footnote{\url{https://r-xla.github.io/anvl/articles/depending-on-anvl.html}} article.
 In the future, we hope to add a backend that works on CRAN machines.
 While \pkg{quickr} in principle offers this, it is still experimental and has limitations, such as a rather large compile-time overhead, that prevent it from being a full replacement for tests on CRAN.
 
@@ -1372,68 +1373,59 @@ Figure~\ref{fig:results-overhead} shows the one-off cost of compiling a program 
 For comparison, we also report the time that \proglang{Stan}, \pkg{TMB}, and the \pkg{quickr} backend take to compile the model of the first experiment (Figure~\ref{fig:results-single-scaling}, left).
 \textcolor{red}{[TODO: report the compile times of \proglang{Stan}, \pkg{TMB}, and \pkg{quickr}.]}
 
-\section{Limitations and future work}\label{limitations}
+\section{Summary and discussion}\label{discussion}
 
-While \pkg{anvl} can make it signifiantly easier to implement numerical algorithms in \proglang{R} with high performance, there are various limitations, some of which we have already discussed.
+We introduced \pkg{anvl}, which brings composable code transformations for array programs to \proglang{R}: functions written against its \proglang{R}-like array interface can be differentiated in reverse mode and compiled via OpenXLA or the experimental \pkg{quickr} backend, so that the same \proglang{R} code runs on CPUs and NVIDIA GPUs.
+The runtime evaluation showed that the HMC sampler written in \proglang{R} with \pkg{anvl} is faster than \proglang{Stan} on the CPU \textcolor{red}{[TODO: check against the updated results and summarize the compile times and the calling overhead.]}.
+While \pkg{anvl} can make it significantly easier to implement numerical algorithms in \proglang{R} with high performance, there are various limitations, some of which we have already discussed.
 
-\paragraph{The static shape restriction}
-Because XLA compiles a program for fixed shapes, \code{jit()} traces and compiles a function new for every combination of input shapes (\Cref{ui}).
-For the HMC sampler, this takes about \textcolor{red}{[TODO: update]} seconds (\Cref{runtime}), which is negligible when a function is called many times with the same shapes, but adds up when the shapes change from call to call, e.g., when the same model is fitted to many data sets of different sizes.
-Lifting this restriction requires shape polymorphism, of which there are three kinds.
+\paragraph{The static shape restriction and compilation overhead}
+Because XLA compiles a program for fixed shapes, \code{jit()} traces and compiles a function anew for every combination of input shapes (\Cref{ui}).
+For the HMC sampler, this takes about \textcolor{red}{[TODO: update]} seconds (\Cref{runtime}).
+This (re-)compilation overhead is acceptable when either a single function call takes a long time, such as an expensive model fit, or the function is called many times with the same shapes, so that the compilation overhead amortizes over time.
+However, for some applications neither applies, e.g., when the same model is fitted to many data sets of different sizes.
+It is possible to work around this restriction to some degree by padding the inputs to a few fixed sizes and masking the padded entries, as described in the articles ``Efficiency''\footnote{\url{https://r-xla.github.io/anvl/articles/efficiency.html}} and ``Static Shape Restriction''\footnote{\url{https://r-xla.github.io/anvl/articles/static_shapes.html}} on the package website.
 With axis-size polymorphism, the number of axes of an array is known when the program is compiled, but their sizes are only known at run time.
 With rank polymorphism, the number of axes is unknown as well.
 With data-dependent shapes, the output shape of an operation depends on the values of its inputs, as when selecting elements with a logical mask, e.g., \code{x[x > 0]}, or in \code{unique()}; programs currently have to avoid such operations, e.g., via masking (\Cref{rapi}), or run them outside of compiled programs.
-For most applications, axis-size polymorphism suffices, as it covers data sets of different sizes, while the number of axes usually follows from the code.
-XLA does not support it, but IREE \citep{ref-iree}, which also consumes StableHLO, and \pkg{quickr} do, so we aim to add dynamic axis sizes to the \code{AnvlGraph} and to compile programs once for all axis sizes via these backends.
-Axis-size polymorphism would also pave the way for data-dependent shapes via graph breaks, similar to TorchDynamo (\Cref{comparison-jax}): when tracing reaches an operation whose output shape depends on the data, \code{jit()} would compile the part of the function traced so far, run the operation, and compile the rest of the function as a separate program, which, thanks to dynamic axis sizes, would not have to be recompiled for every new output shape.
+Going beyond static shapes would require \pkg{anvl}'s intermediate representation and type inference rules to work on partially unknown or symbolic shapes and using a compiler that supports this.
+For the StableHLO route, the IREE compiler \citep{ref-iree} is an alternative to XLA with support for axis-size polymorphism.
+While this would still not enable data-dependent shapes, it would be possible for \pkg{anvl} to allow for data-dependent shapes via so called "graph breaks", where a single compiled cache entry in \code{jit(f)} consist of multiple compiled IREE programs and some \proglang{R} code is allowed to run inbetwee. This is e.g. how \pkg{TorchInductor}, the default compiler in \pkg{PyTorch}, works.
+While graph breaks are in principle possible even with static shapes, it would trigger a lot of recompiles that would make it impractical.
+Besides IREE, the \pkg{quickr} backend could also be extended with axis-size polymorphism.
+
+Furthermore, compile times can sometimes be long for complex functions, and even though XLA is a domain-specific compiler, its heuristics can sometimes go wrong.
+Some applications can therefore benefit from specific compiler options, which the article ``Efficiency'' also describes, or from \code{nv_optimization_barrier()}, which prevents XLA from fusing certain operations.
 
 \paragraph{Tracing.}
-Only operations that \pkg{anvl} controls can be recorded in an \code{AnvlGraph} (\Cref{trace}), so non-generic functions of base \proglang{R}, such as \code{rowSums()}, have to be replaced by \pkg{anvl} functions.
-The traced function also has to be pure, as side effects, such as printing, only happen while it is traced.
-Non-trivial \proglang{R} code therefore usually needs some modifications before it can be compiled with \pkg{anvl}.
-A frontend that analyzes the code of a function, as TorchDynamo does for \proglang{Python} and as would be possible in \proglang{R} via non-standard evaluation (\Cref{comparison-jax}), could lift these restrictions, but is considerably more effort to implement.
+While tracing allows for expressive programs with relatively little complexity for the package developer, it comes with various pitfalls and caveats that we have discussed here and document on the package website.
+One possible path to prevent user errors would thus be to harden the tracing-based translation of \proglang{R} code by preventing certain operations that lead to invalid programs.
+This would be a considerable effort and increase in complexity.
 
 \paragraph{Multiple devices.}
-Each array resides on a single device, and a program runs on the device of its inputs.
-Several devices can be used by running separate programs on them, but a single program cannot be distributed over several devices, as \pkg{JAX} does by sharding arrays.
-We plan to add data parallelism across multiple devices (\Cref{hardware}), e.g., via a transformation like \pkg{JAX}'s \code{pmap()}, which runs a function on several devices in parallel, each on its own slice of the inputs.
-This would, for example, allow running parallel MCMC chains on several GPUs or splitting the chains of a sampler over the cores of a CPU.
-While a parallel map over separate processes is already possible in \proglang{R}, e.g., via \pkg{mirai} \citep{ref-mirai}, a native transformation would work better, e.g., because it avoids synchronizing the threads of separate processes.
+While it is possible to use and work with multiple devices (such as GPUs) within a single \pkg{anvl} session, there is currently no way to run a single program across devices.
+While OpenXLA's shardy would enable this, implementing this in general would also come with considerable complexity and is primarly targetd at really large-scale machine learning, which is not our focus.
+A special case of this, namely data-parallelism (i.e., a parallel map) is, however, in-scope and we aim to offer this in the future.
 
 \paragraph{Hardware and data types.}
-Although XLA also targets further accelerators, \pkg{anvl} currently supports only CPUs and NVIDIA GPUs, and the \pkg{quickr} backend is experimental, runs only on the CPU, and supports fewer data types.
-Floating-point computations are supported in single and double precision (\Cref{eager}); half-precision types, which are common in deep learning, and complex numbers are not supported.
-
-\paragraph{Custom calls.}
-Custom calls are currently not well documented, and especially calling custom \proglang{CUDA} functions is not very ergonomic, which we aim to make easier (\Cref{extending}).
+Although XLA also targets further accelerators, \pkg{anvl} currently supports only CPUs and NVIDIA GPUs.
+Adding more hardware support, including support for Metal, which would be possible via IREE as well, is a potential future direction.
+\pkg{anvl} currently also does not support complex numbers and does not support half-precision floating point values and other modern data types common for running large neural networks.
 
 \paragraph{Coverage of the API.}
 Expanding the API is an ongoing effort.
-One current priority are the distribution functions, of which we want to add more and improve both their speed and their precision (\Cref{rng-design}).
+One current priority is the distribution functions, of which we want to add more and improve both their speed and their precision (\Cref{rng-design}).
+But there are many other algorithms, such as optimization routines, that are not yet available and need to be implemented to make \pkg{anvl} more broadly useful.
 
-\paragraph{Testing on CRAN.}
-Packages that build on \pkg{anvl} cannot run tests that require a PJRT plugin on CRAN, as the plugins are downloaded at run time, and CRAN's machines have no GPUs (\Cref{extending}).
-In the future, we hope to add a backend that works on CRAN's machines.
-The \pkg{quickr} backend could in principle serve this purpose, but it is still experimental and has a large compile-time overhead.
-A backend that only serves testing, however, could essentially consist of a set of precompiled kernels, one per primitive, and some \proglang{R} logic that runs the higher-order primitives behind \code{nv_if()}, \code{nv_while()}, and \code{nv_scan()}, whose bodies are sub-graphs (\Cref{trace}).
-Such a backend would be slow, but easy to install and use for testing.
-
-\section{Summary}\label{discussion}
-
-We introduced \pkg{anvl}, which brings composable code transformations for array programs to \proglang{R}.
-\pkg{anvl} traces \proglang{R} functions into an \code{AnvlGraph}, which can be differentiated in reverse mode and compiled via OpenXLA, using the companion packages \pkg{stablehlo} and \pkg{pjrt}, or via the experimental \pkg{quickr} backend, so that the same \proglang{R} code runs on CPUs and NVIDIA GPUs.
-Its array interface follows \proglang{R}'s conventions, such as 1-based indexing and column-major semantics, and deviates from them only for good reasons.
-Its type system keeps the precision of \proglang{R} values that enter a program without pulling single-precision computations into double precision, and its random number generation follows \proglang{R}'s approach of a global state that is updated automatically.
-As primitives, their rules, transformations, and backends are \proglang{R} objects, \pkg{anvl} can be extended from \proglang{R}, while custom calls give access to routines written in \proglang{C}, \proglang{C++}, or \proglang{CUDA}.
-The runtime evaluation showed that the HMC sampler written in \proglang{R} with \pkg{anvl} is faster than \proglang{Stan} on the CPU \textcolor{red}{[TODO: check against the updated results and summarize the compile times and the calling overhead.]}.
-Beyond the core, we hope that \pkg{anvl} will serve as a foundation for more packages that implement statistical and machine learning algorithms, such as samplers and variational inference, as it already does for \pkg{apollo} and \pkg{garry}.
+\vspace{2\bigskipamount}
+Despite these limitations, \pkg{anvl} already serves as the computational backbone of packages such as \pkg{apollo} and \pkg{garry}, and we hope that it will become a modeling toolbox that can enable ans simplify both research and practical applications in \proglang{R}
 
 \section*{Acknowledgments}
 
-Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under the National Research Data Infrastructure - NFDI 29/2 - project number 460135501.
+Sebastian Fischer is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under the National Research Data Infrastructure -- NFDI 29/2 -- project number 460135501.
 We thank Hugh Graham, Troy Hernandez, and Nikolai German for their contributions to \pkg{anvl}.
 We thank Jan Pfeifer, the author of the \proglang{Go} libraries \pkg{GoMLX} \citep{ref-gomlx} and \pkg{gopjrt} \citep{ref-gopjrt}, which informed the design of \pkg{pjrt}, and Thomas Degris for valuable insights in conversations.
-We also thank Doug Kelkhoff, who, through discussions on \proglang{R}\footnote{\url{https://github.com/dgkf/R}}, also provided valuable insights on the design and implementation of \proglang{R}.
+We also thank Doug Kelkhoff, who, through discussions on \proglang{R}\footnote{\url{https://github.com/dgkf/R}}, provided valuable insights on the design and implementation of \proglang{R}.
 The computations were run using resources provided by the Leibniz Supercomputing Centre (LRZ).
 
 \bibliography{references}
@@ -1471,7 +1463,7 @@ Package & Double \code{NA} & Integer \code{NA} & \code{NA\_integer\_ + 1L} & Log
 \end{table}
 
 For doubles, most packages return \code{NA} unchanged, as the NaN payload happens to survive the computation, while \pkg{greta} and \proglang{Stan} refuse missing values.
-For integers, only \pkg{ast2ast} treats \code{NA_integer_} as missing in arithmetic; in the other packages, including \pkg{anvl}, it is an ordinary integer inside the program, and \code{NA_integer_ + 1L} silently yields $-2^{31} + 1$, of which \pkg{anvl} only warns when the value returns to \proglang{R}.
+For integers, only \pkg{ast2ast} treats \code{NA_integer_} as missing in arithmetic; in the other packages, including \pkg{anvl}, it is an ordinary integer inside the program, and \code{NA_integer_ + 1L} silently yields $-2^{31} + 1$, about which \pkg{anvl} only warns when the value returns to \proglang{R}.
 A logical \code{NA}, finally, silently becomes \code{TRUE} or 0 in most packages, whereas \pkg{anvl} refuses it.
 
 \section{Details of the runtime evaluation}\label{appendix-runtime}

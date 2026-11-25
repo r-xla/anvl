@@ -1,4 +1,4 @@
-\begin{thebibliography}{73}
+\begin{thebibliography}{72}
 \newcommand{\enquote}[1]{``#1''}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
@@ -125,12 +125,6 @@ Fl{\"u}ckiger O, Chari G, Yee MH, Je{\v{c}}men J, Hain J, Vitek J (2020).
 Gabry J, \v{C}e\v{s}novar R, Johnson A, Bronder S (2025).
 \newblock \emph{cmdstanr: {R} Interface to 'CmdStan'}.
 \newblock R package version 0.9.0, \urlprefix\url{https://mc-stan.org/cmdstanr/}.
-
-\bibitem[{Gao(2025)}]{ref-mirai}
-Gao C (2025).
-\newblock \emph{{mirai}: Minimalist Async Evaluation Framework for R}.
-\newblock \doi{10.32614/CRAN.package.mirai}.
-\newblock \urlprefix\url{https://CRAN.R-project.org/package=mirai}.
 
 \bibitem[{Golding(2019)}]{ref-greta}
 Golding N (2019).
