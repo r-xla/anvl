@@ -328,6 +328,18 @@ describe("vectorize", {
     expect_equal(out, apply_cols(jit(f), x), tolerance = 1e-6)
   })
 
+  it("draws in a vectorize() that a gradient goes through what a loop over the slices draws", {
+    noise <- function(x) nv_runif(shape = 2L, dtype = dtype(x))
+    # the gradient of the sum of x times the noise is the noise
+    f <- function(x) sum(vectorize(function(x) x * noise(x))(x))
+    local_nv_seed(1L)
+    out <- as_r(jit(gradient(f))(x)[[1L]])
+    after <- state_words()
+    local_nv_seed(1L)
+    expect_equal(out, apply_cols(jit(noise), x), tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
   it("passes a random state among the arguments to every slice, which draws from it as a loop does", {
     f <- function(x, rng) with_nv_rng_state(rng, x + nv_runif(shape = 2L))
     rng <- nv_rng_state(1L)
@@ -493,6 +505,22 @@ describe("vectorize", {
     g_jit <- jit(g)
     once <- apply_cols(g_jit, x)
     expect_equal(out, apply_cols(g_jit, nv_array(once, dtype = "f32")), tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
+  it("draws in an nv_while() body what a loop over the slices draws there", {
+    g <- function(x) x + nv_runif(shape = 2L, dtype = dtype(x))
+    twice <- function(step) {
+      function(x) nv_while(list(i = 0L, x = x), function(i, x) i < 2L, function(i, x) list(i = i + 1L, x = step(x)))$x
+    }
+    local_nv_seed(1L)
+    out <- as_r(jit(twice(vectorize(g)))(x))
+    after <- state_words()
+    # The body draws from the random state nv_while() forks for it, so the loop
+    # over the slices runs in the body too.
+    local_nv_seed(1L)
+    by_slice <- function(x) do.call(nv_cbind, lapply(seq_len(3L), function(j) g(x[, j])))
+    expect_equal(out, as_r(jit(twice(by_slice))(x)), tolerance = 1e-6)
     expect_identical(state_words(), after)
   })
 

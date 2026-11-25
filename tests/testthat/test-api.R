@@ -2758,12 +2758,24 @@ describe("nv_lu", {
   })
 })
 
-describe("nv_qr, nv_svd and nv_eigh", {
-  it("decompose a batch of matrices, whose batch axes trail them", {
+describe("nv_qr", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
     x <- nv_array(rnorm(24L), shape = c(4L, 2L, 3L), dtype = "f64")
     expect_shape(nv_qr(x)$Q, c(4L, 2L, 3L))
+  })
+})
+
+describe("nv_svd", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(24L), shape = c(4L, 2L, 3L), dtype = "f64")
     expect_shape(nv_svd(x)$vt, c(2L, 2L, 3L))
-    expect_shape(nv_eigh(x[1:2, , ])$values, c(2L, 3L))
+  })
+})
+
+describe("nv_eigh", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(12L), shape = c(2L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_eigh(x)$values, c(2L, 3L))
   })
 })
 

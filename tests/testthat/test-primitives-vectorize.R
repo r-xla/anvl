@@ -4,6 +4,10 @@
 # "elementwise", "reduction" or "cumulative" gets the rule of its tag, so one
 # primitive of each tag is checked, the element-wise one also with a scalar
 # operand.
+#
+# A rule that does more than append the batch axis is also checked on operands
+# of more axes, which give `autotest_vectorize()` more batch axes to draw from
+# and so check the rule's axis bookkeeping.
 
 describe("the rule of the element-wise primitives", {
   it("vectorizes", {
@@ -20,6 +24,16 @@ describe("the rule of the element-wise primitives", {
       max = rand_array(3L, sample = \(n) stats::runif(n, 0, 1))
     )
   })
+
+  it("maps over the test of prim_ifelse() without its branches", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      prim_ifelse,
+      test = rand_array(c(2L, 3L), dtype = "bool", sample = \(n) stats::runif(n) < 0.5),
+      yes = rand_array(c(2L, 3L)),
+      no = rand_array(c(2L, 3L))
+    )
+  })
 })
 
 describe("prim_bitcast_convert", {
@@ -31,6 +45,7 @@ describe("prim_bitcast_convert", {
   it("vectorizes to a narrower data type", {
     withr::local_seed(1L)
     autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = rand_array(c(2L, 3L)))
+    autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = rand_array(c(2L, 4L, 3L)))
     autotest_vectorize(function(x) prim_bitcast_convert(x, "i16"), x = rand_array(3L))
   })
 
@@ -49,12 +64,24 @@ describe("the rule of the reductions", {
     autotest_vectorize(function(x) prim_sum(x, axes = 2L, drop = TRUE), x = rand_array(c(2L, 4L, 3L)))
     autotest_vectorize(function(x) prim_sum(x, axes = 1:2, drop = FALSE), x = rand_array(c(2L, 4L, 3L)))
   })
+
+  it("vectorizes a reduction to the index of an extreme", {
+    withr::local_seed(1L)
+    for (drop in c(TRUE, FALSE)) {
+      autotest_vectorize(function(x) prim_which_min(x, axis = 2L, drop = drop), x = rand_array(c(2L, 4L, 3L)))
+    }
+  })
 })
 
 describe("the rule of the cumulative primitives", {
   it("vectorizes", {
     withr::local_seed(1L)
     autotest_vectorize(function(x) prim_cumsum(x, axis = 2L), x = rand_array(c(2L, 4L, 3L)))
+  })
+
+  it("vectorizes a primitive with two outputs", {
+    withr::local_seed(1L)
+    autotest_vectorize(function(x) prim_cummax(x, axis = 2L), x = rand_array(c(2L, 4L, 3L)))
   })
 })
 
@@ -87,6 +114,14 @@ describe("prim_broadcast_in_axes", {
       x = rand_array(c(2L, 3L))
     )
   })
+
+  it("vectorizes an operand of more axes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x) prim_broadcast_in_axes(x, shape = c(5L, 2L, 4L), broadcast_axes = c(2L, 3L)),
+      x = rand_array(c(2L, 4L, 3L))
+    )
+  })
 })
 
 describe("prim_concatenate", {
@@ -96,6 +131,15 @@ describe("prim_concatenate", {
       function(x, y) prim_concatenate(x, y, axis = 1L),
       x = rand_array(c(2L, 2L, 3L)),
       y = rand_array(c(1L, 2L, 3L))
+    )
+  })
+
+  it("vectorizes along an axis other than the first", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, y) prim_concatenate(x, y, axis = 2L),
+      x = rand_array(c(2L, 4L, 3L)),
+      y = rand_array(c(2L, 1L, 3L))
     )
   })
 })
@@ -244,6 +288,15 @@ describe("prim_sort", {
       y = rand_array(c(2L, 4L, 3L))
     )
   })
+
+  it("vectorizes along the first axis", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, y) prim_sort(list(x, y), axis = 1L),
+      x = rand_array(c(2L, 4L, 3L)),
+      y = rand_array(c(2L, 4L, 3L))
+    )
+  })
 })
 
 describe("prim_top_k", {
@@ -275,20 +328,8 @@ describe("prim_dot_general", {
       rhs = rand_array(c(2L, 5L, 6L, 3L))
     )
   })
-})
 
-describe("prim_print", {
-  it("vectorizes", {
-    withr::local_seed(1L)
-    capture.output(autotest_vectorize(prim_print, x = rand_array(c(2L, 3L))))
-  })
-})
-
-# Operands of more axes give `autotest_vectorize()` more batch axes to draw
-# from, and check the axis bookkeeping of the rules that do more than shift an
-# axis.
-describe("vectorize rules on operands of more axes", {
-  it("vectorizes prim_dot_general", {
+  it("vectorizes products of operands of more axes", {
     withr::local_seed(1L)
     dot_general <- function(contracting, batching) {
       function(lhs, rhs) prim_dot_general(lhs, rhs, contracting_axes = contracting, batching_axes = batching)
@@ -302,26 +343,12 @@ describe("vectorize rules on operands of more axes", {
       rhs = rand_array(c(6L, 2L, 4L, 3L, 3L))
     )
   })
+})
 
-  it("vectorizes the reshaping primitives", {
+describe("prim_print", {
+  it("vectorizes", {
     withr::local_seed(1L)
-    x <- rand_array(c(2L, 4L, 3L))
-    autotest_vectorize(
-      function(x) prim_broadcast_in_axes(x, shape = c(5L, 2L, 4L), broadcast_axes = c(2L, 3L)),
-      x = x
-    )
-    autotest_vectorize(
-      function(x, y) prim_concatenate(x, y, axis = 2L),
-      x = x,
-      y = rand_array(c(2L, 1L, 3L))
-    )
-  })
-
-  it("vectorizes prim_sort and prim_bitcast_convert", {
-    withr::local_seed(1L)
-    x <- rand_array(c(2L, 4L, 3L))
-    autotest_vectorize(function(x, y) prim_sort(list(x, y), axis = 1L), x = x, y = rand_array(c(2L, 4L, 3L)))
-    autotest_vectorize(function(x) prim_bitcast_convert(x, "ui8"), x = x)
+    capture.output(autotest_vectorize(prim_print, x = rand_array(c(2L, 3L))))
   })
 })
 
