@@ -38,30 +38,26 @@ describe("vectorize", {
     expect_equal(in_trace, array(c(2, 3, 4), dim = 3L))
     expect_equal(as_r(jit(vectorize(nv_add))(1, y)), in_trace)
     expect_equal(as_r(jit(vectorize(nv_add))(nv_scalar(1, dtype = "f32"), y)), in_trace)
+    expect_equal(as_r(jit(vectorize(nv_add, in_axes = 1L))(nv_scalar(1, dtype = "f32"), y)), in_trace)
   })
 
-  it("passes a scalar in a list argument to every application by default", {
+  it("passes a scalar in a list argument to every application", {
     params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
     out <- jit(vectorize(function(params) params$w + params$b))(params)
     expect_equal(as_r(out), as_r(x) + 10)
   })
 
-  it("passes R values to every application unless in_axes names them, also those passed to jit()", {
-    r <- array(c(1, 2), dim = 2L)
+  it("maps over an R array as over an AnvlArray, whether it is in the trace or passed to jit()", {
+    r <- array(c(1, 2, 3), dim = 3L)
     f <- function(r, x) r + x
     in_trace <- as_r(jit(function(x) vectorize(f)(r, x))(x))
-    expect_equal(in_trace, as_r(x) + c(1, 2))
+    expect_equal(in_trace, sweep(as_r(x), 2L, c(1, 2, 3), `+`))
     expect_equal(as_r(jit(vectorize(f))(r, x)), in_trace)
-    expect_equal(as_r(jit(vectorize(f, in_axes = -1L))(r, x)), in_trace)
-    expect_equal(as_r(jit(vectorize(nv_add, in_axes = -1L))(1, x)), as_r(x) + 1)
-    r3 <- array(c(1, 2, 3), dim = 3L)
-    out <- jit(vectorize(f, in_axes = list(r = -1L, x = -1L)))(r3, x)
-    expect_equal(as_r(out), sweep(as_r(x), 2L, c(1, 2, 3), `+`))
+    expect_equal(as_r(jit(vectorize(f))(nv_array(r, dtype = "f32"), x)), in_trace)
   })
 
-  it("needs every argument that in_axes gives an axis to have it, so not a scalar", {
+  it("needs every argument that a list in in_axes gives an axis to have it, so not a scalar", {
     y <- nv_array(c(1, 2, 3), dtype = "f32")
-    expect_error(jit(vectorize(nv_add, in_axes = -1L))(nv_scalar(1, dtype = "f32"), y), "`lhs` has shape")
     expect_error(jit(vectorize(nv_add, in_axes = list(lhs = -1L)))(1, y), "`lhs` has shape")
     params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
     f <- function(params) params$w + params$b
@@ -231,12 +227,10 @@ describe("vectorize", {
     expect_equal(as_r(out), array(colSums(as_r(x)^2), dim = 3L))
   })
 
-  it("maps over R data that in_axes names", {
+  it("maps over R data", {
     f <- function(x) sum(x)
-    m <- matrix(c(1, 2, 3, 4), nrow = 2L)
-    out <- jit(vectorize(f, in_axes = list(x = -1L)))(m)
+    out <- jit(vectorize(f))(matrix(c(1, 2, 3, 4), nrow = 2L))
     expect_equal(as_r(out), array(c(3, 7), dim = 2L))
-    expect_error(jit(vectorize(f))(m), "only if a list in `in_axes` names it")
   })
 
   it("composes with gradient() into per-instance gradients", {
@@ -409,8 +403,8 @@ describe("vectorize", {
     )
   })
 
-  it("needs an argument to map over that is not a scalar by default", {
-    expect_error(jit(vectorize(nv_add))(1, 2), "every array that is not a scalar")
+  it("needs an argument to map over that is not a scalar", {
+    expect_error(jit(vectorize(nv_add))(1, 2), "A scalar is not mapped over")
   })
 
   it("names the argument that cannot be mapped over", {
@@ -467,7 +461,7 @@ describe("vectorize", {
   it("keeps the device of an array f closes over", {
     local_unset_default_device()
     cst <- nv_array(c(10, 20), dtype = "f32", device = "cpu:1")
-    out <- jit(vectorize(function(x) x + cst, in_axes = list(x = -1L)))(as_r(x))
+    out <- jit(vectorize(function(x) x + cst))(as_r(x))
     expect_equal(device(out), nv_device("cpu:1"))
   })
 

@@ -11,21 +11,19 @@
 #'
 #' @param f (`function`)\cr
 #'   Function to vectorize.
-#' @param in_axes (`NULL` | `integer(1)` | named `list()`)\cr
+#' @param in_axes (`integer(1)` | named `list()`)\cr
 #'   Specify the batch axis.
-#'   By default (`NULL`), it maps over the last axis of every argument that is
-#'   an array, except a scalar, which has no axis.
 #'   If `in_axes` is a single integer, it maps over that axis of every argument
-#'   that is an array.
-#'   Either way, every application gets the other arguments as they are, such as
-#'   R values, also those that an enclosing [`jit()`] was passed.
+#'   that is an array with at least one axis, an R array as well as an
+#'   [`AnvlArray`]. Every application gets the other arguments as they are,
+#'   such as a scalar, which has no axis to map over.
 #'   If it is a named list, it must be compatible with the argument tree of the function.
 #'   The values of the tree must either be integers, indicating the batch axis (negative
 #'   values count from the end), or `NULL`, indicating no batching.
 #'   Values are applied to all leaves of the node.
 #'   Arguments or named elements the list leaves out are not batched either.
-#'   Every argument that `in_axes` gives an axis must have it, so a scalar can
-#'   only be passed to every application.
+#'   Every argument that the list gives an axis must have it, so it cannot give
+#'   one to a scalar.
 #' @param out_axes (`integer(1)` | `list()`)\cr
 #'   Along which axis to stack the outputs of `f`. Specified like `in_axes`,
 #'   but a tree follows the structure of what `f` returns. `NULL` returns an
@@ -85,7 +83,7 @@
 #' jit(vectorize(noisy))(x)
 #' # or the same noise for every column
 #' jit(vectorize(noisy, randomness = "same"))(x)
-vectorize <- function(f, in_axes = NULL, out_axes = -1L, randomness = "different") {
+vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "different") {
   assert_function(f)
   in_axes <- check_in_axes(f, in_axes)
   check_out_axes(out_axes)
@@ -98,13 +96,10 @@ vectorize <- function(f, in_axes = NULL, out_axes = -1L, randomness = "different
   })
 }
 
-# `in_axes` of `vectorize()` as `NULL`, an axis or a list of axes named by
-# arguments, each nested to any depth (see `check_in_axes_tree()`), without the
-# entries that are `NULL`. Errors name `call`.
+# `in_axes` of `vectorize()` as an axis or a list of axes named by arguments,
+# each nested to any depth (see `check_in_axes_tree()`), without the entries
+# that are `NULL`. Errors name `call`.
 check_in_axes <- function(f, in_axes, call = rlang::caller_env()) {
-  if (is.null(in_axes)) {
-    return(NULL)
-  }
   if (!is.list(in_axes)) {
     if (!is.null(names(in_axes))) {
       cli_abort(
@@ -295,15 +290,9 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
   axes <- if (is.list(in_axes)) {
     expand_axes(in_axes, flat$in_tree, length(args_flat), partial = TRUE, arg = "in_axes", part = "argument", call)
   } else {
-    lapply(args_flat, function(x) {
-      # an R value, also one that an enclosing jit() was passed, is mapped over
-      # only if a list names it
-      if (is_rdata_box(x) || !(is_graph_box(x) || is_anvl_array(x))) {
-        return(NULL)
-      }
-      # by default, the last axis of every array that has one
-      in_axes %||% if (length(shape(x))) -1L
-    })
+    # every array that has an axis, an R array as well as an AnvlArray, also
+    # when it was passed to an enclosing jit()
+    lapply(args_flat, function(x) if (is_arrayish(x) && length(shape(to_abstract(x)))) in_axes)
   }
 
   size <- NULL
@@ -354,8 +343,7 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
     cli_abort(
       c(
         "{.fn vectorize} needs at least one argument to map over.",
-        i = if (is.null(in_axes)) "By default, it maps over every array that is not a scalar.",
-        i = if (!is.list(in_axes)) "It maps over an R value only if a list in {.arg in_axes} names it."
+        i = if (!is.list(in_axes)) "A scalar is not mapped over: every application gets it as it is."
       ),
       call = call
     )
