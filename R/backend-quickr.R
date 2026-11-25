@@ -13,7 +13,7 @@ NULL
 #' @export
 quickr_device <- function(x = "cpu") {
   assert_choice(x, c("cpu"))
-  structure(list(device = x), class = "QuickrDevice")
+  structure(list(device = x), class = c("QuickrDevice", "AnvlDevice"))
 }
 
 #' @export

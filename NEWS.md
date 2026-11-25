@@ -27,6 +27,9 @@
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.
+* Experimental: `AnvlBackend()`, `register_backend()` and the new
+  `register_rule_type()` let a package add a backend, with its own rules for
+  the primitives.
 
 ## Bug fixes
 
