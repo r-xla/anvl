@@ -146,6 +146,76 @@ describe("prim_dynamic_slice", {
   })
 })
 
+describe("prim_gather", {
+  # integer indices into an axis of size `n`, with a trailing batch axis
+  rand_indices <- function(shape, n) {
+    rand_array(shape, dtype = "i32", sample = function(k) sample.int(n, k, replace = TRUE))
+  }
+
+  it("vectorizes gathering rows of a matrix", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, i) {
+        prim_gather(
+          x,
+          i,
+          slice_sizes = c(1L, 3L),
+          offset_axes = 2L,
+          collapsed_slice_axes = 1L,
+          x_batching_axes = integer(),
+          start_indices_batching_axes = integer(),
+          start_index_map = 1L,
+          index_vector_axis = 2L
+        )
+      },
+      x = rand_array(c(5L, 3L, 4L)),
+      i = rand_indices(c(6L, 1L, 4L), 5L)
+    )
+  })
+
+  it("vectorizes a gather whose index vector axis is implicit", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, i) {
+        prim_gather(
+          x,
+          i,
+          slice_sizes = 2L,
+          offset_axes = 2L,
+          collapsed_slice_axes = integer(),
+          x_batching_axes = integer(),
+          start_indices_batching_axes = integer(),
+          start_index_map = 1L,
+          index_vector_axis = 2L
+        )
+      },
+      x = rand_array(c(5L, 3L)),
+      i = rand_indices(c(4L, 3L), 4L)
+    )
+  })
+
+  it("vectorizes a gather with batching axes of its own", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, i) {
+        prim_gather(
+          x,
+          i,
+          slice_sizes = c(1L, 1L, 3L),
+          offset_axes = 3L,
+          collapsed_slice_axes = 2L,
+          x_batching_axes = 1L,
+          start_indices_batching_axes = 1L,
+          start_index_map = 2L,
+          index_vector_axis = 3L
+        )
+      },
+      x = rand_array(c(2L, 5L, 3L, 4L)),
+      i = rand_indices(c(2L, 6L, 4L), 5L)
+    )
+  })
+})
+
 describe("prim_dynamic_update_slice", {
   it("vectorizes", {
     withr::local_seed(1L)
@@ -263,6 +333,89 @@ describe("prim_sample_bits", {
     for (dtype in c("ui8", "ui32", "ui64")) {
       autotest_vectorize(function(x) list(x, prim_sample_bits(c(2L, 3L), dtype)), x = x)
     }
+  })
+})
+
+# A batch of `size` symmetric positive definite matrices, of shape
+# (n, n, size).
+rand_spd <- function(n, size) {
+  x <- array(stats::rnorm(n * n * size), c(n, n, size))
+  for (i in seq_len(size)) {
+    x[,, i] <- crossprod(x[,, i]) + diag(n)
+  }
+  nv_array(x, dtype = "f64")
+}
+
+describe("prim_chol", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    for (lower in c(TRUE, FALSE)) {
+      autotest_vectorize(function(x) prim_chol(x, lower = lower), x = rand_spd(3L, 4L))
+    }
+  })
+})
+
+describe("prim_triangular_solve", {
+  # A batch of triangular matrices, whose diagonal keeps them well conditioned.
+  rand_triangular <- function(n, size) {
+    x <- array(stats::rnorm(n * n * size), c(n, n, size))
+    for (i in seq_len(size)) {
+      diag(x[,, i]) <- 3
+    }
+    nv_array(x, dtype = "f64")
+  }
+
+  it("vectorizes a solve from the left", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(a, b) {
+        prim_triangular_solve(a, b, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = FALSE)
+      },
+      a = rand_triangular(3L, 4L),
+      b = rand_array(c(3L, 2L, 4L), dtype = "f64")
+    )
+  })
+
+  it("vectorizes a transposed solve from the right", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(a, b) {
+        prim_triangular_solve(a, b, left_side = FALSE, lower = FALSE, unit_diagonal = TRUE, transpose_a = TRUE)
+      },
+      a = rand_triangular(3L, 4L),
+      b = rand_array(c(2L, 3L, 4L), dtype = "f64")
+    )
+  })
+})
+
+describe("prim_qr", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(prim_qr, x = rand_array(c(4L, 3L, 5L), dtype = "f64"))
+    autotest_vectorize(prim_qr, x = rand_array(c(3L, 4L, 5L), dtype = "f64"))
+  })
+})
+
+describe("prim_lu", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(prim_lu, x = rand_array(c(4L, 4L, 5L), dtype = "f64"))
+    autotest_vectorize(prim_lu, x = rand_array(c(3L, 4L, 5L), dtype = "f64"))
+  })
+})
+
+describe("prim_svd", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(prim_svd, x = rand_array(c(4L, 3L, 5L), dtype = "f64"))
+    autotest_vectorize(prim_svd, x = rand_array(c(3L, 4L, 5L), dtype = "f64"))
+  })
+})
+
+describe("prim_eigh", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(prim_eigh, x = rand_spd(3L, 5L))
   })
 })
 

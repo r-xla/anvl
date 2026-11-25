@@ -2752,6 +2752,19 @@ describe("nv_lu", {
     expect_equal(diag(L), c(1, 1))
     expect_equal(L %*% U, A_mat[permutation, , drop = FALSE], tolerance = 1e-5)
   })
+
+  it("rejects a batch of matrices", {
+    expect_error(nv_lu(nv_array(rnorm(12L), shape = c(2L, 2L, 3L), dtype = "f64")), "must be a 2-D matrix")
+  })
+})
+
+describe("nv_qr, nv_svd and nv_eigh", {
+  it("decompose a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(24L), shape = c(4L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_qr(x)$Q, c(4L, 2L, 3L))
+    expect_shape(nv_svd(x)$vt, c(2L, 2L, 3L))
+    expect_shape(nv_eigh(x[1:2, , ])$values, c(2L, 3L))
+  })
 })
 
 describe("nv_chol", {

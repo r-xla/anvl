@@ -8,16 +8,17 @@ nv_eigh(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, a symmetric square matrix with exactly 2 axes. Can be any numeric data type: a float keeps its
+One input, with at least 2 axes, the first two forming a symmetric square matrix; any trailing axes are batch axes. Can be any numeric data type: a float keeps its
 own, and an integer one is converted to the default float data type (see
 \code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
 \link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
-Elements \code{values} (length \code{n}) and \code{vectors} (shape \verb{(n, n)}). Both have
-the input's data type -- or the default float data type (see
-\code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
+Elements \code{values} (shape \verb{(n, ...)}) and \code{vectors} (shape \verb{(n, n, ...)}),
+where \verb{(n, n, ...) = shape(x)}. Both have the input's data type -- or the
+default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an
+integer one.
 }
 \description{
 Computes the eigendecomposition of a symmetric matrix \code{x} of
@@ -29,6 +30,7 @@ are the (orthonormal) eigenvectors and \code{values} is the length-\code{n}
 vector of (real) eigenvalues in ascending order. Output names and
 order match \code{\link[base:eigen]{base::eigen()}}, which unlike this primitive also handles
 non-symmetric matrices.
+The first two axes form the matrix, and any trailing axes are batch axes.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

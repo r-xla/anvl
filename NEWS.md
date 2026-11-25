@@ -25,9 +25,12 @@
 * Added two new transformations `pullback()` and `value_and_pullback()`.
 * Elementwise primitives such as `prim_add()` now broadcast scalars.
 * New `vectorize()` maps a function over axes of its arguments (`in_axes`,
-  `out_axes`, by default the last axis), like `base::Vectorize()` but as one
-  traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
-  primitive its rule.
+  `out_axes`, by default the last axis), in the spirit of `base::Vectorize()`.
+* `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, and with them
+  `nv_qr()`, `nv_svd()` and `nv_eigh()`, take a batch of matrices, whose batch
+  axes trail them, as `prim_chol()` and `prim_triangular_solve()` already do.
+* `gradient()` differentiates a batched Cholesky decomposition or triangular
+  solve.
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.

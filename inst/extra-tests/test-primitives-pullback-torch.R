@@ -995,46 +995,63 @@ gen_tri_matrix <- function(n, lower, unit_diagonal) {
   M
 }
 
+# An array whose trailing batch axes, after its first two, come first instead,
+# as torch takes them, and back.
+to_batch_first <- function(x) {
+  n <- length(dim(x))
+  if (n <= 2L) x else aperm(x, c(seq_len(n - 2L) + 2L, 1L, 2L))
+}
+
+from_batch_first <- function(x, n_batch) {
+  if (!n_batch) x else aperm(x, c(n_batch + 1L, n_batch + 2L, seq_len(n_batch)))
+}
+
 describe("prim_chol", {
-  verify_cholesky_grad <- function(lower) {
+  # `batch` is the shape of the trailing batch axes, which torch puts first.
+  verify_cholesky_grad <- function(lower, batch = integer()) {
     n <- sample(2:4, 1L)
-    A_r <- gen_spd_matrix(n)
+    A_r <- array(replicate(max(prod(batch), 1L), gen_spd_matrix(n)), c(n, n, batch))
 
     A_anvl <- nv_array(A_r, dtype = "f64")
-    A_torch <- torch::torch_tensor(A_r, requires_grad = TRUE, dtype = torch::torch_float64())
+    A_torch <- torch::torch_tensor(to_batch_first(A_r), requires_grad = TRUE, dtype = torch::torch_float64())
 
     f_anvl <- function(A) {
       L <- prim_chol(A, lower = lower)
-      nv_sum(L, axes = c(1L, 2L))
+      nv_sum(L, axes = seq_len(naxes(L)))
     }
     grad_anvl <- as_array(jit(gradient(f_anvl))(A_anvl)[[1L]])
 
     L_torch <- torch::linalg_cholesky(A_torch)
     if (!lower) {
-      L_torch <- L_torch$t()
+      L_torch <- L_torch$transpose(-2L, -1L)
     }
     torch::torch_sum(L_torch)$backward()
-    grad_torch <- as_array_torch(A_torch$grad)
+    grad_torch <- from_batch_first(as_array_torch(A_torch$grad), length(batch))
 
     expect_equal(grad_anvl, grad_torch, tolerance = 1e-5)
   }
 
   it("lower = TRUE", verify_cholesky_grad(lower = TRUE))
   it("lower = FALSE", verify_cholesky_grad(lower = FALSE))
+  it("batched, lower = TRUE", verify_cholesky_grad(lower = TRUE, batch = c(2L, 3L)))
+  it("batched, lower = FALSE", verify_cholesky_grad(lower = FALSE, batch = 2L))
 })
 
 describe("prim_triangular_solve", {
-  verify_triangular_solve_grad <- function(left_side, lower, transpose_a, unit_diagonal) {
+  # `batch` is the shape of the trailing batch axes, which torch puts first.
+  verify_triangular_solve_grad <- function(left_side, lower, transpose_a, unit_diagonal, batch = integer()) {
     n <- sample(2:4, 1L)
     m <- sample(1:3, 1L)
-    a_r <- gen_tri_matrix(n, lower, unit_diagonal)
-    b_r <- if (left_side) array(rnorm(n * m), c(n, m)) else array(rnorm(m * n), c(m, n))
+    size <- max(prod(batch), 1L)
+    a_r <- array(replicate(size, gen_tri_matrix(n, lower, unit_diagonal)), c(n, n, batch))
+    b_shape <- if (left_side) c(n, m) else c(m, n)
+    b_r <- array(rnorm(n * m * size), c(b_shape, batch))
 
     a_anvl <- nv_array(a_r, dtype = "f64")
     b_anvl <- nv_array(b_r, dtype = "f64")
 
-    a_torch <- torch::torch_tensor(a_r, requires_grad = TRUE, dtype = torch::torch_float64())
-    b_torch <- torch::torch_tensor(b_r, requires_grad = TRUE, dtype = torch::torch_float64())
+    a_torch <- torch::torch_tensor(to_batch_first(a_r), requires_grad = TRUE, dtype = torch::torch_float64())
+    b_torch <- torch::torch_tensor(to_batch_first(b_r), requires_grad = TRUE, dtype = torch::torch_float64())
 
     f_anvl <- function(a, b) {
       x <- prim_triangular_solve(
@@ -1045,12 +1062,12 @@ describe("prim_triangular_solve", {
         unit_diagonal = unit_diagonal,
         transpose_a = transpose_a
       )
-      nv_sum(x, axes = c(1L, 2L))
+      nv_sum(x, axes = seq_len(naxes(x)))
     }
     grads_anvl <- jit(gradient(f_anvl))(a_anvl, b_anvl)
 
     is_upper <- if (transpose_a) lower else !lower
-    a_effective <- if (transpose_a) a_torch$t() else a_torch
+    a_effective <- if (transpose_a) a_torch$transpose(-2L, -1L) else a_torch
     x_torch <- torch::linalg_solve_triangular(
       a_effective,
       b_torch,
@@ -1060,8 +1077,9 @@ describe("prim_triangular_solve", {
     )
     torch::torch_sum(x_torch)$backward()
 
-    expect_equal(as_array(grads_anvl[[1L]]), as_array_torch(a_torch$grad), tolerance = 1e-5)
-    expect_equal(as_array(grads_anvl[[2L]]), as_array_torch(b_torch$grad), tolerance = 1e-5)
+    n_batch <- length(batch)
+    expect_equal(as_array(grads_anvl[[1L]]), from_batch_first(as_array_torch(a_torch$grad), n_batch), tolerance = 1e-5)
+    expect_equal(as_array(grads_anvl[[2L]]), from_batch_first(as_array_torch(b_torch$grad), n_batch), tolerance = 1e-5)
   }
 
   it(
@@ -1116,6 +1134,27 @@ describe("prim_triangular_solve", {
       lower = TRUE,
       transpose_a = FALSE,
       unit_diagonal = TRUE
+    )
+  )
+
+  it(
+    "batched, left_side, lower, transpose",
+    verify_triangular_solve_grad(
+      left_side = TRUE,
+      lower = TRUE,
+      transpose_a = TRUE,
+      unit_diagonal = FALSE,
+      batch = c(2L, 3L)
+    )
+  )
+  it(
+    "batched, right_side, upper, unit_diagonal",
+    verify_triangular_solve_grad(
+      left_side = FALSE,
+      lower = FALSE,
+      transpose_a = FALSE,
+      unit_diagonal = TRUE,
+      batch = 2L
     )
   )
 

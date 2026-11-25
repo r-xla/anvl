@@ -46,10 +46,9 @@ describe("vectorize", {
     expect_equal(as_r(out), t(as_r(x)) * 2)
   })
 
-  it("takes in_axes as a named vector and passes arguments named with NULL on", {
+  it("passes arguments in_axes names with NULL on", {
     f <- function(x, y) sum(x * y)
     y <- nv_array(c(1, 2), dtype = "f32")
-    expect_equal(as_r(jit(vectorize(f, in_axes = c(x = -1L)))(x, y)), array(c(9, 12, 15), dim = 3L))
     expect_equal(as_r(jit(vectorize(f, in_axes = list(x = -1L, y = NULL)))(x, y)), array(c(9, 12, 15), dim = 3L))
   })
 
@@ -132,6 +131,45 @@ describe("vectorize", {
     expect_equal(as_r(out), as_r(x) * 2)
   })
 
+  it("maps over the leaves of a nested argument along the axes a nested in_axes gives", {
+    f <- function(p) sum(p$a * p$b$c)
+    p <- list(a = x, b = list(c = nv_array(t(as_r(x)), dtype = "f32")))
+    out <- jit(vectorize(f, in_axes = list(p = list(a = -1L, b = list(c = 1L)))))(p)
+    expect_equal(as_r(out), array(colSums(as_r(x)^2), dim = 3L))
+  })
+
+  it("passes on the elements of a nested argument that in_axes leaves out or gives NULL", {
+    f <- function(p) sum(p$a * p$w)
+    p <- list(a = x, w = nv_array(c(1, 2), dtype = "f32"))
+    expected <- array(c(9, 12, 15), dim = 3L)
+    expect_equal(as_r(jit(vectorize(f, in_axes = list(p = list(a = -1L))))(p)), expected)
+    expect_equal(as_r(jit(vectorize(f, in_axes = list(p = list(a = -1L, w = NULL))))(p)), expected)
+  })
+
+  it("matches a nested in_axes to an unnamed argument by position", {
+    f <- function(p) sum(p[[1L]] * p[[2L]])
+    p <- list(x, nv_array(c(1, 2), dtype = "f32"))
+    out <- jit(vectorize(f, in_axes = list(p = list(-1L, NULL))))(p)
+    expect_equal(as_r(out), array(c(9, 12, 15), dim = 3L))
+  })
+
+  it("matches a partly named nested in_axes to a partly named argument by position", {
+    f <- function(p) sum(p$a * p[[2L]])
+    p <- list(a = x, nv_array(t(as_r(x)), dtype = "f32"))
+    out <- jit(vectorize(f, in_axes = list(p = list(a = -1L, 1L))))(p)
+    expect_equal(as_r(out), array(colSums(as_r(x)^2), dim = 3L))
+  })
+
+  it("rejects a nested in_axes that does not follow the structure of the arguments", {
+    f <- function(p) p[[1L]]
+    expect_error(
+      jit(vectorize(f, in_axes = list(p = list(b = 1L))))(list(a = x)),
+      "does not match the argument at `p`"
+    )
+    expect_error(jit(vectorize(f, in_axes = list(p = list(a = list(b = 1L)))))(list(a = x)), "at `p\\$a`")
+    expect_error(jit(vectorize(f, in_axes = list(p = list(1L))))(list(x, x)), "at `p`")
+  })
+
   it("returns the structure of f's output", {
     f <- function(x) list(total = sum(x), twice = x * 2L)
     out <- jit(vectorize(f))(x)
@@ -180,6 +218,33 @@ describe("vectorize", {
     expect_equal(as_r(out$w), array(2 * drop(xr %*% dots), dim = 2L))
   })
 
+  it("is differentiable through linear algebra", {
+    solve_spd <- function(a, b) {
+      l <- prim_chol(a, lower = TRUE)
+      y <- prim_triangular_solve(l, b, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = FALSE)
+      sum(prim_triangular_solve(l, y, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE))
+    }
+    f <- function(a, b) sum(vectorize(solve_spd)(a, b))
+    withr::local_seed(1L)
+    a <- array(rnorm(3L * 3L * 4L), c(3L, 3L, 4L))
+    for (i in 1:4) {
+      a[,, i] <- crossprod(a[,, i]) + diag(3L)
+    }
+    a <- nv_array(a, dtype = "f64")
+    b <- nv_array(rnorm(3L * 2L * 4L), shape = c(3L, 2L, 4L), dtype = "f64")
+    out <- jit(gradient(f))(a, b)
+    # the gradient of a sum over the slices is that of each slice, stacked
+    grad_one <- jit(gradient(solve_spd))
+    for (i in 1:4) {
+      expected <- grad_one(
+        nv_array(as_array(a)[,, i], dtype = "f64"),
+        nv_array(as_array(b)[,, i], dtype = "f64")
+      )
+      expect_equal(as_r(out$a)[,, i], as_r(expected$a), tolerance = 1e-10)
+      expect_equal(as_r(out$b)[,, i], as_r(expected$b), tolerance = 1e-10)
+    }
+  })
+
   it("nests", {
     f <- function(a, b) a * b
     f_ab <- vectorize(vectorize(f, in_axes = list(b = -1L)), in_axes = list(a = -1L))
@@ -209,6 +274,24 @@ describe("vectorize", {
     expect_identical(state_words(), after)
   })
 
+  it("traces batched sample_bits with randomness different", {
+    draw_batch <- vectorize(function(x) prim_sample_bits(2L, "ui32"), randomness = "different")
+    graph <- trace_fn(
+      function(x) list(batch = draw_batch(x), after = prim_sample_bits(2L, "ui32")),
+      list(x = nv_aval("f32", 3L))
+    )
+    expect_snapshot(graph)
+  })
+
+  it("traces shared sample_bits with randomness same", {
+    draw_batch <- vectorize(function(x) prim_sample_bits(2L, "ui32"), randomness = "same")
+    graph <- trace_fn(
+      function(x) list(batch = draw_batch(x), after = prim_sample_bits(2L, "ui32")),
+      list(x = nv_aval("f32", 3L))
+    )
+    expect_snapshot(graph)
+  })
+
   it("draws in a nested vectorize() what nested loops draw", {
     f <- function(x) x + nv_runif(shape = integer())
     y <- nv_array(matrix(0, 2L, 3L), dtype = "f32")
@@ -219,6 +302,20 @@ describe("vectorize", {
     f_jit <- jit(f)
     # the outer loop runs over the columns, the inner one over the rows
     expected <- sapply(1:3, function(j) sapply(1:2, function(i) as_r(f_jit(y[i, j]))))
+    expect_equal(out, expected, tolerance = 1e-6)
+    expect_identical(state_words(), after)
+  })
+
+  it("shares draws within each inner batch and draws separately for each outer slice", {
+    f <- function(x) x + nv_runif(shape = integer())
+    y <- nv_array(matrix(0, 2L, 3L), dtype = "f32")
+    local_nv_seed(1L)
+    out <- as_r(jit(vectorize(vectorize(f, randomness = "same"), randomness = "different"))(y))
+    after <- state_words()
+
+    local_nv_seed(1L)
+    f_jit <- jit(f)
+    expected <- sapply(seq_len(3L), function(j) rep(as_r(f_jit(y[1L, j])), 2L))
     expect_equal(out, expected, tolerance = 1e-6)
     expect_identical(state_words(), after)
   })
@@ -265,10 +362,18 @@ describe("vectorize", {
   it("names the argument that cannot be mapped over", {
     f <- function(x, s) x * s
     expect_error(jit(vectorize(f))(x, 2), "`s` has shape ()")
+    g <- function(p) p$a
+    expect_error(jit(vectorize(g, in_axes = list(p = list(a = 3L))))(list(a = x)), "`p\\$a` has shape")
   })
 
   it("rejects in_axes that are not a single axis or a named list", {
     expect_error(vectorize(function(x) x, in_axes = c(1L, 2L)), "in_axes")
+    expect_error(vectorize(function(x) x, in_axes = c(x = 1L)), "not a vector")
+    expect_error(vectorize(function(p) p, in_axes = list(p = c(a = 1L))), "not a vector")
+    expect_error(vectorize(function(p) p, in_axes = list(p = list(a = 0L))), "in_axes\\$p\\$a")
+    expect_error(vectorize(function(p) p, in_axes = list(p = list(a = NULL))), "at least one argument")
+    twice <- stats::setNames(list(1L, 2L, 3L), c("a", "a", ""))
+    expect_error(vectorize(function(p) p, in_axes = list(p = twice)), "at most once")
     expect_error(vectorize(function(x) x, in_axes = list(1L)), "named by the arguments")
     expect_error(vectorize(function(x) x, in_axes = list(x = 0L)), "in_axes\\$x")
     expect_error(vectorize(function(x) x, in_axes = 0L), "must not be 0")

@@ -10,28 +10,19 @@ vectorize(f, in_axes = -1L, out_axes = -1L, randomness = "different")
 \item{f}{(\code{function})\cr
 Function to vectorize.}
 
-\item{in_axes}{(\code{integer(1)} | named \code{list()} | named \code{integer()})\cr
-The arguments to map over and their batch axes. Negative axes count from
-the end, so the default, \code{-1L}, is the last axis of every argument mapped
-over. A single axis maps over
-every argument that is an array, along that axis. That includes every
-argument of the enclosing \code{\link[=jit]{jit()}} that is not static, R data among them;
-other values -- such as static arguments, a random state, or an R array
-written inside the traced function -- are passed on unchanged.
-A named list or vector gives the axis of each argument to map over, by
-its name; arguments it leaves out or gives \code{NULL} are passed on
-unchanged. A nested argument takes one axis for all of its leaves. All
-arguments mapped over must have the same size along their batch axes.}
+\item{in_axes}{(\code{integer(1)} | named \code{list()})\cr
+Specify the batch axis.
+If \code{in_axes} is a single integer, it applies to all arrayish arguments.
+If it is a named list, it must be compatible with the argument tree of the function.
+The values of the tree must either be integers, indicating the batch axis (negative
+values count from the end), or \code{NULL}, indicating no batching.
+Values are applied to all leaves of the node.
+Arguments or named elements the list leaves out are not batched either.}
 
 \item{out_axes}{(\code{integer(1)} | \code{list()})\cr
-The axes along which the outputs of \code{f} are stacked, by default the last
-one. A single axis applies
-to every output. A list follows the structure of what \code{f} returns, down to
-any depth, matching named elements by name: an entry applies to every
-output below it. An output with \code{n}
-axes per slice can be stacked along axes \code{1} to \code{n + 1}, or \code{-(n + 1)} to
-\code{-1} counting from the end. \code{NULL} returns an
-output as it is, which works for one that does not depend on the
+Along which axis to stack the outputs of \code{f}. Specified like \code{in_axes},
+but a tree follows the structure of what \code{f} returns. \code{NULL} returns an
+output as it is, which only works for one that does not depend on the
 arguments mapped over.}
 
 \item{randomness}{(\code{character(1)})\cr
@@ -46,27 +37,14 @@ what \code{f} returns, with the batch axis added to every output where
 returned as it is.
 }
 \description{
-Return a new function that maps \code{f} over an axis of its arguments, like
-\code{\link[base:Vectorize]{base::Vectorize()}}. Unlike \code{Vectorize()}, it does not call \code{f} once per
-instance: the returned function traces \code{f} once and turns every operation of
-it into one that works on the whole batch, so \code{f} can be written for a
-single instance and still run as one program over all of them.
+Return a new function that maps \code{f} over an axis of its arguments.
+Instead of looping over the slices, the function is rewritten to operate
+on the whole batch at once.
 
-\code{in_axes} says which arguments are mapped over, and along which axis: \code{f}
-sees one slice of such an argument at a time, with that axis dropped. Every
-leaf of a nested argument is mapped over along the same axis. The other
-arguments are passed to each application of \code{f} unchanged. \code{out_axes} says
-along which axis each output of \code{f} is stacked. By default, both are the last
-axis: the slices of a matrix are its columns, and the results of \code{f} are
-stacked as columns.
+This is analogous to \code{vmap} found in other array computing
+frameworks and is also in the spirit of \CRANpkg{base} R's \code{Vectorize()}.
 
-\code{randomness} says what the random draws of \code{f} (see \code{\link[=nv_set_seed]{nv_set_seed()}}) give
-the slices, as PyTorch's \code{torch.func.vmap()} does. By default, every slice
-draws numbers of its own: the same ones a loop over the slices, applying \code{f}
-to one after the other, would draw, so \code{vectorize()} changes how fast a
-simulation runs, not its results. With \code{"same"}, every slice draws the same
-numbers, the ones a single application of \code{f} draws, and the random state
-advances as after that application.
+See the \href{https://r-xla.github.io/anvl/articles/vectorize.html}{Vectorization} article for more details.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

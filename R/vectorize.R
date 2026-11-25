@@ -1,49 +1,28 @@
 #' @title Vectorize a Function
 #' @description
-#' Return a new function that maps `f` over an axis of its arguments, like
-#' [base::Vectorize()]. Unlike `Vectorize()`, it does not call `f` once per
-#' instance: the returned function traces `f` once and turns every operation of
-#' it into one that works on the whole batch, so `f` can be written for a
-#' single instance and still run as one program over all of them.
+#' Return a new function that maps `f` over an axis of its arguments.
+#' Instead of looping over the slices, the function is rewritten to operate
+#' on the whole batch at once.
 #'
-#' `in_axes` says which arguments are mapped over, and along which axis: `f`
-#' sees one slice of such an argument at a time, with that axis dropped. Every
-#' leaf of a nested argument is mapped over along the same axis. The other
-#' arguments are passed to each application of `f` unchanged. `out_axes` says
-#' along which axis each output of `f` is stacked. By default, both are the last
-#' axis: the slices of a matrix are its columns, and the results of `f` are
-#' stacked as columns.
+#' This is analogous to `vmap` found in other array computing
+#' frameworks and is also in the spirit of \CRANpkg{base} R's `Vectorize()`.
 #'
-#' `randomness` says what the random draws of `f` (see [nv_set_seed()]) give
-#' the slices, as PyTorch's `torch.func.vmap()` does. By default, every slice
-#' draws numbers of its own: the same ones a loop over the slices, applying `f`
-#' to one after the other, would draw, so `vectorize()` changes how fast a
-#' simulation runs, not its results. With `"same"`, every slice draws the same
-#' numbers, the ones a single application of `f` draws, and the random state
-#' advances as after that application.
+#' See `r roxy_article("vectorize")` for more details.
+#'
 #' @param f (`function`)\cr
 #'   Function to vectorize.
-#' @param in_axes (`integer(1)` | named `list()` | named `integer()`)\cr
-#'   The arguments to map over and their batch axes. Negative axes count from
-#'   the end, so the default, `-1L`, is the last axis of every argument mapped
-#'   over. A single axis maps over
-#'   every argument that is an array, along that axis. That includes every
-#'   argument of the enclosing [`jit()`] that is not static, R data among them;
-#'   other values -- such as static arguments, a random state, or an R array
-#'   written inside the traced function -- are passed on unchanged.
-#'   A named list or vector gives the axis of each argument to map over, by
-#'   its name; arguments it leaves out or gives `NULL` are passed on
-#'   unchanged. A nested argument takes one axis for all of its leaves. All
-#'   arguments mapped over must have the same size along their batch axes.
+#' @param in_axes (`integer(1)` | named `list()`)\cr
+#'   Specify the batch axis.
+#'   If `in_axes` is a single integer, it applies to all arrayish arguments.
+#'   If it is a named list, it must be compatible with the argument tree of the function.
+#'   The values of the tree must either be integers, indicating the batch axis (negative
+#'   values count from the end), or `NULL`, indicating no batching.
+#'   Values are applied to all leaves of the node.
+#'   Arguments or named elements the list leaves out are not batched either.
 #' @param out_axes (`integer(1)` | `list()`)\cr
-#'   The axes along which the outputs of `f` are stacked, by default the last
-#'   one. A single axis applies
-#'   to every output. A list follows the structure of what `f` returns, down to
-#'   any depth, matching named elements by name: an entry applies to every
-#'   output below it. An output with `n`
-#'   axes per slice can be stacked along axes `1` to `n + 1`, or `-(n + 1)` to
-#'   `-1` counting from the end. `NULL` returns an
-#'   output as it is, which works for one that does not depend on the
+#'   Along which axis to stack the outputs of `f`. Specified like `in_axes`,
+#'   but a tree follows the structure of what `f` returns. `NULL` returns an
+#'   output as it is, which only works for one that does not depend on the
 #'   arguments mapped over.
 #' @param randomness (`character(1)`)\cr
 #'   Whether the slices draw `"different"` (the default) or the `"same"`
@@ -86,14 +65,18 @@ vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "different"
   })
 }
 
-# `in_axes` of `vectorize()` as an axis or a named list of axes, without the
-# entries that are `NULL`. Errors name `call`.
+# `in_axes` of `vectorize()` as an axis or a list of axes named by arguments,
+# each nested to any depth (see `check_in_axes_tree()`), without the entries
+# that are `NULL`. Errors name `call`.
 check_in_axes <- function(f, in_axes, call = rlang::caller_env()) {
   if (!is.list(in_axes)) {
-    if (is.null(names(in_axes))) {
-      return(check_batch_axis(in_axes, "in_axes", call = call))
+    if (!is.null(names(in_axes))) {
+      cli_abort(
+        "{.arg in_axes} must be a single axis or a list of them named by the arguments of {.arg f}, not a vector.",
+        call = call
+      )
     }
-    in_axes <- as.list(in_axes)
+    return(check_batch_axis(in_axes, "in_axes", call = call))
   }
   if (!length(in_axes)) {
     cli_abort("{.arg in_axes} must name at least one argument to map over.", call = call)
@@ -116,15 +99,33 @@ check_in_axes <- function(f, in_axes, call = rlang::caller_env()) {
   }
   resolve_transformation_args(f, nms, "in_axes", call = call)
   in_axes <- Map(
-    function(axis, nm) check_batch_axis(axis, sprintf("in_axes$%s", nm), null_ok = TRUE, call = call),
+    function(axes, nm) check_in_axes_tree(axes, sprintf("in_axes$%s", nm), call = call),
     in_axes,
     nms
   )
   in_axes <- Filter(Negate(is.null), in_axes)
-  if (!length(in_axes)) {
+  if (!length(unlist(in_axes))) {
     cli_abort("{.arg in_axes} must name at least one argument to map over.", call = call)
   }
   in_axes
+}
+
+# The entry `axes` of `in_axes`, the argument `arg`, as a batch axis (see
+# `check_batch_axis()`), `NULL`, or a list of them, nested to any depth, that
+# names no element twice. Errors name `call`.
+check_in_axes_tree <- function(axes, arg, call) {
+  if (!is.list(axes)) {
+    if (!is.null(names(axes))) {
+      cli_abort("{.arg {arg}} must be a single axis or a list of them, not a vector.", call = call)
+    }
+    return(check_batch_axis(axes, arg, null_ok = TRUE, call = call))
+  }
+  nms <- names(axes) %||% character(length(axes))
+  if (anyDuplicated(nms[nzchar(nms)])) {
+    cli_abort("{.arg {arg}} must name every element at most once.", call = call)
+  }
+  paths <- ifelse(nzchar(nms), sprintf("%s$%s", arg, nms), sprintf("%s[[%d]]", arg, seq_along(axes)))
+  Map(function(x, path) check_in_axes_tree(x, path, call = call), axes, paths)
 }
 
 # Errors name `call`.
@@ -162,6 +163,35 @@ check_batch_axis <- function(axis, arg, null_ok = FALSE, call = rlang::caller_en
 batch_axis_position <- function(axis, n) {
   pos <- if (axis < 0L) n + 1L + axis else axis
   if (pos < 1L || pos > n) NA_integer_ else pos
+}
+
+# Binds the side effects of `graph`, the function `vectorize()` traced on one
+# slice, which took them as fresh inputs, in the trace `desc`, which applies it
+# to `size` slices: their inputs become inputs of `graph`, after its own.
+# Returns the operands for them and which of them are batched. With
+# `randomness = "different"`, the slices use a side effect one after the other,
+# as a loop over them would, and the views of `desc` continue after all of
+# them; with `"same"`, every slice starts from the value `desc` is at, and the
+# views continue after one.
+desc_bind_vectorized <- function(desc, graph, size, randomness) {
+  views <- graph$side_effects
+  graph$inputs <- c(graph$inputs, views_values(views, "inputs"))
+  graph$side_effects <- list()
+  bound <- lapply(views, function(body) {
+    x <- desc_view(desc, body$effect)
+    start <- view_current(x)[names(body$inputs)]
+    if (randomness == "same") {
+      x$n <- x$n + body$n
+      return(list(operands = start, batched = rep(FALSE, length(start))))
+    }
+    x$n <- x$n + size * body$n
+    stacked <- side_effect_stack(body$effect, start, body$n, size)[names(body$inputs)]
+    list(operands = stacked, batched = rep(TRUE, length(stacked)))
+  })
+  list(
+    operands = unname(unlist(lapply(bound, `[[`, "operands"), recursive = FALSE)),
+    batched = unlist(lapply(bound, `[[`, "batched")) %||% logical()
+  )
 }
 
 # Traces `f` on one slice of the arguments `in_axes` maps over and replays the
@@ -215,21 +245,19 @@ vectorize_call <- function(f, call_args, in_axes, out_axes, randomness, call) {
 # slice, as `slice_args`. Errors name `call`.
 resolve_mapped_leaves <- function(flat, in_axes, call) {
   args_flat <- flat$args_flat
-  # the argument each leaf belongs to
-  sizes <- pjrt::tree_child_sizes(flat$in_tree)
-  arg_names <- pjrt::tree_child_names(flat$in_tree) %||% rep("", length(sizes))
-  missing_args <- if (is.list(in_axes)) setdiff(names(in_axes), arg_names)
+  missing_args <- if (is.list(in_axes)) setdiff(names(in_axes), pjrt::tree_child_names(flat$in_tree))
   if (length(missing_args)) {
     cli_abort(
       "Cannot map over {.arg {missing_args}}: {cli::qty(length(missing_args))}{?it was/they were} not passed.",
       call = call
     )
   }
-  # An argument passed through `...` has no name, so messages give its position.
-  arg_names[!nzchar(arg_names)] <- paste("argument", which(!nzchar(arg_names)))
-  leaf_args <- rep(arg_names, times = sizes)
+  # Messages name each leaf by its path. An argument passed through `...` has no
+  # name, so they give its position.
+  leaf_args <- vapply(seq_along(args_flat), function(i) pjrt::tree_path(flat$in_tree, i), character(1L))
+  leaf_args <- sub("^\\[\\[([0-9]+)\\]\\]", "argument \\1", leaf_args)
   axes <- if (is.list(in_axes)) {
-    lapply(leaf_args, function(nm) if (nm %in% names(in_axes)) in_axes[[nm]])
+    expand_axes(in_axes, flat$in_tree, length(args_flat), partial = TRUE, arg = "in_axes", part = "argument", call)
   } else {
     lapply(args_flat, function(x) if (is_graph_box(x) || is_anvl_array(x)) in_axes)
   }
@@ -320,10 +348,29 @@ place_batch_axis <- function(out, batched, axis, size, what, call) {
 # `out_axes` (see `vectorize()`) as one entry per flat output of a function
 # whose output has the structure `out_tree` and `n` leaves. Errors name `call`.
 expand_out_axes <- function(out_axes, out_tree, n, call) {
-  if (!is.list(out_axes)) {
-    return(rep(list(out_axes), n))
-  }
+  expand_axes(out_axes, out_tree, n, partial = FALSE, arg = "out_axes", part = "output", call = call)
+}
+
+# The axis that `spec` -- the argument `arg` of `vectorize()`, `in_axes` or
+# `out_axes` -- gives each of the `n` leaves of the tree `tree`, as a list. A
+# single axis applies to every leaf, a list follows the structure of `tree`,
+# matching named elements by name and others by position, and an axis in it
+# applies to every leaf below it. With `partial`, a list may leave out named
+# elements, whose leaves get `NULL`. A mismatch is an error about the `part`
+# of `f` -- argument or output -- where it occurs. Errors name `call`.
+expand_axes <- function(spec, tree, n, partial, arg, part, call) {
   axes <- vector("list", n)
+  of <- if (part == "output") "what {.arg f} returns" else "the arguments of {.arg f}"
+  abort_mismatch <- function(path) {
+    where <- if (length(path)) sprintf("at `%s`", paste(path, collapse = "$")) else "at the top"
+    cli_abort(
+      c(
+        sprintf("{.arg %s} must be a single axis or a list with the structure of %s.", arg, of),
+        x = "It does not match the {part} {where}."
+      ),
+      call = call
+    )
+  }
   walk <- function(spec, node, path) {
     if (!is.list(spec)) {
       for (j in unlist(flatten(node))) {
@@ -331,24 +378,27 @@ expand_out_axes <- function(out_axes, out_tree, n, call) {
       }
       return()
     }
-    if (is.list(node) && all(nzchar(names(node) %||% "")) && setequal(names(spec), names(node))) {
-      spec <- spec[names(node)]
+    if (!is.list(node)) {
+      abort_mismatch(path)
     }
-    same <- is.list(node) && length(spec) == length(node) && identical(names(spec), names(node))
-    if (!same) {
-      where <- if (length(path)) sprintf("at `%s`", paste(path, collapse = "$")) else "at the top"
-      cli_abort(
-        c(
-          "{.arg out_axes} must be a single axis or a list with the structure of what {.arg f} returns.",
-          x = "It does not match the output {where}."
-        ),
-        call = call
-      )
+    keys <- names(node)
+    if (!is.null(names(spec)) && all(nzchar(names(spec)))) {
+      pos <- match(names(spec), keys)
+      ok <- !anyNA(pos) && !anyDuplicated(pos) && (partial || length(pos) == length(node))
+    } else {
+      pos <- seq_along(spec)
+      ok <- length(spec) == length(node) && identical(names(spec), keys)
     }
-    keys <- names(node) %||% as.character(seq_along(node))
-    Map(function(s, nd, k) walk(s, nd, c(path, k)), spec, node, keys)
+    if (!ok) {
+      abort_mismatch(path)
+    }
+    keys <- keys %||% character(length(node))
+    keys[!nzchar(keys)] <- which(!nzchar(keys))
+    for (k in seq_along(spec)) {
+      walk(spec[[k]], node[[pos[[k]]]], c(path, keys[[pos[[k]]]]))
+    }
   }
-  walk(out_axes, unflatten(out_tree, as.list(seq_len(n))), character())
+  walk(spec, unflatten(tree, as.list(seq_len(n))), character())
   axes
 }
 

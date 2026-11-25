@@ -9,115 +9,252 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this article, you will learn how to write a function for a single instance and apply it to a whole batch with `vectorize()`.
-
-## What `vectorize()` Does
-
-`vectorize(f)` returns a function that cuts its arguments into slices along an axis, applies `f` to every slice, as `lapply()` would, and stacks the results along an axis into one array.
-By default, both are the last axis: the slices of a matrix are its columns, and the results of `f` become the columns of the output.
-
-Below, `normalize()` scales a single vector to sum to one.
-Vectorized, it normalizes every column of a matrix, which is what applying it to one column after the other and binding the results as columns gives:
+## Motivation
 
 ```{r}
 library(anvl)
-
-normalize <- function(x) x / sum(x)
-x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
-
-jit(vectorize(normalize))(x)
-
-normalize_jit <- jit(normalize)
-sapply(1:3, function(j) as_array(normalize_jit(x[, j])))
 ```
 
-So a computation can be written for one instance -- one observation, one parameter vector, one sequence -- and applied to a whole batch.
-Unlike that loop, and unlike `base::Vectorize()`, `vectorize()` does not call the function once per slice.
-It traces the function once and turns every operation into one that works on the whole batch, so the result runs as a single program.
-As with `gradient()`, the result of `vectorize()` must be called inside `jit()`, because it transforms the traced program of `f`.
+It is often easier to write a function that operates on "one unit" of the data, such as a single vector or matrix.
+As an example, we implement ridge regression: least squares with a penalty $\lambda$ on the size of the coefficients, whose estimate solves the penalized normal equations
+$$
+(X^\top X + \lambda I) \hat\beta = X^\top y.
+$$
+The data are a design matrix $X \in \mathbb{R}^{100 \times 3}$, with 100 observations of 3 predictors, and the response $y$, a matrix with 100 rows and one column.
+For later sections, there are also five more data sets of the same kind, stacked along a trailing axis.
+
+<details>
+<summary>Click to show how the data are generated</summary>
+
+```{r}
+set.seed(1L)
+n <- 100L
+D <- 5L
+beta <- matrix(c(1, -2, 0.5))
+
+simulate_data <- function(X = matrix(rnorm(n * 3L), nrow = n)) {
+  list(X = X, y = X %*% beta + rnorm(n, sd = 0.5))
+}
+data <- simulate_data()
+data_sets <- replicate(D, simulate_data(), simplify = FALSE)
+
+X <- nv_array(data$X, dtype = "f32")
+y <- nv_array(data$y, dtype = "f32")
+# D data sets: n x 3 x D and n x 1 x D
+X_sets <- nv_array(sapply(data_sets, function(d) d$X, simplify = "array"), dtype = "f32")
+y_sets <- nv_array(sapply(data_sets, function(d) d$y, simplify = "array"), dtype = "f32")
+# D responses for the design of the first data set: n x 1 x D
+y_reps <- nv_array(replicate(D, simulate_data(data$X)$y), dtype = "f32")
+beta <- nv_array(beta, dtype = "f32")
+```
+
+</details>
+
+`ridge()` solves the penalized normal equations for one data set:
+
+```{r}
+ridge <- function(X, y, lambda) {
+  XtX <- t(X) %*% X
+  nv_solve(XtX + lambda * diag(ncol(X)), t(X) %*% y)
+}
+
+jit(ridge)(X, y, lambda = 1)
+```
+
+To quantify the uncertainty of $\hat\beta$, we bootstrap it: we draw `B` samples of the observations with replacement and fit the model on each.
+Every column of `idx` holds the observations of one bootstrap sample, and `fit_sample()` fits the model on the sample its index vector `i` selects.
+A loop fits one sample after the other:
+
+```{r}
+B <- 1000L
+idx <- nv_array(matrix(sample.int(n, n * B, replace = TRUE), nrow = n), dtype = "i32")
+
+fit_sample <- function(i, X, y, lambda) ridge(X[i, ], y[i, ], lambda)
+
+fit_sample_jit <- jit(fit_sample)
+coefs_loop <- lapply(seq_len(B), function(b) fit_sample_jit(idx[, b], X, y, lambda = 1))
+```
+
+`vectorize()` turns `fit_sample()` into a function that fits all samples at once.
+It traces `fit_sample()` once, for a single sample, and turns each of its operations into one that works on all samples; called inside `jit()`, the whole bootstrap is then a single program instead of `B` calls.
+Only `idx` is mapped over: the data and the penalty are the same for every sample, so `in_axes` names only `i`, and `lambda` stays a scalar.
+
+```{r}
+bootstrap <- jit(vectorize(fit_sample, in_axes = list(i = -1L)))
+coefs <- bootstrap(idx, X, y, lambda = 1)
+shape(coefs)
+```
+
+The results are stacked along a trailing batch axis, so `coefs[, 1, b]` is the estimate of the `b`-th sample, and the bootstrap standard errors are the standard deviations along that axis:
+
+```{r}
+apply(as_array(coefs)[, 1L, ], 1L, sd)
+```
+
+## Nested Vectorization
+
+Bootstrapping each of the five data sets `X_sets` and `y_sets` takes two nested loops: one over the data sets, and within it one over the bootstrap samples.
+Two nested calls to `vectorize()` correspond to them.
+The inner call maps over the bootstrap samples of one data set, as above, and the outer call maps over the data sets, while the indices and the penalty are the same for all of them:
+
+```{r}
+bootstrap_one <- vectorize(fit_sample, in_axes = list(i = -1L))
+bootstrap_sets <- jit(vectorize(bootstrap_one, in_axes = list(X = -1L, y = -1L)))
+
+coefs_sets <- bootstrap_sets(idx, X_sets, y_sets, lambda = 1)
+shape(coefs_sets)
+```
+
+Every call appends its batch axis, so the outer one, over the data sets, comes last.
+The bootstrap standard errors are one column per data set:
+
+```{r}
+apply(as_array(coefs_sets)[, 1L, , ], c(1L, 3L), sd)
+```
 
 ## Choosing the Batch Axes with `in_axes`
 
-By default, `vectorize()` maps over the last axis of every argument that is an array.
+By default, `vectorize()` maps over the last axis of every argument that is an `AnvlArray`.
+That suits a function whose arguments all come in batches, e.g. fitting every data set with a penalty of its own:
+
+```{r}
+lambdas <- nv_array(c(0.1, 0.5, 1, 2, 5), dtype = "f32")
+
+jit(vectorize(ridge))(X_sets, y_sets, lambdas)
+```
+
 `in_axes` changes this.
-A single axis applies to all of them, so for `f`, which computes the squared norm of a single vector, `in_axes = 1L` gives one norm per row instead of one per column:
+A single axis applies to every argument; negative axes count from the end, as elsewhere in anvl, so the default is `in_axes = -1L`.
+All arguments mapped over must have the same size along their batch axes, and an R scalar such as a penalty of `1` has no axis to map over at all:
 
-```{r}
-f <- function(x) sum(x^2)
-
-jit(vectorize(f))(x)
-jit(vectorize(f, in_axes = 1L))(x)
+```{r, error = TRUE}
+jit(vectorize(ridge))(X_sets, y_sets, lambda = 1)
 ```
 
-Negative axes count from the end, as elsewhere in anvl: the default is `in_axes = -1L`.
-A named list gives each argument its own batch axis.
-An argument that the list leaves out or gives `NULL` is passed to every application of `f` unchanged.
-Here, every column of `x` is multiplied by the same weights `w`:
+A named list gives the batch axis of each argument it names, and passes the others to every application unchanged.
+So fitting every data set with the same penalty names `X` and `y`:
 
 ```{r}
-g <- function(x, w) sum(x * w)
-w <- nv_array(c(2, -1), dtype = "f32")
-
-jit(vectorize(g, in_axes = list(x = -1L)))(x, w)
+jit(vectorize(ridge, in_axes = list(X = -1L, y = -1L)))(X_sets, y_sets, lambda = 1)
 ```
 
-All arguments that are mapped over must have the same size along their batch axes.
-Every array in a nested argument uses that argument's batch axis.
+And naming only `lambda` fits one data set with every penalty, which gives the ridge path:
+
+```{r}
+jit(vectorize(ridge, in_axes = list(lambda = -1L)))(X, y, lambdas)
+```
+
+R data passed to the jitted function is an argument like any `AnvlArray`, so `vectorize()` maps over it as well; `idx`, for example, could just as well be an R integer matrix.
+Its slices take the data type they meet inside the function, as described in the [R values have no data type](type-promotion.html#r-values-have-no-data-type) section of the type promotion article.
+
+### Nested Arguments
+
+An argument can be a nested list.
+`fit_data()` takes a data set as a list of `X` and `y`, and an axis given to it applies to every `AnvlArray` in it:
+
+```{r}
+fit_data <- function(data, lambda) ridge(data$X, data$y, lambda)
+
+jit(vectorize(fit_data, in_axes = list(data = -1L)))(list(X = X_sets, y = y_sets), lambda = 1)
+```
+
+A nested list in `in_axes` follows the structure of the argument instead, giving each part its own axis, and the parts it leaves out are passed to every application unchanged.
+`y_reps` holds five responses for the same design `X`, as in a simulation study, so only the response is mapped over:
+
+```{r}
+fit_reps <- jit(vectorize(fit_data, in_axes = list(data = list(y = -1L))))
+fit_reps(list(X = X, y = y_reps), lambda = 1)
+```
 
 ## Placing the Batch Axis with `out_axes`
 
-The outputs are stacked along their last axis by default, `out_axes = -1L`, so a function that returns a vector returns a matrix with one column per slice.
+The outputs are stacked along their last axis by default, `out_axes = -1L`.
 `out_axes` puts the batch axis elsewhere.
-A single axis applies to every output, and a list that follows the structure of the output gives each part its own axis.
-`NULL` returns an output as it is, which is allowed for an output that does not depend on the arguments mapped over:
+A single axis applies to every output, so with `out_axes = 1L`, the bootstrap estimates come back as rows, one per sample:
 
 ```{r}
-h <- function(x, w) list(scaled = x * w, total = sum(w))
+bootstrap_rows <- jit(vectorize(fit_sample, in_axes = list(i = -1L), out_axes = 1L))
+shape(bootstrap_rows(idx, X, y, lambda = 1))
+```
 
-h_vec <- vectorize(h, in_axes = list(x = -1L), out_axes = list(scaled = 1L, total = NULL))
-jit(h_vec)(x, w)
+A list that follows the structure of the output gives each part its own axis.
+`NULL` returns an output as it is, which is allowed for an output that does not depend on the arguments mapped over.
+`fit_both()` returns the fit on a bootstrap sample along with the fit on all data, which does not depend on the sample, so it is computed once and returned as it is.
+Together, they give the bootstrap estimate of the bias of the ridge estimate:
+
+```{r}
+fit_both <- function(i, X, y, lambda) {
+  list(sample = ridge(X[i, ], y[i, ], lambda), full = ridge(X, y, lambda))
+}
+
+bootstrap_both <- jit(vectorize(
+  fit_both,
+  in_axes = list(i = -1L),
+  out_axes = list(sample = -1L, full = NULL)
+))
+fits <- bootstrap_both(idx, X, y, lambda = 1)
+
+rowMeans(as_array(fits$sample)[, 1L, ]) - as_array(fits$full)[, 1L]
 ```
 
 ## Composing with Other Transformations
 
-`vectorize()` composes with `gradient()` and with itself.
-A common use is computing one gradient per observation, e.g. to clip them individually.
-The loss below is written for a single observation `x`; vectorizing its gradient over `x` gives the gradient of every observation with respect to the shared parameters `w`:
+`vectorize()` composes with `gradient()`.
+The ridge objective $\|y - X\beta\|^2 + \lambda \|\beta\|^2$ is a sum over the observations, and the gradients of their shares, one per observation, are what influence diagnostics and sandwich standard errors build on.
+`loss_one()` is the share of a single observation, with the penalty split evenly, and vectorizing its gradient over the rows of `X` and `y` gives one gradient per observation:
 
 ```{r}
-loss <- function(w, x) sum(x * w)^2
-per_example_grad <- jit(vectorize(gradient(loss, wrt = "w"), in_axes = list(x = -1L)))
+loss_one <- function(beta, x, y, lambda) {
+  sum((y - sum(x * beta))^2) + lambda / n * sum(beta^2)
+}
+beta_hat <- jit(ridge)(X, y, lambda = 1)[, 1L]
 
-per_example_grad(w, x)
+per_observation <- jit(vectorize(gradient(loss_one, wrt = "beta"), in_axes = list(x = 1L, y = 1L)))
+scores <- per_observation(beta_hat, X, y, lambda = 1)$beta
+shape(scores)
 ```
 
-Nesting two calls maps over two axes, here forming all pairwise products of two vectors.
-The outer call's batch axis comes last, so `a` runs along the columns:
+Their sum is the gradient of the whole objective, which is zero at the estimate:
 
 ```{r}
-outer_product <- vectorize(vectorize(function(a, b) a * b, in_axes = list(b = -1L)), in_axes = list(a = -1L))
-jit(outer_product)(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(10, 20), dtype = "f32"))
+rowSums(as_array(scores))
 ```
 
 ## Random Numbers
 
-A function that draws random numbers (see the [random numbers](random-numbers.html) article) draws numbers of its own for every slice.
-They are the numbers a loop applying it to one slice after the other draws, and the random state advances as it does after that loop, so vectorizing a simulation changes how fast it runs, not its results:
+Instead of taking the bootstrap samples as an argument, `fit_resample()` draws its sample itself (see the [random numbers](random-numbers.html) article).
+It then has no data to map over, so we map it over the replicate numbers, which it does not use, like `lapply(seq_len(B), function(b) ...)` does:
 
 ```{r}
-noisy <- function(x) x + nv_rnorm(shape = 2L)
+fit_resample <- function(b, X, y, lambda) {
+  i <- nv_sample_int(nrow(X), nrow(X))
+  ridge(X[i, ], y[i, ], lambda)
+}
+replicates <- nv_array(seq_len(B), dtype = "i32")
 
 nv_set_seed(1L)
-jit(vectorize(noisy))(x)
-
-nv_set_seed(1L)
-noisy_jit <- jit(noisy)
-lapply(1:3, function(j) noisy_jit(x[, j]))
+coefs <- jit(vectorize(fit_resample, in_axes = list(b = -1L)))(replicates, X, y, lambda = 1)
+as_array(coefs)[, 1L, 1:3]
 ```
 
-With `randomness = "same"`, as in PyTorch's `torch.func.vmap()`, every slice draws the same numbers, the ones a single application of the function draws, and the random state advances as after that application:
+Every replicate draws a sample of its own.
+They are the samples a loop applying `fit_resample()` to one replicate after the other draws, and the random state advances as it does after that loop, so vectorizing a simulation changes how fast it runs, not its results:
 
 ```{r}
 nv_set_seed(1L)
-jit(vectorize(noisy, randomness = "same"))(x)
+fit_resample_jit <- jit(fit_resample)
+lapply(1:3, function(b) fit_resample_jit(replicates[b], X, y, lambda = 1))
+```
+
+With `randomness = "same"`, as in PyTorch's `torch.func.vmap()`, every slice draws the same numbers, the ones a single application of the function draws, and the random state advances as after that application.
+For a bootstrap of the ridge path, that is what we want within a replicate: mapping `fit_resample()` over the penalties with `randomness = "same"` fits every penalty on the same sample, so the estimates of a replicate differ only by the penalty.
+Mapping that over the replicates, with the default `randomness = "different"`, draws a sample of its own for every replicate:
+
+```{r}
+path_resample <- vectorize(fit_resample, in_axes = list(lambda = -1L), randomness = "same")
+bootstrap_path <- jit(vectorize(path_resample, in_axes = list(b = -1L)))
+
+nv_set_seed(1L)
+paths <- bootstrap_path(replicates, X, y, lambdas)
+shape(paths)
 ```

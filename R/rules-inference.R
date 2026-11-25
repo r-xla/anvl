@@ -1897,51 +1897,56 @@ infer_cholesky <- function(x, lower) {
   list(AbstractArray(dtype = dtype(x), shape = x$shape))
 }
 
+# The decompositions below take a batch of matrices: the first two axes of `x`
+# form a matrix, and any trailing axes are batch axes, which every output
+# keeps after the axes of its own.
 infer_qr <- function(x) {
   assert_array(x)
-  assert_linalg_matrix(x, "x")
+  assert_linalg_matrix(x, "x", batched = TRUE)
   m <- shape(x)[[1L]]
   n <- shape(x)[[2L]]
   k <- min(m, n)
+  batch <- shape(x)[-(1:2)]
   list(
-    Q = AbstractArray(dtype = dtype(x), shape = Shape(c(m, k))),
-    R = AbstractArray(dtype = dtype(x), shape = Shape(c(k, n)))
+    Q = AbstractArray(dtype = dtype(x), shape = Shape(c(m, k, batch))),
+    R = AbstractArray(dtype = dtype(x), shape = Shape(c(k, n, batch)))
   )
 }
 
 infer_lu <- function(x) {
   assert_array(x)
-  assert_linalg_matrix(x, "x")
+  assert_linalg_matrix(x, "x", batched = TRUE)
   m <- shape(x)[[1L]]
   n <- shape(x)[[2L]]
+  batch <- shape(x)[-(1:2)]
   list(
-    LU = AbstractArray(dtype = dtype(x), shape = Shape(c(m, n))),
-    pivots = AbstractArray(dtype = default_int(), shape = Shape(min(m, n))),
-    permutation = AbstractArray(dtype = default_int(), shape = Shape(m))
+    LU = AbstractArray(dtype = dtype(x), shape = x$shape),
+    pivots = AbstractArray(dtype = default_int(), shape = Shape(c(min(m, n), batch))),
+    permutation = AbstractArray(dtype = default_int(), shape = Shape(c(m, batch)))
   )
 }
 
 infer_svd <- function(x) {
   assert_array(x)
-  assert_linalg_matrix(x, "x")
+  assert_linalg_matrix(x, "x", batched = TRUE)
   m <- shape(x)[[1L]]
   n <- shape(x)[[2L]]
   k <- min(m, n)
+  batch <- shape(x)[-(1:2)]
   list(
-    d = AbstractArray(dtype = dtype(x), shape = Shape(k)),
-    u = AbstractArray(dtype = dtype(x), shape = Shape(c(m, k))),
-    vt = AbstractArray(dtype = dtype(x), shape = Shape(c(k, n)))
+    d = AbstractArray(dtype = dtype(x), shape = Shape(c(k, batch))),
+    u = AbstractArray(dtype = dtype(x), shape = Shape(c(m, k, batch))),
+    vt = AbstractArray(dtype = dtype(x), shape = Shape(c(k, n, batch)))
   )
 }
 
 # Names and order mirror `base::eigen()`.
 infer_eigh <- function(x) {
   assert_array(x)
-  assert_linalg_matrix(x, "x", square = TRUE)
-  n <- shape(x)[[1L]]
+  assert_linalg_matrix(x, "x", square = TRUE, batched = TRUE)
   list(
-    values = AbstractArray(dtype = dtype(x), shape = Shape(n)),
-    vectors = AbstractArray(dtype = dtype(x), shape = Shape(c(n, n)))
+    values = AbstractArray(dtype = dtype(x), shape = Shape(shape(x)[-1L])),
+    vectors = AbstractArray(dtype = dtype(x), shape = x$shape)
   )
 }
 

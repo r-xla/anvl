@@ -201,10 +201,6 @@ col_major_layout <- function(naxes) {
   seq_len(naxes) - 1L
 }
 
-col_major_layouts <- function(...) {
-  lapply(list(...), col_major_layout)
-}
-
 row_major_layouts <- function(...) {
   lapply(list(...), \(naxes) rev(col_major_layout(naxes)))
 }

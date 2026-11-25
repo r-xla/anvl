@@ -1820,15 +1820,17 @@ scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes,
   prim_ifelse(mask, grad_at_positions, 0)
 }
 
-diag_mask <- function(n) {
-  prim_iota(axis = 1L, shape = c(n, n), dtype = "i32", start = 0L) ==
-    prim_iota(axis = 2L, shape = c(n, n), dtype = "i32", start = 0L)
+# The masks below are of the shape `shape` of a batch of square matrices: the
+# matrix its first two axes form, repeated along any trailing batch axes.
+diag_mask <- function(shape) {
+  prim_iota(axis = 1L, shape = shape, dtype = "i32", start = 0L) ==
+    prim_iota(axis = 2L, shape = shape, dtype = "i32", start = 0L)
 }
 
-triangular_mask <- function(n, lower, unit_diagonal) {
-  mask <- tri_mask(c(n, n), 0L, lower = lower)
+triangular_mask <- function(shape, lower, unit_diagonal) {
+  mask <- tri_mask(shape, 0L, lower = lower)
   if (unit_diagonal) {
-    prim_ifelse(diag_mask(n), FALSE, mask)
+    prim_ifelse(diag_mask(shape), FALSE, mask)
   } else {
     mask
   }
@@ -1840,12 +1842,6 @@ triangular_mask <- function(n, lower, unit_diagonal) {
 #' `r format_bib("murray2016differentiation", "walter2012structured")`
 prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
   lower <- params$lower
-  if (naxes(outputs[[1L]]) > 2L) {
-    cli_abort(c(
-      "The gradient of a batched Cholesky decomposition is not supported yet.",
-      i = "Differentiate one matrix at a time."
-    ))
-  }
 
   # The Jacobian for cholesky is actually not unique.
   # This is, because the derivative property only needs to hold for valid input perturbations.
@@ -1857,15 +1853,16 @@ prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params
   # We use the solution that is identical to the one used by {torch} (which we compare against
   # in the test)
 
+  # Any trailing axes are batch axes, so `t()` is `transpose_matrix_axes()`.
   L <- outputs[[1L]]
   grad <- grads[[1L]]
-  n <- shape(L)[[1L]]
+  L_shape <- shape(L)
 
   # Phi: keep lower triangle, halve diagonal, zero upper triangle
   phi <- function(x) {
-    eye <- prim_convert(diag_mask(n), dtype = dtype(x))
+    eye <- prim_convert(diag_mask(L_shape), dtype = dtype(x))
     x <- prim_div(x, prim_add(1, eye))
-    prim_ifelse(tri_mask(c(n, n), 0L, lower = TRUE), x, 0)
+    prim_ifelse(tri_mask(L_shape, 0L, lower = TRUE), x, 0)
   }
 
   # The stablehlo lowering already zeros out the non-triangular part of L,
@@ -1874,13 +1871,13 @@ prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params
   # For upper triangular, transpose to work with the lower-triangular algorithm.
   # No transpose back needed at the end: grad_A is symmetric.
   if (!lower) {
-    L <- t(L)
-    grad <- t(grad)
+    L <- transpose_matrix_axes(L)
+    grad <- transpose_matrix_axes(grad)
   }
   # We almost use Murray (2016) equation 10, but use M / 2 instead of phi(M) which are both
   # equivalent for symmetric perturbations
-  P <- phi(nv_matmul(t(L), grad))
-  S <- prim_mul(prim_add(P, t(P)), 0.5)
+  P <- phi(nv_matmul(transpose_matrix_axes(L), grad))
+  S <- prim_mul(prim_add(P, transpose_matrix_axes(P)), 0.5)
   S <- prim_triangular_solve(L, S, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
   grad_A <- prim_triangular_solve(
     L,
@@ -1904,16 +1901,10 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   unit_diagonal <- params$unit_diagonal
   transpose_a <- params$transpose_a
 
+  # Any trailing axes are batch axes, so `t()` is `transpose_matrix_axes()`.
   a <- inputs[[1L]]
   x <- outputs[[1L]]
   grad <- grads[[1L]]
-
-  if (naxes(a) > 2L) {
-    cli_abort(c(
-      "The gradient of a batched triangular solve is not supported yet.",
-      i = "Differentiate one system at a time."
-    ))
-  }
 
   # op(A) is A or A^T depending on transpose_a.
   # From the paper: grad_b = op(A)^{-1} * grad (left side), grad * op(A)^{-1} (right side,
@@ -1936,11 +1927,11 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   # Also if unit_diagonal = TRUE the diagonal elements are not read and hence also have no effect
   # i.e. we also zero out those.
   grad_a <- if (required[[1L]]) {
-    raw <- prim_negate(if (left_side) nv_matmul(grad_b, t(x)) else nv_matmul(t(x), grad_b))
-    n <- shape(a)[[1L]]
-    mask <- triangular_mask(n, lower, unit_diagonal)
+    x_t <- transpose_matrix_axes(x)
+    raw <- prim_negate(if (left_side) nv_matmul(grad_b, x_t) else nv_matmul(x_t, grad_b))
+    mask <- triangular_mask(shape(a), lower, unit_diagonal)
     if (transpose_a) {
-      raw <- t(raw)
+      raw <- transpose_matrix_axes(raw)
     }
     prim_ifelse(mask, raw, 0)
   }

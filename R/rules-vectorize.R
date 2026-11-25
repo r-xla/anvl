@@ -2,21 +2,17 @@
 #' @include vectorize.R
 NULL
 
-# Primitives that work on an extra trailing axis as they are: the element-wise
-# ones, and those whose parameters name axes, which keep their positions in
-# front of the batch axis. anvl's bitcast packs from, or unpacks into, a
-# leading axis, and `prim_top_k()` works along the first axis with the trailing
-# ones as batch axes, which leaves the batch axis last. A scalar operand of an
-# element-wise primitive is broadcast only if it is mapped over (see
-# `batch_operands()`). The rules of a primitive live in its definition, an
-# environment, so assigning to `prim` gives the primitive itself the rule.
-for (prim in c(
-  primitives_tagged(c("elementwise", "reduction", "cumulative")),
-  list(prim_rev, prim_concatenate, prim_bitcast_convert, prim_top_k)
-)) {
-  prim[["vectorize"]] <- rule_vectorize()
-}
-rm(prim)
+# Trivially vectorizable primitives where appending a batch axis does not change the computation.
+# The linear algebra primitives take a batch of matrices, whose batch axes trail them.
+local({
+  for (prim in c(
+    primitives_tagged(c("elementwise", "reduction", "cumulative")),
+    list(prim_rev, prim_concatenate, prim_bitcast_convert, prim_top_k),
+    list(prim_chol, prim_triangular_solve, prim_qr, prim_lu, prim_svd, prim_eigh)
+  )) {
+    prim[["vectorize"]] <- rule_vectorize()
+  }
+})
 
 prim_transpose[["vectorize"]] <- rule_vectorize(params = list(perm = vec_axis_map()))
 prim_reshape[["vectorize"]] <- rule_vectorize(params = list(shape = vec_shape()))
@@ -77,6 +73,32 @@ prim_dynamic_update_slice[["vectorize"]] <- rule_vectorize(function(inputs, batc
   }
   operands <- batch_operands(inputs[1:2], batched[1:2], size)
   list(do.call(prim_dynamic_update_slice, c(operands, inputs[-(1:2)], list(1L))))
+})
+
+# The output of `gather` has an axis for every axis of `start_indices` but the
+# index vector axis, in their order, and puts the offset axes in between. The
+# batch axis of `start_indices` alone is one more such axis, the last; an index
+# vector axis that is implicit, after the last axis, moves behind it. The batch
+# axis of `x` alone is one more offset axis, which the slices span whole and
+# the output gets last. When both are batched, their batch axes are a pair of
+# batching axes, which match the slices of `x` with the indices into them.
+prim_gather[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  x <- inputs[[1L]]
+  start_indices <- inputs[[2L]]
+  n_indices <- naxes(start_indices)
+  if (batched[[2L]] && params$index_vector_axis == n_indices) {
+    params$index_vector_axis <- n_indices + 1L
+  }
+  if (all(batched)) {
+    params$x_batching_axes <- c(params$x_batching_axes, naxes(x))
+    params$start_indices_batching_axes <- c(params$start_indices_batching_axes, n_indices)
+    params$slice_sizes <- c(params$slice_sizes, 1L)
+  } else if (batched[[1L]]) {
+    n_out <- n_indices - (params$index_vector_axis <= n_indices) + length(params$offset_axes)
+    params$offset_axes <- c(params$offset_axes, n_out + 1L)
+    params$slice_sizes <- c(params$slice_sizes, size)
+  }
+  list(do.call(prim_gather, c(list(x, start_indices), params)))
 })
 
 # The batch axis of a batched operand becomes a batching axis when both are

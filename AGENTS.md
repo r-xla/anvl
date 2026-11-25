@@ -128,14 +128,9 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
 - **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 - **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
-  The batch axis is the operands' last axis, so a parameter that names axes keeps its value: the primitives
-  tagged `"elementwise"`, `"reduction"` or `"cumulative"` (`new_primitive(tags = )`) take the plain
-  rule from their tag. Most other rules are declarations of how the parameters with an entry per axis, or a shape, change (`vec_shape()`,
-  `vec_axis_map()`, `vec_per_axis()`), with the generic rule broadcasting operands that are not
-  mapped over. `vectorize()` maps over, and stacks along, the last axis by default (`in_axes = -1L`,
-  `out_axes = -1L`). Only primitives that do not fit write a
-  `fn`. Every rule is checked by `autotest_vectorize()` (`helper-vectorize.R`) in
-  `test-primitives-vectorize.R`.
+  Rules receive a trailing batch axis, so existing axis indices keep their values. Use
+  `vec_shape()`, `vec_axis_map()`, and `vec_per_axis()` to adapt parameters to the batch axis.
+  The generic rule broadcasts unmapped operands. Supply `fn` when a primitive needs custom batching.
 
 ## Side Effects
 

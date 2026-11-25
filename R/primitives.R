@@ -3729,9 +3729,6 @@ prim_gather <- new_primitive(
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' The first two axes form the matrix, and any trailing axes are batch axes.
-#' @details
-#' Differentiation is only implemented for a single matrix: the `pullback` rule
-#' errors on a batched input (an input with more than 2 axes).
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with at least 2 axes, the first two of equal size (a square matrix); any trailing axes are batch axes
 #' @template param_unary_x
@@ -3776,9 +3773,6 @@ prim_chol <- new_primitive(
 #' The first two axes form the matrices, and any trailing axes are batch axes,
 #' which must match between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
-#' @details
-#' Differentiation is only implemented for a single system: the `pullback` rule
-#' errors on batched operands (operands with more than 2 axes).
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes, of shape
 #'   `(n, n, b1, ..., bk)`: the first two axes are of equal size (a square
@@ -3843,12 +3837,13 @@ prim_triangular_solve <- new_primitive(
 #' \eqn{R} is upper triangular.
 #' For an \eqn{m \times n} input with \eqn{k = \min(m, n)}, \eqn{Q} has
 #' shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `Q` (shape `(m, k)`) and `R`
-#'   (shape `(k, n)`), where `(m, n) = shape(x)` and
+#'   Elements `Q` (shape `(m, k, ...)`) and `R`
+#'   (shape `(k, n, ...)`), where `(m, n, ...) = shape(x)` and
 #'   `k = min(m, n)`. Both have the input's data type.
 #' @templateVar primitive_id qr
 #' @template section_rules
@@ -3883,17 +3878,19 @@ prim_qr <- new_primitive(
 #' layout. \eqn{P} is returned in two equivalent forms: `pivots` (LAPACK's
 #' sequential row-swap encoding) and `permutation` (an explicit
 #' permutation vector).
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #'
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of three [`arrayish`])\cr
-#'   Elements `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at the
-#'   default integer data type (see [`default_dtypes()`]) with `k = min(m, n)`
-#'   (sequential row swaps: row `i` was exchanged with row `pivots[i]` during
-#'   elimination step `i`); and `permutation` `(m,)` at that same data type, a
-#'   permutation vector for \eqn{P} such that `(P %*% A)[i, ]` equals
-#'   `A[permutation[i], ]`.
+#'   Elements `LU` `(m, n, ...)` with the input's data type; `pivots` `(k, ...)`
+#'   at the default integer data type (see [`default_dtypes()`]) with
+#'   `k = min(m, n)` (sequential row swaps: row `i` was exchanged with row
+#'   `pivots[i]` during elimination step `i`); and `permutation` `(m, ...)` at
+#'   that same data type, a permutation vector for \eqn{P} such that
+#'   `(P %*% A)[i, ]` equals `A[permutation[i], ]`. Here `(m, n, ...)` is
+#'   `shape(x)`, and `...` its batch axes.
 #' @templateVar primitive_id lu
 #' @template section_rules
 #' @section StableHLO:
@@ -3937,12 +3934,15 @@ prim_lu <- new_primitive(
 #' Supports any matrix shape on both the host (LAPACK `gesdd`) and CUDA
 #' (cuSOLVER `gesvd`) backends. cuSOLVER's `m >= n` requirement is handled
 #' transparently via a layout flip for wide matrices.
+#'
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of three [`arrayish`])\cr
-#'   Elements `d` (length `k`), `u` (shape
-#'   `(m, k)`), and `vt` (shape `(k, n)`). All have the input's data type.
+#'   Elements `d` (shape `(k, ...)`), `u` (shape
+#'   `(m, k, ...)`), and `vt` (shape `(k, n, ...)`), where
+#'   `(m, n, ...) = shape(x)`. All have the input's data type.
 #' @templateVar primitive_id svd
 #' @template section_rules
 #' @section StableHLO:
@@ -3976,12 +3976,14 @@ prim_svd <- new_primitive(
 #' vector of (real) eigenvalues in ascending order. Output names and
 #' order match [base::eigen()], which unlike this primitive also handles
 #' non-symmetric matrices.
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @templateVar dtypes any float data type
-#' @templateVar shapes a symmetric square matrix with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming a symmetric square matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `values` (length `n`) and `vectors`
-#'   (shape `(n, n)`). Both have the input's data type.
+#'   Elements `values` (shape `(n, ...)`) and `vectors`
+#'   (shape `(n, n, ...)`), where `(n, n, ...) = shape(x)`. Both have the
+#'   input's data type.
 #' @templateVar primitive_id eigh
 #' @template section_rules
 #' @section StableHLO:
