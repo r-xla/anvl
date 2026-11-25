@@ -375,8 +375,52 @@ The most common culprit is looking up values in an array at computed positions, 
 If XLA fuses other work into that same pass, everything is dragged down to one value at a time as well.
 
 Placing a barrier on the lookup positions separates the two steps so the heavy work stays in its own fast pass.
-As a concrete example, suppose we generate random positions and use them to pick values from an array.
-In our measurements, putting a barrier on the positions just before the lookup makes this about three times faster, across every sample size from one million to a hundred million values.
+To see this, we reuse `chain()` from above and turn its result into positions in a table of 1024 values:
+
+```{r}
+lookup <- jit(function(table, x) {
+  idx <- nv_convert(nv_floor(chain(x) * 1024), "i32") + 1L
+  table[idx]
+})
+
+lookup_barrier <- jit(function(table, x) {
+  idx <- nv_convert(nv_floor(chain(x) * 1024), "i32") + 1L
+  table[nv_optimization_barrier(idx)]
+})
+```
+
+Without the barrier, XLA fuses all 50 steps of `chain()` into the lookup, so they run one value at a time.
+With the barrier, `chain()` runs in a pass of its own that processes many values at once, and only the lookup itself is left to run one value at a time.
+Both functions return exactly the same values.
+The table below shows example timings for `f32` values on an Apple M1, but similar gains happen on x86 processors:
+
+| values | without barrier | with barrier |
+|---|---|---|
+| 1 million   | 3.5 ms   | 1.3 ms  |
+| 10 million  | 32.2 ms  | 10.5 ms |
+| 100 million | 313.2 ms | 97.6 ms |
+
+<details>
+<summary>Show the code for these timings</summary>
+
+```{r, eval = FALSE}
+# We use time_ms() from the timing code in the previous section. It expects a
+# function of x that returns a list, so we wrap each lookup in one.
+table <- nv_array(runif(1024), dtype = "f32")
+without_barrier <- function(x) list(lookup(table, x))
+with_barrier <- function(x) list(lookup_barrier(table, x))
+for (n in c(1e6, 1e7, 1e8)) {
+  x <- nv_array(runif(n), dtype = "f32")
+  cat(sprintf(
+    "%.0e values: without barrier %6.1f ms, with barrier %6.1f ms\n",
+    n, time_ms(without_barrier, x), time_ms(with_barrier, x)
+  ))
+}
+```
+
+</details>
+
+The barrier makes the lookup about three times faster at every size.
 
 ### Reducing peak memory in unrolled loops
 
