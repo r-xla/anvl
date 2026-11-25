@@ -66,6 +66,7 @@ We call this transformation `vectorize()` because it is in the spirit of `base::
 In other array computing frameworks this functionality is often called `vmap` (for "vectorized map").
 
 For every argument we need to specify whether it varies between every iteration or not.
+By default (`in_axes = -1L`), `vectorize()` maps over the last axis of every argument that is an array with at least one axis, and passes a scalar, such as `lambda = 1`, to every application as it is.
 In our case, only the bootstrap sample index `i` varies between iterations and the different iterations are stored along the trailing batch axis (`i = -1L`):
 
 ```{r}
