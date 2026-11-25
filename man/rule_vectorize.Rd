@@ -8,8 +8,8 @@ rule_vectorize(fn = NULL, params = list(), unbatched = integer())
 }
 \arguments{
 \item{fn}{(\code{NULL} | \code{function})\cr
-A rule of its own, for a primitive that declaring \code{params} and \code{unbatched}
-does not fit. If given, the other arguments must be left at their
+A rule of its own, for a primitive for which declaring \code{params} and \code{unbatched}
+is not enough. If given, the other arguments must be left at their
 defaults. It is called as \code{fn(inputs, batched, params, size)} for every
 call of the primitive with at least one operand that is mapped over, where
 \itemize{
@@ -46,34 +46,11 @@ their last axis.
 Many primitives (such as elementwise ops) just work as is.
 For others, some parameters need to be adjusted to account for the added batch axis.
 This includes shape parameters of axis mappings.
-The rule is then responsible for rewriting these parameters to they
+The rule is then responsible for rewriting these parameters so that they
 work correctly with the added batch axis.
 For the most common cases, see \code{\link[=vec_shape]{vec_shape()}} where it is enough
 to just mark the parameter with the appropriate kind via the \code{params} argument.
-For more complex rules it is possible to provide the \code{fn}.
-T
-For more complex
-Most primitives do not need code of their own: they work on an extra
-trailing axis already, and a parameter that names an axis still names the
-same one. Only the parameters with an entry per axis, or a shape, change.
-Declaring how each of them changes is enough, via \code{params}. The
-rule then gives every operand the batch axis -- broadcasting the ones that
-are not mapped over -- and applies the primitive with the changed
-parameters, so all of its outputs are batched. A scalar operand among
-operands that are not scalars stays a scalar if it is not mapped over, and
-is broadcast to their shape if it is; an operand that must stay as it is
-belongs in \code{unbatched}. A parameter \code{params} does not name stays as it is.
-
-For a primitive that this does not fit, pass \code{fn} instead, with the
-signature \verb{function(inputs, batched, params, size)}: \code{inputs} are the
-operands, \code{batched} says which of them carry the batch axis, \code{params} are
-the parameters of the call, and \code{size} is the size of the batch axis. It
-returns the list of outputs, or a single output as it is, each with the
-batch axis last, also one that is the same for every slice.
-
-A declared rule calls the primitive with its parameters as arguments, so it
-only fits a primitive made with \code{\link[=new_primitive]{new_primitive()}} whose parameters are
-named like the arguments of its function.
+For more complex rules it is necessary to provide the \code{fn} argument.
 }
 \examples{
 # the rule of prim_transpose()

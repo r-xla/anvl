@@ -5,7 +5,7 @@
 #' on the whole batch at once.
 #'
 #' This is analogous to `vmap` found in other array computing
-#' frameworks and is also in the spirit of \CRANpkg{base} R's `Vectorize()`.
+#' frameworks and is also in the spirit of [base::Vectorize()].
 #'
 #' See `r roxy_article("vectorize")` for more details.
 #'
@@ -13,7 +13,9 @@
 #'   Function to vectorize.
 #' @param in_axes (`integer(1)` | named `list()`)\cr
 #'   Specify the batch axis.
-#'   If `in_axes` is a single integer, it applies to all arrayish arguments.
+#'   If `in_axes` is a single integer, it maps over every argument that is an
+#'   array; other values, such as R numbers, are passed to every application
+#'   as they are.
 #'   If it is a named list, it must be compatible with the argument tree of the function.
 #'   The values of the tree must either be integers, indicating the batch axis (negative
 #'   values count from the end), or `NULL`, indicating no batching.
@@ -578,7 +580,7 @@ check_vectorized_outputs <- function(stmt, outputs, size, call) {
 #' Many primitives (such as elementwise ops) just work as is.
 #' For others, some parameters need to be adjusted to account for the added batch axis.
 #' This includes shape parameters of axis mappings.
-#' The rule is then responsible for rewriting these parameters to they
+#' The rule is then responsible for rewriting these parameters so that they
 #' work correctly with the added batch axis.
 #' For the most common cases, see [`vec_shape()`] where it is enough
 #' to just mark the parameter with the appropriate kind via the `params` argument.

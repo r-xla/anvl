@@ -12,7 +12,9 @@ Function to vectorize.}
 
 \item{in_axes}{(\code{integer(1)} | named \code{list()})\cr
 Specify the batch axis.
-If \code{in_axes} is a single integer, it applies to all arrayish arguments.
+If \code{in_axes} is a single integer, it maps over every argument that is an
+array; other values, such as R numbers, are passed to every application
+as they are.
 If it is a named list, it must be compatible with the argument tree of the function.
 The values of the tree must either be integers, indicating the batch axis (negative
 values count from the end), or \code{NULL}, indicating no batching.
@@ -42,7 +44,7 @@ Instead of looping over the slices, the function is rewritten to operate
 on the whole batch at once.
 
 This is analogous to \code{vmap} found in other array computing
-frameworks and is also in the spirit of \CRANpkg{base} R's \code{Vectorize()}.
+frameworks and is also in the spirit of \code{\link[base:Vectorize]{base::Vectorize()}}.
 
 See the \href{https://r-xla.github.io/anvl/articles/vectorize.html}{Vectorization} article for more details.
 }
