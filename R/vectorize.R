@@ -16,6 +16,9 @@
 #'   If `in_axes` is a single integer, it maps over every argument that is an
 #'   array; other values, such as R numbers, are passed to every application
 #'   as they are.
+#'   A scalar is never mapped over, as it has no axis: every application gets it
+#'   as it is, whether it is an R value or an array, e.g. one that an enclosing
+#'   [`jit()`] made of an R value.
 #'   If it is a named list, it must be compatible with the argument tree of the function.
 #'   The values of the tree must either be integers, indicating the batch axis (negative
 #'   values count from the end), or `NULL`, indicating no batching.
@@ -305,6 +308,12 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
     }
     aval <- to_abstract(x)
     x_shape <- shape(aval)
+    # A scalar has no axis to map over, so every slice gets it as it is,
+    # whether it is an R value or an array.
+    if (!length(x_shape)) {
+      axes[i] <- list(NULL)
+      next
+    }
     axis <- batch_axis_position(axes[[i]], length(x_shape))
     if (is.na(axis)) {
       cli_abort(
@@ -335,7 +344,13 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
     }
   }
   if (is.null(size)) {
-    cli_abort("{.fn vectorize} needs at least one argument to map over.", call = call)
+    cli_abort(
+      c(
+        "{.fn vectorize} needs at least one argument to map over.",
+        i = "A scalar is not mapped over: every slice gets it as it is."
+      ),
+      call = call
+    )
   }
   list(axes = axes, size = size, slice_args = slice_args)
 }

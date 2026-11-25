@@ -15,6 +15,9 @@ Specify the batch axis.
 If \code{in_axes} is a single integer, it maps over every argument that is an
 array; other values, such as R numbers, are passed to every application
 as they are.
+A scalar is never mapped over, as it has no axis: every application gets it
+as it is, whether it is an R value or an array, e.g. one that an enclosing
+\code{\link[=jit]{jit()}} made of an R value.
 If it is a named list, it must be compatible with the argument tree of the function.
 The values of the tree must either be integers, indicating the batch axis (negative
 values count from the end), or \code{NULL}, indicating no batching.

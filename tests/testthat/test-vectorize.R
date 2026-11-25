@@ -32,6 +32,21 @@ describe("vectorize", {
     expect_equal(as_r(out), array(colSums(as_r(x)^2), dim = 3L))
   })
 
+  it("passes a scalar to every application, whether it is an R value or an array", {
+    y <- nv_array(c(1, 2, 3), dtype = "f32")
+    in_trace <- as_r(jit(function(y) vectorize(nv_add)(1, y))(y))
+    expect_equal(in_trace, array(c(2, 3, 4), dim = 3L))
+    expect_equal(as_r(jit(vectorize(nv_add))(1, y)), in_trace)
+    expect_equal(as_r(jit(vectorize(nv_add))(nv_scalar(1, dtype = "f32"), y)), in_trace)
+  })
+
+  it("passes a scalar in an argument it maps over to every application", {
+    affine <- function(params, y) params$w * y + params$b
+    params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
+    out <- jit(vectorize(affine, in_axes = list(params = -1L)))(params, nv_array(c(1, 2), dtype = "f32"))
+    expect_equal(as_r(out), as_r(x) * c(1, 2) + 10)
+  })
+
   it("maps over each argument along its own axis", {
     f <- function(x, y) sum(x * y)
     out <- jit(vectorize(f, in_axes = list(x = 2L, y = 1L)))(x, t(as_r(x)))
@@ -371,9 +386,17 @@ describe("vectorize", {
     )
   })
 
+  it("needs an argument to map over that is not a scalar", {
+    expect_error(jit(vectorize(nv_add))(1, 2), "A scalar is not mapped over")
+    expect_error(
+      jit(vectorize(nv_add, in_axes = list(lhs = -1L)))(1, nv_array(c(1, 2), dtype = "f32")),
+      "A scalar is not mapped over"
+    )
+  })
+
   it("names the argument that cannot be mapped over", {
     f <- function(x, s) x * s
-    expect_error(jit(vectorize(f))(x, 2), "`s` has shape ()")
+    expect_error(jit(vectorize(f, in_axes = 2L))(x, nv_array(c(1, 2), dtype = "f32")), "`s` has shape")
     g <- function(p) p$a
     expect_error(jit(vectorize(g, in_axes = list(p = list(a = 3L))))(list(a = x)), "`p\\$a` has shape")
   })
