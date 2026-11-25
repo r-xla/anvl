@@ -425,8 +425,10 @@ The barrier makes the lookup about three times faster at every size.
 ### Reducing peak memory in unrolled loops
 
 When you write a regular R `for` loop inside `jit()`, R executes the loop while building the computation, handing XLA every iteration at once (loop unrolling).
-Because XLA sees every step of the loop at once, it is free to run independent steps in any order.
-Sometimes it starts them all together, and then their intermediate results end up all being held in memory at the same time.
+When you write a regular R for loop inside jit(), R executes the loop while building the computation, handing XLA every iteration at once (loop unrolling). With the entire loop visible, XLA is free to reorganize work across iterations. Two of its optimizations can keep every iteration's intermediate result in memory simultaneously:
+
+- **Kernel fusion:** It may fuse the running-total updates into a single kernel that takes all of the intermediate results as inputs.
+- **Parallel execution:** Even without fusion, XLA on the CPU may compute all the independent products upfront so they can run in parallel.
 
 The function below adds up nine matrix products, each producing a full-size temporary matrix:
 
@@ -445,8 +447,8 @@ sum_of_squares <- jit(function(x) {
 ```
 
 At the end of each iteration, we pass both the running total and `x` through the barrier.
-Because the next iteration reads `x` from the barrier's output, it cannot start until the current iteration finishes.
-This forces the steps to run one after another.
+Passing `total` through the barrier stops the updates from being fused, and passing `x` through it makes each product depend on the previous iteration, so there is nothing to run in parallel.
+Each product can then be freed as soon as it has been added.
 
 For 1024 by 1024 f32 matrices, XLA's memory report shows the difference clearly.
 Without the barrier, the program uses 36 MB of temporary memory (corresponding to all nine products at once).
