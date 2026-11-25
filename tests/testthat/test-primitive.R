@@ -189,3 +189,24 @@ describe("the call a primitive's error reports", {
     expect_false(identical(deparse(conditionCall(err)), "prim_add()"))
   })
 })
+
+describe("register_rule_type", {
+  it("lets primitives carry rules of the registered type", {
+    expect_error(prim_add[["toy_rule"]], "Invalid field name")
+    expect_error(prim_add[["toy_rule"]] <- identity, "register_rule_type")
+    register_rule_type("toy_rule")
+    withr::defer({
+      prim_add[["toy_rule"]] <- NULL
+      globals$interpretation_rules <- setdiff(globals$interpretation_rules, "toy_rule")
+    })
+    expect_null(prim_add[["toy_rule"]])
+    prim_add[["toy_rule"]] <- identity
+    expect_identical(prim_add[["toy_rule"]], identity)
+  })
+
+  it("leaves the registered types unchanged when a type is registered again", {
+    before <- globals$interpretation_rules
+    register_rule_type("quickr")
+    expect_identical(globals$interpretation_rules, before)
+  })
+})

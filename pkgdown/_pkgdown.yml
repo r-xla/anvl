@@ -392,6 +392,9 @@ reference:
       - local_backend
       - AnvlBackendPjrt
       - AnvlBackendQuickr
+      - AnvlBackend
+      - register_backend
+      - register_rule_type
 
   - title: Device
     desc: Devices of the active backend and the default device
@@ -458,7 +461,6 @@ reference:
 
   - subtitle: Miscellaneous
     contents:
-      - AnvlBackend
       - active_backend
       - jit_cache_size
 
