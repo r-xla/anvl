@@ -299,7 +299,7 @@ Both functions return exactly the same values.
 XLA does not copy every kind of operation like this.
 It treats many simple arithmetic operations (like addition and multiplication) as always cheap, judging each operation individually regardless of how many are chained together.
 Other operations it always considers expensive, such as `exp()`, `log()`, `sqrt()` and matrix multiplication, meaning they are not copied, their results instead being stored in memory so they can be read by every consumer.
-This is a simplified picture, because for many other operations XLA's actual decision also depends on the surrounding computation.
+This is a simplified picture, because XLA's actual decision also depends on the surrounding computation, even for these operations.
 
 Whether XLA's optimization pays off depends on how long the chain is.
 For a short chain, doing the arithmetic twice is faster than writing the intermediate result to memory and reading it back, but for a long chain, the extra computation costs more than that memory trip.
