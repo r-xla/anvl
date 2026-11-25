@@ -47,6 +47,16 @@
        1
       [ CPUf32{} ] 
 
+# a missing value in nv_array() / is kept at i32, and reported at the level of `check`
+
+    Code
+      nv_array(c(1L, NA), dtype = "i32", check = "err")
+    Condition
+      Error in `pjrt_buffer()`:
+      ! Input `data` contains at least one "NA", which "i32" stores as "-2147483648".
+      i It materializes as "NA" again in R, which `as_array()` reports on the way back.
+      i Set `check = FALSE` or the option `pjrt.upload_check` to accept it.
+
 # AbstractArray
 
     Code

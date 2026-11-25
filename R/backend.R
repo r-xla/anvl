@@ -3,7 +3,7 @@ NULL
 
 #' Create a Backend
 #'
-#' @param new_data (`function(data, dtype, shape, device, row_major = FALSE)`)\cr
+#' @param new_data (`function(data, dtype, shape, device, row_major = FALSE, check = NULL)`)\cr
 #'   Constructs an AnvlArray of the given `dtype` and `shape` (an `integer()`
 #'   vector, which [`nv_array()`] has already worked out) from R data. Must return
 #'   `structure(list(data = , backend = <name>, ...), class = "AnvlArray")`, where
@@ -11,7 +11,9 @@ NULL
 #'   R `array()` for the `"quickr"` backend) and `backend` is the name the
 #'   backend is registered under. `row_major` gives the element order of raw
 #'   byte payloads; a backend that does not support raw `data` should abort on
-#'   it.
+#'   it. `check` is forwarded from [`nv_array()`]; a backend that stores a
+#'   missing value as an ordinary number may use it to report one (see
+#'   [`pjrt::pjrt_buffer()`]), and one that keeps R's `NA` ignores it.
 #' @param new_empty (`function(dtype, shape, device)`)\cr
 #'   Constructs an AnvlArray of the given `dtype` and `shape` with unspecified
 #'   contents. Called by [`nv_empty()`].
@@ -163,7 +165,7 @@ globals$backends <- new.env(parent = emptyenv())
 register_backend(
   "plain",
   AnvlBackend(
-    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+    new_data = function(data, dtype, shape, device, row_major = FALSE, check = NULL) {
       if (is.raw(data)) {
         cli_abort("Raw {.arg data} payloads are not supported inside {.fn jit}.")
       }
@@ -178,10 +180,12 @@ register_backend(
         integer = as.integer(data),
         logical = as.logical(data)
       )
-      structure(
-        list(data = data, dtype = dtype, shape = shape, backend = "plain"),
-        class = "AnvlArray"
-      )
+      out <- list(data = data, dtype = dtype, shape = shape, backend = "plain")
+      # A plain array is a constant of a trace, uploaded once the program is
+      # compiled, so it keeps the `check` that upload reports a missing value
+      # at. `NULL`, the backend's default, adds no field.
+      out$check <- check
+      structure(out, class = "AnvlArray")
     },
     new_empty = function(dtype, shape, device) {
       if (!is_dtype(dtype)) {

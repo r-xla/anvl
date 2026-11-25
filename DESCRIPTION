@@ -30,9 +30,9 @@ Imports:
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.8.0.9002),
+    pjrt (>= 0.8.0.9004),
     rlang,
-    stablehlo (>= 0.6.0),
+    stablehlo (>= 0.6.0.9001),
     withr,
     xlamisc (>= 0.5.0)
 Suggests:

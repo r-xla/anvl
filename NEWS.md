@@ -27,8 +27,17 @@
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.
+* `nv_array()`, `nv_scalar()` and `nv_matrix()` gain `check` (`"warn"`, `"err"`
+  or `FALSE`, defaulting to the option `pjrt.upload_check`), which sets how an
+  `NA` kept as `-2147483648` at `i32` is reported.
 
 ## Bug fixes
+
+* A missing value (`NA_real_`, `NA_integer_`, `NA`) passed to a jitted function
+  or an operation as an R scalar, or written in a traced body, behaves as in
+  `nv_array()` at the data type it takes, instead of being refused with a
+  self-contradictory error. An `NA` in an R array passed to a jitted function
+  is now reported at `i32` too.
 
 * An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
   differentiates with respect to no argument, rather than all of them.

@@ -21,7 +21,7 @@ AnvlBackend(
 )
 }
 \arguments{
-\item{new_data}{(\verb{function(data, dtype, shape, device, row_major = FALSE)})\cr
+\item{new_data}{(\verb{function(data, dtype, shape, device, row_major = FALSE, check = NULL)})\cr
 Constructs an AnvlArray of the given \code{dtype} and \code{shape} (an \code{integer()}
 vector, which \code{\link[=nv_array]{nv_array()}} has already worked out) from R data. Must return
 \verb{structure(list(data = , backend = <name>, ...), class = "AnvlArray")}, where
@@ -29,7 +29,9 @@ vector, which \code{\link[=nv_array]{nv_array()}} has already worked out) from R
 R \code{array()} for the \code{"quickr"} backend) and \code{backend} is the name the
 backend is registered under. \code{row_major} gives the element order of raw
 byte payloads; a backend that does not support raw \code{data} should abort on
-it.}
+it. \code{check} is forwarded from \code{\link[=nv_array]{nv_array()}}; a backend that stores a
+missing value as an ordinary number may use it to report one (see
+\code{\link[pjrt:pjrt_buffer]{pjrt::pjrt_buffer()}}), and one that keeps R's \code{NA} ignores it.}
 
 \item{new_empty}{(\verb{function(dtype, shape, device)})\cr
 Constructs an AnvlArray of the given \code{dtype} and \code{shape} with unspecified

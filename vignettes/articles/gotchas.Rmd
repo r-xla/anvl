@@ -126,13 +126,26 @@ nv_scalar(NA)
 nv_array(c(1L, NA, 3L), dtype = "i16")
 ```
 
-Array creators take no argument to change any of this: what happens to an `NA` is fixed by the dtype you build at.
-Scan the data yourself with `anyNA()` if you want to hear about a missing value the dtype accepts.
-
-Converters like `as_array()` do take a `check` argument, with three levels: `"warn"` (the default) warns about a value R's type cannot hold, `"err"` makes it an error, and `FALSE` skips the scan.
+What happens to an `NA` is fixed by the dtype you build at; only how the `i32` case is reported can be changed.
+The array creators take a `check` argument for it: `"err"` makes it an error, and `FALSE` builds the array without a word.
 
 ```{r, error = TRUE}
-as_array(nv_scalar(NA_integer_, dtype = "i32"), check = "err")
+nv_scalar(NA_integer_, dtype = "i32", check = "err")
+```
+
+The same rules hold for an R value passed to a `jit()`-compiled function, or written in its body: it is built at the dtype it takes, as `nv_array()` builds it.
+A call has no `check` argument, so the option `pjrt.upload_check` decides there, which is also the default of `check`.
+On the device the missing value is just a very negative integer, which the arithmetic below happily uses:
+
+```{r}
+f <- jit(function(x) x + 1L)
+f(NA_integer_)
+```
+
+Converters like `as_array()` take a `check` argument for the way back, with the same three levels: `"warn"` (the default) warns about a value R's type cannot hold, `"err"` makes it an error, and `FALSE` skips the scan.
+
+```{r, error = TRUE}
+as_array(nv_scalar(NA_integer_, dtype = "i32", check = FALSE), check = "err")
 ```
 
 ## Subnormal floating-point values
