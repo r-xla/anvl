@@ -46,9 +46,22 @@ describe("vectorize", {
     expect_equal(as_r(out), as_r(x) + 10)
   })
 
-  it("needs every array that in_axes gives an axis to have it, so not a scalar", {
+  it("passes R values to every application unless in_axes names them, also those passed to jit()", {
+    r <- array(c(1, 2), dim = 2L)
+    f <- function(r, x) r + x
+    in_trace <- as_r(jit(function(x) vectorize(f)(r, x))(x))
+    expect_equal(in_trace, as_r(x) + c(1, 2))
+    expect_equal(as_r(jit(vectorize(f))(r, x)), in_trace)
+    expect_equal(as_r(jit(vectorize(f, in_axes = -1L))(r, x)), in_trace)
+    expect_equal(as_r(jit(vectorize(nv_add, in_axes = -1L))(1, x)), as_r(x) + 1)
+    r3 <- array(c(1, 2, 3), dim = 3L)
+    out <- jit(vectorize(f, in_axes = list(r = -1L, x = -1L)))(r3, x)
+    expect_equal(as_r(out), sweep(as_r(x), 2L, c(1, 2, 3), `+`))
+  })
+
+  it("needs every argument that in_axes gives an axis to have it, so not a scalar", {
     y <- nv_array(c(1, 2, 3), dtype = "f32")
-    expect_error(jit(vectorize(nv_add, in_axes = -1L))(1, y), "`lhs` has shape")
+    expect_error(jit(vectorize(nv_add, in_axes = -1L))(nv_scalar(1, dtype = "f32"), y), "`lhs` has shape")
     expect_error(jit(vectorize(nv_add, in_axes = list(lhs = -1L)))(1, y), "`lhs` has shape")
     params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
     f <- function(params) params$w + params$b
@@ -218,10 +231,12 @@ describe("vectorize", {
     expect_equal(as_r(out), array(colSums(as_r(x)^2), dim = 3L))
   })
 
-  it("maps over R data", {
+  it("maps over R data that in_axes names", {
     f <- function(x) sum(x)
-    out <- jit(vectorize(f))(matrix(c(1, 2, 3, 4), nrow = 2L))
+    m <- matrix(c(1, 2, 3, 4), nrow = 2L)
+    out <- jit(vectorize(f, in_axes = list(x = -1L)))(m)
     expect_equal(as_r(out), array(c(3, 7), dim = 2L))
+    expect_error(jit(vectorize(f))(m), "only if a list in `in_axes` names it")
   })
 
   it("composes with gradient() into per-instance gradients", {
@@ -452,7 +467,7 @@ describe("vectorize", {
   it("keeps the device of an array f closes over", {
     local_unset_default_device()
     cst <- nv_array(c(10, 20), dtype = "f32", device = "cpu:1")
-    out <- jit(vectorize(function(x) x + cst))(as_r(x))
+    out <- jit(vectorize(function(x) x + cst, in_axes = list(x = -1L)))(as_r(x))
     expect_equal(device(out), nv_device("cpu:1"))
   })
 

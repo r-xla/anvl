@@ -14,20 +14,18 @@
 #' @param in_axes (`NULL` | `integer(1)` | named `list()`)\cr
 #'   Specify the batch axis.
 #'   By default (`NULL`), it maps over the last axis of every argument that is
-#'   an array, except a scalar, which has no axis: every application gets it as
-#'   it is, whether it is an R value or an array, e.g. one that an enclosing
-#'   [`jit()`] made of an R value.
+#'   an array, except a scalar, which has no axis.
 #'   If `in_axes` is a single integer, it maps over that axis of every argument
 #'   that is an array.
-#'   Either way, other values, such as R numbers, are passed to every
-#'   application as they are.
+#'   Either way, every application gets the other arguments as they are, such as
+#'   R values, also those that an enclosing [`jit()`] was passed.
 #'   If it is a named list, it must be compatible with the argument tree of the function.
 #'   The values of the tree must either be integers, indicating the batch axis (negative
 #'   values count from the end), or `NULL`, indicating no batching.
 #'   Values are applied to all leaves of the node.
 #'   Arguments or named elements the list leaves out are not batched either.
-#'   Every array that `in_axes` gives an axis must have it, so a scalar can only
-#'   be passed to every application.
+#'   Every argument that `in_axes` gives an axis must have it, so a scalar can
+#'   only be passed to every application.
 #' @param out_axes (`integer(1)` | `list()`)\cr
 #'   Along which axis to stack the outputs of `f`. Specified like `in_axes`,
 #'   but a tree follows the structure of what `f` returns. `NULL` returns an
@@ -298,7 +296,9 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
     expand_axes(in_axes, flat$in_tree, length(args_flat), partial = TRUE, arg = "in_axes", part = "argument", call)
   } else {
     lapply(args_flat, function(x) {
-      if (!is_graph_box(x) && !is_anvl_array(x)) {
+      # an R value, also one that an enclosing jit() was passed, is mapped over
+      # only if a list names it
+      if (is_rdata_box(x) || !(is_graph_box(x) || is_anvl_array(x))) {
         return(NULL)
       }
       # by default, the last axis of every array that has one
@@ -327,7 +327,7 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
         c(
           "Every argument mapped over must have its batch axis.",
           x = "{.arg {leaf_args[[i]]}} has shape {shape_repr(x_shape)}, so it has no axis {.val {axes[[i]]}}.",
-          i = "Name the arguments to map over with {.arg in_axes}; an argument of the enclosing {.fn jit} that is not static is an array here."
+          i = "Name the arguments to map over with {.arg in_axes}."
         ),
         call = call
       )
@@ -354,7 +354,8 @@ resolve_mapped_leaves <- function(flat, in_axes, call) {
     cli_abort(
       c(
         "{.fn vectorize} needs at least one argument to map over.",
-        i = if (is.null(in_axes)) "By default, it maps over every array that is not a scalar."
+        i = if (is.null(in_axes)) "By default, it maps over every array that is not a scalar.",
+        i = if (!is.list(in_axes)) "It maps over an R value only if a list in {.arg in_axes} names it."
       ),
       call = call
     )
