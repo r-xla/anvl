@@ -51,12 +51,38 @@ See the \href{https://r-xla.github.io/anvl/articles/vectorize.html}{Vectorizatio
 # f is written for a single vector
 f <- function(x, y) sum(x * y)
 x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
+y <- nv_array(c(1, 2), dtype = "f32")
 
 # one dot product per column of x, against the same y
-jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
+jit(vectorize(f, in_axes = list(x = -1L)))(x, y)
 
 # map over the rows instead: each row divided by its sum
 jit(vectorize(function(x) x / sum(x), in_axes = 1L, out_axes = 1L))(x)
+
+# a nested list in in_axes maps over a part of a nested argument: the
+# columns of params$w, while params$b is the same for every column
+affine <- function(params, y) sum(params$w * y) + params$b
+params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
+jit(vectorize(affine, in_axes = list(params = list(w = -1L))))(params, y)
+
+# out_axes as a list: stack the dot products, and return the norm of y,
+# which does not depend on the columns, as it is
+dot_norm <- function(x, y) list(dot = sum(x * y), norm = sqrt(sum(y^2)))
+jit(vectorize(
+  dot_norm,
+  in_axes = list(x = -1L),
+  out_axes = list(dot = -1L, norm = NULL)
+))(x, y)
+
+# vectorize() composes with other transformations, e.g. one gradient of a
+# loss per column of x
+loss <- function(w, x) sum((x * w)^2)
+jit(vectorize(gradient(loss, wrt = "w"), in_axes = list(x = -1L)))(y, x)
+
+# and with itself: every column of x against every column of x, which is
+# t(x) \%*\% x
+f_all <- vectorize(vectorize(f, in_axes = list(x = -1L)), in_axes = list(y = -1L))
+jit(f_all)(x, x)
 
 # every column gets noise of its own, the noise a loop over the columns
 # would draw

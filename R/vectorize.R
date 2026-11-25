@@ -38,12 +38,38 @@
 #' # f is written for a single vector
 #' f <- function(x, y) sum(x * y)
 #' x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
+#' y <- nv_array(c(1, 2), dtype = "f32")
 #'
 #' # one dot product per column of x, against the same y
-#' jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
+#' jit(vectorize(f, in_axes = list(x = -1L)))(x, y)
 #'
 #' # map over the rows instead: each row divided by its sum
 #' jit(vectorize(function(x) x / sum(x), in_axes = 1L, out_axes = 1L))(x)
+#'
+#' # a nested list in in_axes maps over a part of a nested argument: the
+#' # columns of params$w, while params$b is the same for every column
+#' affine <- function(params, y) sum(params$w * y) + params$b
+#' params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
+#' jit(vectorize(affine, in_axes = list(params = list(w = -1L))))(params, y)
+#'
+#' # out_axes as a list: stack the dot products, and return the norm of y,
+#' # which does not depend on the columns, as it is
+#' dot_norm <- function(x, y) list(dot = sum(x * y), norm = sqrt(sum(y^2)))
+#' jit(vectorize(
+#'   dot_norm,
+#'   in_axes = list(x = -1L),
+#'   out_axes = list(dot = -1L, norm = NULL)
+#' ))(x, y)
+#'
+#' # vectorize() composes with other transformations, e.g. one gradient of a
+#' # loss per column of x
+#' loss <- function(w, x) sum((x * w)^2)
+#' jit(vectorize(gradient(loss, wrt = "w"), in_axes = list(x = -1L)))(y, x)
+#'
+#' # and with itself: every column of x against every column of x, which is
+#' # t(x) %*% x
+#' f_all <- vectorize(vectorize(f, in_axes = list(x = -1L)), in_axes = list(y = -1L))
+#' jit(f_all)(x, x)
 #'
 #' # every column gets noise of its own, the noise a loop over the columns
 #' # would draw
@@ -549,30 +575,31 @@ check_vectorized_outputs <- function(stmt, outputs, size, call) {
 #' that are mapped over. Inside the rule, such values carry the batch axis as
 #' their last axis.
 #'
-#' Most primitives do not need code of their own: they work on an extra
-#' trailing axis already, and a parameter that names an axis still names the
-#' same one. Only the parameters with an entry per axis, or a shape, change.
-#' Declaring how each of them changes is enough, via `params`. The
-#' rule then gives every operand the batch axis -- broadcasting the ones that
-#' are not mapped over -- and applies the primitive with the changed
-#' parameters, so all of its outputs are batched. A scalar operand among
-#' operands that are not scalars stays a scalar if it is not mapped over, and
-#' is broadcast to their shape if it is; an operand that must stay as it is
-#' belongs in `unbatched`. A parameter `params` does not name stays as it is.
+#' Many primitives (such as elementwise ops) just work as is.
+#' For others, some parameters need to be adjusted to account for the added batch axis.
+#' This includes shape parameters of axis mappings.
+#' The rule is then responsible for rewriting these parameters to they
+#' work correctly with the added batch axis.
+#' For the most common cases, see [`vec_shape()`] where it is enough
+#' to just mark the parameter with the appropriate kind via the `params` argument.
+#' For more complex rules it is necessary to provide the `fn` argument.
 #'
-#' For a primitive that this does not fit, pass `fn` instead, with the
-#' signature `function(inputs, batched, params, size)`: `inputs` are the
-#' operands, `batched` says which of them carry the batch axis, `params` are
-#' the parameters of the call, and `size` is the size of the batch axis. It
-#' returns the list of outputs, or a single output as it is, each with the
-#' batch axis last, also one that is the same for every slice.
-#'
-#' A declared rule calls the primitive with its parameters as arguments, so it
-#' only fits a primitive made with [`new_primitive()`] whose parameters are
-#' named like the arguments of its function.
 #' @param fn (`NULL` | `function`)\cr
-#'   A rule of its own. If given, the other arguments must be left at their
-#'   defaults.
+#'   A rule of its own, for a primitive for which declaring `params` and `unbatched`
+#'   is not enough. If given, the other arguments must be left at their
+#'   defaults. It is called as `fn(inputs, batched, params, size)` for every
+#'   call of the primitive with at least one operand that is mapped over, where
+#'   * `inputs` is the list of operands, in the order of the primitive's
+#'     arguments: one that is mapped over with the batch axis as its last axis,
+#'     the others as they are,
+#'   * `batched` is a `logical()` saying which of `inputs` are mapped over,
+#'   * `params` is the named list of the parameters of the call, and
+#'   * `size` is the size of the batch axis.
+#'
+#'   It returns the outputs of the primitive applied to every slice, as a list
+#'   in the order of the primitive's outputs, or a single output as it is.
+#'   Every output has the batch axis as its last axis, also one that is the
+#'   same for every slice.
 #' @param params (named `list()`)\cr
 #'   How each parameter with an entry per axis of the operands, or a shape,
 #'   changes, one of the kinds in [`vec_shape()`].

@@ -336,6 +336,23 @@ describe("prim_sample_bits", {
   })
 })
 
+describe("prim_optimization_barrier", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, y) prim_optimization_barrier(list(x, y)),
+      x = rand_array(c(2L, 3L)),
+      y = rand_array(c(4L, 3L))
+    )
+  })
+
+  it("vectorizes the draws of nv_rnorm(), which go through it", {
+    withr::local_seed(1L)
+    local_nv_seed(1L)
+    autotest_vectorize(function(x) x + nv_rnorm(shape = 2L), x = rand_array(c(2L, 3L)))
+  })
+})
+
 # A batch of `size` symmetric positive definite matrices, of shape
 # (n, n, size).
 rand_spd <- function(n, size) {

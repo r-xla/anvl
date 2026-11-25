@@ -8,8 +8,23 @@ rule_vectorize(fn = NULL, params = list(), unbatched = integer())
 }
 \arguments{
 \item{fn}{(\code{NULL} | \code{function})\cr
-A rule of its own. If given, the other arguments must be left at their
-defaults.}
+A rule of its own, for a primitive that declaring \code{params} and \code{unbatched}
+does not fit. If given, the other arguments must be left at their
+defaults. It is called as \code{fn(inputs, batched, params, size)} for every
+call of the primitive with at least one operand that is mapped over, where
+\itemize{
+\item \code{inputs} is the list of operands, in the order of the primitive's
+arguments: one that is mapped over with the batch axis as its last axis,
+the others as they are,
+\item \code{batched} is a \code{logical()} saying which of \code{inputs} are mapped over,
+\item \code{params} is the named list of the parameters of the call, and
+\item \code{size} is the size of the batch axis.
+}
+
+It returns the outputs of the primitive applied to every slice, as a list
+in the order of the primitive's outputs, or a single output as it is.
+Every output has the batch axis as its last axis, also one that is the
+same for every slice.}
 
 \item{params}{(named \code{list()})\cr
 How each parameter with an entry per axis of the operands, or a shape,
@@ -28,6 +43,16 @@ Construct the rule \code{\link[=vectorize]{vectorize()}} uses for a primitive ap
 that are mapped over. Inside the rule, such values carry the batch axis as
 their last axis.
 
+Many primitives (such as elementwise ops) just work as is.
+For others, some parameters need to be adjusted to account for the added batch axis.
+This includes shape parameters of axis mappings.
+The rule is then responsible for rewriting these parameters to they
+work correctly with the added batch axis.
+For the most common cases, see \code{\link[=vec_shape]{vec_shape()}} where it is enough
+to just mark the parameter with the appropriate kind via the \code{params} argument.
+For more complex rules it is possible to provide the \code{fn}.
+T
+For more complex
 Most primitives do not need code of their own: they work on an extra
 trailing axis already, and a parameter that names an axis still names the
 same one. Only the parameters with an entry per axis, or a shape, change.

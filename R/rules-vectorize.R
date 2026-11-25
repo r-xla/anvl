@@ -55,6 +55,12 @@ prim_sort[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, siz
   )
 })
 
+# The barrier passes its operands through, so every one of them gets the batch
+# axis, as every output of a call with a batched input has it.
+prim_optimization_barrier[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  unname(prim_optimization_barrier(Map(batch_operand, inputs, batched, MoreArgs = list(size = size))))
+})
+
 # The start indices are scalars: the slice starts at the beginning of the batch
 # axis and spans all of it.
 prim_dynamic_slice[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
