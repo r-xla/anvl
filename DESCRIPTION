@@ -81,6 +81,7 @@ Collate:
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
+    'higher-order.R'
     'lowering-axes.R'
     'pullback.R'
     'pushforward.R'
