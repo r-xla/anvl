@@ -254,6 +254,9 @@ rdata_mat_hit <- function(box, dtype) {
 build_r_at <- function(x, dtype, desc = current_descriptor()) {
   force(desc)
   if (!is_valid_r_lit(x) && !is_valid_r_array(x)) {
+    # An `NA` reaches here: it is a length-1 numeric, but there is no dtype it
+    # obviously belongs at. Refused the same way it is anywhere else a value
+    # enters a graph.
     cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
   }
   build_r_staged(typeof(x), as_dtype(dtype), function(dt) r_const_at(x, dt, desc), value = x)
@@ -261,25 +264,15 @@ build_r_at <- function(x, dtype, desc = current_descriptor()) {
 
 # The graph's constant for the R value `x` at `dtype`: an inlined literal for a
 # scalar, a registered constant for an array. Deduplicated per descriptor, so
-# the same value written twice is built once. A scalar a literal cannot spell
-# is a constant too (see `literal_can_hold()`).
+# the same value written twice is built once.
 r_const_at <- function(x, dtype, desc) {
-  if (is.null(dim(x)) && literal_can_hold(x, dtype)) {
+  if (is.null(dim(x))) {
     return(get_box_or_register_const(
       desc,
       GraphLiteral(LiteralArray(x, shape = shape(x), dtype = dtype))
     ))
   }
-  get_box_or_register_const(desc, nv_array(x, shape = shape(x), dtype = dtype))
-}
-
-# Whether a literal can embed the R data `x` at `dtype`. A missing value at a
-# float is a NaN, which a literal spells like any other. At every other data
-# type it has no spelling: it becomes `INT_MIN` at `i32` and is an error
-# elsewhere, which the backend decides where it uploads the value as a constant,
-# exactly as for `nv_array()`.
-literal_can_hold <- function(x, dtype) {
-  is_dtype_float(dtype) || !anyNA(x)
+  get_box_or_register_const(desc, nv_array(x, dtype = dtype))
 }
 
 #' @title Peek at a Data Type
