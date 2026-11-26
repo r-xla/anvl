@@ -425,7 +425,7 @@ The barrier makes the lookup about three times faster at every size.
 ### Reducing peak memory in unrolled loops
 
 When you write a regular R `for` loop inside `jit()`, R executes the loop while building the computation, handing XLA every iteration at once (loop unrolling).
-When you write a regular R for loop inside jit(), R executes the loop while building the computation, handing XLA every iteration at once (loop unrolling). With the entire loop visible, XLA is free to reorganize work across iterations. Two of its optimizations can keep every iteration's intermediate result in memory simultaneously:
+With the entire loop visible, XLA is free to reorganize work across iterations. Two of its optimizations can keep every iteration's intermediate result in memory simultaneously:
 
 - **Kernel fusion:** It may fuse the running-total updates into a single kernel that takes all of the intermediate results as inputs.
 - **Parallel execution:** Even without fusion, XLA on the CPU may compute all the independent products upfront so they can run in parallel.
