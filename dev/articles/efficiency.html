@@ -463,6 +463,324 @@ anymore, <code>y[i, inplace = TRUE] &lt;- val</code> instead donates
 the Subsetting article for details.</p>
 </div>
 </div>
+<div class="section level2">
+<h2 id="optimization-barriers">Optimization barriers<a class="anchor" aria-label="anchor" href="#optimization-barriers"></a>
+</h2>
+<p>When XLA compiles a program, it <em>fuses</em> chains of
+element-by-element operations into a single pass (called a kernel) over
+the data. Instead of creating and saving temporary arrays in memory
+between steps, each value is processed all the way through in one go.
+Cutting out that memory traffic is one of the main reasons a
+<code><a href="../reference/jit.html">jit()</a></code>ted function is so fast, so as a general rule we want
+as much fusion as we can get.</p>
+<p>For example, computing <code>sqrt(2 * x + 1)</code> in R would
+normally take three passes over <code>x</code>: one to multiply by
+<code>2</code>, one to add <code>1</code>, and one to take the square
+root. Fusion means collapsing those into a single pass that finishes all
+three steps on each element before moving to the next.</p>
+<p>Occasionally, though, XLA’s choices end up working against us, and
+<code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> lets us step in and overrule the
+optimizer. The function returns its input unchanged, but acts as a wall:
+XLA cannot fuse operations across it, and any later step that uses the
+result has to wait until the input is fully computed. Below we look at
+three situations where this helps.</p>
+<p><strong>Note 1:</strong> this is not an exhaustive list, but are the
+places we have observed optimization barriers helping.</p>
+<p><strong>Note 2:</strong> always benchmark, because these are not hard
+and fast rules: there will exist exceptions where the barrier does not
+help despite the code matching the described scenario.</p>
+<div class="section level3">
+<h3 id="avoiding-repeated-work">Avoiding repeated work<a class="anchor" aria-label="anchor" href="#avoiding-repeated-work"></a>
+</h3>
+<p>When a value has more than one consumer (i.e. is used in more than
+one place), XLA has to decide whether to store it in memory once or to
+compute it again inside each consumer’s kernel. It recomputes the value
+whenever it judges the work to do so would be cheap. However, XLA makes
+that judgement one operation at a time, so a long chain of individually
+cheap operations can look cheap, even when computing it twice actually
+costs far more than the memory traffic to store it.</p>
+<p>To see how this happens, consider a small toy example. The
+<code>chain()</code> function below uses a regular R <code>for</code>
+loop (rather than an {anvl} loop) to apply 50 simple multiply-and-add
+steps to its input. Because R executes the loop while building the
+computation, XLA sees a long chain of fifty consecutive
+element-by-element operations, which gives a lengthy sequence of simple
+arithmetic, such as evaluating a high-degree polynomial. We then use the
+result twice in the <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> return value:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">chain</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">50</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">x</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">*</span> <span class="fl">0.999</span> <span class="op">+</span> <span class="fl">0.001</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">x</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">chain</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="fl">2</span>, <span class="va">y</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">f_barrier</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier</a></span><span class="op">(</span><span class="fu">chain</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="fl">2</span>, <span class="va">y</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>It may be surprising that in <code>f</code> (without the barrier),
+XLA builds one kernel <em>per output</em>, fusing all 50 steps of
+<code>chain()</code> into both! Hence, the entire chain is computed
+twice. With the barrier, <code>chain()</code> runs once and saves its
+result to memory for both outputs to read. Both functions return exactly
+the same values.</p>
+<p>XLA does not copy every kind of operation like this. It treats many
+simple arithmetic operations (like addition and multiplication) as
+always cheap, judging each operation individually regardless of how many
+are chained together. Other operations it always considers expensive,
+such as <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code>, <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">log()</a></code>, <code><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt()</a></code> and
+matrix multiplication, meaning they are not copied, their results
+instead being stored in memory so they can be read by every consumer.
+This is a simplified picture, because XLA’s actual decision also depends
+on the surrounding computation, even for these operations.</p>
+<p>Whether XLA’s optimization pays off depends on how long the chain is.
+For a short chain, doing the arithmetic twice is faster than writing the
+intermediate result to memory and reading it back, but for a long chain,
+the extra computation costs more than that memory trip. The table below
+shows example timings for 10 million <code>f32</code> values on an Apple
+M1:</p>
+<table class="table">
+<thead><tr class="header">
+<th>steps in <code>chain()</code>
+</th>
+<th>without barrier</th>
+<th>with barrier</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>10</td>
+<td>3.4 ms</td>
+<td>4.4 ms</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>6.0 ms</td>
+<td>5.8 ms</td>
+</tr>
+<tr class="odd">
+<td>50</td>
+<td>14.1 ms</td>
+<td>9.5 ms</td>
+</tr>
+<tr class="even">
+<td>100</td>
+<td>42.8 ms</td>
+<td>23.6 ms</td>
+</tr>
+</tbody>
+</table>
+<details><summary>
+Show the code for these timings
+</summary><div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># We build both versions of the example for a chain of a given length.</span></span>
+<span><span class="va">make_fns</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">steps</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">chain</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">steps</span><span class="op">)</span><span class="op">)</span> <span class="va">x</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">*</span> <span class="fl">0.999</span> <span class="op">+</span> <span class="fl">0.001</span></span>
+<span>    <span class="va">x</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    without <span class="op">=</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">chain</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="fl">2</span>, <span class="va">y</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="op">}</span><span class="op">)</span>,</span>
+<span>    with <span class="op">=</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier</a></span><span class="op">(</span><span class="fu">chain</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="fl">2</span>, <span class="va">y</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># We report the fastest of 15 runs in milliseconds. The first two calls compile</span></span>
+<span><span class="co"># the function and are not timed. Calls return before the work is done, so we</span></span>
+<span><span class="co"># await both outputs. We also collect garbage before each run, so that R does</span></span>
+<span><span class="co"># not free the previous outputs in the middle of a timed call.</span></span>
+<span><span class="va">time_ms</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">f</span>, <span class="va">x</span>, <span class="va">reps</span> <span class="op">=</span> <span class="fl">15</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">await</span><span class="op">)</span></span>
+<span>  <span class="va">times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">reps</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">reps</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">start</span> <span class="op">&lt;-</span> <span class="fu">bench</span><span class="fu">::</span><span class="fu">hires_time</span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">await</span><span class="op">)</span></span>
+<span>    <span class="va">times</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">bench</span><span class="fu">::</span><span class="fu">hires_time</span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="va">start</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">times</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1e3</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1e7</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">steps</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">50</span>, <span class="fl">100</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">fns</span> <span class="op">&lt;-</span> <span class="fu">make_fns</span><span class="op">(</span><span class="va">steps</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span></span>
+<span>    <span class="st">"%3d steps: without barrier %5.1f ms, with barrier %5.1f ms\n"</span>,</span>
+<span>    <span class="va">steps</span>, <span class="fu">time_ms</span><span class="op">(</span><span class="va">fns</span><span class="op">$</span><span class="va">without</span>, <span class="va">x</span><span class="op">)</span>, <span class="fu">time_ms</span><span class="op">(</span><span class="va">fns</span><span class="op">$</span><span class="va">with</span>, <span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</details><p>So for a short chain, the barrier clearly makes things slower and
+gets in the way of XLA’s optimizer. However, for a sufficiently long
+chain the barrier wins, approaching a 2x speed-up because it removes the
+duplicated chain.</p>
+<p>The concatenation in the returning <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> counts as two
+consumers, because XLA computes each part of the output separately.</p>
+</div>
+<div class="section level3">
+<h3 id="keeping-heavy-work-out-of-kernels-that-cannot-vectorize">Keeping heavy work out of kernels that cannot vectorize<a class="anchor" aria-label="anchor" href="#keeping-heavy-work-out-of-kernels-that-cannot-vectorize"></a>
+</h3>
+<p>Modern CPUs get much of their speed by processing several values
+simultaneously in a single hardware step, and XLA relies heavily on
+this. Some operations, however, force a pass to handle values one at a
+time instead. The most common culprit is looking up values in an array
+at computed positions, because each entry has to be fetched from a
+different spot in memory. If XLA fuses other work into that same pass,
+everything is dragged down to one value at a time as well.</p>
+<p>Placing a barrier on the lookup positions separates the two steps so
+the heavy work stays in its own fast pass. To see this, we reuse
+<code>chain()</code> from above and turn its result into positions in a
+table of 1024 values:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lookup</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">table</span>, <span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_convert.html">nv_convert</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_floor.html">nv_floor</a></span><span class="op">(</span><span class="fu">chain</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1024</span><span class="op">)</span>, <span class="st">"i32"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1L</span></span>
+<span>  <span class="va">table</span><span class="op">[</span><span class="va">idx</span><span class="op">]</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">lookup_barrier</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">table</span>, <span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_convert.html">nv_convert</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_floor.html">nv_floor</a></span><span class="op">(</span><span class="fu">chain</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1024</span><span class="op">)</span>, <span class="st">"i32"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1L</span></span>
+<span>  <span class="va">table</span><span class="op">[</span><span class="fu"><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier</a></span><span class="op">(</span><span class="va">idx</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>Without the barrier, XLA fuses all 50 steps of <code>chain()</code>
+into the lookup, so they run one value at a time. With the barrier,
+<code>chain()</code> runs in a pass of its own that processes many
+values at once, and only the lookup itself is left to run one value at a
+time. Both functions return exactly the same values. The table below
+shows example timings for <code>f32</code> values on an Apple M1, but
+similar gains happen on x86 processors:</p>
+<table class="table">
+<thead><tr class="header">
+<th>values</th>
+<th>without barrier</th>
+<th>with barrier</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>1 million</td>
+<td>3.5 ms</td>
+<td>1.3 ms</td>
+</tr>
+<tr class="even">
+<td>10 million</td>
+<td>32.2 ms</td>
+<td>10.5 ms</td>
+</tr>
+<tr class="odd">
+<td>100 million</td>
+<td>313.2 ms</td>
+<td>97.6 ms</td>
+</tr>
+</tbody>
+</table>
+<details><summary>
+Show the code for these timings
+</summary><div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># We use time_ms() from the timing code in the previous section. It expects a</span></span>
+<span><span class="co"># function of x that returns a list, so we wrap each lookup in one.</span></span>
+<span><span class="va">table</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1024</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
+<span><span class="va">without_barrier</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">lookup</span><span class="op">(</span><span class="va">table</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">with_barrier</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">lookup_barrier</span><span class="op">(</span><span class="va">table</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">n</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e6</span>, <span class="fl">1e7</span>, <span class="fl">1e8</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span></span>
+<span>    <span class="st">"%.0e values: without barrier %6.1f ms, with barrier %6.1f ms\n"</span>,</span>
+<span>    <span class="va">n</span>, <span class="fu">time_ms</span><span class="op">(</span><span class="va">without_barrier</span>, <span class="va">x</span><span class="op">)</span>, <span class="fu">time_ms</span><span class="op">(</span><span class="va">with_barrier</span>, <span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</details><p>The barrier makes the lookup about three times faster at every
+size.</p>
+</div>
+<div class="section level3">
+<h3 id="reducing-peak-memory-in-unrolled-loops">Reducing peak memory in unrolled loops<a class="anchor" aria-label="anchor" href="#reducing-peak-memory-in-unrolled-loops"></a>
+</h3>
+<p>When you write a regular R <code>for</code> loop inside
+<code><a href="../reference/jit.html">jit()</a></code>, R executes the loop while building the computation,
+handing XLA every iteration at once (loop unrolling). With the entire
+loop visible, XLA is free to reorganize work across iterations. Two of
+its optimizations can keep every iteration’s intermediate result in
+memory simultaneously:</p>
+<ul>
+<li>
+<strong>Kernel fusion:</strong> It may fuse the running-total
+updates into a single kernel that takes all of the intermediate results
+as inputs.</li>
+<li>
+<strong>Parallel execution:</strong> Even without fusion, XLA on the
+CPU may compute all the independent products upfront so they can run in
+parallel.</li>
+</ul>
+<p>The function below adds up nine matrix products, each producing a
+full-size temporary matrix:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sum_of_squares</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">total</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">0</span>, shape <span class="op">=</span> <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">term</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_matmul.html">nv_matmul</a></span><span class="op">(</span><span class="va">x</span> <span class="op">+</span> <span class="va">i</span>, <span class="va">x</span><span class="op">)</span></span>
+<span>    <span class="va">total</span> <span class="op">&lt;-</span> <span class="va">total</span> <span class="op">+</span> <span class="va">term</span> <span class="op">*</span> <span class="va">term</span></span>
+<span>    <span class="va">step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>total <span class="op">=</span> <span class="va">total</span>, x <span class="op">=</span> <span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">total</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">total</span></span>
+<span>    <span class="va">x</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">x</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">total</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>At the end of each iteration, we pass both the running total and
+<code>x</code> through the barrier. Passing <code>total</code> through
+the barrier stops the updates from being fused, and passing
+<code>x</code> through it makes each product depend on the previous
+iteration, so there is nothing to run in parallel. Each product can then
+be freed as soon as it has been added.</p>
+<p>For 1024 by 1024 f32 matrices, XLA’s memory report shows the
+difference clearly. Without the barrier, the program uses 36 MB of
+temporary memory (corresponding to all nine products at once). With the
+barrier, it uses just 8 MB (corresponding to two at a time). In this
+instance, the running time is the same, so one may prefer the one
+requiring less memory (particularly in more extreme cases than this toy
+example).</p>
+</div>
+<div class="section level3">
+<h3 id="when-to-reach-for-a-barrier">When to reach for a barrier<a class="anchor" aria-label="anchor" href="#when-to-reach-for-a-barrier"></a>
+</h3>
+<p>Some guidance for using barriers in your own code:</p>
+<ul>
+<li>
+<strong>Look for a long chain of seemingly cheap work whose result
+is used more than once.</strong> Put the barrier on the result, just
+before it splits. A barrier after the split is too late, because XLA has
+already duplicated the chain.</li>
+<li>
+<strong>Look for expensive work that feeds into an array
+lookup.</strong> Put the barrier on the positions, just before they are
+used to index the array.</li>
+<li>
+<strong>Look for an R for loop whose iterations create large
+temporary arrays.</strong> Pass the variables carried from one iteration
+to the next through a barrier at the end of each step.</li>
+<li>
+<strong>Leave short chains and results that are only used once
+alone.</strong> In those cases, fusion is faster, and a barrier only
+adds an unnecessary trip to memory.</li>
+<li>
+<strong>Measure!!</strong> The benefit depends on the program, the
+data size and the hardware. See the <a href="faq.html#why-does-timing-my-function-show-suspiciously-fast-results">FAQ</a>
+on how to time {anvl} functions correctly.</li>
+</ul>
+<p>A barrier never alters the values passing through it, though it can
+change how XLA groups the surrounding arithmetic, so results can
+occasionally show tiny rounding differences. Also note that we have only
+studied barriers on the CPU so far. On a GPU, fusion is usually more
+valuable, so a barrier might be less likely to help there.</p>
+</div>
+</div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
 </div>
