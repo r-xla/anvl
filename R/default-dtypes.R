@@ -237,8 +237,9 @@ with_default_dtypes <- function(dtypes, code, backend = NULL) {
 #' names is converted to that data type, the defaults (see
 #' [`default_dtypes()`]) are set to the `float` / `int` entries for the
 #' duration of the call, and every returned array of a named category is
-#' converted as well. For example, `with_dtypes(nv_add, c(float = "f64"))` is
-#' an `nv_add()` that computes floats at `f64`.
+#' converted as well. Inside [`jit()`], an R value `f` returns also takes these
+#' defaults. For example, `with_dtypes(nv_add, c(float = "f64"))` is an
+#' `nv_add()` that computes floats at `f64`.
 #'
 #' A category `dtypes` does not name is left alone, in the arguments, in the
 #' body and in the result.
@@ -302,7 +303,14 @@ with_dtypes <- function(f, dtypes) {
 
 convert_call <- function(f, args, targets) {
   args <- convert_tree(args, targets)
-  convert_tree(do.call(f, args), targets)
+  out <- do.call(f, args)
+  # An R value the call returns has no data type yet. Inside a trace it would
+  # settle on the defaults where the trace ends, after the defaults of the call
+  # are gone, so it settles on them here.
+  if (currently_tracing()) {
+    out <- map_tree(out, function(x) if (has_no_dtype(x)) materialize_at(x, peek_dtype(x)) else x)
+  }
+  convert_tree(out, targets)
 }
 
 assert_dtype_categories <- function(dtypes, categories = c("float", "int", "uint")) {

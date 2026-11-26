@@ -237,6 +237,16 @@ describe("with_dtypes()", {
     expect_equal(as.vector(out$a), c(2, 3))
   })
 
+  it("builds an R value it returns inside a trace at its defaults", {
+    local_registered_default_dtypes()
+    f <- with_dtypes(function(x) list(lit = 1, int = 2L, arg = x), c(float = "f64", int = "i64"))
+    out <- jit(f)(1)
+    expect_dtype(out$lit, "f64")
+    expect_dtype(out$int, "i64")
+    # an R argument returned as it is, too
+    expect_dtype(out$arg, "f64")
+  })
+
   it("converts an unsigned array without setting a default for it", {
     local_registered_default_dtypes()
     # `uint` is a conversion category only, so a wrapper naming just it leaves
