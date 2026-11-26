@@ -79,3 +79,29 @@ for (prim in primitives_tagged("linear")) {
   prim[["pushforward"]] <- pushforward_linear(prim)
 }
 rm(prim)
+
+# Printing hands its operand back unchanged, and so its tangent, which it does
+# not print.
+prim_print[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  list(tangents[[1L]])
+}
+
+# The barrier passes its operands through. As the pullback rule does with the
+# cotangents, the tangents go behind a barrier of their own.
+prim_optimization_barrier[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  given <- !vapply(tangents, is.null, logical(1L))
+  out <- vector("list", length(outputs))
+  out[given] <- prim_optimization_barrier(tangents[given])
+  out
+}
+
+# The result of `prim_which_max()` and `prim_which_min()` is an integer, and the
+# pullback rule of `prim_bitcast_convert()` gives a zero: none of them passes a
+# tangent on.
+pushforward_none <- function(inputs, outputs, tangents, params) {
+  vector("list", length(outputs))
+}
+
+prim_which_max[["pushforward"]] <- pushforward_none
+prim_which_min[["pushforward"]] <- pushforward_none
+prim_bitcast_convert[["pushforward"]] <- pushforward_none

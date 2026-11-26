@@ -33,8 +33,9 @@ anvl_array <- function(x, dtype) {
 # one an `i32` array -- the arguments to differentiate with respect to, the
 # arguments that are scalars, which the primitive broadcasts to the shape of
 # the others, the shapes of the other arguments where they are not `c(2, 3)`,
-# static parameters, whether to check forward-over-reverse, and the tolerance
-# of the comparison with finite differences.
+# static parameters, whether to check forward-over-reverse, the tolerance of
+# the comparison with finite differences, and, for a primitive that does not
+# take the arguments one by one, a function of their named list that calls it.
 pushforward_case <- function(
   args,
   wrt = names(args),
@@ -42,9 +43,19 @@ pushforward_case <- function(
   shapes = list(),
   params = list(),
   hvp = TRUE,
-  tolerance = 1e-6
+  tolerance = 1e-6,
+  call = NULL
 ) {
-  list(args = args, wrt = wrt, scalar = scalar, shapes = shapes, params = params, hvp = hvp, tolerance = tolerance)
+  list(
+    args = args,
+    wrt = wrt,
+    scalar = scalar,
+    shapes = shapes,
+    params = params,
+    hvp = hvp,
+    tolerance = tolerance,
+    call = call
+  )
 }
 
 # The results of a primitive as a list, with one entry per output.
@@ -60,7 +71,18 @@ binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
 pushforward_cases <- list(
   # at f64 a conversion to f64 is the identity, at f32 one that changes the
   # data type
-  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64"))
+  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64")),
+  print = pushforward_case(list(x = unif(-2, 2))),
+  # an output that is not a float among those that are
+  optimization_barrier = pushforward_case(
+    list(x = unif(-2, 2), i = ints(-3L, 3L), y = unif(-2, 2)),
+    wrt = c("x", "y"),
+    shapes = list(y = 4L),
+    call = \(a) prim_optimization_barrier(a)
+  ),
+  which_max = pushforward_case(list(x = unif(-2, 2)), params = list(axis = 1L)),
+  which_min = pushforward_case(list(x = unif(-2, 2)), params = list(axis = 2L)),
+  bitcast_convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "i64"))
 )
 
 # Pushforward rules derived from the pullback rule, named
@@ -154,7 +176,7 @@ check_pushforward_rule <- function(name, case) {
   directions <- lapply(case$wrt, \(nm) shaped(rnorm(length(args[[nm]])), dim(args[[nm]])))
   names(directions) <- case$wrt
 
-  f <- with_formals(names(args), \(a) do.call(prim, c(a, case$params)))
+  f <- with_formals(names(args), case$call %||% \(a) do.call(prim, c(a, case$params)))
   x <- arrays_at("f64")
   t <- lapply(directions, anvl_array, dtype = "f64")
   outs <- trace_fn(f, x)$outputs
@@ -169,8 +191,8 @@ check_pushforward_rule <- function(name, case) {
     return(invisible())
   }
 
-  # `f` with its float outputs alone, as a list
-  g <- with_formals(names(args), \(a) as_outputs(do.call(f, a))[is_float])
+  # `f` with its float outputs alone, as an unnamed list
+  g <- with_formals(names(args), \(a) unname(as_outputs(do.call(f, a))[is_float]))
   h <- 1e-5
   u <- lapply(outs[is_float], \(o) anvl_array(shaped(rnorm(prod(shape(o))), shape(o)), dtype = "f64"))
   has_pullback <- !is.null(prim[["pullback"]])
@@ -246,7 +268,8 @@ describe("pushforward rules", {
   for (name in names(pushforward_cases)) {
     it(sprintf("of prim_%s agree with finite differences and the pullback", name), {
       withr::local_seed(1L)
-      check_pushforward_rule(name, pushforward_cases[[name]])
+      # `prim_print()` prints at every run
+      utils::capture.output(check_pushforward_rule(name, pushforward_cases[[name]]))
     })
   }
 
