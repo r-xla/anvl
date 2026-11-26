@@ -88,11 +88,18 @@ test_that("install_anvl rejects backends that have nothing to install", {
 })
 
 describe("skip_if_no_plugin", {
-  # An empty plugin cache and none of the variables that make a plugin
-  # available otherwise. The plugin this session already loaded is unaffected.
-  local_no_pjrt_plugin <- function(envir = parent.frame()) {
+  # Only the plugins of the `downloaded` platforms are downloaded, and none of
+  # the variables that make a plugin available otherwise are set. Where pjrt
+  # stores its plugins is pjrt's business, so the download state is mocked
+  # instead of set up on disk. The plugin this session already loaded is
+  # unaffected.
+  local_pjrt_plugins <- function(downloaded = character(), envir = parent.frame()) {
+    local_mocked_bindings(
+      plugins_downloaded = function(platforms) all(platforms %in% downloaded),
+      .package = "pjrt",
+      .env = envir
+    )
     withr::local_envvar(
-      R_USER_CACHE_DIR = withr::local_tempdir(.local_envir = envir),
       PJRT_PLUGIN_PATH_CPU = NA,
       PJRT_PLUGIN_PATH_CUDA = NA,
       PJRT_INSTALL = NA,
@@ -101,33 +108,33 @@ describe("skip_if_no_plugin", {
   }
 
   it("skips when the plugin is neither downloaded, pointed to, nor allowed to download", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     expect_condition(skip_if_no_plugin("cpu"), class = "skip")
     withr::local_envvar(PJRT_INSTALL = "0")
     expect_condition(skip_if_no_plugin("cpu"), class = "skip")
   })
 
   it("does not skip when the plugin is downloaded", {
-    local_no_pjrt_plugin()
-    dir.create(file.path(tools::R_user_dir("pjrt", "cache"), "cpu"), recursive = TRUE)
+    local_pjrt_plugins(downloaded = "cpu")
     expect_no_condition(skip_if_no_plugin("cpu"), class = "skip")
+    expect_condition(skip_if_no_plugin("cuda"), class = "skip")
   })
 
   it("does not skip when PJRT_PLUGIN_PATH_<PLATFORM> points to the plugin", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     withr::local_envvar(PJRT_PLUGIN_PATH_CPU = "libpjrt_cpu.so")
     expect_no_condition(skip_if_no_plugin("cpu"), class = "skip")
     expect_condition(skip_if_no_plugin("cuda"), class = "skip")
   })
 
   it("does not skip when PJRT_INSTALL=1 allows downloading the plugin", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     withr::local_envvar(PJRT_INSTALL = "1")
     expect_no_condition(skip_if_no_plugin("cpu"), class = "skip")
   })
 
   it("defaults to the platform of the default device", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     withr::local_envvar(PJRT_PLUGIN_PATH_CPU = "libpjrt_cpu.so")
     local_default_device("cuda:1")
     expect_condition(skip_if_no_plugin(), class = "skip")
