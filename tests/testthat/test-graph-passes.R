@@ -297,6 +297,29 @@ describe("prune_graph", {
   })
 })
 
+describe("graph_without_prints", {
+  names_of <- function(g) vapply(g$statements, \(call) call$primitive$name, character(1L))
+
+  it("drops the calls that print, from the graph and from its sub-graphs", {
+    f <- function(p, x) {
+      prim_print(x)
+      nv_if(p, function() prim_print(nv_exp(x)), function() x)
+    }
+    graph <- trace_fn(f, list(p = nv_scalar(TRUE), x = nv_scalar(1, "f64")))
+    stripped <- graph_without_prints(graph)
+    expect_equal(names_of(stripped), "if")
+    expect_equal(names_of(stripped$statements[[1L]]$params$true), "exp")
+    expect_identical(stripped$outputs, graph$outputs)
+    expect_equal(names_of(graph), c("print", "if"))
+    expect_equal(names_of(graph$statements[[2L]]$params$true), c("exp", "print"))
+  })
+
+  it("returns a graph that does not print as it is", {
+    graph <- trace_fn(function(x) nv_exp(x), list(x = nv_scalar(1, "f64")))
+    expect_identical(graph_without_prints(graph), graph)
+  })
+})
+
 describe("split_loop_invariant", {
   it("computes before the loop what does not depend on the varying inputs", {
     f <- function(h, w) nv_exp(w) * h

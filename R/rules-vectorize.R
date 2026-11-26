@@ -290,7 +290,7 @@ prim_while[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, si
   is_state <- seq_len(length(inputs) - params$n_captures)
   captures <- inputs[-is_state]
   captures_batched <- batched[-is_state]
-  state_batched <- carry_batched(params$body, batched[is_state], captures_batched)
+  state_batched <- carry_closure(params$body, batched[is_state], captures_batched, graph_batched_outputs)
   pred_batched <- graph_batched_outputs(params$cond, c(state_batched, captures_batched))
   if (pred_batched) {
     state_batched[] <- TRUE
@@ -350,7 +350,7 @@ prim_scan[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, siz
   is_xs <- params$n_carry + seq_len(params$n_xs)
   captures <- inputs[-c(is_carry, is_xs)]
   other_batched <- batched[-is_carry]
-  carry_b <- carry_batched(params$body, batched[is_carry], other_batched)
+  carry_b <- carry_closure(params$body, batched[is_carry], other_batched, graph_batched_outputs)
   out_b <- graph_batched_outputs(params$body, c(carry_b, other_batched))[-is_carry]
 
   init <- Map(

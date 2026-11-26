@@ -92,6 +92,24 @@ call_prints <- function(call) {
     any(vapply(Filter(is_graph, call$params), graph_prints, logical(1L)))
 }
 
+# `graph` without the calls that print, in it and in the sub-graphs of its
+# calls, for a replay that runs alongside `graph`, which prints already. No
+# value reads a print (see `prim_print()`), so nothing else changes.
+graph_without_prints <- function(graph) {
+  if (!graph_prints(graph)) {
+    return(graph)
+  }
+  new_graph <- copy_graph(graph)
+  calls <- Filter(\(call) !identical(call$primitive$name, "print"), graph$statements)
+  new_graph$statements <- lapply(calls, function(call) {
+    if (call_prints(call)) {
+      call$params <- lapply(call$params, \(p) if (is_graph(p)) graph_without_prints(p) else p)
+    }
+    call
+  })
+  new_graph
+}
+
 # Splits `graph`, the body of a loop, into what can run once, before the loop,
 # and what has to run in every step. `varying` are the inputs that change from
 # step to step; a call stays in the loop if it reads one of them or what was

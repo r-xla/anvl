@@ -35,6 +35,7 @@ with a separate barrier in the backward pass.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

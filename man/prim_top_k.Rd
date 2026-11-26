@@ -40,6 +40,7 @@ For other axes, transpose so the target axis is first, call
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

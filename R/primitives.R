@@ -251,7 +251,8 @@ prim_broadcast_in_axes <- new_primitive(
       infer_fn = infer_broadcast_in_axes
     )[[1L]]
   },
-  static = 2:3
+  static = 2:3,
+  tags = "linear"
 )
 
 #' @title Primitive Dot General
@@ -350,7 +351,8 @@ prim_transpose <- new_primitive(
       infer_fn = infer_transpose
     )[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "linear"
 )
 
 #' @title Primitive Reshape
@@ -390,7 +392,8 @@ prim_reshape <- new_primitive(
       infer_fn = infer_reshape
     )[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "linear"
 )
 
 #' @title Primitive Concatenate
@@ -433,7 +436,8 @@ prim_concatenate <- new_primitive(
       infer_fn = infer_concatenate
     )[[1L]]
   },
-  static = "axis"
+  static = "axis",
+  tags = "linear"
 )
 
 #' @title Primitive Static Slice
@@ -495,7 +499,8 @@ prim_static_slice <- new_primitive(
       infer_fn = infer_static_slice
     )[[1L]]
   },
-  static = 2:4
+  static = 2:4,
+  tags = "linear"
 )
 
 #' @title Primitive Dynamic Slice
@@ -554,7 +559,8 @@ prim_dynamic_slice <- new_primitive(
   # `x` needs no promotion: it is the only operand of its kind. The start
   # indices are promoted among themselves by `promote_start_indices()`, which
   # is a group of their own -- they never take `x`'s data type.
-  static = "slice_sizes"
+  static = "slice_sizes",
+  tags = "linear"
 )
 
 #' @title Primitive Dynamic Update Slice
@@ -611,7 +617,8 @@ prim_dynamic_update_slice <- new_primitive(
       params = list(),
       infer_fn = infer_dynamic_update_slice
     )[[1L]]
-  }
+  },
+  tags = "linear"
 )
 
 
@@ -658,7 +665,7 @@ make_reduce_op <- function(infer_fn = infer_reduce_simple) {
 #' # reducing every axis gives a scalar
 #' prim_sum(x, axes = c(1L, 2L))
 #' @export
-prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3, tags = "reduction")
+prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3, tags = c("reduction", "linear"))
 
 #' @title Primitive Product Reduction
 #' @description
@@ -826,7 +833,7 @@ cum_extreme_op <- function(x, axis) {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_cumsum(x, axis = 1L)
 #' @export
-prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L, tags = "cumulative")
+prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L, tags = c("cumulative", "linear"))
 
 #' @title Primitive Cumulative Product
 #' @description
@@ -2256,7 +2263,8 @@ prim_rev <- new_primitive(
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     graph_desc_add(self, list(x = x), list(axes = axes), infer_fn = infer_reverse)[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "linear"
 )
 
 #' @title Primitive Iota
@@ -2355,7 +2363,8 @@ prim_pad <- new_primitive(
       infer_fn = infer_pad
     )[[1L]]
   },
-  static = 3:5
+  static = 3:5,
+  tags = "linear"
 )
 
 #' @title Primitive Round
@@ -2903,6 +2912,10 @@ prim_scan <- new_primitive(
 #' `fn` may close over traced values, but [gradient()] cannot differentiate
 #' with respect to those, as `rule` only gives the gradient with respect to
 #' `args`. Pass such a value through `args` instead.
+#'
+#' `rule` replaces reverse mode only: [pushforward()] differentiates the
+#' operations of `fn`, with respect to `args` and to what `fn` closes over
+#' alike.
 #' @templateVar primitive_id custom_gradient
 #' @template section_rules
 #' @section StableHLO:
@@ -3453,7 +3466,7 @@ prim_fork_rng_state <- new_primitive(
 #'
 #'   or a binary function `f(old, new)` of two scalars at `x`'s data type,
 #'   which returns one. Only a named `update_fn` can be differentiated, see
-#'   section Gradients.
+#'   section Derivatives.
 #' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @section Out of Bounds Behavior:
@@ -3465,18 +3478,18 @@ prim_fork_rng_state <- new_primitive(
 #' `"add"` adds them all up. The order is implementation-defined and may vary
 #' between plugins ("cpu", "cuda"), which matters for `"replace"`, where one
 #' of them is the one that ends up written.
-#' @section Gradients:
-#' [gradient()] differentiates a scatter whose `update_fn` is one of the names,
-#' but not a function, even one that computes the same.
-#' * With `"replace"`, an update gets the gradient only where it is the one
-#'   that was written.
-#' * With `"mul"`, the gradient with respect to `update` needs
+#' @section Derivatives:
+#' [gradient()] and [pushforward()] differentiate a scatter whose `update_fn`
+#' is one of the names, but not a function, even one that computes the same.
+#' * With `"replace"`, an update contributes to the derivative only where it is
+#'   the one that was written.
+#' * With `"mul"`, the derivative with respect to `update` needs
 #'   `unique_indices = TRUE`.
 #' * With `"max"` and `"min"`, `x` and the updates that tie for the result
-#'   share its gradient equally.
+#'   share its derivative equally.
 #'
-#' An update that falls outside of `x`, and is therefore ignored, gets a
-#' gradient of zero.
+#' An update that falls outside of `x`, and is therefore ignored, has a
+#' derivative of zero.
 #' @templateVar primitive_id scatter
 #' @template section_rules
 #' @section StableHLO:
@@ -3721,7 +3734,8 @@ prim_gather <- new_primitive(
   },
   # `x` and `start_indices` are operands of different kinds and never meet at
   # one data type, so there is nothing for a promotion rule to do.
-  static = 3:11
+  static = 3:11,
+  tags = "linear"
 )
 
 #' @title Primitive Cholesky Decomposition

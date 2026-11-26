@@ -355,7 +355,7 @@ A primitive whose rule turns the batch axis into a batching axis of its own must
 The random state is an input like any other; with `randomness = "independent"`, it is batched, so a draw has a batched input and its rule draws for every slice (see the [loops and branches](#loops-and-branches) section).
 
 The rules of the primitives that trace functions of their own -- `prim_if()`, `prim_while()` and `prim_scan()` -- call the primitive anew, with functions that replay its sub-graphs the same way (`graph_vectorize_as()`).
-Every output of the call is batched, but inside a loop only the values the loop carries from a batched one are: `carry_batched()` follows the body until no more of them become batched, so that, e.g., a counter that no argument mapped over reaches keeps the condition the same for every slice.
+Every output of the call is batched, but inside a loop only the values the loop carries from a batched one are: `carry_closure()` follows the body until no more of them become batched, so that, e.g., a counter that no argument mapped over reaches keeps the condition the same for every slice.
 A condition that is batched nonetheless runs the loop until it fails for every slice, carried along with the state, and a predicate of `prim_if()` that is batched runs every branch some slice takes, each slice keeping the result of its own.
 
 ## More Internals

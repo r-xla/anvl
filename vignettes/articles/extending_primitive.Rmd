@@ -245,7 +245,8 @@ prim_repeat_along[["pushforward"]] <- function(inputs, outputs, tangents, params
 }
 ```
 
-An elementwise primitive, such as `prim_sin()`, needs no such rule: tagged with `new_primitive(tags = "elementwise")`, it gets one derived from its pullback rule, because its derivative is diagonal.
+Inside {anvl}, a primitive that is linear in its float operands, such as `prim_transpose()`, gets such a rule derived instead: tagged with `new_primitive(tags = "linear")`, its pushforward is the primitive itself applied to the tangents.
+An elementwise primitive, such as `prim_sin()`, needs no rule of its own either: tagged with `new_primitive(tags = "elementwise")`, it gets one derived from its pullback rule, because its derivative is diagonal.
 
 #### Optional: alternative-forward rule
 

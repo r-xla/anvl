@@ -3511,7 +3511,9 @@ nv_if <- prim_if
 #' [gradient()] cannot differentiate a while loop: its trip count is only known
 #' at run time, so there is no static size for the per-iteration states the
 #' backward pass needs. [nv_scan()], whose number of steps is static, is
-#' differentiable.
+#' differentiable. [pushforward()] differentiates a while loop as well: forward
+#' mode carries the tangents along with the state, and needs nothing of earlier
+#' iterations.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the loop state is a named list, and each member keeps its data type
