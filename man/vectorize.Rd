@@ -60,6 +60,22 @@ This is analogous to \code{vmap} found in other array computing frameworks.
 
 See the \href{https://r-xla.github.io/anvl/articles/vectorize.html}{Vectorization} article for more details.
 }
+\section{Differences from base R}{
+
+Unlike \code{\link[base:Vectorize]{base::Vectorize()}} and the apply functions:
+\itemize{
+\item \code{vectorize()} maps over slices along an axis, not over elements: over the
+columns of a matrix by default, not over its numbers.
+\item Arguments are not recycled, as elsewhere in anvl: every argument mapped
+over must have the same number of slices.
+\item Results are not flattened: every output keeps the shape \code{f} gives it, with
+the batch axis added, where \code{sapply()} and \code{apply()} would turn a matrix
+result into a column.
+\item A negative axis counts from the end: the default \code{in_axes = -1L} maps over
+the last axis, while \code{x[-1]} leaves out the first element.
+}
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # f is written for a single vector

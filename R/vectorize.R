@@ -46,6 +46,17 @@
 #'   what `f` returns, with the batch axis added to every output where
 #'   `out_axes` puts it; an output whose entry in `out_axes` is `NULL` is
 #'   returned as it is.
+#' @section Differences from base R:
+#' Unlike [base::Vectorize()] and the apply functions:
+#' * `vectorize()` maps over slices along an axis, not over elements: over the
+#'   columns of a matrix by default, not over its numbers.
+#' * Arguments are not recycled, as elsewhere in anvl: every argument mapped
+#'   over must have the same number of slices.
+#' * Results are not flattened: every output keeps the shape `f` gives it, with
+#'   the batch axis added, where `sapply()` and `apply()` would turn a matrix
+#'   result into a column.
+#' * A negative axis counts from the end: the default `in_axes = -1L` maps over
+#'   the last axis, while `x[-1]` leaves out the first element.
 #' @seealso [`rule_vectorize()`], [`gradient()`], `r roxy_article("vectorize")`
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
