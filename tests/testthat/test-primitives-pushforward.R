@@ -103,9 +103,11 @@ pushforward_cases <- list(
   # The pushforward rule of `prim_chol()` takes the factor as a function of the
   # symmetric matrices, as its pullback rule does: it agrees with finite
   # differences in a symmetric direction.
-  # Forward-over-reverse of `prim_chol()` and `prim_triangular_solve()` needs
-  # the pushforward rules of `prim_transpose()` and `prim_dot_general()`, which
-  # their pullback rules compute with.
+  # Forward-over-reverse of `prim_chol()`, `prim_triangular_solve()` and
+  # `prim_lu()` needs the pushforward rules of `prim_transpose()` and
+  # `prim_dot_general()`, which their pullback rules compute with, and for
+  # `prim_lu()` of a matrix that is not square also those of
+  # `prim_static_slice()` and `prim_pad()`.
   chol = pushforward_case(
     list(x = positive_definite()),
     shapes = list(x = c(3L, 3L, 2L)),
@@ -137,7 +139,10 @@ pushforward_cases <- list(
     shapes = list(a = c(3L, 3L), b = c(3L, 2L)),
     params = list(left_side = TRUE, lower = FALSE, unit_diagonal = FALSE, transpose_a = TRUE),
     hvp = FALSE
-  )
+  ),
+  lu = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(3L, 3L, 2L)), hvp = FALSE),
+  "lu/tall" = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(4L, 2L)), hvp = FALSE),
+  "lu/wide" = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(2L, 4L)), hvp = FALSE)
 )
 
 # Pushforward rules derived from the pullback rule, named

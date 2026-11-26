@@ -90,3 +90,17 @@ prim_triangular_solve[["pushforward"]] <- function(inputs, outputs, tangents, pa
   }
   list(do.call(prim_triangular_solve, c(list(inputs[[1L]], rhs), params)))
 }
+
+# With `l` and `u` of `lu_factors()`, `Y = l^-1 P dA u^-1` gives
+# `dLU = l tril(Y, -1) + triu(Y) u` (as in JAX's LU JVP). The pivots and the
+# permutation are integers, without a tangent.
+prim_lu[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  factors <- lu_factors(outputs[[1L]])
+  P <- permutation_matrix(outputs[[3L]], dtype(outputs[[1L]]))
+  y <- solve_lu_sides(factors, nv_matmul(P, tangents[[1L]]), transpose = FALSE)
+  d_lu <- prim_add(
+    nv_matmul(factors$l, keep_triangle(y, lower = TRUE, unit_diagonal = TRUE)),
+    nv_matmul(keep_triangle(y, lower = FALSE, unit_diagonal = FALSE), factors$u)
+  )
+  list(d_lu, NULL, NULL)
+}
