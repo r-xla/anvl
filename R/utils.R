@@ -114,9 +114,7 @@ is_valid_r_lit <- function(x) {
   !is.object(x) &&
     length(x) == 1L &&
     is.null(dim(x)) &&
-    (is.numeric(x) || is.logical(x)) &&
-    # Accept NaN/Inf but reject NA (NA has no obvious dtype).
-    (is.nan(x) || !is.na(x))
+    (is.numeric(x) || is.logical(x))
 }
 
 is_valid_r_array <- function(x) {

@@ -162,11 +162,16 @@ presence of such values.
 \code{NA}s are always rejected, except when:
 \enumerate{
 \item Creating \code{float} arrays where we convert the \code{NA} to \code{NaN}.
-\item When creating an \code{i32} from an R \code{integer()}.
-There, we throw a warning, but the resulting \code{AnvlArray} gets the bit
-representation of \code{NA_integer_}, which is \code{INT_MIN} (\code{-2147483648}).
-Disallowing this would prevent round-trips between the data types.
+\item When creating an \code{i32} from an R \code{integer()} (or \code{logical()}).
+The resulting \code{AnvlArray} gets the bit representation of \code{NA_integer_},
+which is \code{INT_MIN} (\code{-2147483648}), an ordinary number on the device.
+This throws a warning; disallowing it would prevent round-trips between
+the data types.
 }
+
+The same holds for an R value that enters a \code{\link[=jit]{jit()}}-compiled function,
+as an argument or written in its body: it is built at the data type it takes
+as \code{nv_array()} builds it.
 
 See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for more information.
 }
