@@ -227,6 +227,42 @@ hvp <- jit(function(x, v) pushforward(f_grad, x)(v))
 hvp(nv_array(c(0, 1, 2)), nv_array(c(1, 0, 0)))
 ```
 
+## Forward and Reverse Mode
+
+Both modes compute products with the Jacobian of a function $f: \mathbb{R}^n \to \mathbb{R}^m$ at $x$: the $m \times n$ matrix $J_f(x)$ whose entry $(i, j)$ is the derivative of the $i$-th element of the result with respect to the $j$-th element of the arguments.
+The pushforward computes $J_f(x) v$, and the pullback $J_f(x)^\top w$.
+With the $j$-th unit vector as $v$, the pushforward gives the $j$-th column of the Jacobian: the derivatives of all elements of the result with respect to the $j$-th element of the arguments.
+With the $i$-th unit vector as $w$, the pullback gives the $i$-th row: the derivatives of the $i$-th element of the result with respect to all elements of the arguments.
+
+Neither builds the Jacobian itself.
+Take a function of two steps, $f(x) = g(h(x))$, with the intermediate result $z = h(x) \in \mathbb{R}^l$.
+By the chain rule, its Jacobian is the product of the Jacobians of the two steps, of sizes $m \times l$ and $l \times n$:
+
+$$J_f(x) = J_g(z) \, J_h(x)$$
+
+Multiplied with a vector, this product can be evaluated in an order in which every intermediate result is a vector, so each step only needs the product of its Jacobian with a vector, which its derivative rule computes directly:
+
+- Forward mode evaluates it from the right, $J_f(x) v = J_g(z) \, (J_h(x) \, v)$.
+  $J_h(x) v$ is the tangent of $z$, computed along with $z$ itself, and $J_g(z)$ applied to it gives the tangent of the result, along with the result.
+  The tangents move forward through the function together with the values.
+- Reverse mode evaluates it from the left, $J_f(x)^\top w = J_h(x)^\top \, (J_g(z)^\top w)$.
+  The first product needs $J_g$ at $z$, a value the function only computes on its way to the result.
+  So the function runs forward first, keeping the intermediate values its derivatives need, and then the cotangents move backward from the result to the arguments.
+
+A function of many steps works the same way, so reverse mode needs memory for the intermediate values of the forward pass, which forward mode does not.
+
+A pushforward or a pullback costs a small multiple of evaluating $f$, and the whole Jacobian takes $n$ pushforwards, one per column, or $m$ pullbacks, one per row.
+Reverse mode therefore suits a loss: with $m = 1$, a single pullback -- which is what `gradient()` computes -- gives the derivatives with respect to all parameters, however many there are.
+Forward mode suits the opposite case of few inputs and many outputs, such as the derivative of a whole curve with respect to a single parameter, which one pushforward gives:
+
+```{r}
+curve <- function(t, a) sin(a * t)
+t <- nv_array(seq(0, 1, by = 0.25))
+jit(function(t, a) pushforward(curve, t, a)(a = 1))(t, nv_scalar(2))
+```
+
+In reverse mode, the same derivatives would take one pullback per point of the curve.
+
 ## Limitations
 
 - Not every primitive has a derivative yet, so some functions cannot be differentiated.
