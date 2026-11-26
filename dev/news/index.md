@@ -90,6 +90,12 @@
 
 ### Bug fixes
 
+- Inside [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
+  an R value that a function wrapped by
+  [`with_dtypes()`](https://r-xla.github.io/anvl/dev/reference/with_dtypes.md)
+  returns takes the wrapper’s default data types, not those of the
+  enclosing trace.
+
 - A missing value (`NA_real_`, `NA_integer_`, `NA`) passed to a jitted
   function or an operation as an R scalar, or written in a traced body,
   behaves as in

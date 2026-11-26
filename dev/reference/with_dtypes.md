@@ -5,8 +5,10 @@
 names is converted to that data type, the defaults (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
 are set to the `float` / `int` entries for the duration of the call, and
-every returned array of a named category is converted as well. For
-example, `with_dtypes(nv_add, c(float = "f64"))` is an
+every returned array of a named category is converted as well. Inside
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), an R value
+`f` returns also takes these defaults. For example,
+`with_dtypes(nv_add, c(float = "f64"))` is an
 [`nv_add()`](https://r-xla.github.io/anvl/dev/reference/nv_add.md) that
 computes floats at `f64`.
 

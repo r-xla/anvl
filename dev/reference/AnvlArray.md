@@ -282,8 +282,8 @@ nv_scalar(3.14)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
 #> 1e+45 *
-#>    -nan   -nan   -nan
-#>    -nan 1.4013   -nan
+#>    -nan 5.6052   -nan
+#>  4.2039   -nan   -nan
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
