@@ -56,6 +56,7 @@
 <li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -377,7 +378,9 @@ We implement <code>repeat_along</code> using concatenation:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_repeat_along</span><span class="op">[[</span><span class="st">"stablehlo"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">times</span>, <span class="va">axis</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">xs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">times</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/exec.html" class="external-link">exec</a></span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html" class="external-link">hlo_concatenate</a></span>, <span class="op">!</span><span class="op">!</span><span class="op">!</span><span class="va">xs</span>, dimension <span class="op">=</span> <span class="va">axis</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="co"># R axis `axis` of an n-axis array is StableHLO dimension n - axis</span></span>
+<span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">value_type</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">rlang</span><span class="fu">::</span><span class="fu"><a href="https://rlang.r-lib.org/reference/exec.html" class="external-link">exec</a></span><span class="op">(</span><span class="fu">stablehlo</span><span class="fu">::</span><span class="va"><a href="https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html" class="external-link">hlo_concatenate</a></span>, <span class="op">!</span><span class="op">!</span><span class="op">!</span><span class="va">xs</span>, dimension <span class="op">=</span> <span class="va">n</span> <span class="op">-</span> <span class="va">axis</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>The rule receives:</p>
 <ul>
@@ -386,9 +389,12 @@ We implement <code>repeat_along</code> using concatenation:</p>
 </ul>
 <p>It must return a list of <code><a href="https://r-xla.github.io/stablehlo/reference/FuncValue.html" class="external-link">stablehlo::FuncValue</a></code>s, even if
 there is only one output.</p>
-<p><strong>Important</strong>: StableHLO uses 0-based indexing, while
-{anvl} uses R’s 1-based indexing. Always convert axis indices by
-subtracting 1. Nothing translates StableHLO’s error messages back into
+<p><strong>Important</strong>: the lowering reverses every axis, so that
+R’s column-major arrays are XLA’s row-major ones (see <a href="internals.html#axis-reversal">Axis Reversal</a>).
+<code>shape(x$value_type)</code> is the reversed shape, and R axis
+<code>a</code> of an <code>n</code>-axis array is StableHLO dimension
+<code>n - a</code>, which also accounts for StableHLO’s 0-based
+indexing. Nothing translates StableHLO’s error messages back into
 {anvl}’s terms: an input that only StableHLO rejects surfaces as an MLIR
 error in its own vocabulary, with 0-based axes. This is why the
 inference function has to check every constraint the StableHLO operation
@@ -497,6 +503,25 @@ required if you want the primitive to run under
 <code>local_backend("quickr")</code>; if you skip it, the primitive will
 still work on the pjrt backend.</p>
 </div>
+<div class="section level4">
+<h4 id="optional-a-vectorize-rule">Optional: a vectorize rule<a class="anchor" aria-label="anchor" href="#optional-a-vectorize-rule"></a>
+</h4>
+<p>To make the primitive work under <code><a href="../reference/vectorize.html">vectorize()</a></code>, attach a
+rule built with <code><a href="../reference/rule_vectorize.html">rule_vectorize()</a></code>. Inside it, a value that
+is mapped over carries the batch axis as its last axis. Most primitives
+already work on an extra trailing axis, and a parameter that names an
+axis still names the same one. <code>prim_repeat_along()</code> is such
+a primitive, so its rule declares nothing:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prim_repeat_along</span><span class="op">[[</span><span class="st">"vectorize"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rule_vectorize.html">rule_vectorize</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>A primitive with a parameter that has an entry per axis, or a shape,
+declares how it changes,
+e.g. <code>rule_vectorize(params = list(shape = vec_shape()))</code> for
+a shape that gains the batch axis at its end. The rule broadcasts an
+operand that is not mapped over and calls the primitive with the changed
+parameters. A primitive this does not fit passes a function of its own,
+<code>rule_vectorize(fn = function(inputs, batched, params, size) ...)</code>.</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="step-4-add-an-nv_-api-function">Step 4: Add an <code>nv_</code> API Function<a class="anchor" aria-label="anchor" href="#step-4-add-an-nv_-api-function"></a>
@@ -505,7 +530,7 @@ still work on the pjrt backend.</p>
 An example is <code>prim_add</code> vs <code>nv_add</code>, where the
 latter promotes its operands to a common data type before calling into
 the former:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  2.5000</span></span>
@@ -523,7 +548,7 @@ the former:</p>
 not too low-level (for it to be generally useful), so we can just
 reassign the <code>prim_*</code> function to an <code>nv_*</code>
 function:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_repeat_along</span> <span class="op">&lt;-</span> <span class="va">prim_repeat_along</span></span></code></pre></div>
 <p>Note that in the <code>nv_*</code> wrapper function, the input may
 still be a bare R value – one that has no data type yet (see
@@ -538,30 +563,24 @@ value, because there is nothing to report until it is used.</p>
 </h3>
 <p>You can now use the primitive, both eagerly and inside a larger
 JIT-compiled function:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># Eager call -- works because prim_repeat_along is itself jit-compiled.</span></span>
 <span><span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  1</span></span>
-<span><span class="co">#&gt;  2</span></span>
-<span><span class="co">#&gt;  3</span></span>
-<span><span class="co">#&gt;  1</span></span>
-<span><span class="co">#&gt;  2</span></span>
-<span><span class="co">#&gt;  3</span></span>
+<span><span class="co">#&gt;  1 1</span></span>
+<span><span class="co">#&gt;  2 2</span></span>
+<span><span class="co">#&gt;  3 3</span></span>
 <span><span class="co">#&gt; [ CPUf32{3,2} ]</span></span>
 <span><span class="co"># Traced into the outer graph when composed with another jit-compiled function.</span></span>
 <span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  1</span></span>
-<span><span class="co">#&gt;  2</span></span>
-<span><span class="co">#&gt;  3</span></span>
-<span><span class="co">#&gt;  1</span></span>
-<span><span class="co">#&gt;  2</span></span>
-<span><span class="co">#&gt;  3</span></span>
+<span><span class="co">#&gt;  1 1</span></span>
+<span><span class="co">#&gt;  2 2</span></span>
+<span><span class="co">#&gt;  3 3</span></span>
 <span><span class="co">#&gt; [ CPUf32{3,2} ]</span></span></code></pre></div>
 <p>And compute gradients through it.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">repeated</span> <span class="op">&lt;-</span> <span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">repeated</span><span class="op">)</span></span>
@@ -574,6 +593,19 @@ JIT-compiled function:</p>
 <span><span class="co">#&gt;  2</span></span>
 <span><span class="co">#&gt;  2</span></span>
 <span><span class="co">#&gt; [ CPUf32{3,1} ]</span></span></code></pre></div>
+<p>And map it over a batch with <code><a href="../reference/vectorize.html">vectorize()</a></code>, here over the
+columns of a matrix, each of which is repeated:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">6</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="../reference/vectorize.html">vectorize</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  1 4</span></span>
+<span><span class="co">#&gt;  2 5</span></span>
+<span><span class="co">#&gt;  3 6</span></span>
+<span><span class="co">#&gt;  1 4</span></span>
+<span><span class="co">#&gt;  2 5</span></span>
+<span><span class="co">#&gt;  3 6</span></span>
+<span><span class="co">#&gt; [ CPUf32{6,2} ]</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -603,6 +635,10 @@ rule (if differentiable)</li>
 <strong><code>R/rules-quickr.R</code></strong>: Add the quickr
 lowering rule (optional; only if the primitive should run on the quickr
 backend)</li>
+<li>
+<strong><code>R/rules-vectorize.R</code></strong>: Add the vectorize
+rule (optional; only if the primitive should work under
+<code><a href="../reference/vectorize.html">vectorize()</a></code>)</li>
 <li>
 <strong><code>R/api.R</code></strong>: Add the <code>nv_*</code>
 wrapper function (or possibly in another <strong>api</strong>

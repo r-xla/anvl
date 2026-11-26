@@ -40,6 +40,7 @@ depending on transpose."><meta property="og:image" content="https://r-xla.github
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -167,8 +168,6 @@ an integer one.</p>
 right-hand side per batch, shape <code>(n, b1, ..., bk)</code> for <code>a</code> of shape
 <code>(n, n, b1, ..., bk)</code>). It is reshaped internally to a column (<code>left = TRUE</code>) or row (<code>left = FALSE</code>) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).</p>
-<p>Differentiation is only implemented for a single system: a <code><a href="gradient.html">gradient()</a></code> of a
-batched solve errors.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

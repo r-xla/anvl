@@ -4,6 +4,12 @@
 
 ### Breaking changes
 
+- [`prim_custom_gradient()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.md)
+  takes a forward pass as `forward`, which returns the result and
+  `residuals` that `rule` receives, instead of a
+  [`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md)
+  as `rule`, whose backward pass closed over what the forward pass
+  computed.
 - Batch axes now come last to have consistent col-major semantics
   everywhere. This includes: matrix multiplication, Cholesky
   decomposition, triangular solves, convolutions, scans, and top-k
@@ -49,6 +55,27 @@
 - Elementwise primitives such as
   [`prim_add()`](https://r-xla.github.io/anvl/dev/reference/prim_add.md)
   now broadcast scalars.
+- Experimental: new
+  [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+  maps a function over axes of its arguments (`in_axes`, `out_axes`, by
+  default the last axis), in the spirit of
+  [`base::Vectorize()`](https://rdrr.io/r/base/Vectorize.html).
+- [`prim_qr()`](https://r-xla.github.io/anvl/dev/reference/prim_qr.md),
+  [`prim_lu()`](https://r-xla.github.io/anvl/dev/reference/prim_lu.md),
+  [`prim_svd()`](https://r-xla.github.io/anvl/dev/reference/prim_svd.md)
+  and
+  [`prim_eigh()`](https://r-xla.github.io/anvl/dev/reference/prim_eigh.md),
+  and with them
+  [`nv_qr()`](https://r-xla.github.io/anvl/dev/reference/nv_qr.md),
+  [`nv_svd()`](https://r-xla.github.io/anvl/dev/reference/nv_svd.md) and
+  [`nv_eigh()`](https://r-xla.github.io/anvl/dev/reference/nv_eigh.md),
+  take a batch of matrices, whose batch axes trail them, as
+  [`prim_chol()`](https://r-xla.github.io/anvl/dev/reference/prim_chol.md)
+  and
+  [`prim_triangular_solve()`](https://r-xla.github.io/anvl/dev/reference/prim_triangular_solve.md)
+  already do.
+- [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  differentiates a batched Cholesky decomposition or triangular solve.
 - [`safetensors::safe_save_file()`](https://mlverse.github.io/safetensors/reference/safe_save_file.html)
   writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.

@@ -52,6 +52,7 @@ program."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.s
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -217,6 +218,8 @@ of <code><a href="jit.html">jit()</a></code> and <code><a href="trace_fn.html">t
 <li><p><code>"loop"</code>: as fresh inputs of the graph, which the graph also returns
 there. The bodies of <code><a href="nv_while.html">nv_while()</a></code> and <code><a href="nv_scan.html">nv_scan()</a></code> take side effects this
 way, and hand them on to the next iteration.</p></li>
+<li><p><code>"vectorize"</code>: as fresh inputs of the graph, which <code><a href="vectorize.html">vectorize()</a></code> binds
+to the values the slices start from.</p></li>
 <li><p><code>"capture"</code>: as the value of <code>parent</code>'s view, which the graph closes
 over and continues. The branches of <code><a href="nv_if.html">nv_if()</a></code> and the function
 <code><a href="gradient.html">gradient()</a></code> differentiates take side effects this way.</p></li>

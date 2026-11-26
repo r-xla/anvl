@@ -252,7 +252,15 @@ variables, and the string passed to
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
 is that same `<name>` – not the StableHLO op it lowers to – so printed
 graphs and error messages name a function the reader can look up.
-`test-primitives-meta.R` enforces this.
+`test-primitives-meta.R` enforces this. A primitive can carry tags,
+`new_primitive(tags = )`, a plain
+[`character()`](https://rdrr.io/r/base/character.html) for internal use
+that says what kind of operation it is (the tags in use,
+`"elementwise"`, `"reduction"` and `"cumulative"`, are listed in
+`R/primitive.R`); a rule shared by every primitive of a kind, or derived
+from another of their rules, is assigned from the tag
+(`primitives_tagged()`), so a new primitive of that kind gets it without
+being added to a list.
 [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
 lexically binds `self` (the `AnvlPrimitiveDef`) into the body’s
 enclosing environment, so inside a primitive body you write
@@ -275,6 +283,18 @@ only `side_effect_fork()` calls). Interpretation rules are accessed via
   which builds on it) uses the `pullback` rule.
 - **`quickr`** – R-native lowering rules in `R/rules-quickr.R` for the
   quickr backend.
+- **`vectorize`** – Batching rules for
+  [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+  in `R/rules-vectorize.R`, built with
+  [`rule_vectorize()`](https://r-xla.github.io/anvl/dev/reference/rule_vectorize.md).
+  Rules receive a trailing batch axis, so existing axis indices keep
+  their values. Use
+  [`vec_shape()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md),
+  [`vec_axis_map()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md),
+  and
+  [`vec_per_axis()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)
+  to adapt parameters to the batch axis. The generic rule broadcasts
+  unmapped operands. Supply `fn` when a primitive needs custom batching.
 
 ## Side Effects
 
@@ -382,6 +402,9 @@ Each rule of each primitive should be tested. Tests are organized as:
   `inst/extra-tests/test-primitives-stablehlo-torch.R`
 - `tests/testthat/test-primitives-pullback.R` – sources
   `inst/extra-tests/test-primitives-pullback-torch.R`
+- `tests/testthat/test-primitives-vectorize.R` – every vectorize rule
+  through `autotest_vectorize()` (`helper-vectorize.R`), which compares
+  against applying the primitive slice by slice
 
 Prefer testing by comparing with the corresponding torch function. If
 the test is trivial or the functionality is not covered by torch, test

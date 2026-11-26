@@ -36,6 +36,18 @@ nv_ifelse(test, yes, no)
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has the common data type of `yes` and `no`, and their broadcast shape.
 
+## Gradients
+
+Both `yes` and `no` are computed everywhere, and the gradient flows
+through both: the one not selected receives a zero cotangent, which its
+own derivative multiplies. Where that derivative is infinite, the
+gradient is `NaN`, e.g. for `nv_ifelse(x > 0, sqrt(x), 0)` at `x = 0`.
+To guard against this, also mask the input of the branch, so that it
+sees a value of no consequence where it is not selected:
+`nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0)`. The reverse rule of
+`nv_ifelse()` then hands the `NaN` to the constant instead of `x`, at
+any order of differentiation.
+
 ## See also
 
 [`prim_ifelse()`](https://r-xla.github.io/anvl/dev/reference/prim_ifelse.md)

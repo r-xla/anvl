@@ -18,9 +18,6 @@ forward results and a closure with the signature of `backward` above,
 which can use intermediate values of the forward pass via lexical
 scoping.
 
-A rule with a `forward` pass can also be the `rule` of
-[`prim_custom_gradient()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.md).
-
 ## Usage
 
 ``` r
@@ -63,7 +60,7 @@ rule_pullback(function(inputs, outputs, grads, params, required) {
 #> {
 #>     list(if (required[[1L]]) prim_negate(grads[[1L]]))
 #> }
-#> <environment: 0x63a59da84698>
+#> <environment: 0x57ad0aaccec0>
 #> 
 #> attr(,"class")
 #> [1] "anvl_rule_pullback"

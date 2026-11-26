@@ -56,6 +56,7 @@
 <li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -127,7 +128,8 @@ added yet, or because it does not apply for a specific primitive.</p>
 <th align="left">Name</th>
 <th align="center">StableHLO</th>
 <th align="center">Pullback</th>
-<th align="center">Quickr</th>
+<th align="center">Vectorize</th>
+<th align="left">Quickr</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
@@ -135,624 +137,728 @@ added yet, or because it does not apply for a specific primitive.</p>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">acos</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">acosh</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">add</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">all</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">and</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">any</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">asin</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">asinh</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">atan</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">atan2</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">atanh</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">bitcast_convert</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">broadcast_in_axes</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">cbrt</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">ceiling</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">chol</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">clamp</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">concatenate</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">convert</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">convolution</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">cos</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">cosh</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">cummax</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">cummin</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">cumprod</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">cumsum</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">custom_gradient</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">digamma</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">div</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">dot_general</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">dynamic_slice</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">dynamic_update_slice</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">eigh</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">eq</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">erf</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">erf_inv</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">erfc</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">exp</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">expm1</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">fill</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✓</td>
+<td align="center">✗</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">floor</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">fork_rng_state</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">gather</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">ge</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">gt</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">if</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">ifelse</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">iota</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✓</td>
+<td align="center">✗</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">is_finite</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">le</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">lgamma</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">log</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">log1p</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">lt</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">lu</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">max</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">min</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">mul</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">ne</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">negate</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">not</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">optimization_barrier</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">or</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">pad</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">plogis</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">pmax</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">pmin</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">popcnt</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">pow</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">print</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">prod</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">psigamma</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">qr</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">reduce</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">remainder</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">reshape</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">rev</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">round</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">rsqrt</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">sample_bits</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">scan</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">scatter</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">shift_left</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">shift_right_arithmetic</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">shift_right_logical</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">sign</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">sin</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">sinh</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">sort</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">sqrt</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">static_slice</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">sub</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">sum</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">svd</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">tan</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="odd">
 <td align="left">tanh</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">top_k</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">transpose</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">triangular_solve</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">which_max</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="even">
 <td align="left">which_min</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✗</td>
+<td align="center">✓</td>
+<td align="left">✗</td>
 </tr>
 <tr class="odd">
 <td align="left">while</td>
 <td align="center">✓</td>
 <td align="center">✗</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 <tr class="even">
 <td align="left">xor</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
 <td align="center">✓</td>
+<td align="left">✓</td>
 </tr>
 </tbody>
 </table></main>

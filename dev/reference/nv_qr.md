@@ -3,7 +3,8 @@
 Computes the reduced QR decomposition of a matrix `x`: \$\$A = Q R,\$\$
 where \\Q\\ has orthonormal columns (\\Q^\top Q = I\\) and \\R\\ is
 upper triangular. For an \\m \times n\\ input with \\k = \min(m, n)\\,
-\\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\.
+\\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\. The
+first two axes form the matrix, and any trailing axes are batch axes.
 
 ## Usage
 
@@ -19,7 +20,8 @@ qr(x, ...)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  One input, with exactly 2 axes. Can be any numeric data type: a float
+  One input, with at least 2 axes, the first two forming the matrix; any
+  trailing axes are batch axes. Can be any numeric data type: a float
   keeps its own, and an integer one is converted to the default float
   data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
@@ -35,9 +37,9 @@ qr(x, ...)
 
 (named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Elements `Q` (shape `(m, k)`) and `R` (shape `(k, n)`), where
-`(m, n) = shape(x)` and `k = min(m, n)`. Both have the input's data type
-– or the default float data type (see
+Elements `Q` (shape `(m, k, ...)`) and `R` (shape `(k, n, ...)`), where
+`(m, n, ...) = shape(x)` and `k = min(m, n)`. Both have the input's data
+type – or the default float data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
 where the input was an integer one.
 

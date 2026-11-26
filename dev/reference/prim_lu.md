@@ -6,7 +6,8 @@ triangular, and \\U\\ is upper triangular. `L` (with implicit unit
 diagonal) and `U` are packed into a single `LU` output matching LAPACK's
 `getrf` layout. \\P\\ is returned in two equivalent forms: `pivots`
 (LAPACK's sequential row-swap encoding) and `permutation` (an explicit
-permutation vector).
+permutation vector). The first two axes form the matrix, and any
+trailing axes are batch axes.
 
 ## Usage
 
@@ -19,7 +20,8 @@ prim_lu(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  One input, with exactly 2 axes. Can be any float data type. An R value
+  One input, with at least 2 axes, the first two forming the matrix; any
+  trailing axes are batch axes. Can be any float data type. An R value
   materializes at its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
@@ -27,17 +29,20 @@ prim_lu(x)
 
 (named `list` of three
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Elements `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at
-the default integer data type (see
+Elements `LU` `(m, n, ...)` with the input's data type; `pivots`
+`(k, ...)` at the default integer data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
 with `k = min(m, n)` (sequential row swaps: row `i` was exchanged with
-row `pivots[i]` during elimination step `i`); and `permutation` `(m,)`
-at that same data type, a permutation vector for \\P\\ such that
-`(P %*% A)[i, ]` equals `A[permutation[i], ]`.
+row `pivots[i]` during elimination step `i`); and `permutation`
+`(m, ...)` at that same data type, a permutation vector for \\P\\ such
+that `(P %*% A)[i, ]` equals `A[permutation[i], ]`. Here `(m, n, ...)`
+is `shape(x)`, and `...` its batch axes.
 
 ## Implemented Rules
 
 - `stablehlo`
+
+- `vectorize`
 
 ## StableHLO
 

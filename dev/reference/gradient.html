@@ -50,6 +50,7 @@ computed in a single forward and reverse pass.
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -194,7 +195,7 @@ low-level graph transformation.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">g3</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Error in check_wrt_arrayish(args_flat, is_wrt_flat) : </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Error in check_wrt_arrayish(prep$args_flat, prep$is_wrt_flat) : </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Cannot compute gradient with respect to a value that has no data type.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> It is an R double, which takes its data type from the way the function body</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   uses it (see `?RData`).</span>

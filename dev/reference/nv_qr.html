@@ -10,12 +10,14 @@ $$A = Q R,$$
 where \(Q\) has orthonormal columns (\(Q^\top Q = I\)) and
 \(R\) is upper triangular.
 For an \(m \times n\) input with \(k = \min(m, n)\), \(Q\) has
-shape \(m \times k\) and \(R\) has shape \(k \times n\)."><meta property="og:description" content="Computes the reduced QR decomposition of a matrix x:
+shape \(m \times k\) and \(R\) has shape \(k \times n\).
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:description" content="Computes the reduced QR decomposition of a matrix x:
 $$A = Q R,$$
 where \(Q\) has orthonormal columns (\(Q^\top Q = I\)) and
 \(R\) is upper triangular.
 For an \(m \times n\) input with \(k = \min(m, n)\), \(Q\) has
-shape \(m \times k\) and \(R\) has shape \(k \times n\)."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+shape \(m \times k\) and \(R\) has shape \(k \times n\).
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -44,6 +46,7 @@ shape \(m \times k\) and \(R\) has shape \(k \times n\)."><meta property="og:ima
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -94,7 +97,8 @@ $$A = Q R,$$
 where \(Q\) has orthonormal columns (\(Q^\top Q = I\)) and
 \(R\) is upper triangular.
 For an \(m \times n\) input with \(k = \min(m, n)\), \(Q\) has
-shape \(m \times k\) and \(R\) has shape \(k \times n\).</p>
+shape \(m \times k\) and \(R\) has shape \(k \times n\).
+The first two axes form the matrix, and any trailing axes are batch axes.</p>
     </div>
 
     <div class="section level2">
@@ -111,7 +115,7 @@ shape \(m \times k\) and \(R\) has shape \(k \times n\).</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-One input, with exactly 2 axes. Can be any numeric data type: a float keeps its
+One input, with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes. Can be any numeric data type: a float keeps its
 own, and an integer one is converted to the default float data type (see
 <code><a href="default_dtypes.html">default_dtypes()</a></code>). An R value materializes at its
 <a href="default_dtypes.html">default data type</a> and is converted in the same way.</p></dd>
@@ -124,8 +128,8 @@ own, and an integer one is converted to the default float data type (see
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
-Elements <code>Q</code> (shape <code>(m, k)</code>) and <code>R</code> (shape <code>(k, n)</code>), where
-<code>(m, n) = shape(x)</code> and <code>k = min(m, n)</code>. Both have the input's data type
+Elements <code>Q</code> (shape <code>(m, k, ...)</code>) and <code>R</code> (shape <code>(k, n, ...)</code>), where
+<code>(m, n, ...) = shape(x)</code> and <code>k = min(m, n)</code>. Both have the input's data type
 – or the default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where the
 input was an integer one.</p>
     </div>

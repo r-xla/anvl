@@ -104,7 +104,7 @@ g3(nv_scalar(3))
 #> [ CPUf32{} ] 
 #> 
 try(g3(3))
-#> Error in check_wrt_arrayish(args_flat, is_wrt_flat) : 
+#> Error in check_wrt_arrayish(prep$args_flat, prep$is_wrt_flat) : 
 #>   Cannot compute gradient with respect to a value that has no data type.
 #> ✖ It is an R double, which takes its data type from the way the function body
 #>   uses it (see `?RData`).

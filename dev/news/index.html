@@ -34,6 +34,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -81,7 +82,9 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
-<ul><li>Batch axes now come last to have consistent col-major semantics everywhere. This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.</li>
+<ul><li>
+<code><a href="../reference/prim_custom_gradient.html">prim_custom_gradient()</a></code> takes a forward pass as <code>forward</code>, which returns the result and <code>residuals</code> that <code>rule</code> receives, instead of a <code><a href="../reference/rule_pullback.html">rule_pullback()</a></code> as <code>rule</code>, whose backward pass closed over what the forward pass computed.</li>
+<li>Batch axes now come last to have consistent col-major semantics everywhere. This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.</li>
 <li>Random draws fill a shape in column-major order.</li>
 <li>
 <code>NULL</code> (and so <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code>) is no longer a shape; constructors that infer one default to <code>shape = "auto"</code>. Write the shape of a scalar as <code><a href="../reference/shp.html">shp()</a></code> (<a href="https://github.com/r-xla/anvl/issues/552" class="external-link">#552</a>).</li>
@@ -99,6 +102,11 @@
 <li>New <code><a href="../reference/prim_optimization_barrier.html">prim_optimization_barrier()</a></code> and <code><a href="../reference/nv_optimization_barrier.html">nv_optimization_barrier()</a></code> which allow to prevent optimizations from moving computations across it.</li>
 <li>Added two new transformations <code><a href="../reference/pullback.html">pullback()</a></code> and <code><a href="../reference/pullback.html">value_and_pullback()</a></code>.</li>
 <li>Elementwise primitives such as <code><a href="../reference/prim_add.html">prim_add()</a></code> now broadcast scalars.</li>
+<li>Experimental: new <code><a href="../reference/vectorize.html">vectorize()</a></code> maps a function over axes of its arguments (<code>in_axes</code>, <code>out_axes</code>, by default the last axis), in the spirit of <code><a href="https://rdrr.io/r/base/Vectorize.html" class="external-link">base::Vectorize()</a></code>.</li>
+<li>
+<code><a href="../reference/prim_qr.html">prim_qr()</a></code>, <code><a href="../reference/prim_lu.html">prim_lu()</a></code>, <code><a href="../reference/prim_svd.html">prim_svd()</a></code> and <code><a href="../reference/prim_eigh.html">prim_eigh()</a></code>, and with them <code><a href="../reference/nv_qr.html">nv_qr()</a></code>, <code><a href="../reference/nv_svd.html">nv_svd()</a></code> and <code><a href="../reference/nv_eigh.html">nv_eigh()</a></code>, take a batch of matrices, whose batch axes trail them, as <code><a href="../reference/prim_chol.html">prim_chol()</a></code> and <code><a href="../reference/prim_triangular_solve.html">prim_triangular_solve()</a></code> already do.</li>
+<li>
+<code><a href="../reference/gradient.html">gradient()</a></code> differentiates a batched Cholesky decomposition or triangular solve.</li>
 <li>
 <code><a href="https://mlverse.github.io/safetensors/reference/safe_save_file.html" class="external-link">safetensors::safe_save_file()</a></code> writes <code>AnvlArray</code>s, and <code>safetensors::safe_load_file(framework = "anvl")</code> reads them.</li>
 <li>The <code>"quickr"</code> backend accepts a raw payload in <code><a href="../reference/AnvlArray.html">nv_array()</a></code>.</li>

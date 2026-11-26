@@ -63,16 +63,13 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
 Has `b`'s shape and the data type `a` and `b` agreed on.
 
-## Details
-
-Differentiation is only implemented for a single system: the `pullback`
-rule errors on batched operands (operands with more than 2 axes).
-
 ## Implemented Rules
 
 - `stablehlo`
 
 - `pullback`
+
+- `vectorize`
 
 ## StableHLO
 

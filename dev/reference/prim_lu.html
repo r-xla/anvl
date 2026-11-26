@@ -12,14 +12,16 @@ and \(U\) is upper triangular. L (with implicit unit diagonal) and
 U are packed into a single LU output matching LAPACK's getrf
 layout. \(P\) is returned in two equivalent forms: pivots (LAPACK's
 sequential row-swap encoding) and permutation (an explicit
-permutation vector)."><meta property="og:description" content="Computes the partial-pivoted LU decomposition of a matrix x:
+permutation vector).
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:description" content="Computes the partial-pivoted LU decomposition of a matrix x:
 $$P A = L U,$$
 where \(P\) is a permutation matrix, \(L\) is unit lower triangular,
 and \(U\) is upper triangular. L (with implicit unit diagonal) and
 U are packed into a single LU output matching LAPACK's getrf
 layout. \(P\) is returned in two equivalent forms: pivots (LAPACK's
 sequential row-swap encoding) and permutation (an explicit
-permutation vector)."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+permutation vector).
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -48,6 +50,7 @@ permutation vector)."><meta property="og:image" content="https://r-xla.github.io
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -100,7 +103,8 @@ and \(U\) is upper triangular. <code>L</code> (with implicit unit diagonal) and
 <code>U</code> are packed into a single <code>LU</code> output matching LAPACK's <code>getrf</code>
 layout. \(P\) is returned in two equivalent forms: <code>pivots</code> (LAPACK's
 sequential row-swap encoding) and <code>permutation</code> (an explicit
-permutation vector).</p>
+permutation vector).
+The first two axes form the matrix, and any trailing axes are batch axes.</p>
     </div>
 
     <div class="section level2">
@@ -114,25 +118,27 @@ permutation vector).</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-One input, with exactly 2 axes. Can be any float data type. An R value materializes at its
+One input, with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes. Can be any float data type. An R value materializes at its
 <a href="default_dtypes.html">default data type</a>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(named <code>list</code> of three <code><a href="arrayish.html">arrayish</a></code>)<br>
-Elements <code>LU</code> <code>(m, n)</code> with the input's data type; <code>pivots</code> <code>(k,)</code> at the
-default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) with <code>k = min(m, n)</code>
-(sequential row swaps: row <code>i</code> was exchanged with row <code>pivots[i]</code> during
-elimination step <code>i</code>); and <code>permutation</code> <code>(m,)</code> at that same data type, a
-permutation vector for \(P\) such that <code>(P %*% A)[i, ]</code> equals
-<code>A[permutation[i], ]</code>.</p>
+Elements <code>LU</code> <code>(m, n, ...)</code> with the input's data type; <code>pivots</code> <code>(k, ...)</code>
+at the default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) with
+<code>k = min(m, n)</code> (sequential row swaps: row <code>i</code> was exchanged with row
+<code>pivots[i]</code> during elimination step <code>i</code>); and <code>permutation</code> <code>(m, ...)</code> at
+that same data type, a permutation vector for \(P\) such that
+<code>(P %*% A)[i, ]</code> equals <code>A[permutation[i], ]</code>. Here <code>(m, n, ...)</code> is
+<code>shape(x)</code>, and <code>...</code> its batch axes.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
 
 
 <ul><li><p><code>stablehlo</code></p></li>
+<li><p><code>vectorize</code></p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>

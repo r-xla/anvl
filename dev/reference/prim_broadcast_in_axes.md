@@ -44,6 +44,8 @@ Has the same data type as the input and the given `shape`.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

@@ -43,6 +43,8 @@ Has the given `dtype`, and the shape described under `dtype`.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

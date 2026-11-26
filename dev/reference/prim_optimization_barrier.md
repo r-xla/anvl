@@ -42,6 +42,8 @@ preserved.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

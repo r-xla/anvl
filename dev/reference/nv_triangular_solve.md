@@ -90,10 +90,6 @@ right-hand side per batch, shape `(n, b1, ..., bk)` for `a` of shape
 out. Because we don't broadcast, this is not ambiguous (as it would be
 for NumPy).
 
-Differentiation is only implemented for a single system: a
-[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
-of a batched solve errors.
-
 ## See also
 
 [`nv_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_solve.md),

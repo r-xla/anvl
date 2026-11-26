@@ -130,6 +130,8 @@ position may differ from the requested one.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

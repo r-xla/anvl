@@ -66,6 +66,8 @@ remaining (non-contracted, non-batched) axes of `lhs`, then those of
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

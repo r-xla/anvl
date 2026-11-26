@@ -39,10 +39,11 @@ There are three core ideas:
   compilation step, resulting programs can be faster compared to
   implementing them in [{torch}](https://torch.mlverse.org).
 - **Function transformation.** Programmatically derive new functions
-  from existing ones. Currently the only available transformation is
-  reverse-mode automatic differentiation via
-  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
-  which returns the derivative of a function as another R function.
+  from existing ones. Reverse-mode automatic differentiation via
+  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  returns the derivative of a function as another R function, and
+  [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+  maps a function written for a single instance over a whole batch.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
 Moreover, the package is designed to be extensible. As the package is
@@ -804,6 +805,8 @@ Code transformations
 - [`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
   [`value_and_pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
   : Pullbacks
+- [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+  **\[experimental\]** : Vectorize a Function
 
 ## Backend
 
@@ -948,6 +951,12 @@ Low-level primitive operations (prim\_\* functions)
   : Add a Statement to a Graph Descriptor
 - [`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md)
   : Pullback Rule
+- [`rule_vectorize()`](https://r-xla.github.io/anvl/dev/reference/rule_vectorize.md)
+  : Vectorize Rule
+- [`vec_shape()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)
+  [`vec_axis_map()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)
+  [`vec_per_axis()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)
+  : Parameter Kinds
 
 ### Implemented Primitives
 
@@ -1205,3 +1214,4 @@ Helpers for the tests of packages that depend on anvl
 - [Subsetting](https://r-xla.github.io/anvl/dev/articles/subsetting.md):
 - [Data Types and Promotion
   Rules](https://r-xla.github.io/anvl/dev/articles/type-promotion.md):
+- [Vectorization](https://r-xla.github.io/anvl/dev/articles/vectorize.md):

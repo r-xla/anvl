@@ -46,12 +46,6 @@ where the input was an integer one. The values in the triangle not
 selected by `lower` are implementation-defined. A matrix that is not
 positive definite factors to `NaN`.
 
-## Details
-
-Differentiation is only implemented for a single matrix: a
-[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
-of a batched decomposition errors.
-
 ## See also
 
 [`nv_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_solve.md),

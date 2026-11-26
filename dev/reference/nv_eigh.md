@@ -7,7 +7,8 @@ columns of `vectors` are the (orthonormal) eigenvectors and `values` is
 the length-`n` vector of (real) eigenvalues in ascending order. Output
 names and order match
 [`base::eigen()`](https://rdrr.io/r/base/eigen.html), which unlike this
-primitive also handles non-symmetric matrices.
+primitive also handles non-symmetric matrices. The first two axes form
+the matrix, and any trailing axes are batch axes.
 
 ## Usage
 
@@ -20,9 +21,10 @@ nv_eigh(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  One input, a symmetric square matrix with exactly 2 axes. Can be any
-  numeric data type: a float keeps its own, and an integer one is
-  converted to the default float data type (see
+  One input, with at least 2 axes, the first two forming a symmetric
+  square matrix; any trailing axes are batch axes. Can be any numeric
+  data type: a float keeps its own, and an integer one is converted to
+  the default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
   An R value materializes at its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
@@ -32,8 +34,9 @@ nv_eigh(x)
 
 (named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Elements `values` (length `n`) and `vectors` (shape `(n, n)`). Both have
-the input's data type – or the default float data type (see
+Elements `values` (shape `(n, ...)`) and `vectors` (shape
+`(n, n, ...)`), where `(n, n, ...) = shape(x)`. Both have the input's
+data type – or the default float data type (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
 where the input was an integer one.
 

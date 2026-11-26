@@ -11,14 +11,18 @@ called through is an AnvlPrimitive, which carries
 its AnvlPrimitiveDef as attr(&amp;lt;fn&amp;gt;, &quot;definition&quot;). The graph records the
 AnvlPrimitiveDef in each GraphStatement.
 Note that [[ and [[&amp;lt;- access the interpretation rules.
-To access other fields, use $ and $&amp;lt;-.
+To access other fields, use $ and $&amp;lt;-. new_primitive() stores the
+AnvlPrimitive in the field fn, so a rule can call the primitive it
+belongs to.
 A primitive is considered higher-order if it has subgraphs."><meta property="og:description" content="The definition of a primitive: its name, sub-graph parameters and
 interpretation rules. It is not callable; the function a primitive is
 called through is an AnvlPrimitive, which carries
 its AnvlPrimitiveDef as attr(&amp;lt;fn&amp;gt;, &quot;definition&quot;). The graph records the
 AnvlPrimitiveDef in each GraphStatement.
 Note that [[ and [[&amp;lt;- access the interpretation rules.
-To access other fields, use $ and $&amp;lt;-.
+To access other fields, use $ and $&amp;lt;-. new_primitive() stores the
+AnvlPrimitive in the field fn, so a rule can call the primitive it
+belongs to.
 A primitive is considered higher-order if it has subgraphs."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -48,6 +52,7 @@ A primitive is considered higher-order if it has subgraphs."><meta property="og:
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -99,13 +104,15 @@ called through is an <code><a href="new_primitive.html">AnvlPrimitive</a></code>
 its <code>AnvlPrimitiveDef</code> as <code>attr(&lt;fn&gt;, "definition")</code>. The graph records the
 <code>AnvlPrimitiveDef</code> in each <code><a href="GraphStatement.html">GraphStatement</a></code>.
 Note that <code>[[</code> and <code>[[&lt;-</code> access the interpretation rules.
-To access other fields, use <code>$</code> and <code>$&lt;-</code>.</p>
+To access other fields, use <code>$</code> and <code>$&lt;-</code>. <code><a href="new_primitive.html">new_primitive()</a></code> stores the
+<code>AnvlPrimitive</code> in the field <code>fn</code>, so a rule can call the primitive it
+belongs to.</p>
 <p>A primitive is considered higher-order if it has subgraphs.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">AnvlPrimitiveDef</span><span class="op">(</span><span class="va">name</span>, subgraphs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">AnvlPrimitiveDef</span><span class="op">(</span><span class="va">name</span>, subgraphs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>, tags <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -120,6 +127,11 @@ The name of the primitive, without the <code>prim_</code> prefix.</p></dd>
 <dt id="arg-subgraphs">subgraphs<a class="anchor" aria-label="anchor" href="#arg-subgraphs"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>)<br>
 Names of parameters that are subgraphs.</p></dd>
+
+
+<dt id="arg-tags">tags<a class="anchor" aria-label="anchor" href="#arg-tags"></a></dt>
+<dd><p>(<code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>)<br>
+Tags for internal use, see <code><a href="new_primitive.html">new_primitive()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

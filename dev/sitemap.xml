@@ -22,6 +22,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/articles/static_shapes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/subsetting.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/type-promotion.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/articles/vectorize.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/authors.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/index.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/news/index.html</loc></url>
@@ -356,6 +357,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/register_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/register_rule_type.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/rule_pullback.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/rule_vectorize.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/shape.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/shp.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/skip_if_no_plugin.html</loc></url>
@@ -364,6 +366,8 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/to_abstract.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/trace_fn.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/unwrap_if_array.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/vec_shape.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/vectorize.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/with_dtypes.html</loc></url>
 </urlset>
 

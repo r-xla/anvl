@@ -49,6 +49,8 @@ both branches share.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

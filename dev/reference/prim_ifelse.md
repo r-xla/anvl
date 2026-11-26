@@ -48,6 +48,8 @@ agreed on.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

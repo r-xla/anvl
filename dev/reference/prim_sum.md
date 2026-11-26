@@ -48,6 +48,8 @@ axes removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

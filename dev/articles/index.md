@@ -30,3 +30,4 @@
 - [Subsetting](https://r-xla.github.io/anvl/dev/articles/subsetting.md):
 - [Data Types and Promotion
   Rules](https://r-xla.github.io/anvl/dev/articles/type-promotion.md):
+- [Vectorization](https://r-xla.github.io/anvl/dev/articles/vectorize.md):

@@ -67,6 +67,8 @@ the underlying mathematical function (like `+`) is associative.
 
 - `stablehlo`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

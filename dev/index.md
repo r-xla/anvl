@@ -39,10 +39,11 @@ There are three core ideas:
   compilation step, resulting programs can be faster compared to
   implementing them in [{torch}](https://torch.mlverse.org).
 - **Function transformation.** Programmatically derive new functions
-  from existing ones. Currently the only available transformation is
-  reverse-mode automatic differentiation via
-  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
-  which returns the derivative of a function as another R function.
+  from existing ones. Reverse-mode automatic differentiation via
+  [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+  returns the derivative of a function as another R function, and
+  [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+  maps a function written for a single instance over a whole batch.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
 Moreover, the package is designed to be extensible. As the package is

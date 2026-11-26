@@ -38,6 +38,8 @@ Has the operands' broadcast shape and the data type they agreed on.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

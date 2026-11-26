@@ -12,7 +12,7 @@ formula of its own.
 ## Usage
 
 ``` r
-prim_custom_gradient(args, fn, rule)
+prim_custom_gradient(args, fn, rule, forward = NULL)
 ```
 
 ## Arguments
@@ -25,9 +25,10 @@ prim_custom_gradient(args, fn, rule)
   values, or trees of them in the sense of pjrt's
   [`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html), by
   name. `rule` gives the gradient with respect to these. No entry may be
-  named `out`, `grad` or `required`, the names under which `rule`
-  receives the result, its gradient and which gradients are required. An
-  R value materializes at its default data type, as in
+  named `out`, `grad`, `required` or `residuals`, the names under which
+  `rule` receives the result, its gradient, which gradients are required
+  and the residuals of `forward`. An R value materializes at its default
+  data type, as in
   [`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md).
 
 - fn:
@@ -38,27 +39,30 @@ prim_custom_gradient(args, fn, rule)
 
 - rule:
 
-  (`function` \| `anvl_rule_pullback`)  
-  Computes the gradient. A function receives the entries of `args` as
-  arguments, plus `out`, the result of `fn`, `grad`, the gradient with
-  respect to `out`, of the same structure, data types and shapes, and
-  `required`, a named [`logical()`](https://rdrr.io/r/base/logical.html)
-  with one element per entry of `args`: `TRUE` where the gradient with
-  respect to that entry is required, i.e. where any of its arrays
-  requires one. Returns a named list with the gradient with respect to
-  each required entry – for an array `x`, the sum over the elements of
-  `out` of their `grad` times their derivative with respect to `x` – of
-  `x`'s structure, data types and shapes. An entry that is not required,
-  e.g. an integer, which never is, can be left out or be `NULL`.
+  (`function`)  
+  Computes the gradient. Receives the entries of `args` as arguments,
+  plus `out`, the result of `fn`, `grad`, the gradient with respect to
+  `out`, of the same structure, data types and shapes, `required`, a
+  named [`logical()`](https://rdrr.io/r/base/logical.html) with one
+  element per entry of `args`: `TRUE` where the gradient with respect to
+  that entry is required, i.e. where any of its arrays requires one,
+  and, if `forward` is given, `residuals`, those it returned. Returns a
+  named list with the gradient with respect to each required entry – for
+  an array `x`, the sum over the elements of `out` of their `grad` times
+  their derivative with respect to `x` – of `x`'s structure, data types
+  and shapes. An entry that is not required, e.g. an integer, which
+  never is, can be left out or be `NULL`.
 
-  Alternatively, a
-  [`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md)
-  with a `forward` pass, which replaces `fn` where the result is
-  differentiated, so that the backward pass can read what the forward
-  pass computed. Its passes are those of a primitive's rule, except that
-  `inputs` are the entries of `args` by name rather than one array per
-  operand, `params` is an empty list, and `outputs`, `grads`, `required`
-  and the returned gradients are those of a function above.
+- forward:
+
+  (`NULL` \| `function`)  
+  A forward pass that replaces `fn` where the result is differentiated,
+  so that `rule` can reuse what it computed. Receives the entries of
+  `args` as arguments, plus `required`, as `rule` does, and returns a
+  list with `out`, the result, of the structure, data types and shapes
+  of the result of `fn`, and `residuals`, a list of arrays, or trees of
+  them, which `rule` receives. `NULL` (the default) differentiates the
+  result of `fn` itself.
 
 ## Value
 
@@ -68,10 +72,10 @@ The result of `fn`.
 
 ## Gradients
 
-`rule` is traced when the gradient is, once the function being
-differentiated has been traced. It can close over constants – R values
-and arrays – but not over a traced value: pass that through `args`
-instead.
+`rule` and `forward` are traced when the gradient is, once the function
+being differentiated has been traced. They can close over constants – R
+values and arrays – but not over a traced value: pass that through
+`args` instead.
 
 `fn` may close over traced values, but
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
@@ -86,6 +90,8 @@ instead.
 - `quickr`
 
 - `pullback`
+
+- `vectorize`
 
 ## StableHLO
 
@@ -136,21 +142,19 @@ jit(gradient(dpow, wrt = "x"))(x, 3L)
 #> [ CPUf32{} ] 
 #> 
 
-# With a forward pass, x^(n - 1) is computed once, for the result and for
-# its gradient
+# With a forward pass, x^(n - 1) is computed once, for the result and, as a
+# residual, for its gradient
 pow_fwd <- function(x, n) {
   prim_custom_gradient(
     list(x = x, n = n),
     fn = pow_loop,
-    rule = rule_pullback(forward = function(inputs, params, required) {
-      p <- inputs$x^(inputs$n - 1L)
-      list(
-        outputs = p * inputs$x,
-        backward = function(inputs, outputs, grads, params, required) {
-          list(x = grads * inputs$n * p)
-        }
-      )
-    })
+    forward = function(x, n, required) {
+      p <- x^(n - 1L)
+      list(out = p * x, residuals = list(p = p))
+    },
+    rule = function(x, n, out, grad, required, residuals) {
+      list(x = grad * n * residuals$p)
+    }
   )
 }
 jit(gradient(pow_fwd, wrt = "x"))(x, 3L)

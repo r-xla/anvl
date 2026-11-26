@@ -649,6 +649,8 @@ Code transformations
 - [`pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
   [`value_and_pullback()`](https://r-xla.github.io/anvl/dev/reference/pullback.md)
   : Pullbacks
+- [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+  **\[experimental\]** : Vectorize a Function
 
 ## Backend
 
@@ -793,6 +795,12 @@ Low-level primitive operations (prim\_\* functions)
   : Add a Statement to a Graph Descriptor
 - [`rule_pullback()`](https://r-xla.github.io/anvl/dev/reference/rule_pullback.md)
   : Pullback Rule
+- [`rule_vectorize()`](https://r-xla.github.io/anvl/dev/reference/rule_vectorize.md)
+  : Vectorize Rule
+- [`vec_shape()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)
+  [`vec_axis_map()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)
+  [`vec_per_axis()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)
+  : Parameter Kinds
 
 ### Implemented Primitives
 

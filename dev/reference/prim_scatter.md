@@ -171,6 +171,8 @@ gradient of zero.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

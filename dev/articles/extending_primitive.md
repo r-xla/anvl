@@ -272,7 +272,9 @@ lowering pass. We implement `repeat_along` using concatenation:
 
 prim_repeat_along[["stablehlo"]] <- function(x, times, axis) {
   xs <- rep(list(x), times)
-  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = axis - 1L))
+  # R axis `axis` of an n-axis array is StableHLO dimension n - axis
+  n <- length(shape(x$value_type))
+  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = n - axis))
 }
 ```
 
@@ -286,13 +288,17 @@ It must return a list of
 [`stablehlo::FuncValue`](https://r-xla.github.io/stablehlo/reference/FuncValue.html)s,
 even if there is only one output.
 
-**Important**: StableHLO uses 0-based indexing, while {anvl} uses R’s
-1-based indexing. Always convert axis indices by subtracting 1. Nothing
-translates StableHLO’s error messages back into {anvl}’s terms: an input
-that only StableHLO rejects surfaces as an MLIR error in its own
-vocabulary, with 0-based axes. This is why the inference function has to
-check every constraint the StableHLO operation imposes, so that the
-lowering rule only ever sees valid inputs.
+**Important**: the lowering reverses every axis, so that R’s
+column-major arrays are XLA’s row-major ones (see [Axis
+Reversal](https://r-xla.github.io/anvl/dev/articles/internals.html#axis-reversal)).
+`shape(x$value_type)` is the reversed shape, and R axis `a` of an
+`n`-axis array is StableHLO dimension `n - a`, which also accounts for
+StableHLO’s 0-based indexing. Nothing translates StableHLO’s error
+messages back into {anvl}’s terms: an input that only StableHLO rejects
+surfaces as an MLIR error in its own vocabulary, with 0-based axes. This
+is why the inference function has to check every constraint the
+StableHLO operation imposes, so that the lowering rule only ever sees
+valid inputs.
 
 ### Step 3: Add the Pullback Rule
 
@@ -390,6 +396,30 @@ rules you almost always want. A primitive can optionally also carry a
 the primitive to run under `local_backend("quickr")`; if you skip it,
 the primitive will still work on the pjrt backend.
 
+#### Optional: a vectorize rule
+
+To make the primitive work under
+[`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md),
+attach a rule built with
+[`rule_vectorize()`](https://r-xla.github.io/anvl/dev/reference/rule_vectorize.md).
+Inside it, a value that is mapped over carries the batch axis as its
+last axis. Most primitives already work on an extra trailing axis, and a
+parameter that names an axis still names the same one.
+`prim_repeat_along()` is such a primitive, so its rule declares nothing:
+
+``` r
+
+prim_repeat_along[["vectorize"]] <- rule_vectorize()
+```
+
+A primitive with a parameter that has an entry per axis, or a shape,
+declares how it changes,
+e.g. `rule_vectorize(params = list(shape = vec_shape()))` for a shape
+that gains the batch axis at its end. The rule broadcasts an operand
+that is not mapped over and calls the primitive with the changed
+parameters. A primitive this does not fit passes a function of its own,
+`rule_vectorize(fn = function(inputs, batched, params, size) ...)`.
+
 ### Step 4: Add an `nv_` API Function
 
 In {anvl}, we also offer convenience wrappers around the primitives. An
@@ -444,22 +474,16 @@ x <- nv_array(c(1, 2, 3), shape = c(3, 1))
 # Eager call -- works because prim_repeat_along is itself jit-compiled.
 prim_repeat_along(x, times = 2L, axis = 2L)
 #> AnvlArray
-#>  1
-#>  2
-#>  3
-#>  1
-#>  2
-#>  3
+#>  1 1
+#>  2 2
+#>  3 3
 #> [ CPUf32{3,2} ]
 # Traced into the outer graph when composed with another jit-compiled function.
 jit(function(x) prim_repeat_along(x, times = 2L, axis = 2L))(x)
 #> AnvlArray
-#>  1
-#>  2
-#>  3
-#>  1
-#>  2
-#>  3
+#>  1 1
+#>  2 2
+#>  3 3
 #> [ CPUf32{3,2} ]
 ```
 
@@ -481,6 +505,24 @@ grad_f(x)[[1L]]
 #> [ CPUf32{3,1} ]
 ```
 
+And map it over a batch with
+[`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md),
+here over the columns of a matrix, each of which is repeated:
+
+``` r
+
+m <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(3, 2))
+jit(vectorize(function(x) prim_repeat_along(x, times = 2L, axis = 1L)))(m)
+#> AnvlArray
+#>  1 4
+#>  2 5
+#>  3 6
+#>  1 4
+#>  2 5
+#>  3 6
+#> [ CPUf32{6,2} ]
+```
+
 ## Contributing to the Package
 
 If you want to contribute your primitive to {anvl}, there are some
@@ -496,6 +538,9 @@ additional things to be aware of.
 - **`R/rules-pullback.R`**: Add the pullback rule (if differentiable)
 - **`R/rules-quickr.R`**: Add the quickr lowering rule (optional; only
   if the primitive should run on the quickr backend)
+- **`R/rules-vectorize.R`**: Add the vectorize rule (optional; only if
+  the primitive should work under
+  [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md))
 - **`R/api.R`**: Add the `nv_*` wrapper function (or possibly in another
   **api** file).
 

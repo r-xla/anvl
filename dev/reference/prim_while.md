@@ -50,6 +50,8 @@ after the loop terminates.
 
 - `quickr`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

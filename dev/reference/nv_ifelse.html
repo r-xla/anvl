@@ -40,6 +40,7 @@ branches between two functions, evaluating only the selected one."><meta propert
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -119,6 +120,20 @@ Scalars (including <code>test</code>) are
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Has the common data type of <code>yes</code> and <code>no</code>, and their broadcast shape.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="gradients">Gradients<a class="anchor" aria-label="anchor" href="#gradients"></a></h2>
+
+
+<p>Both <code>yes</code> and <code>no</code> are computed everywhere, and the gradient flows through
+both: the one not selected receives a zero cotangent, which its own
+derivative multiplies. Where that derivative is infinite, the gradient is
+<code>NaN</code>, e.g. for <code>nv_ifelse(x &gt; 0, sqrt(x), 0)</code> at <code>x = 0</code>. To guard
+against this, also mask the input of the branch, so that it sees a value of
+no consequence where it is not selected:
+<code>nv_ifelse(x &gt; 0, sqrt(nv_ifelse(x &gt; 0, x, 0)), 0)</code>. The reverse rule
+of <code>nv_ifelse()</code> then hands the <code>NaN</code> to the constant instead of <code>x</code>, at
+any order of differentiation.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

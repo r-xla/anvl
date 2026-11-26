@@ -44,6 +44,8 @@ regardless of the input's, and the input's shape with `axis` removed
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

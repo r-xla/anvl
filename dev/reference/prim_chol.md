@@ -35,16 +35,13 @@ Has the same shape and data type as the input. The values in the
 triangle not specified by `lower` are implementation-defined. A matrix
 that is not positive definite factors to `NaN`.
 
-## Details
-
-Differentiation is only implemented for a single matrix: the `pullback`
-rule errors on a batched input (an input with more than 2 axes).
-
 ## Implemented Rules
 
 - `stablehlo`
 
 - `pullback`
+
+- `vectorize`
 
 ## StableHLO
 

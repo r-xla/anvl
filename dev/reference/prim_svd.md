@@ -16,6 +16,9 @@ Supports any matrix shape on both the host (LAPACK `gesdd`) and CUDA
 (cuSOLVER `gesvd`) backends. cuSOLVER's `m >= n` requirement is handled
 transparently via a layout flip for wide matrices.
 
+The first two axes form the matrix, and any trailing axes are batch
+axes.
+
 ## Usage
 
 ``` r
@@ -27,7 +30,8 @@ prim_svd(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  One input, with exactly 2 axes. Can be any float data type. An R value
+  One input, with at least 2 axes, the first two forming the matrix; any
+  trailing axes are batch axes. Can be any float data type. An R value
   materializes at its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
@@ -35,12 +39,15 @@ prim_svd(x)
 
 (named `list` of three
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Elements `d` (length `k`), `u` (shape `(m, k)`), and `vt` (shape
-`(k, n)`). All have the input's data type.
+Elements `d` (shape `(k, ...)`), `u` (shape `(m, k, ...)`), and `vt`
+(shape `(k, n, ...)`), where `(m, n, ...) = shape(x)`. All have the
+input's data type.
 
 ## Implemented Rules
 
 - `stablehlo`
+
+- `vectorize`
 
 ## StableHLO
 

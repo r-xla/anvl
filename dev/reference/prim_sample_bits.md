@@ -56,6 +56,8 @@ make the default for a scope. They advance it in place.
 
 - `stablehlo`
 
+- `vectorize`
+
 ## References
 
 Salmon J, Moraes M, Dror R, Shaw D (2011). “Parallel Random Numbers: As

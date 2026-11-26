@@ -13,7 +13,8 @@ Only the lower triangle of x is read. The columns of vectors
 are the (orthonormal) eigenvectors and values is the length-n
 vector of (real) eigenvalues in ascending order. Output names and
 order match base::eigen(), which unlike this primitive also handles
-non-symmetric matrices."><meta property="og:description" content="Computes the eigendecomposition of a symmetric matrix x of
+non-symmetric matrices.
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:description" content="Computes the eigendecomposition of a symmetric matrix x of
 shape (n, n):
 $$A = \mathrm{vectors} \, \mathrm{diag}(\mathrm{values}) \,
   \mathrm{vectors}^\top.$$
@@ -21,7 +22,8 @@ Only the lower triangle of x is read. The columns of vectors
 are the (orthonormal) eigenvectors and values is the length-n
 vector of (real) eigenvalues in ascending order. Output names and
 order match base::eigen(), which unlike this primitive also handles
-non-symmetric matrices."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+non-symmetric matrices.
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -50,6 +52,7 @@ non-symmetric matrices."><meta property="og:image" content="https://r-xla.github
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -103,7 +106,8 @@ Only the lower triangle of <code>x</code> is read. The columns of <code>vectors<
 are the (orthonormal) eigenvectors and <code>values</code> is the length-<code>n</code>
 vector of (real) eigenvalues in ascending order. Output names and
 order match <code><a href="https://rdrr.io/r/base/eigen.html" class="external-link">base::eigen()</a></code>, which unlike this primitive also handles
-non-symmetric matrices.</p>
+non-symmetric matrices.
+The first two axes form the matrix, and any trailing axes are batch axes.</p>
     </div>
 
     <div class="section level2">
@@ -117,7 +121,7 @@ non-symmetric matrices.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-One input, a symmetric square matrix with exactly 2 axes. Can be any numeric data type: a float keeps its
+One input, with at least 2 axes, the first two forming a symmetric square matrix; any trailing axes are batch axes. Can be any numeric data type: a float keeps its
 own, and an integer one is converted to the default float data type (see
 <code><a href="default_dtypes.html">default_dtypes()</a></code>). An R value materializes at its
 <a href="default_dtypes.html">default data type</a> and is converted in the same way.</p></dd>
@@ -126,9 +130,10 @@ own, and an integer one is converted to the default float data type (see
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
-Elements <code>values</code> (length <code>n</code>) and <code>vectors</code> (shape <code>(n, n)</code>). Both have
-the input's data type – or the default float data type (see
-<code><a href="default_dtypes.html">default_dtypes()</a></code>) where the input was an integer one.</p>
+Elements <code>values</code> (shape <code>(n, ...)</code>) and <code>vectors</code> (shape <code>(n, n, ...)</code>),
+where <code>(n, n, ...) = shape(x)</code>. Both have the input's data type – or the
+default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where the input was an
+integer one.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

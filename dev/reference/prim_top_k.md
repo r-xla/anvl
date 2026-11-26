@@ -53,6 +53,8 @@ ties are broken by lower index first.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

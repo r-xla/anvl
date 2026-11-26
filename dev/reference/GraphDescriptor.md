@@ -147,6 +147,10 @@ GraphDescriptor(
     [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md)
     take side effects this way, and hand them on to the next iteration.
 
+  - `"vectorize"`: as fresh inputs of the graph, which
+    [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+    binds to the values the slices start from.
+
   - `"capture"`: as the value of `parent`'s view, which the graph closes
     over and continues. The branches of
     [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) and

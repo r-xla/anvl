@@ -59,6 +59,8 @@ shape and data type of its input.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

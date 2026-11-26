@@ -63,6 +63,8 @@ every pair of elements; negative edge padding trims (see
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

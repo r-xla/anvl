@@ -3,7 +3,8 @@
 Computes the reduced QR decomposition of a matrix `x`: \$\$A = Q R,\$\$
 where \\Q\\ has orthonormal columns (\\Q^\top Q = I\\) and \\R\\ is
 upper triangular. For an \\m \times n\\ input with \\k = \min(m, n)\\,
-\\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\.
+\\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\. The
+first two axes form the matrix, and any trailing axes are batch axes.
 
 ## Usage
 
@@ -16,7 +17,8 @@ prim_qr(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  One input, with exactly 2 axes. Can be any float data type. An R value
+  One input, with at least 2 axes, the first two forming the matrix; any
+  trailing axes are batch axes. Can be any float data type. An R value
   materializes at its [default data
   type](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
@@ -24,13 +26,15 @@ prim_qr(x)
 
 (named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-Elements `Q` (shape `(m, k)`) and `R` (shape `(k, n)`), where
-`(m, n) = shape(x)` and `k = min(m, n)`. Both have the input's data
+Elements `Q` (shape `(m, k, ...)`) and `R` (shape `(k, n, ...)`), where
+`(m, n, ...) = shape(x)` and `k = min(m, n)`. Both have the input's data
 type.
 
 ## Implemented Rules
 
 - `stablehlo`
+
+- `vectorize`
 
 ## StableHLO
 

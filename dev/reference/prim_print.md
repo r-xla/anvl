@@ -36,6 +36,8 @@ from their location in the code.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

@@ -37,6 +37,8 @@ Has the inputs' broadcast shape and data type.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

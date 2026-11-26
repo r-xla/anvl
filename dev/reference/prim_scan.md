@@ -59,6 +59,8 @@ leaf of `out` gaining a trailing axis of size `steps`.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

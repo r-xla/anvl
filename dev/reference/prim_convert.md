@@ -42,6 +42,8 @@ Has the given `dtype` and the input's shape.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

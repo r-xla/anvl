@@ -16,6 +16,7 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
+  tags = character(),
   register = TRUE
 )
 ```
@@ -49,6 +50,13 @@ new_primitive(
   [`integer()`](https://rdrr.io/r/base/integer.html))  
   Passed to
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
+
+- tags:
+
+  ([`character()`](https://rdrr.io/r/base/character.html))  
+  Tags for anvl's internal use, which say what kind of operation the
+  primitive is, e.g. `"elementwise"`, so that rules shared by the
+  primitives of one kind can be derived from them.
 
 - register:
 

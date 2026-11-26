@@ -9,13 +9,16 @@ graph records the `AnvlPrimitiveDef` in each
 [`GraphStatement`](https://r-xla.github.io/anvl/dev/reference/GraphStatement.md).
 Note that `[[` and `[[<-` access the interpretation rules. To access
 other fields, use `$` and `$<-`.
+[`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
+stores the `AnvlPrimitive` in the field `fn`, so a rule can call the
+primitive it belongs to.
 
 A primitive is considered higher-order if it has subgraphs.
 
 ## Usage
 
 ``` r
-AnvlPrimitiveDef(name, subgraphs = character())
+AnvlPrimitiveDef(name, subgraphs = character(), tags = character())
 ```
 
 ## Arguments
@@ -29,6 +32,12 @@ AnvlPrimitiveDef(name, subgraphs = character())
 
   ([`character()`](https://rdrr.io/r/base/character.html))  
   Names of parameters that are subgraphs.
+
+- tags:
+
+  ([`character()`](https://rdrr.io/r/base/character.html))  
+  Tags for internal use, see
+  [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md).
 
 ## Value
 

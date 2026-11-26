@@ -28,6 +28,8 @@ Has the input's shape and data type.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

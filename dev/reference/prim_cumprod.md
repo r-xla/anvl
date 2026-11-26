@@ -38,6 +38,8 @@ Has the input's shape and data type.
 
 - `stablehlo`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

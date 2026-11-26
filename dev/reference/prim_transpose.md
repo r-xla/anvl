@@ -38,6 +38,8 @@ Has the input's data type and shape `shape(x)[perm]`.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

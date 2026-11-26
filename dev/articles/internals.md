@@ -14,10 +14,11 @@ for reshaping code. We refer to such a rewriting of code as a
     arrays – and applies `AnvlPrimitiveDef` operations to them.
 2.  `AnvlGraph` \\\rightarrow\\ `AnvlGraph`: It is possible to transform
     `AnvlGraph`s into other `AnvlGraph`s. Their purpose is to change the
-    functionality of the code. At the time of writing, there is
-    essentially only one such transformation, namely reverse-mode
-    automatic differentiation via
-    [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md).
+    functionality of the code. At the time of writing, there are two
+    such transformations: reverse-mode automatic differentiation via
+    [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
+    and batching via
+    [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md).
 3.  `AnvlGraph` \\\rightarrow\\ executable: In order to perform the
     actual computation, the `AnvlGraph` needs to be converted into an
     executable. The main backend is `"pjrt"` (via {stablehlo} and
@@ -209,7 +210,7 @@ prim_mul[["stablehlo"]]
     ##     operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
     ##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
     ## }
-    ## <environment: 0x5e0fd68c4bf8>
+    ## <environment: 0x6332b3b739d8>
 
 The
 [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
@@ -531,6 +532,151 @@ h_graph
 
 Afterwards, this graph is lowered to StableHLO and subsequently
 compiled.
+
+### `vectorize()`
+
+[`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+rewrites the operations of `f` one by one, in two functions.
+`vectorize_call()` traces `f` on a single slice of the arguments it maps
+over and puts the batch axis of each output where `out_axes` says. In
+between, `graph_vectorize()` replays that graph into the enclosing trace
+statement by statement, swapping every operation that touches the batch
+for its batched version. In pseudocode:
+
+    vectorize_call(f, args, in_axes, out_axes):
+      mapped <- the leaves of args that in_axes maps over, and their batch axes
+      graph  <- trace_fn(f, args with every mapped leaf replaced by one slice of it)
+      inputs <- args, every mapped leaf with its batch axis moved last
+      outs   <- graph_vectorize(graph, inputs, batched = which inputs are mapped over)
+      for out in outs:
+        batched,   out_axes gives an axis -> move its trailing batch axis there
+        unbatched, out_axes gives an axis -> broadcast a batch axis in there
+        unbatched, out_axes is NULL       -> return it as it is
+        batched,   out_axes is NULL       -> error
+
+    graph_vectorize(graph, inputs, batched):
+      values <- inputs, one per input of graph
+      for stmt in graph$statements:
+        operands <- values[stmt$inputs]
+        if no operand is batched:
+          values[stmt$outputs]  <- stmt$primitive(operands, stmt$params)   # as it is
+          batched[stmt$outputs] <- FALSE
+        else:
+          rule <- stmt$primitive[["vectorize"]]
+          values[stmt$outputs]  <- rule(operands, batched[stmt$inputs], stmt$params, size)
+          batched[stmt$outputs] <- TRUE
+      return values[graph$outputs], batched[graph$outputs]
+
+For example, `weigh()` multiplies a vector `x` with weights `w` and
+returns the product, its sum, and the sum of the weights. Traced on one
+slice, it is a graph of three statements:
+
+``` r
+
+weigh <- function(x, w) {
+  y <- x * w
+  list(scaled = y, dot = sum(y), total = sum(w))
+}
+trace_fn(weigh, list(x = nv_aval("f32", 2L), w = nv_aval("f32", 2L)))
+```
+
+    ## <AnvlGraph> (%x1: f32[2], %x2: f32[2]) {
+    ##   %1: f32[2] = mul(%x1, %x2)
+    ##   %2: f32[] = sum [axes = 1, drop = TRUE] (%1)
+    ##   %3: f32[] = sum [axes = 1, drop = TRUE] (%x2)
+    ##   return (%1, %2, %3)
+    ## }
+
+Vectorized over the rows of a `3x2` matrix `x`, with the scaled rows
+stacked as rows again, the same three statements become this graph:
+
+``` r
+
+weigh_vec <- vectorize(
+  weigh,
+  in_axes = list(x = 1L),
+  out_axes = list(scaled = 1L, dot = -1L, total = NULL)
+)
+trace_fn(weigh_vec, list(x = nv_aval("f32", c(3L, 2L)), w = nv_aval("f32", 2L)))
+```
+
+    ## <AnvlGraph> (%x1: f32[3,2], %x2: f32[2]) {
+    ##   %1: f32[2,3] = transpose [perm = c(2, 1)] (%x1)
+    ##   %2: f32[2,3] = broadcast_in_axes [shape = c(2, 3), broadcast_axes = 1] (%x2)
+    ##   %3: f32[2,3] = mul(%1, %2)
+    ##   %4: f32[3] = sum [axes = 1, drop = TRUE] (%3)
+    ##   %5: f32[] = sum [axes = 1, drop = TRUE] (%x2)
+    ##   %6: f32[3,2] = transpose [perm = c(2, 1)] (%3)
+    ##   return (%6, %4, %5)
+    ## }
+
+1.  `%1`: `vectorize_call()` moves the batch axis of `x`, its first
+    axis, last.
+2.  `%2`, `%3`: `mul` has a batched input, so `graph_vectorize()` runs
+    its vectorize rule. It broadcasts the unbatched `w` to the batch
+    (`batch_operands()`) and multiplies.
+3.  `%4`: `sum` has a batched input too. As the batch axis is the last
+    one, axis 1 is still the axis to sum over, and the rule calls `sum`
+    with the same parameters.
+4.  `%5`: `sum(w)` has no batched input, so `graph_vectorize()` replays
+    it as it is, and `vectorize_call()` returns `total` as it is.
+5.  `%6`: `scaled` is batched along its last axis, and
+    `vectorize_call()` moves the batch first, as `out_axes` says.
+
+Because the batch axis comes last, every axis a primitive’s parameters
+name keeps its number in the batched operands. So for the element-wise
+primitives, the reductions and the cumulative primitives, the rule is
+the primitive itself, called with the same parameters once the unbatched
+operands are broadcast:
+[`rule_vectorize()`](https://r-xla.github.io/anvl/dev/reference/rule_vectorize.md)
+without arguments builds it, and every primitive of these kinds gets it
+from its tag. Other rules adapt a parameter to the extra axis –
+`transpose` appends it to its permutation
+([`vec_axis_map()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md)),
+`reshape` to its shape
+([`vec_shape()`](https://r-xla.github.io/anvl/dev/reference/vec_shape.md))
+– or are functions of their own: `dot_general`, `gather` and `scatter`
+turn the batch axes into batching axes of their own, so that the whole
+batch is a single operation. A primitive without a vectorize rule only
+takes unbatched inputs. Batch axes last is also what XLA’s kernels want
+(see [axis reversal](#axis-reversal)).
+
+Whether a value is batched follows from the graph alone: every output of
+a statement with a batched input is batched. So `out_axes` can return an
+output as it is only if no batched value reaches it – no argument mapped
+over and, with `randomness = "independent"`, no random draw – even if
+the output happens to be the same for every slice.
+
+The replay goes into the enclosing trace, which an outer
+[`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+may in turn replay, so nested calls compose: the rules of the outer call
+see the primitives the inner one left, such as a `dot_general` with the
+batching axes its rule added. A primitive whose rule turns the batch
+axis into a batching axis of its own must therefore take any number of
+them, as every level of nesting appends one more: vectorizing a dot
+product twice gives a `dot_general` with
+`batching_axes = list(c(2, 3), c(2, 3))`. `dot_general`, `gather` and
+`scatter` take a vector of batching axes for this reason. The random
+state is an input like any other; with `randomness = "independent"`, it
+is batched, so a draw has a batched input and its rule draws for every
+slice (see the [loops and branches](#loops-and-branches) section).
+
+The rules of the primitives that trace functions of their own –
+[`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md),
+[`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md)
+and
+[`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
+– call the primitive anew, with functions that replay its sub-graphs the
+same way (`graph_vectorize_as()`). Every output of the call is batched,
+but inside a loop only the values the loop carries from a batched one
+are: `carry_batched()` follows the body until no more of them become
+batched, so that, e.g., a counter that no argument mapped over reaches
+keeps the condition the same for every slice. A condition that is
+batched nonetheless runs the loop until it fails for every slice,
+carried along with the state, and a predicate of
+[`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md)
+that is batched runs every branch some slice takes, each slice keeping
+the result of its own.
 
 ## More Internals
 
@@ -1054,6 +1200,7 @@ which whoever opens the trace passes to
 |----|----|----|
 | `"program"` | the outermost trace of [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) or [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md) | wherever the side effect says (`side_effect_start()`): implicit inputs from the host, an argument, or a value the program creates |
 | `"loop"` | the body of [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md) or [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md) | fresh inputs, which the loop carries |
+| `"vectorize"` | the function [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md) maps | fresh inputs, which [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md) binds to the values the slices start from |
 | `"capture"` | a branch of [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md), the function [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md) differentiates | the enclosing trace’s view: its value, and its count |
 | `NULL` | the condition of [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md), the function of a reduction, a scatter or a sort | nowhere: using a side effect is an error, as such a function cannot hand back what it did |
 
@@ -1107,6 +1254,7 @@ it hands back its count:
 | [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md) | the body starts from a fork (`side_effect_fork()`), one use of the enclosing trace; the loop adds nothing else |
 | [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md) | continues after the larger of the branches’ counts |
 | [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md) | continues after the differentiated function’s count |
+| [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md) | adds the number of slices times the function’s count, or the function’s count with `randomness = "common"` |
 | the program | no output; `side_effect_advance()` adds the count on the host |
 
 The figure follows a draw in the body of an
@@ -1157,6 +1305,7 @@ provides a few S3 methods on its handle:
 | `side_effect_input(effect, object, name)` | the buffer of the key or the counter, built from the words R holds |
 | `side_effect_after(effect, value, n)` | the key and the counter plus `n` |
 | `side_effect_fork(effect, value)` | a call of `prim_fork_rng_state()` |
+| `side_effect_stack(effect, value, n, size)` | the key for every slice, and the counter plus \\(i - 1) n\\ for slice \\i\\; the default refuses `randomness = "independent"` |
 | `side_effect_advance(effect, object, n)` | advances the object’s counter by `n` |
 | `side_effect_format(effect, ids, n)` | the `then` line of a printed graph, `%counter1 += n`; the default says `n` uses |
 
@@ -1207,9 +1356,11 @@ trace_fn(
 Fixing every advance when the function is traced, rather than when it
 runs, is what lets every draw compute its counter from the counter the
 program starts from, and the host advance the random state after a call
-by a number known in advance. The same property will let a future
-`vmap()` or `parallel_map()` of a function give each element the counter
-a hand-written loop over the elements would give it.
+by a number known in advance. The same property lets
+[`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+give each slice the counters a hand-written loop over the slices would
+give it, and will let a future `parallel_map()` do the same for its
+elements.
 
 So a compiled function draws exactly what the same calls made one after
 the other without
@@ -1307,12 +1458,14 @@ ordinary inputs that the dispatcher uploads to the device of the call’s
 other inputs. Every random state gives leaves of the same type, so one
 compiled program serves every random state passed there.
 [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
-flattens its arguments with `pjrt::flatten(is_leaf = )`, which stops at
-a random state, so that the function it differentiates receives it as it
-is and its draws continue those of the enclosing trace. After the run,
-pjrt hands the call’s arguments to the entry’s `on_success()`, which
-finds the random states among them the same way and advances the one at
-the handle’s place among them (`rng_state_argument()`).
+and
+[`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+flatten their arguments with `pjrt::flatten(is_leaf = )`, which stops at
+a random state, so that the function they transform receives it as it is
+and its draws continue those of the enclosing trace. After the run, pjrt
+hands the call’s arguments to the entry’s `on_success()`, which finds
+the random states among them the same way and advances the one at the
+handle’s place among them (`rng_state_argument()`).
 
 ![](figures/se-instances.png)
 
@@ -1416,6 +1569,19 @@ view, which for the random state means:
   like straight-line code; its graph starts from the enclosing trace’s
   view, and hands its draws to the enclosing trace like a branch does
   (`desc_end_capture()`).
+- The function
+  [`vectorize()`](https://r-xla.github.io/anvl/dev/reference/vectorize.md)
+  maps runs once per slice, all slices at once. It takes the random
+  state as fresh inputs, which are bound to a batch of random states
+  once its \\m\\ draws are counted (`desc_bind_vectorized()`): with
+  `randomness = "independent"`, slice \\i\\ starts at the counter \\c +
+  (i - 1) m\\, where a loop over the slices would start it
+  (`side_effect_stack()`), and the enclosing trace continues after \\m\\
+  times the number of slices; with `"common"`, every slice starts at
+  \\c\\, and the enclosing trace continues after \\m\\. A draw from a
+  batch of random states draws from each of them: the vectorize rule of
+  [`prim_sample_bits()`](https://r-xla.github.io/anvl/dev/reference/prim_sample_bits.md)
+  passes it the batch of keys and counters.
 
 ``` r
 

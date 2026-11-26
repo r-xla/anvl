@@ -124,6 +124,8 @@ and each spatial axis the number of window positions along it.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

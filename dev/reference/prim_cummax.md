@@ -42,6 +42,8 @@ Both have the input's shape.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

@@ -18,7 +18,8 @@ primitive returns them already transposed as vt of shape (k, n)
 extra transpose).
 Supports any matrix shape on both the host (LAPACK gesdd) and CUDA
 (cuSOLVER gesvd) backends. cuSOLVER's m &amp;gt;= n requirement is handled
-transparently via a layout flip for wide matrices."><meta property="og:description" content="Computes the reduced (&quot;economy&quot;) singular value decomposition of a
+transparently via a layout flip for wide matrices.
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:description" content="Computes the reduced (&quot;economy&quot;) singular value decomposition of a
 matrix x of shape (m, n):
 $$A = u \, \mathrm{diag}(d) \, vt,$$
 where u has orthonormal columns, vt has orthonormal rows, and d
@@ -31,7 +32,8 @@ primitive returns them already transposed as vt of shape (k, n)
 extra transpose).
 Supports any matrix shape on both the host (LAPACK gesdd) and CUDA
 (cuSOLVER gesvd) backends. cuSOLVER's m &amp;gt;= n requirement is handled
-transparently via a layout flip for wide matrices."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+transparently via a layout flip for wide matrices.
+The first two axes form the matrix, and any trailing axes are batch axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -60,6 +62,7 @@ transparently via a layout flip for wide matrices."><meta property="og:image" co
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -119,6 +122,7 @@ extra transpose).</p>
 <p>Supports any matrix shape on both the host (LAPACK <code>gesdd</code>) and CUDA
 (cuSOLVER <code>gesvd</code>) backends. cuSOLVER's <code>m &gt;= n</code> requirement is handled
 transparently via a layout flip for wide matrices.</p>
+<p>The first two axes form the matrix, and any trailing axes are batch axes.</p>
     </div>
 
     <div class="section level2">
@@ -132,7 +136,7 @@ transparently via a layout flip for wide matrices.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-One input, with exactly 2 axes. Can be any numeric data type: a float keeps its
+One input, with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes. Can be any numeric data type: a float keeps its
 own, and an integer one is converted to the default float data type (see
 <code><a href="default_dtypes.html">default_dtypes()</a></code>). An R value materializes at its
 <a href="default_dtypes.html">default data type</a> and is converted in the same way.</p></dd>
@@ -141,9 +145,10 @@ own, and an integer one is converted to the default float data type (see
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(named <code>list</code> of three <code><a href="arrayish.html">arrayish</a></code>)<br>
-Elements <code>d</code> (length <code>k</code>), <code>u</code> (shape <code>(m, k)</code>), and <code>vt</code> (shape
-<code>(k, n)</code>). All have the input's data type – or the default float data
-type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where the input was an integer one.</p>
+Elements <code>d</code> (shape <code>(k, ...)</code>), <code>u</code> (shape <code>(m, k, ...)</code>), and <code>vt</code>
+(shape <code>(k, n, ...)</code>), where <code>(m, n, ...) = shape(x)</code>. All have the
+input's data type – or the default float data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>) where the input was an integer one.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

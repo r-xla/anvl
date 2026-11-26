@@ -43,6 +43,8 @@ along that axis.
 
 - `pullback`
 
+- `vectorize`
+
 ## StableHLO
 
 Lowers to

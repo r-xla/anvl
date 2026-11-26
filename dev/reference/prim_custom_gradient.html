@@ -42,6 +42,7 @@ its own."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.s
   <ul class="dropdown-menu" aria-labelledby="dropdown-user-guide"><li><a class="dropdown-item" href="../articles/type-promotion.html">Data Types and Promotion Rules</a></li>
     <li><a class="dropdown-item" href="../articles/jit.html">JIT Deep Dive</a></li>
     <li><a class="dropdown-item" href="../articles/autodiff.html">Automatic Differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/vectorize.html">Vectorization</a></li>
     <li><a class="dropdown-item" href="../articles/static_shapes.html">Static Shape Restriction</a></li>
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
@@ -96,7 +97,7 @@ its own.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_custom_gradient</span><span class="op">(</span><span class="va">args</span>, <span class="va">fn</span>, <span class="va">rule</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_custom_gradient</span><span class="op">(</span><span class="va">args</span>, <span class="va">fn</span>, <span class="va">rule</span>, forward <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -107,10 +108,10 @@ its own.</p>
 <dd><p>(named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
 The arguments of <code>fn</code>: <code><a href="arrayish.html">arrayish</a></code> values, or trees of them in the sense
 of pjrt's <code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>, by name. <code>rule</code> gives the gradient
-with respect to these. No entry may be named <code>out</code>, <code>grad</code> or <code>required</code>,
-the names under which <code>rule</code> receives the result, its gradient and which
-gradients are required. An R value materializes at its default data type,
-as in <code><a href="prim_while.html">prim_while()</a></code>.</p></dd>
+with respect to these. No entry may be named <code>out</code>, <code>grad</code>, <code>required</code> or
+<code>residuals</code>, the names under which <code>rule</code> receives the result, its
+gradient, which gradients are required and the residuals of <code>forward</code>. An
+R value materializes at its default data type, as in <code><a href="prim_while.html">prim_while()</a></code>.</p></dd>
 
 
 <dt id="arg-fn">fn<a class="anchor" aria-label="anchor" href="#arg-fn"></a></dt>
@@ -120,24 +121,28 @@ arguments. Returns an array, or a tree of them.</p></dd>
 
 
 <dt id="arg-rule">rule<a class="anchor" aria-label="anchor" href="#arg-rule"></a></dt>
-<dd><p>(<code>function</code> | <code>anvl_rule_pullback</code>)<br>
-Computes the gradient. A function receives the entries of <code>args</code> as arguments, plus
+<dd><p>(<code>function</code>)<br>
+Computes the gradient. Receives the entries of <code>args</code> as arguments, plus
 <code>out</code>, the result of <code>fn</code>, <code>grad</code>, the gradient with respect to <code>out</code>, of
-the same structure, data types and shapes, and <code>required</code>, a named
+the same structure, data types and shapes, <code>required</code>, a named
 <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code> with one element per entry of <code>args</code>: <code>TRUE</code> where the
 gradient with respect to that entry is required, i.e. where any of its
-arrays requires one. Returns a named list with the gradient with respect
-to each required entry – for an array <code>x</code>, the sum over the elements of
-<code>out</code> of their <code>grad</code> times their derivative with respect to <code>x</code> – of
-<code>x</code>'s structure, data types and shapes. An entry that is not required,
-e.g. an integer, which never is, can be left out or be <code>NULL</code>.</p>
-<p>Alternatively, a <code><a href="rule_pullback.html">rule_pullback()</a></code> with a <code>forward</code> pass, which replaces
-<code>fn</code> where the result is differentiated, so that the backward pass can
-read what the forward pass computed. Its passes are those of a
-primitive's rule, except that <code>inputs</code> are the entries of <code>args</code> by name
-rather than one array per operand, <code>params</code> is an empty list, and
-<code>outputs</code>, <code>grads</code>, <code>required</code> and the returned gradients are those of a
-function above.</p></dd>
+arrays requires one, and, if <code>forward</code> is given, <code>residuals</code>, those it
+returned. Returns a named list with the gradient with respect to each
+required entry – for an array <code>x</code>, the sum over the elements of <code>out</code> of
+their <code>grad</code> times their derivative with respect to <code>x</code> – of <code>x</code>'s
+structure, data types and shapes. An entry that is not required, e.g. an
+integer, which never is, can be left out or be <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-forward">forward<a class="anchor" aria-label="anchor" href="#arg-forward"></a></dt>
+<dd><p>(<code>NULL</code> | <code>function</code>)<br>
+A forward pass that replaces <code>fn</code> where the result is differentiated, so
+that <code>rule</code> can reuse what it computed. Receives the entries of <code>args</code>
+as arguments, plus <code>required</code>, as <code>rule</code> does, and returns a list with
+<code>out</code>, the result, of the structure, data types and shapes of the result
+of <code>fn</code>, and <code>residuals</code>, a list of arrays, or trees of them, which <code>rule</code>
+receives. <code>NULL</code> (the default) differentiates the result of <code>fn</code> itself.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -149,9 +154,10 @@ The result of <code>fn</code>.</p>
     <h2 id="gradients">Gradients<a class="anchor" aria-label="anchor" href="#gradients"></a></h2>
 
 
-<p><code>rule</code> is traced when the gradient is, once the function being
-differentiated has been traced. It can close over constants – R values and
-arrays – but not over a traced value: pass that through <code>args</code> instead.</p>
+<p><code>rule</code> and <code>forward</code> are traced when the gradient is, once the function
+being differentiated has been traced. They can close over constants – R
+values and arrays – but not over a traced value: pass that through <code>args</code>
+instead.</p>
 <p><code>fn</code> may close over traced values, but <code><a href="gradient.html">gradient()</a></code> cannot differentiate
 with respect to those, as <code>rule</code> only gives the gradient with respect to
 <code>args</code>. Pass such a value through <code>args</code> instead.</p>
@@ -163,6 +169,7 @@ with respect to those, as <code>rule</code> only gives the gradient with respect
 <ul><li><p><code>stablehlo</code></p></li>
 <li><p><code>quickr</code></p></li>
 <li><p><code>pullback</code></p></li>
+<li><p><code>vectorize</code></p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
@@ -215,21 +222,19 @@ is traced, as anvl operations, before the program is lowered.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># With a forward pass, x^(n - 1) is computed once, for the result and for</span></span></span>
-<span class="r-in"><span><span class="co"># its gradient</span></span></span>
+<span class="r-in"><span><span class="co"># With a forward pass, x^(n - 1) is computed once, for the result and, as a</span></span></span>
+<span class="r-in"><span><span class="co"># residual, for its gradient</span></span></span>
 <span class="r-in"><span><span class="va">pow_fwd</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">n</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fu">prim_custom_gradient</span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, n <span class="op">=</span> <span class="va">n</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    fn <span class="op">=</span> <span class="va">pow_loop</span>,</span></span>
-<span class="r-in"><span>    rule <span class="op">=</span> <span class="fu"><a href="rule_pullback.html">rule_pullback</a></span><span class="op">(</span>forward <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">params</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>      <span class="va">p</span> <span class="op">&lt;-</span> <span class="va">inputs</span><span class="op">$</span><span class="va">x</span><span class="op">^</span><span class="op">(</span><span class="va">inputs</span><span class="op">$</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>        outputs <span class="op">=</span> <span class="va">p</span> <span class="op">*</span> <span class="va">inputs</span><span class="op">$</span><span class="va">x</span>,</span></span>
-<span class="r-in"><span>        backward <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">outputs</span>, <span class="va">grads</span>, <span class="va">params</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>          <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">grads</span> <span class="op">*</span> <span class="va">inputs</span><span class="op">$</span><span class="va">n</span> <span class="op">*</span> <span class="va">p</span><span class="op">)</span></span></span>
-<span class="r-in"><span>        <span class="op">}</span></span></span>
-<span class="r-in"><span>      <span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    forward <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">n</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>      <span class="va">p</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">^</span><span class="op">(</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>out <span class="op">=</span> <span class="va">p</span> <span class="op">*</span> <span class="va">x</span>, residuals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">p</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">}</span>,</span></span>
+<span class="r-in"><span>    rule <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">n</span>, <span class="va">out</span>, <span class="va">grad</span>, <span class="va">required</span>, <span class="va">residuals</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">grad</span> <span class="op">*</span> <span class="va">n</span> <span class="op">*</span> <span class="va">residuals</span><span class="op">$</span><span class="va">p</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">}</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="gradient.html">gradient</a></span><span class="op">(</span><span class="va">pow_fwd</span>, wrt <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="va">x</span>, <span class="fl">3L</span><span class="op">)</span></span></span>
