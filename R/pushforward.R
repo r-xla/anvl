@@ -174,9 +174,12 @@ argument_keys <- function(args) {
 # reaches, by the pushforward rules of the statements, and returns those of
 # the outputs. A value no tangent reaches has none: a zero no statement
 # computes. So does a value that is not a float, which has no derivative, and
-# a value no output depends on, whose tangent nobody reads.
+# a value no output depends on, whose tangent nobody reads. Every call gets new
+# output gvals, so that a graph replayed more than once into one trace -- a
+# sub-graph whose call's pushforward is called more than once -- never defines
+# the same value twice.
 graph_pushforward <- function(graph, inputs) {
-  rebuilt <- rebuild_forward_into(graph, current_descriptor(), inputs, required_env = hashtab())
+  rebuilt <- rebuild_forward_into(graph, current_descriptor(), inputs, required_env = hashtab(), fresh = TRUE)
   needed <- values_needed(graph, graph$outputs)$kept
 
   push <- function(tangents) {
@@ -223,4 +226,16 @@ graph_pushforward <- function(graph, inputs) {
     })
   }
   list(value = lapply(graph$outputs, rebuilt$box_of), pushforward = push)
+}
+
+# The pushforward rule of a call that runs a sub-graph `graph` -- a branch, a
+# loop body -- pushes tangents through it with this: `graph` replayed into the
+# current trace as a function of `primals`, the boxes of its inputs, as
+# `graph_pushforward()` does, without what it prints, which the call itself
+# prints already. Returns the boxes of its outputs as `value`, and as `tangent`
+# those of the outputs `want` flags, given `tangents`, one per input (`NULL`
+# for none): a zero where no tangent reaches.
+push_through <- function(graph, primals, tangents, want) {
+  pushed <- graph_pushforward(graph_without_prints(graph), primals)
+  list(value = pushed$value, tangent = pushed$pushforward(tangents)[want])
 }

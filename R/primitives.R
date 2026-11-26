@@ -2912,6 +2912,10 @@ prim_scan <- new_primitive(
 #' `fn` may close over traced values, but [gradient()] cannot differentiate
 #' with respect to those, as `rule` only gives the gradient with respect to
 #' `args`. Pass such a value through `args` instead.
+#'
+#' `rule` replaces reverse mode only: [pushforward()] differentiates the
+#' operations of `fn`, with respect to `args` and to what `fn` closes over
+#' alike.
 #' @templateVar primitive_id custom_gradient
 #' @template section_rules
 #' @section StableHLO:

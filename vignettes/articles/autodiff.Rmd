@@ -199,7 +199,7 @@ loss_after_steps <- function(lr, x) {
 jit(gradient(loss_after_steps, wrt = "lr"))(nv_scalar(0.1), nv_array(c(1, 2)))
 ```
 
-`nv_while()`, in contrast, cannot be differentiated.
+In contrast, `gradient()` cannot differentiate `nv_while()`.
 Its number of iterations is only known when the program runs, so there is no fixed size for the intermediate states that computing the gradient needs to keep.
 Where the number of iterations is known, use `nv_scan()` instead.
 Where the derivative of what a loop computes has a formula of its own, `prim_custom_gradient()` attaches it.
@@ -216,6 +216,14 @@ For $f(x) = x \sin(x)$, the tangent along $v$ is $(\sin(x) + x \cos(x)) v$:
 f <- function(x) x * sin(x)
 f_pushforward <- jit(function(x, v) pushforward(f, x)(v))
 f_pushforward(nv_array(c(0, 1, 2)), nv_array(c(1, 1, 1)))
+```
+
+Forward mode carries the tangents through `nv_if()`, `nv_scan()` and `nv_while()` along with the values, and keeps no intermediate states, so it differentiates `nv_while()` as well.
+Below, $x^4$ is computed by a while loop, and its tangent along $1$ is $4 x^3$:
+
+```{r}
+pow4 <- function(x) nv_while(list(i = 0L, y = x), \(i, y) i < 3L, \(i, y) list(i = i + 1L, y = y * x))$y
+jit(function(x) pushforward(pow4, x)(1))(nv_scalar(2))
 ```
 
 `value_and_pushforward()` returns the result of the function as well.
