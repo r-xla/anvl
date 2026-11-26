@@ -253,6 +253,29 @@ describe("prim_gather", {
       i = rand_indices(c(2L, 6L, 4L), 5L)
     )
   })
+
+  it("drops the hints that the indices of all slices together break", {
+    # a scalar index claims sorted and unique indices
+    pick <- function(x, i) x[i]
+    hints <- function(in_axes, x_shape) {
+      avals <- list(x = nv_aval("f32", x_shape), i = nv_aval("i32", 4L))
+      graph <- trace_fn(vectorize(pick, in_axes = in_axes), avals)
+      gather <- Filter(\(s) s$primitive$name == "gather", graph$statements)[[1L]]
+      c(sorted = gather$params$indices_are_sorted, unique = gather$params$unique_indices)
+    }
+    # with only the indices mapped over, those of all slices go into the same x
+    expect_identical(hints(list(i = -1L), 5L), c(sorted = FALSE, unique = FALSE))
+    # with both, the batching axes tell the slices apart
+    expect_identical(hints(-1L, c(5L, 4L)), c(sorted = FALSE, unique = TRUE))
+  })
+
+  it("gathers from an empty batch of arrays and indices", {
+    x <- nv_array(numeric(), shape = c(5L, 0L), dtype = "f32")
+    i <- nv_array(integer(), shape = c(3L, 0L), dtype = "i32")
+    out <- jit(vectorize(function(x, i) x[i]))(x, i)
+    expect_identical(shape(out), c(3L, 0L))
+    expect_dtype(out, "f32")
+  })
 })
 
 describe("prim_scatter", {

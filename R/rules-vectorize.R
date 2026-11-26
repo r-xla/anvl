@@ -87,13 +87,29 @@ prim_dynamic_update_slice[["vectorize"]] <- rule_vectorize(function(inputs, batc
 # vector axis that is implicit, after the last axis, moves behind it. The batch
 # axis of `x` alone is one more offset axis, which the slices span whole and
 # the output gets last. When both are batched, their batch axes are a pair of
-# batching axes, which match the slices of `x` with the indices into them.
+# batching axes, which match the slices of `x` with the indices into them; a
+# batching axis takes a slice of size 1, which an empty batch does not have, so
+# then the gather goes slice by slice.
+#
+# Indices sorted within one slice need not be across the batch. Unique ones
+# stay unique where the batching axes tell the slices apart, but with only the
+# indices batched, the indices of all slices go into the same `x`.
 prim_gather[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  if (all(batched) && size == 0L) {
+    gather <- function(operands) list(do.call(prim_gather, c(operands, params)))
+    return(vectorize_by_loop(gather, inputs, batched, size))
+  }
   x <- inputs[[1L]]
   start_indices <- inputs[[2L]]
   n_indices <- naxes(start_indices)
-  if (batched[[2L]] && params$index_vector_axis == n_indices) {
-    params$index_vector_axis <- n_indices + 1L
+  if (batched[[2L]]) {
+    params$indices_are_sorted <- FALSE
+    if (params$index_vector_axis == n_indices) {
+      params$index_vector_axis <- n_indices + 1L
+    }
+  }
+  if (batched[[2L]] && !batched[[1L]]) {
+    params$unique_indices <- FALSE
   }
   if (all(batched)) {
     params$x_batching_axes <- c(params$x_batching_axes, naxes(x))
@@ -298,6 +314,14 @@ prim_while[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, si
   names(init) <- paste0("s", is_state)
 
   out <- if (pred_batched) {
+    # FIXME: the body runs on every slice, also on one whose condition is false
+    # (done, or never entered the loop), and only then do those slices keep
+    # their old state. The body may rely on the condition, e.g. an inner loop
+    # that only terminates for the states it admits, which then never ends for
+    # such a slice and hangs the whole loop (`jax.vmap()` of a `while_loop()`
+    # does the same). Run those slices on the state and the mapped captures of
+    # a slice whose condition holds, as the `prim_if` rule does for a slice
+    # that does not take a branch.
     # `pred` is the condition of every slice for the state the step starts from.
     init$pred <- pred_of(init)
     prim_while(
