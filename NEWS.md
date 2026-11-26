@@ -49,6 +49,8 @@
 
 ## Bug fixes
 
+* Inside `jit()`, an R value that a function wrapped by `with_dtypes()` returns
+  takes the wrapper's default data types, not those of the enclosing trace.
 * A missing value (`NA_real_`, `NA_integer_`, `NA`) passed to a jitted function
   or an operation as an R scalar, or written in a traced body, behaves as in
   `nv_array()` at the data type it takes, instead of being refused with a

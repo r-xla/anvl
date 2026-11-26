@@ -25,8 +25,9 @@ was one.
 names is converted to that data type, the defaults (see
 \code{\link[=default_dtypes]{default_dtypes()}}) are set to the \code{float} / \code{int} entries for the
 duration of the call, and every returned array of a named category is
-converted as well. For example, \code{with_dtypes(nv_add, c(float = "f64"))} is
-an \code{nv_add()} that computes floats at \code{f64}.
+converted as well. Inside \code{\link[=jit]{jit()}}, an R value \code{f} returns also takes these
+defaults. For example, \code{with_dtypes(nv_add, c(float = "f64"))} is an
+\code{nv_add()} that computes floats at \code{f64}.
 
 A category \code{dtypes} does not name is left alone, in the arguments, in the
 body and in the result.
