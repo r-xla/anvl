@@ -84,7 +84,7 @@ How an update combines with the value in \code{x} it lands on. One of
 
 or a binary function \code{f(old, new)} of two scalars at \code{x}'s data type,
 which returns one. Only a named \code{update_fn} can be differentiated, see
-section Gradients.}
+section Derivatives.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -116,21 +116,21 @@ between plugins ("cpu", "cuda"), which matters for \code{"replace"}, where one
 of them is the one that ends up written.
 }
 
-\section{Gradients}{
+\section{Derivatives}{
 
-\code{\link[=gradient]{gradient()}} differentiates a scatter whose \code{update_fn} is one of the names,
-but not a function, even one that computes the same.
+\code{\link[=gradient]{gradient()}} and \code{\link[=pushforward]{pushforward()}} differentiate a scatter whose \code{update_fn}
+is one of the names, but not a function, even one that computes the same.
 \itemize{
-\item With \code{"replace"}, an update gets the gradient only where it is the one
-that was written.
-\item With \code{"mul"}, the gradient with respect to \code{update} needs
+\item With \code{"replace"}, an update contributes to the derivative only where it is
+the one that was written.
+\item With \code{"mul"}, the derivative with respect to \code{update} needs
 \code{unique_indices = TRUE}.
 \item With \code{"max"} and \code{"min"}, \code{x} and the updates that tie for the result
-share its gradient equally.
+share its derivative equally.
 }
 
-An update that falls outside of \code{x}, and is therefore ignored, gets a
-gradient of zero.
+An update that falls outside of \code{x}, and is therefore ignored, has a
+derivative of zero.
 }
 
 \section{Implemented Rules}{
@@ -139,6 +139,7 @@ gradient of zero.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

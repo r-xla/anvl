@@ -33,6 +33,7 @@ indices output is the largest \code{i} in \code{1:j} with
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

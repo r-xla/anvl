@@ -3453,7 +3453,7 @@ prim_fork_rng_state <- new_primitive(
 #'
 #'   or a binary function `f(old, new)` of two scalars at `x`'s data type,
 #'   which returns one. Only a named `update_fn` can be differentiated, see
-#'   section Gradients.
+#'   section Derivatives.
 #' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @section Out of Bounds Behavior:
@@ -3465,18 +3465,18 @@ prim_fork_rng_state <- new_primitive(
 #' `"add"` adds them all up. The order is implementation-defined and may vary
 #' between plugins ("cpu", "cuda"), which matters for `"replace"`, where one
 #' of them is the one that ends up written.
-#' @section Gradients:
-#' [gradient()] differentiates a scatter whose `update_fn` is one of the names,
-#' but not a function, even one that computes the same.
-#' * With `"replace"`, an update gets the gradient only where it is the one
-#'   that was written.
-#' * With `"mul"`, the gradient with respect to `update` needs
+#' @section Derivatives:
+#' [gradient()] and [pushforward()] differentiate a scatter whose `update_fn`
+#' is one of the names, but not a function, even one that computes the same.
+#' * With `"replace"`, an update contributes to the derivative only where it is
+#'   the one that was written.
+#' * With `"mul"`, the derivative with respect to `update` needs
 #'   `unique_indices = TRUE`.
 #' * With `"max"` and `"min"`, `x` and the updates that tie for the result
-#'   share its gradient equally.
+#'   share its derivative equally.
 #'
-#' An update that falls outside of `x`, and is therefore ignored, gets a
-#' gradient of zero.
+#' An update that falls outside of `x`, and is therefore ignored, has a
+#' derivative of zero.
 #' @templateVar primitive_id scatter
 #' @template section_rules
 #' @section StableHLO:
