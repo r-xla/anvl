@@ -15,7 +15,7 @@
 #'
 #' `.f` runs once, when `pushforward()` is called. The pushforward can be
 #' called more than once, e.g. with every unit vector to build a Jacobian
-#' column by column, as [`jacobian()`] does.
+#' column by column.
 #' @inheritParams pullback
 #' @return
 #'   For `pushforward()`, the pushforward (`function`); for
@@ -71,40 +71,22 @@ pushforward <- function(.f, ...) {
 #' @export
 value_and_pushforward <- function(.f, ...) {
   assert_function(.f)
-  trace_pushforward(.f, differentiated_args(.f, list(...)), "value_and_pushforward")[c("value", "pushforward")]
+  trace_pushforward(.f, differentiated_args(.f, list(...)), "value_and_pushforward")
 }
 
-# The pushforward of `f` for `pushforward()`, `value_and_pushforward()` or
-# `jacobian()`, named by `fn`, at the arguments `prep` holds (see
-# `differentiated_args()`): `f` traced into a graph whose forward pass is
-# replayed into the enclosing trace, and the function that records the
-# tangents of a direction there. `flat` holds the same on the leaves: the boxes
-# of the value, its tree `out_tree`, and a pushforward from a tangent per leaf
-# `prep$is_wrt_flat` selects to a tangent per leaf of the value (`NULL` for one
-# that is not a float).
+# The pushforward of `f` for `pushforward()` or `value_and_pushforward()`,
+# named by `fn`, at the arguments `prep` holds (see `differentiated_args()`):
+# `f` traced into a graph whose forward pass is replayed into the enclosing
+# trace, and the function that records the tangents of a direction there.
 trace_pushforward <- function(f, prep, fn, call = rlang::caller_env()) {
   traced <- trace_replayed(f, prep, fn, call = call, replay = graph_pushforward)
   graph <- traced$graph
-  # the tangents of all leaves of the arguments, `NULL` for one held fixed
-  push_leaves <- function(tangents) {
-    assert_called_within(traced$enclosing, "pushforward", fn)
-    traced$res$pushforward(tangents[!graph$is_static_flat])
-  }
-  push_flat <- function(tangents_wrt) {
-    tangents <- vector("list", length(prep$args_flat))
-    tangents[prep$is_wrt_flat] <- tangents_wrt
-    push_leaves(tangents)
-  }
   push <- function(...) {
     assert_called_within(traced$enclosing, "pushforward", fn)
     tangents <- flatten_tangents(f, prep, list(...), call = rlang::current_env())
-    unflatten(graph$out_tree, push_leaves(tangents))
+    unflatten(graph$out_tree, traced$res$pushforward(tangents[!graph$is_static_flat]))
   }
-  list(
-    value = unflatten(graph$out_tree, traced$res$value),
-    pushforward = push,
-    flat = list(value = traced$res$value, out_tree = graph$out_tree, pushforward = push_flat)
-  )
+  list(value = unflatten(graph$out_tree, traced$res$value), pushforward = push)
 }
 
 # The tangents `tangents` of the arguments `prep` holds, given as `f` takes

@@ -54,8 +54,7 @@ cotangent.
 }
 
 \code{.f} runs once, when \code{pullback()} is called. The pullback can be called more
-than once, e.g. with every unit vector to build a Jacobian row by row, as
-\code{\link[=jacobian]{jacobian()}} does.
+than once, e.g. with every unit vector to build a Jacobian row by row.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

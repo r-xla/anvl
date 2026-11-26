@@ -385,8 +385,6 @@ reference:
       - gradient
       - pullback
       - pushforward
-      - jacobian
-      - hessian
       - vectorize
 
   - title: Backend

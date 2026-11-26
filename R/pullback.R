@@ -662,8 +662,7 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 #' * `value_and_pullback()` returns both the result of `.f` and its pullback.
 #'
 #' `.f` runs once, when `pullback()` is called. The pullback can be called more
-#' than once, e.g. with every unit vector to build a Jacobian row by row, as
-#' [`jacobian()`] does.
+#' than once, e.g. with every unit vector to build a Jacobian row by row.
 #' @param .f (`function`)\cr
 #'   Function to differentiate. It can return any (nested) list of arrays.
 #' @param ... (any)\cr
@@ -721,18 +720,15 @@ pullback <- function(.f, ...) {
 #' @export
 value_and_pullback <- function(.f, ...) {
   assert_function(.f)
-  trace_pullback(.f, differentiated_args(.f, list(...)), "value_and_pullback")[c("value", "pullback")]
+  trace_pullback(.f, differentiated_args(.f, list(...)), "value_and_pullback")
 }
 
-# The pullback of `f` for `pullback()`, `value_and_pullback()`, `gradient()` or
-# `jacobian()`, named by `fn`, at the arguments `prep` holds (see
+# The pullback of `f` for `pullback()`, `value_and_pullback()` or
+# `gradient()`, named by `fn`, at the arguments `prep` holds (see
 # `prepare_gradient_args()`): `f` traced into a graph whose forward pass is
 # replayed into the enclosing trace, and the function that records its
 # backward pass there. It differentiates the leaves `prep$is_wrt_flat`
-# selects, and returns `NULL` for the others. `flat` holds the same on the
-# leaves: the boxes of the value, its tree `out_tree`, and a pullback from a
-# cotangent per leaf of the value (`NULL` for a zero) to the cotangents of the
-# leaves `prep$is_wrt_flat` selects.
+# selects, and returns `NULL` for the others.
 trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
   traced <- trace_replayed(f, prep, fn, call = call, replay = function(graph, operands) {
     # A leaf that is no array is static, and no input of the graph.
@@ -745,22 +741,14 @@ trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
   })
   graph <- traced$graph
   value <- unflatten(graph$out_tree, traced$res$value)
-  pull_flat <- function(cts) {
-    assert_called_within(traced$enclosing, "pullback", fn)
-    traced$res$pullback(cts)
-  }
   pull <- function(cotangent) {
     assert_called_within(traced$enclosing, "pullback", fn)
     cts <- flatten_cotangent(value, cotangent, graph$out_tree, call = rlang::current_env())
     pulled <- vector("list", length(prep$args_flat))
-    pulled[prep$is_wrt_flat] <- pull_flat(cts)
+    pulled[prep$is_wrt_flat] <- traced$res$pullback(cts)
     unflatten(prep$in_tree, pulled)
   }
-  list(
-    value = value,
-    pullback = pull,
-    flat = list(value = traced$res$value, out_tree = graph$out_tree, pullback = pull_flat)
-  )
+  list(value = value, pullback = pull)
 }
 
 # Whether `x`, a leaf of the arguments of `pullback()`, is a float array with a
