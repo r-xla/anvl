@@ -50,7 +50,7 @@ NULL
 #' - `side_effect_stack()`: the values `size` applications of a function that
 #'   uses it `n` times start from when they run one after the other from
 #'   `value`, the i-th `(i - 1) * n` uses after it, stacked along a new last
-#'   axis of every box, for [vectorize()] with `randomness = "different"`.
+#'   axis of every box, for [vectorize()] with `randomness = "independent"`.
 #' - `side_effect_advance()`: `NULL`; after a run, advances `object` by `n`
 #'   uses.
 #' - `side_effect_format()`: the line a printed graph shows after its body for
@@ -98,7 +98,7 @@ side_effect_stack <- function(effect, value, n, size) {
 side_effect_stack.default <- function(effect, value, n, size) {
   cli_abort(c(
     "This side effect cannot differ between the slices of {.fn vectorize}.",
-    i = "Use it with {.code randomness = \"same\"}."
+    i = "Use it with {.code randomness = \"common\"}."
   ))
 }
 

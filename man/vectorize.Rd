@@ -4,7 +4,7 @@
 \alias{vectorize}
 \title{Vectorize a Function}
 \usage{
-vectorize(f, in_axes = -1L, out_axes = -1L, randomness = "different")
+vectorize(f, in_axes = -1L, out_axes = -1L, randomness = "independent")
 }
 \arguments{
 \item{f}{(\code{function})\cr
@@ -31,8 +31,13 @@ output as it is, which only works for one that does not depend on the
 arguments mapped over.}
 
 \item{randomness}{(\code{character(1)})\cr
-Whether the slices draw \code{"different"} (the default) or the \code{"same"}
-random numbers.}
+How the slices draw random numbers. With \code{"independent"} (the default),
+they draw independent random numbers: every slice draws the numbers a loop
+applying \code{f} to one slice after the other draws for it, and the random
+state advances as after that loop, so replacing such a loop with
+\code{vectorize()} gives the same results. With \code{"common"}, they draw common
+random numbers: every slice draws those a single application of \code{f}
+draws, and the random state advances as after that application.}
 }
 \value{
 (\code{function})\cr
@@ -44,12 +49,13 @@ returned as it is.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-Return a new function that maps \code{f} over an axis of its arguments.
-Instead of looping over the slices, the function is rewritten to operate
-on the whole batch at once.
+Return a new function that maps \code{f} over an axis of its arguments: it
+applies \code{f} to every slice along that axis, by default the last, so to every
+column of a matrix. This is in the spirit of \code{\link[base:Vectorize]{base::Vectorize()}}, but unlike
+it, \code{vectorize()} maps over slices, not elements. Instead of looping over
+the slices, the function is rewritten to operate on the whole batch at once.
 
-This is analogous to \code{vmap} found in other array computing
-frameworks and is also in the spirit of \code{\link[base:Vectorize]{base::Vectorize()}}.
+This is analogous to \code{vmap} found in other array computing frameworks.
 
 See the \href{https://r-xla.github.io/anvl/articles/vectorize.html}{Vectorization} article for more details.
 }
@@ -97,7 +103,7 @@ noisy <- function(x) x + nv_rnorm(shape = 2L)
 nv_set_seed(1L)
 jit(vectorize(noisy))(x)
 # or the same noise for every column
-jit(vectorize(noisy, randomness = "same"))(x)
+jit(vectorize(noisy, randomness = "common"))(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

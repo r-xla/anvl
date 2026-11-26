@@ -1,4 +1,4 @@
-# vectorize / traces batched sample_bits with randomness different
+# vectorize / traces batched sample_bits with randomness independent
 
     Code
       graph
@@ -17,7 +17,7 @@
         %counter1 += 4
       }
 
-# vectorize / traces shared sample_bits with randomness same
+# vectorize / traces shared sample_bits with randomness common
 
     Code
       graph

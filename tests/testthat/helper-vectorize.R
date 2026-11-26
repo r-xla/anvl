@@ -22,7 +22,7 @@
 #
 # A random draw in `f` is checked against a loop over the slices from the
 # random state the vectorized call started from, which `vectorize()` must draw
-# what it draws (`randomness = "different"`).
+# what it draws (`randomness = "independent"`).
 #
 # `f` only takes arrays: bind the parameters a primitive takes in a closure.
 # Every primitive whose vectorize rule runs is recorded in `vectorize_tested`,

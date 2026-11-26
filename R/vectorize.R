@@ -2,12 +2,13 @@
 #' @description
 #' `r lifecycle::badge("experimental")`
 #'
-#' Return a new function that maps `f` over an axis of its arguments.
-#' Instead of looping over the slices, the function is rewritten to operate
-#' on the whole batch at once.
+#' Return a new function that maps `f` over an axis of its arguments: it
+#' applies `f` to every slice along that axis, by default the last, so to every
+#' column of a matrix. This is in the spirit of [base::Vectorize()], but unlike
+#' it, `vectorize()` maps over slices, not elements. Instead of looping over
+#' the slices, the function is rewritten to operate on the whole batch at once.
 #'
-#' This is analogous to `vmap` found in other array computing
-#' frameworks and is also in the spirit of [base::Vectorize()].
+#' This is analogous to `vmap` found in other array computing frameworks.
 #'
 #' See `r roxy_article("vectorize")` for more details.
 #'
@@ -32,8 +33,13 @@
 #'   output as it is, which only works for one that does not depend on the
 #'   arguments mapped over.
 #' @param randomness (`character(1)`)\cr
-#'   Whether the slices draw `"different"` (the default) or the `"same"`
-#'   random numbers.
+#'   How the slices draw random numbers. With `"independent"` (the default),
+#'   they draw independent random numbers: every slice draws the numbers a loop
+#'   applying `f` to one slice after the other draws for it, and the random
+#'   state advances as after that loop, so replacing such a loop with
+#'   `vectorize()` gives the same results. With `"common"`, they draw common
+#'   random numbers: every slice draws those a single application of `f`
+#'   draws, and the random state advances as after that application.
 #' @return (`function`)\cr
 #'   Has the same formals as `f` and must be called inside [`jit()`]. It returns
 #'   what `f` returns, with the batch axis added to every output where
@@ -84,12 +90,12 @@
 #' nv_set_seed(1L)
 #' jit(vectorize(noisy))(x)
 #' # or the same noise for every column
-#' jit(vectorize(noisy, randomness = "same"))(x)
-vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "different") {
+#' jit(vectorize(noisy, randomness = "common"))(x)
+vectorize <- function(f, in_axes = -1L, out_axes = -1L, randomness = "independent") {
   assert_function(f)
   in_axes <- check_in_axes(f, in_axes)
   check_out_axes(out_axes)
-  assert_choice(randomness, c("different", "same"))
+  assert_choice(randomness, c("independent", "common"))
   transformation_fn(f, function(call_args) {
     # errors name the call of the vectorized function
     call <- rlang::caller_env()
@@ -202,9 +208,9 @@ batch_axis_position <- function(axis, n) {
 # slice, which took them as fresh inputs, in the trace `desc`, which applies it
 # to `size` slices: their inputs become inputs of `graph`, after its own.
 # Returns the operands for them and which of them are batched. With
-# `randomness = "different"`, the slices use a side effect one after the other,
+# `randomness = "independent"`, the slices use a side effect one after the other,
 # as a loop over them would, and the views of `desc` continue after all of
-# them; with `"same"`, every slice starts from the value `desc` is at, and the
+# them; with `"common"`, every slice starts from the value `desc` is at, and the
 # views continue after one.
 desc_bind_vectorized <- function(desc, graph, size, randomness) {
   views <- graph$side_effects
@@ -213,7 +219,7 @@ desc_bind_vectorized <- function(desc, graph, size, randomness) {
   bound <- lapply(views, function(body) {
     x <- desc_view(desc, body$effect)
     start <- view_current(x)[names(body$inputs)]
-    if (randomness == "same") {
+    if (randomness == "common") {
       x$n <- x$n + body$n
       return(list(operands = start, batched = rep(FALSE, length(start))))
     }
@@ -551,7 +557,7 @@ abort_no_vectorize_rule <- function(primitive, state_only, call) {
   cli_abort(
     c(
       "{.fn vectorize} cannot give every slice random numbers of its own in {.fn {paste0('prim_', primitive$name)}} yet.",
-      i = "Draw the same numbers for every slice with {.code randomness = \"same\"}."
+      i = "Draw the same numbers for every slice with {.code randomness = \"common\"}."
     ),
     call = call
   )

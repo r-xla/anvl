@@ -63,6 +63,7 @@ shape(coefs_loop)
 
 What `vectorize()` allows is to replace the iterative loop through a single "vectorized" call that processes all iterations at once.
 We call this transformation `vectorize()` because it is in the spirit of `base::Vectorize`, although it is more general.
+Unlike `base::Vectorize`, which maps a function over the elements of its arguments, `vectorize()` maps it over slices along an axis: over the columns of a matrix, for example, not over its elements.
 In other array computing frameworks this functionality is often called `vmap` (for "vectorized map").
 
 For every argument we need to specify whether it varies between every iteration or not.
@@ -170,12 +171,12 @@ coefs_loop <- do.call(nv_cbind, coefs_loop)
 all.equal(as_array(coefs)[, 1L, ], as_array(coefs_loop))
 ```
 
-With `randomness = "same"`, as in PyTorch's `torch.func.vmap()`, every slice draws the same numbers, the ones a single application of the function draws, and the random state advances as after that application.
+With `randomness = "common"` (`randomness = "same"` in PyTorch's `torch.func.vmap()`), the slices draw common random numbers: every slice draws the ones a single application of the function draws, and the random state advances as after that application.
 That is what a bootstrap of the ridge path needs within a replicate: every penalty is fitted on the same sample, so that the estimates differ only by the penalty.
-So the inner `vectorize()` maps `fit_resample()` over the penalties with `randomness = "same"`, and the outer one maps that over the replicates with the default `randomness = "different"`, so that every replicate draws a sample of its own:
+So the inner `vectorize()` maps `fit_resample()` over the penalties with `randomness = "common"`, and the outer one maps that over the replicates with the default `randomness = "independent"`, so that every replicate draws a sample of its own:
 
 ```{r}
-path_resample <- vectorize(fit_resample, in_axes = list(lambda = -1L), randomness = "same")
+path_resample <- vectorize(fit_resample, in_axes = list(lambda = -1L), randomness = "common")
 bootstrap_path <- jit(vectorize(path_resample, in_axes = list(b = -1L)))
 
 paths <- with_nv_seed(1L, bootstrap_path(replicates, X, y, lambdas))

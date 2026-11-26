@@ -322,10 +322,10 @@ describe("vectorize", {
     expect_identical(state_words(), after)
   })
 
-  it("draws the same for every slice with randomness \"same\", as one application of f does", {
+  it("draws the same for every slice with randomness \"common\", as one application of f does", {
     f <- function(x) x + nv_runif(shape = 2L)
     local_nv_seed(1L)
-    out <- as_r(jit(vectorize(f, randomness = "same"))(x))
+    out <- as_r(jit(vectorize(f, randomness = "common"))(x))
     after <- state_words()
     local_nv_seed(1L)
     noise <- as_r(nv_runif(shape = 2L))
@@ -333,8 +333,8 @@ describe("vectorize", {
     expect_identical(state_words(), after)
   })
 
-  it("traces batched sample_bits with randomness different", {
-    draw_batch <- vectorize(function(x) prim_sample_bits(2L, "ui32"), randomness = "different")
+  it("traces batched sample_bits with randomness independent", {
+    draw_batch <- vectorize(function(x) prim_sample_bits(2L, "ui32"), randomness = "independent")
     graph <- trace_fn(
       function(x) list(batch = draw_batch(x), after = prim_sample_bits(2L, "ui32")),
       list(x = nv_aval("f32", 3L))
@@ -342,8 +342,8 @@ describe("vectorize", {
     expect_snapshot(graph)
   })
 
-  it("traces shared sample_bits with randomness same", {
-    draw_batch <- vectorize(function(x) prim_sample_bits(2L, "ui32"), randomness = "same")
+  it("traces shared sample_bits with randomness common", {
+    draw_batch <- vectorize(function(x) prim_sample_bits(2L, "ui32"), randomness = "common")
     graph <- trace_fn(
       function(x) list(batch = draw_batch(x), after = prim_sample_bits(2L, "ui32")),
       list(x = nv_aval("f32", 3L))
@@ -369,7 +369,7 @@ describe("vectorize", {
     f <- function(x) x + nv_runif(shape = integer())
     y <- nv_array(matrix(0, 2L, 3L), dtype = "f32")
     local_nv_seed(1L)
-    out <- as_r(jit(vectorize(vectorize(f, randomness = "same"), randomness = "different"))(y))
+    out <- as_r(jit(vectorize(vectorize(f, randomness = "common"), randomness = "independent"))(y))
     after <- state_words()
 
     local_nv_seed(1L)
@@ -408,7 +408,7 @@ describe("vectorize", {
     expect_identical(state_words(rng), state_words(rng_loop))
   })
 
-  it("rejects randomness other than \"different\" and \"same\"", {
+  it("rejects randomness other than \"independent\" and \"common\"", {
     expect_error(vectorize(function(x) x, randomness = "error"), "randomness")
   })
 
@@ -521,8 +521,8 @@ describe("vectorize", {
     prim_neg <- unary_primitive()
     f <- function(x) x + prim_neg(nv_runif(shape = 2L, dtype = "f32"))
     expect_error(jit(vectorize(f))(x), "random numbers of its own in `prim_negate_test\\(\\)`")
-    expect_error(jit(vectorize(f))(x), "randomness = \"same\"")
-    expect_equal(shape(jit(vectorize(f, randomness = "same"))(x)), c(2L, 3L))
+    expect_error(jit(vectorize(f))(x), "randomness = \"common\"")
+    expect_equal(shape(jit(vectorize(f, randomness = "common"))(x)), c(2L, 3L))
   })
 
   it("draws in an nv_while() body what a loop over the slices draws", {
