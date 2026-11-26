@@ -190,7 +190,7 @@ describe("register_backend", {
 
   toy_backend <- function() {
     AnvlBackend(
-      new_data = function(data, dtype, shape, device, row_major = FALSE, check = NULL) toy_array(data, dtype, shape),
+      new_data = function(data, dtype, shape, device, row_major = FALSE) toy_array(data, dtype, shape),
       new_empty = function(dtype, shape, device) toy_array(0, dtype, shape),
       dtype = function(x) x$dtype,
       shape = function(x) x$shape,
