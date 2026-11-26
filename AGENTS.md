@@ -31,8 +31,9 @@ config above. anvl-specific:
     the `default-dtypes` workflow runs it so that anything hardcoding `f32` / `i32` where it should
     read `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the override.
-- anvl tracks the **dev** versions of its r-xla dependencies, pjrt from its `develop` branch:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))`.
+- anvl tracks the **dev** versions of its r-xla dependencies, pjrt and stablehlo from their
+  `develop` branches:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo@develop"))`.
 
 ## Two-Layer API
 
