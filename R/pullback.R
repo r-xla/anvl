@@ -222,9 +222,17 @@ validate_gradient_output <- function(out_gvals) {
 }
 
 # The cotangent reverse mode starts from for the scalar output `out`: its
-# derivative with respect to itself, a literal 1 at its data type.
+# derivative with respect to itself, a literal 1 at its data type. StableHLO
+# has no literals at the 16-bit floats, so there the 1 is a constant that the
+# program takes as an input.
 gradient_seed <- function(desc, out) {
-  get_box_or_register_const(desc, GraphLiteral(LiteralArray(1L, shape = integer(), dtype = out$aval$dtype)))
+  dtype <- out$aval$dtype
+  one <- if (as.character(dtype) %in% c("f16", "bf16")) {
+    nv_scalar(1L, dtype = dtype)
+  } else {
+    GraphLiteral(LiteralArray(1L, shape = integer(), dtype = dtype))
+  }
+  get_box_or_register_const(desc, one)
 }
 
 # Determine which gvals will require a gradient.

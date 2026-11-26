@@ -732,6 +732,15 @@ describe("the float category", {
     expect_equal(as.double(out[[1L]]), c(1, 1))
   })
 
+  it("differentiates a function returning a 16-bit float", {
+    # StableHLO has no literals at the 16-bit floats, so the seed is no literal
+    # there.
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "bf16")))
+    out <- g(nv_array(c(1, 2), dtype = "f32"))
+    expect_dtype(out[[1L]], "f32")
+    expect_equal(as.vector(out[[1L]]), c(1, 1))
+  })
+
   it("still refuses a non-float return", {
     g <- jit(gradient(function(x) nv_convert(nv_sum(x), "i32")))
     expect_error(g(nv_array(c(1, 2), dtype = "f32")), "return float scalar")
