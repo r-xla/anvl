@@ -30,10 +30,6 @@
 * `gradient()`, `value_and_gradient()` and `graph_gradient()` start reverse
   mode from a literal 1, embedded in the program, rather than from a constant
   that the program takes as an additional input (except at `f16` and `bf16`).
-* Experimental: `AnvlBackend()`, `register_backend()` and the new
-  `register_rule_type()` let a package add a backend, with its own rules for
-  the primitives.
-  that the program takes as an additional input.
 
 ## Bug fixes
 
