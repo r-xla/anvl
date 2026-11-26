@@ -1,5 +1,7 @@
 #' @title Vectorize a Function
 #' @description
+#' `r lifecycle::badge("experimental")`
+#'
 #' Return a new function that maps `f` over an axis of its arguments.
 #' Instead of looping over the slices, the function is rewritten to operate
 #' on the whole batch at once.

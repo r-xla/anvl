@@ -24,8 +24,9 @@
   allow to prevent optimizations from moving computations across it.
 * Added two new transformations `pullback()` and `value_and_pullback()`.
 * Elementwise primitives such as `prim_add()` now broadcast scalars.
-* New `vectorize()` maps a function over axes of its arguments (`in_axes`,
-  `out_axes`, by default the last axis), in the spirit of `base::Vectorize()`.
+* Experimental: new `vectorize()` maps a function over axes of its arguments
+  (`in_axes`, `out_axes`, by default the last axis), in the spirit of
+  `base::Vectorize()`.
 * `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, and with them
   `nv_qr()`, `nv_svd()` and `nv_eigh()`, take a batch of matrices, whose batch
   axes trail them, as `prim_chol()` and `prim_triangular_solve()` already do.

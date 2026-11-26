@@ -42,6 +42,8 @@ what \code{f} returns, with the batch axis added to every output where
 returned as it is.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Return a new function that maps \code{f} over an axis of its arguments.
 Instead of looping over the slices, the function is rewritten to operate
 on the whole batch at once.
