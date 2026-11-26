@@ -1883,6 +1883,8 @@ infer_sample_bits <- function(key, counter, shape, dtype) {
   list(AbstractArray(dtype = dtype, shape = Shape(c(shape, shape(counter)))))
 }
 
+# A fork that `vectorize()` batched forks a batch of random states, of the
+# shape of `counter`, into a child of each.
 infer_fork_rng_state <- function(key, counter) {
   list(key, counter)
 }

@@ -577,6 +577,177 @@ describe("prim_eigh", {
   })
 })
 
+describe("prim_reduce", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x) prim_reduce(x, 0, axes = 2L, reducer = function(a, b) a + b),
+      x = rand_array(c(2L, 4L, 3L))
+    )
+  })
+
+  it("vectorizes with an initial value that is mapped over", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, init) prim_reduce(x, init, axes = 1L, reducer = function(a, b) prim_pmax(a, b)),
+      x = rand_array(c(2L, 4L, 3L)),
+      init = rand_array(3L)
+    )
+  })
+})
+
+# The statement of the primitive `name` in the graph of `f` vectorized as
+# `in_axes` says, traced with the abstract arguments `args`.
+vectorized_statement <- function(f, args, in_axes, name) {
+  graph <- trace_fn(vectorize(f, in_axes = in_axes), args)
+  Find(\(s) s$primitive$name == name, graph$statements)
+}
+
+describe("prim_if", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(pred, x, y) prim_if(pred, function() list(x * 2, sum(y)), function() list(y - 1, sum(x))),
+      pred = nv_array(c(TRUE, FALSE, TRUE), dtype = "bool"),
+      x = rand_array(c(2L, 3L)),
+      y = rand_array(c(2L, 3L))
+    )
+  })
+
+  it("draws in a branch what a loop over the slices draws", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(pred, x) prim_if(pred, function() list(x + nv_runif(shape = 2L, dtype = "f32")), function() list(x)),
+      pred = nv_array(c(TRUE, FALSE, TRUE), dtype = "bool"),
+      x = rand_array(c(2L, 3L))
+    )
+  })
+
+  it("vectorizes an empty batch", {
+    f <- function(x) prim_if(x > 0, function() list(sqrt(x)), function() list(x * 0))[[1L]]
+    out <- jit(vectorize(f))(nv_array(numeric(), shape = 0L, dtype = "f32"))
+    expect_equal(shape(out), 0L)
+  })
+})
+
+describe("prim_while", {
+  # Applies `x * 2 + y` `n` times; `y` is read but not carried.
+  repeat_n <- function(n, x, y) {
+    out <- prim_while(
+      list(i = nv_scalar(0L, dtype = "i32"), x = x),
+      function(i, x) i < n,
+      function(i, x) list(i = i + 1L, x = x * 2 + y)
+    )
+    list(out$i, out$x)
+  }
+
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      repeat_n,
+      n = nv_array(c(1L, 3L, 2L), dtype = "i32"),
+      x = rand_array(c(2L, 3L)),
+      y = rand_array(c(2L, 3L))
+    )
+  })
+
+  it("draws in its body what a loop over the slices draws", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(n, x) {
+        prim_while(
+          list(i = nv_scalar(0L, dtype = "i32"), x = x),
+          function(i, x) i < n,
+          function(i, x) list(i = i + 1L, x = x + nv_runif(shape = 2L, dtype = "f32"))
+        )$x
+      },
+      n = nv_array(c(1L, 3L, 2L), dtype = "i32"),
+      x = rand_array(c(2L, 3L))
+    )
+  })
+
+  it("keeps a counter that does not depend on the arguments mapped over unbatched", {
+    args <- list(n = nv_aval("i32", integer()), x = nv_aval("f32", c(2L, 3L)), y = nv_aval("f32", c(2L, 3L)))
+    stmt <- vectorized_statement(repeat_n, args, list(x = -1L, y = -1L), "while")
+    expect_identical(shape(stmt$inputs[[1L]]$aval), integer())
+    expect_identical(shape(stmt$inputs[[2L]]$aval), c(2L, 3L))
+  })
+
+  it("batches the state the body makes depend on the arguments mapped over", {
+    f <- function(y) {
+      prim_while(
+        list(i = nv_scalar(0L, dtype = "i32"), acc = nv_scalar(0, dtype = "f32")),
+        function(i, acc) i < 3L,
+        function(i, acc) list(i = i + 1L, acc = acc + y)
+      )$acc
+    }
+    out <- jit(vectorize(f))(nv_array(c(1, 2), dtype = "f32"))
+    expect_equal(as_r(out), array(c(3, 6), dim = 2L))
+  })
+})
+
+describe("prim_scan", {
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(init, xs, y) {
+        out <- prim_scan(
+          list(c = init),
+          list(xs),
+          function(carry, x) list(carry = list(c = carry$c + x[[1L]]), out = list(carry$c * x[[1L]] + y)),
+          steps = 4L
+        )
+        list(out$carry$c, out$out[[1L]])
+      },
+      init = rand_array(c(2L, 3L)),
+      xs = rand_array(c(2L, 4L, 3L)),
+      y = rand_array(c(2L, 3L))
+    )
+  })
+
+  it("vectorizes in reverse and without xs", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(init) {
+        out <- prim_scan(
+          list(init),
+          NULL,
+          function(carry, x) list(carry = list(carry[[1L]] * 2), out = list(carry[[1L]])),
+          steps = 3L,
+          reverse = TRUE
+        )
+        list(out$carry[[1L]], out$out[[1L]])
+      },
+      init = rand_array(c(2L, 3L))
+    )
+  })
+
+  it("draws in its body what a loop over the slices draws", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x) {
+        body <- function(carry, x) list(carry = list(carry[[1L]] + nv_runif(shape = 2L, dtype = "f32")), out = NULL)
+        prim_scan(list(x), NULL, body, steps = 2L)$carry[[1L]]
+      },
+      x = rand_array(c(2L, 3L))
+    )
+  })
+
+  it("keeps a carry and a stacked output that do not depend on the arguments mapped over unbatched", {
+    f <- function(x) {
+      out <- prim_scan(
+        list(n = nv_scalar(0, dtype = "f32"), acc = x),
+        NULL,
+        function(carry, xs) list(carry = list(n = carry$n + 1, acc = carry$acc + x), out = list(carry$n)),
+        steps = 3L
+      )
+      list(out$carry$n, out$carry$acc, out$out[[1L]])
+    }
+    stmt <- vectorized_statement(f, list(x = nv_aval("f32", 2L)), -1L, "scan")
+    expect_identical(lapply(stmt$outputs, \(out) shape(out$aval)), list(integer(), 2L, 3L))
+  })
+})
+
 # Every primitive with a vectorize rule must have been applied by one of the
 # `autotest_vectorize()` calls above (see helper-vectorize.R), except one that
 # gets the rule of its tag, of which one per tag suffices.

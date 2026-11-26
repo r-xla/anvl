@@ -200,4 +200,23 @@ for (j in 1:2) {
 }
 ```
 
+A function that `vectorize()` maps over can also contain loops and branches whose course depends on the values mapped over.
+Such a loop runs a different number of times for every slice.
+`vectorize()` runs it until the condition fails for every slice, and a slice whose condition has failed keeps its state from then on, so every slice ends where a loop over the slices leaves it.
+Newton's method for the square root, for example, stops once its step is small, which takes more steps the larger the number:
+
+```{r}
+newton_sqrt <- function(a) {
+  nv_while(list(x = a, step = a), function(x, step) abs(step) > 1e-10 * x, function(x, step) {
+    x_new <- (x + a / x) / 2
+    list(x = x_new, step = x - x_new)
+  })$x
+}
+jit(vectorize(newton_sqrt))(nv_array(c(2, 9, 1e6), dtype = "f64"))
+```
+
+Likewise, when the predicate of `nv_if()` depends on the values mapped over, every branch that some slice takes runs, and each slice keeps the result of its own branch.
+A slice runs a branch it does not take on the values of a slice that takes it, so the branch never sees values it is not meant for: mapped over an `x` with a `0` in it, the gradient of `nv_if(x > 0, function() sqrt(x), function() x)` is `1` there, not `NaN`, as that slice does not take the `sqrt()`.
+What a loop body or a branch does for a slice that is done with the loop or does not take the branch is discarded, except for its side effects: `nv_print()` prints for those slices, too.
+
 Beyond this, `vectorize()` can map over parts of nested list arguments, place the batch axis of every output with `out_axes`, and compose with other transformations; see `?vectorize` for more.

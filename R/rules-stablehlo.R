@@ -699,16 +699,18 @@ prim_sample_bits[["stablehlo"]] <- function(key, counter, shape, dtype) {
   })
 }
 
+# The child random state of each random state of a batch: its fresh key, and
+# the counter 0.
 prim_fork_rng_state[["stablehlo"]] <- function(key, counter) {
-  # one function for every fork, of a single random state
-  if (length(shape(counter$value_type))) {
-    cli_abort("Internal error: cannot fork a batch of random states.")
-  }
-  rng_state_call("fork_rng_state", key, counter, function(fresh_key) {
-    words <- lapply(fresh_key, hlo_reshape, 1L)
+  batch <- r_shape(counter)
+  id <- paste0("fork_rng_state", if (length(batch)) paste0("_batch_", shape_id(batch)))
+  rng_state_call(id, key, counter, function(fresh_key) {
+    xla_batch <- shape(fresh_key[[1L]]$value_type)
+    words <- lapply(fresh_key, hlo_reshape, c(xla_batch, 1L))
+    zero <- hlo_scalar(0L, dtype = "ui64", func = fresh_key[[1L]]$func)
     list(
-      hlo_concatenate(words[[1L]], words[[2L]], dimension = 0L),
-      hlo_scalar(0L, dtype = "ui64", func = fresh_key[[1L]]$func)
+      hlo_concatenate(words[[1L]], words[[2L]], dimension = length(xla_batch)),
+      if (length(xla_batch)) hlo_broadcast_in_dim(zero, integer(), xla_batch) else zero
     )
   })
 }

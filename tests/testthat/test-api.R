@@ -149,6 +149,16 @@ test_that("nv_ifelse broadcasts scalars and promotes branches to a common dtype"
   )
 })
 
+describe("nv_ifelse", {
+  it("gives no NaN gradient when the branch input is masked", {
+    x <- nv_array(c(0, 4), dtype = "f32")
+    masked <- function(x) sum(nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0))
+    expect_equal(jit(gradient(masked))(x)$x, nv_array(c(0, 0.25), dtype = "f32"))
+    second <- function(x) sum(gradient(masked)(x)$x)
+    expect_equal(jit(gradient(second))(x)$x, nv_array(c(0, -1 / 32), dtype = "f32"))
+  })
+})
+
 describe("nv_concatenate", {
   it("needs at least one array", {
     # An empty `...` never reaches stablehlo, so nothing downstream caught it:

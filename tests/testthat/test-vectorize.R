@@ -248,6 +248,26 @@ describe("vectorize", {
     expect_equal(as_r(out$w), as_r(x)[c(2L, 1L), ])
   })
 
+  it("gives no NaN gradient from the branch a slice does not take", {
+    # sqrt() has an infinite derivative at 0, where the slice takes the other
+    # branch; `w` is shared, so the gradients of all slices add up in it.
+    f <- function(w, x) prim_if(x > 0, function() sqrt(w * x), function() x * 0)
+    loss <- function(w, x) sum(vectorize(f, in_axes = list(x = 1L))(w, x))
+    w <- nv_scalar(2, dtype = "f32")
+    x <- nv_array(c(0, -1, 4), dtype = "f32")
+    grad <- jit(gradient(loss))(w, x)
+    expect_equal(as_r(grad$x), array(c(0, 0, sqrt(2) / 4), dim = 3L), tolerance = 1e-6)
+    expect_equal(as_r(grad$w), 1 / sqrt(2), tolerance = 1e-6)
+
+    second <- function(w, x) {
+      g <- gradient(loss)(w, x)
+      sum(g$x) + g$w
+    }
+    grad2 <- jit(gradient(second))(w, x)
+    expect_equal(as_r(grad2$x), array(c(0, 0, sqrt(2) / 32), dim = 3L), tolerance = 1e-5)
+    expect_equal(as_r(grad2$w), -sqrt(2) / 16, tolerance = 1e-5)
+  })
+
   it("is differentiable", {
     f <- function(w, x) sum(vectorize(function(x) sum(x * w), in_axes = list(x = -1L))(x)^2L)
     w <- nv_array(c(1, 2), dtype = "f32")
@@ -498,21 +518,25 @@ describe("vectorize", {
   })
 
   it("refuses to give every slice random numbers of its own through a primitive without a rule", {
-    in_while <- function(x) {
-      nv_while(list(i = 0L), function(i) i < 2L, function(i) {
-        nv_runif(shape = 2L)
-        list(i = i + 1L)
-      })
-      x + 1
+    prim_neg <- unary_primitive()
+    f <- function(x) x + prim_neg(nv_runif(shape = 2L, dtype = "f32"))
+    expect_error(jit(vectorize(f))(x), "random numbers of its own in `prim_negate_test\\(\\)`")
+    expect_error(jit(vectorize(f))(x), "randomness = \"same\"")
+    expect_equal(shape(jit(vectorize(f, randomness = "same"))(x)), c(2L, 3L))
+  })
+
+  it("draws in an nv_while() body what a loop over the slices draws", {
+    f <- function(x) {
+      nv_while(list(i = 0L, x = x), function(i, x) i < 2L, function(i, x) {
+        list(i = i + 1L, x = x + nv_runif(shape = 2L, dtype = "f32"))
+      })$x
     }
-    expect_error(jit(vectorize(in_while))(x), "in an `nv_while\\(\\)` loop that draws")
-    expect_error(jit(vectorize(in_while))(x), "randomness = \"same\"")
-    in_scan <- function(x) {
-      body <- function(carry, i) list(carry = carry + nv_runif(shape = integer(), dtype = dtype(carry)), out = carry)
-      x + nv_scan(body, init = nv_scalar(0, dtype = "f32"), xs = nv_array(1:2, dtype = "i32"))$carry
-    }
-    expect_error(jit(vectorize(in_scan))(x), "random numbers of its own in `prim_scan\\(\\)`")
-    expect_equal(shape(jit(vectorize(in_scan, randomness = "same"))(x)), c(2L, 3L))
+    local_nv_seed(1L)
+    out <- as_r(jit(vectorize(f))(x))
+    after <- state_words()
+    local_nv_seed(1L)
+    expect_equal(out, apply_cols(jit(f), x), tolerance = 1e-6)
+    expect_identical(state_words(), after)
   })
 
   it("names the call of vectorize() or of the function it returns in its errors", {

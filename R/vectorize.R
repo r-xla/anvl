@@ -441,6 +441,11 @@ expand_axes <- function(spec, tree, n, partial, arg, part, call) {
   axes
 }
 
+# What `graph_vectorize()` is replaying a graph for: `call`, the call of the
+# vectorized function, which the replays of sub-graphs inside it name in their
+# errors (see `graph_vectorize_as()`).
+vectorize_state <- new.env(parent = emptyenv())
+
 # Replays `graph` into the current descriptor as a function of `inputs` (boxes,
 # one per graph input), where those that `batched` flags carry a trailing batch
 # axis of size `size`, and those that `is_state` flags are the random states the
@@ -449,6 +454,7 @@ expand_axes <- function(spec, tree, n, partial, arg, part, call) {
 # outputs are batched where the rule says so. Returns the boxes of the outputs
 # as `outputs`, and which of them are batched as `batched`. Errors name `call`.
 graph_vectorize <- function(graph, inputs, batched, is_state, size, call) {
+  rlang::local_bindings(call = call, .env = vectorize_state)
   desc <- current_descriptor()
   trans <- bind_graph(graph, desc, inputs)$trans
   is_batched <- hashtab()
@@ -540,20 +546,90 @@ abort_no_vectorize_rule <- function(primitive, state_only, call) {
       call = call
     )
   }
-  # The fork of the random state is no function of anvl's API: the body of an
-  # `nv_while()` that draws forks it.
-  where <- if (primitive$name == "fork_rng_state") {
-    cli::format_inline("an {.fn nv_while} loop that draws")
-  } else {
-    cli::format_inline("{.fn {paste0('prim_', primitive$name)}}")
-  }
   cli_abort(
     c(
-      "{.fn vectorize} cannot give every slice random numbers of its own in {where} yet.",
+      "{.fn vectorize} cannot give every slice random numbers of its own in {.fn {paste0('prim_', primitive$name)}} yet.",
       i = "Draw the same numbers for every slice with {.code randomness = \"same\"}."
     ),
     call = call
   )
+}
+
+# Replays the sub-graph `graph` of a call that a rule vectorizes -- a branch, a
+# loop body -- into the current descriptor, as `graph_vectorize()` does, as a
+# function of `inputs`, of which those that `batched` flags carry the batch
+# axis. Returns its outputs: those that `out_batched` flags with the batch axis,
+# broadcast where the replay left them without it, and the others as the replay
+# left them, without it, which `graph_batched_outputs()` must have foreseen.
+graph_vectorize_as <- function(graph, inputs, batched, size, out_batched) {
+  res <- graph_vectorize(
+    graph,
+    inputs,
+    batched,
+    is_state = rep(FALSE, length(inputs)),
+    size = size,
+    call = vectorize_state$call
+  )
+  Map(
+    function(out, is_batched, want) {
+      if (want) {
+        return(batch_operand(out, is_batched, size))
+      }
+      if (is_batched) {
+        cli_abort("Internal error: an output of a sub-graph that must not be batched is.")
+      }
+      out
+    },
+    res$outputs,
+    res$batched,
+    out_batched
+  )
+}
+
+# Which outputs of `graph` `graph_vectorize()` batches, given which of its
+# inputs `batched` flags, without replaying it: those that depend on a batched
+# input, as every output of a call with a batched input is batched.
+graph_batched_outputs <- function(graph, batched) {
+  is_batched <- hashtab()
+  for (i in seq_along(graph$inputs)) {
+    is_batched[[graph$inputs[[i]]]] <- batched[[i]]
+  }
+  batched_of <- function(g) !is_graph_literal(g) && isTRUE(is_batched[[g]])
+  for (stmt in graph$statements) {
+    b <- any(vapply(stmt$inputs, batched_of, logical(1L)))
+    for (out in stmt$outputs) {
+      is_batched[[out]] <- b
+    }
+  }
+  vapply(graph$outputs, batched_of, logical(1L))
+}
+
+# Which of the values a loop carries are batched: those `carry` flags, which
+# enter batched, and those the loop body `body` batches from them and from the
+# batched ones among the inputs after the carry, which `other` flags, until
+# that adds no more.
+carry_batched <- function(body, carry, other) {
+  n <- length(carry)
+  repeat {
+    out <- graph_batched_outputs(body, c(carry, other))[seq_len(n)]
+    if (!any(out & !carry)) {
+      return(carry)
+    }
+    carry <- carry | out
+  }
+}
+
+# The rule of a primitive that cannot work on the whole batch at once: applies
+# `apply`, a function of the operands of one slice that returns the list of its
+# outputs, to one slice after the other, in a `prim_scan()` over the batch axis
+# of the operands `batched` flags.
+vectorize_by_loop <- function(apply, inputs, batched, size) {
+  body <- function(carry, x) {
+    operands <- inputs
+    operands[batched] <- x
+    list(carry = carry, out = apply(operands))
+  }
+  prim_scan(list(0L), inputs[batched], body, steps = size)$out
 }
 
 # A vectorize rule must return what the statement `stmt` returned, each with
