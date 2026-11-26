@@ -59,6 +59,11 @@ is_higher_order_primitive <- function(x) {
 #' @return (`NULL`)\cr
 #'   Invisibly. Called for its side effect.
 #' @seealso [`AnvlPrimitiveDef`], [`register_backend()`]
+#' @examples
+#' register_rule_type("my_backend")
+#' prim_add[["my_backend"]]
+#' prim_add[["my_backend"]] <- function(lhs, rhs) list(lhs + rhs)
+#' prim_add[["my_backend"]](1, 2)
 #' @export
 register_rule_type <- function(name) {
   assert_string(name, min.chars = 1L)

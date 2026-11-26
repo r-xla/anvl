@@ -25,6 +25,12 @@ it lowers or evaluates the primitives with, as the \code{"pjrt"} backend lowers
 them with their \code{"stablehlo"} rules and the \code{"quickr"} backend with their
 \code{"quickr"} rules. Registering a type again has no further effect.
 }
+\examples{
+register_rule_type("my_backend")
+prim_add[["my_backend"]]
+prim_add[["my_backend"]] <- function(lhs, rhs) list(lhs + rhs)
+prim_add[["my_backend"]](1, 2)
+}
 \seealso{
 \code{\link{AnvlPrimitiveDef}}, \code{\link[=register_backend]{register_backend()}}
 }
