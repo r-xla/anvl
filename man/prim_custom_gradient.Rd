@@ -61,6 +61,10 @@ instead.
 \code{fn} may close over traced values, but \code{\link[=gradient]{gradient()}} cannot differentiate
 with respect to those, as \code{rule} only gives the gradient with respect to
 \code{args}. Pass such a value through \code{args} instead.
+
+\code{rule} replaces reverse mode only: \code{\link[=pushforward]{pushforward()}} differentiates the
+operations of \code{fn}, with respect to \code{args} and to what \code{fn} closes over
+alike.
 }
 
 \section{Implemented Rules}{
@@ -69,6 +73,7 @@ with respect to those, as \code{rule} only gives the gradient with respect to
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }
