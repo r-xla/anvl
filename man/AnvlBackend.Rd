@@ -98,10 +98,11 @@ A device of the backend is an object whose class inherits from
 name the backend is registered under, and two devices must be comparable
 with \code{==}.
 
-The \code{jit} method typically traces the function into an \code{\link{AnvlGraph}} with
-\code{\link[=trace_fn]{trace_fn()}} and then lowers or evaluates each statement of the graph with
-a rule of the primitive it applies: a rule of a type registered with
-\code{\link[=register_rule_type]{register_rule_type()}}, which \verb{statement$primitive[[<type>]]} returns.
+The \code{jit} method should trace the function into an \code{\link{AnvlGraph}} with
+\code{\link[=trace_fn]{trace_fn()}}, so that every backend runs the same graph, and then lower or
+evaluate each statement of the graph with a rule of the primitive it applies:
+a rule of a type registered with \code{\link[=register_rule_type]{register_rule_type()}}, which
+\verb{statement$primitive[[<type>]]} returns.
 }
 \seealso{
 \code{\link[=register_backend]{register_backend()}}, \code{\link[=register_rule_type]{register_rule_type()}}
