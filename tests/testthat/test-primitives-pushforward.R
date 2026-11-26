@@ -24,6 +24,31 @@ shaped <- function(values, shape) {
   if (length(shape)) array(values, shape) else values
 }
 
+# A sampler of a batch of matrices -- the first two axes of the shape form the
+# matrix, any trailing ones are batch axes -- each drawn by `draw(rows, cols)`.
+matrices <- function(draw) {
+  function(shape) {
+    each <- lapply(seq_len(prod(shape[-(1:2)])), \(i) draw(shape[[1L]], shape[[2L]]))
+    array(unlist(each), shape)
+  }
+}
+symmetric <- function() {
+  matrices(\(n, cols) {
+    x <- matrix(rnorm(n * n), n)
+    x + t(x)
+  })
+}
+positive_definite <- function() {
+  matrices(\(n, cols) {
+    x <- matrix(rnorm(n * n), n)
+    tcrossprod(x) + diag(n)
+  })
+}
+# the triangles of which are well-conditioned
+diagonally_dominant <- function() {
+  matrices(\(n, cols) matrix(runif(n * n, -1, 1), n) + diag(n + 1, n))
+}
+
 # `x`, an R array or number, as an array of data type `dtype`.
 anvl_array <- function(x, dtype) {
   if (is.null(dim(x))) nv_scalar(x, dtype = dtype) else nv_array(x, dtype = dtype)
@@ -74,7 +99,45 @@ binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
 pushforward_cases <- list(
   # at f64 a conversion to f64 is the identity, at f32 one that changes the
   # data type
-  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64"))
+  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64")),
+  # The pushforward rule of `prim_chol()` takes the factor as a function of the
+  # symmetric matrices, as its pullback rule does: it agrees with finite
+  # differences in a symmetric direction.
+  # Forward-over-reverse of `prim_chol()` and `prim_triangular_solve()` needs
+  # the pushforward rules of `prim_transpose()` and `prim_dot_general()`, which
+  # their pullback rules compute with.
+  chol = pushforward_case(
+    list(x = positive_definite()),
+    shapes = list(x = c(3L, 3L, 2L)),
+    directions = list(x = symmetric()),
+    params = list(lower = TRUE),
+    hvp = FALSE
+  ),
+  "chol/upper" = pushforward_case(
+    list(x = positive_definite()),
+    shapes = list(x = c(3L, 3L)),
+    directions = list(x = symmetric()),
+    params = list(lower = FALSE),
+    hvp = FALSE
+  ),
+  triangular_solve = pushforward_case(
+    list(a = diagonally_dominant(), b = unif(-2, 2)),
+    shapes = list(a = c(3L, 3L, 2L), b = c(3L, 2L, 2L)),
+    params = list(left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = FALSE),
+    hvp = FALSE
+  ),
+  "triangular_solve/right" = pushforward_case(
+    list(a = diagonally_dominant(), b = unif(-2, 2)),
+    shapes = list(a = c(3L, 3L), b = c(2L, 3L)),
+    params = list(left_side = FALSE, lower = FALSE, unit_diagonal = TRUE, transpose_a = TRUE),
+    hvp = FALSE
+  ),
+  "triangular_solve/upper" = pushforward_case(
+    list(a = diagonally_dominant(), b = unif(-2, 2)),
+    shapes = list(a = c(3L, 3L), b = c(3L, 2L)),
+    params = list(left_side = TRUE, lower = FALSE, unit_diagonal = FALSE, transpose_a = TRUE),
+    hvp = FALSE
+  )
 )
 
 # Pushforward rules derived from the pullback rule, named
@@ -260,6 +323,17 @@ describe("pushforward rules", {
     expect_null(tangent)
     from_int <- jit(function(i) pushforward(function(i) prim_convert(i, "f64"), i)(NULL))
     expect_equal(as.vector(as_array(from_int(nv_array(1:2, dtype = "i32")))), c(0, 0))
+  })
+
+  it("of prim_chol count a tangent by its symmetric part, as its pullback rule does", {
+    withr::local_seed(1L)
+    x <- nv_array(positive_definite()(c(3L, 3L)), dtype = "f64")
+    dx <- normal()(c(3L, 3L))
+    for (lower in c(TRUE, FALSE)) {
+      along <- jit(function(x, dx) pushforward(\(x) prim_chol(x, lower = lower), x)(dx))
+      expected <- as_array(along(x, nv_array((dx + t(dx)) / 2, dtype = "f64")))
+      expect_equal(as_array(along(x, nv_array(dx, dtype = "f64"))), expected)
+    }
   })
 })
 
