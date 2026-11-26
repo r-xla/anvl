@@ -231,3 +231,40 @@ prim_scatter[["pushforward"]] <- function(inputs, outputs, tangents, params) {
   )
   list(tangent)
 }
+
+# Pushforward rules of the linear algebra primitives ---------------------------
+#
+# These take batches of matrices: the first two axes form the matrix, any
+# trailing ones are batch axes, so `t()` is `transpose_matrix_axes()`. The
+# helpers they share with the pullback rules are in `rules-pullback.R`.
+
+# The factor of a symmetric `A = L t(L)` moves along a symmetric `dA` by
+# `dL = L Φ(L^-1 dA t(L)^-1)` (Murray 2016). Like the pullback rule, this takes
+# the factor as a function of the symmetric matrices, so a tangent counts by
+# its symmetric part.
+prim_chol[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  L <- outputs[[1L]]
+  if (!params$lower) {
+    L <- transpose_matrix_axes(L)
+  }
+  dA <- symmetric_part(tangents[[1L]])
+  dL <- nv_matmul(L, cholesky_phi(solve_both_sides(L, dA, transpose = FALSE)))
+  list(if (params$lower) dL else transpose_matrix_axes(dL))
+}
+
+# `op(a) x = b` moves by `op(a) dx = db - op(da) x`, and `x op(a) = b` by
+# `dx op(a) = db - x op(da)`: one more solve against `a`. Only the entries of
+# `a` the solve reads count, so only those of `da` do, as in the pullback rule.
+prim_triangular_solve[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  da <- tangents[[1L]]
+  rhs <- tangents[[2L]]
+  if (!is.null(da)) {
+    da <- prim_ifelse(triangular_mask(shape(da), params$lower, params$unit_diagonal), da, 0)
+    if (params$transpose_a) {
+      da <- transpose_matrix_axes(da)
+    }
+    da_x <- matmul_on_side(da, outputs[[1L]], params$left_side)
+    rhs <- if (is.null(rhs)) prim_negate(da_x) else prim_sub(rhs, da_x)
+  }
+  list(do.call(prim_triangular_solve, c(list(inputs[[1L]], rhs), params)))
+}

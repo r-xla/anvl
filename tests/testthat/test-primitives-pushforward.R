@@ -22,8 +22,36 @@ ints <- function(lower, upper) {
 fixed <- function(values) {
   function(shape) shaped(values, shape)
 }
+normal <- function() {
+  function(shape) shaped(rnorm(prod(shape)), shape)
+}
 shaped <- function(values, shape) {
   if (length(shape)) array(values, shape) else values
+}
+
+# A sampler of a batch of matrices -- the first two axes of the shape form the
+# matrix, any trailing ones are batch axes -- each drawn by `draw(rows, cols)`.
+matrices <- function(draw) {
+  function(shape) {
+    each <- lapply(seq_len(prod(shape[-(1:2)])), \(i) draw(shape[[1L]], shape[[2L]]))
+    array(unlist(each), shape)
+  }
+}
+symmetric <- function() {
+  matrices(\(n, cols) {
+    x <- matrix(rnorm(n * n), n)
+    x + t(x)
+  })
+}
+positive_definite <- function() {
+  matrices(\(n, cols) {
+    x <- matrix(rnorm(n * n), n)
+    tcrossprod(x) + diag(n)
+  })
+}
+# the triangles of which are well-conditioned
+diagonally_dominant <- function() {
+  matrices(\(n, cols) matrix(runif(n * n, -1, 1), n) + diag(n + 1, n))
 }
 
 # `x`, an R array or number, as an array of data type `dtype`.
@@ -36,15 +64,19 @@ anvl_array <- function(x, dtype) {
 # one an `i32` array -- the arguments to differentiate with respect to, the
 # arguments that are scalars, which the primitive broadcasts to the shape of
 # the others, the shapes of the other arguments where they are not `c(2, 3)`,
-# static parameters, whether to check forward-over-reverse, the tolerance of
-# the comparison with finite differences, and, for a primitive that does not
-# take the arguments one by one, a function of their named list that calls it,
-# in place of the parameters.
+# samplers of the directions to differentiate in where they are not `normal()`
+# -- for an argument whose tangents the primitive restricts, such as to
+# symmetric matrices -- static parameters, whether to check
+# forward-over-reverse, the tolerance of the comparison with finite
+# differences, and, for a primitive that does not take the arguments one by
+# one, a function of their named list that calls it, in place of the
+# parameters.
 pushforward_case <- function(
   args,
   wrt = names(args),
   scalar = character(),
   shapes = list(),
+  directions = list(),
   params = list(),
   hvp = TRUE,
   tolerance = 1e-6,
@@ -55,6 +87,7 @@ pushforward_case <- function(
     wrt = wrt,
     scalar = scalar,
     shapes = shapes,
+    directions = directions,
     params = params,
     hvp = hvp,
     tolerance = tolerance,
@@ -184,7 +217,37 @@ pushforward_cases <- list(
   "scatter/sub" = scatter_rows_case(c(4L, 2L, 4L), "sub"),
   "scatter/mul" = scatter_rows_case(c(4L, 2L, 9L), "mul", unique_indices = TRUE),
   "scatter/max" = scatter_rows_case(c(4L, 2L, 4L, 9L), "max"),
-  "scatter/min" = scatter_rows_case(c(4L, 2L, 4L), "min")
+  "scatter/min" = scatter_rows_case(c(4L, 2L, 4L), "min"),
+  # The pushforward rule of `prim_chol()` takes the factor as a function of the
+  # symmetric matrices, as its pullback rule does: it agrees with finite
+  # differences in a symmetric direction.
+  chol = pushforward_case(
+    list(x = positive_definite()),
+    shapes = list(x = c(3L, 3L, 2L)),
+    directions = list(x = symmetric()),
+    params = list(lower = TRUE)
+  ),
+  "chol/upper" = pushforward_case(
+    list(x = positive_definite()),
+    shapes = list(x = c(3L, 3L)),
+    directions = list(x = symmetric()),
+    params = list(lower = FALSE)
+  ),
+  triangular_solve = pushforward_case(
+    list(a = diagonally_dominant(), b = unif(-2, 2)),
+    shapes = list(a = c(3L, 3L, 2L), b = c(3L, 2L, 2L)),
+    params = list(left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = FALSE)
+  ),
+  "triangular_solve/right" = pushforward_case(
+    list(a = diagonally_dominant(), b = unif(-2, 2)),
+    shapes = list(a = c(3L, 3L), b = c(2L, 3L)),
+    params = list(left_side = FALSE, lower = FALSE, unit_diagonal = TRUE, transpose_a = TRUE)
+  ),
+  "triangular_solve/upper" = pushforward_case(
+    list(a = diagonally_dominant(), b = unif(-2, 2)),
+    shapes = list(a = c(3L, 3L), b = c(3L, 2L)),
+    params = list(left_side = TRUE, lower = FALSE, unit_diagonal = FALSE, transpose_a = TRUE)
+  )
 )
 
 # Pushforward rules derived from the pullback rule, named
@@ -275,7 +338,7 @@ check_pushforward_rule <- function(name, case) {
       )
     })
   }
-  directions <- lapply(case$wrt, \(nm) shaped(rnorm(length(args[[nm]])), dim(args[[nm]])))
+  directions <- lapply(case$wrt, \(nm) (case$directions[[nm]] %||% normal())(shape_of(nm)))
   names(directions) <- case$wrt
 
   f <- with_formals(names(args), case$call %||% \(a) do.call(prim, c(a, case$params)))
@@ -412,6 +475,17 @@ describe("pushforward rules", {
     expect_null(tangent)
     from_int <- jit(function(i) pushforward(function(i) prim_convert(i, "f64"), i)(NULL))
     expect_equal(as.vector(as_array(from_int(nv_array(1:2, dtype = "i32")))), c(0, 0))
+  })
+
+  it("of prim_chol count a tangent by its symmetric part, as its pullback rule does", {
+    withr::local_seed(1L)
+    x <- nv_array(positive_definite()(c(3L, 3L)), dtype = "f64")
+    dx <- normal()(c(3L, 3L))
+    for (lower in c(TRUE, FALSE)) {
+      along <- jit(function(x, dx) pushforward(\(x) prim_chol(x, lower = lower), x)(dx))
+      expected <- as_array(along(x, nv_array((dx + t(dx)) / 2, dtype = "f64")))
+      expect_equal(as_array(along(x, nv_array(dx, dtype = "f64"))), expected)
+    }
   })
 })
 
